@@ -10,16 +10,51 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// buildV3 assembles a current-state-v3 document: the V2 body exactly, plus the
-// mandatory slug key and the requested identity heading.
-func buildV3(identity, slug string) string {
-	body := build("Proposed", "2026-07-31", oneDecision, "None.", "- 2026-07-31: Proposed")
+// buildV3Governed assembles a current-state-v3 document carrying an arbitrary
+// governed status, State changes block, and Status history: the V2 body shape
+// exactly, plus the mandatory slug key and the requested identity heading.
+func buildV3Governed(identity, slug, status, stateChanges, history string) string {
+	body := build(status, "2026-07-31", oneDecision, stateChanges, history)
 	body = strings.Replace(body, "format: current-state-v1\n", "format: current-state-v3\nslug: "+slug+"\n", 1)
 	return strings.Replace(body, "# ADR-0137: Test Decision", "# ADR-"+identity+": Test Decision", 1)
 }
 
+// buildV3 assembles the scaffold-shaped V3 document: Proposed, no declared
+// operations, one history event.
+func buildV3(identity, slug string) string {
+	return buildV3Governed(identity, slug, "Proposed", "None.", "- 2026-07-31: Proposed")
+}
+
 func pendingFixture(slug string) string {
 	return buildV3(slug, slug)
+}
+
+// v3Changes is the declared operation block the governed V3 fixtures share.
+// Three operations leave room for an Implementing history that has applied some
+// and still owes others, which is what that status requires.
+const v3Changes = "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"
+
+// v3DigestFor returns the content digest a governed V3 fixture's history stamps
+// must repeat. The State changes block is digest-covered, so varying it is how
+// these fixtures model an amended body.
+func v3DigestFor(t *testing.T, stateChanges string) string {
+	t.Helper()
+	a, err := adr.ParseV3("scaffold-record.md", []byte(buildV3Governed("scaffold-record", "scaffold-record", "Proposed", stateChanges, "- 2026-07-31: Proposed")))
+	if err != nil {
+		t.Fatalf("V3 scaffold parse for digest: %v", err)
+	}
+	return adr.ContentDigest(a.Sections)
+}
+
+// parseV3Governed parses a pending V3 record at the given status, declared
+// operations, and history.
+func parseV3Governed(t *testing.T, status, stateChanges, history string) adr.ADR {
+	t.Helper()
+	a, err := adr.ParseV3("governed-record.md", []byte(buildV3Governed("governed-record", "governed-record", status, stateChanges, history)))
+	if err != nil {
+		t.Fatalf("parse V3 at %s: %v", status, err)
+	}
+	return a
 }
 
 // invariant: adr-system/adr-lifecycle:pending-adr-slug-identity
@@ -181,6 +216,104 @@ func TestParseDirRefusesStraysAndCarriesPendingRecords(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(stray, "notes.md"), "# Just notes\n")
 	if _, err := adr.ParseDir(stray); err == nil || !strings.Contains(err.Error(), "notes.md: not an ADR record") {
 		t.Fatalf("stray file = %v", err)
+	}
+}
+
+// A V3 record carries V2 semantics, so the governed content rules must bind it
+// exactly as they bind a V2 record. The fixture is a parsed V3 document with a
+// real governed history on purpose: a V3 record that never leaves Proposed
+// cannot tell these predicates apart from the V1 fallbacks beside them, which
+// is what makes this claim's backing real rather than nominal.
+// invariant: adr-system/adr-lifecycle:adr-amendable-until-terminal
+func TestV3ContentAmendsUntilTerminalStatus(t *testing.T) {
+	digest := v3DigestFor(t, v3Changes)
+	proposed := "- 2026-07-31: Proposed"
+	accepted := proposed + "\n- 2026-07-31: Accepted; content-sha256: " + digest
+	implementing := accepted + "\n- 2026-07-31: Implementing; content-sha256: " + digest +
+		"\n- 2026-07-31: Applied; operations: add `a/b:first`"
+	allApplied := implementing + "\n- 2026-07-31: Applied; operations: update `a/b:second`, remove `a/b:third`"
+	for _, tc := range []struct {
+		name, status, history string
+		amendable             bool
+	}{
+		{"proposed", "Proposed", proposed, true},
+		{"accepted", "Accepted", accepted, true},
+		{"implementing", "Implementing", implementing, true},
+		{"implemented", "Implemented", allApplied + "\n- 2026-07-31: Implemented; content-sha256: " + digest, false},
+		{"abandoned", "Abandoned", accepted + "\n- 2026-07-31: Abandoned; content-sha256: " + digest + "; rationale: stopped; safely", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			record := parseV3Governed(t, tc.status, v3Changes, tc.history)
+			if record.IsContentAmendable() != tc.amendable {
+				t.Fatalf("IsContentAmendable = %v, want %v", record.IsContentAmendable(), tc.amendable)
+			}
+			// FrozenContentEqual reads the same freeze point: past it a changed
+			// body is refused, before it the amendment is allowed.
+			changed := record
+			changed.Sections = map[string]string{"Decision": "1. Something else entirely"}
+			if adr.FrozenContentEqual(record, changed) != tc.amendable {
+				t.Fatalf("FrozenContentEqual = %v, want %v", adr.FrozenContentEqual(record, changed), tc.amendable)
+			}
+		})
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:applied-history-events-append-only
+func TestV3HistoryIsPrefixAppendOnly(t *testing.T) {
+	digest := v3DigestFor(t, v3Changes)
+	implementing := "- 2026-07-31: Proposed\n- 2026-07-31: Accepted; content-sha256: " + digest +
+		"\n- 2026-07-31: Implementing; content-sha256: " + digest
+	first := "\n- 2026-07-31: Applied; operations: add `a/b:first`"
+	second := "\n- 2026-07-31: Applied; operations: update `a/b:second`"
+	before := parseV3Governed(t, "Implementing", v3Changes, implementing+first)
+	if !adr.HistoryTransitionValid(before, parseV3Governed(t, "Implementing", v3Changes, implementing+first+second)) {
+		t.Fatal("appending one Applied batch while Implementing must be legal")
+	}
+	// Mutating a retained event and deleting one are both refused: the before
+	// history must survive as an exact prefix.
+	if adr.HistoryTransitionValid(before, parseV3Governed(t, "Implementing", v3Changes, implementing+second)) {
+		t.Fatal("rewriting the retained Applied event must be refused")
+	}
+	truncated := before
+	truncated.History = before.History[:len(before.History)-1]
+	if adr.HistoryTransitionValid(before, truncated) {
+		t.Fatal("deleting the retained Applied event must be refused")
+	}
+	// An Amended event is the one other same-status append the format allows.
+	// The amendment changes the body, so the after record declares a wider State
+	// changes block and stamps that body's digest, while the retained Accepted
+	// event keeps the original stamp.
+	acceptedOnly := "- 2026-07-31: Proposed\n- 2026-07-31: Accepted; content-sha256: " + digest
+	wide := v3Changes + "\n- add `a/b:fourth`"
+	amendable := parseV3Governed(t, "Accepted", v3Changes, acceptedOnly)
+	amended := parseV3Governed(t, "Accepted", wide, acceptedOnly+"\n- 2026-07-31: Amended; content-sha256: "+v3DigestFor(t, wide))
+	if !adr.HistoryTransitionValid(amendable, amended) {
+		t.Fatal("appending one Amended event while Accepted must be legal")
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+func TestV3FollowsTheGovernedStatusMatrix(t *testing.T) {
+	// Implementing exists only in the governed matrix, so routing a V3 record to
+	// the V1 matrix would refuse both of these edges.
+	if !adr.TransitionLegal("Accepted", "Implementing", adr.CurrentStateV3) {
+		t.Fatal("Accepted -> Implementing must be legal for V3")
+	}
+	if !adr.TransitionLegal("Implementing", "Implemented", adr.CurrentStateV3) {
+		t.Fatal("Implementing -> Implemented must be legal for V3")
+	}
+	if adr.TransitionLegal("Implemented", "Accepted", adr.CurrentStateV3) {
+		t.Fatal("no edge leaves a terminal status")
+	}
+	// The governed history grammar parses too: a V3 Applied event resolves its
+	// operations against the declared State changes block, which the V1 history
+	// parser does not do.
+	digest := v3DigestFor(t, v3Changes)
+	record := parseV3Governed(t, "Implementing", v3Changes, "- 2026-07-31: Proposed\n- 2026-07-31: Accepted; content-sha256: "+digest+
+		"\n- 2026-07-31: Implementing; content-sha256: "+digest+"\n- 2026-07-31: Applied; operations: add `a/b:first`")
+	applied := record.History[len(record.History)-1]
+	if applied.Kind != adr.HistoryApplied || len(applied.Operations) != 1 || applied.Operations[0].ID != "a/b:first" {
+		t.Fatalf("Applied event = %#v", applied)
 	}
 }
 

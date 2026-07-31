@@ -562,6 +562,11 @@ func TestCheckBackwardPlacesPendingSlugEntriesAfterEveryNumber(t *testing.T) {
 	if got := messages(currentstate.Check([]adr.ADR{slugOrigin, pending}, topics(claim("d/t:c", "pending-origin", "pending-one")))); got != "" {
 		t.Fatalf("a slug Origin with slug revisions must be clean:\n%s", got)
 	}
+	// A slug Origin already counts as a pending entry, so a numbered revision
+	// after it is out of order even though no slug revision precedes it.
+	if got := messages(currentstate.Check([]adr.ADR{slugOrigin, numbered}, topics(claim("d/t:c", "pending-origin", "0141")))); !strings.Contains(got, "lists numbered Revised-by ADR-0141 after a pending entry") {
+		t.Fatalf("a numbered revision after a slug Origin must be a finding:\n%s", got)
+	}
 }
 
 // invariant: invariants/current-state-authority:provenance-ordered-by-adr-number
