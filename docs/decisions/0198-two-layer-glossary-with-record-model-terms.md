@@ -205,6 +205,15 @@ eight repeatable facets and `--full` as their byte-identical union, along with i
 Decision 5 keeps `domains` on the record so that later decision has its data ready, and that
 later decision should carry pitfall entries too, whose surfacing is equally absent today.
 
+Half of what this advisory was originally asked to do is deferred rather than delivered. The
+requirement was that the rule be advisory at commit time and reusable by a future static-state
+audit command, named as `awf doctor`. Commit-time advisory is delivered, by bare `check` rather
+than by `check --staged`. Reusability is not: `awf doctor` no longer exists, since ADR-0162
+removed `tooling/cli:doctor-command-contract`, and building a producer seam whose only consumer
+is `AdvisoryNotes` would be an abstraction with no second call site. If such a command is built
+later it consumes the advisory channel as a whole, as every other family in it already expects,
+and this decision leaves that to the decision that introduces it.
+
 A future term-lookup command stays possible and stays unjustified for now. Nothing in this
 decision anticipates it.
 
