@@ -18,7 +18,7 @@ by this repository's own checks (ADR-0090).
 
 
 <!-- awf:edit commands: from .awf/parts/working-with-awf/commands.md -->
-A minimal simple fix uses no effort. For a concrete non-minimal outcome, run `awf effort new "<outcome>"`; the immutable slug identifies `.awf/efforts/<slug>/state.json`, its always-owned `.awf/efforts/<slug>/memory.md`, optional `.awf/worktrees/<slug>/`, and optional `awf/<slug>` branch. Creation makes the managed worktree by default (`--no-worktree` opts out; `--base <ref>` selects the base); `awf effort worktree add <slug>` remains the standalone operation for efforts created without one. Git topology, not effort state, owns integration and removal facts; finish is restartable deletion and refuses until every managed path, registration, and branch is absent.
+A minimal simple fix uses no effort. For a concrete non-minimal outcome, run `awf effort new "<outcome>"`; the immutable slug identifies `.awf/efforts/<slug>/state.json`, its always-owned `.awf/efforts/<slug>/memory.md`, `.awf/worktrees/<slug>/`, and the `awf/<slug>` branch. Creation makes the managed worktree by default (`--no-worktree` opts out; `--base <ref>` selects the base); `awf effort worktree add <slug>` remains the standalone operation for efforts created without one. Git topology, not effort state, owns integration and removal facts; finish is restartable deletion and refuses until every managed path, registration, and branch is absent.
 
 Pi's `handoff_session` accepts only the exact repository-relative `.awf/efforts/<slug>/memory.md` path or an absolute spelling that normalizes to it. It validates the slug, confinement, ownership, bounded UTF-8 regular-file identity, and repository identity without selecting an effort or mutating lifecycle state.
 

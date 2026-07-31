@@ -208,9 +208,9 @@
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
-      "templateHash": "sha256:6841d257693c7e00e8b1f6d22f082fc9cce62a836dbca9a0bae3ecad333d1fd4",
+      "templateHash": "sha256:0717ff4ecdbc0b4a414bdc67ba7a393531bf966a9f2b1743d899df8191291d7e",
       "configHash": "sha256:fa0515ab43ff12c639c31ba5013eff15de4319e01b2fc63b81b978323ac74e94",
-      "outputHash": "sha256:d91cb3c229b41b3ab11d44b483eb5a143987a1d3e0c7cfc06a6b6dbb2cbd39d3"
+      "outputHash": "sha256:a066ddf7d154a6dca4792fc8d039c4bef90d1a6410e7d557cbf511865607fee1"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
@@ -439,7 +439,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:05f4f6e535499c40f654545a07593438ae833ee2c4c87b8ede591103ebe19240",
+      "outputHash": "sha256:87ce5fe90e38e37aaaa2364c4d66fd351d8d0c8551b4053d5f5e4d3624d13aab",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -763,8 +763,8 @@
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
       "templateHash": "sha256:3bf55bf04d50b8e14812d20ae959b89d4e027c8549567c65f7cf132713c89eb6",
-      "configHash": "sha256:5ffc5162b0fc43ee1870507d113f365d81aa92bcd5f837d2127a81fca1ae845e",
-      "outputHash": "sha256:e8a02394d5c66a8b55d2ea3d1b8ff8e51361be8f412b50327680c49d0c22c540"
+      "configHash": "sha256:123f0fb9bcc31f7106e06fb4c6eee3fb2ba3f50fa8da481d1e3ec3aebc27f0fe",
+      "outputHash": "sha256:2c5323b4c533400c3a8582f9aa65a373be3650cf5e226961cf091ea4da737c61"
     }
   },
   "adrFormatV1From": 137,
