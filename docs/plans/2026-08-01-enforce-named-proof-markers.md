@@ -235,16 +235,17 @@ grep -rEn '^[[:space:]]*// invariant: [a-z0-9/:-]+[[:space:]]*$' --include='*_te
   the evidence that Phase 2's schema really was permissive.
 
 - [ ] **Task 3.3: Spot-check the two shapes the script treats differently.** Confirm by reading
-  that the twelve stacked markers above
+  that every consecutive marker in the block above
   `TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion` in
-  `internal/contextq/adapter_outputs_test.go` each now name that function, and that the in-body
+  `internal/contextq/adapter_outputs_test.go` now names that function, and that the in-body
   marker above the table row in `internal/config/edit_test.go` names the row's own string literal
   rather than its enclosing function. Confirm as a third check that the sundial adopter's marker at
-  `examples/sundial/internal/almanac/almanac_test.go` carries a name: the root marker walk skips
-  that tree because it contains its own `.awf` directory (`internal/topic/markers.go:68`), so a
-  marker missed there does not fail at its own line in Phase 4 but through the rendered-example
-  test and the `rendering/companion-scripts:runner-example-adopted` invariant, which is a
-  materially harder failure to diagnose. If any of the three is wrong, fix the script and re-run
+  `examples/sundial/internal/almanac/almanac_test.go` carries a name. The root marker walk skips
+  that tree because it contains its own `.awf` directory (`internal/topic/markers.go:68`), so
+  sundial is checked only by the nested runs `./x` makes with sundial as its own root (`x:90` and
+  `x:99`) and by the pre-commit hook's own sliced check. Neither `awf check --staged` nor
+  `./x gate` scans it, which makes Task 3.2's `./x check` the only step in this plan that would
+  catch a marker missed there. If any of the three spot-checks is wrong, fix the script and re-run
   rather than hand-editing the output, so the corpus stays uniform.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
@@ -267,8 +268,13 @@ documented grammar actually changes.
 
 ```go
 var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `) \((\S(?:.*\S)?)\)$`)
-var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `)$`)
+var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `)(?: \(.*\))?$`)
 ```
+
+  The fallback deliberately also matches a padded or empty parenthetical, so
+  `invariant: <id> ( TestFoo )` and `invariant: <id> ()` reach the named diagnostic below rather
+  than falling through to the generic malformed-marker error. Ordering makes this safe:
+  `proofPayloadRE` is attempted first, so a well-formed named marker never reaches the fallback.
 
   The name group stays greedy, so ADR-0199 item 2's `it('strips the header')` case still captures
   through to the payload's final closing parenthesis. Requiring a non-space first and last
@@ -298,10 +304,12 @@ var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern 
   a missing-name failure early in it. ADR-0199 item 3 requires the scan to keep reporting the
   first failure in line order. Add an unexported helper:
 
-  `proofNameOccurs(lines []string, name string, markerLine int) bool` returns true when `name`
-  occurs verbatim on some line other than `markerLine` whose `strings.TrimSpace` form does not
-  begin with the source family's marker token, and where the match is not immediately preceded or
-  followed by a byte in `[A-Za-z0-9_]`. Because the marker token is the family's comment leader by
+  `proofNameOccurs(lines []string, name, marker string, markerLine int) bool` returns true when
+  `name` occurs verbatim on some line other than `markerLine` whose `strings.TrimSpace` form does
+  not begin with `marker`, and where the match is not immediately preceded or followed by a byte
+  in `[A-Za-z0-9_]`. The marker token must be threaded in as a parameter, taken from `src.Marker`
+  in the `for _, src := range sources` loop the caller is already inside; it cannot be hardcoded,
+  because the exclusion is per-family (`//`, `#`, `<!--`). Because the marker token is the family's comment leader by
   construction, this excludes comments, and every marker line is a special case of a comment line
   (ADR-0199 item 3).
 
@@ -354,14 +362,24 @@ testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invarian
   3. **Flanking, the rename case.** A marker names `TestFoo` in a file whose only code occurrence
      is `func TestFooBar(t *testing.T) {}`. Without the flanking condition this would pass, and it
      is the precise mechanism that catches a rename, which is the drift this effort exists for.
-  4. **Stacked markers do not satisfy each other.** Two consecutive markers both naming a function
-     absent from the file both fail; without the `markerLine` exclusion and the comment exclusion
-     each would be satisfied by the other, which is the twelve-claim silent-stranding failure mode
-     ADR-0199 item 3 identifies.
+  4. **Stacked markers do not satisfy each other.** Two consecutive markers naming the *same*
+     function, absent from the file; assert the error reports the first marker's line. They must
+     name the same function: naming two different absent functions would fail on the `markerLine`
+     exclusion alone and merely duplicate case 1, testing nothing about stacking. The second
+     marker is unreachable in that run by design, since the scan returns on its first error, so
+     the case pins the comment exclusion rather than a pair of failures. This is the twelve-claim
+     silent-stranding failure mode ADR-0199 item 3 identifies.
+  5. **Bare unnamed marker.** A payload `invariant: alpha/contracts:stable` with no parenthetical
+     at all must fail with `does not name a proving unit`. Without this case
+     `unnamedProofPayloadRE`'s error statement is never executed once the fixtures above are all
+     named, and Phase 4 closes red on the 100% statement-coverage gate. Convert Phase 2's Task 2.3
+     case asserting that an unnamed proof marker *resolves* into this one rather than deleting it,
+     so the assertion is inverted rather than silently dropped.
 
   Also add a case pinning the Task 4.1 whitespace rejection: payload
   `invariant: alpha/contracts:stable ( TestStable )` must fail with
-  `does not name a proving unit`, not with the occurrence error.
+  `does not name a proving unit`, which the widened `unnamedProofPayloadRE` fallback is what makes
+  true; without that widening it would fall through to the malformed-marker error instead.
 
 - [ ] **Task 4.4: Update the documentation sources that specify the payload grammar.** Every one of
   these is a `.awf/` or `templates/` source; never hand-edit a rendered output. Change the marker
