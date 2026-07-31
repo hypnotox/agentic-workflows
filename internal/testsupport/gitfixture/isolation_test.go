@@ -1,0 +1,105 @@
+package gitfixture
+
+import (
+	"os"
+	"strings"
+	"testing"
+)
+
+// nativeIsolationPins is the whole policy the native lane guarantees, written
+// out independently of the code that builds it so the table asserts a contract
+// rather than restating an implementation.
+//
+// This exists because the lane's isolation is a deliberate DUPLICATE of the one
+// in internal/git: tooling/quality-gates:testsupport-zero-internal-deps forbids
+// gitfixture importing that package, so no compiler edge ties the two copies
+// together, awf check reads no Go symbols, and deadcode skips test packages.
+// Nothing but this table would notice the copies diverging.
+//
+// One divergence is deliberate and must NOT be added here: the seam replays the
+// developer's core.excludesFile, because it renders a working-tree oracle whose
+// ignore universe has to match reality. A fixture only builds state, so it is
+// correct for it to be stricter.
+var nativeIsolationPins = map[string]string{
+	"GIT_CONFIG_GLOBAL":   os.DevNull,
+	"GIT_CONFIG_NOSYSTEM": "1",
+	"GIT_TERMINAL_PROMPT": "0",
+	"GIT_ASKPASS":         "true",
+	"SSH_ASKPASS":         "true",
+	"GCM_INTERACTIVE":     "Never",
+}
+
+// effectiveEnvironment reduces an environment slice the way a process does:
+// the last assignment of a key wins.
+func effectiveEnvironment(env []string) map[string]string {
+	out := map[string]string{}
+	for _, entry := range env {
+		key, value, _ := strings.Cut(entry, "=")
+		out[key] = value
+	}
+	return out
+}
+
+// TestNativeEnvironmentPinsTheWholeIsolationPolicy is the proof carrier for the
+// fixture lane's parity with the seam's isolation. It must fail if any single
+// pin is dropped or if the strip stops covering a hostile variable, so it is
+// mutation-verified one pin at a time rather than trusted for passing.
+func TestNativeEnvironmentPinsTheWholeIsolationPolicy(t *testing.T) {
+	t.Parallel()
+	// Every variable here would redirect, reconfigure, or unblock Git if it
+	// survived: a repository selection, a configuration source, or a credential
+	// helper that can hang a fixture on a prompt.
+	hostile := []string{
+		"GIT_DIR=/hostile/.git",
+		"GIT_WORK_TREE=/hostile",
+		"GIT_INDEX_FILE=/hostile/index",
+		"GIT_OBJECT_DIRECTORY=/hostile/objects",
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES=/hostile/alt",
+		"GIT_COMMON_DIR=/hostile/common",
+		"GIT_NAMESPACE=hostile",
+		"GIT_CEILING_DIRECTORIES=/",
+		"GIT_CONFIG=/hostile/config",
+		"GIT_CONFIG_COUNT=1",
+		"GIT_CONFIG_KEY_0=core.bare",
+		"GIT_CONFIG_VALUE_0=true",
+		"GIT_CONFIG_GLOBAL=/hostile/gitconfig",
+		"GIT_CONFIG_NOSYSTEM=0",
+		"GIT_TERMINAL_PROMPT=1",
+		"GIT_ASKPASS=/hostile/askpass",
+		"SSH_ASKPASS=/hostile/ssh-askpass",
+		"GCM_INTERACTIVE=Always",
+		// Lower case, because the filter compares case-insensitively and an
+		// environment is case-insensitive on Windows.
+		"git_dir=/hostile/lower/.git",
+		// Unrelated variables must survive: stripping PATH would leave no git
+		// to run, and stripping HOME would change where a fixture writes.
+		"PATH=/usr/bin",
+		"HOME=/home/developer",
+	}
+
+	effective := effectiveEnvironment(nativeEnvironment(hostile))
+
+	for key, want := range nativeIsolationPins {
+		got, ok := effective[key]
+		if !ok {
+			t.Errorf("%s is not pinned; the lane no longer isolates it", key)
+			continue
+		}
+		if got != want {
+			t.Errorf("%s = %q, want the pinned %q", key, got, want)
+		}
+	}
+	for key, value := range effective {
+		if strings.HasPrefix(strings.ToUpper(key), "GIT_") {
+			if _, pinned := nativeIsolationPins[key]; !pinned {
+				t.Errorf("inherited %s=%q survived; every GIT_ variable must be stripped or pinned", key, value)
+			}
+		}
+	}
+	if effective["PATH"] != "/usr/bin" || effective["HOME"] != "/home/developer" {
+		t.Errorf("unrelated variables were stripped: PATH=%q HOME=%q", effective["PATH"], effective["HOME"])
+	}
+	if len(nativeIsolationPins) != 6 {
+		t.Errorf("the pinned set has %d entries, want 6; a new pin needs a case here and in the seam's own isolation", len(nativeIsolationPins))
+	}
+}

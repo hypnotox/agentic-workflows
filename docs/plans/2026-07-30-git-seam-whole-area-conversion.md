@@ -437,12 +437,16 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   any go-git/go-billy import or `exec.Command("git"`/`exec.CommandContext(..., "git"`
   construction outside `internal/git/**` and `internal/testsupport/gitfixture/**`.
   `internal/git/fixturewalker_test.go`: walks `*_test.go` files and fails on the same
-  two forms outside `internal/testsupport/gitfixture/**` and `internal/git/**`. It must
-  also allow `internal/testsupport/deps_test.go`, which carries the go-git import path
-  as a string-literal fixture for the dependency checker rather than importing it; the
-  Task 6.2 post-check already excludes that file and the walker owes the same carve-out.
-  Both walkers detect the argument shape with `.*` before the `"git"` literal, never a
-  bracket expression, which cannot cross the `)` in `t.Context()`.
+  two forms outside `internal/testsupport/gitfixture/**` and `internal/git/**`. Detect
+  both forms structurally, from the parsed import list and the `os/exec` call
+  expressions, not by matching source text: a textual scan cannot tell an import from a
+  string constant, and it is what let `exec.CommandContext(t.Context(), "git", ...)`
+  escape the Task 6.2 post-check. A structural walker consequently owes
+  `internal/testsupport/deps_test.go` NO carve-out even though the grep post-check
+  excludes it, because that file carries the go-git path only as dependency-checker
+  fixture data and never imports it. Prove that rather than assume it: each allowlist
+  entry gets a test asserting it still shields a real finding, so an entry that stops
+  being load-bearing is removed instead of silently widening the hole.
   `internal/git/entrypoints_test.go`: enumerates every exported `Repo` method plus the
   free entrypoints (the Notes' exhaustive list) and fails when one lacks a registered
   contract-suite function (a map from entrypoint name to suite function, complete by
@@ -617,3 +621,34 @@ refactor(code-design): apply single-home and git-access authority
   docs/pitfalls.md entry, because its cost is diagnostic (a blocked fixture hangs to the
   test binary's timeout rather than failing fast) and the note is what a future
   investigation needs to start in the right place.
+- Phase 7 SPLIT, and the plan's Task 7.5 is superseded on ordering. The plan places the
+  claim batches and both Implemented flips inside the phase-closing commit, but the
+  rendered execution contract now holds that the final operations batch and the flip land
+  only after terminal review settles; that contract postdates this plan. The split is not
+  discretionary: a terminal status freezes an ADR body, a claim cannot be withdrawn
+  without a `remove` operation, and `Implementing` requires a pending operation, so an
+  all-applied non-terminal state is not expressible and a premature flip cannot be walked
+  back (the same corner ADR-0187 was forced into). Because ADR-0191's operations are
+  declared indivisible, the claims cannot land early either, and a proof marker citing an
+  unapplied claim fails `awf check`. Phase 7 therefore lands as 7.1 and 7.4 first
+  (walkers, entrypoint table, isolation table, obligated docs, changelog) with the proof
+  markers withheld, and Tasks 7.2, 7.3 and 7.5 land together in the final transaction
+  after terminal review, markers returning with their claims.
+- Implementation-surfaced (Phase 7): the fixture walker owes
+  `internal/testsupport/deps_test.go` NO allowlist entry after all. That carve-out was
+  recommended for a text-matching walker, which cannot tell an import from a string
+  constant; these walkers parse the import list, so the file's go-git path is invisible to
+  them. `TestFixtureAllowlistEntriesAreAllLoadBearing` proved it by removing each entry and
+  requiring a finding, and the entry was deleted rather than kept as harmless.
+- Implementation-surfaced (Phase 7): the entrypoint table found `Branches` reached only by
+  the cancellation and error suites, with nothing asserting the set it returns. A body
+  returning an empty map, full ref names, or remote branches alongside local ones would
+  have stayed green. `TestBranchesReportsEveryLocalBranchShortName` now pins it. This is
+  the table earning its place on its first run.
+- Correction to this plan's Notes: the free-entrypoint list of four is incomplete. The seam
+  exports seven free functions - `Open`, `OpenContaining`, `ResolveControlRoots`,
+  `ListWorktreeRegistrations`, `MergeInProgress`, `ParseRange`, `ProjectResidentRoot` - and
+  all seven satisfy the free-entrypoint principle, since each precedes an opened repository
+  or does without one. The entrypoint table enumerates from source rather than from a list,
+  so it is unaffected by the omission; `ProjectResidentRoot` is the one entrypoint whose
+  suite lives outside `internal/git`, in `cmd/awf`, beside its only consumer.

@@ -265,6 +265,45 @@ func TestRevisionAndBranchReadsReportRepositoryState(t *testing.T) {
 	}
 }
 
+// TestBranchesReportsEveryLocalBranchShortName pins the roster read that
+// internal/migrate consumes to decide whether an effort's managed branch still
+// exists. Before the entrypoint table demanded a suite per entrypoint, Branches
+// was reached only by the cancellation and error tests, so nothing asserted the
+// set it returns: a body that returned an empty map, full ref names instead of
+// short ones, or remote branches alongside local ones would have stayed green.
+func TestBranchesReportsEveryLocalBranchShortName(t *testing.T) {
+	repo, dir := lifecycleRepo(t)
+	ctx := testContext(t)
+	if err := repo.WorktreeAdd(ctx, filepath.Join(t.TempDir(), "linked"), "feature/one", "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	lifecycleGit(t, dir, "branch", "second")
+
+	branches, err := repo.Branches(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := repo.CurrentBranch(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{current, "feature/one", "second"} {
+		if !branches[want] {
+			t.Errorf("Branches missing %q; got %v", want, branches)
+		}
+	}
+	if len(branches) != 3 {
+		t.Errorf("Branches = %v, want exactly the three local branches", branches)
+	}
+	// Short names, not refs/heads/ paths: the consumer compares against a branch
+	// name it composed itself.
+	for name := range branches {
+		if strings.HasPrefix(name, "refs/") {
+			t.Errorf("Branches returned the full ref %q, want a short name", name)
+		}
+	}
+}
+
 // TestMergeEntrypointsAdvanceAndStageWithoutCommitting pins the two integration
 // mutations: the fast-forward that must create no commit of its own, and the
 // divergent merge that must stop before committing.
