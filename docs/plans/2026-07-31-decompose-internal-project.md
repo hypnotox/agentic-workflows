@@ -1,13 +1,13 @@
 ---
 date: 2026-07-31
-adrs: [0191]
+adrs: [0194]
 status: Proposed
 ---
 # Plan: Decompose internal project
 
 ## Goal
 
-Execute ADR-0191: carve `internal/contextq` and `internal/resident` out of `internal/project`,
+Execute ADR-0194: carve `internal/contextq` and `internal/resident` out of `internal/project`,
 repair the core's internal straddles, land the presentation-ownership rule with its two in-scope
 conversions, consolidate template-ID derivation, widen kind dispatch to the whole module, and land
 all seven state operations with their backing. Non-goals: any `internal/git` change, the
@@ -17,7 +17,8 @@ surfaces beyond context and config-reference.
 **Sequencing gate:** implementation starts only after the single-home effort's branch
 (`awf/single-home-and-git-seam-decisions`) integrates to main and this effort's branch is
 rebased or fast-forwarded onto that state. Baseline before Phase 1: `git merge --ff-only main`
-(or rebase) succeeds, `./x check` clean, `./x gate` exit 0.
+(or rebase) succeeds, `./x check` clean, `./x gate` exit 0. Satisfied 2026-07-31: the
+single-home branch merged to main at 556185fc and this branch rebased onto main 373f14f2.
 
 **Claim application (V2):** the ADR flips to `Implementing` in Phase 1's closing commit (first
 batch). Batches follow the ADR's declaration order exactly: Phase 1 applies op 1, Phase 2 op 2,
@@ -37,7 +38,7 @@ presentation-ownership topic anchored and the config-reference rendering typed i
 template-ID derivation consolidated into the descriptor and declaration tables; (6) the
 state-ownership scanner widened and the roadmap and glossary obligations closed. The
 package-ownership guard and operation 7 land in the terminal transaction after Phase 6.
-Design and rationale: ADR-0191.
+Design and rationale: ADR-0194.
 
 ## File structure
 
@@ -55,7 +56,7 @@ Design and rationale: ADR-0191.
   `.awf/agents/plan-reviewer.yaml`, `.awf/parts/workflow/chain.md`,
   `.awf/docs/parts/architecture/` and `.awf/docs/parts/roadmap/deferred.md` and
   `.awf/docs/parts/glossary/` source parts with their rendered outputs,
-  `docs/decisions/0191-...md` (status events), and the render outputs every phase-closing
+  `docs/decisions/0194-...md` (status events), and the render outputs every phase-closing
   commit stages: `docs/decisions/INDEX.md`, `.awf/awf.lock`,
   `docs/topics/rendering/project-output-plan.md`, `docs/topics/tooling/context-and-topic.md`,
   `docs/topics/code-design/presentation-ownership.md`,
@@ -122,12 +123,13 @@ Design and rationale: ADR-0191.
   every consumer in the module, cmd/awf included; a test asserts the table's kind set equals the
   catalog's kinds plus the freeform domains kind, and a source-scanning test over the cmd/awf
   sources asserts no kind fact is decided outside the table." Keep `Origin: ADR-0027`, add
-  `Revised-by: ADR-0191`, keep `Backing: test`. Append to the ADR's Status history an
-  `Implementing` event and an `Applied` event for `state-sequence` and operation 1 per the
-  status-event format in `docs/decisions/template.md`. Obtaining the stamp and sequence is
-  mechanical, never guessed: write 64 zeros as the digest and any sequence, run
-  `./awf check state`, and copy the computed digest and the reported next free sequence from
-  the mismatch messages; the same content stamp repeats on every later status event of this
+  `Revised-by: ADR-0194`, keep `Backing: test`. Append to the ADR's Status history an
+  `Implementing` event and an `Applied` event for operation 1 per the
+  status-event format in `docs/decisions/template.md` (`- YYYY-MM-DD: Applied; operations:
+  <operation-list>`; ADR-0191 removed the state sequence, so no sequence is written).
+  Obtaining the stamp is mechanical, never guessed: write 64 zeros as the digest, run
+  `./awf check state`, and copy the computed digest from
+  the mismatch message; the same content stamp repeats on every later status event of this
   ADR unless an Amended event changes it. Run `./x render` and stage every rendered output
   (`docs/decisions/INDEX.md`, `.awf/awf.lock`, and the rendered topic doc). Post-check:
   `./awf check --staged` clean.
@@ -180,7 +182,7 @@ refactor(code-design): repair core straddles and widen kind dispatch
   and `cmd/` and fail if any re-declares the resident-root table shape or string-compares
   against the resident root names outside the resident package. `internal/git`'s
   `ResidentName` constants are deliberately out of the predicate's scope: they are the git
-  seam's own spelling, decided untouched (ADR-0191 item 7), and the ADR Consequences records
+  seam's own spelling, decided untouched (ADR-0194 item 7), and the ADR Consequences records
   the tolerated parallel. Carry the proof marker for
   `rendering/project-output-plan:resident-policy-single-home`.
 - [ ] **Task 2.5: Ownership, claim prose, Applied event.** Add `internal/resident/**` to
@@ -192,7 +194,7 @@ refactor(code-design): repair core straddles and widen kind dispatch
   core consumes them through the Roots value constructed once at project open, and no file
   under internal/project or cmd redeclares or re-derives the table or predicate
   (internal/git's seam-owned ResidentName spelling is the recorded tolerated parallel)."
-  `Origin: ADR-0191`, `Backing: test`. Update the architecture source part sentence describing the resident-root
+  `Origin: ADR-0194`, `Backing: test`. Update the architecture source part sentence describing the resident-root
   table (`.awf/docs/parts/architecture/`) to name `internal/resident`. Append the Applied event
   for operation 2 to the ADR. `./x render`; post-check `./awf check --staged` clean and
   `./awf context internal/resident` reports the package covered, not unowned.
@@ -259,7 +261,7 @@ refactor(code-design): carve internal/resident below the core
   `context-query-boundary`, body: "Context assembly, classification, projection, and result
   rendering live in internal/contextq; internal/project's exported surface carries no context
   result vocabulary, and contextq reaches core state only through the assembled context-state
-  value and its two core-side constructors." `Origin: ADR-0191`, `Backing: test`. Update the
+  value and its two core-side constructors." `Origin: ADR-0194`, `Backing: test`. Update the
   architecture source part passages (the internal/project role description and the cmd/awf
   presentation sentence). Append the Applied event for operation 3. `./x render`; post-check
   `./awf check --staged` clean and `./awf context internal/contextq` reports covered.
@@ -302,7 +304,7 @@ refactor(code-design): carve contextq behind the ContextState seam
   `.awf/topics/parts/code-design/presentation-ownership/current-state.md`: slug
   `model-owner-renders`, body: "The package that owns a result model owns its human rendering;
   a command binary keeps argument parsing, renderer selection, and exit mapping."
-  `Origin: ADR-0191`, `Backing: unbacked`,
+  `Origin: ADR-0194`, `Backing: unbacked`,
   `Verify: when touching a command surface, confirm the rendering of each result model it prints lives in the package owning that model.`
   Append the Applied event for operation 4. `./x render`; `./awf check --staged` clean.
 - [ ] **Phase-close: stage, check, gate, and commit.**
@@ -351,7 +353,7 @@ feat(code-design): anchor the presentation-ownership rule
   `template-id-single-derivation`, body: "Template identity derives from the catalog and
   kind-descriptor declaration tables alone; no production file outside those declaration
   files spells a full template-ID path literal, and internal/topic receives template identity
-  and content from its caller rather than re-reading the embedded tree." `Origin: ADR-0191`,
+  and content from its caller rather than re-reading the embedded tree." `Origin: ADR-0194`,
   `Backing: test`. Append the Applied
   event for operation 5. `./x render`; `./awf check --staged` clean.
 - [ ] **Phase-close: stage, check, gate, and commit.**
@@ -379,9 +381,9 @@ refactor(rendering): derive every template ID from the tables
   long-lived values outside the function that constructs the value: the ADR corpus, topic
   corpus, effective skill set, context state, and Roots are derived by the operation that
   needs them and threaded to their consumers." Keep `Origin: ADR-0180`, add
-  `Revised-by: ADR-0191`, keep `Backing: test`.
+  `Revised-by: ADR-0194`, keep `Backing: test`.
 - [ ] **Task 6.3: Close the record.** Rewrite the roadmap's deferred-decomposition section
-  (`.awf/docs/parts/roadmap/deferred.md`) to point at ADR-0191, recording the sequencing
+  (`.awf/docs/parts/roadmap/deferred.md`) to point at ADR-0194, recording the sequencing
   reversal and keeping `receiver-reads-owned-state` explicitly open for a future cohesion
   pattern. Verify the architecture part passages from Phases 2 and 3 are current. Append the
   Applied event for operation 6. `./x render`; `./awf check --staged` clean.
@@ -408,10 +410,10 @@ contents, so the reviewer executes rather than designs:
 - The claim prose in `.awf/topics/parts/tooling/context-and-topic/current-state.md`, slug
   `production-packages-domain-owned`, body: "Every production package under internal/ and
   cmd/ is matched by at least one domain's paths; a package omitted from domain ownership
-  fails the structural test rather than degrading silently to unowned." `Origin: ADR-0191`,
+  fails the structural test rather than degrading silently to unowned." `Origin: ADR-0194`,
   `Backing: test`.
 - The final Applied event for operation 7 and, immediately after it, the `Implemented` status
-  event (same content stamp plus the batch state sequence), plus this plan's
+  event (same content stamp; no state sequence exists post-ADR-0191), plus this plan's
   `status: Implemented` flip. An all-applied `Implementing` state is illegal, which is why
   operation 7 and the flip travel together.
 
@@ -419,7 +421,7 @@ contents, so the reviewer executes rather than designs:
 
 - `./x check` and `./x gate` clean at every phase close; the whole-effort acceptance is the
   final gate plus: `./awf context internal/contextq internal/resident` reports both packages
-  covered; `awf check` reports ADR-0191 operations 1-6 Applied with operation 7 remaining
+  covered; `awf check` reports ADR-0194 operations 1-6 Applied with operation 7 remaining
   for the terminal transaction; rendered outputs are
   byte-identical across Phases 1-3 and 5 (`./x render` reports no change at each close after
   the phase's own config edits are accounted for); the export baseline shrank
@@ -429,12 +431,19 @@ contents, so the reviewer executes rather than designs:
 
 ## Notes
 
-- Deferred by decision: `internal/git` untouched (ADR-0191 item 7); slash/OS-space discipline;
+- Deferred by decision: `internal/git` untouched (ADR-0194 item 7); slash/OS-space discipline;
   fixture-builder consolidation; `printTopic`/`printPlan` conversions (future presentation-rule
   applications); further core decomposition is future-effort territory (user note at approval).
 - The single-home branch may land shapes that shift Phase 5's topic-render entry points; if so,
   amend the ADR (pre-terminal) and adjust Task 5.2's touched symbols here, recording the
   finding in this section.
+- Re-verified 2026-07-31 after the single-home integration (main merge 556185fc, seam ADR
+  landed as ADR-0193): Phase 5's topic-render entry points are unchanged
+  (`internal/project/topics.go:43,47` still reads the two embedded templates in
+  `generateTopicDocs` before `topic.RenderTopic`; `internal/topic` still does not import
+  `internal/project`), so Task 5.2's touched symbols stand. In the same reconciliation this
+  effort's ADR renumbered 0191 to 0194 (main took 0191-0193), and the phase-close status-event
+  mechanics above were updated for main's ADR-0191 state-sequence removal.
 - Indicative magnitudes (not gates): the contextq move surface is five production files plus
   roughly 180 sibling-test call sites; the resident surface is one production file plus
   roughly 30 test sites.

@@ -64,14 +64,14 @@ main; line references are current as of that date and drift with the tree):
   (internal/project/topics.go:43,47 reads them immediately before calling `topic.RenderTopic`).
   `validateDeclarationPlanParity` reconciles declaration-vs-render IDs at runtime, so divergence
   is detected drift, not silent drift.
-- On the `internal/git` feed item: the in-flight git-seam decision (proposed on the
-  single-home effort's branch; its ADR number is pending integration) makes the `internal/git`
+- On the `internal/git` feed item: the git-seam decision (ADR-0193, Implemented; landed with
+  the single-home integration while this ADR was Proposed) makes the `internal/git`
   package root the single semantic seam with one `Repo` handle spanning object reads, commit
   walking, and worktree lifecycle, and its plan names a package split an explicit non-goal.
-  Verified against that branch: no `Repo` method body mixes the go-git backend with the native
-  runner, but the files interleave them, and the root package imports go-git regardless because
-  `Repo` holds a `*gogit.Repository`. A backend subpackage split would therefore change no
-  consumer's dependency footprint.
+  Verified against the landed tree: no `Repo` method body mixes the go-git backend with the
+  native runner, but the files interleave them, and the root package imports go-git regardless
+  because `Repo` holds a `*gogit.Repository`. A backend subpackage split would therefore change
+  no consumer's dependency footprint.
 
 ### Coupling audit
 
@@ -115,7 +115,9 @@ syncReport, so moving them would make core import the new package to type its ow
 Two worktrees were in flight when this design began; the defect-cleanup branch integrated to
 main (merge 44d99ebe) before this ADR was drafted, leaving the single-home branch as the only
 outstanding gate. This decision was designed against that effort's landed Phase 4 state and
-its Phase 5 plan; execution waits for that branch to integrate, and content drift is absorbed by
+its Phase 5 plan; that branch has since integrated to main (merge 556185fc, its seam decision
+landing as ADR-0193, Implemented), clearing the execution gate. The design premises this ADR
+took from the in-flight branch were re-verified against the landed tree, with drift absorbed by
 amendment while this ADR remains pre-terminal (ADR-0188).
 
 ## Decision
@@ -174,7 +176,7 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    the state-ownership scanner already uses), so the proof marker stays within the topic's
    selectors and the rendering domain's paths.
 7. The `internal/git` feed item is decided in the negative: no package split. The git-seam
-   decision's one-seam-package shape is the end state; the clean method-level backend
+   decision's (ADR-0193) one-seam-package shape is the end state; the clean method-level backend
    separation is preserved as file discipline inside the package. This ADR records the two
    reasons: consumers gain nothing (the root package imports go-git regardless), and the seam
    claims and walker are built around a single package surface.
@@ -183,7 +185,7 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    move into the new package's tests; the remaining command-facing context surface is the
    result and options types, the facet vocabulary, and the path normalization helper.
 9. Execution sequencing and migration mechanics: implementation starts after the single-home
-   effort's branch integrates. Every file move lands in the same transaction as the domain-path
+   effort's branch integrates (satisfied at merge 556185fc). Every file move lands in the same transaction as the domain-path
    and topic-selector widening that keeps the moved files owned and their `touches-state`
    markers in scope, because an omitted new package degrades silently to unowned rather than
    failing loudly. The destinations are named now: the tooling domain gains
@@ -266,8 +268,10 @@ transactions as the moves, because the failure mode of omission is silent unowne
 loud gate failure; item 12's guard then makes that failure mode loud for every future package
 as well.
 
-Risks: the git-seam branch is unlanded, so item 7's premises could shift; while this ADR is
-pre-terminal, drift is absorbed by amendment (ADR-0188). The decision deliberately creates no
+Risks: item 7's premises were taken from the then-unlanded git-seam branch; they were
+re-verified against the landed ADR-0193 tree after integration (no shift found), and while this
+ADR is pre-terminal any residual drift is absorbed by amendment (ADR-0188). The decision
+deliberately creates no
 claim about the git-access surface, which belongs to the git-seam decision. For the same
 reason, `internal/git`'s `ResidentName` constants remain a knowingly-tolerated parallel
 spelling of the resident-root names: the seam owns its own vocabulary, and the resident

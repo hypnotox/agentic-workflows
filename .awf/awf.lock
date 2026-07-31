@@ -385,7 +385,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:ea6e521250e9b166e1e3439866fc96314d6db744537a137cf7e73ce83ad96ba4",
+      "outputHash": "sha256:edd9d0bc86a78b69076a99bd21d1abe24f8e3658fefc7ff1630179a002d0818d",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -423,7 +423,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:f1b259d29646ae076dd3f8cf6172470ef896ae4d3a8cd1237ca8591d6b13a8be",
+      "outputHash": "sha256:8e73aaf5c754cc6e4db90d5ff35eac97fe214cef9a196d9459964421a37163de",
       "regenChecked": true
     },
     "docs/domains/config.md": {
@@ -535,8 +535,14 @@
     "docs/topics/code-design/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:15829759b5244ca277f5ee6a161087f72e40ad1bbbfeec6a311499df097326d1",
-      "outputHash": "sha256:e9a837e5d185b9fdd0327b4fad94dad0fe4513b31413c400a24b8ef6e9b5e491"
+      "configHash": "sha256:ba90f94d7097ea2256cc0dcdd362a80323970e82d300cb41f645da6bcc8599d9",
+      "outputHash": "sha256:2e82b7959fa3060f82ecbd2e31259cae1fe932fb8d627799b4a000ac1cebd572"
+    },
+    "docs/topics/code-design/presentation-ownership.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:781ecbd95927d4610797edc0a8f9c8095c5d11c4af670cc821877bd081b559cd",
+      "outputHash": "sha256:e34a473f93cc6b476f73146a9e0e3d16437ecdd7607f05af304dd71fd75ec400"
     },
     "docs/topics/code-design/single-home.md": {
       "templateId": "topics/topic.md.tmpl",
