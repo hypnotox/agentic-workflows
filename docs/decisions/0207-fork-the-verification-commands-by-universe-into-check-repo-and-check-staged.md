@@ -130,6 +130,16 @@ the append-only column records what the commands were called when those decision
    `staged commit` takes a message file and has no input outside a commit-msg hook. It remains
    directly invocable.
 
+   Outside a git repository, and on a repository with no commit yet, bare `awf check` runs the repo
+   universe alone and reports that the staged universe was unavailable. This is the one place the
+   design states that something did not run, and it reports an environmental fact rather than a gap
+   in the matrix. It is deliberately not a refusal: an adopter actually using awf is expected to be
+   in a git repository, but a tree that is not one should degrade rather than break. A backed claim
+   depends on this, `rendering/project-output-plan:curated-init-skill-refs-clean`, whose proof runs
+   `awf check` against a freshly-scaffolded directory that is not a repository; degrading keeps that
+   claim true verbatim and needs no operation on it. Directly invoking `awf check staged` outside a
+   repository still fails, because there the universe was named rather than inferred.
+
    The two project-level notes bare `check` owns today move to `check repo` and are emitted once,
    by the repo group, whether it was invoked directly or through bare `check`. ADR-0159 Decision 2
    kept the advisory notes (`cmd/awf/check.go:29-37`) and the version-ahead note (`:18-21`) on the
@@ -291,6 +301,8 @@ prevent.
 | Keep `check invariants` and correct the README instead | Preserves a command whose name promises a verification the corpus loader already performs, in a group where every other member returns a verdict |
 | Give `check repo` a uniform source flag so every child can read either tree | Selects a source uniformly for children whose correct source differs; for prose and memory a working-tree default would scan untracked files their property never covered and would read the enablement knob from a different config than today |
 | Edit the shipped 18-to-19 migration to retarget the retired name | Changes what an adopter replaying from schema 17 passes through and desyncs the migration from the ADR that shipped it |
+| Make bare `awf check` refuse outside a git repository, since this workflow assumes git | Breaks `rendering/project-output-plan:curated-init-skill-refs-clean`, whose proof checks a freshly-scaffolded non-repository tree; assuming git is right for an adopter using awf, not for a tree that merely has not become one yet |
+| Make bare `awf check` mean `check repo` alone, with the staged universe always named explicitly | Preserves today's bare-form semantics at no cost, but gives the bare command no way to verify the thing about to be committed even where it could |
 | Build `check staged drift` with the sweep and dead-reference halves included | Both need a semantic decision about what they mean over a tree with no directory entries and no untracked files; deciding them inside a blocking pre-commit gate is where a wrong answer is most expensive |
 
 ## Status history
