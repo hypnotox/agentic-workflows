@@ -727,7 +727,7 @@ operations.
   against ADR-0189's operation); `./x gate` green; commit:
 
 ```commit
-feat(invariants): apply 0189 and compress dispatch guidance
+feat(invariants): compress dispatch guidance (implements 0189)
 ```
 
 ## Verification
