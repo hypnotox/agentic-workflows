@@ -129,6 +129,59 @@ func TestCheckPairNumberingTransition(t *testing.T) {
 			}
 		})
 	}
+
+	// A status advance is the case that separates this mode's byte-identical
+	// comparison from the ordinary append-tolerant rule. Proposed -> Accepted is a
+	// legal transition anywhere else, so the ordinary rule accepts it and only the
+	// byte-identical comparison refuses numbering that rides along with it
+	// (ADR-0194 item 9: numbering touches no status-history event).
+	t.Run("a status advance riding along", func(t *testing.T) {
+		got := messages(currentstate.CheckPair(
+			uni([]adr.ADR{v3record("", "beta", "Proposed")}),
+			uni([]adr.ADR{v3record("0002", "beta", "Accepted")}),
+			currentstate.AuthoredCommit))
+		if !strings.Contains(got, "ADR-0002 violates the numbering-transition rule") {
+			t.Errorf("numbering must not ride along with a legal status advance, got:\n%s", got)
+		}
+	})
+}
+
+// The substitution must also reach a declared update landing in the same
+// transition: ADR-0400 revises two claims whose authored provenance still cites
+// the pending slug, so the preserve-Origin and Revised-by rules compare the
+// substituted before claim (ADR-0194 item 11). Without it both rules fire on
+// provenance the numbering in this very pair rewrote, and the integration commit
+// is blocked by a finding about its own effect. The two claims split the halves:
+// d/t:y carries the slug as its Origin, d/t:z carries it in Revised-by.
+// invariant: adr-system/adr-lifecycle:numbering-transition-mode
+func TestCheckPairNumberingComposesWithADeclaredUpdate(t *testing.T) {
+	alpha := v3record("0001", "alpha", "Implemented",
+		op(adr.OpAdd, "d/t:w"), op(adr.OpAdd, "d/t:z"), op(adr.OpAdd, "d/t:v"))
+	beta := func(number string) adr.ADR {
+		return v3record(number, "beta", "Implemented", op(adr.OpAdd, "d/t:y"), op(adr.OpUpdate, "d/t:z"))
+	}
+	// Gamma applies its second batch at an unchanged status, so its own history
+	// grows by exactly one Applied event and the pair stays a legal prefix. It
+	// keeps one declared operation unapplied, which is what Implementing means.
+	gammaBefore := v3record("0400", "gamma", "Implementing", op(adr.OpUpdate, "d/t:w"))
+	gammaBefore.Operations = append(gammaBefore.Operations, op(adr.OpUpdate, "d/t:v"))
+	gammaAfter := gammaBefore
+	newBatch := []adr.Operation{op(adr.OpUpdate, "d/t:y"), op(adr.OpUpdate, "d/t:z")}
+	gammaAfter.Operations = append(append([]adr.Operation(nil), gammaBefore.Operations...), newBatch...)
+	gammaAfter.History = append(append([]adr.StatusEntry(nil), gammaBefore.History...),
+		adr.StatusEntry{Kind: adr.HistoryApplied, Date: "2026-08-01", Operations: newBatch})
+
+	applied, pendingOp := claim("d/t:w", "0001", "0400"), claim("d/t:v", "0001")
+	before := uni([]adr.ADR{alpha, beta(""), gammaBefore}, applied, pendingOp,
+		prosed(claim("d/t:y", "beta"), "old y"),
+		prosed(claim("d/t:z", "0001", "beta"), "old z"))
+	after := uni([]adr.ADR{alpha, beta("0002"), gammaAfter}, applied, pendingOp,
+		prosed(claim("d/t:y", "0002", "0400"), "new y"),
+		prosed(claim("d/t:z", "0001", "0002", "0400"), "new z"))
+
+	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("a numbering composed with a declared update must be clean:\n%s", messages(f))
+	}
 }
 
 // Two provenance shapes the three-record fixture cannot reach. A Revised-by
