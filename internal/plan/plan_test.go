@@ -59,20 +59,26 @@ func TestParseDirParsesFrontmatterAndSkipsNonPlans(t *testing.T) {
 }
 
 // TestParseDirReadsNumberAndSlugADRLinks covers the `adrs:` entry grammar
-// (ADR-0194 item 14): a number and a pending record's slug both parse, and the
-// zero-padded spelling two live plans use stays a number even though yaml.v3
-// resolves it to !!float rather than !!int.
+// (ADR-0194 item 14): a number and a pending record's slug both parse into the
+// field their spelling names, and every zero-padded spelling the live plans use
+// stays a number whichever tag yaml.v3 resolves it to. Each case asserts the
+// filled field as well as the identity, because a numeric slug and a number
+// share an identity string and only the field distinguishes them.
 func TestParseDirReadsNumberAndSlugADRLinks(t *testing.T) {
 	for _, tc := range []struct {
-		name  string
-		entry string
-		want  string
+		name       string
+		entry      string
+		wantNumber int
+		wantSlug   string
+		want       string
 	}{
-		{"plain number", "97", "0097"},
-		{"zero-padded number resolves as !!float", "0186", "0186"},
-		{"four-digit number", "0194", "0194"},
-		{"bare slug", "pending-record-slug", "pending-record-slug"},
-		{"quoted slug", `"pending-record-slug"`, "pending-record-slug"},
+		{name: "plain number", entry: "97", wantNumber: 97, want: "0097"},
+		{name: "zero-padded number resolves as !!float", entry: "0186", wantNumber: 186, want: "0186"},
+		{name: "zero-padded octal-valid number is no longer read as octal", entry: "0153", wantNumber: 153, want: "0153"},
+		{name: "four-digit number", entry: "0194", wantNumber: 194, want: "0194"},
+		{name: "quoted number stays a number", entry: `"0186"`, wantNumber: 186, want: "0186"},
+		{name: "bare slug", entry: "pending-record-slug", wantSlug: "pending-record-slug", want: "pending-record-slug"},
+		{name: "quoted slug", entry: `"pending-record-slug"`, wantSlug: "pending-record-slug", want: "pending-record-slug"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -84,7 +90,11 @@ func TestParseDirReadsNumberAndSlugADRLinks(t *testing.T) {
 			if len(plans) != 1 || len(plans[0].ADRs) != 1 {
 				t.Fatalf("plans = %#v", plans)
 			}
-			if got := plans[0].ADRs[0].Identity(); got != tc.want {
+			link := plans[0].ADRs[0]
+			if link.Number != tc.wantNumber || link.Slug != tc.wantSlug {
+				t.Errorf("link = {Number:%d Slug:%q}, want {Number:%d Slug:%q}", link.Number, link.Slug, tc.wantNumber, tc.wantSlug)
+			}
+			if got := link.Identity(); got != tc.want {
 				t.Errorf("Identity() = %q, want %q", got, tc.want)
 			}
 		})
@@ -103,6 +113,9 @@ func TestParseDirRejectsUnusableADRLinks(t *testing.T) {
 		{"mapping node", "{a: 1}", "must be an ADR number or slug"},
 		{"fractional scalar", "1.5", "neither an ADR number nor a slug"},
 		{"boolean scalar", "true", "neither an ADR number nor a slug"},
+		{"empty scalar", `""`, "neither an ADR number nor a slug"},
+		{"zero", "0", "not a usable ADR number"},
+		{"past the four-digit identity width", "10000", "not a usable ADR number"},
 		{"number past int range", "99999999999999999999", "not a usable ADR number"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

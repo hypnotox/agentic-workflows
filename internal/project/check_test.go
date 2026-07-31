@@ -317,13 +317,17 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	write := func(name, content string) {
 		testsupport.WriteFile(t, filepath.Join(root, "docs/plans", name), content)
 	}
-	// One pending record for a slug link to resolve against.
+	// One pending record and one already-numbered record that retained its slug,
+	// so both slug resolution paths the claim names are exercised.
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-was-pending.md"),
+		strings.Replace(pendingADRFixture("was-pending"), "# ADR-was-pending:", "# ADR-0002:", 1))
 
 	write("2026-07-12-good.md", "---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Good\n")
 	write("2026-07-12-bad-link.md", "---\ndate: 2026-07-12\nadrs: [42]\nstatus: Proposed\n---\n# Plan: Bad Link\n")
 	write("2026-07-12-bad-status.md", "---\ndate: 2026-07-12\nadrs: [1]\nstatus: Draft\n---\n# Plan: Bad Status\n")
 	write("2026-07-12-slug-link.md", "---\ndate: 2026-07-12\nadrs: [still-pending]\nstatus: Proposed\n---\n# Plan: Slug Link\n")
+	write("2026-07-12-retained-slug-link.md", "---\ndate: 2026-07-12\nadrs: [was-pending]\nstatus: Proposed\n---\n# Plan: Retained Slug Link\n")
 	write("2026-07-12-bad-slug-link.md", "---\ndate: 2026-07-12\nadrs: [never-authored]\nstatus: Proposed\n---\n# Plan: Bad Slug Link\n")
 	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
@@ -347,6 +351,9 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	}
 	if _, ok := got["plan-adr-link@2026-07-12-slug-link.md"]; ok {
 		t.Errorf("slug link to a pending record must resolve, got %#v", drift)
+	}
+	if _, ok := got["plan-adr-link@2026-07-12-retained-slug-link.md"]; ok {
+		t.Errorf("slug link to a numbered record's retained slug must resolve, got %#v", drift)
 	}
 	if _, ok := got["plan-frontmatter@2026-07-12-bad-status.md"]; !ok {
 		t.Errorf("expected plan-frontmatter drift for bad status, got %#v", drift)

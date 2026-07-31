@@ -10,6 +10,15 @@ query a single version or a range.
 
 ### Breaking changes
 
+- A zero-padded `adrs:` entry in a plan is now always read as a decimal ADR number. The YAML
+  decoder previously read one whose digits are all octal-valid as octal, so `adrs: [0153]`
+  silently resolved against ADR-0107 and `adrs: [0012]` against ADR-0010, while a spelling
+  containing an 8 or a 9 (`adrs: [0186]`) was already decimal. Such an entry now names the record
+  its digits spell. Two plans in this repository were pointing at the wrong record and now point
+  at the right one; if an adopter's zero-padded entry named a record that does not exist, a
+  previously-clean `awf check` reports `plan-adr-link` drift. An entry outside 1 to 9999, and an
+  empty entry, are now refused outright instead of decoding to an unusable number.
+
 - Add the `current-state-v3` ADR format and its `adrFormatV3From` lock cutoff, sealed by schema
   generation 28. V3 is `current-state-v2` plus a mandatory `slug:` frontmatter key that is
   retained forever, and a record carrying no number routes into the corpus by that format marker
@@ -167,8 +176,8 @@ query a single version or a range.
 - A plan's `adrs:` frontmatter entry may now name a decision record by slug as well as by number.
   A slug entry resolves against a pending record's file or a numbered record's retained `slug:`
   key, so a plan written beside a record that has no number yet keeps a valid link once
-  integration numbers it, and numbering never rewrites plan files. Existing numeric plans parse
-  unchanged, the zero-padded `adrs: [0186]` spelling included.
+  integration numbers it, and numbering never rewrites plan files. A numeric entry parses as
+  before, except for the zero-padded octal case recorded under breaking changes.
 
 - Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
   the writing-plans scaffold command resolves the awf binary instead of the skill prefix,

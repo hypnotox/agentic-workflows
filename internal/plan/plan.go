@@ -36,28 +36,35 @@ type ADRLink struct {
 
 // adrLinkNumberRe matches the digits-only spelling of a numeric entry. The raw
 // scalar is matched rather than the resolved YAML tag because yaml.v3 resolves
-// a zero-padded spelling like `0186` to !!float rather than !!int, so a tag
-// switch would read the plans that spell their link that way as slugs. A slug
-// is never digits-only: slugs derive from titles, and a numbered-looking one is
-// refused at scaffold time.
+// a zero-padded spelling to !!int or !!float depending on whether its digits
+// are octal-valid - `0186` is !!float and `0153` is !!int - so a tag switch
+// would read the eight plans spelling their link that way as slugs. Matching
+// the raw digits also drops the octal reading `0153` used to get.
 var adrLinkNumberRe = regexp.MustCompile(`^\d+$`)
 
+// adrLinkMaxNumber is the largest number an entry may name: the corpus identity
+// key is the four-digit number, so a wider value has no record to resolve to
+// and would be handed to the slug index instead.
+const adrLinkMaxNumber = 9999
+
 // UnmarshalYAML reads one `adrs:` entry: a digits-only scalar is a number, and
-// any other string scalar is a slug. A slug is not validated against the slug
-// grammar here - an entry that names no record in the corpus fails link
-// validation with a scoped finding (ADR-0194 item 14) rather than taking the
-// whole check down. Any other node kind or scalar type names itself in the error.
+// any other non-empty string scalar is a slug. A slug is not validated against
+// the slug grammar here - an entry that names no record in the corpus fails
+// link validation with a scoped finding (ADR-0194 item 14) rather than taking
+// the whole check down. The number case is matched first, so an entirely
+// numeric slug would be read as a number; nothing refuses such a slug at
+// scaffold time yet (docs/roadmap.md). Any other node names itself in the error.
 func (l *ADRLink) UnmarshalYAML(node *yaml.Node) error {
 	switch {
 	case node.Kind != yaml.ScalarNode:
 		return fmt.Errorf("plan: adrs entry must be an ADR number or slug, got yaml %s", node.Tag)
 	case adrLinkNumberRe.MatchString(node.Value):
 		n, err := strconv.Atoi(node.Value)
-		if err != nil {
-			return fmt.Errorf("plan: adrs entry %q is not a usable ADR number: %w", node.Value, err)
+		if err != nil || n < 1 || n > adrLinkMaxNumber {
+			return fmt.Errorf("plan: adrs entry %q is not a usable ADR number (1 to %d)", node.Value, adrLinkMaxNumber)
 		}
 		l.Number = n
-	case node.Tag == "!!str":
+	case node.Tag == "!!str" && node.Value != "":
 		l.Slug = node.Value
 	default:
 		return fmt.Errorf("plan: adrs entry %q is neither an ADR number nor a slug (yaml %s)", node.Value, node.Tag)

@@ -767,3 +767,34 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   `internal/project` fixtures carry it uniformly). And the 100% coverage gate is the
   detector for a fixture that starts failing validation before reaching its real
   assertion: three targets/validation branches went dark that way and were restored.
+- 2026-07-31, Phase 4 execution findings, three deviations from the task wording plus the
+  defects the phase review then surfaced:
+  - Task 4.1's `UnmarshalYAML` classifies on the raw scalar (a digits-only shape) rather
+    than on the resolved YAML node type. yaml.v3 resolves a zero-padded spelling to
+    `!!float` when its digits contain an 8 or a 9 and to `!!int` when they do not, so a
+    type switch would have reread the eight plans spelling their link that way as slugs.
+    Matching the raw digits also drops the octal reading that made `adrs: [0153]` resolve
+    against ADR-0107; the correction is recorded as a breaking change.
+  - Task 4.1's "a string node matching the slug grammar fills `Slug`; anything else errors"
+    is implemented as: any non-empty string scalar fills `Slug`, and an entry naming no
+    record fails link validation as scoped `plan-adr-link` drift. ADR-0194 item 14 says an
+    entry that resolves to neither "fails link validation", and aborting the whole check on
+    a non-canonical string would report the same mistake worse. A number outside 1 to 9999
+    and an empty scalar are refused at parse, since neither can name a record.
+  - Task 4.1's two-predicate resolution (`corpus.Has` for a number, `corpus.BySlug` for a
+    slug) is one `corpus.ByIdentity` call over `ADRLink.Identity()`, which dispatches to
+    exactly those two. This closes Phase 2's deferral in the note above: `HasSlug` is never
+    needed and was not added.
+  - Phase review findings settled in the follow-up commit: the marked proof for
+    `plan-adr-link-resolved` exercised only the pending-record slug path, so a numbered
+    record retaining its slug was added to the fixture set (mutation-verified); the
+    `adrLinkNumberRe` comment asserted that a slug is never digits-only, which is false
+    because the scaffold refusal `numberedSlugRe` requires a trailing hyphen; and the
+    number-before-slug case order had no test that discriminated it, since a numeric slug
+    and a number share an identity string.
+- 2026-07-31, deferred out of Phase 4: an ADR title slugifying to exactly four digits (for
+  example `awf new adr "2026"`) is accepted by the scaffold, because `numberedSlugRe`
+  (`internal/adr/adr.go`) anchors on `^\d{4}-` and requires the hyphen. Such a record is
+  unreachable through `Corpus.ByIdentity`, which routes a four-digit key to the number
+  index. Recorded in docs/roadmap.md; it is Phase 2/3 scaffold code, not a Phase 4 effect,
+  and closing it properly spans the scaffold refusal and the corpus identity guard.

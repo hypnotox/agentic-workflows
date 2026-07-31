@@ -133,3 +133,21 @@ update on that claim (adding `SetString`), so the enumeration stays false until 
 ADR updates it. Worth folding into whatever decision next touches the config editors, and
 worth asking there whether a "closed enumeration" claim should be backed by a
 source-scanning test rather than by prose nobody can mechanically falsify.
+
+## An all-digit ADR slug is unreachable through the identity index
+
+`Corpus.ByIdentity` routes a four-digit key to the number index and everything else to the
+slug index, so a record whose slug is exactly four digits can only ever be found as a
+number - which it is not. The scaffold does not prevent one: `numberedSlugRe`
+(`internal/adr/adr.go`) anchors on `^\d{4}-` and requires the trailing hyphen, so
+`awf new adr "2026"` off the integration branch writes `2026.md` with `slug: 2026`. A
+hand-authored file can reach the same shape regardless of what the scaffold refuses.
+
+Closing it properly has two halves: tighten the scaffold refusal (`^\d{4}(-|$)`, or refuse
+an all-digit slug outright), and give the corpus a guard so a slug that collides with the
+number namespace is a corpus error rather than a silently unreachable record. Consequence
+today is low - the record fails to resolve rather than resolving to the wrong one, since a
+corpus with 2026 numbered records does not exist - but the failure is silent at the
+identity layer, and `plan.ADRLink` has to document the hole rather than rely on the
+refusal. Surfaced by the Phase 4 review of ADR-0194 on 2026-07-31, in the Phase 2/3
+scaffold code rather than in the phase's own change.
