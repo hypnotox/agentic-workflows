@@ -64,16 +64,21 @@ size and focus are judgment calls whose violations are not always anti-patterns.
    imports exist today. The TypeScript lane is outside this claim and outside
    `currentState.testGlobs`.
 
-3. No new global seams: a new or deliberately converted test obtains its controlled
-   dependencies through constructor or parameter injection per
-   `code-design/dependency-composition:direct-injection-first`; minting a new
-   package-level variable that exists to be swapped by a test is always an anti-pattern.
-   The measured census (31 seams across 11 packages, per Context) stays a set of bounded
-   future conversion candidates, and the worktree conversion in particular unlocks
-   parallel execution its serial suite currently forgoes.
+3. No new global seams: in a new or deliberately converted test, minting a new
+   package-level variable that exists to be swapped by a test is always an anti-pattern;
+   a dependency the test newly introduces arrives through constructor or parameter
+   injection per `code-design/dependency-composition:direct-injection-first`. A new test
+   may swap an existing seam from the measured census until that seam is deliberately
+   converted; the census (31 seams across 11 packages, per Context) stays a set of
+   bounded future conversion candidates, and the worktree conversion in particular
+   unlocks parallel execution its serial suite currently forgoes.
    `internal/testsupport.SwapVar` stays for the existing census and is not a licence to
    mint a new seam; its doc comment gains a pointer to
    `code-design/test-design:no-new-global-seams` in the same Implemented transaction.
+   The boundary with dependency-composition holds: `direct-injection-first` owns how
+   production code composes its dependencies, and its `Verify:` line polices test-only
+   production indirection at production-composition review; this claim names the
+   test-side act itself and binds the test lane.
 
 4. Route the judgment prose, not claims: extend the testing doc's layout part
    (.awf/docs/parts/testing/layout.md, regenerated to docs/testing.md via `./x render`;
@@ -127,13 +132,16 @@ sentence, and their `Verify:` instructions; nothing in the gate fails on a viola
 
 The 31-seam census stays in place until deliberate conversions land, and
 `internal/worktree`'s serial test execution persists with it; conversion there carries a
-concrete payoff (parallel execution) beyond conformance.
+concrete payoff (parallel execution) beyond conformance. Because a new test may still
+swap an existing seam, `SwapVar` call counts can keep growing until the seams themselves
+convert; only the seam count is ratcheted.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
-| A depguard/forbidigo lint ban on assertion libraries now | Zero violating imports exist; adding lint surface for a problem that has never occurred is speculative, and the claim covers the first occurrence. |
+| A depguard/forbidigo lint ban on assertion libraries now | Viable at zero conversion cost since zero violating imports exist, and it stays a bounded future candidate; this pass's settled packaging keeps all claims reasoned contracts, and a gate-behavior change deserves its own small decision rather than riding a docs transaction. |
+| Update `code-design/dependency-composition:direct-injection-first` instead of a second claim | dependency-composition owns how production code composes its dependencies; test-design owns how a test obtains controlled ones. Folding the test lane's dominant anti-pattern into a production-composition claim would bury it where test authors do not look. |
 | A `shared-fixture-first` claim | Dual authority: `code-design/single-home` already governs shared test-support homes; a preamble pointer suffices. |
 | A proof-marker-placement claim | Marker placement is a contract of the invariants domain's marker system, not code design; that territory already has a dedicated effort. |
 | Table-choice and `t.Fatal`-vs-`t.Error` claims | Neither violation is always an anti-pattern; both are judgment calls and land as guidance in the testing doc's layout part. |
