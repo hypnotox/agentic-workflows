@@ -20,19 +20,19 @@ var Standard = &Catalog{
 			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
 		}},
 		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a small approved change directly.", Trigger: "Use when the change is understood and does not need a plan.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-impl"}}, Core: true},
-		"executing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl"}}, Core: true, RequiresAgent: "implementer", Sections: []string{
+		"executing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "subagent-driven-development"}}, Core: true, RequiresAgent: "implementer", Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
 			"procedure-non-adr-final-commit", "terminal-step", "project-invariants", "notes-gate",
 			"notes-auto-commit", "notes-one-concern", "notes-docs-travel", "red-flags",
 		}},
-		"subagent-driven-development": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a plan through reviewed phase owners.", Trigger: "Use when a plan phase benefits from delegated implementation ownership.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl"}}, Core: true, RequiresAgent: "implementer", Sections: []string{
+		"subagent-driven-development": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a plan through reviewed phase owners.", Trigger: "Use when a plan phase benefits from delegated implementation ownership.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "executing-plans"}}, Core: true, RequiresAgent: "implementer", Sections: []string{
 			"positioning", "per-task-review-note", "when-to-invoke", "procedure-resolve-plan",
 			"procedure-raise-concerns", "procedure-extract-context", "dispatch-conventions",
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
 			"notes", "red-flags",
 		}},
-		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", CommonFollowUps: []string{"executing-direct", "executing-plans"}},
+		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct", "executing-plans"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
 				"testSurfaces": []any{
@@ -42,7 +42,7 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"debugging": {Profile: WorkflowProfile{Kind: WorkflowTask, Purpose: "Investigate a defect before changing it.", Trigger: "Use when investigating a bug or unexpected behaviour before any fix.", CommonFollowUps: []string{"bugfix", "executing-direct"}}, Sections: []string{
+		"debugging": {Profile: WorkflowProfile{Kind: WorkflowTask, Purpose: "Investigate a defect before changing it.", Trigger: "Use when investigating a bug or unexpected behaviour before any fix.", CommonFollowUps: []string{"bugfix"}}, Sections: []string{
 			"symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant",
 			"devdb-note", "red-flags", "memory-checkpoint",
 		}},
@@ -106,13 +106,13 @@ var Standard = &Catalog{
 		"retrospective": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Capture durable lessons, verify managed topology is absent, and finish the effort last.", Trigger: "Use after settled terminal review and any required managed-worktree removal.", UsuallyFollows: []string{"reviewing-impl"}}, Core: true, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
-		"refactor-coupling-audit": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Scope dependency and test coupling before a refactor.", Trigger: "Use when scoping a refactor that moves files between packages or inverts dependencies.", UsuallyFollows: []string{"exploring"}, CommonFollowUps: []string{"brainstorming", "writing-plans"}}, Sections: []string{
+		"refactor-coupling-audit": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Scope dependency and test coupling before a refactor.", Trigger: "Use when scoping a refactor that moves files between packages or inverts dependencies.", CommonFollowUps: []string{"brainstorming", "proposing-adr", "writing-plans"}}, Sections: []string{
 			"when-to-invoke", "audit-shape-selection", "category-1-top-level-files",
 			"category-2-sibling-tests", "category-3-subpackages", "category-4-codegen",
 			"category-5-constructors", "category-6-init-visibility", "test-coupling-planning-rule",
 			"output-format", "scope-shrink-rule", "notes",
 		}},
-		"roadmap-graduation": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Move a shipped roadmap item out of the roadmap.", Trigger: "Use when graduating a shipped roadmap item out of the roadmap doc.", UsuallyFollows: []string{"reviewing-impl"}}, RequiresDoc: "roadmap", Sections: []string{
+		"roadmap-graduation": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Move a settled roadmap item out of the roadmap.", Trigger: "Use when a roadmap entry graduates to an ADR or a PR, or is explicitly dropped.", UsuallyFollows: []string{"reviewing-impl"}}, RequiresDoc: "roadmap", Sections: []string{
 			"when-fires", "failure-modes", "identify-entry", "reverify-measurements",
 			"graduate-single-commit", "explicit-drop", "same-commit", "doc-currency", "notes",
 		}},
@@ -160,7 +160,7 @@ var Standard = &Catalog{
 		},
 		"code-reviewer": {
 			Name:        "code-reviewer",
-			Description: "Independent fresh-context reviewer for {{ .prefix }} implementation diffs, covering correctness, plan-adherence, testing discipline, doc currency, and convention alignment.",
+			Description: "Independent fresh-context reviewer for {{ .prefix }} implementation diffs, covering its universal review lenses from correctness through convention alignment.",
 			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
 			Data: map[string]any{
 				"correctnessTraps": []any{

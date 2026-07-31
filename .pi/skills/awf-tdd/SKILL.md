@@ -6,7 +6,7 @@ description: Use to write the failing test before the implementation change in a
 
 # awf-tdd
 
-The test-first discipline as a project-owned task skill.
+The test-first discipline as a project-owned support skill.
 
 <!-- awf:edit surfaces: default; create .awf/skills/parts/tdd/surfaces.md to override -->
 ## Pick the right test surface
@@ -17,18 +17,21 @@ The test-first discipline as a project-owned task skill.
 
 ## Procedure
 
-A minimal simple fix may remain effort-free. For any concrete non-minimal feature or fix, validate exactly one immutable slugged effort before the failing test; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, keep one user-managed writer, and carry slug/path to the implementation owner. Repository and current-state authority outrank checkpoint prose, helpers never edit memory, and standalone memory is forbidden.
+A minimal simple fix may remain effort-free. For any concrete non-minimal feature or fix, create or resume exactly one immutable slugged effort before the failing test; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, keep one user-managed writer, and carry slug/path to the implementation owner. Repository and current-state authority outrank checkpoint prose, helpers never edit memory, and standalone memory is forbidden.
 
-1. Run `awf context <the implementation and test paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the change touches a claimed surface), then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
+1. Run `awf context <the implementation and test paths>`, then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
+Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 2. Run it and confirm it fails for the right reason: `go test ./...`.
-3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround. Escalate materially larger work by asking the user whether to perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated. Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
+3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround. Escalate materially larger work by asking the user whether to
+perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
+Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
 4. Implement the minimal change to pass.
 5. Run the gate: `./x gate`.
 
 <!-- awf:edit notes: default; create .awf/skills/parts/tdd/notes.md to override -->
 ## Notes
-- Coverage may never regress: a fix that breaks an existing passing test is itself a regression.
+- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
 
 <!-- awf:edit red-flags: default; create .awf/skills/parts/tdd/red-flags.md to override -->
 ## Red flags

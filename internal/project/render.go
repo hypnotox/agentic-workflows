@@ -95,7 +95,7 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 		"layout":        p.layout().templateMap(),
 		"version":       Version,
 		"skills":        eff,
-		"taskSkillRows": p.taskSkillRows(),
+		"skillRows":     p.skillRows(),
 		"commitScopes":  p.commitScopesDisplay(),
 		"gatedCommands": gatedCommandsDisplay(),
 		// Runner-enabled state for awf-verb fallback arms (ADR-0156 Decision 4):
@@ -109,8 +109,8 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 	}
 }
 
-// taskSkillRows returns one complete advisory row for every enabled skill.
-func (p *Project) taskSkillRows() string {
+// skillRows returns one complete advisory row for every enabled skill.
+func (p *Project) skillRows() string {
 	var rows []string
 	for _, name := range p.Cfg.Skills {
 		sp, ok := p.Cat.Skills[name]

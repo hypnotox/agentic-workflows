@@ -13,7 +13,6 @@ description: >
 Self-contained systematic debugging for awf. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then isolate with a failing test before touching any fix.
 
 <!-- awf:edit symptom-list: default; create .awf/skills/parts/debugging/symptom-list.md to override -->
-Use when behaviour is wrong and the cause is not yet known: unexpected output, test failures, state inconsistencies, build failures, or regressions. Skip only for a one-line fix whose failing test already exists and whose cause is obvious.
 
 
 ## When to invoke
@@ -31,26 +30,27 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
    - **`go test -run TestX -v ./pkg/...`**: run a single test verbosely; the output shows which assertion failed and what was expected vs. actual.
    - **`go test -v ./... 2>&1 | grep -A5 FAIL`**: skim all failures with context lines.
-   - **`awf check`**: catches rendered no-value tokens and manifest drift; run after any sync to confirm the output is clean.
+   - **`awf check`**: catches rendered no-value tokens and manifest drift; run after any render to confirm the output is clean.
    - **Golden-test diffs** (`internal/project/spine_test.go`): if a template render changed unexpectedly, the golden diff shows the exact line-level divergence; update goldens only when the change is intentional.
    - **`go vet ./...`**: catches type-system violations, printf format mismatches, and unreachable code the compiler accepts.
    - **`dlv test ./pkg/... -- -test.run TestX`**: attach Delve to a test binary for breakpoint-level inspection when log output is insufficient.
    - **Print/log debugging**: add `t.Logf(...)` or `fmt.Fprintf(os.Stderr, ...)` inline; remove before committing. For template render bugs, log the `data` map before `tmpl.Execute` to confirm what the renderer sees.
    - **`.awf/awf.lock`**: the lock file records the rendered content hash; `awf check` compares on-disk files against it. Inspect the lock directly if `awf check` reports false drift.
 
-   When the evidence location is unknown and inline search would pollute the parent context, use the target-native governed exploration loader. Keep an exact-known-file read or genuinely trivial lookup inline.
+   When the evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring`. Keep an exact-known-file read or genuinely trivial lookup inline.
 
    Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
 
 
 <!-- awf:edit test-isolation: default; create .awf/skills/parts/debugging/test-isolation.md to override -->
-4. **Establish effort ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search. Once evidence confirms a concrete non-minimal fix outcome, create or resume exactly one immutable slugged effort; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, preserve one user-managed writer, and carry slug/path onward. A minimal simple known-root fix stays effort-free. Repository sources and current-state documentation outrank checkpoint prose, exploring children never edit memory, and standalone memory is forbidden.
+4. **Establish effort ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search; a minimal simple known-root fix stays effort-free. Once evidence confirms a concrete non-minimal fix outcome, carry the one effort slug and exact `.awf/efforts/<slug>/memory.md` path onward; exploring children receive them read-only and never edit memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
 
-5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. Run `awf context <the suspect paths>` first (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix will touch a claimed surface). The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline.
+5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline. Before writing the test, run `awf context <the suspect paths>`.
+Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
 
-6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with `./x gate` (fast tier). Run `./x gate full` when the regression test lives in a slower surface that the fast tier does not exercise.
+6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with `./x gate`.
 
 7. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.
 

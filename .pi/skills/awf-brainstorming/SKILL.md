@@ -17,7 +17,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 <!-- awf:edit procedure: default; create .awf/skills/parts/brainstorming/procedure.md to override -->
 ## Procedure
 
-A minimal simple fix uses no effort. As soon as brainstorming identifies one concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, keep one user-managed writer, append each settled decision to the decision log as it settles, and record observations at occurrence. Repository sources and current-state documentation remain authoritative over the checkpoint. Grounding and exploration children are report-only and never edit shared memory; standalone memory is forbidden. Carry the slug and exact owned path into every successor.
+A minimal simple fix uses no effort. Carry the effort slug and exact `.awf/efforts/<slug>/memory.md` path through every step; children receive them read-only and never edit shared memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
 
 1. **Orient in the topic.** Invoke `awf-orienting` and follow its ladder: guide-first grounding, delegated exploration where fitting, and managed context over the candidate files the work touches.
 

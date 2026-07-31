@@ -1,26 +1,21 @@
 ---
 name: {{ .prefix }}-roadmap-graduation
-description: Use when a {{ .layout.docs.roadmap }} entry is becoming an ADR or PR. Removes the entry in the same commit; re-verifies any cited measurements before migrating them.
+description: Use when a {{ .layout.docs.roadmap }} entry graduates to an ADR or a PR, or is explicitly dropped. Removes the entry in the same commit; re-verifies any cited measurements before migrating them.
 ---
 
 # {{ .prefix }}-roadmap-graduation
 
-A task skill for moving an item out of `{{ .layout.docs.roadmap }}` into an ADR or PR. The substance of the protocol lives in `{{ .layout.docs.roadmap }}`'s opening paragraphs. This skill encodes the small procedural sequence that prevents two recurring failure modes: stale roadmap entries that point at already-shipped work, and stale benchmark numbers that migrate into an ADR Context without re-verification.
+A support skill for moving an item out of `{{ .layout.docs.roadmap }}` into an ADR or PR. The substance of the protocol lives in `{{ .layout.docs.roadmap }}`'s opening paragraphs. This skill encodes the small procedural sequence that prevents two recurring failure modes: stale roadmap entries that point at already-shipped work, and stale benchmark numbers that migrate into an ADR Context without re-verification.
 
 ## When this skill fires
 
 <!-- awf:section when-fires -->
 An architectural roadmap item is becoming a Proposed ADR, a smaller "open gap" roadmap item is being implemented in a PR without ADR coverage, or a roadmap item is being explicitly dropped (we decided not to do it).
 
-This is a **task skill**: it sits off the workflow chain.
+This is a **support skill**: it sits off the workflow chain.
 <!-- awf:end -->
 
-## The two failure modes this skill prevents
-
 <!-- awf:section failure-modes -->
-1. **Stale roadmap entries.** Per `{{ .layout.docs.roadmap }}` opening protocol: "Items disappear from this file when they are either (a) done (a follow-up PR or ADR removes them in the same commit as the implementation) or (b) explicitly dropped (a commit removes them with a one-line note in the message)." An ADR or PR that lands the work but leaves the roadmap entry in place creates contradictory documentation.
-2. **Stale benchmark numbers.** Roadmap entries often cite inline measurements (e.g. "primes ratio improved from 1.27× slower to 1.10× faster"). Those numbers were measured at a point in time; the codebase has changed since. Migrating the old number into a new ADR Context unchanged misrepresents reality.
-
 <!-- awf:end -->
 
 ## Procedure
@@ -45,16 +40,15 @@ If the entry cites inline numbers, re-measure on the current code before graduat
 
 <!-- awf:section explicit-drop -->
 ### 4. Explicit drop
-Commit with scope and message `docs(roadmap): drop <item> - <one-line reason>`. The reason goes in the commit body, not the file.
+Commit with subject `docs(roadmap): drop <item>`; the one-line reason goes in the commit body, not the subject or the file.
 <!-- awf:end -->
 
 <!-- awf:section same-commit -->
-### 5. Same-commit removal is non-negotiable
-A graduated roadmap entry that lingers reads as "still on the parking lot" to future readers. Do not defer the deletion to a cleanup pass.
+**Same-commit removal is non-negotiable in every case above.** A graduated entry that lingers reads as still parked; do not defer the deletion to a cleanup pass.
 <!-- awf:end -->
 
 <!-- awf:section doc-currency -->
-### 6. Doc-currency
+### 5. Doc-currency
 If the graduated entry mentions a state doc or ADR that needs updating, fold that update into the same commit.
 <!-- awf:end -->
 

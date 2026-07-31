@@ -14,21 +14,19 @@ Invoke this skill only when both the repository location is unknown and inline s
 <!-- awf:section breadth -->
 ## Breadth
 
-Breadth is ordered `targeted < bounded < broad`. `targeted` locates one declaration, implementation, file, or exact fact. `bounded` investigates within a named symbol, package, component, or subsystem. `broad` searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.
-
-Treat the selected breadth as an adaptive maximum. Start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly. The broad project search universe is tracked files plus non-ignored untracked working-tree files under the repository root. It includes tracked generated and vendor files. It excludes ignored files, `.git`, nested repositories, and external dependencies unless explicitly scoped.
+<!-- awf:include exploration-breadth -->
 <!-- awf:end -->
 
 <!-- awf:section detail -->
 ## Detail
 
-Report detail is ordered `paths < summary < analysis` independently of breadth. `paths` returns only relevant `file:line` or `file:start-end` locations with minimal labels needed to distinguish them. `summary` returns grounded locations plus concise explanations of what each contains and why it matters. `analysis` directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.
+<!-- awf:include exploration-detail -->
 <!-- awf:end -->
 
 <!-- awf:section dispatch -->
 ## Dispatch
 
-Construct one self-contained task. {{ if .targetSubagentTools }}Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value.{{ else }}Dispatch the `explorer` agent as one target-native fresh-context exploration subagent with task, breadth, detail, boundary, outcome, and report contracts in its brief. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.{{ end }}
+Construct one self-contained task. {{ if .targetSubagentTools }}Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value.{{ else }}Dispatch the `explorer` agent as one target-native fresh-context exploration subagent, providing the task, breadth, and detail; the agent's own contract carries the boundary, outcome, and report rules. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section results -->
@@ -46,7 +44,4 @@ This skill is report-only. When a parent has an effort, receive its slug and exa
 <!-- awf:end -->
 
 <!-- awf:section notes -->
-## Notes
-
-Pi is deeply integrated. Non-Pi targets have semantic parity through native delegation, not identical orchestration.
 <!-- awf:end -->

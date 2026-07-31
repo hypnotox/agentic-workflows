@@ -63,8 +63,8 @@ opt-in for adopters and enabled here). Every step is deterministic: same tree in
 
 Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
 hook payload (see the local-hooks section below). And there is no slower tier; `./x gate full`
-runs the identical steps and exists only so the rendered pre-push hook payload works unchanged
-(see [docs/testing.md](testing.md)).
+runs the identical steps, and `full` is accepted only as a no-op legacy argument that no
+rendered artifact passes (see [docs/testing.md](testing.md)).
 
 The current-state cutover deliberately sits outside this gate. The preceding bridge release sealed the
 prepared tree, and this binary's plain `awf upgrade` consumes that seal through a recoverable journal;
@@ -75,7 +75,7 @@ escape when a cutover transaction is interrupted.
 <!-- awf:edit local-hooks: from .awf/parts/workflow/local-hooks.md -->
 ## Local git hooks
 
-This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check`, `./x check --staged`, `./x gate`, then the enabled `./awf check prose` and `./awf check memory`; `.awf/hooks/commit-msg.sh` runs `./awf check commit` with the message file; and `.awf/hooks/pre-push.sh` runs `./x gate full`. The commands are driven by the staged-check, `checkCmd`, `proseGateCmd`, `memoryGateCmd`, `gateCmd`, `gateCmdFull`, and `commitGateCmd` configuration and kept current by `./x render`. The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
+This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check`, `./x check --staged`, `./x gate`, then the enabled `./awf check prose` and `./awf check memory`; `.awf/hooks/commit-msg.sh` runs `./awf check commit` with the message file; and `.awf/hooks/pre-push.sh` runs the gate. The commands are driven by the staged-check, `checkCmd`, `proseGateCmd`, `memoryGateCmd`, `gateCmd`, and `commitGateCmd` configuration and kept current by `./x render`. The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
 
 A committed current-state upgrade journal makes every ordinary command non-operational, hook-driven
 ones included, except `awf upgrade --recover`; a committed bridge attestation instead permits only
@@ -90,4 +90,4 @@ restore the working tree from Git and reinstall the bridge release.
 <!-- awf:edit ci: default; create .awf/parts/workflow/ci.md to override -->
 ## Continuous integration
 
-Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push, and the fuller tier (`./x gate full`) before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
+Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.

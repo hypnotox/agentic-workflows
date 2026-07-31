@@ -13,7 +13,7 @@ Invoked as the independent review step of the implementation phase. It validates
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of sundial-executing-plans or sundial-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip independent review when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift. A docs-only skip still continues to the terminal hand-off and any deferred flip transaction.
+A docs-only session diff may skip the independent review; step 2 defines the check and its ADR-directory exception.
 
 ## Procedure
 
@@ -78,6 +78,5 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
-- This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
 - Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

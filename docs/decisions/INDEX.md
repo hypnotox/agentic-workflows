@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
+- [ADR-0190: Compress governed dispatch guidance with reference and shared partials](0190-compress-governed-dispatch-guidance-with-reference-and-shared-partials.md) (Proposed)
 
 ## History
 

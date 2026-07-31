@@ -18,7 +18,7 @@ Invoke for an accepted plan with an `inline` phase. Read every phase's declared 
 ## Procedure
 
 <!-- awf:section procedure-resolve-plan -->
-1. Resolve the mutable plan and read its complete phase structure. Before mutation, validate the one immutable effort slug and exact `.awf/efforts/<slug>/memory.md` path, confirm `Effort: <slug>`, and preserve one user-managed writer. Planned work is concrete and non-minimal, the effort always owns memory, repository sources and current-state documentation outrank checkpoint prose, and standalone memory is forbidden.
+1. Resolve the mutable plan and read its complete phase structure. Before mutation, validate the one immutable effort slug and exact `.awf/efforts/<slug>/memory.md` path, confirm `Effort: <slug>`, and preserve one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose, and standalone memory is forbidden.
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
@@ -26,13 +26,13 @@ Invoke for an accepted plan with an `inline` phase. Read every phase's declared 
 <!-- awf:end -->
 
 <!-- awf:section procedure-per-task -->
-3. **Iterate phases, not tasks.** Per `{{ .layout.maintainableCodeDesign }}`, you preserve the plan's settled structural choices, including a bounded enabling refactor; reassess if grounded source contradicts them, stop rather than bolt correctness onto the wrong abstraction, and do not drift from the plan. No drift from the plan. You run `awf context <the phase's exact paths>` before editing.
+3. **Iterate phases, not tasks.** Per `{{ .layout.maintainableCodeDesign }}`, you preserve the plan's settled structural choices, including a bounded enabling refactor; reassess if grounded source contradicts them, stop rather than bolt correctness onto the wrong abstraction, and do not drift from the plan. You run `awf context <the phase's exact paths>` before editing.
 <!-- awf:include context-spill -->
 For an `inline` phase, the parent owns every ordered task, integration, staged check, gate, phase-closing commit, report-only phase review, focused settlement commits, and checkpoint. A batch may dispatch explicitly partitioned sequential commit-disabled helpers only; each is the `implementer` agent in its commit-disabled mode, whose rendered contract governs its path confinement, green obligation, escalation, and return shape. Each brief carries the effort slug and exact owned memory path as read-only context, and helpers never edit shared memory: {{ if .targetSubagentTools }}choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value.{{ else }}choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.{{ end }} You inventory each return, reject out-of-subset writes, retain shared-file ownership, run the deterministic post-check, and never delegate the phase commit. Stage the complete transaction, run `awf check --staged`, then {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass; the hook repeats the staged check as defense in depth. Review settles before checkpointing.
 
 <!-- awf:include checkpoint-routine -->
 
-If an implementer stops dirty, first inventory `git status --short`, diff, completed and remaining work, prior concerns, and failed checks. Choose exactly one: complete inline; restore the known green baseline and restart the complete revised phase; or stop for required user input. An explicit ownership transfer includes the complete revised phase, inventory, completed and remaining work, prior concerns, and recovery verification. Never issue a blind successor instruction for one task or dispatch over a dirty checkout.
+If an implementer stops dirty, first inventory `git status --short`, diff, completed and remaining work, and failed checks. Choose exactly one: complete inline; restore the known green baseline and restart the complete revised phase; or stop for required user input. An explicit ownership transfer includes the complete revised phase, inventory, completed and remaining work, and recovery verification. Never issue a blind successor instruction for one task or dispatch over a dirty checkout.
 <!-- awf:end -->
 
 <!-- awf:section tdd-opt-in -->
@@ -41,7 +41,7 @@ If an implementer stops dirty, first inventory `git status --short`, diff, compl
 {{ with .data.e2eSuitePaths }}Use the fuller gate when a phase touches a declared end-to-end surface: {{ range . }}`{{ .path }}` {{ end }}.{{ end }}
 <!-- awf:end -->
 <!-- awf:section procedure-adr-final-commit -->
-4. Apply non-final V2 operation batches atomically with their matching claims and lifecycle event in the owning phase. The final batch and the Implemented flip are owned by the terminal-review flow and land only after the applicable terminal review settles.
+4. Apply non-final batches of the ADR's declared State changes operations (V2) atomically with their matching claims and lifecycle event in the owning phase. The final batch and the Implemented flip are owned by the terminal-review flow and land only after the applicable terminal review settles.
 <!-- awf:end -->
 <!-- awf:section procedure-non-adr-final-commit -->
 5. Freeze a plan only in its declared final transaction after review settlement.

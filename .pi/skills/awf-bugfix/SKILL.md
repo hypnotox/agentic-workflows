@@ -19,22 +19,25 @@ If the root cause is not yet known, invoke `awf-debugging` first.
 
 ## Procedure
 
-A minimal simple known-root fix uses no effort. For a concrete non-minimal fix, create or resume exactly one immutable slugged effort before mutation; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, preserve one user-managed writer, and carry slug/path through TDD and review. Repository sources and current-state documentation outrank checkpoint prose, children never edit shared memory, and standalone memory is forbidden.
+A minimal simple known-root fix uses no effort. For a concrete non-minimal fix, carry the effort slug and exact `.awf/efforts/<slug>/memory.md` path through TDD and review; children receive them read-only and never edit shared memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
 
-1. **Ensure a regression test exists that fails for the right reason.** Invoke `awf-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix. Before writing the test, run `awf context <the implementation and test paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix touches a claimed surface).
+1. **Ensure a regression test exists that fails for the right reason.** Invoke `awf-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix. Before writing the test, run `awf context <the implementation and test paths>`.
+Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
-2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. For materially larger work, ask the user whether to perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated. No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
+2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. For materially larger work, ask the user whether to
+perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
+No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 
 <!-- awf:edit pitfalls-check: default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
    Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 
-3. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
+3. **Verify via the gates.** `./x gate` is the default.
 
 4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
-5. **Run the project's review step as the terminal step.**
+5. **Run `awf-reviewing-impl` as the terminal step.**
 
 <!-- awf:edit test-tiers: default; create .awf/skills/parts/bugfix/test-tiers.md to override -->
 ## Test tiers

@@ -198,7 +198,6 @@ vars:
   checkCmd: ./x check
   commitGateCmd: ./awf check commit
   gateCmd: ./x gate
-  gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...
   memoryGateCmd: ./awf check memory
   proseGateCmd: ./awf check prose

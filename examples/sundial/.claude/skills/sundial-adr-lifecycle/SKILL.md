@@ -9,7 +9,7 @@ description: >
 
 # sundial-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A support skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
@@ -98,7 +98,5 @@ schema retrofit may migrate its machine-readable encoding.
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
-- **Authoritative source:** `docs/workflow.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** the `## Status history` is append-only in every state. A V2 body stays amendable until a terminal status, each amendment recorded as an Amended event, then freezes as the historical record; append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
-- **`docs/decisions/INDEX.md` is auto-generated** by `./awf render` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.

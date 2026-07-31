@@ -16,9 +16,9 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 {{ with .data.digestLabel }}{{ . }}{{ else }}Review{{ end }} summary:
 {{ with .data.digestSummary }}{{ . }}{{ else }}- Summary: <one line>{{ end }}
 
-{{ with .data.digestLabel }}{{ . }}{{ else }}Review{{ end }} review complete (N lenses, M findings).
+{{ with .data.digestLabel }}{{ . }} review complete{{ else }}Review complete{{ end }} (N lenses, M findings).
 - Findings by classification: mechanical K, reasoned L, user-decision P
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the {{ with .data.digestLabel }}{{ . }}{{ else }}review{{ end }} summary (range 50-100 words). This digest reports findings; the dispatching skill applies the mechanical and reasoned fixes, escalates the user-decision findings, and runs a single verify pass.
+Target ~80 words for the {{ with .data.digestLabel }}{{ . }}{{ else }}review{{ end }} summary (range 50-100 words).
