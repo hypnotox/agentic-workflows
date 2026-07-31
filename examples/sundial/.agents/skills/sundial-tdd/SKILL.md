@@ -31,7 +31,6 @@ Choose the smallest behavior-proving, model-supporting seam; reject tests that f
 
 <!-- awf:edit notes: from .awf/skills/parts/tdd/notes.md -->
 ## Notes
-- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
 
 Sundial-specific: the almanac model is pure; every model change starts with a
 failing table-driven case in `internal/almanac`, no exceptions.

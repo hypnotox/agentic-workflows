@@ -60,5 +60,4 @@ The oracle is non-negotiable. A fix that adjusts expected output instead of the 
 
 ## Notes
 
-- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
 - Doc-currency rule: if the fix invalidates anything documented in the project's docs, update it in the same commit.

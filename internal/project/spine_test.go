@@ -1567,7 +1567,7 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 	}
 	for _, skill := range []string{"reviewing-adr", "reviewing-plan", "reviewing-impl"} {
 		out := renderSkillGolden(t, skill, data)
-		for _, want := range []string{"pasted verbatim", "`Record:` blocks included"} {
+		for _, want := range []string{"pasted verbatim", "including whatever `Record:` blocks exist"} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s missing decision-log paste phrase %q:\n%s", skill, want, out)
 			}

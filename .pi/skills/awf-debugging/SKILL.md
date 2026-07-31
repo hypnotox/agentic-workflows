@@ -69,7 +69,6 @@ Development data stores are disposable. Do not attempt to preserve or restore de
 ## Notes
 
 - Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report to the user.
-- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
 
 <!-- awf:edit red-flags: default; create .awf/skills/parts/debugging/red-flags.md to override -->
 ## Red flags

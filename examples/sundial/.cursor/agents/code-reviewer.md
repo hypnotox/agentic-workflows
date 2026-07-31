@@ -39,7 +39,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Consensus adherence
 
-When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the diff against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the diff against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
 ## Universal lenses
 

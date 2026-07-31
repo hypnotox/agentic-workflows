@@ -24,6 +24,14 @@ query a single version or a range.
   workflow doc's working-memory section. An adopter overriding the working-with-awf doc's
   `commands` part must carry the spill contract in the override.
 
+- The four reviewing skills dispatch their verify pass conditionally (ADR-0196): a fix round
+  whose applied fixes are all mechanical skips it and records the skip; any reasoned or
+  user-decision fix keeps it. The `Record:` evidence block narrows to material decisions
+  (scope, design, authority, or previously-approved output); reviewer briefs paste whatever
+  blocks exist. The reviewing skills' restated commit-scope list and the coverage-regression
+  reminder are deleted where deterministic gates already enforce them; an adopter without
+  such gates loses a reminder, not a control.
+
 - Reword the staged-authority instruction across the agent guide, the adr-lifecycle,
   executing-plans, subagent-driven-development, and writing-plans skills, the implementer
   contract, and the plans README and template: every commit still requires the staged check and

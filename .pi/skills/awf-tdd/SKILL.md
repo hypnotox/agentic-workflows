@@ -31,7 +31,6 @@ Choose the smallest behavior-proving, model-supporting seam; reject tests that f
 
 <!-- awf:edit notes: default; create .awf/skills/parts/tdd/notes.md to override -->
 ## Notes
-- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
 
 <!-- awf:edit red-flags: default; create .awf/skills/parts/tdd/red-flags.md to override -->
 ## Red flags
