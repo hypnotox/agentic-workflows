@@ -36,6 +36,8 @@ data:
           description: when the diff adds or converts a shared policy or mechanism, consult code-design/single-home and flag a second implementation of a concern another package already owns, a reduced copy where configuring the shared one would serve, and any fork or added coverage escape justified by coverage rather than by a materially different contract from a distinct source
         - name: presentation-ownership-authority
           description: when the diff changes where a result model is rendered for humans, or adds such a rendering, consult code-design/presentation-ownership and flag rendering that lives outside the package owning the model, and any model crossing a package boundary as a loosely-typed map whose discarded assertions turn a renamed field into a silently empty render under a green gate
+        - name: outcome-modeling-authority
+          description: when the diff changes how an outcome is surfaced, matched, or asserted, consult code-design/outcome-modeling and flag a production branch on a message substring, a new shallow os.Is* predicate call, a new error identity without a branching consumer in the same transaction, a test asserting error text where identity is the contract, and a new repository-state refusal outside the actionable outcome protocol
     correctnessTraps:
         - description: error paths; every returned error is checked or explicitly ignored with a stated reason
         - description: boundary conditions at empty, zero, and null/nil inputs

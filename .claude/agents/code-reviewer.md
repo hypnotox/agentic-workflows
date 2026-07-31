@@ -128,6 +128,9 @@ Apply all lenses to every implementation diff:
 **presentation-ownership-authority**: when the diff changes where a result model is rendered for humans, or adds such a rendering, consult code-design/presentation-ownership and flag rendering that lives outside the package owning the model, and any model crossing a package boundary as a loosely-typed map whose discarded assertions turn a renamed field into a silently empty render under a green gate
 
 
+**outcome-modeling-authority**: when the diff changes how an outcome is surfaced, matched, or asserted, consult code-design/outcome-modeling and flag a production branch on a message substring, a new shallow os.Is* predicate call, a new error identity without a branching consumer in the same transaction, a test asserting error text where identity is the contract, and a new repository-state refusal outside the actionable outcome protocol
+
+
 
 ## Doc-currency checklist
 
