@@ -156,14 +156,27 @@ the table at review time.
     rather than from its `docs/roadmap.md` render. Retiring the check makes the idea incoherent
     rather than merely stale, so it is removed rather than rewritten.
 
-13. Mint no claim for the authoring rule or the review lens. Neither is mechanically
+13. Mint one claim for the migration, `config/migrations-and-locks:claim-budget-key-dropped`,
+    test-backed and originating here. It pins that generation 28 removes only
+    `currentState.maxClaimsPerTopic`, announces the removal it performs, leaves every other
+    configured key and its value intact, and deliberately does not seed a surviving child, so
+    a `currentState` block whose only remaining member was the retired key is dropped with it.
+    The deliberate absence of a seed is the reason this claim is worth minting: it is the one
+    point where this migration departs from the generation-25 removal it is otherwise modelled
+    on, that departure is only safe because of ADR-0192, and the generation-25 claim required
+    three later decisions to revise precisely because this contract kept mattering. Leaving it
+    unclaimed would strand it in a frozen ADR.
+
+14. Mint no claim for the authoring rule or the review lens. Neither is mechanically
     enforceable, and minting a claim to describe advice is what inflates a claim population
-    without adding a checkable contract. The net effect on the corpus is two claims fewer.
+    without adding a checkable contract. Together with item 13 the net effect on the corpus is
+    one claim fewer.
 
 ## State changes
 
 - remove `tooling/cli:topic-claim-budget-advisory`
 - remove `config/configuration:topic-claim-budget-configured`
+- add `config/migrations-and-locks:claim-budget-key-dropped`
 
 ## Consequences
 
