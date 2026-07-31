@@ -47,7 +47,7 @@ and green starting baseline.
   each helper's focused mutating commands stay confined to its assigned subset.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
   phase-closing commit; it requires `awf check --staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} to pass,
-  enforced by a wired pre-commit hook or run manually first in a clone without one:
+  enforced by a wired pre-commit hook or run manually first in a clone without one (checkable with `git config core.hooksPath`):
 
 ```commit
 feat(scope): describe phase outcome

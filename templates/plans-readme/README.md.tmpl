@@ -46,7 +46,8 @@ where the date is the day the plan is written (ISO-8601). Example:
   shared files remain parent-owned, and focused mutating commands stay confined to the assigned subset.
 - Each phase declares one phase-closing commit and stages the complete transaction; the commit requires
   `awf check --staged` and the gate to pass, enforced by a wired pre-commit hook or run manually first
-  in a clone without one. Definitions land with first production use; no dead-code exception exists.
+  in a clone without one (checkable with `git config core.hooksPath`). Definitions land with
+  first production use; no dead-code exception exists.
 - Optionally, two trailing sections after the phases: **Verification** (whole-effort acceptance
   checks) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation).
 
