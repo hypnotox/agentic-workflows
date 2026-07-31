@@ -250,6 +250,22 @@ took the next one mid-diagnosis, and note that `git filter-branch --tree-filter`
 usable index, so a filter built on `git ls-files` silently does nothing while the renames
 it also performs appear to succeed; drive the sweep with `find` and verify afterwards.
 
+There is a simpler remedy than rewriting history, and it is about merge DIRECTION.
+`awf check --staged` validates HEAD to index as ONE transition, so whichever side is
+HEAD supplies the before-corpus. Merge the target INTO your branch and the target's own
+claims arrive as additions with no operation behind them, which is a structural refusal
+no resolution can satisfy. Build the merge with the TARGET as HEAD instead - integrate
+from the receiving checkout, or from a prep branch cut off the target - and the same
+conflicts resolve to the same content while the handshake sees only your claims as
+additions, with their operations present. On 2026-07-31 that let the git-seam effort
+renumber its already-Implemented ADR inside the merge, which the branch-side direction
+had refused minutes earlier with the identical tree. Two facts make the renumber safe
+for a terminal ADR: the content digest covers Context, Decision, State changes,
+Consequences, and Alternatives Considered but never the heading or the Status history,
+so a rename is digest-neutral unless the body self-references, and stripping a retired
+status segment is an encoding migration the append-only rule explicitly permits. Confirm
+both by recomputation rather than by assuming.
+
 ## Retiring a concept needs paraphrase sweeps, not just identifier greps
 
 _Domains: rendering, adr-system_
@@ -1761,6 +1777,32 @@ Git that is prompting despite `nativeEnvironment` (which pins `GIT_TERMINAL_PROM
 gate catches this shape, because a hang is not a failure until the timeout fires. If it
 recurs, the fix is to bound the fixture lane's invocations rather than to chase the
 individual test.
+
+## A mechanical check proves nothing until you have seen it fail
+
+_Domains: tooling, invariants_
+
+_Related: ADR-0193_
+
+A green grep, walker, or registry check is evidence only after you have watched it go red
+on a case it must catch. Three instruments lied inside one effort, each in a different
+direction. A post-check spelled `exec\.Command(Context)?\([^)]*"git"` reported success
+over two unconverted files, because a bracket expression cannot cross the `)` in
+`exec.CommandContext(t.Context(), "git", ...)` - which was the only spelling left; the
+phase owner and the reviewing parent both took the empty output as completeness. A
+repo-walker hand-rolled its traversal instead of using the repository's one definition of
+the walk boundary, so it flagged every file inside a managed worktree and would have
+failed on the target the moment the effort integrated: a false RED that passed review
+only because the branch had no worktree of its own. And an entrypoint registry asserting
+that each registered suite names its entrypoint was satisfied for seventeen of
+thirty-five registrations by the test function's own NAME, because the check printed the
+whole declaration rather than its body.
+The habit that catches all three is cheap: plant the violation the check exists to find,
+watch it fail, remove it. Prefer a permanent negative case in the suite, so the
+instrument keeps proving itself. Beware two shapes especially - a check whose subject is
+a regexp over source, where the language's syntax is richer than the pattern; and a
+check reused from another context, where the boundary it encodes may not be the boundary
+you need. Both look identical to a working check from the output alone.
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 
