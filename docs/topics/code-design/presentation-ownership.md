@@ -5,7 +5,7 @@ Which package renders a result model for humans, and what a command binary keeps
 
 **Applicability:** Global topic within owning domain selectors none. Run `awf topic code-design/presentation-ownership --coverage` for current matched paths and marker sites.
 
-How rendering a result model for humans is owned: the package that owns the model owns its presentation, while command binaries keep argument parsing, renderer selection, and exit mapping.
+How rendering a result model for humans is owned: the package that owns the model owns its presentation, while command binaries keep argument parsing, renderer selection, and exit mapping. This topic governs renderings introduced by new work and command surfaces deliberately converted under its authority; the remaining cmd-side renderings (printPlan, printTopic) are recorded future candidates that convert as they are next touched (ADR-0194 item 4), not violations of a settled state.
 
 ## Claims
 

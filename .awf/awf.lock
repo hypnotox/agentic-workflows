@@ -541,8 +541,8 @@
     "docs/topics/code-design/presentation-ownership.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:09e1a5fb1f10b275da103718e62b328a86a8c5bd32560544341b3a852be34d63",
-      "outputHash": "sha256:ca6cef3bfb6ec692c0115f22c4150ea200a1961b736a6082e74b2e3f39a13d98"
+      "configHash": "sha256:99f055a91bdc724c58bdfb9e52b5df3dc373beed8ac96ff2ecc96b538117413e",
+      "outputHash": "sha256:25c13d7754c485168b5beb436904f6ae7a1bd120f58766278465d5c5e1dff633"
     },
     "docs/topics/code-design/single-home.md": {
       "templateId": "topics/topic.md.tmpl",
