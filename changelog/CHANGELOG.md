@@ -44,6 +44,7 @@ query a single version or a range.
   leaves the `awf topic --json` contract. Schema generation 27 strips the segments from every
   governed ADR and canonicalizes every `Revised-by` list to ascending ADR number; run
   `awf upgrade`. (ADR-0191)
+
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
   the `off` value with them. A tree that declares a `currentState` block now always evaluates both
   topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
