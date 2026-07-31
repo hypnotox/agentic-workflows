@@ -94,15 +94,30 @@ func TestIsolatedGitEnvironmentPinsTheWholeIsolationPolicy(t *testing.T) {
 			t.Errorf("%s = %q, want the pinned %q", key, got, want)
 		}
 	}
+	// Strict equality, not a GIT_-prefixed sweep: two of the six pins
+	// (SSH_ASKPASS, GCM_INTERACTIVE) carry no GIT_ prefix, so a prefix sweep
+	// cannot see a seventh pin from that same credential-helper family being
+	// added. Requiring the whole resulting environment to be exactly the
+	// surviving inheritance plus the declared pins is what makes an ADDED pin
+	// fail here as loudly as a dropped one.
+	want := map[string]string{"PATH": "/usr/bin", "HOME": "/home/developer"}
+	for key, value := range seamIsolationPins {
+		want[key] = value
+	}
 	for key, value := range effective {
-		if strings.HasPrefix(strings.ToUpper(key), "GIT_") {
-			if _, pinned := seamIsolationPins[key]; !pinned {
-				t.Errorf("inherited %s=%q survived; every GIT_ variable must be stripped or pinned", key, value)
-			}
+		expected, ok := want[key]
+		if !ok {
+			t.Errorf("%s=%q survived or was added; the environment must be exactly the surviving inheritance plus the declared pins", key, value)
+			continue
+		}
+		if expected != value {
+			t.Errorf("%s = %q, want %q", key, value, expected)
 		}
 	}
-	if effective["PATH"] != "/usr/bin" || effective["HOME"] != "/home/developer" {
-		t.Errorf("unrelated variables were stripped: PATH=%q HOME=%q", effective["PATH"], effective["HOME"])
+	for key := range want {
+		if _, ok := effective[key]; !ok {
+			t.Errorf("%s is missing from the isolated environment", key)
+		}
 	}
 }
 

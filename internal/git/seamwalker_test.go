@@ -5,13 +5,13 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
-	"os"
-	"path/filepath"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // The two walkers in this package and its fixture sibling are the mechanical
@@ -63,18 +63,37 @@ func scanGitAccess(path string, src []byte) ([]gitAccessFinding, error) {
 			}
 		}
 	}
+	// The local name os/exec was imported under, so an aliased import is caught
+	// too. Empty when the file does not import it at all.
+	execName := importLocalName(file, "os/exec")
 	ast.Inspect(file, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		if !isExecConstruction(call.Fun) {
-			return true
-		}
-		for _, arg := range call.Args {
-			if literalString(arg) == "git" {
-				findings = append(findings, gitAccessFinding{path, "constructs a git subprocess directly; route it through the seam's runner in internal/git"})
+		switch node := n.(type) {
+		case *ast.CallExpr:
+			if !isExecConstruction(node.Fun, execName) {
 				return true
+			}
+			for _, arg := range node.Args {
+				if literalString(arg) == "git" {
+					findings = append(findings, gitAccessFinding{path, "constructs a git subprocess directly; route it through the seam's runner in internal/git"})
+					return true
+				}
+			}
+		case *ast.CompositeLit:
+			// exec.Cmd{Path: "git"} builds the same process without a call.
+			sel, ok := node.Type.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "Cmd" {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok || execName == "" || pkg.Name != execName {
+				return true
+			}
+			for _, elt := range node.Elts {
+				kv, ok := elt.(*ast.KeyValueExpr)
+				if ok && literalString(kv.Value) == "git" {
+					findings = append(findings, gitAccessFinding{path, "constructs a git subprocess directly; route it through the seam's runner in internal/git"})
+					return true
+				}
 			}
 		}
 		return true
@@ -82,8 +101,12 @@ func scanGitAccess(path string, src []byte) ([]gitAccessFinding, error) {
 	return findings, nil
 }
 
-// isExecConstruction reports whether fun names os/exec's process constructors.
-func isExecConstruction(fun ast.Expr) bool {
+// isExecConstruction reports whether fun names os/exec's process constructors,
+// under whatever local name the file imported the package as.
+func isExecConstruction(fun ast.Expr, execName string) bool {
+	if execName == "" {
+		return false
+	}
 	sel, ok := fun.(*ast.SelectorExpr)
 	if !ok {
 		return false
@@ -92,7 +115,24 @@ func isExecConstruction(fun ast.Expr) bool {
 	if !ok {
 		return false
 	}
-	return pkg.Name == "exec" && (sel.Sel.Name == "Command" || sel.Sel.Name == "CommandContext")
+	return pkg.Name == execName && (sel.Sel.Name == "Command" || sel.Sel.Name == "CommandContext")
+}
+
+// importLocalName returns the name a file refers to importPath by: the explicit
+// alias when there is one, otherwise the path's last segment. Empty when the
+// file does not import it, so a bare identifier match cannot false-positive.
+func importLocalName(file *ast.File, importPath string) string {
+	for _, imp := range file.Imports {
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil || p != importPath { // coverage-ignore: the parser accepted every import path in this file
+			continue
+		}
+		if imp.Name != nil {
+			return imp.Name.Name
+		}
+		return path.Base(p)
+	}
+	return ""
 }
 
 // literalString returns the value of an untyped string literal, or the empty
@@ -113,48 +153,35 @@ func literalString(expr ast.Expr) string {
 // findings outside allowed. Paths are module-relative and slash-separated so an
 // allowlist entry reads the same on every platform. The count of files seen is
 // returned so a caller can refuse a walk that silently matched nothing.
+//
+// Traversal is testsupport.WalkRepoFiles, which is the repository's single
+// definition of the repo-walk boundary: it prunes hidden trees and nested
+// checkouts. Hand-rolling the walk here was a real defect and not a stylistic
+// one - it made both walkers fail in the primary checkout whenever a managed
+// worktree was present under .awf/worktrees, which is the normal state during
+// an effort and precisely the state integration leaves behind.
 func walkGitAccess(t *testing.T, testFiles bool, allowed []string) ([]gitAccessFinding, int) {
 	t.Helper()
 	root := moduleRoot(t)
 	findings, seen := []gitAccessFinding{}, 0
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil { // coverage-ignore: the walk covers a checked-out module the test binary is already running from
-			return err
-		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil { // coverage-ignore: every walked path is rooted at root
-			return relErr
-		}
-		rel = filepath.ToSlash(rel)
-		if d.IsDir() {
-			// examples/sundial is a separate module with its own dependencies,
-			// and testdata holds fixture sources that are never compiled.
-			if rel == ".git" || rel == "examples" || d.Name() == "testdata" {
-				return fs.SkipDir
-			}
-			return nil
+	testsupport.WalkRepoFiles(t, root, func(rel string) bool {
+		// examples/sundial is a separate module with its own dependencies, and
+		// a testdata tree holds fixture sources that are never compiled.
+		if strings.HasPrefix(rel, "examples/") || rel == "testdata" || strings.HasPrefix(rel, "testdata/") || strings.Contains(rel, "/testdata/") {
+			return false
 		}
 		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") != testFiles {
-			return nil
+			return false
 		}
 		seen++
-		if allowedGitAccess(rel, allowed) {
-			return nil
-		}
-		src, readErr := os.ReadFile(path)
-		if readErr != nil { // coverage-ignore: the walk just enumerated this file
-			return readErr
-		}
-		found, scanErr := scanGitAccess(rel, src)
-		if scanErr != nil { // coverage-ignore: every non-allowlisted module file compiles, so it parses
-			return scanErr
+		return !allowedGitAccess(rel, allowed)
+	}, func(rel string, body []byte) {
+		found, err := scanGitAccess(rel, body)
+		if err != nil { // coverage-ignore: every non-allowlisted module file compiles, so it parses
+			t.Fatal(err)
 		}
 		findings = append(findings, found...)
-		return nil
 	})
-	if err != nil { // coverage-ignore: every callback error above is itself unreachable
-		t.Fatal(err)
-	}
 	sort.Slice(findings, func(i, j int) bool { return findings[i].String() < findings[j].String() })
 	return findings, seen
 }
@@ -263,6 +290,35 @@ func TestSeamWalkerDetectsBothBypassForms(t *testing.T) {
 				t.Fatalf("findings = %v, want one containing %q", findings, test.want)
 			}
 		})
+	}
+	for _, extra := range []struct{ name, src, want string }{
+		{
+			name: "aliased os/exec import",
+			src:  "package p\n\nimport osexec \"os/exec\"\n\nvar _ = osexec.Command(\"git\", \"status\")\n",
+			want: "constructs a git subprocess",
+		},
+		{
+			name: "exec.Cmd composite literal",
+			src:  "package p\n\nimport \"os/exec\"\n\nvar _ = exec.Cmd{Path: \"git\"}\n",
+			want: "constructs a git subprocess",
+		},
+	} {
+		t.Run(extra.name, func(t *testing.T) {
+			t.Parallel()
+			findings, err := scanGitAccess("probe.go", []byte(extra.src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(findings) != 1 || !strings.Contains(findings[0].Detail, extra.want) {
+				t.Fatalf("findings = %v, want one containing %q", findings, extra.want)
+			}
+		})
+	}
+	// A file that never imports os/exec cannot be flagged by a bare identifier
+	// that happens to be spelled exec.
+	shadowed := "package p\n\ntype t struct{}\n\nfunc (t) Command(string, ...string) any { return nil }\n\nvar exec t\n\nvar _ = exec.Command(\"git\", \"status\")\n"
+	if findings, err := scanGitAccess("probe.go", []byte(shadowed)); err != nil || len(findings) != 0 {
+		t.Fatalf("findings for a shadowed exec identifier = %v, %v; want none", findings, err)
 	}
 	clean := "package p\n\nimport \"os/exec\"\n\nvar _ = exec.Command(\"hg\", \"status\")\n"
 	findings, err := scanGitAccess("probe.go", []byte(clean))

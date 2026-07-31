@@ -121,13 +121,15 @@ query a single version or a range.
   operations were already isolated and are unchanged in that respect. And a failure that used
   to surface as a bare exit status now carries the invocation and stderr.
 
-- The working-tree cleanliness answer now honours your global gitignore. `awf audit`'s
-  uncommitted-changes rule and the worktree cleanliness refusal both read the ignore universe
-  real `git status` sees, including `core.excludesFile` from your global or system
-  configuration. A checkout dirty only with globally-ignored files (editor scratch files, OS
-  metadata) previously reported uncommitted changes and refused integration; it now passes.
-  This moves in the opposite direction to the resident tightening below, and both are
-  deliberate: the oracle answers what Git answers.
+- The worktree cleanliness refusal now honours your global gitignore. `awf effort integrate`
+  and `awf effort worktree remove` previously ran their cleanliness read under a fully
+  isolated environment, which also hid `core.excludesFile`, so a checkout dirty only with
+  globally-ignored files (editor scratch files, OS metadata) was refused as dirty; it now
+  passes. `awf audit`'s uncommitted-changes rule already honoured the global ignore and is
+  unchanged in that respect, though its read is now isolated in every other way, so global
+  or system configuration other than the ignore file no longer reaches it. Both directions
+  are deliberate: the oracle answers what Git answers about ignoring, and nothing else the
+  environment happens to say.
 
 - `awf effort integrate` and `awf effort worktree remove` no longer tolerate untracked files
   under `.awf/efforts/` and `.awf/worktrees/` when judging whether the invoking checkout is

@@ -454,9 +454,14 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   `TestNativeLaneIsolation` with a table over the native lane's whole isolation policy:
   every inherited `GIT_*` variable plus the credential and prompt helpers is stripped from
   a deliberately hostile environment, and each pinned value is present with the expected
-  setting. This is the proof carrier for `fixture-isolation-parity` (ADR-0191 item 11), so
-  it must fail if any single pin or the strip is removed; verify that by mutation, one pin
-  at a time, before placing the marker. Do NOT bound the lane's invocations with a
+  setting. Add the SAME table over `internal/git`'s own `isolatedGitEnvironment`: the two
+  tables together are the proof carrier for `fixture-isolation-parity` (ADR-0191 item 11),
+  because the seam half is otherwise unbacked - every pin can be deleted from it with the
+  whole repository green, since Git's defaults are benign under a temporary HOME. Assert
+  each side's whole resulting environment by equality, not by a `GIT_` prefix sweep, so an
+  ADDED pin fails as loudly as a dropped one (two of the six pins carry no `GIT_` prefix).
+  Both must fail if any single pin or the strip is removed; verify that by mutation, one
+  pin at a time, before placing the markers. Do NOT bound the lane's invocations with a
   deadline: the asymmetry with the seam's runner is deliberate and is instead recorded at
   `runGit` and in the pitfalls doc.
 - [ ] **Task 7.2: Apply ADR-0181's operations and anchors.** Author the two claims in
@@ -471,9 +476,10 @@ refactor(code-design): gitfixture as the single two-lane fixture home
 - [ ] **Task 7.3: Apply ADR-0191's eleven operations in one batch.** In
   `.awf/topics/parts/tooling/git-access/current-state.md`: author the seven new claims per
   ADR-0191 item 12 (five `Backing: test` with proof markers placed on the seam walker,
-  the fixture walker, the entrypoint-table test, the runner suite, and the native-lane
-  isolation table that proves `fixture-isolation-parity`; two
-  `Backing: unbacked` with `Verify:` lines), and re-add the two range-parser claims
+  the fixture walker, the entrypoint-table test, the runner suite, and BOTH isolation
+  tables - the seam's and the fixture lane's - which together prove
+  `fixture-isolation-parity`; a marker on only one of them would leave the half the
+  terminal review was raised about unmarked; two `Backing: unbacked` with `Verify:` lines), and re-add the two range-parser claims
   (`Origin: ADR-0191`, prose preserving ADR-0127 by reference, existing test backing).
   Remove the two range-parser claims from
   `.awf/topics/parts/tooling/audit-and-snapshots/current-state.md` and narrow that
@@ -669,8 +675,11 @@ refactor(code-design): apply single-home and git-access authority
   writes. The library prefix also broadened to the whole `github.com/go-git/` organisation,
   which the narrower form failed to prefix-match against `go-git-fixtures`, and the seam
   allowlist gained the load-bearing test its fixture twin already had.
-  B3, four `coverage-ignore` comments stated reachability facts that are false. Three are now
-  covered by tests rather than reworded: a shallow clone's boundary commit resolves a recorded
+  B3, five `coverage-ignore` comments stated reachability facts that are false (the review
+  found four; the verify pass found a fifth, ten lines from one of them and in the same
+  class - resolving a merge base walks the graph, so an ordinary range inside a shallow
+  clone's fetched window still runs off its boundary). Four are now covered by tests rather
+  than reworded: a shallow clone's boundary commit resolves a recorded
   parent that was never fetched (NumParents counts hashes; resolving one is an object lookup),
   a malformed `packed-refs` line fails the eager branch enumeration, and the context check
   inside `blobsOfTree` makes both of its callers' error branches reachable on a healthy
@@ -701,3 +710,37 @@ refactor(code-design): apply single-home and git-access authority
   subprocesses and reimplement the gitfile resolution `internal/git` owns. Consolidating them
   needs its own decision, because the seam is a Go package and the extensions are a different
   runtime.
+- Verify pass on the terminal-review settlement (2026-07-31) returned "not safe to freeze"
+  and found four more things, all closed here.
+  The two repo-walkers hand-rolled their own traversal and pruned only top-level `.git`,
+  `examples`, and `testdata`, so they flagged every file inside a managed worktree under
+  `.awf/worktrees/` and inside `.claude/worktrees/`. Both walkers therefore FAILED in the
+  primary checkout whenever an effort worktree existed, which is the normal state during an
+  effort and exactly the state integration leaves behind: the two claims they back were
+  backed by tests that could not be run where they matter. The repository already had one
+  definition of that boundary, `testsupport.WalkRepoFiles`, whose own comment calls itself
+  the single definition of it. Routing through it is both the fix and the point: a
+  hand-rolled duplicate of a documented single home, inside the effort about single homes.
+  A fifth false `coverage-ignore` was found ten lines from one the review had already
+  flagged and in the same class: resolving a merge base walks the graph, so an ordinary
+  range wholly inside a shallow clone's fetched window still runs off its boundary. Covered.
+  The entrypoint table's reference check was vacuous: printing the whole `FuncDecl` includes
+  the function's own NAME, so seventeen of the thirty-five registrations were satisfied by
+  the test identifier alone. It now prints the body only, which surfaced one registration
+  reaching its entrypoint solely through a helper. The same-named-method residual remains
+  and is disclosed at the check, which is why the registry comment demands a suite that
+  asserts what the entrypoint ANSWERS rather than one that merely mentions it.
+  ADR item 11's "adding one cannot pass without a deliberate edit naming the other" was
+  false: both tables swept only `GIT_`-prefixed keys, while two of the six pins carry no
+  such prefix, so a seventh pin from that same credential-helper family passed green. Both
+  tables now assert the whole resulting environment by equality, which makes an added pin
+  fail as loudly as a dropped one, and the ADR sentence says why equality is what is needed.
+  Also corrected: ADR item 12 still described the parity backing as one table; Tasks 7.1 and
+  7.3 still directed a single marker onto the fixture table, which would have left the seam
+  half - the half the review was raised about - unmarked; and the changelog's global-gitignore
+  bullet was half wrong, since `awf audit`'s cleanliness read already honoured the global
+  ignore before this effort (it ran with no environment override at all) while the worktree
+  refusal did not. Smaller: the walker now detects an aliased `os/exec` import and an
+  `exec.Cmd{Path: "git"}` literal, so item 10's scope sentence is true as written, and
+  testsupport's copy of the deadline ceiling now names the seam's const the way the seam's
+  already named it.

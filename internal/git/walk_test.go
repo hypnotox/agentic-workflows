@@ -437,9 +437,10 @@ func TestRangeBlobsReportsCancellationFromBothTreeReads(t *testing.T) {
 func TestObjectReadsReportAMissingParentInAShallowClone(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	gitfixture.Commit(t, repo, "one", map[string]string{"a.txt": "1\n"})
-	gitfixture.Commit(t, repo, "two", map[string]string{"a.txt": "2\n"})
-	gitfixture.Commit(t, repo, "three", map[string]string{"a.txt": "3\n"})
+	// Six commits, so a depth-3 clone below still has a boundary above it.
+	for _, n := range []string{"one", "two", "three", "four", "five", "six"} {
+		gitfixture.Commit(t, repo, n, map[string]string{"a.txt": n + "\n"})
+	}
 
 	shallow := filepath.Join(t.TempDir(), "shallow")
 	// file:// forces the transport that honours --depth; a plain path clone is
@@ -457,5 +458,20 @@ func TestObjectReadsReportAMissingParentInAShallowClone(t *testing.T) {
 	// head, and the boundary commit's recorded parent is not there to resolve.
 	if _, err := handle.RangeCommits(testContext(t), head, head); err == nil {
 		t.Error("RangeCommits walked past a parent the shallow clone never fetched")
+	}
+
+	// Merge-base resolution fails the same way, on an ordinary range wholly
+	// inside the fetched window: the graph walk it performs runs off the
+	// shallow boundary. The escape here previously claimed only a corrupt
+	// object graph could reach it.
+	deeper := filepath.Join(t.TempDir(), "deeper")
+	if out, err := exec.CommandContext(t.Context(), "git", "clone", "--depth", "3", "file://"+dir, deeper).CombinedOutput(); err != nil {
+		t.Skipf("shallow clone unavailable in this environment: %v: %s", err, out)
+	}
+	deepHandle := walkRepo(t, deeper)
+	deepHead := gitfixture.NativeRevParse(t, gitfixture.At(deeper), "HEAD")
+	deepBase := gitfixture.NativeRevParse(t, gitfixture.At(deeper), "HEAD~2")
+	if _, err := deepHandle.RangeCommits(testContext(t), deepBase, deepHead); err == nil {
+		t.Error("RangeCommits resolved a merge base across the shallow boundary")
 	}
 }

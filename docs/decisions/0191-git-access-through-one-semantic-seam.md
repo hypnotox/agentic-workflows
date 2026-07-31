@@ -259,7 +259,9 @@ exists under `internal/git/`, so the path transfer is marker-safe.
 
     Both walkers, and therefore both claims they back, are scoped to GO SOURCE
     CONSTRUCTIONS in this module: a Git-library import path, and an `os/exec` process
-    construction naming the git binary. That is what a structural walk of the module's
+    construction naming the git binary, detected under any local import name and as a
+    composite literal as well as a call. A subprocess whose command name is a variable
+    remains undetectable and is not claimed. That is what a structural walk of the module's
     syntax can decide, and the claims are worded to assert exactly it rather than the
     broader "nothing reaches Git". Three things sit outside that scope deliberately and
     are named here so no reader mistakes silence for coverage. A Go test may exec a shell
@@ -285,9 +287,11 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     packages. A `fixture-isolation-parity` claim therefore names the duplication and its
     faithfulness obligation, backed by an exhaustive table over EACH copy: one in
     `internal/git` over the seam's own policy, one in the fixture over the lane's. Each
-    asserts its side's full pinned set and its stripping behaviour, so dropping or altering
-    a pin on either side fails, and adding one cannot pass without a deliberate edit naming
-    the other. Two tables are required rather than one shared assertion because the import
+    asserts its side's whole resulting environment - the surviving inheritance and the
+    declared pins, by equality rather than by a prefix sweep - so dropping, altering, or
+    ADDING a pin on either side fails. Equality is what makes the addition case work: two
+    of the pins carry no `GIT_` prefix, so a prefix sweep would not see a seventh from that
+    same credential-helper family appear. Two tables are required rather than one shared assertion because the import
     ban prevents either package from reading the other's policy, and a behavioural test
     cannot substitute: Git's own defaults are benign under a temporary HOME, so every pin
     can be deleted with an end-to-end suite still green, which is exactly how this gap
@@ -308,8 +312,9 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     one table-driven test that fails when a named entrypoint lacks a passing suite, so
     the claim asserts exactly what that table proves), and `isolated-deadlined-native`
     (direct runner tests: polluted-environment isolation, deadline refusal,
-    stderr-carrying errors), and `fixture-isolation-parity` (a table over the native lane's
-    pinned set and its stripping behaviour) are `Backing: test`.
+    stderr-carrying errors), and `fixture-isolation-parity` (one exhaustive table per copy,
+    in `internal/git` and in the fixture, each asserting its side's whole pinned set and its
+    stripping behaviour) are `Backing: test`.
     `one-implementation-per-entrypoint` and `single-cleanliness-oracle` are reasoned
     contracts with `Verify:` instructions. The moved range-parser claims keep their
     existing test backing. Because the conversion is whole, every claim is authored as a

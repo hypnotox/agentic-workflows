@@ -28,6 +28,16 @@ func TestListWorktreeRegistrationsReportsEveryRegisteredCheckout(t *testing.T) {
 	// The primary's branch name comes from git's own default, which varies by
 	// installation, so the expectation is read back rather than hardcoded.
 	primaryBranch := trimGitOutputLine(runGit(t, "-C", primary, "symbolic-ref", "HEAD"))
+	// The entrypoint is called here directly, not only through the helper below,
+	// so this suite visibly exercises what it is registered against: a suite that
+	// reaches its entrypoint only through a helper reads as unrelated to it.
+	direct, err := awfgit.ListWorktreeRegistrations(testContext(t), primary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(direct) != 3 {
+		t.Fatalf("ListWorktreeRegistrations returned %d registrations, want the primary and its two linked checkouts", len(direct))
+	}
 	fromPrimary := registrationsByPath(t, primary)
 	fromLinked := registrationsByPath(t, detached)
 	if len(fromPrimary) != 3 {

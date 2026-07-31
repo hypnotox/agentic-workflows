@@ -171,7 +171,11 @@ func testFunctionBodies(t *testing.T, pkgDir string) map[string]string {
 				continue
 			}
 			var buf bytes.Buffer
-			if err := printer.Fprint(&buf, fset, fn); err != nil { // coverage-ignore: printing a parsed declaration to an in-memory buffer has no failure a test can provoke
+			// The BODY only, never the whole declaration: printing the FuncDecl
+			// emits the function's own name, and a suite named after its
+			// entrypoint would then satisfy a reference check by existing. That
+			// was true of 17 of the registrations below before this narrowed.
+			if err := printer.Fprint(&buf, fset, fn.Body); err != nil { // coverage-ignore: printing a parsed block to an in-memory buffer has no failure a test can provoke
 				t.Fatal(err)
 			}
 			bodies[fn.Name.Name] = buf.String()

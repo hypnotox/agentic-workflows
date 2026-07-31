@@ -20,8 +20,10 @@ import (
 )
 
 // gitTestDeadline bounds a test's native Git work. It is a hang-prevention
-// ceiling like the command boundary's, generous enough that no healthy fixture
-// operation approaches it, so a test that reaches it has stalled.
+// ceiling, generous enough that no healthy fixture operation approaches it, so a
+// test that reaches it has stalled. It deliberately duplicates the value of
+// internal/git.CommandTimeout, which this package may not import: the
+// zero-internal-deps rule forces the copy, so the two are kept equal by hand.
 const gitTestDeadline = 2 * time.Minute
 
 // Context returns the test's context with a deadline attached, cancelled when

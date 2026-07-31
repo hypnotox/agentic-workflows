@@ -62,7 +62,11 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		return nil, opaqueError(err)
 	}
 	bases, err := headCommit.MergeBase(baseCommit)
-	if err != nil { // coverage-ignore: MergeBase errors only on a corrupt object graph; unrelated roots return an empty slice
+	if err != nil {
+		// Reachable without corruption: finding a merge base walks the graph, so
+		// an ordinary range inside a shallow clone's fetched window still runs
+		// off its boundary. Unrelated roots are the other case and are NOT an
+		// error; they return an empty slice, handled below.
 		return nil, opaqueError(err)
 	}
 	if len(bases) == 0 {
