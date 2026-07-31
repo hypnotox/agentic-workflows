@@ -141,6 +141,34 @@ func TestRunnerExcludesFileArgsTreatsUnavailableAndEmptyConfigAsNoOverride(t *te
 	})
 }
 
+// TestCommandErrorNamesItsContextCause pins the rendered text for the two shapes
+// where the exit status alone explains nothing: a killed process reports exit
+// -1 with no stderr, so a timed-out or cancelled invocation would otherwise
+// render as an unexplained "exit status -1" while its cause was matchable but
+// invisible to the human reading the message.
+func TestCommandErrorNamesItsContextCause(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{name: "deadline", err: context.DeadlineExceeded, want: "timed out"},
+		{name: "cancel", err: context.Canceled, want: "canceled"},
+		{name: "ordinary exit", err: nil, want: "exit status 1"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			failure := &CommandError{Args: []string{"-C", "/repo", "status"}, ExitCode: 1, Err: test.err}
+			if got := failure.Error(); !strings.Contains(got, test.want) {
+				t.Fatalf("Error() = %q, want it to name %q", got, test.want)
+			}
+		})
+	}
+	var nilError *CommandError
+	if got := nilError.Error(); got != "git command failed" {
+		t.Fatalf("nil receiver Error() = %q", got)
+	}
+}
+
 func TestRunnerFailureCarriesCommandIdentityAndStderr(t *testing.T) {
 	root := t.TempDir()
 	_, err := newRunner(root).run(testContext(t), "rev-parse", "--show-toplevel")

@@ -15,7 +15,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -40,7 +39,7 @@ func main() { // coverage-ignore: process-exit composition boundary; runWith has
 	if code != 0 { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 		os.Exit(code)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	ctx, cancel := context.WithTimeout(context.Background(), awfgit.CommandTimeout) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 	repo, err := awfgit.Open(".")
 	if err != nil { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 		fmt.Fprintln(os.Stderr, "repoaudit:", err)

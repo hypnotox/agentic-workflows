@@ -1,8 +1,10 @@
 package git
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"os"
 	"path/filepath"
@@ -92,13 +94,14 @@ func moduleRoot(t *testing.T) string {
 }
 
 // parseDir parses one package directory, including or excluding its test files.
-func parseDir(t *testing.T, dir string, testFiles bool) []*ast.File {
+// The caller supplies the file set so a caller that needs to print a
+// declaration back to source shares the positions it was parsed with.
+func parseDir(t *testing.T, fset *token.FileSet, dir string, testFiles bool) []*ast.File {
 	t.Helper()
 	entries, err := os.ReadDir(dir)
 	if err != nil { // coverage-ignore: both parsed directories are checked-in package directories
 		t.Fatal(err)
 	}
-	fset := token.NewFileSet()
 	files := []*ast.File{}
 	for _, e := range entries {
 		name := e.Name()
@@ -120,7 +123,7 @@ func parseDir(t *testing.T, dir string, testFiles bool) []*ast.File {
 func seamEntrypoints(t *testing.T) []string {
 	t.Helper()
 	names := []string{}
-	for _, file := range parseDir(t, ".", false) {
+	for _, file := range parseDir(t, token.NewFileSet(), ".", false) {
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || !fn.Name.IsExported() {
@@ -155,19 +158,26 @@ func receiverTypeName(recv *ast.FieldList) string {
 	return ident.Name
 }
 
-// testFunctionNames collects the test function names declared in a package.
-func testFunctionNames(t *testing.T, pkgDir string) map[string]bool {
+// testFunctionBodies maps each test function in a package to its source text,
+// so a caller can ask both whether a named test exists and what it references.
+func testFunctionBodies(t *testing.T, pkgDir string) map[string]string {
 	t.Helper()
-	names := map[string]bool{}
-	for _, file := range parseDir(t, pkgDir, true) {
+	bodies := map[string]string{}
+	fset := token.NewFileSet()
+	for _, file := range parseDir(t, fset, pkgDir, true) {
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if ok && fn.Recv == nil && strings.HasPrefix(fn.Name.Name, "Test") {
-				names[fn.Name.Name] = true
+			if !ok || fn.Recv != nil || !strings.HasPrefix(fn.Name.Name, "Test") {
+				continue
 			}
+			var buf bytes.Buffer
+			if err := printer.Fprint(&buf, fset, fn); err != nil { // coverage-ignore: printing a parsed declaration to an in-memory buffer has no failure a test can provoke
+				t.Fatal(err)
+			}
+			bodies[fn.Name.Name] = buf.String()
 		}
 	}
-	return names
+	return bodies
 }
 
 // TestEveryEntrypointHasAContractSuite is the completeness half of
@@ -195,21 +205,35 @@ func TestEveryEntrypointHasAContractSuite(t *testing.T) {
 	}
 }
 
-// TestEveryRegisteredSuiteExists closes the other direction: a registration is
-// only worth anything if the suite it names is real. Without this the table
-// could be satisfied by a typo.
-func TestEveryRegisteredSuiteExists(t *testing.T) {
+// TestEveryRegisteredSuiteExercisesItsEntrypoint closes the other direction: a
+// registration is only worth anything if the suite it names is real AND
+// actually reaches the entrypoint. Without the second half the table is
+// satisfied by a typo or by a suite that merely sits nearby, which is not
+// hypothetical - "Root" was registered against a suite that called a
+// same-named method on the fixture type and never touched the seam's, and the
+// table passed.
+//
+// The reference check is syntactic, so a same-named method on another type
+// inside the suite still satisfies it. That residual is why the registration
+// comment demands a suite asserting what the entrypoint ANSWERS: this test
+// catches the stale and the mistyped, not a reviewer's judgement.
+func TestEveryRegisteredSuiteExercisesItsEntrypoint(t *testing.T) {
 	t.Parallel()
 	root := moduleRoot(t)
-	byPackage := map[string]map[string]bool{}
+	byPackage := map[string]map[string]string{}
 	for entrypoint, s := range entrypointSuites {
-		tests, ok := byPackage[s.Package]
+		bodies, ok := byPackage[s.Package]
 		if !ok {
-			tests = testFunctionNames(t, filepath.Join(root, filepath.FromSlash(s.Package)))
-			byPackage[s.Package] = tests
+			bodies = testFunctionBodies(t, filepath.Join(root, filepath.FromSlash(s.Package)))
+			byPackage[s.Package] = bodies
 		}
-		if !tests[s.Test] {
+		body, exists := bodies[s.Test]
+		if !exists {
 			t.Errorf("entrypoint %q registers %s.%s, which does not exist", entrypoint, s.Package, s.Test)
+			continue
+		}
+		if !strings.Contains(body, entrypoint) {
+			t.Errorf("entrypoint %q registers %s.%s, whose body never names it; register the suite that exercises the entrypoint", entrypoint, s.Package, s.Test)
 		}
 	}
 }

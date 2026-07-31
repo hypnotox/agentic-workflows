@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // CommandError reports a native Git invocation that exited non-zero. It carries
@@ -26,7 +27,17 @@ func (e *CommandError) Error() string {
 		return "git command failed"
 	}
 	message := "git " + strings.Join(e.Args, " ")
-	message += fmt.Sprintf(": exit status %d", e.ExitCode)
+	// A killed process reports exit -1 with no stderr, so the exit status alone
+	// tells a reader nothing about why. Name the cause when there is one: a
+	// timed-out git otherwise renders as an unexplained "exit status -1".
+	switch {
+	case errors.Is(e.Err, context.DeadlineExceeded):
+		message += ": timed out"
+	case errors.Is(e.Err, context.Canceled):
+		message += ": canceled"
+	default:
+		message += fmt.Sprintf(": exit status %d", e.ExitCode)
+	}
 	if e.Stderr != "" {
 		message += ": " + e.Stderr
 	}
@@ -40,7 +51,10 @@ func (e *CommandError) Unwrap() error {
 	return e.Err
 }
 
-// runner is the package's only native-Git subprocess boundary. One runner is
+// runner is the native-Git subprocess boundary for every operation the seam
+// offers; its excludesFileArgs helper is the one other invocation in the
+// package, deliberately unisolated in a single respect and documented there.
+// One runner is
 // pinned to one repository root: every invocation selects that repository with
 // -C and runs under the isolated Git environment, so no inherited repository
 // selection, configuration, or credential control can redirect it. Validating
@@ -88,6 +102,18 @@ func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 	}
 	return stdout, nil
 }
+
+// CommandTimeout is the hang-prevention ceiling a command boundary puts on the
+// git work it starts. The seam owns the VALUE while each boundary still chooses
+// to apply it, which is what keeps one number rather than one per binary: it was
+// three copies before this const existed, and a ceiling that drifts between
+// binaries is a ceiling nobody can reason about. It is generous enough that no
+// observed-normal operation approaches it, so a command that reaches it has
+// stalled rather than merely taken a while.
+//
+// internal/testsupport keeps its own copy, forced by the same zero-internal-deps
+// rule that forces the fixture lane's isolation duplicate.
+const CommandTimeout = 2 * time.Minute
 
 // probe runs argv as a question rather than as work: Git answers a handful of
 // yes/no queries (does this ref exist, is this an ancestor, is this a valid ref

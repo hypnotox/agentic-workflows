@@ -89,6 +89,30 @@ func TestWorktreeRegistrationRoundTrip(t *testing.T) {
 	}
 }
 
+// TestBranchDeleteRefusesUnmergedWork pins the safety property BranchDelete's
+// doc comment asserts: the safe -d form is the only one offered, so a caller
+// that wants to discard unmerged work must do it explicitly with native Git.
+// Nothing else in the suite distinguishes -d from -D, so a silent downgrade to
+// the force form would delete a developer's unmerged commits with a green gate.
+func TestBranchDeleteRefusesUnmergedWork(t *testing.T) {
+	repo, dir := lifecycleRepo(t)
+	ctx := testContext(t)
+	lifecycleGit(t, dir, "checkout", "-b", "unmerged")
+	lifecycleGit(t, dir, "commit", "--allow-empty", "-m", "work nobody merged")
+	tip := lifecycleGit(t, dir, "rev-parse", "HEAD")
+	lifecycleGit(t, dir, "checkout", "-")
+
+	if err := repo.BranchDelete(ctx, "unmerged"); err == nil {
+		t.Fatal("BranchDelete discarded an unmerged branch")
+	}
+	if exists, err := repo.BranchExists(ctx, "unmerged"); err != nil || !exists {
+		t.Fatalf("branch after the refusal exists=%v err=%v, want it retained", exists, err)
+	}
+	if got := lifecycleGit(t, dir, "rev-parse", "unmerged"); got != tip {
+		t.Fatalf("unmerged branch tip = %q, want %q", got, tip)
+	}
+}
+
 // TestWorktreePruneRetiresAnAbandonedRegistration covers the other retirement
 // route: the checkout is already gone and only the registration remains.
 func TestWorktreePruneRetiresAnAbandonedRegistration(t *testing.T) {
@@ -304,6 +328,27 @@ func TestBranchesReportsEveryLocalBranchShortName(t *testing.T) {
 	}
 }
 
+// TestBranchesReportsACorruptReferenceStore covers the escape that claimed
+// go-git returns an iterator over the validated reference storer without a
+// reachable failure. Enumeration is eager, so a malformed packed-refs line -
+// the shape an interrupted `git pack-refs` leaves behind - fails the read on an
+// otherwise healthy checkout. The same false justification is repeated at the
+// consumer in internal/migrate.
+func TestBranchesReportsACorruptReferenceStore(t *testing.T) {
+	repo, dir := lifecycleRepo(t)
+	if err := os.WriteFile(filepath.Join(dir, ".git", "packed-refs"), []byte("deadbeef\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.Branches(testContext(t))
+	if err == nil {
+		t.Fatalf("Branches over a corrupt reference store = %v, want an error", got)
+	}
+	// The backend's own error identity must not cross the seam boundary.
+	if _, ok := err.(interface{ Unwrap() error }); ok {
+		t.Errorf("Branches leaked an unwrappable backend error: %v", err)
+	}
+}
+
 // TestMergeEntrypointsAdvanceAndStageWithoutCommitting pins the two integration
 // mutations: the fast-forward that must create no commit of its own, and the
 // divergent merge that must stop before committing.
@@ -320,6 +365,23 @@ func TestMergeEntrypointsAdvanceAndStageWithoutCommitting(t *testing.T) {
 		}
 		if got := lifecycleGit(t, dir, "rev-parse", "HEAD"); got != tip {
 			t.Fatalf("HEAD after fast-forward = %q, want the branch tip %q", got, tip)
+		}
+	})
+	t.Run("fast forward refuses a divergent branch", func(t *testing.T) {
+		// The --ff-only form is the entrypoint's whole safety property: its doc
+		// comment promises it refuses anything that would create a commit, and
+		// nothing else in the suite falsifies a downgrade to a plain merge.
+		repo, dir := lifecycleRepo(t)
+		lifecycleGit(t, dir, "checkout", "-b", "sideways")
+		lifecycleGit(t, dir, "commit", "--allow-empty", "-m", "sideways")
+		lifecycleGit(t, dir, "checkout", "-")
+		lifecycleGit(t, dir, "commit", "--allow-empty", "-m", "onwards")
+		before := lifecycleGit(t, dir, "rev-parse", "HEAD")
+		if err := repo.MergeFastForward(ctx, "sideways"); err == nil {
+			t.Fatal("MergeFastForward created a merge commit for a divergent branch")
+		}
+		if got := lifecycleGit(t, dir, "rev-parse", "HEAD"); got != before {
+			t.Fatalf("HEAD moved to %q despite the refusal, want %q", got, before)
 		}
 	})
 	t.Run("divergent", func(t *testing.T) {

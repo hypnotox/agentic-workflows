@@ -31,7 +31,9 @@ func (r *Repo) WorktreeRemove(ctx context.Context, path string) error {
 // WorktreePrune drops registrations whose checkout is already gone. The
 // immediate expiry is deliberate: a caller prunes only after proving the
 // specific path absent, so honouring a grace period would leave the proven
-// registration behind.
+// registration behind. Git prunes an absent checkout without the flag in the
+// shapes the contract suite builds, so the flag is a guarantee against Git's
+// default grace period rather than something a test here distinguishes.
 func (r *Repo) WorktreePrune(ctx context.Context) error {
 	_, err := r.runner.run(ctx, "worktree", "prune", "--expire", "now")
 	return err

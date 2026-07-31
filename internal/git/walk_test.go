@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -256,18 +257,67 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 func TestRangeNativeReadOperations(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.go": "package a\n"})
-	head := gitfixture.Commit(t, repo, "head", map[string]string{"a.go": "package a\n\nvar x = 1\n"})
+	// The fixture is built to falsify each flag these entrypoints depend on,
+	// because the obvious two-linear-commit shape falsifies none of them: with
+	// base as head's direct parent, merge-base cannot be told from rev-parse; in
+	// a clean checkout a diff against base alone cannot be told from a diff of
+	// base..head; a range that changes no existing file carries no context lines
+	// to reveal a missing -U0; and under the seam's isolated environment the
+	// default prefix is already b/, so only REPOSITORY-local diff config can
+	// show the -c pins doing work.
+	root := gitfixture.Commit(t, repo, "root", map[string]string{
+		"a.go":         "package a\n\nconst One = 1\nconst Two = 2\nconst Three = 3\n",
+		"untouched.go": "package a\n",
+	})
+	trunk := lifecycleGit(t, dir, "symbolic-ref", "--short", "HEAD")
+	gitfixture.CheckoutNewBranch(t, repo, "side", root)
+	side := gitfixture.Commit(t, repo, "side", map[string]string{"side.go": "package a\n"})
+	gitfixture.NativeCheckout(t, repo, trunk)
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"b.go": "package a\n"})
+	head := gitfixture.Commit(t, repo, "head", map[string]string{
+		"a.go": "package a\n\nconst One = 1\nconst Two = 22\nconst Three = 3\n",
+	})
+	// A repository-local diff configuration the isolated environment does not
+	// strip. Without the entrypoint's -c pins this renders the diff without the
+	// a/ and b/ prefixes its consumer parses.
+	lifecycleGit(t, dir, "config", "diff.noprefix", "true")
+	lifecycleGit(t, dir, "config", "diff.dstPrefix", "destination/")
+	lifecycleGit(t, dir, "config", "diff.mnemonicprefix", "true")
+	// An uncommitted change, so a diff that forgot its head argument would
+	// compare base against the working tree and report this file too.
+	if err := os.WriteFile(filepath.Join(dir, "untouched.go"), []byte("package a\n\nvar Dirty = true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	handle := walkRepo(t, dir)
 	ctx := testContext(t)
-	if got, err := handle.MergeBase(ctx, base, head); err != nil || got != base {
-		t.Fatalf("merge base = %q, %v", got, err)
+
+	// The fork point, not either tip: a rev-parse of the first argument would
+	// answer base here, and the side branch's own tip would answer side.
+	if got, err := handle.MergeBase(ctx, base, side); err != nil || got != root {
+		t.Fatalf("merge base = %q, %v; want the fork point %q", got, err, root)
 	}
 	if got, err := handle.RangeChangedPaths(ctx, base, head); err != nil || len(got) != 1 || got[0] != "a.go" {
-		t.Fatalf("paths = %#v, %v", got, err)
+		t.Fatalf("paths = %#v, %v; want exactly the file the range changed, with the working tree ignored", got, err)
 	}
-	if got, err := handle.RangeDiffText(ctx, base, head); err != nil || !strings.Contains(got, "+++ b/a.go") {
-		t.Fatalf("diff = %q, %v", got, err)
+	diff, err := handle.RangeDiffText(ctx, base, head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(diff, "+++ b/a.go") {
+		t.Fatalf("diff = %q, want the b/ destination prefix the consumer parses", diff)
+	}
+	if strings.Contains(diff, "untouched.go") {
+		t.Fatalf("diff reports a working-tree change outside the range: %q", diff)
+	}
+	// Zero context: in unified format a context line is one starting with a
+	// single space, and -U0 emits none. Asserting on the neighbouring source
+	// text instead would misfire, because git repeats the enclosing line as the
+	// hunk heading regardless of the context setting.
+	for _, line := range strings.Split(diff, "\n") {
+		if strings.HasPrefix(line, " ") {
+			t.Fatalf("diff carries the context line %q, so -U0 is not in force", line)
+		}
 	}
 }
 
@@ -347,5 +397,65 @@ func enableWalkWorktreeConfig(t *testing.T, dir string) {
 	cfg.Raw.Section("extensions").SetOption("worktreeConfig", "true")
 	if err := repo.Storer.SetConfig(cfg); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestRangeBlobsReportsCancellationFromBothTreeReads covers the two escapes in
+// RangeBlobs that claimed reading in-memory blobs from a resolved tree cannot
+// fail. That justification was written for the pre-seam blobsOfTree(tree,
+// prefix); the seam's signature takes a context and checks it per file, so both
+// branches are reachable on a healthy repository. The package already disagreed
+// with itself about this: CommitBlobs routes the same call's error through
+// opaqueError with no escape at all.
+func TestRangeBlobsReportsCancellationFromBothTreeReads(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a\n"})
+	head := gitfixture.Commit(t, repo, "second", map[string]string{"b.txt": "b\n"})
+	handle := walkRepo(t, dir)
+
+	// RangeBlobs checks the context once on entry, so cancelling on the second
+	// observation lands inside the after-tree read rather than before it.
+	afterCancel := &cancelAfterContext{Context: testContext(t), remaining: 2}
+	if _, _, err := handle.RangeBlobs(afterCancel, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("RangeBlobs with the after-tree read cancelled = %v, want context.Canceled", err)
+	}
+	// Letting the after-tree read finish and cancelling during the parent read
+	// reaches the second escape, which only a commit with a parent can hit.
+	beforeCancel := &cancelAfterContext{Context: testContext(t), remaining: 4}
+	if _, _, err := handle.RangeBlobs(beforeCancel, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("RangeBlobs with the parent-tree read cancelled = %v, want context.Canceled", err)
+	}
+}
+
+// TestObjectReadsReportAMissingParentInAShallowClone covers the escapes that
+// claimed a parent object always exists because the parent COUNT was checked.
+// It counts recorded parent hashes; resolving one is an object lookup, and a
+// shallow clone's boundary commit records a parent whose object was never
+// fetched. This is not a corrupt-repository case: `actions/checkout` defaults to
+// fetch-depth 1, so `awf audit` in CI reads exactly this shape.
+func TestObjectReadsReportAMissingParentInAShallowClone(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "one", map[string]string{"a.txt": "1\n"})
+	gitfixture.Commit(t, repo, "two", map[string]string{"a.txt": "2\n"})
+	gitfixture.Commit(t, repo, "three", map[string]string{"a.txt": "3\n"})
+
+	shallow := filepath.Join(t.TempDir(), "shallow")
+	// file:// forces the transport that honours --depth; a plain path clone is
+	// a local copy and keeps the whole history.
+	if out, err := exec.CommandContext(t.Context(), "git", "clone", "--depth", "1", "file://"+dir, shallow).CombinedOutput(); err != nil {
+		t.Skipf("shallow clone unavailable in this environment: %v: %s", err, out)
+	}
+	handle := walkRepo(t, shallow)
+	head := gitfixture.NativeRevParse(t, gitfixture.At(shallow), "HEAD")
+
+	if _, _, err := handle.RangeBlobs(testContext(t), head); err == nil {
+		t.Error("RangeBlobs resolved a parent the shallow clone never fetched")
+	}
+	// The range walk reaches the same absent object: it enumerates ancestors of
+	// head, and the boundary commit's recorded parent is not there to resolve.
+	if _, err := handle.RangeCommits(testContext(t), head, head); err == nil {
+		t.Error("RangeCommits walked past a parent the shallow clone never fetched")
 	}
 }

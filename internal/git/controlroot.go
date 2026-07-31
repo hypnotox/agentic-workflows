@@ -446,7 +446,7 @@ func stableIdentity(path string) (string, error) {
 // isolatedGitEnvironment removes inherited repository selection, config, and
 // credential controls before a native Git command is run against a validated root.
 func isolatedGitEnvironment(inherited []string) []string {
-	filtered := make([]string, 0, len(inherited)+7)
+	filtered := make([]string, 0, len(inherited)+6)
 	for _, entry := range inherited {
 		key, _, _ := strings.Cut(entry, "=")
 		upper := strings.ToUpper(key)

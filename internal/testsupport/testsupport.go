@@ -3,7 +3,8 @@
 // frontmatter fixtures, file-writing primitives, and the seam-swap idiom. It
 // is a leaf package -
 // only the Go standard library may be imported here (see the gitfixture
-// subpackage for the go-git-dependent helpers) - so it is safe to import from
+// subpackage, the single home for Git fixtures and the only place permitted to
+// reach Git directly) - so it is safe to import from
 // any package's tests without risking an import cycle (ADR-0044). deps_test.go
 // enforces the zero-internal-deps constraint mechanically.
 package testsupport
@@ -154,7 +155,7 @@ func ADR(status string, opts ...ADROption) string {
 }
 
 // RunIsolated gives m a throwaway HOME (os.MkdirTemp(prefix)) for the
-// duration of its run, so go-git's global-gitignore read finds nothing
+// duration of its run, so a global-gitignore read finds nothing
 // belonging to the developer's real machine, then removes the temp HOME and
 // returns the run's exit code for the caller to pass to os.Exit:
 //

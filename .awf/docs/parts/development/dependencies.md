@@ -4,9 +4,12 @@ Runtime dependencies are deliberately few (see `go.mod`):
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing and comment-preserving mutation
   of the `.awf/` config tree, plus ADR and skill/agent frontmatter.
-- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation for
-  `awf audit` history and working-tree reads. Native `git` is a runtime and test prerequisite for
-  repository control-root resolution, efforts, and managed-worktree operations.
+- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation behind the
+  seam's in-process object reads. Native `git` is a runtime and test prerequisite for repository
+  control-root resolution, refs and worktree topology, and working-tree truth. Both are
+  backends of `internal/git` alone: no other production package may import the library or
+  construct a git subprocess, and `internal/testsupport/gitfixture` is the single test-side
+  exception, forced by the zero-internal-deps rule rather than chosen.
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: anchored path-glob matching behind
   `internal/pathglob` (ADR-0077).

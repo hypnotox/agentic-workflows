@@ -123,13 +123,23 @@ func TestWorkingPaths(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
+	handle := gitRepo(t, dir)
+	paths, err := handle.WorkingPaths(testsupport.Context(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(paths, ",")
 	if strings.Contains(joined, "gone.txt") || strings.Contains(joined, "ignored.txt") || !strings.Contains(joined, "new.txt") || !strings.Contains(joined, "src/a.txt") {
 		t.Fatalf("working paths: %v", paths)
+	}
+	// Root is the anchor those repository-relative paths join back onto, so it
+	// is pinned beside them rather than alone: a consumer that resolves
+	// "src/a.txt" to a file on disk is relying on both answers agreeing.
+	if got := handle.Root(); got != dir {
+		t.Fatalf("Root = %q, want the anchored checkout %q", got, dir)
+	}
+	if _, err := os.Stat(filepath.Join(handle.Root(), "src", "a.txt")); err != nil {
+		t.Fatalf("joining a reported path onto Root did not reach the file: %v", err)
 	}
 }
 

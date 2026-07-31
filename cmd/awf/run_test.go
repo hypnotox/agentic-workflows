@@ -63,7 +63,6 @@ func mustOpenGit(t *testing.T, root string) *awfgit.Repo {
 
 func TestResolveProjectResidentRoot(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	primary := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
@@ -76,7 +75,6 @@ func TestResolveProjectResidentRoot(t *testing.T) {
 
 func TestResolveProjectResidentRootFallsBackOutsideGit(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	if got := awfgit.ProjectResidentRoot(ctx, root); got != root {
 		t.Fatalf("resident root = %q, want invoking root", got)
@@ -85,7 +83,6 @@ func TestResolveProjectResidentRootFallsBackOutsideGit(t *testing.T) {
 
 func TestResolveProjectResidentRootFallsBackOnUnsafeResident(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := gitfixture.InitRepo(t).Root()
 	external := t.TempDir()
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
@@ -178,7 +175,6 @@ func TestRunSyncEntryPointsRejectMalformedRepository(t *testing.T) {
 
 func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
@@ -202,8 +198,6 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 
 // invariant: code-design/dependency-composition:sync-project-loader-wiring
 func TestSyncCompositionAndCallers(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	paths, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)
@@ -312,7 +306,6 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 // invariant: tooling/upgrade-runtime:initial-adoption-version-immutable
 func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
@@ -388,7 +381,6 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 
 func TestInitSeedsEmptyAuthority(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
@@ -405,7 +397,6 @@ func TestInitSeedsEmptyAuthority(t *testing.T) {
 
 func TestInitSealsBrownfieldAuthority(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	one := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: One"))
@@ -434,7 +425,6 @@ func TestInitSealsBrownfieldAuthority(t *testing.T) {
 
 func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	for _, tc := range []struct {
 		name  string
 		files map[string]string
@@ -468,7 +458,6 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 
 func TestInitForcePreservesAuthority(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	// A forced re-init over an existing config runs an ordinary sync, so the
@@ -494,7 +483,6 @@ func TestInitForcePreservesAuthority(t *testing.T) {
 
 func TestInitForceRefusesMissingAuthority(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	for _, tc := range []struct{ name, lock, want string }{
 		{"missing", "", "use the bridge release to attest"},
 		{"bridge", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"x","treeDigest":"sha256:x","adrFormatV1From":1,"legacyADRGaps":[]}}`, "use the bridge release to attest"},
@@ -605,7 +593,6 @@ func testInitFirstADRChecksClean(t *testing.T) {
 
 func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := scaffoldProject(t)
 	// Disable the only skill; the re-sync prunes its rendered file and says so.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1))
@@ -628,7 +615,6 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 
 func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := scaffoldProject(t)
 	// A var edit moves the config hash of every artifact referencing it; the
 	// re-sync attributes the changed output to the project's own inputs.
@@ -660,8 +646,6 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 }
 
 func TestRunNoArgs(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for no args, got %d", code)
@@ -672,8 +656,6 @@ func TestRunNoArgs(t *testing.T) {
 }
 
 func TestRunHelp(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	for _, arg := range []string{"help", "--help", "-h"} {
 		var out, errb bytes.Buffer
 		if code := run([]string{"awf", arg}, &out, &errb); code != 0 {
@@ -686,8 +668,6 @@ func TestRunHelp(t *testing.T) {
 }
 
 func TestRunGetwdError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
@@ -696,8 +676,6 @@ func TestRunGetwdError(t *testing.T) {
 }
 
 func TestRunUnknownCommand(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "bogus"}, &out, &errb); code != 2 {
@@ -709,8 +687,6 @@ func TestRunUnknownCommand(t *testing.T) {
 }
 
 func TestRunAddMissingSkillArg(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "enable"}, &out, &errb); code != 2 {
@@ -719,8 +695,6 @@ func TestRunAddMissingSkillArg(t *testing.T) {
 }
 
 func TestRunArgValidation(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	cases := []struct {
 		name string
@@ -745,8 +719,6 @@ func TestRunArgValidation(t *testing.T) {
 }
 
 func TestRunDispatchError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	// render in a bare dir: project.Open fails -> handler error -> exit 1.
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
@@ -763,8 +735,6 @@ func TestRunDispatchError(t *testing.T) {
 // full argv because they are subcommands, not top-level names: a single-token
 // loop could no longer reach them.
 func TestRunDispatchArms(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	for _, tc := range []struct {
 		name string
 		args []string
@@ -819,7 +789,6 @@ func TestRunDispatchArms(t *testing.T) {
 // TestHandlersOnBareDirError covers each handler's project.Open error return.
 func TestHandlersOnBareDirError(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	bare := func(t *testing.T) string { return t.TempDir() }
 	t.Run("check", func(t *testing.T) {
 		if err := runCheck(ctx, bare(t), false, io.Discard); err == nil {
@@ -855,7 +824,6 @@ func TestHandlersOnBareDirError(t *testing.T) {
 
 func TestRunInvariantsLoadFault(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// A malformed ADR makes the working-tree corpus load error out of runInvariants.
 	root := scaffoldProject(t)
 	adrDir := filepath.Join(root, "docs", "decisions")
@@ -872,7 +840,6 @@ func TestRunInvariantsLoadFault(t *testing.T) {
 
 func TestRunCheckErrorPaths(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	t.Run("stale-schema", func(t *testing.T) {
 		root := t.TempDir()
 		claude := filepath.Join(root, ".claude")
@@ -906,7 +873,6 @@ func TestRunCheckErrorPaths(t *testing.T) {
 
 func TestRunListSidecarError(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// A malformed sidecar for the enabled skill makes Sidecar() error.
 	root := scaffoldProject(t)
 	skillsDir := filepath.Join(root, ".awf", "skills")
@@ -923,7 +889,6 @@ func TestRunListSidecarError(t *testing.T) {
 
 func TestRunSyncSyncError(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// A directory squatting on a rendered output path makes p.SyncReport() fail.
 	root := scaffoldProject(t)
 	out := filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")
@@ -940,7 +905,6 @@ func TestRunSyncSyncError(t *testing.T) {
 
 func TestRunInitSyncError(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// Config exists (skip scaffold); a squatting output dir makes the inner
 	// runSync fail, covering runInit's runSync error return.
 	root := scaffoldProject(t)
@@ -958,7 +922,6 @@ func TestRunInitSyncError(t *testing.T) {
 
 func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// A legacy single-file project migrates to the tree layout, covering the
 	// applied-migrations loop and the terminal sync.
 	root := gitfixture.InitRepo(t).Root()
@@ -987,7 +950,6 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 // sync opens it cleanly.
 func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
@@ -1012,7 +974,6 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 
 func TestRunUpgradeMigrationError(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// A legacy config that fails to parse makes the migration error.
 	root := t.TempDir()
 	claude := filepath.Join(root, ".claude")
@@ -1033,8 +994,6 @@ func TestRunUpgradeMigrationError(t *testing.T) {
 
 // invariant: tooling/cli:single-os-exit
 func TestNoOsExitOutsideMain(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)
@@ -1062,7 +1021,6 @@ func TestNoOsExitOutsideMain(t *testing.T) {
 
 func TestGateRejectsStaleSchema(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// A legacy single-file layout (.claude/awf.yaml, no tree config) reports
 	// generation 0 -> GateState "gate".
 	root := t.TempDir()
@@ -1085,7 +1043,6 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 
 func TestProbeCollisionsOpenError(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: [bad\n")
 	if _, err := probeCollisions(testContext(t), root); err == nil {
@@ -1098,7 +1055,6 @@ func TestProbeCollisionsOpenError(t *testing.T) {
 
 func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	// Pre-existing config -> scaffold branch is skipped; init still syncs.
 	root := scaffoldProject(t)
 	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
@@ -1108,7 +1064,6 @@ func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 
 func TestRunInvariantsNoClaims(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
 	if err := runInvariants(ctx, root, &out); err != nil {
@@ -1121,7 +1076,6 @@ func TestRunInvariantsNoClaims(t *testing.T) {
 
 func TestRunListPrintsSkills(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
 	if err := runList(ctx, root, "", &out); err != nil {
@@ -1135,7 +1089,6 @@ func TestRunListPrintsSkills(t *testing.T) {
 // invariant: tooling/cli:upgrade-always-syncs
 func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
 	if err := runUpgrade(ctx, root, &out); err != nil {
@@ -1153,8 +1106,6 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 
 // invariant: tooling/init-and-enablement:init-collision-guard
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
@@ -1202,7 +1153,6 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 
 func TestInitRollbackPreservesExistingAwf(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	// Pre-existing authored .awf/ content but no config.yaml -> init scaffolds config,
 	// then a collision (non-managed CLAUDE.md) forces a refusal + rollback.
@@ -1230,8 +1180,6 @@ func TestInitRollbackPreservesExistingAwf(t *testing.T) {
 }
 
 func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	// A colliding CLAUDE.md plus a pre-existing backup from an earlier --force.
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("v2\n"), 0o644); err != nil {
@@ -1254,8 +1202,6 @@ func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
 }
 
 func TestInitIdempotentReinitNoCollision(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -1272,8 +1218,6 @@ func TestInitIdempotentReinitNoCollision(t *testing.T) {
 }
 
 func TestInitCollisionsOpenError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	dir := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -1300,8 +1244,6 @@ func TestInitCollisionsOpenError(t *testing.T) {
 }
 
 func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	// An existing permanent project can still have a malformed ADR. --force skips
 	// the probe so runInit's own p.InitCollisions call forwards that deterministic
@@ -1325,8 +1267,6 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 }
 
 func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	awf := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(awf, 0o755); err != nil {
@@ -1363,8 +1303,6 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 // interactive stdin, init exits without emitting a single prompt line and
 // without creating .awf/.
 func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -1392,8 +1330,6 @@ func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
 // refuses and rolls the scaffolded config back. (The leaves-only trim derives
 // zero agents under ADR-0081, so the selection is closure-valid.)
 func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
 	root := t.TempDir()
 	skillPath := filepath.Join(root, ".claude", "skills", filepath.Base(root)+"-tdd", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {

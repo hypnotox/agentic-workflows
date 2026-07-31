@@ -114,11 +114,20 @@ query a single version or a range.
   changes three observable behaviours. A Git invocation that previously hung indefinitely on a
   stale `index.lock`, a credential prompt, or an unreachable remote now fails with the command,
   its exit status, and Git's own stderr, including inside the pre-commit hook; the deadline is a
-  ceiling for a pathological case, not a budget any normal operation approaches. Effort and
-  managed-worktree operations, which previously inherited the ambient Git environment, no longer
-  see an inherited `GIT_DIR`, `GIT_WORK_TREE`, or credential helper, so they act on the
-  repository named on the command line rather than on whatever the environment selected. And a
-  failure that used to surface as a bare exit status now carries the invocation and stderr.
+  ceiling for a pathological case, not a budget any normal operation approaches. Effort
+  operations, which previously inherited the ambient Git environment, no longer see an
+  inherited `GIT_DIR`, `GIT_WORK_TREE`, or credential helper, so they act on the repository
+  named on the command line rather than on whatever the environment selected; managed-worktree
+  operations were already isolated and are unchanged in that respect. And a failure that used
+  to surface as a bare exit status now carries the invocation and stderr.
+
+- The working-tree cleanliness answer now honours your global gitignore. `awf audit`'s
+  uncommitted-changes rule and the worktree cleanliness refusal both read the ignore universe
+  real `git status` sees, including `core.excludesFile` from your global or system
+  configuration. A checkout dirty only with globally-ignored files (editor scratch files, OS
+  metadata) previously reported uncommitted changes and refused integration; it now passes.
+  This moves in the opposite direction to the resident tightening below, and both are
+  deliberate: the oracle answers what Git answers.
 
 - `awf effort integrate` and `awf effort worktree remove` no longer tolerate untracked files
   under `.awf/efforts/` and `.awf/worktrees/` when judging whether the invoking checkout is

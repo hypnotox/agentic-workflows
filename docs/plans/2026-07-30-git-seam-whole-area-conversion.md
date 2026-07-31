@@ -652,3 +652,52 @@ refactor(code-design): apply single-home and git-access authority
   or does without one. The entrypoint table enumerates from source rather than from a list,
   so it is unaffected by the omission; `ProjectResidentRoot` is the one entrypoint whose
   suite lives outside `internal/git`, in `cmd/awf`, beside its only consumer.
+- Terminal review settlement (2026-07-31). The review returned "do not freeze yet" with three
+  blockers, all now closed, plus concerns settled in the same pass.
+  B1, the parity claim asserted a two-sided guarantee that was one-sided: the fixture lane's
+  isolation was exhaustively pinned while the SEAM's six pins could all be deleted with the
+  whole repository green, because Git's defaults are benign under a temporary HOME and no
+  behavioural test can see the difference. `internal/git/isolation_test.go` adds the mirror
+  table, mutation-verified pin by pin, and ADR-0191 item 11 now states what two tables prove
+  rather than asserting automatic detection.
+  B2, the two walker claims read as "nothing reaches Git outside the seam" while the walkers
+  decide a narrower question. ADR item 10 now scopes both claims to Go source constructions in
+  this module and names the three things deliberately outside that scope: a Go test may exec a
+  shell script that runs git, the Pi TypeScript extensions run their own git subprocesses
+  (including a working-tree cleanliness read and a second gitfile resolution, named as
+  follow-up work rather than covered), and a test may forge `.git` internals with ordinary file
+  writes. The library prefix also broadened to the whole `github.com/go-git/` organisation,
+  which the narrower form failed to prefix-match against `go-git-fixtures`, and the seam
+  allowlist gained the load-bearing test its fixture twin already had.
+  B3, four `coverage-ignore` comments stated reachability facts that are false. Three are now
+  covered by tests rather than reworded: a shallow clone's boundary commit resolves a recorded
+  parent that was never fetched (NumParents counts hashes; resolving one is an object lookup),
+  a malformed `packed-refs` line fails the eager branch enumeration, and the context check
+  inside `blobsOfTree` makes both of its callers' error branches reachable on a healthy
+  repository. The fourth, the same parent lookup inside the range walk, keeps an escape with a
+  corrected justification: the walk fails while enumerating ancestry, before any commit reaches
+  `toCommit`.
+  Concerns: `Root` was registered against a suite that called a same-named method on the
+  fixture type and never touched the seam's, so the entrypoint table passed while proving
+  nothing; `TestWorkingPaths` now exercises it, and the table additionally requires a
+  registered suite to name its entrypoint. Six entrypoint behaviours survived mutation
+  repo-wide, including two safety properties their own doc comments assert - `BranchDelete`
+  refusing unmerged work and `MergeFastForward` refusing anything that would create a commit -
+  both now pinned and mutation-verified. `TestRangeNativeReadOperations` was a smoke test
+  wearing a contract suite's registration: its two-commit linear history could not distinguish
+  merge-base from rev-parse, a diff against base from a diff of base..head, or -U0 from -U3. It
+  now builds a fork with an intervening commit, a dirty working tree, and repository-local diff
+  configuration, which falsifies four of the five flags; `diff.mnemonicprefix` is subsumed by
+  the other two under every reachable configuration and is documented as defence rather than
+  claimed as proven.
+  Also: the two-minute deadline ceiling had three independent copies and now has one home in
+  the seam that both binaries reference; `CommandError` names a timeout or cancellation instead
+  of rendering a killed process as an unexplained "exit status -1"; the runner's "only
+  subprocess boundary" comment was false and now names its one sibling; and the changelog's
+  claim that managed-worktree operations previously inherited the ambient Git environment was
+  wrong (they were already isolated) and omitted a change in the permissive direction (the
+  cleanliness answer now honours the global gitignore), both corrected.
+- Follow-up, NOT in this effort's scope: the Pi TypeScript extensions run their own git
+  subprocesses and reimplement the gitfile resolution `internal/git` owns. Consolidating them
+  needs its own decision, because the seam is a Go package and the extensions are a different
+  runtime.

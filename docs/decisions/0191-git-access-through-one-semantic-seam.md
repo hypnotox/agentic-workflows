@@ -257,6 +257,23 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     alike are outside-internal dependencies). The false "purely through go-git"
     assertion at `cmd/awf/testmain_test.go:12` is corrected in the same pass.
 
+    Both walkers, and therefore both claims they back, are scoped to GO SOURCE
+    CONSTRUCTIONS in this module: a Git-library import path, and an `os/exec` process
+    construction naming the git binary. That is what a structural walk of the module's
+    syntax can decide, and the claims are worded to assert exactly it rather than the
+    broader "nothing reaches Git". Three things sit outside that scope deliberately and
+    are named here so no reader mistakes silence for coverage. A Go test may exec a shell
+    script that itself runs git, which is how the hook and container-harness tests work;
+    the walker sees the shell, not the git inside it. The Pi TypeScript extensions run
+    their own git subprocesses, including a working-tree cleanliness read and a second
+    implementation of the gitfile resolution this seam owns; they are a different language
+    and a different runtime, outside this decision's Go scope, and consolidating them is
+    named follow-up work rather than something these claims cover. And a test may forge
+    `.git` internals with ordinary file writes, which is a filesystem operation with no
+    Git construction to detect. None of the three is a violation of the claims as worded;
+    all three would falsify a claim worded as "no code reaches Git outside the seam",
+    which is why it is not worded that way.
+
 11. The fixture lane's environment isolation is a knowing duplicate, so it carries its own
     obligation rather than resting on a reader noticing. `testsupport-zero-internal-deps`
     forbids gitfixture from importing `internal/git`, so the native lane reimplements the
@@ -266,8 +283,15 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     failure the decision exists to prevent, and no existing mechanism can see it: the import
     ban means no compiler edge, `awf check` reads no Go symbols, and `deadcode` skips test
     packages. A `fixture-isolation-parity` claim therefore names the duplication and its
-    faithfulness obligation, backed by a test asserting the lane's full pinned set and its
-    stripping behaviour, so a divergence in either copy surfaces as a failure. One
+    faithfulness obligation, backed by an exhaustive table over EACH copy: one in
+    `internal/git` over the seam's own policy, one in the fixture over the lane's. Each
+    asserts its side's full pinned set and its stripping behaviour, so dropping or altering
+    a pin on either side fails, and adding one cannot pass without a deliberate edit naming
+    the other. Two tables are required rather than one shared assertion because the import
+    ban prevents either package from reading the other's policy, and a behavioural test
+    cannot substitute: Git's own defaults are benign under a temporary HOME, so every pin
+    can be deleted with an end-to-end suite still green, which is exactly how this gap
+    reached terminal review. One
     divergence is deliberate and stays: the seam replays the developer's
     `core.excludesFile` because it renders a working-tree oracle whose ignore universe must
     match reality, while a fixture only builds state and is correct to be stricter. The

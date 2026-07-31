@@ -228,7 +228,7 @@ func (r *Repo) Branches(ctx context.Context) (map[string]bool, error) {
 		return nil, err
 	}
 	iter, err := r.repo.Branches()
-	if err != nil { // coverage-ignore: go-git returns an iterator over the validated reference storer without a reachable failure
+	if err != nil {
 		return nil, opaqueError(err)
 	}
 	defer iter.Close()
@@ -421,19 +421,22 @@ func (r *Repo) RangeBlobs(ctx context.Context, rev string) (before, after []Inde
 	if err != nil { // coverage-ignore: a resolved commit always yields its tree
 		return nil, nil, opaqueError(err)
 	}
-	if after, err = blobsOfTree(ctx, curTree, r.prefix); err != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+	if after, err = blobsOfTree(ctx, curTree, r.prefix); err != nil {
 		return nil, nil, opaqueError(err)
 	}
 	if c.NumParents() > 0 {
 		parent, perr := c.Parent(0)
-		if perr != nil { // coverage-ignore: parent count was just checked > 0; the parent object exists
+		if perr != nil {
+			// Reachable, and not only on a corrupt repository: NumParents counts
+			// recorded parent hashes, while resolving one is an object lookup, so
+			// a shallow clone's boundary commit fails here on a healthy checkout.
 			return nil, nil, opaqueError(perr)
 		}
 		parentTree, perr := parent.Tree()
 		if perr != nil { // coverage-ignore: a valid parent commit's tree resolves
 			return nil, nil, opaqueError(perr)
 		}
-		if before, perr = blobsOfTree(ctx, parentTree, r.prefix); perr != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+		if before, perr = blobsOfTree(ctx, parentTree, r.prefix); perr != nil {
 			return nil, nil, opaqueError(perr)
 		}
 	}

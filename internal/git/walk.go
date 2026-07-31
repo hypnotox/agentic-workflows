@@ -87,7 +87,7 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 			return err
 		}
 		nc, err := toCommit(c, r.prefix)
-		if err != nil { // coverage-ignore: toCommit fails only on a corrupt object (see its own ignored branches)
+		if err != nil { // coverage-ignore: every branch toCommit can fail on is itself unreachable from a walk that already enumerated this commit's ancestry (see its own ignored branches)
 			return err
 		}
 		if r.prefix == "" || len(nc.Changes) != 0 {
@@ -156,6 +156,13 @@ func (r *Repo) RangeChangedPaths(ctx context.Context, base, head string) ([]stri
 // RangeDiffText returns unified diff text for base through head. The options
 // pin the b/ destination prefix consumed by repoaudit's parser.
 func (r *Repo) RangeDiffText(ctx context.Context, base, head string) (string, error) {
+	// The three -c pins defend against REPOSITORY-local diff configuration, which
+	// the isolated environment does not strip: a repo setting diff.noprefix or
+	// diff.dstPrefix would otherwise render a diff this function's consumer
+	// cannot parse. Two of them are individually falsifiable and pinned by the
+	// contract suite; diff.mnemonicprefix is subsumed by the other two under
+	// every configuration reachable here and is kept as defence rather than
+	// because a test distinguishes it.
 	out, err := r.runner.run(ctx,
 		"-c", "diff.noprefix=false", "-c", "diff.mnemonicprefix=false", "-c", "diff.dstPrefix=b/",
 		"diff", "--no-ext-diff", "-U0", base, head, "--", "*.go")
@@ -178,7 +185,7 @@ func toCommit(c *object.Commit, prefix string) (Commit, error) {
 	var parentTree *object.Tree
 	if c.NumParents() > 0 {
 		parent, err := c.Parent(0)
-		if err != nil { // coverage-ignore: parent count was just checked > 0; the parent object exists
+		if err != nil { // coverage-ignore: unlike the same lookup in RangeBlobs this is unreachable through a range walk, because enumerating the ancestry already failed on the absent object before any commit reached toCommit; a shallow clone errors during iteration, not here
 			return Commit{}, err
 		}
 		parentTree, err = parent.Tree()

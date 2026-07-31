@@ -21,11 +21,14 @@ import (
 // tomorrow must fail without anyone remembering the rule exists.
 
 // gitLibraryPrefixes are the import paths that reach a Git repository in
-// process. go-billy accompanies go-git as its filesystem abstraction, so a file
-// importing it alone is still reaching the backend directly.
+// process. The whole go-git organisation is covered rather than the two modules
+// in use today: go-billy is go-git's filesystem abstraction, gcfg parses
+// .git/config, and go-git-fixtures builds repositories, so each reaches the
+// backend as directly as go-git itself. Naming the organisation also closes a
+// trap in the narrower form, where "github.com/go-git/go-git/" does not prefix
+// -match "github.com/go-git/go-git-fixtures/v4".
 var gitLibraryPrefixes = []string{
-	"github.com/go-git/go-git/",
-	"github.com/go-git/go-billy/",
+	"github.com/go-git/",
 }
 
 // gitAccessFinding is one construction that reaches Git outside the seam.
@@ -192,6 +195,28 @@ func TestNoProductionGitAccessOutsideTheSeam(t *testing.T) {
 	}
 	for _, f := range findings {
 		t.Errorf("%s", f)
+	}
+}
+
+// TestSeamAllowlistEntriesAreAllLoadBearing mirrors its fixture-side twin: an
+// allowlist entry that stops shielding a real finding silently widens the hole
+// it was carved for, so each must still be doing work.
+func TestSeamAllowlistEntriesAreAllLoadBearing(t *testing.T) {
+	t.Parallel()
+	for _, entry := range seamAllowlist {
+		t.Run(entry, func(t *testing.T) {
+			t.Parallel()
+			narrowed := []string{}
+			for _, keep := range seamAllowlist {
+				if keep != entry {
+					narrowed = append(narrowed, keep)
+				}
+			}
+			findings, _ := walkGitAccess(t, false, narrowed)
+			if len(findings) == 0 {
+				t.Errorf("allowlist entry %q shields nothing; remove it rather than leave the carve-out open", entry)
+			}
+		})
 	}
 }
 
