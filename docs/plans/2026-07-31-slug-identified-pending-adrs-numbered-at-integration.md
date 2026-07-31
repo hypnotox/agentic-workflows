@@ -583,7 +583,9 @@ feat(adr-system): add awf adr number and its numbering transition
   loop (:628-637) and var collection (`internal/project/configreference.go:60`) pick it
   up. Create this repo's executable stub `.githooks/pre-merge-commit` as the one-line
   delegate `exec bash .awf/hooks/pre-merge-commit.sh "$@"` (mode 755, matching
-  `.githooks/commit-msg`). Update the rendered-payload tests for the four-payload set.
+  `.githooks/commit-msg`). Update the rendered-payload tests for the four-payload set;
+  `hook-payloads-rendered`'s existing proof marker stays on that test, which is what keeps
+  the claim backed while its prose waits for Task 6.3's deferred transaction.
 - [ ] **Task 6.2: Documentation obligations.** Update the authored sources named by
   ADR-0194 item 16: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
   carries the `slug:` key and the pending shape (keep every interpolation
@@ -620,16 +622,24 @@ feat(adr-system): add awf adr number and its numbering transition
   "pending ADR" (Phase 2) or "integration branch" (Phase 3), both of which this record
   introduces as project jargon that the doc-currency checklist asks for in the same
   change that coins it.
-- [ ] **Task 6.3: Claim mutation and batch 6.** In the
+- [ ] **Task 6.3: DEFERRED to after integration - claim mutation, batch 6, and the
+  flip.** This is NOT part of Phase 6's commit and does not gate its close. The
+  transaction is owned by the terminal-review flow: it lands only after
+  `awf-reviewing-impl` settles with zero findings and the managed worktree has been
+  integrated, which is also where this record takes its final number. In the
   rendering/singletons-and-payloads part: update `hook-payloads-rendered` (exactly four
-  payloads including pre-merge-commit; absence when disabled unchanged). Proof marker on
-  the Task 6.1 test. Append Applied batch 6 (the remainder): update
-  `hook-payloads-rendered`. Directly after it, append the
-  `Implemented` status event repeating the latest content digest (the V2 final pair;
-  0187/0189 precedent pairs the final batch and the flip in one commit, and an
-  `Implementing` record with nothing remaining is refused by
-  `internal/adr/application.go:102-105`). `./x render`.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+  payloads including pre-merge-commit; absence when disabled unchanged). Append Applied
+  batch 6 (the remainder): update `hook-payloads-rendered`. Directly after it, append the
+  `Implemented` status event repeating the latest content digest, and freeze this plan to
+  `status: Implemented` in the same transaction.
+  The three parts move together and cannot be split: a claim's prose mutation must ride
+  with the operation that authorizes it, and an `Implementing` record with nothing
+  remaining is refused by `internal/adr/application.go`. Between Phase 6's close and this
+  transaction the claim's prose still reads "exactly three payloads" while four render -
+  the window the deferred-flip contract explicitly sanctions, since it defers a final
+  batch together with exactly its claim mutations. `./x render`.
+- [ ] **Phase-close: stage, check, gate, and commit.** Tasks 6.1 and 6.2 only; the record
+  stays `Implementing` with batch 6 remaining, which is the legal state for it.
 
 ```commit
 feat(rendering): render the pre-merge-commit duplicate-identity backstop
@@ -651,9 +661,10 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - `awf upgrade` on a pre-change tree prints the `integration-branch-explicit` and
   `adr-format-v3-cutoff` lines and leaves `integrationBranch: main` visible in
   config.yaml.
-- ADR-0194's Status history shows Implementing, five Applied batches covering every
-  declared operation exactly once, and the closing Implemented flip event; `awf check`
-  accepts the final state.
+- At Phase 6's close this record shows Implementing with five Applied batches and batch 6
+  still remaining. After the deferred post-integration transaction its Status history
+  shows six Applied batches covering every declared operation exactly once and the closing
+  Implemented flip event; `awf check` accepts the final state.
 
 ## Notes
 
@@ -668,9 +679,15 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   the advisory still fires at execution time it is non-failing noise, not a task.
 - Migration `To` values are taken fresh at execution time (parallel efforts may
   consume generations first); the plan asserts methods, never counts.
-- The ADR's Implemented flip lands with the final batch in Phase 6's close (an
-  `Implementing` record with nothing remaining is an illegal state); the plan's own
-  `status: Implemented` freeze still lands in the deferred post-review transaction.
+- 2026-08-01, USER RULING: the Implemented flip happens AFTER integration, not in Phase
+  6's close. The workflow moved while this plan was in flight - `awf-reviewing-impl` step
+  8 now routes settled terminal review through worktree integration first and lands the
+  deferred flip transaction only afterwards, and `awf-subagent-driven-development` states
+  the same split. Task 6.3 is rewritten to that shape. The final batch travels with the
+  flip because an `Implementing` record with nothing remaining is illegal, and the claim
+  prose travels with them because a prose mutation needs its applied operation, so all
+  three land together in the deferred transaction alongside this plan's own status
+  freeze. Phase 6 closes with Tasks 6.1 and 6.2 only.
 - 2026-07-31, Task 1.3 finding: the landed seam (ADR-0193) already ships the branch
   entrypoint Task 3.4 planned to add - `(*Repo).CurrentBranch(ctx)` with the exact
   prescribed semantics, contract cases, registry entry, and the
