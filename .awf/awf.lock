@@ -385,7 +385,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:e0ec4da852e15f579156cbe207dbcfc68c46fa0fd1f8acd7d593216cd4185c41",
+      "outputHash": "sha256:096ad49fd38cd375402707e29dca138e2d2f96fa1f2b2fc3b56c110f9a356d93",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -423,7 +423,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:34fe8a33abaa882b7ed7d6fccda93644a16dc0b6e31e3ad74a25b00c1a5b8ced",
+      "outputHash": "sha256:f0fd2a6fa6927aa8f16b860288e151da99284d55428bfd4186709f50c13e05fe",
       "regenChecked": true
     },
     "docs/domains/config.md": {
@@ -535,8 +535,8 @@
     "docs/topics/code-design/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:d70fa12156cfd8530e07d66532d858c592a957cadc14977e7262ad24e937b03e",
-      "outputHash": "sha256:a6280af28b4166dd73ea8e37093b6bc13465d175b300e808a22c8e72c91173c7"
+      "configHash": "sha256:abbee3befa58373d306add24ef7706ff39435bc406da5a6f7aba70c029597a84",
+      "outputHash": "sha256:db7489324399bccae1842dd550fb8b4232289970a1cc3a439b5d9ee9c5fd05ea"
     },
     "docs/topics/code-design/outcome-modeling.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -567,6 +567,12 @@
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
       "configHash": "sha256:f69c93fbb56ffb145bf3e5232e4558b52f87ea94cdb98f2973ead1aa54653c49",
       "outputHash": "sha256:bc3574b25dc49a4233e92ace6bc9fd3288f40b2f767716ed5cff7bd75cc0e3cc"
+    },
+    "docs/topics/code-design/test-design.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:7b8ecfb02aadf5f7c73738b6320bbc1795ae798cd1c8e9e38c978866dba4671b",
+      "outputHash": "sha256:6ce6e8b54051f71c06ac4565c7f9768cc1b2330e07dd16d091e3a9fab87d22dd"
     },
     "docs/topics/config/configspec-and-reference.md": {
       "templateId": "topics/topic.md.tmpl",
