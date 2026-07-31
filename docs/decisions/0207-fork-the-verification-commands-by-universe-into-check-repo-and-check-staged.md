@@ -310,9 +310,9 @@ the append-only column records what the commands were called when those decision
 - update `tooling/audit-and-snapshots:commit-gate-shared-rule`
 - update `code-design/dependency-composition:dependency-composition-commit-classification`
 - update `tooling/quality-gates:prose-gate-refuses-without-git`
-- add `tooling/cli:check-disabled-child-disclosure`
 - add `rendering/sync-and-drift:staged-drift-rendered-output`
 - update `tooling/quality-gates:example-adopter-checked`
+- add `tooling/cli:check-disabled-child-disclosure`
 
 ## Consequences
 
