@@ -14,13 +14,28 @@ import (
 )
 
 // projectPackageMode is the loader mode the state-ownership scan needs: syntax
-// to walk assignments and type information to tell a *Project selector from any
+// to walk assignments and type information to tell a watched selector from any
 // other receiver with the same field name.
 const projectPackageMode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
 	packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo
 
-// loadProjectPackage loads internal/project itself, optionally overlaying one
-// file so a negative case can be committed rather than hand-mutated.
+// stateOwnershipPatterns are the packages the widened claim quantifies over:
+// the sync core and both ADR-0194 carves.
+var stateOwnershipPatterns = []string{"./internal/project", "./internal/contextq", "./internal/resident"}
+
+// watchedLongLivedTypes are each package's constructed long-lived values: a
+// field write outside the constructing function is the shape the claim
+// forbids. The conforming constructions are Loader.Open, the two ContextState
+// constructors, contextq.New, and resident.NewRoots.
+var watchedLongLivedTypes = map[string]map[string]bool{
+	"github.com/hypnotox/agentic-workflows/internal/project":  {"Project": true, "ContextState": true},
+	"github.com/hypnotox/agentic-workflows/internal/contextq": {"Query": true},
+	"github.com/hypnotox/agentic-workflows/internal/resident": {"Roots": true},
+}
+
+// loadProjectPackage loads the three state-owned packages, optionally
+// overlaying one file so a negative case can be committed rather than
+// hand-mutated.
 func loadProjectPackage(t *testing.T, overlay map[string][]byte) []*packages.Package {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -31,22 +46,29 @@ func loadProjectPackage(t *testing.T, overlay map[string][]byte) []*packages.Pac
 		Dir:     root,
 		Mode:    projectPackageMode,
 		Overlay: overlay,
-	}, "./internal/project")
+	}, stateOwnershipPatterns...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pkgs) == 0 {
-		t.Fatal("no package loaded for ./internal/project")
+	if len(pkgs) != len(stateOwnershipPatterns) {
+		t.Fatalf("loaded %d packages for %v, want %d", len(pkgs), stateOwnershipPatterns, len(stateOwnershipPatterns))
 	}
 	for _, pkg := range pkgs {
 		if len(pkg.Errors) != 0 {
 			t.Fatal(pkg.Errors[0])
 		}
+		// Every loaded package must have a watched-type entry: a pattern added
+		// without one (or a key drifting on a rename) would scan green while
+		// watching nothing, which is silent non-enforcement.
+		if len(watchedLongLivedTypes[pkg.PkgPath]) == 0 {
+			t.Fatalf("package %s is scanned but has no watched long-lived types", pkg.PkgPath)
+		}
 	}
 	return pkgs
 }
 
-// isProjectValue reports whether expr's type is Project or *Project.
+// isProjectValue reports whether expr's type is one of the watched long-lived
+// values (or a pointer to one).
 func isProjectValue(info *types.Info, expr ast.Expr) bool {
 	typ := info.TypeOf(expr)
 	if typ == nil {
@@ -56,16 +78,14 @@ func isProjectValue(info *types.Info, expr ast.Expr) bool {
 		typ = ptr.Elem()
 	}
 	named, ok := typ.(*types.Named)
-	if !ok {
+	if !ok || named.Obj().Pkg() == nil {
 		return false
 	}
-	return named.Obj().Name() == "Project" &&
-		named.Obj().Pkg() != nil &&
-		named.Obj().Pkg().Path() == "github.com/hypnotox/agentic-workflows/internal/project"
+	return watchedLongLivedTypes[named.Obj().Pkg().Path()][named.Obj().Name()]
 }
 
-// isProjectLiteral reports whether expr constructs a Project value directly,
-// as `Project{...}` or `&Project{...}`.
+// isProjectLiteral reports whether expr constructs a watched value directly,
+// as `T{...}`, `&T{...}`, or the qualified `pkg.T{...}` forms.
 func isProjectLiteral(expr ast.Expr) bool {
 	if unary, ok := expr.(*ast.UnaryExpr); ok && unary.Op == token.AND {
 		expr = unary.X
@@ -74,8 +94,19 @@ func isProjectLiteral(expr ast.Expr) bool {
 	if !ok {
 		return false
 	}
-	ident, ok := lit.Type.(*ast.Ident)
-	return ok && ident.Name == "Project"
+	name := ""
+	switch t := lit.Type.(type) {
+	case *ast.Ident:
+		name = t.Name
+	case *ast.SelectorExpr:
+		name = t.Sel.Name
+	}
+	for _, names := range watchedLongLivedTypes {
+		if names[name] {
+			return true
+		}
+	}
+	return false
 }
 
 // constructedInFunc collects the objects a function assigns from a Project
@@ -297,10 +328,14 @@ func producerCallSites(pkgs []*packages.Package) map[string][]string {
 }
 
 // TestProjectDerivedStateOwnership proves that no production function in
-// internal/project writes a *Project field outside the function that constructs
-// that value: the ADR corpus, topic corpus, and effective skill set are derived
-// by the operation that needs them and threaded to their consumers, and
-// beginInvocation no longer exists.
+// internal/project, internal/contextq, or internal/resident writes a field of
+// that package's constructed long-lived values (Project, ContextState, Query,
+// Roots) outside the function that constructs the value: the derived state is
+// threaded to its consumers, and Roots is fixed at construction. The
+// conforming constructions are Loader.Open, the two ContextState constructors
+// (Project.ContextState and StagedContextState), contextq.New, and
+// resident.NewRoots. The beginInvocation-absence assertion below is retained
+// hardening beyond the current claim body, which no longer names it.
 //
 // The scan covers package functions as well as methods, because
 // StagedContextState is a function rather than a method.
@@ -312,9 +347,10 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 			strings.Join(findings, "\n\t"))
 	}
 
-	// Clause 3: beginInvocation no longer exists. A field-write scan alone
-	// cannot see a per-invocation reset that clears state held anywhere else,
-	// so the claim's own words are asserted directly.
+	// Retained hardening: beginInvocation no longer exists. The current claim
+	// body no longer names it, but a field-write scan alone cannot see a
+	// per-invocation reset that clears state held anywhere else, so the
+	// original clause's assertion is kept.
 	if declaredFuncNames(production)["beginInvocation"] {
 		t.Error("beginInvocation is declared again; the claim says it no longer exists")
 	}
@@ -460,5 +496,27 @@ func (p *Project) mutationOverwritesWholeValue() {
 	}
 	if !wholesaleFlagged {
 		t.Error("a wholesale *p = Project{...} overwrite escaped the detector")
+	}
+
+	// The widened scope must detect a carve-side mutation too: a contextq
+	// method writing its Query field after construction is the same shape one
+	// package over, and only the widened watch list can see it.
+	contextqFixture := filepath.Join(root, filepath.FromSlash("internal/contextq/state_ownership_mutation_fixture.go"))
+	widened := loadProjectPackage(t, map[string][]byte{contextqFixture: []byte(`package contextq
+
+import "github.com/hypnotox/agentic-workflows/internal/project"
+
+func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextState) {
+	q.state = state
+}
+`)})
+	var widenedFlagged bool
+	for _, f := range projectFieldWriteFindings(widened) {
+		if strings.HasPrefix(f, "mutationReplacesStateAfterConstruction writes q.state") {
+			widenedFlagged = true
+		}
+	}
+	if !widenedFlagged {
+		t.Error("a Query field write in contextq escaped the widened detector")
 	}
 }

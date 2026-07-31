@@ -39,6 +39,7 @@ Verify: For each changed derived value, enumerate its production sites within on
 
 ### `invariant: project-derived-state-ownership`
 
-No production function in `internal/project` writes a `*Project` field outside the function that constructs that value: the ADR corpus, topic corpus, and effective skill set are derived by the operation that needs them and threaded to their consumers, and `beginInvocation` no longer exists.
+No production function in internal/project, internal/contextq, or internal/resident writes a field of that package's constructed long-lived values outside the function that constructs the value: the ADR corpus, topic corpus, effective skill set, and context state are derived by the operation that needs them and threaded to their consumers, and Roots is fixed at construction as an input to the value that owns it.
 Origin: ADR-0180
+Revised-by: ADR-0194
 Backing: test

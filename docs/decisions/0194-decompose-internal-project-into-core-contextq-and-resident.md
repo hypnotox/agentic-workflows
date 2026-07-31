@@ -315,3 +315,4 @@ audit's stale 86/47 to the verified 128/60.
 - 2026-07-31: Applied; operations: add `tooling/context-and-topic:context-query-boundary`
 - 2026-07-31: Applied; operations: add `code-design/presentation-ownership:model-owner-renders`
 - 2026-07-31: Applied; operations: add `rendering/project-output-plan:template-id-single-derivation`
+- 2026-07-31: Applied; operations: update `code-design/state-ownership:project-derived-state-ownership`

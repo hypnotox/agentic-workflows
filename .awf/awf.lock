@@ -493,8 +493,8 @@
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
       "templateHash": "sha256:26c7896fbc808c909083ceedc048ea5706a9252d32642d031bd816d7ef1cd511",
-      "configHash": "sha256:033844353d2bfa28051c42816386d47932e76dcfb131721116cc580802b1824e",
-      "outputHash": "sha256:24678535885738a85465edbb2736bdb8b05398211abc7d8e1b8e0237fba78c19"
+      "configHash": "sha256:f85e9f82bf0660b1f3150675d085ecf0d69d7433794ca771cdacc6b8ebe5967d",
+      "outputHash": "sha256:f7769589009739441cf77243eb8df629a7cacaabfe004a1743098046a2bf0359"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
@@ -553,8 +553,8 @@
     "docs/topics/code-design/state-ownership.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:50552f27edce0b2627d30ee353bdcc5a08728eda3d903eec26ad93479ab441c6",
-      "outputHash": "sha256:40e72e07e2b9a50c83931cc858e7d1d77488878f82bcb7114fff06883fcee666"
+      "configHash": "sha256:e76ca57e54259de1994191d3126bd4b83cbd1322ec3d1c0aeb27e9af028e8759",
+      "outputHash": "sha256:920831d55473cc8d93f85f4c524fab64b903d942d899f898936f81a4c03ee468"
     },
     "docs/topics/config/configspec-and-reference.md": {
       "templateId": "topics/topic.md.tmpl",
