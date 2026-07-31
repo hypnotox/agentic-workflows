@@ -740,5 +740,50 @@ func TestHasSidecar(t *testing.T) {
 }
 
 // invariant: config/configuration:config-serialization-owned
+func TestConfigSerializationFunnelOwnsEncoding(t *testing.T) {
+	// One source carrying both shapes the funnel must render identically on every
+	// path: a nested mapping (audit) holding a nested array (allowedScopes), plus a
+	// nested mapping SetMappingString can edit in place (it is total, so it leaves an
+	// absent key untouched rather than creating one).
+	const src = "prefix: ex\naudit:\n  allowedScopes:\n    - adr\nrunner:\n  awfInvokeCmd: old\n"
 
-// invariant: config/migrations-and-locks:migration-ordering
+	// The untouched nested block every src-taking editor must round-trip byte for
+	// byte. A second encoder at any other indent, or in flow style, changes it.
+	const untouched = "audit:\n  allowedScopes:\n    - adr\n"
+
+	cases := []struct {
+		name  string
+		edit  func() ([]byte, error)
+		wrote string
+	}{
+		{"SetArrayMember", func() ([]byte, error) { return SetArrayMember([]byte(src), "skills", "tdd", true) }, "skills:\n  - tdd\n"},
+		{"SetArray", func() ([]byte, error) { return SetArray([]byte(src), "targets", []string{"claude"}) }, "targets:\n  - claude\n"},
+		{"SetMappingScalar", func() ([]byte, error) { return SetMappingScalar([]byte(src), "bootstrap", "enabled", true) }, "bootstrap:\n  enabled: true\n"},
+		{"SetMappingInteger", func() ([]byte, error) { return SetMappingInteger([]byte(src), "currentState", "maxTopicsPerPath", 8) }, "currentState:\n  maxTopicsPerPath: 8\n"},
+		{"SetMappingString", func() ([]byte, error) { return SetMappingString([]byte(src), "runner", "awfInvokeCmd", "./awf") }, "runner:\n  awfInvokeCmd: ./awf\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := tc.edit()
+			if err != nil {
+				t.Fatalf("%s: %v", tc.name, err)
+			}
+			if !strings.Contains(string(got), untouched) {
+				t.Errorf("%s did not round-trip the nested block through the shared funnel:\n%s", tc.name, got)
+			}
+			if !strings.Contains(string(got), tc.wrote) {
+				t.Errorf("%s did not write %q at the funnel's two-space indent:\n%s", tc.name, tc.wrote, got)
+			}
+		})
+	}
+
+	// MarshalSkeleton is the construction half and takes no source bytes, so it is
+	// driven separately and asserted against the same expected nesting.
+	built, err := MarshalSkeleton(Skeleton{Prefix: "ex", Audit: &SkeletonAudit{AllowedScopes: []string{"adr"}}})
+	if err != nil {
+		t.Fatalf("MarshalSkeleton: %v", err)
+	}
+	if !strings.Contains(string(built), untouched) {
+		t.Errorf("MarshalSkeleton did not render the nested block at the funnel's two-space indent:\n%s", built)
+	}
+}

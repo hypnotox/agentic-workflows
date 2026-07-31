@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -989,5 +990,48 @@ func TestProjectPresent(t *testing.T) {
 	}
 	if !ProjectPresent(root) {
 		t.Fatal("tree root must be present")
+	}
+}
+
+// invariant: config/migrations-and-locks:migration-ordering
+func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
+	// The registry is the ordering contract: Upgrade walks it in slice order and
+	// skips by To, so an entry appended out of order would silently run early.
+	for i := 1; i < len(registry); i++ {
+		if registry[i].To <= registry[i-1].To {
+			t.Fatalf("registry is not strictly ascending: entry %d targets %d after %d", i, registry[i].To, registry[i-1].To)
+		}
+	}
+
+	// Selection and order, checked at points derived from the registry itself so
+	// no generation number is written into this test.
+	for _, idx := range []int{0, len(registry) / 2, len(registry) - 2} {
+		from := registry[idx].To
+		var want []string
+		for _, m := range registry {
+			if m.To > from {
+				want = append(want, m.Name)
+			}
+		}
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
+		stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), from)
+		applied, err := Upgrade(testContext(t), root, io.Discard)
+		if err != nil {
+			t.Fatalf("Upgrade from %d: %v", from, err)
+		}
+		if !slices.Equal(applied, want) {
+			t.Errorf("Upgrade from %d applied %v, want exactly the registered migrations above it, ascending: %v", from, applied, want)
+		}
+
+		// Re-running at the schema the first run reached applies nothing and exits
+		// zero, so upgrade is safe to repeat.
+		again, err := Upgrade(testContext(t), root, io.Discard)
+		if err != nil {
+			t.Errorf("re-running Upgrade from %d: %v", from, err)
+		}
+		if len(again) != 0 {
+			t.Errorf("re-running Upgrade from %d applied %v, want nothing", from, again)
+		}
 	}
 }
