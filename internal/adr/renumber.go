@@ -24,6 +24,10 @@ func RenumberPending(dir, slug string, number int) error {
 	if err != nil {
 		return fmt.Errorf("adr: read pending record %s: %w", slug, err)
 	}
+	info, err := os.Stat(from)
+	if err != nil { // coverage-ignore: the same path was read one statement earlier, so a stat failure needs a concurrent filesystem race
+		return fmt.Errorf("adr: stat pending record %s: %w", slug, err)
+	}
 	numbered := fmt.Sprintf("%04d", number)
 	oldHeading, newHeading := "# ADR-"+slug+":", "# ADR-"+numbered+":"
 	lines := strings.SplitAfter(string(data), "\n")
@@ -32,6 +36,9 @@ func RenumberPending(dir, slug string, number int) error {
 		if !strings.HasPrefix(line, oldHeading) {
 			continue
 		}
+		// Only the record's own heading, which is its first occurrence. A later
+		// match is body prose - a record about numbering quotes the pending
+		// heading form readily - and body bytes are what the digest covers.
 		lines[i] = newHeading + strings.TrimPrefix(line, oldHeading)
 		rewritten = true
 		break
@@ -40,7 +47,7 @@ func RenumberPending(dir, slug string, number int) error {
 		return fmt.Errorf("adr: pending record %s has no %q heading to renumber", slug, oldHeading)
 	}
 	to := filepath.Join(dir, numbered+"-"+slug+".md")
-	if err := os.WriteFile(to, []byte(strings.Join(lines, "")), 0o644); err != nil { // coverage-ignore: the numbered path sits beside the file just read, so a write fails only on a permission fault a test cannot trigger
+	if err := os.WriteFile(to, []byte(strings.Join(lines, "")), info.Mode().Perm()); err != nil { // coverage-ignore: the numbered path sits beside the file just read, so a write fails only on a permission fault a test cannot trigger
 		return err
 	}
 	return os.Remove(from)

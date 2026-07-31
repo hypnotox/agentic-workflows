@@ -39,6 +39,45 @@ func TestRenumberPendingRewritesNameAndHeadingOnly(t *testing.T) {
 	}
 }
 
+// TestRenumberPendingRewritesOnlyTheRecordsOwnHeading pins the rewrite to the
+// first match. A record about ADR numbering quotes the pending heading form in
+// its body readily, and a quote is prose rather than identity: the digest
+// covers those bytes, so rewriting every match would silently amend a record
+// while numbering claims to touch nothing but the name and the heading. The
+// file mode carries across too, since numbering is conceptually a rename.
+func TestRenumberPendingRewritesOnlyTheRecordsOwnHeading(t *testing.T) {
+	dir := t.TempDir()
+	pending := filepath.Join(dir, "quoting.md")
+	quote := "# ADR-quoting: A decision\n"
+	before := pendingFixture("quoting") + "\nThe pending heading form reads:\n\n```\n" + quote + "```\n"
+	testsupport.WriteFile(t, pending, before)
+	if err := os.Chmod(pending, 0o640); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := adr.RenumberPending(dir, "quoting", 218); err != nil {
+		t.Fatalf("RenumberPending: %v", err)
+	}
+	numbered := filepath.Join(dir, "0218-quoting.md")
+	got, err := os.ReadFile(numbered)
+	if err != nil {
+		t.Fatalf("read numbered record: %v", err)
+	}
+	if want := strings.Replace(before, "# ADR-quoting:", "# ADR-0218:", 1); string(got) != want {
+		t.Errorf("a body quote of the heading was rewritten:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+	if !strings.Contains(string(got), quote) {
+		t.Error("the quoted heading in the body must survive numbering verbatim")
+	}
+	info, err := os.Stat(numbered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o640 {
+		t.Errorf("numbering changed the file mode to %v", perm)
+	}
+}
+
 // TestRenumberPendingRefusals covers the two ways the rewrite seam can be
 // pointed at something it cannot renumber: a slug with no pending file, and a
 // file whose heading does not carry the slug identity form.

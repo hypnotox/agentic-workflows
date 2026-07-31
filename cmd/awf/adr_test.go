@@ -44,6 +44,35 @@ func TestRunADRNumbersAPendingRecord(t *testing.T) {
 	}
 }
 
+// TestRunADRNumberThroughTheDriver drives the real argument path rather than a
+// hand-built context: the group and its child resolve, and every trailing slug
+// arrives as a positional in the order given. Two pending records are what make
+// this falsifiable - with one, a bare invocation numbers it anyway, so the
+// arguments could go nowhere and the run would still succeed. Here the explicit
+// order is the only thing that decides which record takes 0001, and dropping
+// the positionals turns the run into the multiple-pending refusal.
+func TestRunADRNumberThroughTheDriver(t *testing.T) {
+	root := scaffoldProject(t)
+	decisions := filepath.Join(root, "docs/decisions")
+	testsupport.WriteFile(t, filepath.Join(decisions, "pending-one.md"), pendingCLIRecord)
+	testsupport.WriteFile(t, filepath.Join(decisions, "pending-two.md"),
+		strings.ReplaceAll(pendingCLIRecord, "pending-one", "pending-two"))
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "adr", "number", "pending-two", "pending-one"}, &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	if got, want := out.String(), "pending-two -> 0001\npending-one -> 0002\n"; got != want {
+		t.Errorf("driver printed %q, want %q", got, want)
+	}
+	for _, name := range []string{"0001-pending-two.md", "0002-pending-one.md"} {
+		if _, err := os.Stat(filepath.Join(decisions, name)); err != nil {
+			t.Errorf("numbered record missing: %v", err)
+		}
+	}
+}
+
 // TestRunADRRefusals covers the handler's three remaining exits: an absent or
 // unknown subcommand is CLI misuse, a tree that is no project fails at the open,
 // and an engine refusal propagates unchanged.
