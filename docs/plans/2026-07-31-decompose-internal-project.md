@@ -443,6 +443,25 @@ contents, so the reviewer executes rather than designs:
   bucketing and base-TID switch in scaffold.go) stays as found; the claim wording was narrowed
   to the proven scope instead (ADR-0194 item 6 records the reasoning). The scaffold base-TID
   switch may still fold into Phase 5's template-ID consolidation.
+- Phase 3 deviations (2026-07-31, all grounded at execution, all verified by review): (1)
+  the ContextState constructors take `context.Context` (both snapshot Git). (2) ContextState
+  carries seven fields, not the planned nine: `Cat`, `Roots`, `Targets` are consumed only
+  inside the constructors, so carrying them would be seam surface with no call site. (3) A
+  `ContextState.Eligible` field was added and `Project.eligibleCoveragePaths` deleted (its
+  only caller moved; the dead-code gate forbids keeping it); side effect, verified
+  behavior-preserving: working-tree `Uncovered` now filters by the snapshot config's
+  contextIgnore like every other path already did. (4) `ContextForOptions` and `Uncovered`
+  lost their error return - after the load half moved into the constructors, no fallible
+  step remains. (5) The pre-existing dead `contextPathSet.eligible` field was removed. (6)
+  `context_artifacts_test.go` split: five output-plan tests stayed core (renamed
+  `output_declarations_test.go`), three artifact tests moved. (7) The adapter-ownership
+  test moved into contextq (it asserts on now-unexported vocabulary). (8)
+  `internal/currentstate/legacy_absent_test.go`'s producer sentinel followed context.go to
+  contextq. (9) `Kinds` is omitted from the boundary allowlist (no production reference
+  today; extending the list is a recorded deliberate seam widening). (10) A new
+  `contextstate_test.go` retains the indexCurrentState failure-propagation case. Review
+  settlement additionally extended the boundary ban list to the command-facing moved
+  vocabulary (ContextResult and friends), closing a confirmed detector gap.
 - Phase 2 deviations (2026-07-31, all grounded at execution): (1)
   `.awf/topics/metadata/rendering/sync-and-drift.yaml` also gained `internal/resident/**`
   beyond Task 2.5's enumeration - the `touches-state` marker
