@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0197: Trim the rendered skill ceremony
@@ -181,3 +181,5 @@ Constraints and prior art:
 - 2026-07-31: Proposed
 - 2026-07-31: Implementing; content-sha256: c03278186c4502f274e5bc028a33c0c39206de39be58e1f6a236d68301afb80e
 - 2026-07-31: Applied; operations: update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`
+- 2026-07-31: Applied; operations: update `rendering/workflow-skill-templates:memory-log-consumer-coverage`
+- 2026-07-31: Implemented; content-sha256: c03278186c4502f274e5bc028a33c0c39206de39be58e1f6a236d68301afb80e

@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0196: Deduplicate the verification delivery layers
@@ -130,3 +130,4 @@ None.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implemented; content-sha256: 0d526a92ce2476883ea88e1b91af223d6a65c44cedaf19d8173caaa2abe3c67a

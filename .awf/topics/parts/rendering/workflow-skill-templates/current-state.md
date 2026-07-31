@@ -46,8 +46,9 @@ Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
 
-The shared review spine carries the consensus-adherence check: with pasted user-provenance consensus entries in the brief, a deviation from a user entry is a `user-decision` finding citing the deviating passage and carrying the "we decided X; during <phase> we found Z; recommend Y, approve?" escalation, and an entry-free brief leaves the check idle. The reviewing-adr, reviewing-plan, and reviewing-impl dispatch briefs paste user entries verbatim with their `Record:` blocks while resync stays narrowed, and the retrospective reads the observation and decision logs as primary input with recurrence extended across the effort's sessions.
+The shared review spine carries the consensus-adherence check: with pasted user-provenance consensus entries in the brief, a deviation from a user entry is a `user-decision` finding citing the deviating passage and carrying the "we decided X; during <phase> we found Z; recommend Y, approve?" escalation, and an entry-free brief leaves the check idle. The reviewing-adr, reviewing-plan, and reviewing-impl dispatch briefs paste user entries verbatim including whatever `Record:` blocks exist while resync stays narrowed, and the retrospective reads the observation and decision logs as primary input with recurrence extended across the effort's sessions.
 Origin: ADR-0186
+Revised-by: ADR-0197
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`
