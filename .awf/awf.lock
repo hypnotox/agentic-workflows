@@ -385,7 +385,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:7b15572e143dff3c057f3d8f2411eddce9be13487b3cf8d7ac9c2c47eca73b6d",
+      "outputHash": "sha256:b34303c214e7e4e232b1b2da2e29aa4ffd7fbfd5a0d588cdb698c10dbf613276",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -444,7 +444,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:626188dfdca10374c223e762703033ae296f838d5eb5525d2c63719a836c46ff",
+      "outputHash": "sha256:a33ff9e905cf4dfdda288ac215bcaa8174f87584f938794b1c9f8161ad5d5cb3",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {
@@ -631,8 +631,8 @@
     "docs/topics/rendering/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:cf52e0c38207d084a8588b68d35f209ffb6f598fe7010bce521070eee03e868f",
-      "outputHash": "sha256:f1bf341858e515cde14947d6db25e762c9a3e12cc4d053ef857a637f0d1de482"
+      "configHash": "sha256:2ee443f6f4be457c493fc49387388cc0e0a6b54fbce58a55d580cd27aa790332",
+      "outputHash": "sha256:c4a9d31c4bd7244163303561b55b78aa6b49d247c04c20c144cf788953c8be10"
     },
     "docs/topics/rendering/inplace-and-placeholders.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -679,8 +679,8 @@
     "docs/topics/rendering/sync-and-drift.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:cba8bf7cc0bf1502f0b14bed3f07f605ba0b025d3df6aeca79f93ecce3b7023e",
-      "outputHash": "sha256:d0a4c0354da8324456f7c773d3f6ca7e0aec48a7a464db0059376a2f3d5a8b69"
+      "configHash": "sha256:2956858a9e0ef9f637740f818713752a3aaf861697a205632ae17a056b597915",
+      "outputHash": "sha256:e182314674d2a563f3f6ee5a0b29acf4708511c2a51ced6865962c807dfb492f"
     },
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",

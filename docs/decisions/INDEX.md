@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
-- [ADR-0192: Topic coverage and fan-out evaluate independently of config block presence](0192-topic-coverage-and-fan-out-evaluate-independently-of-config-block-presence.md) (Implementing)
 
 ## History
 
@@ -196,3 +195,4 @@
 - [ADR-0189: Managed worktrees as the default effort execution location](0189-managed-worktrees-as-the-default-effort-execution-location.md) (Implemented)
 - [ADR-0190: Compress governed dispatch guidance with reference and shared partials](0190-compress-governed-dispatch-guidance-with-reference-and-shared-partials.md) (Implemented)
 - [ADR-0191: Replace the global state sequence with ADR-number provenance order](0191-replace-the-global-state-sequence-with-adr-number-provenance-order.md) (Implemented)
+- [ADR-0192: Topic coverage and fan-out evaluate independently of config block presence](0192-topic-coverage-and-fan-out-evaluate-independently-of-config-block-presence.md) (Implemented)

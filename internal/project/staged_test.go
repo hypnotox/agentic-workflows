@@ -121,6 +121,7 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 // contract TestCheckCurrentStateNoPolicy pins for the working tree (ADR-0192).
 // stagedHeadFiles already scopes one claim-bearing topic to internal/foo/**, so
 // eight more claimless topics take that path over the nil-receiver budget of 8.
+// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional
 func TestCheckStagedNoPolicy(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	head := stagedHeadFiles()

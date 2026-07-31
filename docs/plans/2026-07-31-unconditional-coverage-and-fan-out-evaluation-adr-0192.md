@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [0192]
-status: Proposed
+status: Implemented
 ---
 # Plan: Unconditional coverage and fan-out evaluation (ADR-0192)
 
@@ -75,10 +75,10 @@ Phase 2 is the deferred final batch. It adds `rendering/sync-and-drift:coverage-
 
   ```
   - YYYY-MM-DD: Implementing; content-sha256: <64 lowercase hex characters>
-  - YYYY-MM-DD: Applied; state-sequence: <n>; operations: update `config/configuration:severity-not-configurable`, update `config/migrations-and-locks:severity-keys-dropped`
+  - YYYY-MM-DD: Applied; operations: update `config/configuration:severity-not-configurable`, update `config/migrations-and-locks:severity-keys-dropped`
   ```
 
-  Operations appear in the ADR's declaration order and each id is in an inline code span. The `add` operation stays pending for phase 2, which is what keeps `Implementing` legal. The digest is `adr.ContentDigest`, the sha256 over exactly the five canonical sections (Context, Decision, State changes, Consequences, Alternatives Considered), each serialized as `## <name>` plus the body with trailing whitespace stripped plus one newline; it is NOT a `sha256sum` of the file. Mechanical procedure: write any 64-lowercase-hex placeholder and any state-sequence placeholder, run `./awf check`, and copy the computed digest and next state sequence from its mismatch message. Never invent a literal sequence value.
+  Operations appear in the ADR's declaration order and each id is in an inline code span. The `add` operation stays pending for phase 2, which is what keeps `Implementing` legal. The digest is `adr.ContentDigest`, the sha256 over exactly the five canonical sections (Context, Decision, State changes, Consequences, Alternatives Considered), each serialized as `## <name>` plus the body with trailing whitespace stripped plus one newline; it is NOT a `sha256sum` of the file. Mechanical procedure: write any 64-lowercase-hex placeholder, run `./awf check`, and copy the computed digest from its mismatch message. No event carries a `state-sequence:` segment: ADR-0191 removed that namespace and `awf check` reports any survivor as a blocking finding.
 
 - [ ] **Task 1.10: Regenerate.** Run `./x render`. It regenerates `docs/topics/config/configuration.md`, `docs/topics/config/migrations-and-locks.md`, `docs/glossary.md`, `docs/decisions/INDEX.md`, and updates `.awf/awf.lock` with the config-hash change. Run `./x check`; it is clean apart from the pre-existing `maxClaimsPerTopic` note for `rendering/workflow-skill-templates`, which this plan does not address.
 
@@ -111,11 +111,11 @@ Backing: test
 - [ ] **Task 2.4: Apply the final batch and flip.** In `docs/decisions/0192-...md`, set the frontmatter `status:` on line 3 to `Implemented`, then append these two lines to `## Status history`, in this order:
 
   ```
-  - YYYY-MM-DD: Applied; state-sequence: <n>; operations: add `rendering/sync-and-drift:coverage-evaluation-unconditional`
+  - YYYY-MM-DD: Applied; operations: add `rendering/sync-and-drift:coverage-evaluation-unconditional`
   - YYYY-MM-DD: Implemented; content-sha256: <64 lowercase hex characters>
   ```
 
-  The terminal `Implemented` event carries a content stamp and NO state-sequence. A V2 ADR that already has explicit `Applied` events is refused with "V2 ADR cannot mix explicit Applied events with implicit terminal sequencing" if the terminal event carries one, so adding a sequence there makes the ADR unparseable and phase 2 cannot go green. ADR-0187's landed history shows the correct shape. Use the same mechanical digest and sequence procedure as task 1.9: placeholder, `./awf check`, copy from the mismatch message. Flip this plan's `status:` to `Implemented` and record any deviation surfaced during execution in its Notes section. Run `./x render`, then `./x check`.
+  No event carries a `state-sequence:` segment; ADR-0191 removed the repository-global sequence namespace and `awf check` reports any survivor as a blocking finding. Use the same mechanical digest procedure as task 1.9: placeholder, `./awf check`, copy from the mismatch message. Flip this plan's `status:` to `Implemented` and record any deviation surfaced during execution in its Notes section. Run `./x render`, then `./x check`.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage explicitly by path after a fresh `git status --short`; run `awf check --staged` then `./x gate`; create the one phase-closing commit:
 
@@ -137,3 +137,6 @@ feat(invariants): back unconditional evaluation (0192 batch)
 - ADR-0192 item 5 requires the existing `TestCheckCurrentStateNoPolicy` to be inverted rather than supplemented. Task 1.1 does that, and deliberately leaves it markerless until phase 2; a marker cannot reference a claim that does not yet exist.
 - The `maxClaimsPerTopic` advisory note fires throughout both phases. It is out of scope here and is retired by the follow-on ADR that this work unblocks.
 - Whichever of this effort and `remove-global-state-sequence` lands first takes the next schema generation, but neither phase of this plan changes the config schema, so no generation is consumed and no collision arises from this plan.
+- **Renumbered from 0190 to 0192 by rewriting this branch's history.** Two concurrent efforts landed on main between phase 1 and integration: one took 0190 (`0190-compress-governed-dispatch-guidance-with-reference-and-shared-partials`) and one took 0191 (`0191-replace-the-global-state-sequence-with-adr-number-provenance-order`), so this effort's 0190 collided and 0191 was gone before it could be claimed. Renumbering on top of the existing commits is not expressible: `awf check --staged` refuses with "ADR-0190 violates the history-prefix rule", and both claim updates then read as provenance-only mutations with no operation behind them, because renumbering an ADR whose operations are already applied rewrites committed provenance. The branch was rewritten instead, with `git filter-branch` over all nine commits renaming the ADR and plan files, updating every reference, and correcting the affected commit subjects.
+- **Rebased rather than merged, and that was load-bearing.** Merging main in left the before-side corpus holding 0192 with 0190 and 0191 absent, which fails the ADR-contiguity check outright; the work has to sit on top of main's ADRs, not beside them. The rebase also picked up schema generation 27 via `awf upgrade`.
+- **The phase-1 Applied event lost its `state-sequence` segment.** ADR-0191 removed the repository-global sequence namespace outright, so the event that originally read `state-sequence: 107` now carries none, and tasks 1.9 and 2.4 were corrected to the current shape. That sequence would have collided too: 107 was consumed by the other 0190.
