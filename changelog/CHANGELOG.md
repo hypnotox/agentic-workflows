@@ -10,6 +10,14 @@ query a single version or a range.
 
 ### Breaking changes
 
+- `awf effort new` now creates the managed `.awf/worktrees/<slug>` checkout on `awf/<slug>` by
+  default and directs execution there; `--no-worktree` keeps the invoking checkout, `--base <ref>`
+  selects the branch base, and creation inherits the standalone add refusal surface (for example
+  an in-progress rebase or merge in the invoking checkout). Effort commands report
+  primary-root-qualified absolute memory paths outside the primary checkout, and Pi handoff
+  resolves the primary control root so it validates the effort memory from any managed worktree
+  (submodule and separate-git-dir layouts keep their rendered root).
+
 - Add the `orienting` support skill: the single home of the orientation procedure. Its grounding
   ladder is current-state first (agent guide, document-map docs, domain docs), and consults recent
   path history only when current state leaves the situation unexplained; it carries the managed
@@ -98,7 +106,6 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
-- `awf effort new` now creates the managed `.awf/worktrees/<slug>` checkout by default and directs execution there; `--no-worktree` keeps the invoking checkout, `--base <ref>` selects the branch base, and effort commands report primary-root-qualified memory paths outside the primary checkout.
 - Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
   each post-Accepted content digest, status events repeat the latest stamp, and terminal review now
   owns the final Implemented flip after findings settle. Existing records remain valid unchanged;
