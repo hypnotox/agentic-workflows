@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [194]
-status: Proposed
+status: Implemented
 ---
 # Plan: Retire the topic claim-count advisory
 
@@ -692,6 +692,15 @@ Beyond the per-phase gates, the effort is done when all of the following hold:
   site set also missed `internal/migrate/workflowtelemetry_test.go`, which pins the full
   applied-migration name list and therefore changes on ANY new generation, and the gofmt
   realignment that deleting a struct field forces on its neighbouring literal keys.
+- **A test deletion took a neighbour's markers with it.** Cutting
+  `TestCheckCurrentStateClaimBudgetAdvisory` from its `func` line forward to the next `func`
+  line also removed the comment block belonging to that next test, which carried proof markers
+  for two claims this plan does not touch. Each dropped from two backing sites to one, and
+  nothing caught it: `awf check` requires only that a test-backed claim retain at least ONE
+  marker, so the gate stayed green. Terminal review found it by marker census. When deleting a
+  Go test, cut to the last line of its own body, and census the markers in the diff.
+- **The ADR number did not change after all.** 0194 was still free on main at integration, so
+  no renumber was needed; the sibling effort holding an unmerged 0194 renumbers instead.
 - **Out of scope, worth fixing separately:** `docs/topics/tooling/git-access.md.awf-bak` is a
   stray backup file committed to main by the git-seam merge. It is tracked, `awf check` does
   not flag it, and it belongs to no phase here.

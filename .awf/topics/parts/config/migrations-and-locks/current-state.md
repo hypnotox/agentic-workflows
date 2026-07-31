@@ -21,6 +21,12 @@ The migration registry carries a relocation step that reports a project still ke
 Origin: ADR-0016
 Backing: test
 
+### `invariant: claim-budget-key-dropped`
+
+Schema generation 28 removes currentState.maxClaimsPerTopic from a config tree, announcing the removal it performs, and leaves every other configured key and its value intact. It seeds no replacement child, so a currentState block whose only remaining member was the retired key is dropped with it.
+Origin: ADR-0194
+Backing: test
+
 ### `invariant: close-enabled-set-migration`
 
 The schema-8 migration closes the enabled set additively over skill, agent, and doc requirements, drops dormant non-local doc-gated skills, and is idempotent and atomic.
