@@ -66,7 +66,7 @@ Pick the status transition, then carry the same verified effort slug and exact `
 <!-- awf:end -->
 
 <!-- awf:section procedure-gate -->
-5. **Validate the staged transaction.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass. The hook repeats the staged check as defense in depth. If either command fails, fix the cause and re-stage before retrying.
+5. **Validate the staged transaction.** Stage the complete transaction; the commit requires `awf check --staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} to pass. A wired pre-commit hook enforces both at commit time; run them manually first only in a clone without wired hooks. If either command fails, fix the cause and re-stage before retrying.
 <!-- awf:end -->
 
 <!-- awf:section commit-templates -->

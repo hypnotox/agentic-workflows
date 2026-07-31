@@ -16,6 +16,14 @@ query a single version or a range.
   this binary until `awf upgrade` runs. Topic cohesion is now an authoring and review concern:
   see the `One subject per topic` rule in the documentation standard.
 
+- Reword the staged-authority instruction across the agent guide, the adr-lifecycle,
+  executing-plans, subagent-driven-development, and writing-plans skills, the implementer
+  contract, and the plans README and template: every commit still requires the staged check and
+  the gate to pass, but a wired pre-commit hook is named as the enforcing layer and a manual run
+  before committing is instructed only for a clone without wired hooks. The unconditional
+  "run both commands manually, the hook repeats the staged check as defense in depth" model no
+  longer renders (ADR-0195).
+
 - Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
   every enabled skill, not only task skills). A local override of
   `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty

@@ -625,12 +625,12 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		{
 			name: "Pi", data: map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
 			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"allowCommits: true", "complete phase", "Stage the complete transaction"},
+			wants: []string{"allowCommits: true", "complete phase", "stages the complete transaction"},
 		},
 		{
 			name: "generic", data: data,
 			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"complete phase", "Stage the complete transaction"},
+			wants: []string{"complete phase", "stages the complete transaction"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -792,22 +792,22 @@ func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name, func(t *testing.T) {
 			out := renderSkillGolden(t, name, configured)
-			assertOrderedPhrases(t, out, "Stage the complete transaction", "`awf check --staged`", "`./x gate`", "Commit only after both commands pass", "defense in depth")
+			assertOrderedPhrases(t, out, "the complete transaction", "`awf check --staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 
 	agents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", configured)
-	assertOrderedPhrases(t, agents, "Stage the complete transaction", "`awf check --staged`", "`./x gate`", "Commit only after both commands pass", "defense in depth")
+	assertOrderedPhrases(t, agents, "the complete transaction", "`awf check --staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 
 	fallback := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}}
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name+"-fallback", func(t *testing.T) {
 			out := renderSkillGolden(t, name, fallback)
-			assertOrderedPhrases(t, out, "Stage the complete transaction", "`awf check --staged`", "the project's gate", "Commit only after both commands pass", "defense in depth")
+			assertOrderedPhrases(t, out, "the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 	fallbackAgents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", fallback)
-	assertOrderedPhrases(t, fallbackAgents, "Stage the complete transaction", "`awf check --staged`", "the project's gate", "Commit only after both commands pass", "defense in depth")
+	assertOrderedPhrases(t, fallbackAgents, "the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 }
 
 func TestExecutingPlansTemplate(t *testing.T) {
@@ -1802,7 +1802,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-		want: []string{"known clean and green baseline", "the project's gate", "defense in depth", "Sequential dispatch only, never parallel"},
+		want: []string{"known clean and green baseline", "the project's gate", "wired pre-commit hook enforces both", "Sequential dispatch only, never parallel"},
 	},
 	{
 		tmpl: "skills/writing-plans/SKILL.md.tmpl",

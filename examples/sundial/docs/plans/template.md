@@ -45,8 +45,9 @@ and green starting baseline.
   exhaustive partition assigns every affected site to the parent or exactly one helper; helpers are
   sequential and commit-disabled, helper subsets are path-disjoint, shared files remain parent-owned, and
   each helper's focused mutating commands stay confined to its assigned subset.
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction; run `awf check --staged`
-  then `./x gate`; create the one phase-closing commit:
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
+  phase-closing commit; it requires `awf check --staged` and `./x gate` to pass,
+  enforced by a wired pre-commit hook or run manually first in a clone without one:
 
 ```commit
 feat(scope): describe phase outcome

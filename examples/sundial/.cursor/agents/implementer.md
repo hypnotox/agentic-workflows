@@ -78,15 +78,14 @@ stopped report below. That report is the escalation.
 In phase-owner mode only, and only once your scope is complete and green:
 
 1. Stage the complete transaction explicitly, by path. Never stage indiscriminately.
-2. Run `awf check --staged` and confirm it reports clean.
-3. Run `./x gate` and confirm it
-   passes.
-4. Create exactly one commit, using the closing subject your task declares, only after both
-   commands pass.
-5. Confirm the working tree is clean afterwards.
+2. Create exactly one commit, using the closing subject your task declares. The commit requires
+   `awf check --staged` and `./x gate`
+   to pass: a wired pre-commit hook enforces both at commit time, and you run them manually first
+   only in a clone without wired hooks.
+3. Confirm the working tree is clean afterwards.
 
-If either command fails and you cannot resolve it inside your scope, do not commit. Return the
-stopped report.
+If either command fails and you cannot resolve the cause inside your scope, do not retry the
+commit. Return the stopped report.
 
 <!-- awf:edit return-schema: default; create .awf/agents/parts/implementer/return-schema.md to override -->
 ## What to return

@@ -34,7 +34,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning freezes at a terminal status, every post-Accepted amendment recorded as an Amended history event (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
-- **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
+- **Staged authority and green gate before every commit.** Stage the complete transaction; every commit requires `awf check --staged` and `./x gate` to pass. A wired pre-commit hook enforces both at commit time; run them manually before committing only in a clone without wired hooks.
 - **Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After any `.awf/` edit run `./x render && ./x check`; commit rendered files with their config and never hand-edit one.
 - **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `plans`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.

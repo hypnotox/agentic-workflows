@@ -32,7 +32,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.indexMd }}` is generated, never hand-edited. An ADR is history, not active authority: its meaning freezes at a terminal status, every post-Accepted amendment recorded as an Amended history event (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
-- **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
+- **Staged authority and green gate before every commit.** Stage the complete transaction; every commit requires `awf check --staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} to pass. A wired pre-commit hook enforces both at commit time; run them manually before committing only in a clone without wired hooks.
 {{- range .data.invariants }}
 {{- if eq .kind "scopes" }}
 - **Conventional Commits{{ with $.commitScopes }}, scopes {{ . }}{{ end }}.** One concern per commit; stage explicitly, no `git add -A`{{ with $.commitScopes }}; the allowed-scope list lives in `audit.allowedScopes`{{ end }}.
