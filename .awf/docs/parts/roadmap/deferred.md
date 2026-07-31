@@ -173,3 +173,42 @@ the bare form. Found in passing on 2026-07-31 while enumerating gated commands
 for the version-gate test, which had to pass a path to reach the gate at all.
 Low impact, since the usage error is clear either way, but the spec is what the
 CLI reference renders from, so the mismatch publishes a wrong arity.
+
+## The rendered pre-commit payload validates the worktree, not the staged slice
+
+A partial-staging commit whose staged subset is drift-inconsistent (a rendered,
+lock, or config hunk left unstaged while the fixing hunk sits in the worktree)
+passes a pre-commit gate that checks the worktree, and lands a broken HEAD. It
+bit this repo at commit a85bd6a and the repo-local hook was extended on
+2026-07-15 to also run `awf check` on a checkout-index slice, but the shipped
+payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
+
+A fix is feasible and language-agnostic: checkout-index to a temporary tree and
+run the pinned `awf check` there, read-only, safer than `git stash
+--keep-index`. It is deferred because it changes ADR-0048's deliberately
+minimal, inert payload contract and adds per-commit latency to catch a
+power-user footgun (adopters who stage everything never hit it), so it needs
+its own ADR. The user chose repo-local-now, standard-level-recorded on
+2026-07-15.
+
+## Live-agent outcome evals
+
+The deterministic harness-integrity half shipped as ADR-0053 and ADR-0054: a
+fixture-based eval suite that pins chain handoffs and skill parity without
+executing an agent. The other half, live-agent outcome evals over a golden-task
+corpus (ADR-0017's original framing), stays deferred as cost-prohibitive; the
+field is choking on exactly that cost, which is why the deterministic in-lane
+variant was built instead. Revisit only with a concrete budget and a scoring
+harness design.
+
+## Partial-amendment back-pointer check
+
+When an ADR body cites another ADR's specific Decision item (a partial
+amendment), the cited ADR's `related:` should name the citing ADR, or the
+amendment is invisible from the amended side. The promotion trigger has fired:
+recorded misses at ADR-0065 (missed pointer to ADR-0079) and ADR-0093 (missed
+pointer to ADR-0024), each caught only in retrospective. Deferred because the
+rung is expensive: a detection heuristic over citation prose, tests at the 100%
+floor, and false-positive risk on citations that do not amend. Worth its own
+focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
+the natural shape of the fix.
