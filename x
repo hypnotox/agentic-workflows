@@ -112,7 +112,7 @@ case "$cmd" in
   pi-test)
     action="${1:-run}"
     if [ "$#" -gt 1 ]; then
-      echo "usage: ./x pi-test <run|stop|reset>" >&2
+      echo "usage: ./x pi-test <run|reset>" >&2
       exit 2
     fi
     tools/pi-extension-test/container.sh "$action"
@@ -149,7 +149,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|render|check|context|pi-test <run|stop|reset>|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|render|check|context|pi-test <run|reset>|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

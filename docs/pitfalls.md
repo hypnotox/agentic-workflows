@@ -79,37 +79,37 @@ feature is gated on the block being present, that silently disables it. And
 collapsed block afterwards relocates it: seed the surviving key before the removals
 instead.
 
-## The pi-extension container test races concurrent git activity
+## Three pi-extension lane flakes that ADR-0195 removed, and what they mean now
 
 _Domains: tooling_
 
-One `./x gate` run during the ADR-0155 effort failed in the pi-extension-test lane with
-tsc reporting every listed input file missing under /workspace/repo, while the same gate
-passed clean immediately before and after. The lane's container.sh copies the checkout
-(`cp -a /source/. /workspace/repo/`) and a concurrent session's git operations mid-copy
-can produce a partial tree, so the compiler sees a file list whose members vanished. In a
-shared checkout, treat a pi-extension lane failure whose errors are missing-file TS6053
-lines under /workspace/repo as this race: rerun the gate before diagnosing, and only
-investigate if the failure reproduces on a quiet tree.
+Until ADR-0195 the lane copied the whole repository root into its container and reused one
+long-lived container per checkout path, which produced three flake classes that a shared
+checkout hit repeatedly. All three are now structurally impossible, so this entry is kept
+inverted: if you see one of these signatures today, it is NOT the old race and rerunning
+will not clear it.
 
-The race also surfaces as module resolution failures rather than TS6053, so match on the
-failure class and not that one signature. A 2026-07-26 pre-commit run failed with
-`Cannot find module './languages/sql'` out of a nested node_modules, `Cannot find module`
-for two test files that were present on disk, and one invariant reporting a degraded
-resolution status, while a standalone `./x gate` passed immediately before and again
-immediately after. Missing-file and missing-module errors are the tell either way;
-assertion failures are not.
+Missing-file TS6053 errors under /workspace/repo came from `cp -a /source/. /workspace/repo/`
+racing a concurrent session's `.git/index.lock`, leaving the compiler a file list whose
+members had vanished. The copy no longer includes `.git` or anything else the suite does
+not compile.
 
-A third class does present as an assertion failure, so the "assertion failures are not
-the tell" rule above is necessary but not sufficient. `TestPiRealRuntimeSmoke`
-(`internal/project/target_test.go`) shells out to `./x pi-test run`, the same container
-lane the gate runs directly, so `go test ./...` and a concurrent session's gate contend
-for one container. During ADR-0179 Part B this produced three distinct signatures across
-one session: `generated Pi runtime smoke failed: exit status 1`, a run reporting 0%
-TypeScript coverage against a 100% threshold, and one `find: .pi/extensions: No such file
-or directory` while a concurrent render was mid-prune. Each time the lane passed standalone
-immediately after. Before diagnosing any of these, run `tools/pi-extension-test/container.sh
-run` and `go test ./internal/project/ -run TestPiRealRuntimeSmoke` alone on a quiet tree.
+`Cannot find module` failures out of a nested node_modules were misattributed to that same
+race for a long time. They were a different defect: the copy dragged in the untracked host
+`tools/pi-extension-test/node_modules`, which landed nearer the test files than the
+repository-root symlink and so won module resolution against the image's pinned tree. The
+lane no longer copies it, and dependencies now resolve from the image only.
+
+Assertion-shaped failures came from `TestPiRealRuntimeSmoke` (`internal/project/target_test.go`),
+which shells out to `./x pi-test run`, contending with a concurrent gate over one shared
+container: `generated Pi runtime smoke failed: exit status 1`, a run reporting 0% TypeScript
+coverage against a 100% threshold, and `find: .pi/extensions: No such file or directory`
+during a concurrent render. Each run now gets its own container, so there is nothing to
+contend over.
+
+What remains legal under concurrency is two cold gates building the same image tag at once.
+Docker tolerates it: both succeed, the last tag write wins, and the layer cache makes the
+second cheap.
 
 ## A claim must not out-claim the filter its own command applies
 
