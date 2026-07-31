@@ -348,7 +348,7 @@
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:b38a2ab7ef8d330e0149dc7e38d6aaa4d3c9c9f483bcd4c66439385dc229405d",
       "configHash": "sha256:c008835285743e677be414300aac200754de6f83a1bb0795bed5edba6e82503f",
-      "outputHash": "sha256:cd85c7a485542e5769f48d67be5d7898b2b615ebe08838cf011d697fb307e096"
+      "outputHash": "sha256:dfc96ec65c5cecca360eb07469ce9ee4ac12062632241bd73c009f9bb1177e38"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -505,8 +505,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:16145ef08933f78f0d0a778a2e685c3998ad03bcc2f3b03818add98c576d455b",
-      "outputHash": "sha256:b70543c6e672c778d9188df099d4718ab1fa8df43bb9fff7952c83269fce26d6"
+      "configHash": "sha256:7f7fa9ef2caf6a9fc3744a9fbf8c0717107ff0aa3e36866dc03dd873e62d8b2a",
+      "outputHash": "sha256:362cc52b235d4c3ebace08ded3287840e7dbdb26b2bcddf5425783cbde615aa5"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",

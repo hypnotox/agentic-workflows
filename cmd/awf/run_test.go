@@ -268,6 +268,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "list_add.go", owner: "toggle", name: "runSync"}:                      2,
 		{file: "new.go", owner: "newLocal", name: "runSync"}:                         1,
 		{file: "upgrade.go", owner: "runUpgrade", name: "runSync"}:                   1,
+		{file: "adr.go", owner: "runADR", name: "project.Open"}:                      1,
 		{file: "audit.go", owner: "runAudit", name: "project.Open"}:                  1,
 		{file: "check.go", owner: "runCheck", name: "project.Open"}:                  1,
 		{file: "check.go", owner: "runCheckDrift", name: "project.Open"}:             1,

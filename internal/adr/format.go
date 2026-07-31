@@ -218,6 +218,14 @@ func HistoryTransitionValid(before, after ADR) bool {
 	return false // coverage-ignore: every legal V2 transition target is handled by the closed switch
 }
 
+// HistoriesEqual reports whether a pair's Status history is byte-identical.
+// The numbering transition takes this rather than either append-tolerant
+// variant: numbering touches no history event, so the pair's history must not
+// move at all (ADR-0194 item 9).
+func HistoriesEqual(before, after ADR) bool {
+	return historiesEqual(before.History, after.History)
+}
+
 func historiesEqual(a, b []HistoryEvent) bool {
 	return slices.EqualFunc(a, b, func(x, y HistoryEvent) bool {
 		return x.Kind == y.Kind && x.Date == y.Date && x.Status == y.Status &&

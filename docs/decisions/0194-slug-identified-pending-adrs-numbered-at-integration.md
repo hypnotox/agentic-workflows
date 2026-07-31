@@ -305,3 +305,4 @@ reference surface is accepted.
 - 2026-07-31: Amended; content-sha256: 744159e07f2ef02066618193ae36e73ddb2bc8757a3b54488a765f70e09dd25f
 - 2026-07-31: Applied; operations: update `adr-system/adr-lifecycle:corpus-parsed-once`, update `adr-system/adr-lifecycle:adr-new-no-overwrite`
 - 2026-07-31: Applied; operations: update `adr-system/plan-artifacts:plan-adr-link-resolved`
+- 2026-07-31: Applied; operations: add `adr-system/adr-lifecycle:numbering-transition-mode`, add `adr-system/adr-lifecycle:adr-number-immutable`

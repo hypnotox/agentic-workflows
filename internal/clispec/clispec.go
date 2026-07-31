@@ -211,6 +211,23 @@ Manage the fixed .awf/worktrees/<slug> checkout and awf/<slug> branch without st
 		},
 	},
 	{
+		Name: "adr", Summary: "ADR lifecycle operations", MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf adr <subcommand>
+
+Perform an ADR lifecycle operation that the corpus, not the author, owns.
+`,
+		Children: []Command{
+			{Name: "number", Summary: "Number pending ADRs at integration", MinPos: 0, MaxPos: -1,
+				HelpBody: `Usage: awf adr number [<slug>...]
+
+Number pending ADRs after merging the integration branch in and before merging
+back. Bare invocation numbers a single pending ADR; several pending ADRs require
+an explicit list naming every pending slug, in the intended add-before-revise
+order.
+`},
+		},
+	},
+	{
 		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)",
 		MaxPos: 1, Gating: Gated,
 		HelpBody: `Usage: awf list [<kind>]

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -68,17 +67,13 @@ func CheckPair(before, after Universe, mode TransitionMode) []Finding {
 // checkTransitions enforces frozen content, stable-history prefix preservation,
 // and the format-specific event shape for every governed record pair.
 func checkTransitions(before, after []adr.ADR, mode TransitionMode) []Finding {
-	beforeByNum := byNumber(before)
-	afterByNum := byNumber(after)
+	beforeByKey := byPairKey(before)
+	afterByKey := byPairKey(after)
 	var findings []Finding
 	for _, b := range before {
 		if b.IsGoverned() {
-			if _, ok := afterByNum[b.Number]; !ok {
-				marker := "current-state-v1"
-				if b.IsV2() {
-					marker = "current-state-v2"
-				}
-				findings = append(findings, Finding{fmt.Sprintf("%s ADR-%s was deleted across this transition", marker, b.Number)})
+			if _, ok := afterByKey[pairKey(b)]; !ok {
+				findings = append(findings, Finding{fmt.Sprintf("%s ADR-%s was deleted across this transition", adr.FormatMarker(b.Format), b.Identity())})
 			}
 		}
 	}
@@ -86,33 +81,53 @@ func checkTransitions(before, after []adr.ADR, mode TransitionMode) []Finding {
 		if !a.IsGoverned() {
 			continue
 		}
-		b, ok := beforeByNum[a.Number]
+		b, ok := beforeByKey[pairKey(a)]
 		if !ok || !b.IsGoverned() {
 			continue
 		}
 		if b.Format != a.Format {
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed governed format across this transition", a.Number)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed governed format across this transition", a.Identity())})
+			continue
+		}
+		if b.Number != "" && b.Number != a.Number {
+			// Slug pairing makes a renumber or an un-numbering visible as one
+			// pair instead of a delete plus an add, so the number-immutability
+			// rule has to be stated here (ADR-0194 item 12).
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed its assigned number to ADR-%s across this transition; an assigned ADR number never changes", b.Number, a.Identity())})
 			continue
 		}
 		if !adr.FrozenContentEqual(b, a) {
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after the record froze", a.Number)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after the record froze", a.Identity())})
+		}
+		if isNumberingPair(b, a) {
+			// The sanctioned numbering transition permits the number, filename,
+			// and heading gain and nothing else about the record, so its status
+			// and Status history are compared for byte equality rather than
+			// through either append-tolerant variant (ADR-0194 item 11).
+			if !adr.HistoriesEqual(b, a) || !b.HasSameStatus(a) {
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the numbering-transition rule: numbering pending ADR-%s must leave its status and Status history byte-identical", a.Number, b.Slug)})
+			}
+			continue
 		}
 		if !historyTransitionValid(b, a, mode) {
 			shape := "Status history must remain equal at the same status or append exactly one entry for a legal transition"
-			if a.IsV2() {
+			if a.HasV2Semantics() {
 				shape = "prior events must remain an exact prefix and the transition must append the required status/Applied event shape"
 			}
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the history-prefix rule: %s", a.Number, shape)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the history-prefix rule: %s", a.Identity(), shape)})
 		}
 		if !b.HasSameStatus(a) && !adr.TransitionLegal(b.Status, a.Status, a.Format) {
-			marker := "current-state-v1"
-			if a.IsV2() {
-				marker = "current-state-v2"
-			}
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal %s transition", a.Number, b.Status, a.Status, marker)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal %s transition", a.Identity(), b.Status, a.Status, adr.FormatMarker(a.Format))})
 		}
 	}
 	return findings
+}
+
+// isNumberingPair reports whether a pair is the sanctioned numbering shape: the
+// before record is pending and the after record is the same slug carrying its
+// assigned number (ADR-0194 item 11).
+func isNumberingPair(before, after adr.ADR) bool {
+	return before.IsPending() && after.Number != ""
 }
 
 // pairOp is one operation an ADR reaching Implemented across the pair declares
@@ -133,6 +148,7 @@ type pairOp struct {
 // operation are both surfaced.
 func checkMutations(before, after Universe, mode TransitionMode) []Finding {
 	ops, dups, rejected, batchFindings := pairOps(before.ADRs, after.ADRs, mode)
+	renames := numberingSubstitutions(before.ADRs, after.ADRs)
 	beforeClaims := claimMap(before.Topics)
 	afterClaims := claimMap(after.Topics)
 
@@ -161,7 +177,7 @@ func checkMutations(before, after Universe, mode TransitionMode) []Finding {
 					findings = append(findings, Finding{fmt.Sprintf("claim %s has only dominated updates in this transition, so it must stay absent", id)})
 				}
 			} else {
-				findings = append(findings, checkUpdate(op.adr, id, bcl, acl, hasBefore, hasAfter, op.updaters...)...)
+				findings = append(findings, checkUpdate(op.adr, id, bcl, acl, hasBefore, hasAfter, renames, op.updaters)...)
 			}
 		case hasOp && op.verb == opNetNoop:
 			// The chain both added and removed the claim, so the pair must show
@@ -174,7 +190,7 @@ func checkMutations(before, after Universe, mode TransitionMode) []Finding {
 			// Its chain already produced a diagnosis; a second, contradictory
 			// unmatched-mutation finding would only obscure it.
 		default:
-			findings = append(findings, checkUnmatchedMutation(after.ADRs, id, bcl, acl, hasBefore, hasAfter)...)
+			findings = append(findings, checkUnmatchedMutation(after.ADRs, id, bcl, acl, hasBefore, hasAfter, renames)...)
 		}
 	}
 	return findings
@@ -186,8 +202,11 @@ func checkMutations(before, after Universe, mode TransitionMode) []Finding {
 const opNetNoop adr.OpVerb = "net-noop"
 
 type appendedBatch struct {
-	adr      string
-	adrNum   int
+	adr string
+	// order is the owning record's provenance rank: its number when numbered,
+	// and a rank above every number while pending, matching the order numbering
+	// will in fact assign it (ADR-0194 item 10).
+	order    int
 	batchIdx int
 	ops      []adr.Operation
 }
@@ -196,7 +215,7 @@ type appendedBatch struct {
 // in authored mode and cross-batch target uniqueness; cross-ADR order is
 // ascending ADR number then intra-ADR history position (ADR-0191).
 func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, []string, map[string]bool, []Finding) {
-	beforeByNum := byNumber(before)
+	beforeByKey := byPairKey(before)
 	var batches []appendedBatch
 	var findings []Finding
 	for _, a := range after {
@@ -208,28 +227,27 @@ func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, [
 			continue
 		}
 		beforeCount := 0
-		if b, ok := beforeByNum[a.Number]; ok && b.IsGoverned() {
+		if b, ok := beforeByKey[pairKey(a)]; ok && b.IsGoverned() {
 			beforeBatches, beforeErr := b.ApplicationBatches()
 			if beforeErr == nil {
 				beforeCount = len(beforeBatches)
 			}
 		}
 		if len(afterBatches) < beforeCount {
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s deleted a previously applied batch", a.Number)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s deleted a previously applied batch", a.Identity())})
 			continue
 		}
 		added := afterBatches[beforeCount:]
 		if len(added) > 1 && mode == AuthoredCommit {
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Number, len(added))})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Identity(), len(added))})
 		}
-		num, _ := strconv.Atoi(a.Number) // parsed ADR numbers always match FilenameRe
 		for j, batch := range added {
-			batches = append(batches, appendedBatch{adr: a.Number, adrNum: num, batchIdx: beforeCount + j, ops: batch.Operations})
+			batches = append(batches, appendedBatch{adr: a.Identity(), order: adr.IdentityOrder(a.Identity()), batchIdx: beforeCount + j, ops: batch.Operations})
 		}
 	}
 	sort.SliceStable(batches, func(i, j int) bool {
-		if batches[i].adrNum != batches[j].adrNum {
-			return batches[i].adrNum < batches[j].adrNum
+		if batches[i].order != batches[j].order {
+			return batches[i].order < batches[j].order
 		}
 		return batches[i].batchIdx < batches[j].batchIdx
 	})
@@ -356,17 +374,71 @@ func removedInUniverse(records []adr.ADR, id string) bool {
 	return false
 }
 
+// numberingSubstitutions maps each slug numbered across this transition to the
+// number it took: exactly the provenance rewrite ADR-0194 item 9 sanctions. It
+// is empty for every transition that numbers nothing, which is what keeps the
+// byte-exact provenance rules in force everywhere else.
+func numberingSubstitutions(before, after []adr.ADR) map[string]string {
+	afterByKey := byPairKey(after)
+	renames := map[string]string{}
+	for _, b := range before {
+		if !b.IsPending() {
+			continue
+		}
+		if a, ok := afterByKey[pairKey(b)]; ok && isNumberingPair(b, a) {
+			renames[b.Slug] = a.Number
+		}
+	}
+	return renames
+}
+
+// numberedProvenance rewrites a claim's authored provenance the way numbering
+// does - each entry naming a slug numbered in this transition becomes that
+// record's number, and a touched Revised-by list is canonicalized to the
+// duplicate-free ascending order ADR-0191 requires - and reports whether any
+// entry moved. A claim citing nothing numbered here is returned untouched, so
+// the caller applies the ordinary rules to it.
+func numberedProvenance(c topic.Claim, renames map[string]string) (topic.Claim, bool) {
+	substituted := false
+	if number, renamed := renames[c.Origin]; renamed {
+		c.Origin, substituted = number, true
+	}
+	revised := slices.Clone(c.RevisedBy)
+	touched := false
+	for i, entry := range revised {
+		if number, renamed := renames[entry]; renamed {
+			revised[i], touched, substituted = number, true, true
+		}
+	}
+	if touched {
+		unique := make([]string, 0, len(revised))
+		for _, entry := range revised {
+			if !slices.Contains(unique, entry) {
+				unique = append(unique, entry)
+			}
+		}
+		slices.SortStableFunc(unique, func(x, y string) int { return adr.IdentityOrder(x) - adr.IdentityOrder(y) })
+		revised = unique
+	}
+	c.RevisedBy = revised
+	return c, substituted
+}
+
 // checkUpdate validates a declared update: the claim is present on both sides, a
 // canonical non-provenance/non-formatting field changed, the Origin is
 // preserved, and Revised-by grew to the duplicate-free union of the prior list
-// and the updating ADRs (ADR-0191).
-func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAfter bool, updaters ...string) []Finding {
+// and the updating ADRs (ADR-0191). When the transition also numbers a record
+// the before claim cites, the preserve-Origin and Revised-by rules are applied
+// to the substituted before claim, which is how the sanctioned numbering
+// transition composes with a declared update in the same pair (ADR-0194 item 11).
+func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAfter bool, renames map[string]string, updaters []string) []Finding {
 	if len(updaters) == 0 {
 		updaters = []string{adrNum}
 	}
 	if !hasBefore || !hasAfter {
 		return []Finding{{fmt.Sprintf("ADR-%s updates claim %s, which is not present on both sides of this transition", adrNum, id)}}
 	}
+	before, _ = numberedProvenance(before, renames)
 	var out []Finding
 	if claimMateriallyEqual(before, after) {
 		out = append(out, Finding{fmt.Sprintf("ADR-%s updates claim %s, but no canonical field changed (a provenance- or formatting-only edit is not an update)", adrNum, id)})
@@ -383,19 +455,49 @@ func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAft
 // checkUnmatchedMutation reports a claim add/removal/material change that no
 // operation in this transition accounts for. A claim first appearing with a
 // legacy Origin is the closed migration bootstrap and needs no add operation.
-func checkUnmatchedMutation(records []adr.ADR, id string, before, after topic.Claim, hasBefore, hasAfter bool) []Finding {
+//
+// A claim whose authored provenance cites a record numbered in this transition
+// takes the sanctioned numbering contract instead (ADR-0194 item 11): its
+// permitted delta is exactly the slug-to-number substitution with each touched
+// list canonicalized, compared in order, and it declares no operation because
+// numbering appends no application batch. This is the only rule that admits a
+// provenance change with no update operation behind it, so it is stated
+// exactly rather than by loosening the general one.
+func checkUnmatchedMutation(records []adr.ADR, id string, before, after topic.Claim, hasBefore, hasAfter bool, renames map[string]string) []Finding {
+	// The classification reaches here only for an ID some claim map holds, so
+	// absence on one side means presence on the other and the two guards below
+	// leave exactly the both-present case to fall through.
 	switch {
-	case !hasBefore && hasAfter:
+	case !hasBefore:
 		if legacyOrigin(records, after.Origin) {
 			return nil
 		}
 		return []Finding{{fmt.Sprintf("claim %s was added with no ADR add operation in this transition", id)}}
-	case hasBefore && !hasAfter:
+	case !hasAfter:
 		return []Finding{{fmt.Sprintf("claim %s was removed with no ADR remove operation in this transition", id)}}
-	case hasBefore && hasAfter && (!claimMateriallyEqual(before, after) || before.Origin != after.Origin || !sameRevisedBySet(before.RevisedBy, after.RevisedBy)):
+	}
+	if numbered, substituted := numberedProvenance(before, renames); substituted {
+		if claimMateriallyEqual(before, after) && numbered.Origin == after.Origin && slices.Equal(numbered.RevisedBy, after.RevisedBy) {
+			return nil
+		}
+		return []Finding{{fmt.Sprintf("claim %s must carry the numbering substitution exactly: Origin ADR-%s, Revised-by %s, and no other change", id, numbered.Origin, provenanceList(numbered.RevisedBy))}}
+	}
+	if !claimMateriallyEqual(before, after) || before.Origin != after.Origin || !sameRevisedBySet(before.RevisedBy, after.RevisedBy) {
 		return []Finding{{fmt.Sprintf("claim %s was changed with no ADR update operation in this transition", id)}}
 	}
 	return nil
+}
+
+// provenanceList renders a Revised-by expectation in the authored spelling.
+func provenanceList(entries []string) string {
+	if len(entries) == 0 {
+		return "(none)"
+	}
+	out := make([]string, len(entries))
+	for i, entry := range entries {
+		out[i] = "ADR-" + entry
+	}
+	return strings.Join(out, ", ")
 }
 
 // revisedByExtension validates that Revised-by grew to the duplicate-free union
@@ -453,11 +555,25 @@ func claimMateriallyEqual(a, b topic.Claim) bool {
 		slices.Equal(a.References, b.References)
 }
 
-// byNumber indexes records by their ADR number.
-func byNumber(records []adr.ADR) map[string]adr.ADR {
+// pairKey is the identity a transition pairs two universes' records on: the
+// retained slug whenever the record carries one, and the number otherwise. It
+// is deliberately not adr.ADR.Identity, which prefers the number: a pending
+// record and the numbered successor numbering produced are the same record, and
+// only the slug is stable across that rename. Keying on the number would read
+// the rename as a delete plus an add, and would collide every pending record on
+// the empty number (ADR-0194 item 11).
+func pairKey(a adr.ADR) string {
+	if a.Slug != "" {
+		return a.Slug
+	}
+	return a.Number
+}
+
+// byPairKey indexes records by their transition pairing key.
+func byPairKey(records []adr.ADR) map[string]adr.ADR {
 	out := make(map[string]adr.ADR, len(records))
 	for _, a := range records {
-		out[a.Number] = a
+		out[pairKey(a)] = a
 	}
 	return out
 }

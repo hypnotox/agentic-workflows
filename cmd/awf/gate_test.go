@@ -232,6 +232,8 @@ var gatedProbes = map[string][]string{
 	"effort finish":    {"awf", "effort", "finish", "gate-probe"},
 	"effort worktree":  {"awf", "effort", "worktree", "add", "gate-probe"},
 	"effort integrate": {"awf", "effort", "integrate", "gate-probe"},
+	"adr":              {"awf", "adr", "number"},
+	"adr number":       {"awf", "adr", "number"},
 	"list":             {"awf", "list"},
 	"config":           {"awf", "config"},
 	"context":          {"awf", "context", "README.md"},

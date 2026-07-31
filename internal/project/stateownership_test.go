@@ -339,13 +339,21 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 		}
 	}
 
-	// Clause 2, at the level of the values themselves: each producer is called
-	// from exactly one production function, deriveOperationState. Counting the
+	// Clause 2, at the level of the values themselves: a producer is called only
+	// from a function that derives on its own operation's behalf. Counting the
 	// aggregate alone would miss a consumer calling a producer directly.
+	//
+	// numberingCorpus is the one entry beside the aggregate deriver, and only
+	// for the ADR corpus. Numbering needs a duplicate-identity corpus as data
+	// rather than as an abort (ADR-0194 item 12), which is the opposite of what
+	// deriveOperationState owes every other consumer, so it cannot enter
+	// through it. The set is pinned exactly, so a consumer re-deriving a value
+	// that was threaded to it still fails here.
+	producerOwners := map[string]bool{"deriveOperationState": true, "numberingCorpus": true}
 	for producer, owners := range producerCallSites(production) {
 		for _, owner := range owners {
-			if owner != "deriveOperationState" {
-				t.Errorf("%s calls %s directly; only deriveOperationState produces the threaded values", owner, producer)
+			if !producerOwners[owner] {
+				t.Errorf("%s calls %s directly; only an operation deriving on its own behalf produces the threaded values", owner, producer)
 			}
 		}
 	}

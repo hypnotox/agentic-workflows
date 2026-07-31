@@ -446,7 +446,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
 
 **Execution mode: subagent-driven.** Baseline: clean tree, green gate, clean check.
 
-- [ ] **Task 5.1: Command surface.** In `internal/clispec/clispec.go` add the top-level
+- [x] **Task 5.1: Command surface.** In `internal/clispec/clispec.go` add the top-level
   group after the `effort` shape (:169-212):
   `{Name: "adr", Summary: "ADR lifecycle operations", MaxPos: 0, Gating: Gated,
   Children: []Command{{Name: "number", Summary: "Number pending ADRs at integration",
@@ -464,7 +464,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   duplicate error reaches the engine's refusal logic instead of aborting the open.
   `runADR` prints the engine's report to stdout. The gated-command enumeration regenerates on
   render with no manual doc edit.
-- [ ] **Task 5.2: Numbering engine.** New `internal/project/adrnumber.go`:
+- [x] **Task 5.2: Numbering engine.** New `internal/project/adrnumber.go`:
   `func (p *Project) NumberPendingADRs(slugs []string) (NumberingReport, error)`.
   Behavior, in order:
   1. Load the corpus through the corpus seam (`corpus-parsed-once` binds), catching
@@ -519,7 +519,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   slug link still resolves. Phase 4 shipped that claim's "Numbering never rewrites a
   plan" sentence, and this is the only test that can falsify it - ADR-0194 spent its one
   operation on the claim in batch 4 and cannot amend the sentence again.
-- [ ] **Task 5.3: Slug-paired numbering transition validation.** In
+- [x] **Task 5.3: Slug-paired numbering transition validation.** In
   `internal/currentstate/transition.go`: the pairing key (`byNumber`, :456-457, and
   `pairOps`' lookups) becomes identity-based - a record's pair key is its `Slug` when
   non-empty (V3), else its `Number` - so a pending record pairs with its numbered
@@ -545,7 +545,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   the pair fails; a touched `Revised-by:` list left non-canonical fails;
   body-content delta fails; Origin substitution without the paired numbering fails;
   pending deletion fails.
-- [ ] **Task 5.4: Claim mutations and batch 5.** In the adr-lifecycle part: add
+- [x] **Task 5.4: Claim mutations and batch 5.** In the adr-lifecycle part: add
   `numbering-transition-mode` (staged validation admits the pending-to-numbered
   slug-paired shape permitting exactly the ADR's item-9 effects; the command never
   preconditions on a green check) and `adr-number-immutable` (a number once assigned
@@ -563,7 +563,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   Append Applied batch 5, declaration-ordered:
   add `numbering-transition-mode`, add `adr-number-immutable` (two operations).
   `./x render`.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 feat(adr-system): add awf adr number and its numbering transition
