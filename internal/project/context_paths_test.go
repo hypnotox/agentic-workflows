@@ -152,7 +152,7 @@ func TestContextFacetsAndGroupKey(t *testing.T) {
 	a.Domains = []DomainRef{{Name: "d", CurrentState: "docs/d.md"}}
 	a.Topics = []ContextPathTopic{{ID: "d/t"}}
 	a.Relationships = ContextRelationships{State: []string{"d/t:r"}, Touches: []string{}, Proofs: []string{"d/t:i"}}
-	a.ADR = &ADRArtifactContext{Number: "0001", Status: "Implementing", Operations: []ADROperationContext{{Operation: "add", Claim: "d/t:r", Progress: "remaining", ClaimState: "not-yet-current", StateSequence: 2}}}
+	a.ADR = &ADRArtifactContext{Number: "0001", Status: "Implementing", Operations: []ADROperationContext{{Operation: "add", Claim: "d/t:r", Progress: "remaining", ClaimState: "not-yet-current"}}}
 	_ = contextGroupKey(a, nil)
 	b := a
 	b.Warnings = []ContextWarning{WarningGlobLiteral}

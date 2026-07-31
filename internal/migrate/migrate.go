@@ -62,6 +62,7 @@ var registry = []Migration{
 	{To: 24, Name: "explorer-grounding-closure", Apply: applyCloseEnabledSet},
 	{To: 25, Name: "drop-severity-settings", Apply: applyDropSeveritySettings},
 	{To: 26, Name: "orienting-skill-backfill", Apply: applyOrientingSkillBackfill},
+	{To: 27, Name: "adr-number-provenance", Apply: applyADRNumberProvenance},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state

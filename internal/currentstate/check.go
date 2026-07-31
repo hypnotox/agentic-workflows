@@ -4,6 +4,7 @@ package currentstate
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -24,13 +25,15 @@ type projectedADR struct {
 }
 
 type operationAt struct {
-	owner adr.ADR
-	op    adr.Operation
-	seq   int
+	owner    adr.ADR
+	op       adr.Operation
+	adrNum   int
+	batchIdx int
 }
 
-// Check validates application sequences, operation history, forward results,
-// and inverse provenance. Parsed record formats identify the legacy bootstrap.
+// Check validates retired-segment absence, operation history, forward
+// results, and inverse provenance. Parsed record formats identify the legacy
+// bootstrap.
 func Check(records []adr.ADR, corpusTopics []topic.Topic) []Finding {
 	claims := map[string]topic.Claim{}
 	topics := map[string]bool{}
@@ -45,7 +48,7 @@ func Check(records []adr.ADR, corpusTopics []topic.Topic) []Finding {
 	removed := removedSet(applied)
 	retiredTopics := retiredTopicOperations(applied, topics)
 	findings := append([]Finding(nil), projectionFindings...)
-	findings = append(findings, checkSequences(projected)...)
+	findings = append(findings, checkLegacySegments(records)...)
 	findings = append(findings, checkOperationHistory(applied, hasLegacyRecord(records))...)
 	findings = append(findings, checkForward(projected, claims, topics, retiredTopics, removed)...)
 	findings = append(findings, checkBackward(records, applied, claims)...)
@@ -96,39 +99,25 @@ func projectADRs(records []adr.ADR) ([]projectedADR, []Finding) {
 func appliedOperations(projected []projectedADR) []operationAt {
 	var out []operationAt
 	for _, p := range projected {
+		num, _ := strconv.Atoi(p.record.Number) // parsed ADR numbers always match FilenameRe
 		for _, applied := range p.progress.Applied {
-			out = append(out, operationAt{owner: p.record, op: applied.Operation, seq: applied.Sequence})
+			out = append(out, operationAt{owner: p.record, op: applied.Operation, adrNum: num, batchIdx: applied.BatchIndex})
 		}
 	}
 	return out
 }
 
-func checkSequences(projected []projectedADR) []Finding {
-	bySeq := map[int][]string{}
-	for _, p := range projected {
-		for _, batch := range p.batches {
-			bySeq[batch.Sequence] = append(bySeq[batch.Sequence], p.record.Number)
-		}
-	}
+// checkLegacySegments reports every tolerated-and-discarded state-sequence
+// segment: the namespace is retired (ADR-0191) and the migration strips the
+// encoding, so a surviving segment means the tree needs awf upgrade.
+func checkLegacySegments(records []adr.ADR) []Finding {
 	var findings []Finding
-	seqs := make([]int, 0, len(bySeq))
-	for seq := range bySeq {
-		seqs = append(seqs, seq)
-	}
-	sort.Ints(seqs)
-	next := 1
-	if len(seqs) > 0 {
-		next = seqs[len(seqs)-1] + 1
-	}
-	for seq, nums := range bySeq {
-		if len(nums) > 1 {
-			sort.Strings(nums)
-			findings = append(findings, Finding{fmt.Sprintf("state-sequence %d is used by more than one ADR batch: %v; next available state-sequence is %d", seq, nums, next)})
-		}
-	}
-	for i, seq := range seqs {
-		if seq != i+1 {
-			findings = append(findings, Finding{fmt.Sprintf("state-sequence values are not contiguous from 1: expected %d, found %d", i+1, seq)})
+	for _, record := range records {
+		for _, event := range record.History {
+			if event.LegacySequence {
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s carries a retired state-sequence segment; run awf upgrade", record.Number)})
+				break
+			}
 		}
 	}
 	return findings
@@ -147,7 +136,12 @@ func checkOperationHistory(applied []operationAt, hasLegacy bool) []Finding {
 	var findings []Finding
 	for _, id := range ids {
 		ops := byID[id]
-		sort.SliceStable(ops, func(i, j int) bool { return ops[i].seq < ops[j].seq })
+		sort.SliceStable(ops, func(i, j int) bool {
+			if ops[i].adrNum != ops[j].adrNum {
+				return ops[i].adrNum < ops[j].adrNum
+			}
+			return ops[i].batchIdx < ops[j].batchIdx
+		})
 		adds, removeIdx := 0, -1
 		for i, operation := range ops {
 			switch operation.op.Verb {
@@ -169,8 +163,10 @@ func checkOperationHistory(applied []operationAt, hasLegacy bool) []Finding {
 		if ops[0].op.Verb != adr.OpAdd && !legacyBaseline {
 			findings = append(findings, Finding{fmt.Sprintf("claim %s history does not begin with an add", id)})
 		}
-		if removeIdx >= 0 && removeIdx != len(ops)-1 {
-			findings = append(findings, Finding{fmt.Sprintf("claim %s has an operation after its remove", id)})
+		for i := removeIdx + 1; removeIdx >= 0 && i < len(ops); i++ {
+			if ops[i].op.Verb == adr.OpAdd {
+				findings = append(findings, Finding{fmt.Sprintf("claim %s has an add after its remove; a removed claim id is never reused", id)})
+			}
 		}
 	}
 	return findings
@@ -251,7 +247,12 @@ func retiredTopicOperations(applied []operationAt, topics map[string]bool) map[s
 	for _, histories := range byTopic {
 		complete := true
 		for _, history := range histories {
-			sort.SliceStable(history, func(i, j int) bool { return history[i].seq < history[j].seq })
+			sort.SliceStable(history, func(i, j int) bool {
+				if history[i].adrNum != history[j].adrNum {
+					return history[i].adrNum < history[j].adrNum
+				}
+				return history[i].batchIdx < history[j].batchIdx
+			})
 			adds, removes := 0, 0
 			for _, operation := range history {
 				if operation.op.Verb == adr.OpAdd {
@@ -261,7 +262,10 @@ func retiredTopicOperations(applied []operationAt, topics map[string]bool) map[s
 					removes++
 				}
 			}
-			if history[0].op.Verb != adr.OpAdd || history[len(history)-1].op.Verb != adr.OpRemove || adds != 1 || removes != 1 {
+			// With exactly one add first and one remove, any trailing
+			// operation is necessarily a dominated update, which retirement
+			// tolerates (ADR-0191).
+			if history[0].op.Verb != adr.OpAdd || removes != 1 || adds != 1 {
 				complete = false
 			}
 		}
@@ -339,10 +343,6 @@ func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]t
 		key := operation.owner.Number + "\x00" + string(operation.op.Verb) + "\x00" + operation.op.ID
 		byOperation[key] = operation
 	}
-	byNum := map[string]adr.ADR{}
-	for _, a := range records {
-		byNum[a.Number] = a
-	}
 	ids := make([]string, 0, len(claims))
 	for id := range claims {
 		ids = append(ids, id)
@@ -356,11 +356,9 @@ func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]t
 		if !legacyOrigin(records, claim.Origin) && !hasOrigin {
 			findings = append(findings, Finding{fmt.Sprintf("claim %s names Origin ADR-%s, which has no matching add operation applied", id, claim.Origin)})
 		}
-		lastSequence := 0
+		last := 0
 		if hasOrigin {
-			lastSequence = origin.seq
-		} else if _, ok := byNum[claim.Origin]; ok {
-			lastSequence = 0
+			last = origin.adrNum
 		}
 		for _, rev := range claim.RevisedBy {
 			key := rev + "\x00" + string(adr.OpUpdate) + "\x00" + id
@@ -369,10 +367,10 @@ func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]t
 				findings = append(findings, Finding{fmt.Sprintf("claim %s names Revised-by ADR-%s, which has no matching update operation applied", id, rev)})
 				continue
 			}
-			if operation.seq <= lastSequence {
-				findings = append(findings, Finding{fmt.Sprintf("claim %s Revised-by entries are not in increasing State-sequence order at ADR-%s", id, rev)})
+			if operation.adrNum <= last {
+				findings = append(findings, Finding{fmt.Sprintf("claim %s Revised-by entries are not in ascending ADR-number order at ADR-%s", id, rev)})
 			}
-			lastSequence = operation.seq
+			last = operation.adrNum
 		}
 	}
 	return findings

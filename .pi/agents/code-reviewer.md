@@ -54,7 +54,7 @@ Apply all lenses to every implementation diff:
 
 1. **doc-currency (impl-level)**: every newly appended Applied event travels with exactly its matching claim mutations; current-state topic and domain-doc updates land when a domain shifts; workflow/convention docs and the rendered agent guide stay current.
 
-1. **application-pair-correctness**: review first, middle, final, direct, and abandonment pairs for immutable event prefixes, consecutive sequences, truthful Applied/Remaining/Canceled partitions, and current-claim truth.
+1. **application-pair-correctness**: review first, middle, final, direct, and abandonment pairs for immutable event prefixes, ADR-number and intra-ADR position order, truthful Applied/Remaining/Canceled partitions, and current-claim truth.
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
 

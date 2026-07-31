@@ -145,7 +145,7 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	}
 	text := string(template)
 	history := strings.Index(text, "## Status history\n")
-	if !strings.Contains(text, "format: current-state-v2") || history < 0 || strings.Index(text, "Implementing; content-sha256") > strings.Index(text, "Applied; state-sequence") {
+	if !strings.Contains(text, "format: current-state-v2") || history < 0 || strings.Index(text, "Implementing; content-sha256") > strings.Index(text, "Applied; operations") {
 		t.Fatalf("empty-init V2 ADR template is not lifecycle-safe:\n%s", text)
 	}
 	if tail := text[history:]; strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {

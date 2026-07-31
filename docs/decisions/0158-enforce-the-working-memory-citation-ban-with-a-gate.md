@@ -88,6 +88,6 @@ Three historical plans carry a concrete reference: `docs/plans/2026-07-07-workin
 
 - 2026-07-25: Proposed
 - 2026-07-25: Implementing; content-sha256: 91f3d1061c0caf48c5e660b0a54660332a30b1ea6589b6634ab6cca9673fdee5
-- 2026-07-25: Applied; state-sequence: 44; operations: update `rendering/catalog-and-targets:var-descriptor-set-pinned`, update `rendering/companion-scripts:hook-payloads-fallback-safe`, update `config/validation:hooks-commands-resolvable`
-- 2026-07-25: Applied; state-sequence: 45; operations: add `tooling/quality-gates:memory-citation-gate`
+- 2026-07-25: Applied; operations: update `rendering/catalog-and-targets:var-descriptor-set-pinned`, update `rendering/companion-scripts:hook-payloads-fallback-safe`, update `config/validation:hooks-commands-resolvable`
+- 2026-07-25: Applied; operations: add `tooling/quality-gates:memory-citation-gate`
 - 2026-07-25: Implemented; content-sha256: 91f3d1061c0caf48c5e660b0a54660332a30b1ea6589b6634ab6cca9673fdee5

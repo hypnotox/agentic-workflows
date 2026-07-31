@@ -68,13 +68,12 @@ a terminal status: while Accepted or Implementing an amendment appends
 establishes the first), and the latest stamp always equals the current content, freezing permanently
 at Implemented or Abandoned. V1 records instead freeze once they leave Proposed. An application
 batch uses exactly
-`- YYYY-MM-DD: Applied; state-sequence: <positive integer>; operations: <verb> `<qualified-id>`[, ...]`.
+`- YYYY-MM-DD: Applied; operations: <verb> `<qualified-id>`[, ...]`.
 Operations are nonempty, previously unapplied, and declaration-ordered. Entering Implementing
 appends its status then the first Applied event; a middle pair appends one Applied event; the final
 pair appends the last Applied event then Implemented. Direct Implemented transitions use one
-implicit batch and terminal sequence. V1 implicit and V2 implicit or explicit batches share one
-contiguous global sequence. Stable history is corrected forward through a successor ADR, never by
-deleting or mutating a retained event.
+implicit batch. Per-claim provenance is ordered by ascending final ADR number. Stable history is
+corrected forward through a successor ADR, never by deleting or mutating a retained event.
 
 <!-- awf:edit state-changes: default; create .awf/parts/adr-readme/state-changes.md to override -->
 ## The Decision and State changes sections
@@ -97,8 +96,7 @@ is a remove plus an add; a split is one remove plus several adds; a merge is sev
 plus one add. A removed id is never added again. For each newly appended batch, `awf check --staged` verifies every applied operation against its
 matching topic-claim mutation in the same HEAD-to-index pair. Applied operations authorize current
 or removed results immediately; Remaining operations are pending; Canceled operations provide no
-authority. Multiple ADR batches may share a pair only for distinct claim IDs and consecutive
-sequences.
+authority. Multiple ADR batches may share a pair only for distinct claim IDs.
 
 <!-- awf:edit index: from .awf/parts/adr-readme/index.md -->
 ## INDEX.md

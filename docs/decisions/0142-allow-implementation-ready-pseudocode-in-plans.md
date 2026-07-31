@@ -61,4 +61,4 @@ The loosened rule must not turn plans into high-level intent documents. An execu
 ## Status history
 
 - 2026-07-21: Proposed
-- 2026-07-21: Implemented; content-sha256: 34d29d2169d86ce6717e50c9080865751283ab400c2c791754860c87676948a9; state-sequence: 6
+- 2026-07-21: Implemented; content-sha256: 34d29d2169d86ce6717e50c9080865751283ab400c2c791754860c87676948a9

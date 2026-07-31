@@ -68,6 +68,6 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-plan/notes.md to override -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `docs/workflow.md` for full plan lifecycle rules and the canonical workflow chain.
-- For V2 ADR work, require tasks to assign declared operations to pair-atomic batches and account for Applied, Remaining, and Canceled partitions and global sequence order.
+- For V2 ADR work, require tasks to assign declared operations to pair-atomic batches and account for Applied, Remaining, and Canceled partitions.
 - The `plan-reviewer` is one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.
 - The plan-resync pass (post-ADR-review drift check) is a separate skill: `awf-reviewing-plan-resync`.

@@ -90,7 +90,7 @@ func assertV2ADRTemplatePublicationSafe(t *testing.T) {
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
 	})
 	implementing := strings.Index(out, "Implementing; content-sha256")
-	applied := strings.Index(out, "Applied; state-sequence")
+	applied := strings.Index(out, "Applied; operations")
 	history := strings.Index(out, "## Status history\n")
 	if !strings.Contains(out, "format: current-state-v2") || implementing < 0 || applied < implementing || history < applied {
 		t.Fatalf("V2 lifecycle example is not publication-safe:\n%s", out)

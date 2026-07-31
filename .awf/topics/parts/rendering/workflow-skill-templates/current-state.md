@@ -34,7 +34,7 @@ Backing: test
 
 Checkpoint guidance creates no effort for a minimal simple fix or merely because a boundary was reached. Once the outcome is concrete and non-minimal, it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and subordinates checkpoint prose to repository authority. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167, ADR-0166, ADR-0175, ADR-0186, ADR-0189
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`

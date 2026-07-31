@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
+- [ADR-0191: Replace the global state sequence with ADR-number provenance order](0191-replace-the-global-state-sequence-with-adr-number-provenance-order.md) (Implementing)
 
 ## History
 

@@ -137,4 +137,4 @@ Constraints verified against the repository:
 ## Status history
 
 - 2026-07-31: Proposed
-- 2026-07-31: Implemented; content-sha256: 567766991d96bc4284c7f1762691eb8ab089d9702fcb8c30552ff544529ebb0c; state-sequence: 107
+- 2026-07-31: Implemented; content-sha256: 567766991d96bc4284c7f1762691eb8ab089d9702fcb8c30552ff544529ebb0c

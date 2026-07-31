@@ -139,8 +139,8 @@ func TestOperationSpecificProvenance(t *testing.T) {
 	claimID := "alpha/x:x"
 	op := func(verb adr.OpVerb) adr.Operation { return adr.Operation{Verb: verb, ID: claimID, Slug: "x"} }
 	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
-	applied := func(sequence int, operation adr.Operation) adr.HistoryEvent {
-		return adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: sequence, HasSequence: true, Operations: []adr.Operation{operation}}
+	applied := func(operation adr.Operation) adr.HistoryEvent {
+		return adr.HistoryEvent{Kind: adr.HistoryApplied, Operations: []adr.Operation{operation}}
 	}
 	assemble := func(t *testing.T, records []adr.ADR, origin string, revised ...string) error {
 		t.Helper()
@@ -157,7 +157,7 @@ func TestOperationSpecificProvenance(t *testing.T) {
 	}
 
 	legacy := adr.ADR{Number: "0001", Format: adr.Legacy, Status: "Implemented"}
-	updating := adr.ADR{Number: "0002", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{op(adr.OpUpdate), {Verb: adr.OpAdd, ID: "alpha/x:later", Slug: "later"}}, History: []adr.HistoryEvent{status("Proposed"), status("Implementing"), applied(1, op(adr.OpUpdate))}}
+	updating := adr.ADR{Number: "0002", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{op(adr.OpUpdate), {Verb: adr.OpAdd, ID: "alpha/x:later", Slug: "later"}}, History: []adr.HistoryEvent{status("Proposed"), status("Implementing"), applied(op(adr.OpUpdate))}}
 	if err := assemble(t, []adr.ADR{legacy, updating}, "0001", "0002"); err != nil {
 		t.Fatalf("applied Implementing revision rejected: %v", err)
 	}

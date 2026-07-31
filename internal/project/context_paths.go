@@ -417,7 +417,6 @@ func contextGroupKey(impact ContextPathImpact, facets []ContextFacet) string {
 			add(op.Claim)
 			add(op.Progress)
 			add(op.ClaimState)
-			add(strconv.Itoa(op.StateSequence))
 		}
 	}
 	return b.String()

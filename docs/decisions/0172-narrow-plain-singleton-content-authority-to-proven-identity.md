@@ -49,4 +49,4 @@ a concrete failure demonstrates that the narrower guarantee is insufficient.
 ## Status history
 
 - 2026-07-28: Proposed
-- 2026-07-28: Implemented; content-sha256: b083a89bccb12b4e4320bb092de4c071623feebb3fdc798fc3f6c2e79aacb42f; state-sequence: 76
+- 2026-07-28: Implemented; content-sha256: b083a89bccb12b4e4320bb092de4c071623feebb3fdc798fc3f6c2e79aacb42f

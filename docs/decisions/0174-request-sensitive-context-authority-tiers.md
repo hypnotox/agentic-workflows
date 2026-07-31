@@ -201,4 +201,4 @@ remain authoritative for larger adopter data and explicit detail.
 ## Status history
 
 - 2026-07-28: Proposed
-- 2026-07-28: Implemented; content-sha256: 10842071834b0bc598e688eb04af0c773d68baba8833d1bb0f3e459dc27ebfe2; state-sequence: 79
+- 2026-07-28: Implemented; content-sha256: 10842071834b0bc598e688eb04af0c773d68baba8833d1bb0f3e459dc27ebfe2

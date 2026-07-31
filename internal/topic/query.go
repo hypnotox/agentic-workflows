@@ -37,10 +37,9 @@ type QueryClaim struct {
 }
 
 type ADRHistory struct {
-	Number        string `json:"number"`
-	Title         string `json:"title"`
-	Status        string `json:"status"`
-	StateSequence int    `json:"stateSequence,omitempty"`
+	Number string `json:"number"`
+	Title  string `json:"title"`
+	Status string `json:"status"`
 }
 
 type ClaimHistory struct {
@@ -180,7 +179,7 @@ func presentationHistory(claimID string, history adr.ClaimOperationHistory) (Cla
 func operationADR(record adr.OperationRecord) ADRHistory {
 	return ADRHistory{
 		Number: record.Number, Title: strings.TrimPrefix(record.Title, "ADR-"+record.Number+": "),
-		Status: record.Status, StateSequence: record.StateSequence,
+		Status: record.Status,
 	}
 }
 

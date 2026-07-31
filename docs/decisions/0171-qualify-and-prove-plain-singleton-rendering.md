@@ -49,4 +49,4 @@ future refactor may change that shape, but must update the authority and proof t
 ## Status history
 
 - 2026-07-28: Proposed
-- 2026-07-28: Implemented; content-sha256: 005aeff26e3e18040c9af38d78b66898530afc8a23cd822f8e80a1a6bbc22e78; state-sequence: 75
+- 2026-07-28: Implemented; content-sha256: 005aeff26e3e18040c9af38d78b66898530afc8a23cd822f8e80a1a6bbc22e78

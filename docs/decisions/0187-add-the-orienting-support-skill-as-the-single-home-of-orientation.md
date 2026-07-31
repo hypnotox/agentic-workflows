@@ -60,7 +60,7 @@ User constraints, verbatim: "It shouldn't be a chain skill like brainstorming. I
 
 - 2026-07-30: Proposed
 - 2026-07-31: Implementing; content-sha256: 3e6cc64794f7fe75ba47dbd9c445c22bed9abde6db5e094503b5aabc06f9fa58
-- 2026-07-31: Applied; state-sequence: 102; operations: update `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/guide-and-doc-templates:working-memory-single-home`, add `config/migrations-and-locks:orienting-skill-backfill`
+- 2026-07-31: Applied; operations: update `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/guide-and-doc-templates:working-memory-single-home`, add `config/migrations-and-locks:orienting-skill-backfill`
 - 2026-07-31: Amended; content-sha256: f6432011c0b1bd169e830e5ccefc07220f28101d5e0078fbe1619754b1dc3a4e
-- 2026-07-31: Applied; state-sequence: 103; operations: add `rendering/workflow-skill-templates:orienting-single-home`
+- 2026-07-31: Applied; operations: add `rendering/workflow-skill-templates:orienting-single-home`
 - 2026-07-31: Implemented; content-sha256: f6432011c0b1bd169e830e5ccefc07220f28101d5e0078fbe1619754b1dc3a4e

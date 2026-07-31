@@ -18,16 +18,17 @@ const (
 	HistoryAmended
 )
 
-// HistoryEvent is one parsed `## Status history` line.
+// HistoryEvent is one parsed `## Status history` line. LegacySequence records
+// that a retired state-sequence segment was tolerated and discarded, so the
+// check layer can direct the project to awf upgrade (ADR-0191).
 type HistoryEvent struct {
-	Kind        HistoryEventKind
-	Date        string
-	Status      string
-	Digest      string
-	Sequence    int
-	HasSequence bool
-	Rationale   string
-	Operations  []Operation
+	Kind           HistoryEventKind
+	Date           string
+	Status         string
+	Digest         string
+	LegacySequence bool
+	Rationale      string
+	Operations     []Operation
 }
 
 // StatusEntry preserves the source-compatible V1 name while ADR.History uses
@@ -37,7 +38,7 @@ type StatusEntry = HistoryEvent
 var (
 	v1HistoryHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): (Proposed|Accepted|Implemented|Abandoned)(;.*)?$`)
 	v2HistoryHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): (Proposed|Accepted|Implementing|Implemented|Abandoned)(;.*)?$`)
-	appliedHeadRe   = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Applied; state-sequence: ([1-9][0-9]*); operations: (.+)$`)
+	appliedHeadRe   = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Applied; (state-sequence: [1-9][0-9]*; )?operations: (.+)$`)
 	amendedHeadRe   = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Amended; content-sha256: ([0-9a-f]{64})$`)
 	appliedOpRe     = regexp.MustCompile("^(add|update|remove) `(" + slugPart + "/" + slugPart + ":" + slugPart + ")`$")
 )
@@ -67,15 +68,11 @@ func parseHistory(body string, format Format, declared []Operation) ([]HistoryEv
 	for _, line := range lines {
 		if format == CurrentStateV2 {
 			if m := appliedHeadRe.FindStringSubmatch(line); m != nil {
-				sequence, err := strconv.Atoi(m[2])
-				if err != nil {
-					return nil, fmt.Errorf("parse Applied state-sequence %q: %w", m[2], err)
-				}
 				ops, err := parseAppliedOperations(m[3], declared)
 				if err != nil {
 					return nil, fmt.Errorf("Status history entry %q: %w", line, err)
 				}
-				entries = append(entries, HistoryEvent{Kind: HistoryApplied, Date: m[1], Sequence: sequence, HasSequence: true, Operations: ops})
+				entries = append(entries, HistoryEvent{Kind: HistoryApplied, Date: m[1], LegacySequence: m[2] != "", Operations: ops})
 				continue
 			}
 			if m := amendedHeadRe.FindStringSubmatch(line); m != nil {
@@ -142,8 +139,9 @@ func parseAppliedOperations(list string, declared []Operation) ([]Operation, err
 	return ops, nil
 }
 
-// parseHistoryTail consumes canonical metadata in digest, sequence, rationale
-// order. Rationale is terminal and may itself contain `; `.
+// parseHistoryTail consumes canonical metadata in digest, retired
+// state-sequence (tolerated and discarded, ADR-0191), rationale order.
+// Rationale is terminal and may itself contain `; `.
 func parseHistoryTail(entry *HistoryEvent, tail string) error {
 	seenSeq := false
 	for tail != "" {
@@ -162,7 +160,7 @@ func parseHistoryTail(entry *HistoryEvent, tail string) error {
 			}
 			entry.Digest, tail = val, more
 		case strings.HasPrefix(rest, "state-sequence: "):
-			if entry.HasSequence {
+			if entry.LegacySequence {
 				return errors.New("state-sequence is duplicated")
 			}
 			val, more := splitSegment(strings.TrimPrefix(rest, "state-sequence: "))
@@ -170,7 +168,7 @@ func parseHistoryTail(entry *HistoryEvent, tail string) error {
 			if err != nil || n < 1 {
 				return fmt.Errorf("state-sequence is not a positive integer: %q", val)
 			}
-			entry.Sequence, entry.HasSequence, seenSeq, tail = n, true, true, more
+			entry.LegacySequence, seenSeq, tail = true, true, more
 		case strings.HasPrefix(rest, "rationale: "):
 			entry.Rationale, tail = strings.TrimPrefix(rest, "rationale: "), ""
 		default:

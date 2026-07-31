@@ -247,17 +247,13 @@ func renderPathImpact(out io.Writer, impact project.ContextPathImpact, indent st
 		fmt.Fprintf(out, "%sADR: ADR-%s %s [%s, %s]\n", indent, a.Number, a.Title, a.Status, a.Mutability)
 		fmt.Fprintf(out, "%sAuthority role: %s\n", indent, a.AuthorityRole)
 		for _, op := range a.Operations {
-			fmt.Fprintf(out, "%sOperation: %s %s [%s, %s", indent, op.Operation, op.Claim, op.Progress, op.ClaimState)
-			if op.StateSequence != 0 {
-				fmt.Fprintf(out, ", state-sequence %d", op.StateSequence)
-			}
-			fmt.Fprintln(out, "]")
+			fmt.Fprintf(out, "%sOperation: %s %s [%s, %s]\n", indent, op.Operation, op.Claim, op.Progress, op.ClaimState)
 			if op.Detail != nil {
 				if op.Detail.Current != nil {
 					fmt.Fprintf(out, "%s  Current claim: %s [%s] %s\n", indent, op.Detail.Current.ID, op.Detail.Current.Type, op.Detail.Current.Summary)
 				}
 				if op.Detail.History != nil && op.Detail.History.RemovedBy != nil {
-					fmt.Fprintf(out, "%s  Removal history: removed by ADR-%s at state-sequence %d\n", indent, op.Detail.History.RemovedBy.Number, op.Detail.History.RemovedBy.StateSequence)
+					fmt.Fprintf(out, "%s  Removal history: removed by ADR-%s\n", indent, op.Detail.History.RemovedBy.Number)
 				}
 				renderEvidence(out, op.Detail.Current, op.Detail.Evidence, indent+"  ")
 			}

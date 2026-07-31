@@ -50,13 +50,12 @@ Include known risks and how they are mitigated.
 | Option B | ... |
 
 Append-only Status history starts with Proposed. Later status events carry the latest content stamp,
-and an Amended event records each post-Accepted amendment with its new digest; direct Implemented
-events also carry the batch state sequence. Incremental
+and an Amended event records each post-Accepted amendment with its new digest. Incremental
 implementation first appends an Implementing status event, then appends Applied events in
 declaration order, one checked batch per commit. For example:
 
 - YYYY-MM-DD: Implementing; content-sha256: `<64 lowercase hex characters>`
-- YYYY-MM-DD: Applied; state-sequence: 1; operations: update `<domain>/<topic>:<slug>`
+- YYYY-MM-DD: Applied; operations: update `<domain>/<topic>:<slug>`
 
 ## Status history
 

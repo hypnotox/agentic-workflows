@@ -22,14 +22,12 @@ type Corpus struct {
 // Status is an ADR lifecycle status as presented by semantic corpus queries.
 type Status = string
 
-// OperationRecord is the ADR identity and implementation order for one claim
-// operation. StateSequence orders implemented mutations independently of ADR
-// number.
+// OperationRecord is the ADR identity for one claim operation. Ascending ADR
+// number is the per-claim provenance order (ADR-0191).
 type OperationRecord struct {
-	Number        string
-	Title         string
-	Status        Status
-	StateSequence int
+	Number string
+	Title  string
+	Status Status
 }
 
 // ClaimOperationHistory is the implemented add/update/remove history for one
@@ -137,9 +135,9 @@ func (c Corpus) OperationProgress(number string) (OperationProgress, bool, error
 	return progress, true, nil
 }
 
-// ClaimOperationHistory returns applied operation history for claimID in batch
-// sequence order. Remaining and canceled operations are excluded, and every
-// returned slice is fresh.
+// ClaimOperationHistory returns applied operation history for claimID in
+// ascending ADR-number order. Remaining and canceled operations are excluded,
+// and every returned slice is fresh.
 func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bool) {
 	type recordedOperation struct {
 		verb   OpVerb
@@ -154,7 +152,7 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 		for _, applied := range progress.Applied {
 			if applied.Operation.ID == claimID {
 				records = append(records, recordedOperation{verb: applied.Operation.Verb, record: OperationRecord{
-					Number: a.Number, Title: a.Title, Status: a.Status, StateSequence: applied.Sequence,
+					Number: a.Number, Title: a.Title, Status: a.Status,
 				}})
 			}
 		}
@@ -162,7 +160,11 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 	if len(records) == 0 {
 		return ClaimOperationHistory{}, false
 	}
-	sort.SliceStable(records, func(i, j int) bool { return records[i].record.StateSequence < records[j].record.StateSequence })
+	sort.SliceStable(records, func(i, j int) bool {
+		a, _ := strconv.Atoi(records[i].record.Number) // parsed ADR numbers always match FilenameRe
+		b, _ := strconv.Atoi(records[j].record.Number)
+		return a < b
+	})
 	history := ClaimOperationHistory{RevisedBy: []OperationRecord{}}
 	for _, operation := range records {
 		record := operation.record
@@ -181,9 +183,10 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 }
 
 // Raw returns the ADR file's bytes. Raw access is enumerated and closed
-// (ADR-0130 item 6): the migration's offset surgery and the retired-key
-// frontmatter scan are the only two legitimate consumers below the semantic
-// layer. A third caller means the view is missing a question.
+// (ADR-0130 item 6): the retirement-token offset surgery, the retired-key
+// frontmatter scan, and the ADR-0191 state-sequence retrofit are the only
+// three legitimate consumers below the semantic layer. A fourth caller means
+// the view is missing a question.
 func (c Corpus) Raw(num string) ([]byte, error) {
 	a, ok := c.byNum[num]
 	if !ok {

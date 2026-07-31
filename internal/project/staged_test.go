@@ -809,7 +809,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	// Perform a real V1 Proposed -> Implemented operation transaction through
 	// CheckStaged before exercising any V2 shape.
 	v1Done := strings.Replace(publicV2ADR(t, "0002", "V1 direct", "Implemented", v1Ops,
-		"- 2026-07-21: Implemented; content-sha256: %s; state-sequence: 1"), adr.V2FormatMarker, adr.V1FormatMarker, 1)
+		"- 2026-07-21: Implemented; content-sha256: %s"), adr.V2FormatMarker, adr.V1FormatMarker, 1)
 	checkAndCommit("feat(invariants): apply v1 direct state", map[string]string{
 		"docs/decisions/0002-v1-direct.md":             v1Done,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1"),
@@ -817,7 +817,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 
 	ops3 := "- add `alpha/one:a`\n- add `alpha/one:b`\n- add `alpha/one:c`"
 	first3 := publicV2ADR(t, "0003", "Incremental", "Implementing", ops3,
-		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; state-sequence: 2; operations: add `alpha/one:a`")
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`")
 	checkAndCommit("feat(invariants): apply first batch", map[string]string{
 		"docs/decisions/0003-incremental.md":           first3,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a"),
@@ -830,24 +830,24 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 		t.Fatalf("Implementing ADR not in flight:\n%s", index)
 	}
 
-	// A direct batch from another ADR interleaves the owning sequences.
+	// A direct batch from another ADR interleaves with the in-flight ADR.
 	ops4 := "- add `alpha/one:x`"
 	direct4 := publicV2ADR(t, "0004", "Interleave", "Implemented", ops4,
-		"- 2026-07-21: Implemented; content-sha256: %s; state-sequence: 3")
+		"- 2026-07-21: Implemented; content-sha256: %s")
 	checkAndCommit("feat(invariants): interleave direct batch", map[string]string{
 		"docs/decisions/0004-interleave.md":            direct4,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "x"),
 	})
 
 	middle3 := publicV2ADR(t, "0003", "Incremental", "Implementing", ops3,
-		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; state-sequence: 2; operations: add `alpha/one:a`\n- 2026-07-22: Applied; state-sequence: 4; operations: add `alpha/one:b`")
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`\n- 2026-07-22: Applied; operations: add `alpha/one:b`")
 	checkAndCommit("feat(invariants): apply middle batch", map[string]string{
 		"docs/decisions/0003-incremental.md":           middle3,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "x"),
 	})
 
 	final3 := publicV2ADR(t, "0003", "Incremental", "Implemented", ops3,
-		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; state-sequence: 2; operations: add `alpha/one:a`\n- 2026-07-22: Applied; state-sequence: 4; operations: add `alpha/one:b`\n- 2026-07-23: Applied; state-sequence: 5; operations: add `alpha/one:c`\n- 2026-07-23: Implemented; content-sha256: %s")
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`\n- 2026-07-22: Applied; operations: add `alpha/one:b`\n- 2026-07-23: Applied; operations: add `alpha/one:c`\n- 2026-07-23: Implemented; content-sha256: %s")
 	checkAndCommit("feat(invariants): apply final batch", map[string]string{
 		"docs/decisions/0003-incremental.md":           final3,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "x"),
@@ -855,13 +855,13 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 
 	ops5 := "- add `alpha/one:y`\n- add `alpha/one:z`"
 	partial5 := publicV2ADR(t, "0005", "Partial", "Implementing", ops5,
-		"- 2026-07-24: Implementing; content-sha256: %s\n- 2026-07-24: Applied; state-sequence: 6; operations: add `alpha/one:y`")
+		"- 2026-07-24: Implementing; content-sha256: %s\n- 2026-07-24: Applied; operations: add `alpha/one:y`")
 	checkAndCommit("feat(invariants): apply partial batch", map[string]string{
 		"docs/decisions/0005-partial.md":               partial5,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "x", "y"),
 	})
 	abandoned5 := publicV2ADR(t, "0005", "Partial", "Abandoned", ops5,
-		"- 2026-07-24: Implementing; content-sha256: %s\n- 2026-07-24: Applied; state-sequence: 6; operations: add `alpha/one:y`\n- 2026-07-25: Abandoned; content-sha256: %s; rationale: stop before z")
+		"- 2026-07-24: Implementing; content-sha256: %s\n- 2026-07-24: Applied; operations: add `alpha/one:y`\n- 2026-07-25: Abandoned; content-sha256: %s; rationale: stop before z")
 	checkAndCommit("docs(adr): abandon partial execution", map[string]string{"docs/decisions/0005-partial.md": abandoned5})
 
 	// Reverse deletion plus its inverse mutation is still forbidden.
@@ -885,7 +885,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	// at the endpoint cannot rescue the first-parent range violation.
 	ops6 := "- add `alpha/one:q`"
 	direct6 := publicV2ADR(t, "0006", "Bad intermediate", "Implemented", ops6,
-		"- 2026-07-26: Implemented; content-sha256: %s; state-sequence: 7")
+		"- 2026-07-26: Implemented; content-sha256: %s")
 	gitfixture.Stage(t, repo, dir, map[string]string{"docs/decisions/0006-bad-intermediate.md": direct6})
 	gitfixture.Commit(t, repo, dir, "feat(invariants): record bad intermediate", nil)
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "q", "x", "y")})

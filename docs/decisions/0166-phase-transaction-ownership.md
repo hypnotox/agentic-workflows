@@ -171,6 +171,6 @@ same-checkout concurrency.
 
 - 2026-07-27: Proposed
 - 2026-07-28: Implementing; content-sha256: e98e802ae060a13e766f4a1279f9334d7948d361922f5cc84a06819345596fc3
-- 2026-07-28: Applied; state-sequence: 77; operations: add `rendering/workflow-skill-templates:phase-transaction-ownership`, update `rendering/workflow-skill-templates:plan-task-detail-modes`
-- 2026-07-29: Applied; state-sequence: 78; operations: update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/pi-workflows:pi-session-handoff-workflow`
+- 2026-07-28: Applied; operations: add `rendering/workflow-skill-templates:phase-transaction-ownership`, update `rendering/workflow-skill-templates:plan-task-detail-modes`
+- 2026-07-29: Applied; operations: update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/pi-workflows:pi-session-handoff-workflow`
 - 2026-07-29: Implemented; content-sha256: e98e802ae060a13e766f4a1279f9334d7948d361922f5cc84a06819345596fc3

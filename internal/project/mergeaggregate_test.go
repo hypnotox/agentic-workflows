@@ -24,10 +24,10 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	// Implementing at both ends: that status requires applied AND remaining work.
 	ops := "- add `alpha/one:a`\n- add `alpha/one:b`\n- add `alpha/one:c`\n- add `alpha/one:d`"
 	oneBatch := "- 2026-07-21: Implementing; content-sha256: %s\n" +
-		"- 2026-07-21: Applied; state-sequence: 1; operations: add `alpha/one:a`"
+		"- 2026-07-21: Applied; operations: add `alpha/one:a`"
 	threeBatches := oneBatch +
-		"\n- 2026-07-22: Applied; state-sequence: 2; operations: add `alpha/one:b`" +
-		"\n- 2026-07-23: Applied; state-sequence: 3; operations: add `alpha/one:c`"
+		"\n- 2026-07-22: Applied; operations: add `alpha/one:b`" +
+		"\n- 2026-07-23: Applied; operations: add `alpha/one:c`"
 
 	// ADR numbering must stay contiguous, so 0002 exists purely as a filler.
 	files["docs/decisions/0002-filler.md"] = publicV2ADR(t, "0002", "Filler", "Proposed", "None.", "")
@@ -75,10 +75,10 @@ func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}})
 	ops := "- add `alpha/one:a`\n- add `alpha/one:b`\n- add `alpha/one:c`\n- add `alpha/one:d`"
 	oneBatch := "- 2026-07-21: Implementing; content-sha256: %s\n" +
-		"- 2026-07-21: Applied; state-sequence: 1; operations: add `alpha/one:a`"
+		"- 2026-07-21: Applied; operations: add `alpha/one:a`"
 	threeBatches := oneBatch +
-		"\n- 2026-07-22: Applied; state-sequence: 2; operations: add `alpha/one:b`" +
-		"\n- 2026-07-23: Applied; state-sequence: 3; operations: add `alpha/one:c`"
+		"\n- 2026-07-22: Applied; operations: add `alpha/one:b`" +
+		"\n- 2026-07-23: Applied; operations: add `alpha/one:c`"
 
 	files["docs/decisions/0002-filler.md"] = publicV2ADR(t, "0002", "Filler", "Proposed", "None.", "")
 	files["docs/decisions/0003-incremental.md"] = publicV2ADR(t, "0003", "Incremental", "Implementing", ops, oneBatch)

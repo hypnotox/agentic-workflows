@@ -37,6 +37,13 @@ query a single version or a range.
   stays enabled fails `awf check` with dead-skill-reference drift until you re-enable it or
   override the three consumer sections.
 
+- Remove the repository-global `state-sequence` from ADR status history. Applied events use
+  `- <date>: Applied; operations: ...`; per-claim provenance is ordered by ascending final ADR
+  number; an applied remove is an absorbing tombstone. `awf topic` drops its `[state-sequence: N]`
+  suffix, `awf context` its per-operation sequence annotations, and the `stateSequence` field
+  leaves the `awf topic --json` contract. Schema generation 27 strips the segments from every
+  governed ADR and canonicalizes every `Revised-by` list to ascending ADR number; run
+  `awf upgrade`. (ADR-0191)
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
   the `off` value with them. A tree that declares a `currentState` block now always evaluates both
   topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
