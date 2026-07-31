@@ -1,4 +1,18 @@
-<!-- awf:comment Replace the placeholder prose below, edit metadata paths, and add reviewed claims manually. -->
-Current project contracts for this topic are documented here.
+This topic governs Go tests introduced by new work and sites deliberately converted under
+its authority; the TypeScript lane sits outside `currentState.testGlobs` and outside these
+claims. The existing global-seam census (31 package-level swap variables across 11
+production packages) remains a set of bounded future conversion candidates, and a test may
+swap an existing census seam until that seam is deliberately converted. Shared fixture
+homes are governed by `code-design/single-home`; error-identity assertion detail is
+governed by `code-design/outcome-modeling:test-identity-assertions`.
 
 ## Claims
+
+### `invariant: stdlib-assertions`
+
+A new or deliberately converted Go test asserts with the standard library's `testing`
+package, plain comparisons, and `errors.Is`/`errors.As`, never through an assertion or
+matcher library.
+Origin: ADR-0201
+Backing: unbacked
+Verify: Inspect the imports of each added or converted test file; an assertion or matcher library import fails, and go.mod gaining a direct assertion-library dependency fails.

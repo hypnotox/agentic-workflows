@@ -3,7 +3,7 @@
 
 - [ADR-0199: Outcome protocol and error identity modeling](0199-outcome-protocol-and-error-identity-modeling.md) (Implementing)
 - [ADR-0200: Package composition and export discipline](0200-package-composition-and-export-discipline.md) (Implementing)
-- [ADR-0201: Test assertion and seam discipline](0201-test-assertion-and-seam-discipline.md) (Accepted)
+- [ADR-0201: Test assertion and seam discipline](0201-test-assertion-and-seam-discipline.md) (Implementing)
 
 ## History
 
