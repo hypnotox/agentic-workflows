@@ -948,6 +948,26 @@ data:
         The live hazard shape under the worktree-default topology is different - a
         primary-checkout path silently splitting a worktree transaction - and has its own entry.
 
+        **Sixth occurrence, 2026-07-31, and the first where the sweep rode a `git checkout`.**
+        `git checkout -- <path>` restores from the INDEX, not from HEAD, and in a shared checkout
+        the index is another writer's mutable state. A two-file doc edit (dropping two
+        `proseGate.exemptions` entries and the glyph they covered) was left uncommitted in the
+        primary checkout while a merge was open there; the index absorbed the working-tree edits,
+        so the intended `git checkout -- <paths>` revert restored that same content back onto disk
+        instead of dropping it, and it landed in the merge commit. The result is an evil merge:
+        `git show <merge>:<path>` carries the change while neither `^1` nor `^2` does, so the
+        change was never independently gated and is attributed to an unrelated merge subject.
+        Detection is its own trap - `git log -S<string> -- <path>` reports NOTHING, because
+        `git log -S` skips merge commits by default; diff the merge against both parents, or pass
+        `--diff-merges=first-parent`. The tell at the time was in plain sight and read backwards:
+        the file went from ` M` to `M ` across the checkout, i.e. it became STAGED rather than
+        clean, which is proof the revert restored rather than discarded. Rule: before reverting
+        your own uncommitted hunks in a shared checkout, run `git diff --cached -- <paths>` first;
+        if the index already holds your content, `git checkout --` is a no-op that re-lands it, and
+        the only safe revert is reverse-applying your own patch (`git apply -R`). Exposure here is
+        proportional to how long a merge stays open in a shared checkout, so anything that
+        shortens that window shrinks this hazard without removing the underlying rule.
+
         **Sixth occurrence, 2026-07-31, hours after the scope note above was written, inside one
         of its named residual cases.** Integration runs in the primary checkout, and resolving the
         divergent merge with `git add -A` swept a concurrent session's uncommitted prose-exemption
