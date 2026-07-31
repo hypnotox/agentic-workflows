@@ -300,19 +300,19 @@ the append-only column records what the commands were called when those decision
 
 ## State changes
 
-- update `tooling/cli:group-child-project-guard-exemption`
-- update `tooling/cli:help-lists-group-children`
 - update `tooling/cli:gated-commands-generated`
 - remove `tooling/cli:group-child-gating-honored`
+- update `tooling/cli:group-child-project-guard-exemption`
+- update `tooling/cli:help-lists-group-children`
 - update `tooling/cli:invariants-in-check`
 - add `tooling/cli:check-universe-groups`
-- add `tooling/cli:check-disabled-child-disclosure`
-- update `tooling/quality-gates:example-adopter-checked`
 - update `tooling/quality-gates:memory-citation-gate`
-- update `tooling/quality-gates:prose-gate-refuses-without-git`
 - update `tooling/audit-and-snapshots:commit-gate-shared-rule`
 - update `code-design/dependency-composition:dependency-composition-commit-classification`
+- update `tooling/quality-gates:prose-gate-refuses-without-git`
+- add `tooling/cli:check-disabled-child-disclosure`
 - add `rendering/sync-and-drift:staged-drift-rendered-output`
+- update `tooling/quality-gates:example-adopter-checked`
 
 ## Consequences
 
