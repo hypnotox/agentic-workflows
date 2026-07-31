@@ -762,6 +762,23 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 			t.Errorf("working-with-awf template lacks the spill contract clause %q", want)
 		}
 	}
+	// This repository overrides the doc's commands part, so its own rendered
+	// doc is a second home the template assertion cannot see; an override that
+	// drops the contract would leave every pointer dangling here.
+	repoDoc, err := os.ReadFile(filepath.Clean(filepath.Join("..", "..", "docs", "working-with-awf.md")))
+	if err != nil {
+		t.Fatalf("read repository working-with-awf doc: %v", err)
+	}
+	for _, want := range []string{
+		"### Context spill notices",
+		"byte length equals",
+		"`bytes=<decimal>` descriptor",
+		"Best-effort delete the named file after packet use",
+	} {
+		if !strings.Contains(string(repoDoc), want) {
+			t.Errorf("repository working-with-awf doc lacks the spill contract clause %q", want)
+		}
+	}
 }
 
 // TestConditionalVerifyPass pins ADR-0196 item 3: the four reviewing skills
@@ -793,6 +810,7 @@ func TestConditionalVerifyPass(t *testing.T) {
 // routine and approval checkpoint partials each stay a four-step digest, so a
 // re-expanded fifth step cannot creep back in with the ordered-phrase proofs
 // still green.
+// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
 func TestCheckpointDigestShape(t *testing.T) {
 	for _, partial := range []string{"partials/checkpoint-routine.md", "partials/checkpoint-approval.md"} {
 		raw, err := fs.ReadFile(templates.FS, partial)
@@ -1562,9 +1580,13 @@ func TestAgentsDocGuide(t *testing.T) {
 	}
 	// Exactly the invariants-section copy: the workflow section must not
 	// regrow the duplicated gate sentence (ADR-0157 evicted-prose class).
-	// The counted phrase is distinctive of the ADR-0195 conditional wording.
-	if got := strings.Count(out, "wired pre-commit hook enforces both"); got != 1 {
+	// Both counts guard: the sentence opener catches a partial regrowth, the
+	// hook clause is distinctive of the ADR-0195 conditional wording.
+	if got := strings.Count(out, "Stage the complete transaction"); got != 1 {
 		t.Errorf("guide must carry exactly one gate sentence (invariants section), got %d:\n%s", got, out)
+	}
+	if got := strings.Count(out, "wired pre-commit hook enforces both"); got != 1 {
+		t.Errorf("guide must carry exactly one hook-enforcement clause (invariants section), got %d:\n%s", got, out)
 	}
 }
 
