@@ -165,8 +165,11 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    literals, and the resident-root table's re-spelled IDs fold into it, with descriptor facets
    added as needed. `internal/topic` receives template identity and content as parameters from
    the caller that already holds them instead of re-reading the embedded template tree.
-   `validateDeclarationPlanParity` would then compare the derivation with itself; it is retired
-   with the consolidation, and Consequences records the loss of its runtime detection.
+   `validateDeclarationPlanParity`'s template-identity axis would then compare the derivation
+   with itself; the runtime check is retired with the consolidation, its five non-identity axes
+   (path, reservation, declarers, consumed inputs, dependencies) are reinstated as a structural
+   test comparing the two still-independent enumerations over this repository, and Consequences
+   records the loss of the always-on runtime detection.
 6. The kind-dispatch single table widens from the project package to cmd/awf: the kind facts
    hard-coded in cmd/awf (the graph-kind predicate at list_add.go:110, the kind switch at
    new.go:31, the domain-kind branches at list_add.go:235,248, and the skill and doc
@@ -258,9 +261,12 @@ boundaries that were previously prose. The context vocabulary stops being public
 exists only for one test file, and the config-reference rendering hazard (a renamed field
 silently rendering empty) is removed by construction. The presentation rule and the template-ID
 single home create conversion obligations that later work inherits when touching other command
-surfaces. Retiring `validateDeclarationPlanParity` removes the divergence it guarded against
-and the guard itself: a future re-divergence of template identity has no runtime detector, only
-the single derivation point. Extending two existing topics' selectors to cover the new packages
+surfaces. Retiring `validateDeclarationPlanParity` removes the always-on runtime guard: a future
+re-divergence of template identity has no runtime detector, only the single derivation point,
+and the five non-identity axes - which compared `BuildOutputDeclarations` with the output plan,
+two enumerations the consolidation did NOT merge, and whose divergence would silently corrupt
+contextq's generated-output classification - are guarded by a structural test over this
+repository rather than at every render. Extending two existing topics' selectors to cover the new packages
 is the second and third occurrence of the selector-stretch pain point the roadmap records
 against ADR-0183; the deferred path-owning-topic idea gains evidence rather than a silent
 workaround.
@@ -316,3 +322,4 @@ audit's stale 86/47 to the verified 128/60.
 - 2026-07-31: Applied; operations: add `code-design/presentation-ownership:model-owner-renders`
 - 2026-07-31: Applied; operations: add `rendering/project-output-plan:template-id-single-derivation`
 - 2026-07-31: Applied; operations: update `code-design/state-ownership:project-derived-state-ownership`
+- 2026-07-31: Amended; content-sha256: 861bc95ab4c5e18bcb68684abcf399d44df977e717e0d9bd2c6c96cb5b71770b
