@@ -72,6 +72,9 @@ Apply all lenses to every ADR:
 **consequences-honesty**: trade-offs name real costs and operational implications, not straw men
 
 
+**claim-topic-cohesion**: each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds.
+
+
 
 ## Doc-currency checklist
 

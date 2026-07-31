@@ -126,6 +126,7 @@ var Standard = &Catalog{
 				"focusItems": []any{
 					map[string]any{"name": "decision-clarity", "description": "each Decision item is a discrete, implementable commitment a reader could act on without further consultation"},
 					map[string]any{"name": "consequences-honesty", "description": "trade-offs name real costs and operational implications, not straw men"},
+					map[string]any{"name": "claim-topic-cohesion", "description": "each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds."},
 				},
 				"docCurrencyItems": []any{
 					map[string]any{"check": "every document that states the behaviour this ADR changes is updated in the same commit"},

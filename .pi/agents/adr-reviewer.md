@@ -81,6 +81,9 @@ Apply all lenses to every ADR:
 **single-home-authority**: when the ADR introduces or converts a shared policy or mechanism, consult code-design/single-home and flag a second implementation of a concern another package already owns, a reduced copy where configuring the shared one would serve, and any fork justified by coverage rather than by a materially different contract from a distinct source
 
 
+**claim-topic-cohesion**: each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds.
+
+
 **claim-agrees-with-its-own-decision**: read EACH claim this ADR adds or updates against the Decision items of THIS SAME ADR, and flag any clause that contradicts one. No mechanical layer catches this: backing validation is structural, so it confirms a proof marker exists and never compares claim prose to the Decision or to what the proof asserts, and a decision that disagrees with itself leaves every layer mutually consistent and the gate green. ADR-0183 shipped exactly this defect and it survived two schema generations: item 1 committed to "topic coverage and topic fan-out always evaluate" while the same ADR's `config/configuration:severity-not-configurable` claim ended "a tree that declares no currentState block requests neither", and a test pinned the claim's side, so the implementation followed the claim and nothing ever went red. ADR-0192 had to correct it. The asymmetry to watch for is a claim clause that quietly scopes, qualifies, or excepts something the Decision states without qualification, and an aside appended to a claim about a different subject is where it hides.
 
 
