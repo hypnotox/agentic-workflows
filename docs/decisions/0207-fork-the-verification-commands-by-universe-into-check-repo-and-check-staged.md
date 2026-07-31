@@ -55,14 +55,19 @@ invariants "that lack a backing comment in source" and `README.md:185` credits t
 with enforcing backing symmetrically with `awf check`. Both are false. The command ships to every
 adopter through `templates/docs/working-with-awf.md.tmpl:34`.
 
-### Three of the roadmap entry's four contracts are already gone
+### Where the roadmap entry's four contracts stand
 
-The duplicate scan invocations it queued for pruning were removed by ADR-0196 Decision 3; `x`
-no longer names either scan. The all-checks-skipped exit code it left unsettled becomes
-unreachable once a universe group always runs its non-optional children. And the ran/skipped
-report itself is unnecessary under a fork, because membership in a universe group is the
-disclosure. What survives is narrower: the two opt-in scans can still be switched off, and a
-silent skip is the defect the entry exists to remove.
+The entry at `.awf/docs/parts/roadmap/deferred.md:101-121` queues four. Its duplicate scan
+invocations were removed by ADR-0196 Decision 3; `x` no longer names either scan. Its
+all-checks-skipped exit code becomes unreachable once a universe group always runs its
+non-optional children. Its `--staged` widening is answered by the fork rather than performed,
+because membership in a universe group is the disclosure a ran/skipped report would have had to
+narrate.
+
+Its first contract is the one this decision must still discharge: the two scans call
+`snapshot.IndexTree` before consulting their own knob, so a disabled gate hard-errors outside a
+git repository, and what bare check does outside git while a knob is on was left open. Decision
+items 4 and 9 settle both halves.
 
 ### Depth is the structural cost
 
@@ -80,10 +85,10 @@ check children") this shape falsifies.
 
 ### The staged scanners are broken for a nested adopter
 
-`runProseGate` looks up `.awf/config.yaml` at the index root (`cmd/awf/prosegate.go:22`) while
+`runProseGate` looks up `.awf/config.yaml` at the index root (`cmd/awf/prosegate.go:21`) while
 `stagedTree` opens the *containing* repository. Running `awf check prose` inside
 `examples/sundial` therefore reads awf's own config and resolves awf's paths against sundial's
-root, failing with a stat error on a path that exists only in the parent. `cmd/awf/memorygate.go:25`
+root, failing with a stat error on a path that exists only in the parent. `cmd/awf/memorygate.go:24`
 has the same shape. The nested adopter's staged current-state check works today only because it
 resolves against the project root instead.
 
@@ -130,8 +135,11 @@ the append-only column records what the commands were called when those decision
    `staged commit` takes a message file and has no input outside a commit-msg hook. It remains
    directly invocable.
 
-   Outside a git repository, and on a repository with no commit yet, bare `awf check` runs the repo
-   universe alone and reports that the staged universe was unavailable. This is the one place the
+   Outside a git repository, bare `awf check` runs the repo universe alone and reports that the
+   staged universe was unavailable. A repository with no commit yet is not such a case: `CheckStaged`
+   supports it deliberately, taking the empty universe as the before side
+   (`internal/project/currentstate.go:164-166`), which is what lets an adopter's first commit pass a
+   wired pre-commit hook. This is the one place the
    design states that something did not run, and it reports an environmental fact rather than a gap
    in the matrix. It is deliberately not a refusal: an adopter actually using awf is expected to be
    in a git repository, but a tree that is not one should degrade rather than break. A backed claim
@@ -188,7 +196,9 @@ the append-only column records what the commands were called when those decision
    `./x check`'s example invocation is scoped to `awf check repo`. Sundial is a nested tree inside
    this repository, so its staged universe would otherwise be evaluated against the containing
    repository's index, which is neither what the example asserts nor a property sundial owns. The
-   nested staged transition check keeps its existing separate invocation.
+   nested staged transition check keeps its existing separate invocation at
+   `.githooks/check-nested-staged:7`, which hardcodes the spelling and so respells by direct edit
+   rather than through either composition site item 1 names.
 
 9. The staged scanners resolve their config, their scan corpus, and their scanned path prefixes
    against the project root rather than the index root, so `check repo prose` and `check repo memory`
@@ -219,8 +229,12 @@ the append-only column records what the commands were called when those decision
 11. A new schema migration covers every var this decision invalidates, on one rule: retarget where a
     live replacement exists, clear where none does. It retargets `check prose` to `check repo prose`,
     `check memory` to `check repo memory`, and `check commit` to `check staged commit`, and it clears
-    a var invoking the removed command in either the pre-ADR-0159 `invariants` spelling or the
-    `check invariants` spelling. The three retargeted spellings are pinned catalog var descriptors
+    a var invoking the removed command in its `check invariants` spelling. The pre-ADR-0159 bare
+    `invariants` spelling is deliberately not matched: an awf-invoked value was already rewritten to
+    `check invariants` by the 18-to-19 migration and so never reaches this one, and the values that
+    still spell it bare are the non-awf-runner values ADR-0159 declined to own on the stated ground
+    that awf does not own another runner's vocabulary
+    (`internal/migrate/renameretiredcommands.go:57-60`). The three retargeted spellings are pinned catalog var descriptors
     (`proseGateCmd`, `memoryGateCmd`, `commitGateCmd`) that an adopter holds and a hook invokes, so
     leaving them would reproduce exactly the failure ADR-0159's migration was written to prevent: an
     unknown-subcommand error inside a pre-commit hook rather than at upgrade time.
@@ -234,8 +248,8 @@ the append-only column records what the commands were called when those decision
     would desync it from the ADR that shipped it.
 
 12. The authored inputs behind the roadmap and the affected domain summaries update in the same
-    commit as the change they describe. `.awf/docs/parts/roadmap/ideas.md` replaces the superseded
-    follow-on entry, recording that three of its four contracts are discharged here and carrying
+    commit as the change they describe. the superseded follow-on entry at `.awf/docs/parts/roadmap/deferred.md:101` is removed and its
+    carried-forward remainder lands in `.awf/docs/parts/roadmap/ideas.md`, recording that three of its four contracts are discharged here and carrying
     forward the two deferred halves of item 5 as a check-architecture cleanup; the deferred entry at
     `.awf/docs/parts/roadmap/deferred.md:235` ("`awf check drift` and `awf check state`: deliberately
     kept, currently uninvoked") is resolved by item 4, which invokes both. `.awf/domains/parts/adr-system/current-state.md:7`
