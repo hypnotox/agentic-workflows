@@ -1008,7 +1008,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:0fc288352834dd240063ef332aacb105b740ef54d960cd0fd37cee04ac449236",
+      "outputHash": "sha256:edd26e0ab583eaad189ff69862e7095d4f161a5800c57a1a3ac8a5d43850322f",
       "regenChecked": true
     },
     "docs/debugging.md": {

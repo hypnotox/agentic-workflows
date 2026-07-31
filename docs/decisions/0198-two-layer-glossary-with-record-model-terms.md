@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-31
 ---
 # ADR-0198: Two-layer glossary with record-model terms
@@ -240,3 +240,5 @@ template or catalog change does.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implementing; content-sha256: 62f5db438f6908d63c53e4d36759f6fcf38827383befec7620f0ad9a78111472
+- 2026-07-31: Applied; operations: update `rendering/doc-outputs:pitfall-domains-resolved`

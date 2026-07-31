@@ -40,8 +40,9 @@ Backing: test
 
 ### `invariant: pitfall-domains-resolved`
 
-check fails a pitfall entry whose domains list names a domain not configured in the project; an entry with no domains is valid and never surfaces through context.
+check fails a pitfall entry whose domains list names a domain not configured in the project; an entry with no domains is valid.
 Origin: ADR-0148
+Revised-by: ADR-0198
 Backing: test
 
 ### `invariant: skill-ref-dead-fails`
