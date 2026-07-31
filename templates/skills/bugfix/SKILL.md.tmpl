@@ -29,7 +29,7 @@ A minimal simple known-root fix uses no effort. For a concrete non-minimal fix, 
 {{ if .layout.docs.pitfalls }}   Before writing the fix, check `{{ .layout.docs.pitfalls }}` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 {{ end }}<!-- awf:end -->
 
-3. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
+3. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
 
 4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
 

@@ -1652,7 +1652,7 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{
 			"confirm it with a falsifiable check before touching code",
 			"Write the failing test first",
-			"The project's gate (fast tier) is the default",
+			"The project's gate is the default",
 			"the project's docs",
 			"Run the project's review step as the terminal step.",
 		},

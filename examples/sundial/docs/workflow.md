@@ -60,7 +60,7 @@ The gate is one command (`./x gate`) that must be green before every commit. Com
 
 - **Minimum:** the test suite (`./x test`), the language's standard linter, and `./awf check`: so behaviour, style, and rendered-file drift all block a commit.
 - **As the project grows:** add what your stack makes cheap: a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
-- **Keep it fast.** The per-commit tier should run in seconds; move anything slower (end-to-end suites, broad integration runs) to a fuller tier (`./x gate full`) that runs before merging or releasing rather than on every commit.
+- **Keep it fast.** The per-commit gate should run in seconds; move anything slower (end-to-end suites, broad integration runs) to the fuller tier (`./x gate full`) that runs before merging or releasing rather than on every commit.
 
 A script or task-runner alias makes the gate one word to run and one place to grow.
 

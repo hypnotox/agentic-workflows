@@ -64,7 +64,7 @@ The gate is one command{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} that must b
 
 - **Minimum:** the test suite{{ with .vars.testCmd }} (`{{ . }}`){{ end }}, the language's standard linter, and `{{ with .vars.checkCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check{{ end }}`: so behaviour, style, and rendered-file drift all block a commit.
 - **As the project grows:** add what your stack makes cheap: a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
-- **Keep it fast.** The per-commit tier should run in seconds; move anything slower (end-to-end suites, broad integration runs) to a fuller tier{{ with .vars.gateCmdFull }} (`{{ . }}`){{ end }} that runs before merging or releasing rather than on every commit.
+- **Keep it fast.** The per-commit gate should run in seconds{{ with .vars.gateCmdFull }}; move anything slower (end-to-end suites, broad integration runs) to the fuller tier (`{{ . }}`) that runs before merging or releasing rather than on every commit{{ end }}.
 
 A script or task-runner alias makes the gate one word to run and one place to grow.
 <!-- awf:end -->
@@ -86,5 +86,5 @@ awf never installs or activates git hooks; the wiring is yours. When the `hooks`
 <!-- awf:section ci -->
 ## Continuous integration
 
-Local hooks are per-clone and optional, so CI is the enforcement backstop: run `{{ with .vars.checkCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check{{ end }}` and the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} on every push, and the fuller tier{{ with .vars.gateCmdFull }} (`{{ . }}`){{ end }} before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
+Local hooks are per-clone and optional, so CI is the enforcement backstop: run `{{ with .vars.checkCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check{{ end }}` and the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} on every push{{ with .vars.gateCmdFull }}, and the fuller tier (`{{ . }}`) before merging{{ end }}. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
 <!-- awf:end -->

@@ -17,9 +17,10 @@ shift || true
 case "$cmd" in
   gate)
     # Full gate: profiled tests + 100% coverage check + vet + lint. The optional
-    # `full` arg is accepted for hook compatibility (pre-push runs `./x gate full`);
-    # awf has no slower tier. The coverage step (ADR-0012) fails below 100% of
-    # non-ignored statements; -coverpkg=./... so every package contributes.
+    # `full` arg is accepted as a no-op legacy argument; no rendered artifact
+    # passes it, and awf has no slower tier. The coverage step (ADR-0012) fails
+    # below 100% of non-ignored statements; -coverpkg=./... so every package
+    # contributes.
     prof="$(mktemp)"
     cleanup_paths+=("$prof")
     go test ./... -coverpkg=./... -coverprofile="$prof"
