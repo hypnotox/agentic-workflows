@@ -443,6 +443,17 @@ contents, so the reviewer executes rather than designs:
   bucketing and base-TID switch in scaffold.go) stays as found; the claim wording was narrowed
   to the proven scope instead (ADR-0194 item 6 records the reasoning). The scaffold base-TID
   switch may still fold into Phase 5's template-ID consolidation.
+- Phase 6 deviations (2026-07-31): (1) Task 6.2's claim body shipped with its final clause
+  corrected by user ruling at phase review - the plan's text said context state AND Roots are
+  "derived by the operation that needs them and threaded to their consumers", but Roots is a
+  construction input fixed at Loader.Open (the glossary and resident.go agree); the shipped
+  clause describes context state as derive-and-thread and Roots as fixed at construction.
+  The old body's beginInvocation clause was dropped per the plan; its assertion is retained
+  in the test as hardening beyond the claim. (2) The scanner gained a watched-key guard
+  (every loaded package must have a watched-type entry) and a carve-side negative overlay
+  beyond Task 6.1's letter. (3) The roadmap rewrite stands as its own durable record of the
+  future-effort acceptance instead of attributing it to ADR-0194, which records no such
+  statement.
 - Phase 5 deviations (2026-07-31, all grounded at execution, all verified by review): (1)
   `resident.Root` and `Table()` were deleted rather than kept one-field - with `TemplateID`
   gone, `Table()` and `RootNames()` would be two accessors for one list and `Table()` would
