@@ -53,11 +53,17 @@ status flips) that lands under the terminal-review flow per the deferred-flip co
     grounding-checker, implementer (md.tmpl each, as named per task)
   - `templates/partials/`: review-spine-head.md, review-spine-tail.md,
     checkpoint-approval.md, checkpoint-routine.md
-  - `templates/agents-doc/AGENTS.md.tmpl` (Phase 7)
+  - `templates/agents-doc/AGENTS.md.tmpl` (Phase 7),
+    `templates/docs/workflow.md.tmpl` (Phase 3)
   - `internal/catalog/standard.go`, `internal/project/render.go`,
     `internal/project/spine_test.go`, `internal/project/phase_transaction_ownership_test.go`,
-    `internal/project/subagent_model_selection_test.go`, `internal/evals/chain_test.go`
-  - `.awf/config.yaml`, `.awf/docs/glossary.yaml`, `.awf/agents/plan-reviewer.yaml`,
+    `internal/project/subagent_model_selection_test.go`,
+    `internal/project/guide_scopes_test.go`, `internal/evals/chain_test.go` (only if
+    Task 4.1's relationship edits shift plain golden expectations; its
+    `TestUnifiedEffortWorkflowCoverage` phrases are never edited)
+  - `x` (comment lines 19-22 only, Phase 3)
+  - `.awf/config.yaml`, `.awf/docs/glossary.yaml`, `.awf/docs/pitfalls.yaml`,
+    `.awf/agents/plan-reviewer.yaml`,
     `.awf/agents/adr-reviewer.yaml`, `.awf/skills/parts/debugging/debugging-surfaces.md`,
     `.awf/parts/workflow/local-hooks.md`, `.awf/parts/workflow/composing-the-gate.md`,
     `.awf/docs/parts/testing/tiers.md`, `.awf/docs/parts/development/command-runner.md`,
@@ -101,12 +107,15 @@ golden expectation to the corrected prose in the same transaction.
   - `templates/agents/plan-reviewer.md.tmpl:48`: replace "The other three lenses
     (`executability`, `convention-alignment`, `testing-discipline`)" with "The remaining
     lenses".
-  - `internal/catalog/standard.go:161` (code-reviewer `Description`): replace the
+  - `internal/catalog/standard.go:164` (code-reviewer `Description`): replace the
     five-lens enumeration "correctness, plan-adherence, testing discipline, doc currency,
     and convention alignment" with a count-free description, e.g. "covering its universal
     review lenses from correctness through convention alignment".
-  Post-check: `grep -rn 'all five lenses\|other three lenses' templates/ internal/`
-  returns no output.
+  Post-check: `grep -rn 'five lenses\|other three' templates/ internal/` returns no
+  output (catches the "all five lenses" dispatch strings, the when-fires five-name
+  parenthesis lead-in, and both "other three lenses"/"other three ran" forms), and the
+  code-reviewer `Description` in `internal/catalog/standard.go` no longer enumerates
+  lens names (visual check of the edited string).
 - [ ] **Task 1.3: Fix the resync skill's contradictions (A5).** In
   `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`:
   - Move the plan-path identification instruction ("Identify the plan path (named in the
@@ -144,10 +153,12 @@ golden expectation to the corrected prose in the same transaction.
   `{{ with .data.digestLabel }}{{ . }}{{ else }}Review{{ end }} review complete (N lenses, M findings).`
   to
   `{{ with .data.digestLabel }}{{ . }} review complete{{ else }}Review complete{{ end }} (N lenses, M findings).`
-  Post-check: rendering with `digestLabel` unset produces "Review complete (N lenses,
-  M findings)." - verify via the sundial example render if it leaves the label unset,
-  otherwise via the template unit test that covers the partial; `grep -rn 'Review review'
-  .claude/ .pi/ examples/` returns no output after render.
+  Post-check: all three reviewer agents set `digestLabel` in the catalog
+  (`internal/catalog/standard.go:139,158,180`), so no rendered tree exercises the
+  degraded branch - verify it through the empty-data/publication-safety template sweep
+  in `internal/project` (the test that renders templates with empty variables) instead
+  of a rendered-tree grep: the swept output contains "Review complete" and never
+  "Review review".
 - [ ] **Task 1.6: Small accuracy corrections (A12).**
   - `templates/skills/bugfix/SKILL.md.tmpl:36` (step 5): replace the generic "Run the
     project's review step as the terminal step." with the same skill-conditional the
@@ -158,18 +169,20 @@ golden expectation to the corrected prose in the same transaction.
     "after any render". Line 12: replace "use the target-native governed exploration
     loader" with "invoke `awf-exploring`" (this is a repo-local part; the literal skill
     name is correct here).
-  - `templates/skills/tdd/SKILL.md.tmpl:19`: replace "validate exactly one immutable
-    slugged effort" with "create or resume exactly one immutable slugged effort",
-    matching every sibling.
   - `templates/agents/grounding-checker.md.tmpl:21`: replace "Assess whether the effort
     needs a decision record..." with "Assess whether the work needs a decision
     record..." (effort is a reserved term).
   - `templates/skills/executing-plans/SKILL.md.tmpl:35` and
     `templates/skills/subagent-driven-development/SKILL.md.tmpl:40`: remove "prior
-    concerns" from the dirty-stop inventory list; the implementer's stopped-report schema
+    concerns" from BOTH inventories in each file - the dirty-stop inventory and the
+    ownership-transfer inventory (the phrase occurs twice per file). Justification: the
+    implementer's stopped-report schema
     (`templates/agents/implementer.md.tmpl:101-108`) defines exactly five fields and no
-    such field. Do not add a field to the implementer instead (the schema is the
-    contract; the skills drifted).
+    such field, and no schema anywhere defines the field for the parent-authored
+    transfer inventory either - both inventories reference a field nothing produces.
+    Do not add a field to the implementer instead (the schema is the contract; the
+    skills drifted).
+  (The tdd "validate" correction moved into Task 5.1(b), which rewrites that line.)
   Post-check: `grep -rn 'prior concerns' templates/skills/` returns no output;
   `grep -n 'after any sync' .awf/skills/parts/` returns no output.
 - [ ] **Phase-close: stage, check, gate, and commit.** `./x render` then `./x check`
@@ -207,10 +220,13 @@ edits (A3, as re-verified 2026-07-31: two edits, one invariant claim, not D6's t
   - `internal/project/phase_transaction_ownership_test.go:80`
     (`TestPhaseTransactionOwnershipAcrossWorkflowSurfaces`, proof for
     `invariant: rendering/workflow-skill-templates:phase-transaction-ownership`, Origin
-    ADR-0166): remove the unconditional `allowCommits: true` assertion from the
-    `assertAll("subagent", ...)` expectations for the non-Pi variants; assert the
-    generic-branch phrase instead, and keep (or add) the `allowCommits: true` assertion
-    under a Pi-configured variant so the literal stays pinned where it renders.
+    ADR-0166): the test has no Pi variant (neither `assertContract` call sets
+    `targetSubagentTools`, and `assertAll("subagent", ...)` shares one clause list
+    across variants). Remove `allowCommits: true` from that shared clause list and
+    assert the generic-branch phrase in its place; do NOT add a Pi variant here. The
+    Pi-side literal remains pinned by the existing Pi case in
+    `internal/project/spine_test.go:628` (`TestMaintainableCodeSubagentContract`,
+    ADR-0168), which is the surviving pin.
   This is a scope correction, not a weakened assertion. The claim text of
   `phase-transaction-ownership` reads, in full: "A rendered plan phase is one
   independently green coherent implementation transaction with an explicit per-phase
@@ -236,29 +252,44 @@ fix(rendering): confine the allowCommits dispatch literal to Pi
 **Execution mode: inline.** One transaction (A4 + D5): the config var, the four
 hand-written parts that restate the split, and every rendered output, same commit.
 
-- [ ] **Task 3.1: Unset the var.** In `.awf/config.yaml:201`, delete the line
-  `gateCmdFull: ./x gate full`. The `x` script (lines 19-22) keeps accepting the `full`
-  arg for pre-push hook compatibility; nothing else changes in `x`.
-- [ ] **Task 3.2: Correct the four convention parts.** Each currently asserts a
-  fast/full choice that does not exist:
+- [ ] **Task 3.1: Unset the var and retire the stale hook-compat claims.** In
+  `.awf/config.yaml:201`, delete the line `gateCmdFull: ./x gate full`. Once unset, the
+  regenerated `.awf/hooks/pre-push.sh` composes plain `./x gate`, so NOTHING generated
+  passes `full` any more; every "exists for pre-push hook compatibility" sentence
+  becomes false in the same commit. Update the `x` script comment (lines 19-22) to the
+  new truth: "the optional `full` arg is accepted as a no-op legacy argument; no
+  rendered artifact passes it; awf has no slower tier." The `full` acceptance in `x`
+  itself stays (external callers may still pass it).
+- [ ] **Task 3.2: Correct the guarded and unguarded template prose and the four
+  convention parts.**
+  - `templates/skills/bugfix/SKILL.md.tmpl:32` and
+    `templates/skills/debugging/SKILL.md.tmpl:42`: the "(fast tier)" parenthetical sits
+    OUTSIDE the `{{ if .vars.gateCmdFull }}` guard and renders unconditionally; delete
+    the parenthetical from both templates (the guarded `Run ... full ...` sentence
+    falls away on its own once the var is unset in this repo, and stays coherent for
+    adopters who set the var).
+  - `templates/docs/workflow.md.tmpl:67` and `:89`: the "a fuller tier" / "the fuller
+    tier ... before merging" prose is unconditional; wrap each sentence in a
+    `{{ if .vars.gateCmdFull }}...{{ end }}` guard so it renders only where a fuller
+    tier exists (publication-safe: with the var unset the surrounding prose reads
+    complete).
   - `.awf/parts/workflow/local-hooks.md:3`: remove `gateCmdFull` from the config list;
-    where it names the pre-push command, say it runs the single gate (`./x gate full` is
-    accepted for compatibility and runs the identical gate).
+    where it names the pre-push command, say it runs the single gate.
   - `.awf/parts/workflow/composing-the-gate.md:12`: keep the "there is no slower tier"
-    statement but remove any instruction to choose between tiers.
-  - `.awf/docs/parts/testing/tiers.md:3-7`: rewrite to state the single-tier reality
-    plainly: one gate, `./x gate`, with `full` accepted as a no-op compatibility arg.
-  - `.awf/docs/parts/development/command-runner.md:10`: keep the compatibility
-    explanation; drop any phrasing that implies a distinct fuller run.
-  These are qualifying-instruction edits (non-contractual prose); preserve each part's
-  other content.
+    statement; restate the `full` arg as a no-op legacy argument nothing rendered
+    passes; remove any instruction to choose between tiers.
+  - `.awf/docs/parts/testing/tiers.md:3-7`: rewrite to the single-tier reality: one
+    gate, `./x gate`, with `full` accepted as a no-op legacy argument.
+  - `.awf/docs/parts/development/command-runner.md:10`: same restatement; drop any
+    phrasing implying a distinct fuller run or that a rendered hook passes `full`.
+  The part edits are qualifying-instruction edits (non-contractual prose); preserve
+  each part's other content.
 - [ ] **Task 3.3: Verify the rendered fallout.** `./x render` regenerates
-  `.awf/hooks/pre-push.sh` (the hook payload now composes the gate command from the
-  unset var's default), the debugging and bugfix skills (their gate-tier sentences now
-  render the single-gate default branch, which also removes the B6 filler at
-  `templates/skills/bugfix/SKILL.md.tmpl:32,38` rendered output), and
-  `docs/workflow.md`, `docs/testing.md`, `docs/development.md`. Post-check: `./x check`
-  clean; `grep -rn 'gate full' .claude/skills/ .pi/skills/` returns no output;
+  `.awf/hooks/pre-push.sh`, the debugging and bugfix skills, and `docs/workflow.md`,
+  `docs/testing.md`, `docs/development.md`. Post-check: `./x check` clean;
+  `grep -rn 'gate full' .claude/skills/ .pi/skills/` returns no output;
+  `grep -rn 'fast tier' templates/skills/ .claude/skills/` returns no output;
+  `grep -n 'fuller tier' docs/workflow.md` returns no output;
   `bash -n .awf/hooks/pre-push.sh` exits 0.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage config, parts, and all
   rendered outputs; `awf check --staged`, `./x gate`; commit:
@@ -311,13 +342,18 @@ sundial example.
   `internal/project/render.go:112-113`), so "task" is wrong inside and out. Rename the
   Go method and render key `taskSkillRows` to `skillRows` at
   `internal/project/render.go:98` and `:112-113`, rename every template reference to the
-  key (locate with `grep -rn 'taskSkillRows' templates/`), update the glossary entry
+  key (locate with `grep -rn 'taskSkillRows' templates/`), update the test references
+  `p.taskSkillRows()` at `internal/project/guide_scopes_test.go:46` and `:76` and the
+  `"taskSkillRows"` data key at `:70`, update the glossary entry
   `.awf/docs/glossary.yaml:6` (key and description: one advisory row per enabled skill,
-  all kinds), and reword the test comments that use "task skill" to mean any non-chain
-  skill at `internal/project/spine_test.go:1737`, `:1910`, `:1947`. Leave
+  all kinds), rename the worked example at `.awf/docs/pitfalls.yaml:446`, and reword
+  the test comments that use "task skill" to mean any non-chain skill at
+  `internal/project/spine_test.go:1737`, `:1910`, `:1947`. Leave
   `internal/evals/chain_test.go:123` and `:237` unchanged (their usage names the actual
-  `WorkflowTask` skills and is correct). Post-check: `grep -rn 'taskSkillRows' .`
-  returns no output; `go build ./...` and `./x gate` pass.
+  `WorkflowTask` skills and is correct). Post-check:
+  `grep -rn 'taskSkillRows' templates/ internal/ .awf/` returns no output (the token
+  legitimately survives in this plan file and in git history); `./x gate` green (the
+  gate compiles tests; `go build ./...` alone would miss the test-file references).
 - [ ] **Task 4.4: Fix roadmap-graduation's frontmatter and commit instruction (A9, E4,
   B3).** In `templates/skills/roadmap-graduation/SKILL.md.tmpl`:
   - Frontmatter description (line 3): align with the three-case trigger from Task 4.1
@@ -326,14 +362,20 @@ sundial example.
     `docs(roadmap): drop <item>` with the one-line reason in the commit body, removing
     `- <one-line reason>` from the subject; the following sentence ("The reason goes in
     the commit body, not the file.") then agrees with the template.
-  - Cut the failure-modes section (lines 20-24) and fold step 5's "Same-commit removal
-    is non-negotiable" (lines 52-53) into step 3's same-commit rule, leaving the rule
-    stated once in the intro (line 8) and once in the procedure (step 3): the file
-    states each rule at most twice, not three or four times.
-  Post-check: after render, the rendered skill contains exactly one
-  `docs(roadmap): drop` template string, and `grep -c 'same commit'
-  .claude/skills/awf-roadmap-graduation/SKILL.md` is at most 2 (indicative; the
-  binding check is that the failure-modes heading is gone).
+  - `failure-modes` and `same-commit` are catalog-declared sections for this skill
+    (`internal/catalog/standard.go:117-118`), so their `awf:section` markers MUST stay
+    (deleting one breaks `rendering/catalog-and-targets:skill-section-parity`,
+    ADR-0054, and changing the catalog `Sections` set is a plan non-goal). Empty the
+    `failure-modes` default body (adopters keep the override point) and reduce the
+    `same-commit` default body to the single fold-in sentence for step 3, so the
+    same-commit rule renders once in the intro (line 8) and once in the procedure.
+  Note: roadmap-graduation is not enabled in this repo, so these edits produce no
+  rendered diff here; the sundial example and golden template tests are the rendered
+  surfaces. Post-check: the template contains exactly one `docs(roadmap): drop`
+  template string, both `awf:section` markers survive
+  (`grep -c 'awf:section' templates/skills/roadmap-graduation/SKILL.md.tmpl` is
+  unchanged from before the edit), and `go test ./internal/project/` section-parity
+  tests pass.
 - [ ] **Phase-close: stage, check, gate, and commit.** `./x render`, `./x check`, stage
   (including every regenerated guide and the sundial example), `awf check --staged`,
   `./x gate`; commit:
@@ -345,33 +387,42 @@ fix(rendering): align catalog relationships and skill-kind vocabulary
 ## Phase 5: Concision cuts in place
 
 **Execution mode: inline.** One transaction for the restatement cuts that need no new
-partial (B2 preamble trims, B3 notes cuts, B6 filler, B5 sidecars). Constraint for every
-task in this phase: where `./x gate` shows an invariant-marked test pinning a phrase the
-cut removes, the phrase stays (restore it, keep the cut minimal) - the
-`unified-effort-workflow-coverage` claim requires each workflow path to carry the
-working-memory contract elements, and the checkpoint partials rendering into each skill
-are the intended single carrier.
+partial (B2 preamble trims, B3 notes cuts, B6 filler, B5 sidecars). Binding constraint:
+`TestUnifiedEffortWorkflowCoverage` (`internal/evals/chain_test.go:276`, invariant proof
+for `rendering/workflow-skill-templates:unified-effort-workflow-coverage`) pins phrases
+that must survive in EVERY rendered skill body - "standalone memory is forbidden", the
+repository-authority phrase, and "writer" everywhere, plus "minimal simple" in tdd and
+roadmap-graduation and "never edit" in refactor-coupling-audit. Read
+`internal/evals/chain_test.go:300-340` and enumerate the asserted phrases before
+authoring any trim; the test itself is not edited in this phase, and a cut a pinned
+phrase blocks is out of scope.
 
-- [ ] **Task 5.1: Trim the effort/working-memory preambles (B2).** Batch task.
-  Representative (brainstorming, `templates/skills/brainstorming/SKILL.md.tmpl:21`): the
-  procedure preamble currently restates create-or-resume, owned path, `Effort:` header,
-  writer rules, authority precedence, report-only children, and the standalone ban.
-  Replace with the operative core only: "Carry the effort slug and exact
-  `.awf/efforts/<slug>/memory.md` path through every step; children receive them
-  read-only. The working-memory contract lives in the agent guide and the checkpoint
-  below." Edge (reviewing-impl, `templates/skills/reviewing-impl/SKILL.md.tmpl:8`): the
-  preamble also carries the reviewer-specific clause "the report-only reviewer receives
-  slug/path only as context and never edits shared memory" - keep that clause verbatim,
-  trim the rest identically. Affected sites (exhaustive; same trim shape):
-  brainstorming:21, proposing-adr:39, writing-plans:49, reviewing-adr:20,
+- [ ] **Task 5.1: Trim the effort/working-memory preambles (B2).** Batch task in two
+  site groups (all `templates/skills/<name>/SKILL.md.tmpl`):
+  (a) Checkpoint-bearing sites, whose included checkpoint partial restates part of the
+  contract: brainstorming:21, proposing-adr:39, writing-plans:49, reviewing-adr:20,
   reviewing-plan:23, reviewing-plan-resync:22, reviewing-impl:8, executing-direct:16,
-  executing-plans:21, subagent-driven-development:22, bugfix:21, debugging:35, tdd:19,
-  roadmap-graduation:28, adr-lifecycle:50, refactor-coupling-audit:33 (all
-  `templates/skills/<name>/SKILL.md.tmpl`). Also remove executing-direct's third
-  restatement at line 20 ("a minimal simple fix remains effort-free") - the preamble
-  core already implies it. Post-check: `./x gate` green with no invariant-marked
-  assertion edited; each rendered skill still contains the checkpoint partial's full
-  contract items.
+  executing-plans:21, subagent-driven-development:22, bugfix:21, debugging:35.
+  Representative (brainstorming:21): trim the preamble to the operative core plus the
+  pinned phrases: "Carry the effort slug and exact `.awf/efforts/<slug>/memory.md` path
+  through every step; children receive them read-only and never edit shared memory.
+  Repository sources and current-state documentation outrank checkpoint prose;
+  standalone memory is forbidden and one user-managed writer remains responsible. The
+  full protocol lives in the checkpoint below." Edge (reviewing-impl:8): additionally
+  keep the reviewer clause "the report-only reviewer receives slug/path only as context
+  and never edits shared memory" verbatim. Also remove executing-direct's separate
+  restatement at line 20 ("a minimal simple fix remains effort-free") - its preamble
+  core keeps the contract, and "minimal simple" is not pinned for that skill.
+  (b) Partial-less sites, whose preamble is the body's only contract carrier: tdd:19,
+  adr-lifecycle:50, refactor-coupling-audit:33, roadmap-graduation:28. Keep the full
+  contract sentence set including each site's pinned extra phrase ("minimal simple" in
+  tdd and roadmap-graduation, "never edit" in refactor-coupling-audit); cut only
+  phrases doubled within the same site, and do NOT add a "checkpoint below" reference
+  (nothing renders one there). At the tdd site fold in the A12 wording correction:
+  "create or resume exactly one immutable slugged effort" replaces "validate exactly
+  one immutable slugged effort".
+  Post-check: `./x gate` green with `internal/evals/chain_test.go` unedited; every
+  phrase `TestUnifiedEffortWorkflowCoverage` asserts still renders in its skill body.
 - [ ] **Task 5.2: Merge the checkpoint partials' overlapping items (B2).** In
   `templates/partials/checkpoint-approval.md` and
   `templates/partials/checkpoint-routine.md`, items 1 and 2 restate each other
@@ -382,9 +433,11 @@ are the intended single carrier.
   slug/path/`Effort:` header and preserve one user-managed writer with report-only
   children (keep the reviewer-never-edits sentence verbatim). Cut only the
   double-stated phrases; every distinct contract element survives exactly once per
-  partial. Post-check: `./x gate` green; `grep -c 'standalone memory is forbidden'
-  .claude/skills/awf-brainstorming/SKILL.md` is at most 2 after render (guide + one
-  partial occurrence; indicative).
+  partial. Post-check: `./x gate` green; within the rendered
+  `.claude/skills/awf-brainstorming/SKILL.md`, each contract element appears once in
+  the trimmed preamble and once per included checkpoint partial occurrence, and no
+  longer twice within a single checkpoint block (read the rendered checkpoint block to
+  confirm; the binding check is the gate).
 - [ ] **Task 5.3: Cut notes-restating-the-file (B3).**
   - `templates/skills/proposing-adr/SKILL.md.tmpl:83-87`: delete the three Notes
     bullets restating the lifecycle pointer (line 12), the frontmatter/sections block
@@ -423,7 +476,6 @@ are the intended single carrier.
   - `templates/skills/executing-plans/SKILL.md.tmpl:44` and
     `templates/skills/subagent-driven-development/SKILL.md.tmpl:28`: expand "V2
     operation batches" to "the ADR's State changes operation batches" at first use.
-  (bugfix's gate-tier filler already fell with Phase 3.)
 - [ ] **Task 5.5: Uncount refactor-coupling-audit and track its surviving categories
   (A7, corrected D3).** In `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`:
   frontmatter (line 5) and body (line 12) drop "6-category" in favour of "the coupling
@@ -452,12 +504,14 @@ are the intended single carrier.
     imperative framing and the Reject enumeration; everything else is the universal
     executability lens.) Keep the sibling focus items untouched (they carry incident
     narrative).
-  - `.awf/agents/adr-reviewer.yaml`: delete the `decision-clarity` (line 8) and
-    `consequences-honesty` (line 11) focus items (verbatim restates of universal lenses
-    1 and 4 with no "kept deliberately" note) and the INDEX-regen item (line 7, covered
-    by the template tail at `templates/agents/adr-reviewer.md.tmpl:43`). If any deleted
-    item carries a clause not in the universal lens, keep that clause as a one-line
-    item instead.
+  - `.awf/agents/adr-reviewer.yaml`: delete the `decision-clarity` (lines 14-15) and
+    `consequences-honesty` (lines 16-17) focus items (verbatim restates of universal
+    lenses 1 and 4 with no "kept deliberately" note) and the INDEX-regen docCurrency
+    item (line 7; the template tail at `templates/agents/adr-reviewer.md.tmpl:43`
+    already carries the unconditional INDEX-regen check). The docCurrency checks at
+    lines 8 (AGENTS.md currency) and 11 (update/rename provenance) are load-bearing
+    and MUST NOT be touched. If a deleted item carries a clause not in the universal
+    lens, keep that clause as a one-line item instead.
 - [ ] **Phase-close: stage, check, gate, and commit.** `./x render`, `./x check`, stage,
   `awf check --staged`, `./x gate`; commit:
 
@@ -498,15 +552,24 @@ are line-anchored); restructure surrounding sentences accordingly.
   numbered child form stays untouched. Same include mechanics and post-check shape as
   6.1 (grep the core phrase in templates/skills/ - only includes remain).
 - [ ] **Task 6.3: Escalation-menu and coverage-oracle partials.** Create
-  `templates/partials/escalation-menu.md` ("perform it first, include it in the current
-  effort, defer it in a durable project-owned record, or decline it" frame; sites:
-  bugfix, refactor-coupling-audit, tdd) and `templates/partials/coverage-oracle.md`
-  ("Coverage may never regress. A fix that breaks an existing passing test is itself a
-  bug." frame; sites: `templates/skills/bugfix/SKILL.md.tmpl:58`,
-  `templates/skills/debugging/SKILL.md.tmpl:63`, `templates/skills/tdd/SKILL.md.tmpl:30`;
-  the bugfix variant ends "regression" - unify on "bug" unless a test pins the variant,
-  in which case keep both wordings per-site and extract nothing for that pair). Include
-  at each site; same post-check shape as 6.1.
+  `templates/partials/escalation-menu.md` carrying the FULL frame "perform it first,
+  include it in the current effort, defer it in a durable project-owned record, or
+  decline it with the trade-off stated" (the trailing "with the trade-off stated" is
+  asserted for tdd and bugfix at `internal/project/spine_test.go:550` and `:562` under
+  the `maintainable-code-stage-coverage` invariant proof at `:518` - a truncated
+  partial breaks that proof); skill sites: bugfix, refactor-coupling-audit, tdd. The
+  fourth copy at `templates/docs/maintainable-code-design.md.tmpl:38` stays as that
+  doc's canonical prose home and is NOT converted to an include. Create
+  `templates/partials/coverage-oracle.md` for the "Coverage may never regress. A fix
+  that breaks an existing passing test is itself a bug." frame; sites:
+  `templates/skills/bugfix/SKILL.md.tmpl:58`,
+  `templates/skills/debugging/SKILL.md.tmpl:63`,
+  `templates/skills/tdd/SKILL.md.tmpl:30`. The tdd variant is the outlier (colon
+  separator, ends "regression"); unify on the bugfix/debugging wording and adjust
+  tdd:30 - the other two sites already match. debugging:63 carries a trailing
+  `{{ if .layout.docs.debugging }}` clause that must survive on the line after the
+  include. Include at each site; same post-check shape as 6.1, plus
+  `go test ./internal/project/ -run MaintainableCodeStage` passes unedited.
 - [ ] **Task 6.4: Exploration-ladder partial.** Create
   `templates/partials/exploration-ladder.md` holding the breadth and detail ladder
   definitions (`targeted < bounded < broad` as an adaptive maximum;
@@ -575,9 +638,15 @@ operations.
   runtime with model selection chooses explicitly; an unsupported runtime uses its
   harness default and notes that explicit selection is unavailable."). Replace the
   guide template's inline paragraph with the include directive on its own line inside
-  the existing `workflow` section (the section id and marker stay). The guide is the
-  partial's only consumer; no skill site includes it (ADR-0189 decision 1). Post-check:
-  rendered `AGENTS.md` workflow section is byte-identical for this paragraph.
+  the existing `workflow` section (the section id and marker stay). The include regex
+  (`internal/render/include.go:13`) allows only whitespace before the directive, and
+  `templates/agents-doc/AGENTS.md.tmpl:58` currently opens
+  `{{end}}{{ end }}Every governed subagent dispatch...` - use exactly:
+  `{{end}}{{ end -}}` on the preceding line (the trim marker swallows the newline),
+  then the include directive on its own line, so no blank line is introduced. The
+  guide is the partial's only consumer; no skill site includes it (ADR-0189 decision
+  1). Post-check: rendered `AGENTS.md` workflow section is byte-identical for this
+  paragraph.
 - [ ] **Task 7.2: Compress every governed dispatch section.** Batch task over the 13
   governed dispatch sections (26 template branch copies) in
   `templates/skills/{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md.tmpl`.
@@ -589,7 +658,11 @@ operations.
   explicit selection is unavailable. Full tier definitions: the agent guide's workflow
   section." Pi-branch edge: same first clause, branch tail instead reads "omit the
   `model` field to use configured role routing, overriding deliberately with an exact
-  tier reference." Exact final wording is fixed by Task 7.3's pinned literals - author
+  tier reference. Never pass `default`, `auto`, or `inherit parent` as a model value."
+  (The prohibition sentence is retained: it guards values the Pi runtime rejects, per
+  `rendering/pi-workflows:pi-subagent-model-routing`, and the branch rule must keep
+  its semantic content exactly.) Exact final wording is fixed by Task 7.3's pinned
+  literals - author
   7.2 and 7.3 together so template text and test literals are written from one string
   set; the branch rule sentences are claim-load-bearing and must keep their semantic
   content exactly. Exhaustive site list: the `deliberateSelectionDispatches` table in
@@ -600,8 +673,8 @@ operations.
   still names the three tiers and the escalation trigger.
 - [ ] **Task 7.3: Refresh the pinned test literals.** In
   `internal/project/subagent_model_selection_test.go`, replace the
-  `deliberateSelectionCommon` clause set (lines 22-28) and the
-  `deliberateSelectionPiRule`/`deliberateSelectionNonPiRule` strings (lines 31-32) with
+  `deliberateSelectionCommon` clause set (lines 23-29) and the
+  `deliberateSelectionPiRule`/`deliberateSelectionNonPiRule` strings (lines 32-33) with
   the compressed forms from Task 7.2, and add a pin asserting the full definitional
   paragraph renders in the guide (assert the rendered `AGENTS.md` contains the Task 7.1
   paragraph). The proof marker comment
@@ -618,11 +691,20 @@ operations.
   reliably' docs/working-with-awf.md` returns 0.
 - [ ] **Task 7.5: Apply the claim update.** In
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, revise
-  `invariant: deliberate-subagent-model-selection`: keep the existing behavioural prose
-  and append the rendered-shape commitment per ADR-0189 decision 3, in substance: "Each
-  governed dispatch section carries the compressed tier-and-escalation rule with its
-  target branch rule, and the full tier definitions render once per target in the agent
-  guide's workflow section, sourced from the shared model-selection partial." Add
+  `invariant: deliberate-subagent-model-selection`. Its current prose, quoted in full:
+  "Every final governed subagent dispatch chooses the smallest model expected to
+  complete reliably from the semantic small, standard, and large tiers and reconsiders
+  escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured
+  role routing only by omitting the model field and overrides deliberately with an
+  exact tier reference; other targets select a target-native model explicitly where
+  supported and otherwise use the harness default with a visible unsupported-selection
+  note. Generic rendered guidance contains no Pi tool name, provider-specific model
+  reference, price, context limit, or registry catalog, and every affected template
+  renders coherently with empty variables."
+  Keep that prose verbatim and append this exact sentence: "Each governed dispatch
+  section carries the compressed tier-and-escalation rule with its target branch rule,
+  and the full tier definitions render once per target in the agent guide's workflow
+  section, sourced from the shared model-selection partial." Add
   `Revised-by: ADR-0189` under `Origin: ADR-0173`. `Backing: test` and the proof marker
   are unchanged.
 - [ ] **Task 7.6: Flip the statuses.** Append to ADR-0189's Status history the direct
@@ -650,8 +732,10 @@ Beyond the per-phase gates, after Phase 7:
   output; the phrase renders exactly once in `AGENTS.md` and once in
   `docs/working-with-awf.md`'s referenced guide location (via the guide, not a second
   full copy).
-- `grep -rn 'all five lenses\|other three lenses\|taskSkillRows\|prior concerns' . --include='*.tmpl' --include='*.go' --include='*.yaml'`
-  returns no output.
+- `grep -rn 'five lenses\|other three\|prior concerns' templates/ internal/` and
+  `grep -rn 'taskSkillRows' templates/ internal/ .awf/` return no output (this plan
+  file legitimately still carries the old token as history; `internal/evals/chain_test.go`
+  keeps its correct "task skills" comments per Task 4.3).
 - `grep -ln 'task skill' templates/skills/*/SKILL.md.tmpl` returns only the bugfix
   template.
 - The sundial example re-renders clean (`./x check` covers it) and
