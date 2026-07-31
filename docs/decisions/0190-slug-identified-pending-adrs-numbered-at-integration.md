@@ -144,7 +144,9 @@ reference surface is accepted.
     `adr-slug-frontmatter-mandatory` adds and the `adr-new-heading-matches-file` and
     `corpus-single-identity-key` updates; item 5 drives the
     `adr-new-sequential-numbering` update; item 6 drives the
-    `integration-branch-explicit` add; item 7 drives the
+    `integration-branch-explicit` add and the `config-serialization-owned` update
+    (writing the key visibly requires a new top-level scalar config editor joining the
+    owned serialization enumeration); item 7 drives the
     `pending-blocked-from-integration-branch` add; items 8 through 11 drive the
     `numbering-transition-mode` and `adr-number-immutable` adds and the
     `applied-history-events-append-only` and `application-batch-sequence-order`
@@ -177,6 +179,7 @@ reference surface is accepted.
 - update `adr-system/plan-artifacts:plan-adr-link-resolved`
 - update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`
 - add `config/configuration:integration-branch-explicit`
+- update `config/configuration:config-serialization-owned`
 - update `invariants/current-state-authority:application-batch-sequence-order`
 - update `rendering/singletons-and-payloads:hook-payloads-rendered`
 
