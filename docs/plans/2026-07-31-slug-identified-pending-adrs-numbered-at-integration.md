@@ -37,13 +37,16 @@ transition validation. Phase 6 renders the pre-merge-commit payload and lands th
 documentation and changelog obligations.
 
 ADR-0194's operations apply as five Implementing batches, one per implementation phase
-(Phase 2 appends the Implementing status event first). Each batch's Applied event uses
-the next unclaimed contiguous state sequence at commit time and lists its operations in
-State-changes declaration order; each travels in the same commit as exactly its claim
-mutations in `.awf/topics/parts/**` plus the re-rendered topic docs. Phase 6's batch is
+(Phase 2 appends the Implementing status event first). Each batch's Applied event lists
+its operations in State-changes declaration order using the post-ADR-0191 grammar
+(`- <date>: Applied; operations: <declaration-ordered list>`; no event carries a state
+sequence); each travels in the same commit as exactly its claim
+mutations in `.awf/topics/parts/**` plus the re-rendered topic docs. The batch
+partition is 9/5/1/2/1 over the 18 operations, each batch a declaration-order
+subsequence. Phase 6's batch is
 the remainder, and its closing commit appends the `Implemented` flip event directly
 after it (the V2 final pair; an `Implementing` record with nothing remaining is an
-illegal state per `internal/adr/application.go:113-116`, and the 0187/0189 precedent
+illegal state per `internal/adr/application.go:102-105`, and the 0187/0189 precedent
 pairs the final batch with the flip in one commit). The plan's own
 `status: Implemented` freeze still lands in the deferred post-review transaction.
 
@@ -55,6 +58,8 @@ suite, no backend types across the surface).
 ## File structure
 
 - **Created:**
+  - `internal/adr/renumber.go`, `internal/adr/renumber_test.go` (the rename and
+    heading-rewrite seam, Task 5.2 step 3)
   - `internal/migrate/adrformatv3.go`, `internal/migrate/adrformatv3_test.go`
   - `internal/migrate/integrationbranch.go`, `internal/migrate/integrationbranch_test.go`
   - `internal/project/adrnumber.go`, `internal/project/adrnumber_test.go`
@@ -88,7 +93,9 @@ suite, no backend types across the surface).
   - `internal/project/scaffold.go` (+ test)
   - `templates/adr-readme/README.md.tmpl`,
     `templates/skills/proposing-adr/SKILL.md.tmpl`,
-    `templates/skills/reviewing-adr/SKILL.md.tmpl`
+    `templates/skills/reviewing-adr/SKILL.md.tmpl`,
+    `templates/skills/reviewing-impl/SKILL.md.tmpl`,
+    `templates/adr-template/template.md.tmpl`
   - `.awf/awf.lock`, `.awf/config.yaml`, `examples/sundial/.awf/awf.lock`,
     `examples/sundial/.awf/config.yaml` (self-migration via `awf upgrade`)
   - `docs/decisions/0194-slug-identified-pending-adrs-numbered-at-integration.md`
@@ -222,15 +229,22 @@ entering `Implementing` and Applied batch 1.
 - [ ] **Task 2.6: Slug-form provenance.** In `internal/topic/topic.go`: widen the
   `Origin:`/`Revised-by:` grammar (`adrRE`, :22) to accept `ADR-<slug>` where `<slug>`
   matches `^[a-z0-9]+(-[a-z0-9]+)*$` and is non-numeric; store the reference as its
-  string form. In `internal/currentstate/check.go` `checkBackward` (:336-379): the
+  string form. In `internal/currentstate/check.go` `checkBackward` (:344-380): the
   operation index key becomes the owning record's identity - `Number` when numbered,
   slug otherwise - and a slug-form `Origin:`/`Revised-by:` entry resolves ONLY against a
   pending record's slug. A slug reference with no matching pending record is the
   finding `"claim %s cites pending ADR-%s which is not in the corpus"` - after
   numbering, a leftover slug reference is therefore an error, which is what forces the
-  substitution to be complete. `checkSequences` (:106-135) needs no change: pending
-  records' batches enter `bySeq` like any others and stay under the global contiguity
-  rule.
+  substitution to be complete. ADR-0194 item 10's ordering rule lands here too, inside
+  `checkBackward`'s ascending-order validation: numeric entries keep the existing
+  ascending comparison; a slug entry is legal only after every numeric entry; slug
+  entries compare in authored list order among themselves; and when the `Origin:` is
+  itself a slug, the greater-than-Origin comparison is skipped (deferred to numbering,
+  guaranteed by the command's add-before-revise refusal, Task 5.2). Tests:
+  slug-before-numeric fails, slug entries out of authored order fail, a slug Origin
+  with slug revisions passes. `checkLegacySegments` (check.go:113) and
+  `checkOperationHistory` (:126) need no change: neither indexes by owner identity;
+  the identity-keyed work is confined to `checkBackward`.
 - [ ] **Task 2.7: INDEX ordering.** In `internal/adr/index.go`
   `renderIndexSection` (:33-47): replace the plain `Number` string sort with: both
   numbered - compare `Number`; exactly one numbered - the numbered record sorts first;
@@ -258,17 +272,28 @@ entering `Implementing` and Applied batch 1.
   `adr-slug-frontmatter-mandatory` (V3 records carry a mandatory `slug:` key equal to
   the filename derivation, retained after numbering; corpus-wide uniqueness over
   slug-carrying records), each `Backing: test` with `Origin: ADR-0194` and Revised-by
-  appended on the updates. In
+  appended on the updates. Also in the adr-lifecycle part: update
+  `applied-history-events-append-only`, generalizing it from "Stable V2 Status
+  history" to both governed digest formats, V2 and V3, with no numbering exception
+  (ADR-0194 item 15 attributes this update to item 1's restatement; numbering touches
+  no history event). In
   `.awf/topics/parts/config/migrations-and-locks/current-state.md`: update
   `adr-v2-cutoff-atomic-immutable` from "both permanent format cutoffs" to the full
-  ordered cutoff set. Add proof markers `// invariant: <domain>/<topic>:<slug>` on the
+  ordered cutoff set. In
+  `.awf/topics/parts/invariants/current-state-authority/current-state.md`: update
+  `provenance-ordered-by-adr-number` with item 10's rule (a pending `ADR-<slug>` entry
+  is legal, placed after every numeric entry and in authored list order among slug
+  entries; the greater-than-Origin sub-rule for a slug Origin is deferred to
+  numbering). Add proof markers `// invariant: <domain>/<topic>:<slug>` on the
   matching tests from Tasks 2.1-2.7. Append to the ADR's Status history: the
   `Implementing` event (with current content digest), then the Applied batch 1 event
   listing, in declaration order: update `fresh-adoption-v1-cutoff`, update
   `adr-status-enum-and-matrix`, update `adr-amendable-until-terminal`, update
-  `corpus-single-identity-key`, add `pending-adr-slug-identity`, add
-  `adr-slug-frontmatter-mandatory`, update `adr-v2-cutoff-atomic-immutable`, with the
-  next unclaimed state sequence. Run `./x render`.
+  `corpus-single-identity-key`, update `applied-history-events-append-only`, add
+  `pending-adr-slug-identity`, add `adr-slug-frontmatter-mandatory`, update
+  `adr-v2-cutoff-atomic-immutable`, update `provenance-ordered-by-adr-number` (nine
+  operations, a declaration-order subsequence; no event carries a state sequence).
+  Run `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage everything; run
   `awf check --staged` then `./x gate`; both must pass with zero findings.
 
@@ -364,14 +389,14 @@ exits 0; `./awf check` clean.
   migration writes `integrationBranch: main` visibly, no in-code default, audit range
   resolution never reads it); update `config-serialization-owned` (the closed editor
   enumeration gains the top-level `SetString`). Proof markers on the Task
-  3.1/3.2/3.3/3.5/3.6 tests. Placement note: ADR-0194 item 14 names
+  3.1/3.2/3.3/3.5/3.6 tests. Placement note: ADR-0194 item 15 names
   internal/currentstate as `pending-blocked-from-integration-branch`'s proof home, but
   the block is a corpus-level drift check implemented in internal/project (Task 3.6),
   so its marker lands on the internal/project test - a deliberate, stated deviation
   (`currentState.testGlobs` admits it). Append Applied batch 2, declaration-ordered:
   update `adr-new-sequential-numbering`, update `adr-new-heading-matches-file`, add
   `pending-blocked-from-integration-branch`, add `integration-branch-explicit`, update
-  `config-serialization-owned`; next unclaimed sequence. `./x render`.
+  `config-serialization-owned` (five operations, declaration-ordered). `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -395,8 +420,7 @@ feat(config): branch-aware ADR scaffolding behind integrationBranch
 - [ ] **Task 4.2: Claim mutation and batch 3.** In the adr-system/plan-artifacts part:
   update `plan-adr-link-resolved` (an entry is a number resolved against `NNNN-*.md` or
   a slug resolved against a pending file or retained slug key; numbering never rewrites
-  plans). Append Applied batch 3: update `plan-adr-link-resolved`; next unclaimed
-  sequence. `./x render`.
+  plans). Append Applied batch 3: update `plan-adr-link-resolved`. `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -413,13 +437,14 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   Children: []Command{{Name: "number", Summary: "Number pending ADRs at integration",
   MinPos: 0, MaxPos: -1, HelpBody: "Usage: awf adr number [<slug>...]\n\nNumber pending
   ADRs after merging the integration branch in and before merging back. Bare invocation
-  numbers a single pending ADR; several pending ADRs require explicit slugs in the
-  intended order.\n"}}}`. Wire `"adr": runADR` in `cmd/awf/dispatch.go`'s handlers map
+  numbers a single pending ADR; several pending ADRs require an explicit list naming
+  every pending slug, in the intended add-before-revise order.\n"}}}`. Wire
+  `"adr": runADR` in `cmd/awf/dispatch.go`'s handlers map
   and add `cmd/awf/adr.go` with `runADR` switching on `c.sub == "number"` (the
   `TestHandlerRegistryParity` test in `cmd/awf/main_test.go:44-58` enforces the
   bijection). `runADR` calls `gate(root)` and reaches Task 5.2's engine WITHOUT the
   eager corpus load: verify the project-open path used (internal/project/project.go
-  near :474 calls `adr.LoadCorpus`, which Task 2.5 makes fatal on duplicates); if open
+  :532 calls `adr.LoadCorpus`, which Task 2.5 makes fatal on duplicates); if open
   loads the corpus eagerly, add a narrow open variant for this command so the typed
   duplicate error reaches the engine's refusal logic instead of aborting the open.
   `runADR` prints the engine's report to stdout. The gated-command enumeration regenerates on
@@ -429,8 +454,10 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   Behavior, in order:
   1. Load the corpus through the corpus seam (`corpus-parsed-once` binds), catching
      Task 2.5's `*DuplicateIdentityError` and keeping its populated corpus: duplicates
-     are data for step 2, not an abort. MUST NOT precondition on a green full check -
-     the red-gate window is the expected operating state.
+     are data for step 2, not an abort. MUST NOT precondition on a green full check: a
+     green check between merge-in and numbering is now the norm (ADR-0191 removed the
+     sequence collisions that made that window red), but an unrelated merge finding
+     must not deadlock numbering.
   2. Refusals: duplicate numbers present and at least one pending record - error
      `"duplicate ADR numbers present; resolve the corpus before numbering"`; no
      pending records and duplicate numbers present - error embedding the
@@ -439,46 +466,62 @@ feat(adr-system): resolve plan adrs links by number or pending slug
      branch> && awf adr number, then gate and merge back"`; no pending records and no
      duplicates - error `"no pending ADR to number"`; multiple pending and no args -
      error listing every pending slug, one per line; an arg naming a non-pending slug -
-     error naming it.
+     error naming it; an explicit list omitting any pending slug - error naming the
+     omitted slugs (ADR-0194 item 8: completeness is required, partial numbering has
+     no legal destination); an argument order that numbers a pending record before
+     another pending record whose claim-add it revises - error naming the dependency
+     (`"<slug-a> revises a claim added by <slug-b>; number <slug-b> first"`; the check
+     is corpus-local and topological over the pending set).
   3. Assignment order: explicit args order, else the single pending record. For each:
      next number = highest existing number plus one at assignment time (incrementing
-     across multiple assignments); rename `<slug>.md` to `NNNN-<slug>.md`; rewrite the
-     heading to `# ADR-NNNN: <Title>`; the `slug:` key stays.
-  4. Sequence shifts: collect the pending records' Applied events; new sequences start
-     at the highest sequence held by any numbered record plus one, assigned in
-     numbering order then ascending original sequence within each record, preserving
-     relative order; rewrite only the `state-sequence: <n>` values in those records'
-     Status history lines.
-  5. Substitution: over `.awf/topics/parts/**/current-state.md` files only, on lines
+     across multiple assignments); rename `<slug>.md` to `NNNN-<slug>.md` and rewrite
+     the heading to `# ADR-NNNN: <Title>` through an internal/adr-owned rewrite seam
+     (new `internal/adr/renumber.go`, e.g. `RenumberPending(dir, slug string, number
+     int) error`), the only reader and writer of the ADR path, so
+     `adr-system/adr-lifecycle:corpus-raw-access-enumerated` stays true without an
+     operation; the `slug:` key stays. Post-check: `grep -rn "os.ReadFile"
+     internal/project/adrnumber.go` returns nothing. Numbering's whole effect surface
+     is this rename-plus-heading, the step-4 provenance lines, and the step-5
+     re-render; it touches no status-history event.
+  4. Substitution: over `.awf/topics/parts/**/current-state.md` files only, on lines
      beginning `Origin:` or `Revised-by:`, replace the exact token `ADR-<slug>` with
-     `ADR-NNNN` for each mapping. Never touch generated files, plans, or ADR bodies.
-  6. Re-render (the same path `./x render` drives) so generated topic docs and INDEX
+     `ADR-NNNN` for each mapping, then rewrite each touched `Revised-by:` list to the
+     duplicate-free ascending order ADR-0191 requires. Never touch generated files,
+     plans, or ADR bodies.
+  5. Re-render (the same path `./x render` drives) so generated topic docs and INDEX
      match.
-  7. Report: one `<slug> -> NNNN` line per assignment plus one
-     `state-sequence <old> -> <new> (<file>)` line per shift, in a stable order fit for
+  6. Report: one `<slug> -> NNNN` line per assignment, in a stable order fit for
      pasting into the integration commit message.
   Forbidden: modifying any record that already has a number (beyond nothing), touching
-  plan files, or writing outside the enumerated effects. Tests cover every refusal, the
-  multi-pending ordering, the shift arithmetic, the substitution's line anchoring (a
-  body mention of `ADR-<slug>` is NOT rewritten), and report formatting.
+  plan files, or writing outside the enumerated effects. Tests cover every refusal
+  (the omitted-slug and add-before-revise refusals included), the multi-pending
+  ordering, the substitution's line anchoring (a body mention of `ADR-<slug>` is NOT
+  rewritten), canonicalization (a substituted entry landing numerically below an
+  existing entry is re-sorted, not appended), and report formatting.
 - [ ] **Task 5.3: Slug-paired numbering transition validation.** In
-  `internal/currentstate/transition.go`: the pairing key (`byNumber`, :410-417, and
+  `internal/currentstate/transition.go`: the pairing key (`byNumber`, :456-457, and
   `pairOps`' lookups) becomes identity-based - a record's pair key is its `Slug` when
   non-empty (V3), else its `Number` - so a pending record pairs with its numbered
   successor and two pending records never collide on `""`. For a pair whose before is
   pending and after is numbered with the same slug, validate the numbering shape:
-  permitted deltas are exactly the `Number`/filename/heading gain, an order-preserving
-  rewrite of the record's own Applied-event sequences (every event field except
-  `Sequence` equal, relative order preserved - a sequence-modulo variant of
-  `historiesEqual`, format.go:178-185), and, in claims, `Origin:`/`Revised-by:` entries
-  changing from `ADR-<that slug>` to `ADR-<that pair's new number>` (relax the
-  unconditional rejections at transition.go:347-349 and :368 for exactly this
-  substitution); everything else about the pair must be byte-identical per the existing
+  permitted deltas are exactly the `Number`/filename/heading gain and, in claims,
+  `Origin:`/`Revised-by:` entries changing from `ADR-<that slug>` to `ADR-<that
+  pair's new number>` with each touched list canonicalized to duplicate-free
+  ascending order (relax the Origin-preserve and `revisedByExtension` checks in
+  `checkUpdate` (:373-378) and `revisedByExtension` (:405) for exactly this
+  substitution); Status history compares with the plain `historiesEqual`
+  (format.go:178) - no variant, the pair's history must be byte-identical - and
+  everything else about the pair must be byte-identical per the existing
   rules. No new `TransitionMode` value: the relaxation keys off the pending-to-numbered
   pair shape itself, is comment-cited to this ADR (use its final integrated number),
-  and composes with both `AuthoredCommit` and `MergeAggregate`. A transition deleting a
+  and composes with both `AuthoredCommit` and `MergeAggregate`. The identity-keyed
+  pairing must also compose with ADR-0191's absorbing-tombstone machinery
+  (`removedInUniverse`, :341, and dominated-history chains in `pairOps`), which
+  postdates this task's first draft: a pending record's chain classification is
+  unaffected by the rename. A transition deleting a
   pending record without a slug-paired numbered successor remains the existing
-  ADR-deletion error. Tests: legal numbering pair passes; sequence reorder fails;
+  ADR-deletion error. Tests: legal numbering pair passes; any status-history delta on
+  the pair fails; a touched `Revised-by:` list left non-canonical fails;
   body-content delta fails; Origin substitution without the paired numbering fails;
   pending deletion fails.
 - [ ] **Task 5.4: Claim mutations and batch 4.** In the adr-lifecycle part: add
@@ -486,16 +529,14 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   slug-paired shape permitting exactly the ADR's item-9 effects; the command never
   preconditions on a green check) and `adr-number-immutable` (a number once assigned
   never changes; stale numbering is unmade by reset-remake; the command refuses a
-  duplicate-number corpus with the recipe hint and uses no git provenance); update
-  `applied-history-events-append-only` (prefix-append-only except the sanctioned
-  numbering rewrite of a pending record's own sequences). In the
-  invariants/current-state-authority part: update `application-batch-sequence-order`
-  (the shared contiguous namespace spans V1, V2, and V3 batches; the numbering
-  transition re-slots pending batches after the highest numbered sequence). Proof
-  markers on Task 5.2/5.3 tests. Append Applied batch 4, declaration-ordered: update
-  `applied-history-events-append-only`, add `numbering-transition-mode`, add
-  `adr-number-immutable`, update `application-batch-sequence-order`; next unclaimed
-  sequence. `./x render`.
+  duplicate-number corpus with the recipe hint and uses no git provenance). Proof
+  markers on Task 5.2/5.3 tests. Placement note: ADR-0194 item 15 names
+  internal/currentstate as `adr-number-immutable`'s proof home, but the refusals it
+  proves live in the internal/project numbering engine (Task 5.2), so its marker
+  lands on the internal/project test - a deliberate, stated deviation
+  (`currentState.testGlobs` admits it). Append Applied batch 4, declaration-ordered:
+  add `numbering-transition-mode`, add `adr-number-immutable` (two operations).
+  `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -518,17 +559,28 @@ feat(adr-system): add awf adr number and its numbering transition
   delegate `exec bash .awf/hooks/pre-merge-commit.sh "$@"` (mode 755, matching
   `.githooks/commit-msg`). Update the rendered-payload tests for the four-payload set.
 - [ ] **Task 6.2: Documentation obligations.** Update the authored sources named by
-  ADR-0194 item 15: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
+  ADR-0194 item 16: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
   carries the `slug:` key and the pending shape (keep every interpolation
-  publication-safe); the working-with-awf commands part (document `awf adr number` and
+  publication-safe), AND the shipped default it overrides,
+  `templates/adr-template/template.md.tmpl` (frontmatter section), carrying the same
+  V3 shape so an adopter's scaffolded template gains it too (`./x render` regenerates
+  `docs/decisions/template.md` and the `examples/sundial` copy together); the
+  working-with-awf commands part (document `awf adr number` and
   the merge-in, number, merge-back procedure including the reset-remake retry recipe);
   `.awf/parts/workflow/local-hooks.md` (four payloads and the merge-commit backstop);
   `.awf/domains/parts/adr-system/current-state.md` (the two-cutoff opening becomes the
-  ordered three-cutoff set; pending identity and numbering-at-integration described).
+  ordered three-cutoff set; pending identity and numbering-at-integration described);
+  and `templates/skills/reviewing-impl/SKILL.md.tmpl` step 8 (:72-77, the
+  worktree-integration routing), which gains the merge-in, `awf adr number`, gate,
+  merge-back procedure and states that a worktree holding several pending records
+  requires an explicit list naming every one in add-before-revise order (ADR-0194
+  item 16; publication-safe interpolations, golden-update the rendered outputs).
   Update the three shipped templates that still teach the numbered-only convention:
-  `templates/adr-readme/README.md.tmpl` (:30, :33, :48 - `NNNN-kebab-title.md`,
+  `templates/adr-readme/README.md.tmpl` (:30, :33, :40 - "exactly three keys" becomes
+  the V3 four-key shape with `slug:` - and :48 - `NNNN-kebab-title.md`,
   next-available-number, `# ADR-NNNN:`), `templates/skills/proposing-adr/SKILL.md.tmpl`
-  (:29, :42 - "next sequential number"), and the matching mention in
+  (:29, :30 - the filename is `<slug>.md` off the integration branch - :32 "exactly
+  three keys", :42 "next sequential number"), and the matching mention in
   `templates/skills/reviewing-adr/SKILL.md.tmpl`, describing the branch-conditional
   scaffold output and the merge-in, number, merge-back step; keep interpolations
   publication-safe and golden-update the residue tests.
@@ -539,11 +591,11 @@ feat(adr-system): add awf adr number and its numbering transition
   rendering/singletons-and-payloads part: update `hook-payloads-rendered` (exactly four
   payloads including pre-merge-commit; absence when disabled unchanged). Proof marker on
   the Task 6.1 test. Append Applied batch 5 (the remainder): update
-  `hook-payloads-rendered`; next unclaimed sequence. Directly after it, append the
+  `hook-payloads-rendered`. Directly after it, append the
   `Implemented` status event repeating the latest content digest (the V2 final pair;
   0187/0189 precedent pairs the final batch and the flip in one commit, and an
   `Implementing` record with nothing remaining is refused by
-  `internal/adr/application.go:113-116`). `./x render`.
+  `internal/adr/application.go:102-105`). `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -557,8 +609,8 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - End-to-end numbering rehearsal in a scratch worktree of this repo: scaffold a pending
   ADR off the integration branch (`awf new adr` produces `<slug>.md`), implement a
   trivial claim against it, run `awf adr number`, and verify: the file and heading are
-  numbered, the slug key survives, `Origin:` lines substituted, sequences contiguous,
-  `awf check` clean, and the printed mapping matches the git diff. Then re-run
+  numbered, the slug key survives, `Origin:` lines substituted, Status history
+  untouched, `awf check` clean, and the printed mapping matches the git diff. Then re-run
   `awf adr number` and verify the `"no pending ADR to number"` refusal.
 - On the integration branch, `awf new adr` still scaffolds numbered; a tree with a
   pending record checked out on the integration branch fails `awf check` with
@@ -575,15 +627,14 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - Sequencing: Phase 1 hard-gates on the git-seam ADR having landed; Task 1.3 records
   and routes any material seam-shape drift through plan resync instead of silent
   adaptation.
-- This plan's own ADR link (`adrs: [190]`) is optimistic; Task 1.2 renumbers it if the
-  seam ADR (or anything else) lands as 0190 first - the last manual renumber this
-  repository should ever need.
+- This plan's ADR link was authored optimistically as `adrs: [190]`; main claimed
+  0190 first and Task 1.2 renumbered the record to 0194 at merge-in - the last manual
+  renumber this repository should ever need.
 - No adr-lifecycle topic split despite the claim-budget advisory (user ruling
   2026-07-31; the `maxClaimsPerTopic` limit is being removed by a parallel effort). If
   the advisory still fires at execution time it is non-failing noise, not a task.
-- Migration `To` values and state sequences are taken fresh at execution time (parallel
-  efforts may consume generations and sequences first); the plan asserts methods, never
-  counts.
+- Migration `To` values are taken fresh at execution time (parallel efforts may
+  consume generations first); the plan asserts methods, never counts.
 - The ADR's Implemented flip lands with the final batch in Phase 6's close (an
   `Implementing` record with nothing remaining is an illegal state); the plan's own
   `status: Implemented` freeze still lands in the deferred post-review transaction.
