@@ -58,12 +58,19 @@ closing brace, with no test beneath them. Commit 4c61356a added them there when 
   `SetMappingString`, which share one encoding funnel at a two-space indent. Prove the operative
   half, the shared funnel:
 
-  Build one config source that has a nested mapping and a nested array, then drive each of the six
-  entry points over it in turn. For each result assert that a nested mapping child is indented by
-  exactly two spaces relative to its parent and that a nested array item is indented consistently
-  with it, comparing against exact expected byte strings rather than a regex, so a second
-  hand-rolled encoder with a different indent or a different sequence style fails. Assert on all
-  six in one test so that adding a seventh editor that bypasses the funnel is a visible omission.
+  The six entry points do not share one signature, so the test cannot drive them uniformly.
+  `MarshalSkeleton(s Skeleton) ([]byte, error)` at `internal/config/edit.go:50` takes no source
+  bytes, while `SetArrayMember` (:60), `SetArray` (:101), `SetMappingScalar` (:143),
+  `SetMappingInteger` (:175) and `SetMappingString` (:219) all take `src []byte`. Drive the five
+  `src []byte` editors over one config source carrying a nested mapping and a nested array, and
+  separately marshal a `Skeleton` holding the same nested shapes through `MarshalSkeleton`.
+
+  Assert all six results against the same exact expected byte strings for nested-mapping indent
+  and sequence style: a nested mapping child indented by exactly two spaces relative to its
+  parent, and a nested array item indented consistently with it. Compare exact bytes rather than a
+  regex, so a second hand-rolled encoder with a different indent or a different sequence style
+  fails. Keep all six assertions in one test so that adding a seventh editor that bypasses the
+  funnel is a visible omission.
 
   Do not attempt to prove the claim's "no other package hand-rolls config.yaml serialization"
   half by scanning imports: many packages legitimately import `gopkg.in/yaml.v3` for unrelated
@@ -74,12 +81,17 @@ closing brace, with no test beneath them. Commit 4c61356a added them there when 
   immediately above the `func` line. It carries no name yet; Phase 3 adds one.
 
 - [ ] **Task 1.2: Write the backing test for `config/migrations-and-locks:migration-ordering`.**
-  In `internal/config/config_test.go`, add `TestMigrationOrderingAscendingAndIdempotent`. Note that
-  the migration registry lives in `internal/migrate`, so if importing it from `internal/config`
-  would create an import cycle or otherwise fail to build, place this test in
-  `internal/migrate/migrate_test.go` instead and put the marker there; the claim's topic
-  `config/migrations-and-locks` must still match that path under its topic scope, which
-  `awf topic config/migrations-and-locks` reports. Resolve that before writing the test, not after.
+  Add `TestMigrationOrderingAscendingAndIdempotent` to `internal/migrate/migrate_test.go`, not to
+  `internal/config/config_test.go`. The registry lives in `internal/migrate`, which imports
+  `internal/config` (`internal/migrate/adrformatv2.go:9`, `anchoredglobs.go:7`), and
+  `internal/config/config_test.go` is `package config`, so putting the test there would be an
+  import cycle. `internal/migrate/migrate_test.go` is also where the other
+  `config/migrations-and-locks` proof markers already live.
+
+  A proof marker has no topic-scope requirement to satisfy: `resolveMarker` checks topic scope
+  only in its non-proof branch (`internal/topic/markers.go:206-215`), so the whole scope
+  requirement for a proof marker is that its file matches `currentState.testGlobs`, which
+  `**/*_test.go` does.
 
   The claim states that `awf upgrade` applies exactly the registered migrations whose target
   generation exceeds the project's detected generation, in ascending target order, and that
@@ -97,14 +109,19 @@ closing brace, with no test beneath them. Commit 4c61356a added them there when 
   tree. Place the proof marker `// invariant: config/migrations-and-locks:migration-ordering`
   immediately above the `func` line, with no name.
 
-- [ ] **Task 1.3: Delete the two stranded markers.** Remove the final two lines of
-  `internal/config/config_test.go`, which are the detached markers for
+- [ ] **Task 1.3: Delete the two stranded markers.** Remove lines 741 to 744 of
+  `internal/config/config_test.go`: the trailing blank line and both detached markers for
   `config/configuration:config-serialization-owned` and
-  `config/migrations-and-locks:migration-ordering`, along with the blank lines separating them from
-  the file's final closing brace. Verify that
-  `grep -c "invariant: config/configuration:config-serialization-owned" internal/config/config_test.go`
-  reports exactly one occurrence, which is the marker written in Task 1.1, and likewise for the
-  migration-ordering claim against whichever file Task 1.2 chose.
+  `config/migrations-and-locks:migration-ordering`, which sit at lines 742 and 744 with a blank
+  line between them. The file must then end at its final closing brace, so its last non-blank line
+  is `}`.
+
+  Verify by terminal state rather than by counting occurrences:
+
+  - `grep -n 'invariant: config/migrations-and-locks:migration-ordering' internal/config/config_test.go`
+    returns no output and exits non-zero, since that claim's marker now lives in
+    `internal/migrate/migrate_test.go`.
+  - `./x check` is clean, which is what actually proves both claims still have backing.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
   phase-closing commit; it requires `awf check --staged` and `./x gate` to pass,
@@ -141,10 +158,14 @@ var touchesPayloadRE = regexp.MustCompile(`^touches-state: (` + claimIDPattern +
   single `markerPayloadRE` match with an ordered attempt against `statePayloadRE` (kind
   `StateMarker`), then `proofPayloadRE` (kind `ProofMarker`), then `touchesPayloadRE` (kind
   `TouchesMarker`, note from its second group). A payload matching none of the three keeps
-  returning the existing `%s:%d: malformed current-state marker %q` error unchanged. Capture the
-  proof name into a local variable only; do not add a field to `MarkerSite`, which ADR-0199
-  rejected for having no consumer. The name is parsed and discarded in this phase; Phase 4 gives
-  it its consumer.
+  returning the existing `%s:%d: malformed current-state marker %q` error unchanged.
+
+  Do not read the name in this phase and do not assign it anywhere. `proofPayloadRE` simply
+  carries a second group that `resolveMarker` never touches, and the existing `s.Kind` and
+  `s.ClaimID` assignments stay as they are. Binding the name to a local variable here would not
+  compile, because Go rejects a declared-and-unused variable and `.golangci.yml` additionally
+  enables `unused`, `ineffassign` and `wastedassign`. Do not add a field to `MarkerSite` either,
+  which ADR-0199 rejected for having no consumer. Phase 4 gives the group its first reader.
 
   Forbidden: changing the error text, the error's `path:line` prefix, or the relative order in
   which the three kinds are attempted in a way that would let a `touches-state:` payload match as
@@ -177,6 +198,9 @@ schema from Phase 2 accepts every intermediate state.
   outside the repository tree, or to a path covered by `.gitignore`; it is never committed
   (ADR-0199 item 9). It may use the Go AST or any other language-specific knowledge, because it
   runs once and is not part of the shipped checker.
+
+  The tracked `*_test.go` set is repo-root-wide and includes `examples/`, whose bundled sundial
+  adopter carries its own proof markers.
 
   For each line in each tracked `*_test.go` file whose trimmed form matches
   `^// invariant: <claim-id>$`, the script derives a name and rewrites the line as
@@ -215,8 +239,13 @@ grep -rEn '^[[:space:]]*// invariant: [a-z0-9/:-]+[[:space:]]*$' --include='*_te
   `TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion` in
   `internal/contextq/adapter_outputs_test.go` each now name that function, and that the in-body
   marker above the table row in `internal/config/edit_test.go` names the row's own string literal
-  rather than its enclosing function. If either is wrong, fix the script and re-run rather than
-  hand-editing the output, so the corpus stays uniform.
+  rather than its enclosing function. Confirm as a third check that the sundial adopter's marker at
+  `examples/sundial/internal/almanac/almanac_test.go` carries a name: the root marker walk skips
+  that tree because it contains its own `.awf` directory (`internal/topic/markers.go:68`), so a
+  marker missed there does not fail at its own line in Phase 4 but through the rendered-example
+  test and the `rendering/companion-scripts:runner-example-adopted` invariant, which is a
+  materially harder failure to diagnose. If any of the three is wrong, fix the script and re-run
+  rather than hand-editing the output, so the corpus stays uniform.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
   phase-closing commit; it requires `awf check --staged` and `./x gate` to pass,
@@ -237,18 +266,37 @@ documented grammar actually changes.
   `proofPayloadRE` so the name group is no longer optional:
 
 ```go
-var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `) \((.+)\)$`)
+var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `) \((\S(?:.*\S)?)\)$`)
+var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `)$`)
 ```
 
-  A proof marker with no name now fails the payload match. In `resolveMarker`, when a payload
-  begins with `invariant: ` and matches `statePayloadRE`-style shape but not `proofPayloadRE`,
-  return the new error `%s:%d: proof marker for %s does not name a proving unit` rather than the
-  generic malformed-marker error, so the diagnostic points at the actual defect (ADR-0199 item 6).
+  The name group stays greedy, so ADR-0199 item 2's `it('strips the header')` case still captures
+  through to the payload's final closing parenthesis. Requiring a non-space first and last
+  character implements item 2's "no leading or trailing whitespace" requirement here, at parse
+  time, rather than letting ` TestFoo ` reach the occurrence check and be reported as a missing
+  unit, which would be the most confusing possible diagnostic for the most likely authoring slip.
 
-- [ ] **Task 4.2: Add the occurrence check.** In `scanMarkerBytes`, hoist the line slice produced by
-  `strings.Split(string(b), "\n")` into a named variable, collect each proof site resolved from
-  this file together with its parsed name, and after the line loop verify each one. Add an
-  unexported helper:
+  In `resolveMarker`, branch on `unnamedProofPayloadRE` after `proofPayloadRE` fails, and use its
+  group 1 as the claim id in the new error
+  `%s:%d: proof marker for %s does not name a proving unit`, so the diagnostic points at the
+  actual defect rather than falling through to the generic malformed-marker error (ADR-0199 item
+  6). Both new statements must be exercised by Task 4.3's cases, since the coverage gate admits no
+  unexercised branch.
+
+- [ ] **Task 4.2: Add the occurrence check.** First widen the seam that carries the name out of
+  parsing. Change `resolveMarker` to return `(MarkerSite, string, error)`, the string being the
+  parsed proof name and empty for `StateMarker` and `TouchesMarker`. It has exactly one caller,
+  at `internal/topic/markers.go:132`, so the change is local, and both `scanMarkerBytes` entry
+  paths (the walker at `markers.go:87` and the snapshot loader at `tree.go:111`) inherit the
+  result through that one call site, which is what ADR-0199 item 5 requires.
+
+  In `scanMarkerBytes`, hoist the line slice produced by `strings.Split(string(b), "\n")` into a
+  named variable before the loop, and verify each proof site inline, at the point it resolves
+  inside the loop. Do not collect sites and verify after the loop: the hoisted slice is already
+  complete before the first iteration, and deferring would put every resolve error in the file
+  ahead of every occurrence error, so a malformed marker late in the file would be reported before
+  a missing-name failure early in it. ADR-0199 item 3 requires the scan to keep reporting the
+  first failure in line order. Add an unexported helper:
 
   `proofNameOccurs(lines []string, name string, markerLine int) bool` returns true when `name`
   occurs verbatim on some line other than `markerLine` whose `strings.TrimSpace` form does not
@@ -266,7 +314,8 @@ var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `) \(
 
   Forbidden: computing the exclusion from the resolved marker index, which would require a
   resolving pre-pass and could surface a later marker's error before an earlier missing-name one;
-  and adding a `Proof` field to `MarkerSite`, which ADR-0199 rejected.
+  introducing any collection or second pass over the file, for the same reason; and adding a
+  `Proof` field to `MarkerSite`, which ADR-0199 rejected.
 
 - [ ] **Task 4.3: Repair the proof-marker fixtures the new rule rejects.** Test fixtures that write
   a proof marker into a synthetic file must now carry a name whose text also appears on a
@@ -294,10 +343,25 @@ testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invarian
   Exact edge, a fixture that must keep failing for its original reason rather than newly failing on
   the name rule: any fixture asserting that a proof marker outside `currentState.testGlobs` is
   rejected must still reach `proof marker is outside currentState.testGlobs`, so give it a valid
-  name and a matching declaration line too, and assert on the original error text. Add one new case
-  asserting the new failure directly: a fixture whose marker names a unit that appears nowhere in
-  the file must fail with the Task 4.2 error, and a companion whose only occurrence of the name is
-  inside a `//` comment must fail identically, which is the regression test for the 28% class.
+  name and a matching declaration line too, and assert on the original error text.
+
+  Then add four new cases, one per load-bearing mechanism, each asserting the exact Task 4.2 error
+  text:
+
+  1. **Name absent.** A marker naming a unit that appears nowhere in the file fails.
+  2. **Name only in a comment.** The name's sole occurrence is inside a `//` comment; this is the
+     regression test for the 28% class the comment exclusion closes.
+  3. **Flanking, the rename case.** A marker names `TestFoo` in a file whose only code occurrence
+     is `func TestFooBar(t *testing.T) {}`. Without the flanking condition this would pass, and it
+     is the precise mechanism that catches a rename, which is the drift this effort exists for.
+  4. **Stacked markers do not satisfy each other.** Two consecutive markers both naming a function
+     absent from the file both fail; without the `markerLine` exclusion and the comment exclusion
+     each would be satisfied by the other, which is the twelve-claim silent-stranding failure mode
+     ADR-0199 item 3 identifies.
+
+  Also add a case pinning the Task 4.1 whitespace rejection: payload
+  `invariant: alpha/contracts:stable ( TestStable )` must fail with
+  `does not name a proving unit`, not with the occurrence error.
 
 - [ ] **Task 4.4: Update the documentation sources that specify the payload grammar.** Every one of
   these is a `.awf/` or `templates/` source; never hand-edit a rendered output. Change the marker
@@ -347,7 +411,10 @@ Whole-effort acceptance, beyond each phase's gate:
   during review were rules that read correctly and did not hold.
 - A stacked-marker site is genuinely protected: delete
   `TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion` in a scratch working copy and
-  confirm `./x check` reports twelve failures rather than passing, then restore.
+  confirm `./x check` fails, reporting `internal/contextq/adapter_outputs_test.go:17`, the first of
+  the twelve stacked markers. Reporting that first marker is what proves the neighbours no longer
+  satisfy each other. Do not expect twelve reported failures: `scanMarkerBytes` returns on its
+  first error, so one failure per run is the designed behaviour. Restore afterwards.
 - `./x gate` is clean at every phase boundary, and `git log --oneline` shows four commits whose
   order matches the four phases.
 
