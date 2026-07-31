@@ -59,7 +59,7 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	if _, err := os.Lstat(managed); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("managed path remains: %v", err)
 	}
-	if gitfixture.NativeRevisionExists(gitfixture.At(root), "refs/heads/awf/managed-result") {
+	if gitfixture.NativeRevisionExists(t, gitfixture.At(root), "refs/heads/awf/managed-result") {
 		t.Fatal("managed branch remains")
 	}
 	again, err := manager.Remove(testContext(t), "managed-result")
@@ -121,7 +121,7 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 			!strings.Contains(err.Error(), "`make gate`") || strings.Contains(err.Error(), "./x gate") {
 			t.Fatalf("conflict error = %v", err)
 		}
-		if !gitfixture.NativeRevisionExists(gitfixture.At(root), "MERGE_HEAD") {
+		if !gitfixture.NativeRevisionExists(t, gitfixture.At(root), "MERGE_HEAD") {
 			t.Fatal("conflict merge state was hidden")
 		}
 		gitfixture.NativeMergeAbort(t, gitfixture.At(root))
@@ -1253,7 +1253,7 @@ func freshWorktreeManager(t *testing.T, root string) *Manager {
 
 func worktreeBranchExists(t *testing.T, root, slug string) bool {
 	t.Helper()
-	return gitfixture.NativeRevisionExists(gitfixture.At(root), "refs/heads/awf/"+slug)
+	return gitfixture.NativeRevisionExists(t, gitfixture.At(root), "refs/heads/awf/"+slug)
 }
 
 func newManagerWithEffort(t *testing.T, title string) (*Manager, string) {
@@ -1273,12 +1273,9 @@ func createEffort(t *testing.T, root, title string) {
 }
 
 // initWorktreeRepo builds the checkout an adopted project has: a base commit
-// carrying the resident .gitignore files awf renders, so owned effort and
-// worktree state is invisible to the cleanliness oracle exactly as it is in a
-// real project.
-// initWorktreeRepo builds the manager's baseline checkout: a repository whose
-// resident .gitignore files are TRACKED, which is the entire reason owned
-// effort and worktree state stays invisible to the cleanliness oracle.
+// carrying the resident .gitignore files awf renders as TRACKED files, which is
+// the entire reason owned effort and worktree state stays invisible to the
+// cleanliness oracle exactly as it does in a real project.
 func initWorktreeRepo(t *testing.T, format string) string {
 	t.Helper()
 	repo := gitfixture.InitNativeObjectFormat(t, t.TempDir(), format)

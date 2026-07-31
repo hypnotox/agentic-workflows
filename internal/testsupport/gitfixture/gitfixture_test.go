@@ -52,7 +52,7 @@ func TestNativeLaneIsolation(t *testing.T) {
 	if head := gitfixture.NativeRevParse(t, fx, "HEAD"); head == "" {
 		t.Fatal("native commit left no resolvable HEAD")
 	}
-	if gitfixture.NativeRevisionExists(fx, "refs/heads/does-not-exist") {
+	if gitfixture.NativeRevisionExists(t, fx, "refs/heads/does-not-exist") {
 		t.Fatal("absent branch reported as resolvable")
 	}
 }

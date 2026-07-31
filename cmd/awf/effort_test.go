@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
@@ -20,16 +20,14 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	// invariant: tooling/cli:effort-command-contract
 	// invariant: tooling/effort-management:effort-record-authority
 	primary := filepath.Join(t.TempDir(), "primary with spaces")
-	commandGit(t, "init", primary)
-	commandGit(t, "-C", primary, "config", "user.name", "Test")
-	commandGit(t, "-C", primary, "config", "user.email", "test@example.com")
+	fixture := gitfixture.InitNativeAt(t, primary)
 	if err := os.WriteFile(filepath.Join(primary, "tracked.txt"), []byte("base\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	commandGit(t, "-C", primary, "add", "tracked.txt")
-	commandGit(t, "-C", primary, "commit", "-m", "base")
+	gitfixture.NativeAdd(t, fixture, "tracked.txt")
+	gitfixture.NativeCommit(t, fixture, "base")
 	linked := filepath.Join(filepath.Dir(primary), "linked with spaces")
-	commandGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+	gitfixture.NativeWorktreeAddDetached(t, fixture, linked, "HEAD")
 
 	createdJSON := runEffortCommand(t, primary, "new", []string{"CLI outcome"}, map[string]bool{"--json": true, "--no-worktree": true})
 	var created struct {
@@ -222,13 +220,11 @@ func runEffortCommand(t *testing.T, root, sub string, positionals []string, bool
 func commandRepo(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "command repo")
-	commandGit(t, "init", root)
-	commandGit(t, "-C", root, "config", "user.name", "Test")
-	commandGit(t, "-C", root, "config", "user.email", "test@example.com")
+	fixture := gitfixture.InitNativeAt(t, root)
 	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("base\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	commandGit(t, "-C", root, "add", "tracked.txt")
+	gitfixture.NativeAdd(t, fixture, "tracked.txt")
 	// An adopted project commits the resident .gitignore files awf renders, which
 	// is what keeps owned effort and worktree state out of the cleanliness
 	// oracle's view; the fixture carries them for the same reason.
@@ -240,17 +236,8 @@ func commandRepo(t *testing.T) string {
 		if err := os.WriteFile(ignore, []byte("*\n!.gitignore\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		commandGit(t, "-C", root, "add", "--", ".awf/"+resident+"/.gitignore")
+		gitfixture.NativeAdd(t, fixture, ".awf/"+resident+"/.gitignore")
 	}
-	commandGit(t, "-C", root, "commit", "-m", "base")
+	gitfixture.NativeCommit(t, fixture, "base")
 	return root
-}
-
-func commandGit(t *testing.T, args ...string) {
-	t.Helper()
-	cmd := exec.CommandContext(t.Context(), "git", args...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
-	}
 }

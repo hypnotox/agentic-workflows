@@ -7,10 +7,11 @@ import (
 	"errors"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 func TestEffortGrammarIsClosedAndHasNoForceSurface(t *testing.T) {
@@ -50,7 +51,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	if info, err := os.Lstat(managed); err != nil || !info.IsDir() {
 		t.Fatalf("managed checkout absent: %v", err)
 	}
-	if branch := effortWorktreeBranch(t, root, "default-cli"); branch == "" {
+	if !effortWorktreeBranchExists(t, root, "default-cli") {
 		t.Fatal("managed branch absent")
 	}
 
@@ -84,17 +85,18 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 // invariant: tooling/effort-management:default-worktree-creation
 func TestEffortNewBasesTheManagedBranchOnTheNamedRef(t *testing.T) {
 	root := commandRepo(t)
-	base := effortWorktreeGit(t, root, "rev-parse", "HEAD")
+	base := gitfixture.NativeRevParse(t, gitfixture.At(root), "HEAD")
 	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("second\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	commandGit(t, "-C", root, "commit", "-am", "second")
+	gitfixture.NativeAdd(t, gitfixture.At(root), "tracked.txt")
+	gitfixture.NativeCommit(t, gitfixture.At(root), "second")
 	var out bytes.Buffer
 	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Based CLI"}, bools: map[string]bool{}, values: map[string]string{"--base": base}}, stdout: &out}
 	if err := runEffort(ctx, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
-	if tip := effortWorktreeGit(t, root, "rev-parse", "awf/based-cli"); tip != base {
+	if tip := gitfixture.NativeRevParse(t, gitfixture.At(root), "awf/based-cli"); tip != base {
 		t.Fatalf("managed branch tip = %q, want the named base %q", tip, base)
 	}
 }
@@ -111,7 +113,7 @@ func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 		t.Fatalf("rolled-back effort resident remains: %v", statErr)
 	}
 
-	commandGit(t, "-C", root, "branch", "awf/retained-cli", "HEAD")
+	gitfixture.NativeBranch(t, gitfixture.At(root), "awf/retained-cli")
 	out.Reset()
 	retained := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Retained CLI"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}
 	err = runEffort(retained, openEffortComposition)
@@ -140,20 +142,9 @@ func TestEffortNewRejectsBaseWithoutAWorktree(t *testing.T) {
 	}
 }
 
-func effortWorktreeBranch(t *testing.T, root, slug string) string {
+func effortWorktreeBranchExists(t *testing.T, root, slug string) bool {
 	t.Helper()
-	return effortWorktreeGit(t, root, "branch", "--list", "awf/"+slug)
-}
-
-func effortWorktreeGit(t *testing.T, root string, args ...string) string {
-	t.Helper()
-	command := exec.CommandContext(t.Context(), "git", append([]string{"-C", root}, args...)...)
-	command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
-	output, err := command.Output()
-	if err != nil {
-		t.Fatalf("git %s: %v", strings.Join(args, " "), err)
-	}
-	return strings.TrimSpace(string(output))
+	return gitfixture.NativeRevisionExists(t, gitfixture.At(root), "refs/heads/awf/"+slug)
 }
 
 func TestEffortWorktreeCLIComposition(t *testing.T) {

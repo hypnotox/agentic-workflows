@@ -1,6 +1,7 @@
 package gitfixture
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -41,13 +42,13 @@ func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
 	f := Fixture{root: root}
-	NativeConfig(t, f, "user.name", authorName)
-	NativeConfig(t, f, "user.email", authorEmail)
+	nativeConfig(t, f, "user.name", authorName)
+	nativeConfig(t, f, "user.email", authorEmail)
 	return f
 }
 
-// NativeConfig sets a repository-local configuration value.
-func NativeConfig(t *testing.T, f Fixture, key, value string) {
+// nativeConfig sets a repository-local configuration value.
+func nativeConfig(t *testing.T, f Fixture, key, value string) {
 	t.Helper()
 	mustNative(t, f, "config", key, value)
 }
@@ -90,10 +91,24 @@ func NativeGitPath(t *testing.T, f Fixture, name string) string {
 }
 
 // NativeRevisionExists reports whether a revision resolves, covering both a
-// branch reference and a pseudo-reference such as MERGE_HEAD.
-func NativeRevisionExists(f Fixture, rev string) bool {
-	_, err := runNative(f, "rev-parse", "--verify", "--quiet", rev)
-	return err == nil
+// branch reference and a pseudo-reference such as MERGE_HEAD. Only exit 1 is an
+// answer: --verify --quiet reserves it for "does not resolve" and every other
+// nonzero exit is a fault, so reading them all as absent would turn a broken
+// fixture into a confident negative and pass a must-be-absent assertion for the
+// wrong reason.
+func NativeRevisionExists(t *testing.T, f Fixture, rev string) bool {
+	t.Helper()
+	output, err := runNative(f, "rev-parse", "--verify", "--quiet", rev)
+	if err == nil {
+		return true
+	}
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 1 {
+		return false
+	}
+	// coverage-ignore: rev-parse --verify --quiet answers a resolvable revision with 0 and an unresolvable one with 1; any other exit needs a broken fixture or a missing git binary, which reds the suite by other means
+	t.Fatalf("git rev-parse --verify --quiet %s: %v\n%s", rev, err, output)
+	return false
 }
 
 // NativeBranch creates a branch at HEAD.

@@ -409,9 +409,13 @@ refactor(code-design): effort and worktree composition through the seam
   `grep -rln '"github.com/go-git/go-git' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/' -e '^./internal/testsupport/deps_test.go'`
   (the deps_test.go exclusion is a string-literal fixture for the dependency checker,
   not a real import) and
-  `grep -rlnE 'exec\.Command(Context)?\([^)]*"git"' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/'`
-  return no output (the pattern catches any argument shape before the literal "git",
-  including `t.Context()`).
+  `grep -rlnE 'exec\.Command(Context)?\(.*"git"' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/'`
+  return no output. The second pattern uses `.*`, not `[^)]*`: a bracket expression
+  cannot cross the `)` in `exec.CommandContext(t.Context(), "git", ...)`, so the
+  narrower form silently matched nothing and reported success over two unconverted
+  files. Run both under real GNU grep; a `grep` aliased to ugrep strips the leading
+  `./` and quietly defeats the `^./` exclusions, making the check look permanently
+  failing instead.
 - [ ] **Task 6.3: Doc-comment correction and parallelism.** Rewrite
   `cmd/awf/testmain_test.go`'s `TestMain` doc comment so it states the seam contract
   (git reached only through `internal/git`, no ambient host git config) instead of
@@ -433,7 +437,12 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   any go-git/go-billy import or `exec.Command("git"`/`exec.CommandContext(..., "git"`
   construction outside `internal/git/**` and `internal/testsupport/gitfixture/**`.
   `internal/git/fixturewalker_test.go`: walks `*_test.go` files and fails on the same
-  two forms outside `internal/testsupport/gitfixture/**` and `internal/git/**`.
+  two forms outside `internal/testsupport/gitfixture/**` and `internal/git/**`. It must
+  also allow `internal/testsupport/deps_test.go`, which carries the go-git import path
+  as a string-literal fixture for the dependency checker rather than importing it; the
+  Task 6.2 post-check already excludes that file and the walker owes the same carve-out.
+  Both walkers detect the argument shape with `.*` before the `"git"` literal, never a
+  bracket expression, which cannot cross the `)` in `t.Context()`.
   `internal/git/entrypoints_test.go`: enumerates every exported `Repo` method plus the
   free entrypoints (the Notes' exhaustive list) and fails when one lacks a registered
   contract-suite function (a map from entrypoint name to suite function, complete by
@@ -572,3 +581,21 @@ refactor(code-design): apply single-home and git-access authority
   contract suite gained the ignored-resident case the whole design rests on, three
   comments describing properties the code lacks were corrected, and the stale tracked
   `docs/topics/tooling/git-access.md.awf-bak` left by the Phase 1 merge was deleted.
+- Phase 6 review settlement: the phase closed green over two files Task 6.2 named but
+  never converted, `cmd/awf/effort_test.go` and `cmd/awf/effort_worktree_test.go`, with
+  15 raw-subprocess call sites between them. The mechanism was the post-check itself:
+  its `[^)]*` bracket expression cannot cross the `)` in
+  `exec.CommandContext(t.Context(), "git", ...)`, which is the exact spelling both files
+  used, so the check matched nothing and reported success. The pattern is corrected to
+  `.*` in Task 6.2 and the correction is carried into Task 7.1's walker spec, which
+  quoted the same shape. Both files now build state through the native lane, and their
+  `commandGit` and `effortWorktreeGit` helpers are deleted; the second helper appended
+  to `os.Environ()` without stripping inherited `GIT_*`, so it was also the last fixture
+  in the tree with weaker isolation than the lane it should have used. Task 7.1 also
+  gains the `internal/testsupport/deps_test.go` allowlist entry the Task 6.2 post-check
+  already carried. Smaller items: `NativeConfig` unexported (no consumer outside the
+  package, and the dead-code gate cannot see a test-only package);
+  `NativeRevisionExists` now takes `t` and reads only exit 1 as "absent", failing on any
+  other nonzero exit, because a fault previously satisfied a must-be-absent assertion
+  for the wrong reason and this settlement made it load-bearing in the positive
+  direction too; and a duplicated `initWorktreeRepo` doc comment collapsed to one.
