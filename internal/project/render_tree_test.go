@@ -56,7 +56,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 
 // invariant: rendering/guide-and-doc-templates:agentsdoc-parts
 func TestAgentsDocPartsOverride(t *testing.T) {
-	cfg := "prefix: example\nskills: []\nagents: []\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"
 
 	// Absent → the generic, adopter-neutral default renders publication-safe with
 	// empty invariants/docMap.
@@ -83,7 +83,7 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide
 func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	const uniqueBody = "The local decision posture owns this change."
-	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n", map[string]string{
 		"parts/maintainable-code-design/decision-posture.md": uniqueBody + "\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -112,7 +112,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 }
 
 func TestConventionPartPrecedence(t *testing.T) {
-	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
 	const part = "skills/parts/debugging/debugging-surfaces.md"
 
 	// (1) A convention part present replaces the section body.
@@ -138,7 +138,7 @@ func TestConventionPartPrecedence(t *testing.T) {
 
 // invariant: rendering/render-engine:sidecar-optional
 func TestSidecarAbsentRendersDefault(t *testing.T) {
-	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
 	root := scaffold(t, cfg) // no sidecar, no parts
 	out := syncAndReadDebugging(t, root)
 	if strings.Contains(out, "<no value>") {
@@ -151,7 +151,7 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 
 // invariant: rendering/local-artifacts:local-frontmatter
 func TestLocalFrontmatterChecked(t *testing.T) {
-	cfg := "prefix: example\nskills: [my-local]\nagents: []\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
 	out := ".claude/skills/example-my-local/SKILL.md"
 
@@ -187,7 +187,7 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 // A local skill must exist with valid frontmatter at EVERY enabled target's path
 // (ADR-0037): one present, the other absent, is a fail at the missing target.
 func TestLocalFrontmatterEveryTarget(t *testing.T) {
-	cfg := "prefix: example\nskills: [my-local]\nagents: []\ntargets:\n  - claude\n  - cursor\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\ntargets:\n  - claude\n  - cursor\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {

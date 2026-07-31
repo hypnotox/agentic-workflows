@@ -31,7 +31,7 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 // .awf/hooks/; absent or disabled, none do.
 // invariant: rendering/singletons-and-payloads:hook-payloads-rendered
 func TestHookPayloadsRendered(t *testing.T) {
-	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
+	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n")
 	for _, name := range hookNames {
 		if _, ok := got[name]; !ok {
 			t.Errorf("expected .awf/hooks/%s.sh to render when enabled", name)
@@ -42,8 +42,8 @@ func TestHookPayloadsRendered(t *testing.T) {
 	}
 
 	for _, cfg := range []string{
-		"prefix: example\n",
-		"prefix: example\nhooks:\n  enabled: false\n",
+		"prefix: example\nintegrationBranch: main\n",
+		"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: false\n",
 	} {
 		if got := hookFiles(t, cfg); len(got) != 0 {
 			t.Errorf("expected no hook payloads for config %q, got %v", cfg, got)
@@ -60,8 +60,8 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 	for _, tc := range []struct {
 		name, config, awf string
 	}{
-		{"runner enabled", "prefix: example\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "./awf"},
-		{"runner disabled", "prefix: example\nhooks:\n  enabled: true\n", "awf"},
+		{"runner enabled", "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "./awf"},
+		{"runner disabled", "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n", "awf"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
@@ -98,6 +98,7 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 // pin-aware shim.
 func TestHookPayloadsUseConfiguredCommands(t *testing.T) {
 	got := hookFiles(t, `prefix: example
+integrationBranch: main
 vars:
   checkCmd: ./x check
   gateCmd: ./x gate
@@ -124,7 +125,7 @@ hooks:
 		}
 	}
 	// pre-push falls back through the chain: gateCmd when gateCmdFull is unset.
-	chain := hookFiles(t, "prefix: example\nvars:\n  gateCmd: ./x gate\nhooks:\n  enabled: true\n")
+	chain := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\nhooks:\n  enabled: true\n")
 	if f := chain["pre-push"]; !strings.Contains(f.Content, "./x gate\n") {
 		t.Errorf("pre-push: want gateCmd fallback, got:\n%s", f.Content)
 	}

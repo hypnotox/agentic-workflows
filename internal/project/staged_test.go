@@ -178,7 +178,7 @@ func TestCheckStagedRejectsPermanentAuthorityMutation(t *testing.T) {
 func TestValidatePermanentLockTransitionAllowsOnlyComputedSchema15Cutoff(t *testing.T) {
 	t.Parallel()
 	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\n")},
+		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
 		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
 		{Path: "docs/decisions/nested/9999-ignore.md", Bytes: []byte("nested")},
 		{Path: "docs/decisions/README.md", Bytes: []byte("guide")},
@@ -414,7 +414,7 @@ func TestCheckStagedNoStagedConfig(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n")
 	gitfixture.Stage(t, repo, map[string]string{"internal/x.go": "package x\n"})
 	p := openStaged(t, dir)
 	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "no staged") {
@@ -527,7 +527,7 @@ func TestCheckStagedIndexLoadError(t *testing.T) {
 // scaffolded project that is not a git repository.
 func TestCheckStagedOutsideRepo(t *testing.T) {
 	t.Parallel()
-	root := scaffoldFiles(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -545,12 +545,12 @@ func TestCheckStagedMigratesHistoricalWorkflowTelemetry(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nworkflowTelemetry:\n  retention: {}\nrunner:\n  enabled: true\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\nrunner:\n  enabled: true\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":19,"files":{}}`,
 	})
 	gitfixture.Commit(t, repo, "generation 19", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nrunner:\n  enabled: true\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nrunner:\n  enabled: true\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
 	})
 	p := openStaged(t, dir)
@@ -564,9 +564,9 @@ func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentObsolet
 	for _, tc := range []struct {
 		name, headConfig, headLock, stagedConfig string
 	}{
-		{"historical malformed", "prefix: [\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\n"},
-		{"historical duplicate", "prefix: example\nworkflowTelemetry: {}\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\n"},
-		{"current obsolete", "prefix: example\n", `{"schemaVersion":20,"files":{}}`, "prefix: example\nworkflowTelemetry: {}\n"},
+		{"historical malformed", "prefix: [\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nintegrationBranch: main\n"},
+		{"historical duplicate", "prefix: example\nintegrationBranch: main\nworkflowTelemetry: {}\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nintegrationBranch: main\n"},
+		{"current obsolete", "prefix: example\nintegrationBranch: main\n", `{"schemaVersion":20,"files":{}}`, "prefix: example\nintegrationBranch: main\nworkflowTelemetry: {}\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := gitfixture.InitRepo(t)
@@ -595,9 +595,9 @@ func TestCheckStagedHeadConfigParseError(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nskills: [tdd\n"})
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd\n"})
 	gitfixture.Commit(t, repo, "head", nil)
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
 	p := openStaged(t, dir)
 	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected a HEAD-side config parse error")
@@ -611,19 +611,19 @@ func TestRangePairUniversesErrors(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
 	p := openStaged(t, dir)
 	if _, _, err := p.rangePairUniverses(testContext(t), "does-not-exist"); err == nil {
 		t.Fatal("expected an unresolvable-rev error")
 	}
 	// A child whose first-parent commit carries a malformed config.
-	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nskills: [tdd\n"})
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd\n"})
 	gitfixture.Commit(t, repo, "bad parent", nil)
 	child := gitfixture.Commit(t, repo, "child", map[string]string{"note.txt": "x"})
 	if _, _, err := p.rangePairUniverses(testContext(t), child); err == nil {
 		t.Fatal("expected a before-side load error from the malformed parent")
 	}
-	gitfixture.Commit(t, repo, "restore config", map[string]string{".awf/config.yaml": "prefix: example\nskills: [tdd]\nagents: []\n"})
+	gitfixture.Commit(t, repo, "restore config", map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"})
 	badLock := gitfixture.Commit(t, repo, "bad lock", map[string]string{".awf/awf.lock": "{"})
 	if _, _, err := p.rangePairUniverses(testContext(t), badLock); err == nil {
 		t.Fatal("expected an after-side lock parse error")
@@ -774,7 +774,7 @@ func TestAuditTransitionsCollectError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n")
 	p := openStaged(t, dir)
 	if _, err := p.auditTransitions(testContext(t), "does-not-exist", "HEAD"); err == nil {
 		t.Fatal("expected an unresolvable-range error")
@@ -1045,7 +1045,7 @@ func publicTopicClaims(slugs ...string) string {
 func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T) {
 	t.Parallel()
 	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\n")},
+		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
 		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
 		{Path: "docs/decisions/README.md", Bytes: []byte("guide")},
 	})

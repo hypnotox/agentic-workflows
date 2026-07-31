@@ -19,6 +19,7 @@ import (
 )
 
 const checkYAML = `prefix: example
+integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
 skills: [tdd]
 agents: []
@@ -123,7 +124,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
 // not the config declares the block.
 func coverageYAML() string {
-	return "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
+	return "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
 		"currentState:\n  maxTopicsPerPath: 1\n"
 }
 
@@ -200,7 +201,7 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 func TestRunCheckClaimBudgetNote(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
 	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
 	root := syncedGitProjectFiles(t, cfg, map[string]string{
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
@@ -289,7 +290,7 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 func TestRunCheckStagedSuppressesClaimBudgetNote(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
 	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
 	root := stagedCheckProject(t, map[string]string{
 		".awf/config.yaml":                             cfg,
@@ -325,7 +326,7 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
 
 	t.Run("working lock cannot fail staged gate or suppress staged ahead note", func(t *testing.T) {
 		root := stagedCheckProject(t, map[string]string{
@@ -383,7 +384,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
 
 	t.Run("missing repository refuses", func(t *testing.T) {
 		t.Chdir(t.TempDir())
@@ -533,7 +534,7 @@ func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *tes
 	files := map[string]string{
 		".githooks/check-nested-staged":                         string(helperBody),
 		prefix + ".awf/awf.lock":                                string(lockBytes),
-		prefix + ".awf/config.yaml":                             "prefix: sundial\nskills: []\nagents: []\ndomains: [alpha]\n",
+		prefix + ".awf/config.yaml":                             "prefix: sundial\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [alpha]\n",
 		prefix + ".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
 		prefix + ".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
 		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
@@ -613,7 +614,7 @@ func TestRunCheckStagedError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {

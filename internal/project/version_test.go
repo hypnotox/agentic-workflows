@@ -26,7 +26,7 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	if err := ValidateSchemaMinimumVersion(22, "0.25.0"); err == nil || !strings.Contains(err.Error(), "requires awf 0.26.0") {
 		t.Fatalf("generation-22 older binary error = %v", err)
 	}
-	if err := ValidateSchemaMinimumVersion(29, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
+	if err := ValidateSchemaMinimumVersion(30, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
 		t.Fatalf("unmapped schema error = %v", err)
 	}
 }

@@ -31,8 +31,9 @@ Backing: test
 
 ### `invariant: adr-new-heading-matches-file`
 
-A file created by awf new adr carries a # ADR-NNNN: <title> heading whose number matches the NNNN prefix of its own filename, and the literal Title placeholder never survives into the written file.
+A file created by awf new adr carries a heading whose identity token matches its own filename: # ADR-NNNN: <title> over a numbered NNNN-<slug>.md record and # ADR-<slug>: <title> over a pending <slug>.md one, and the literal Title placeholder never survives into the written file.
 Origin: ADR-0042
+Revised-by: ADR-0194
 Backing: test
 
 ### `invariant: adr-new-no-overwrite`
@@ -44,8 +45,9 @@ Verify: Read NewFile in internal/adr/adr.go and confirm it stats the computed ta
 
 ### `invariant: adr-new-sequential-numbering`
 
-NextNumber returns the highest existing ADR number in the decisions directory plus one, and never reuses a number already present in that directory.
+awf new adr allocates its identity from the branch: on the configured integrationBranch it takes the highest existing ADR number in the decisions directory plus one and never reuses a number already present there, and on any other outcome - a different branch, a detached HEAD, or a repository it cannot read - it writes a slug-identified pending record carrying no number at all.
 Origin: ADR-0042
+Revised-by: ADR-0194
 Backing: test
 
 ### `invariant: adr-new-strips-markers`
@@ -148,5 +150,11 @@ Backing: test
 ### `invariant: pending-adr-slug-identity`
 
 A current-state-v3 ADR authored before it is numbered is a pending record: the file is `<slug>.md`, the heading is `# ADR-<slug>: <Title>`, and its identity form is `ADR-<slug>`. The slug is the filename derivation of the title, frozen at scaffold time and never tracking later title edits. A numberless file routes into the corpus by its `current-state-v3` marker, and the reserved README.md, INDEX.md, and template.md basenames are never records. Numbering prepends the number to the filename and rewrites the heading, leaving the slug key in place. The decision index sorts numbered records first by number and pending records after, alphabetically by slug.
+Origin: ADR-0194
+Backing: test
+
+### `invariant: pending-blocked-from-integration-branch`
+
+awf check reports a pending-adr-on-integration-branch finding for every slug-identified pending record in the corpus while the git seam positively identifies the checkout as being on the configured integrationBranch, and reports nothing for those same records on another branch, on a detached HEAD, or when the repository cannot be read.
 Origin: ADR-0194
 Backing: test

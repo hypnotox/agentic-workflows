@@ -50,6 +50,7 @@ func writeList(b *strings.Builder, key string, vals []string) {
 func fullCatalogConfigForTarget(cat *catalog.Catalog, target string) string {
 	var b strings.Builder
 	b.WriteString("prefix: " + evalPrefix + "\n")
+	b.WriteString("integrationBranch: main\n")
 	b.WriteString("targets:\n  - " + target + "\n")
 	writeList(&b, "skills", sortedKeys(cat.Skills))
 	writeList(&b, "agents", sortedKeys(cat.Agents))

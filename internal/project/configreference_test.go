@@ -12,6 +12,7 @@ import (
 )
 
 const crefYAML = `prefix: example
+integrationBranch: main
 vars:
   gateCmd: make gate
   checkCmd:
@@ -41,7 +42,7 @@ func syncedProject(t *testing.T, configYAML string, files map[string]string) (st
 // A minimal project still renders coherent prose - no empty table skeletons,
 // no unresolved tokens (the publication-safe degradation for generated docs).
 func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
-	root, _ := syncedProject(t, "prefix: example\n", nil)
+	root, _ := syncedProject(t, "prefix: example\nintegrationBranch: main\n", nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -300,7 +301,7 @@ func TestConfigReferenceIntroOverride(t *testing.T) {
 }
 
 func TestConfigReferenceSurfacesSynthesizedLocalDataKeys(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-skill\nagents:\n  - my-agent\ndocs:\n  - my-doc\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - my-skill\nagents:\n  - my-agent\ndocs:\n  - my-doc\n", map[string]string{
 		"skills/my-skill.yaml":             "data:\n  description: d.\n",
 		"skills/parts/my-skill/content.md": "b\n",
 		"agents/my-agent.yaml":             "data:\n  description: d.\n",
@@ -330,7 +331,7 @@ func TestConfigReferenceSurfacesSynthesizedLocalDataKeys(t *testing.T) {
 func TestConfigReferenceOmitsBaseRowsWithoutSynthesizedLocal(t *testing.T) {
 	// A local:true opt-out does not render from the base template, so its _base
 	// keys must not surface.
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - hand\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - hand\n", map[string]string{
 		"skills/hand.yaml": "local: true\n",
 	})
 	p, err := Open(testContext(t), root)

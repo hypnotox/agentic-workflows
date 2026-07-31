@@ -467,25 +467,73 @@ func replaceOnce(s, old, replacement string) (string, error) {
 	return strings.Replace(s, old, replacement, 1), nil
 }
 
-// NewFile scaffolds a new ADR under dir: the next sequential number, the
-// rendered template.md with every marker comment stripped and its date and
-// title heading filled in, named NNNN-slug.md. Refuses to overwrite an
-// existing file at that path.
-// touches-state: adr-system/adr-lifecycle:adr-new-strips-markers - NewFile strips every marker comment from the copied template; proof in adr_test.go
-// touches-state: adr-system/adr-lifecycle:adr-new-heading-matches-file - NewFile fills the heading from the allocated file number; proof in adr_test.go
-// touches-state: adr-system/adr-lifecycle:adr-new-no-overwrite - refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
+// numberedSlugRe matches a slug that opens like a numbered filename. Such a
+// slug is refused at authoring time (ADR-0194 item 2): ParseRecord routes by
+// filename before it peeks the format marker, so a pending `2026-roadmap.md`
+// would be read as numbered record 2026, fail the filename-equals-slug check,
+// and take the whole corpus down instead of producing a scoped finding.
+var numberedSlugRe = regexp.MustCompile(`^\d{4}-`)
+
+// reservedSlugStems are the reserved basenames' stems. A title slugifying to
+// one of these would scaffold a pending file every corpus walk skips.
+var reservedSlugStems = map[string]bool{"readme": true, "index": true, "template": true}
+
+// NewFile scaffolds a new numbered ADR under dir: the next sequential number,
+// the rendered template.md with every marker comment stripped and its date and
+// title heading filled in, named NNNN-slug.md. Refuses to overwrite an existing
+// file at that path.
 func NewFile(dir, title string, format Format) (string, error) {
+	return scaffoldRecord(dir, title, format, false)
+}
+
+// NewPendingFile scaffolds a slug-identified pending ADR under dir: `<slug>.md`
+// with heading `# ADR-<slug>:` and no number. A pending record is always
+// current-state-v3 - the format marker is what routes a numberless file to the
+// V3 parser - so the format is not the caller's to choose (ADR-0194 item 2).
+// Numbering at integration turns it into the numbered form.
+func NewPendingFile(dir, title string) (string, error) {
+	return scaffoldRecord(dir, title, CurrentStateV3, true)
+}
+
+// scaffoldRecord is the single writer of a scaffolded decision record. pending
+// selects the identity form: the numbered `NNNN-<slug>.md` with a
+// `# ADR-NNNN:` heading, or the pending `<slug>.md` with a `# ADR-<slug>:` one.
+// Every refusal is evaluated before the first write.
+// touches-state: adr-system/adr-lifecycle:adr-new-strips-markers - the scaffold strips every marker comment from the copied template; proof in adr_test.go
+// touches-state: adr-system/adr-lifecycle:adr-new-heading-matches-file - the scaffold fills the heading from the allocated identity; proof in adr_test.go
+// touches-state: adr-system/adr-lifecycle:adr-new-no-overwrite - refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
+func scaffoldRecord(dir, title string, format Format, pending bool) (string, error) {
 	title = strings.TrimSpace(title)
-	number, err := NextNumber(dir)
-	if err != nil {
-		return "", err
-	}
 	slug, err := slugify(title)
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(dir, number+"-"+slug+".md")
-	if _, err := os.Stat(path); err == nil { // coverage-ignore: NextNumber always returns one more than every existing NNNN-*.md file, so this path can only pre-exist via a concurrent-process race a single-threaded test cannot construct
+	if reservedSlugStems[slug] {
+		return "", fmt.Errorf("adr: title slugifies to reserved name %q", slug)
+	}
+	if numberedSlugRe.MatchString(slug) {
+		return "", fmt.Errorf("adr: title slugifies to %q, which reads as a numbered filename", slug)
+	}
+	corpus, err := LoadCorpus(dir)
+	if err != nil {
+		return "", err
+	}
+	if existing, ok := corpusSlugOwner(corpus, slug); ok {
+		return "", fmt.Errorf("adr: slug %q already used by %s", slug, existing)
+	}
+	next, err := corpus.NextIdentity()
+	if err != nil { // coverage-ignore: LoadCorpus already rejected any record whose number is not the four-digit group FilenameRe captured
+		return "", err
+	}
+	number := fmt.Sprintf("%04d", next)
+	base := number + "-" + slug + ".md"
+	heading := "# ADR-" + number + ": " + title
+	if pending {
+		base = slug + ".md"
+		heading = "# ADR-" + slug + ": " + title
+	}
+	path := filepath.Join(dir, base)
+	if _, err := os.Stat(path); err == nil { // coverage-ignore: the slug-collision refusal above already rejects a pending name in the corpus, and the number is one past every numbered record, so this path can only pre-exist via a concurrent-process race a single-threaded test cannot construct
 		return "", fmt.Errorf("adr: %s already exists", path)
 	} else if !os.IsNotExist(err) { // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
 		return "", err
@@ -546,12 +594,31 @@ func NewFile(dir, title string, format Format) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("ADR template Proposed history: %w", err)
 	}
-	content, err = replaceOnce(content, "# ADR-NNNN: Title", fmt.Sprintf("# ADR-%s: %s", number, title))
+	content, err = replaceOnce(content, "# ADR-NNNN: Title", heading)
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { // coverage-ignore: post-Stat write into a dir just read by NextNumber/ParseDir; fails only on a permission fault a test cannot trigger
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { // coverage-ignore: post-Stat write into a dir just read by LoadCorpus; fails only on a permission fault a test cannot trigger
 		return "", err
 	}
 	return path, nil
+}
+
+// corpusSlugOwner reports the file already claiming slug, over both spellings a
+// slug can occupy: a record's retained `slug:` key, and the slug segment of a
+// numbered filename, which pre-V3 records carry without any frontmatter key.
+// Both matter, because a slug reused from either would collide the moment the
+// new record is numbered.
+func corpusSlugOwner(c Corpus, slug string) (string, bool) {
+	if a, ok := c.BySlug(slug); ok {
+		return a.Filename, true
+	}
+	for _, a := range c.All() {
+		if m := FilenameRe.FindStringSubmatch(a.Filename); m != nil {
+			if strings.TrimSuffix(strings.TrimPrefix(a.Filename, m[1]+"-"), ".md") == slug {
+				return a.Filename, true
+			}
+		}
+	}
+	return "", false
 }

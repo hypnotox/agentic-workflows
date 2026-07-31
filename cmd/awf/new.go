@@ -47,7 +47,7 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	if err != nil {
 		return err
 	}
-	path, err := p.NewADR(strings.Join(titleWords, " "))
+	path, err := p.NewADR(ctx, strings.Join(titleWords, " "))
 	if err != nil {
 		return err
 	}

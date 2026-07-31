@@ -306,8 +306,15 @@ Scaffold a new artifact. <kind> is adr, plan, topic, skill, agent, or doc.
 				Name: "adr", Summary: "Scaffold a new ADR", MinPos: 0, MaxPos: -1,
 				HelpBody: `Usage: awf new adr <title>
 
-Scaffold a new ADR under docs/decisions with the next sequential number, from
-the rendered template with its date and title heading filled in.
+Scaffold a new ADR under docs/decisions from the rendered template, with its
+date and title heading filled in. The identity depends on the branch: on the
+configured integrationBranch the record gets the next sequential number
+(NNNN-<slug>.md), and anywhere else it is written as a pending record named
+<slug>.md, which awf adr number numbers at integration time.
+
+The title must not slugify to a reserved name (readme, index, template), to a
+slug already used in the corpus, or to something opening with four digits and a
+hyphen, which would read as a number.
 `,
 			},
 			{

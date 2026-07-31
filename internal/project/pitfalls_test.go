@@ -7,7 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-const pitfallsCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\n"
+const pitfallsCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\n"
 
 // renderPitfalls opens root and returns the rendered pitfalls doc content.
 func renderPitfalls(t *testing.T, root string) string {

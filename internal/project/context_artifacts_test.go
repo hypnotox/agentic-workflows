@@ -231,7 +231,7 @@ func TestProjectTreeReaders(t *testing.T) {
 // and exited 0.
 func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x")}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: []\nagents: []\ndomains: [d]\n"), configReaderAdapter{read})
+	cfg, err := config.ParseTree(".awf", []byte("prefix: p\nintegrationBranch: main\ndocsDir: docs\nskills: []\nagents: []\ndomains: [d]\n"), configReaderAdapter{read})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 
 func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x"), ".awf/topics/metadata/d/readme.txt": []byte("x"), ".awf/skills/local.yaml": []byte("local: true\n"), ".awf/skills/parts/local/content.md": []byte("part"), ".awf/agents/agent.yaml": []byte("local: true\n"), ".awf/agents/parts/agent/content.md": []byte("part"), "docs/decisions/0001-real.md": []byte("parsed"), "docs/decisions/0002-malformed.md": []byte("not parsed"), "docs/decisions/INDEX.md": []byte("generated"), "docs/decisions/README.md": []byte("navigation")}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: [local]\nagents: [agent]\ndocs: [enabled]\ndomains: [d]\nrunner: {enabled: true}\nbootstrap: {enabled: true}\nhooks: {enabled: true}\n"), configReaderAdapter{read})
+	cfg, err := config.ParseTree(".awf", []byte("prefix: p\nintegrationBranch: main\ndocsDir: docs\nskills: [local]\nagents: [agent]\ndocs: [enabled]\ndomains: [d]\nrunner: {enabled: true}\nbootstrap: {enabled: true}\nhooks: {enabled: true}\n"), configReaderAdapter{read})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,24 +277,24 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	for _, tc := range []struct {
 		read memoryProjectReader
 		body string
-	}{{memoryProjectReader{".awf/agents-doc.yaml": []byte("local: [bad")}, "prefix: p\n"}, {memoryProjectReader{".awf/docs/enabled.yaml": []byte("local: [bad")}, "prefix: p\ndocs: [enabled]\n"}} {
+	}{{memoryProjectReader{".awf/agents-doc.yaml": []byte("local: [bad")}, "prefix: p\nintegrationBranch: main\n"}, {memoryProjectReader{".awf/docs/enabled.yaml": []byte("local: [bad")}, "prefix: p\nintegrationBranch: main\ndocs: [enabled]\n"}} {
 		badCfg, _ := config.ParseTree(".awf", []byte(tc.body), configReaderAdapter{tc.read})
 		if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, tc.read, mustCorpus(nil)); err == nil {
 			t.Fatal("malformed document declaration accepted")
 		}
 	}
 	badSkillRead := memoryProjectReader{".awf/skills/bad.yaml": []byte("local: [bad")}
-	badSkillCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nskills: [bad]\n"), configReaderAdapter{badSkillRead})
+	badSkillCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nintegrationBranch: main\nskills: [bad]\n"), configReaderAdapter{badSkillRead})
 	if _, err := BuildOutputDeclarations(badSkillCfg, cat, []Target{target}, badSkillRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed skill declaration accepted")
 	}
 	badRead := memoryProjectReader{".awf/agents/bad.yaml": []byte("local: [bad")}
-	badCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nagents: [bad]\n"), configReaderAdapter{badRead})
+	badCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nintegrationBranch: main\nagents: [bad]\n"), configReaderAdapter{badRead})
 	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed agent declaration accepted")
 	}
 	badDomainRead := memoryProjectReader{".awf/domains/d.yaml": []byte("paths: [bad")}
-	badDomainCfg, _ := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter{badDomainRead})
+	badDomainCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nintegrationBranch: main\ndomains: [d]\n"), configReaderAdapter{badDomainRead})
 	if _, err := BuildOutputDeclarations(badDomainCfg, cat, []Target{target}, badDomainRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed domain declaration accepted")
 	}
@@ -314,7 +314,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 }
 
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\n"+debuggingVars+"skills: [debugging, exploring]\nagents: [explorer]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"skills: [debugging, exploring]\nagents: [explorer]\n", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})

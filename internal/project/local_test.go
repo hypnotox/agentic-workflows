@@ -10,6 +10,7 @@ import (
 )
 
 const localSkillYAML = `prefix: example
+integrationBranch: main
 targets:
   - claude
   - cursor
@@ -62,7 +63,7 @@ func TestLocalSkillRendersFromBasePerTarget(t *testing.T) {
 }
 
 func TestLocalSkillFallbackProfileForMissingBlankAndNonStringDescriptions(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - missing\n  - blank\n  - number\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - missing\n  - blank\n  - number\n", map[string]string{
 		"skills/missing.yaml": "data: {}\n",
 		"skills/blank.yaml":   "data:\n  description: '   '\n",
 		"skills/number.yaml":  "data:\n  description: 42\n",
@@ -80,7 +81,7 @@ func TestLocalSkillFallbackProfileForMissingBlankAndNonStringDescriptions(t *tes
 }
 
 func TestLocalAgentRendersFromBase(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nagents:\n  - my-agent\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nagents:\n  - my-agent\n", map[string]string{
 		"agents/my-agent.yaml":             "data:\n  description: Reviews the frobnicator.\n",
 		"agents/parts/my-agent/content.md": "Agent body here.\n",
 	})
@@ -119,7 +120,7 @@ func TestLocalSynthesisDoesNotMutateStandard(t *testing.T) {
 }
 
 func TestLocalUndeclaredNameFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - ghost\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - ghost\n", nil)
 	_, err := Open(testContext(t), root)
 	// invariant: rendering/local-artifacts:local-requires-declaration
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
@@ -128,7 +129,7 @@ func TestLocalUndeclaredNameFailsOpen(t *testing.T) {
 }
 
 func TestLocalSkillSidecarStatErrorFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-skill\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - my-skill\n", map[string]string{
 		"skills": "not a directory",
 	})
 	_, err := Open(testContext(t), root)
@@ -138,7 +139,7 @@ func TestLocalSkillSidecarStatErrorFailsOpen(t *testing.T) {
 }
 
 func TestLocalReservedNameFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - _x\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - _x\n", map[string]string{
 		"skills/_x.yaml": "data:\n  description: nope\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -150,7 +151,7 @@ func TestLocalReservedNameFailsOpen(t *testing.T) {
 // TestLocalAgentReservedNameFailsOpen exercises the agents-side synthesis
 // error-return in effectiveCatalog (skills stay clean, agents fail).
 func TestLocalAgentReservedNameFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nagents:\n  - _a\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nagents:\n  - _a\n", map[string]string{
 		"agents/_a.yaml": "data:\n  description: x\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -160,7 +161,7 @@ func TestLocalAgentReservedNameFailsOpen(t *testing.T) {
 }
 
 func TestLocalMalformedSidecarFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-skill\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - my-skill\n", map[string]string{
 		"skills/my-skill.yaml": "data: [unterminated\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -187,7 +188,7 @@ func TestLocalNameShadowingStandardStaysStandard(t *testing.T) {
 }
 
 func TestLocalHandAuthoredSkipped(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - hand\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - hand\n", map[string]string{
 		"skills/hand.yaml": "local: true\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -207,6 +208,7 @@ func TestLocalHandAuthoredSkipped(t *testing.T) {
 }
 
 const localDocYAML = `prefix: example
+integrationBranch: main
 docs:
   - my-doc
 `
@@ -247,7 +249,7 @@ func TestLocalDocRendersFromBase(t *testing.T) {
 }
 
 func TestLocalDocSubfolderPathAndMap(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - guides/ci\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - guides/ci\n", map[string]string{
 		"docs/guides/ci.yaml":             "data:\n  description: How CI runs.\n",
 		"docs/parts/guides/ci/content.md": "CI body.\n",
 	})
@@ -302,7 +304,7 @@ func TestLocalDocSynthesisDoesNotMutateStandard(t *testing.T) {
 }
 
 func TestLocalDocUndeclaredNameFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - ghost\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - ghost\n", nil)
 	_, err := Open(testContext(t), root)
 	// invariant: rendering/local-artifacts:local-doc-requires-declaration
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
@@ -311,7 +313,7 @@ func TestLocalDocUndeclaredNameFailsOpen(t *testing.T) {
 }
 
 func TestLocalDocSidecarStatErrorFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - my-doc\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - my-doc\n", map[string]string{
 		"docs": "not a directory",
 	})
 	_, err := Open(testContext(t), root)
@@ -321,7 +323,7 @@ func TestLocalDocSidecarStatErrorFailsOpen(t *testing.T) {
 }
 
 func TestLocalDocInvalidNameFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - Bad\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - Bad\n", map[string]string{
 		"docs/Bad.yaml": "data:\n  description: x\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -331,7 +333,7 @@ func TestLocalDocInvalidNameFailsOpen(t *testing.T) {
 }
 
 func TestLocalDocMalformedSidecarFailsOpen(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - my-doc\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - my-doc\n", map[string]string{
 		"docs/my-doc.yaml": "data: [unterminated\n",
 	})
 	_, err := Open(testContext(t), root)
@@ -343,7 +345,7 @@ func TestLocalDocMalformedSidecarFailsOpen(t *testing.T) {
 func TestLocalDocNameShadowingStandardStaysStandard(t *testing.T) {
 	// "architecture" is a Standard toggleable doc; enabling it with a sidecar must
 	// not synthesize a base-rendered local over it.
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - architecture\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - architecture\n", map[string]string{
 		"docs/architecture.yaml": "data:\n  title: Should Not Win\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -357,7 +359,7 @@ func TestLocalDocNameShadowingStandardStaysStandard(t *testing.T) {
 }
 
 func TestLocalDocHandAuthoredSkipped(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - hand\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - hand\n", map[string]string{
 		"docs/hand.yaml": "local: true\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -372,7 +374,7 @@ func TestLocalDocHandAuthoredSkipped(t *testing.T) {
 // TestLocalDocDefaultDescWhenSidecarOmits covers the desc-default branch of
 // synthesizeLocalDocs (a sidecar with no data.description).
 func TestLocalDocDefaultDescWhenSidecarOmits(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - bare\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - bare\n", map[string]string{
 		"docs/bare.yaml":             "data:\n  title: Bare\n",
 		"docs/parts/bare/content.md": "Body.\n",
 	})
@@ -389,7 +391,7 @@ func TestLocalDocDefaultDescWhenSidecarOmits(t *testing.T) {
 // on awf's reserved output territory - here docs/decisions/template.md, also
 // rendered by the adr-template singleton - and RenderAll must fail loudly.
 func TestRenderAllRejectsDuplicateOutputPath(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - decisions/template\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - decisions/template\n", map[string]string{
 		"docs/decisions/template.yaml":             "data:\n  description: collide.\n",
 		"docs/parts/decisions/template/content.md": "body\n",
 	})
@@ -403,7 +405,7 @@ func TestRenderAllRejectsDuplicateOutputPath(t *testing.T) {
 }
 
 func TestReleasingCatalogDocRenders(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - releasing\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndocs:\n  - releasing\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

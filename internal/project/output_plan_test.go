@@ -18,7 +18,7 @@ import (
 // filesystem directly, so an unreadable directory there used to be skipped and
 // the plan, and the drift oracle computed from it, silently narrowed.
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [rendering]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 // invariant: rendering/project-output-plan:output-plan-complete
 // invariant: rendering/pi-workflows:pi-native-workflow-skills
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -132,7 +132,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		if err := target.validate(); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
 		}
-		root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
@@ -156,7 +156,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 // invariant: rendering/project-output-plan:output-policy-explicit
 // invariant: rendering/project-output-plan:shared-output-coalesced
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

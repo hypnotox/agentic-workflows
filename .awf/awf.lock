@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.30.0",
-  "schemaVersion": 28,
+  "schemaVersion": 29,
   "files": {
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",
@@ -378,7 +378,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:00958e98b982e3b0b2db84841c20d6afcadc88bc22016daa0a7957d95bfe863b",
+      "outputHash": "sha256:7b53393a8cdfd3402326ff8ae79ded70aa9bcbf2f24b32dfdf8066eae4795831",
       "regenChecked": true
     },
     "docs/decisions/INDEX.md": {
@@ -505,8 +505,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:f1ed5552defc13b09ef97e1fd8b9b3d581f30ffe3ea0472678c9686bacbc95c6",
-      "outputHash": "sha256:b628bb3b0fefef913998e603d180f1607c70371d997f050836a6daed801cb1f7"
+      "configHash": "sha256:eb9d25971d3884aabea9e3b3b24f729eba3ae4d4945836d25e504b778b537b2a",
+      "outputHash": "sha256:b3a205ab5eba7ed4d72f5b1ad453ef11bc6cfd1eca6442474c2a793ed34b6f10"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -559,8 +559,8 @@
     "docs/topics/config/configuration.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:0e8021b943245cda2b551da8940c785716b05f2992d48ab248afb07a42109f59",
-      "outputHash": "sha256:fe4b60b171ec30005d9bae2b200c2d15969b94a8d50bd798e03624010a94fa56"
+      "configHash": "sha256:431eae06656ac2da7b090a6e09efd56f83666bcf9b97ec4a800e53f7af65cd7d",
+      "outputHash": "sha256:8560733ce813e62693e117c5d9fc64332bc1389d681e196c64531319e1c48167"
     },
     "docs/topics/config/index.md": {
       "templateId": "topics/index.md.tmpl",

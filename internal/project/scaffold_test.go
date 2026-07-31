@@ -77,6 +77,27 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 	}
 }
 
+// A freshly scaffolded config carries the required integrationBranch key and
+// therefore passes its own validation. Without the key the scaffold would emit
+// a config that fails on the very next open (ADR-0194 Decision 6).
+// invariant: config/configuration:integration-branch-explicit
+func TestScaffoldWritesValidIntegrationBranch(t *testing.T) {
+	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)
+	if err != nil {
+		t.Fatalf("ScaffoldConfig: %v", err)
+	}
+	if !strings.Contains(string(b), "integrationBranch: main\n") {
+		t.Fatalf("scaffolded config does not write the key visibly:\n%s", b)
+	}
+	cfg, err := config.Load(writeScaffold(t, b))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("a freshly scaffolded config must validate: %v", err)
+	}
+}
+
 // TestScaffoldCatalogTrim asserts a non-nil trim dimension replaces the curated
 // core verbatim while a nil dimension keeps the core (full-deselectable trim).
 // invariant: rendering/project-output-plan:catalog-trim-applied

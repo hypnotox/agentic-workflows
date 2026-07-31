@@ -65,6 +65,7 @@ var registry = []Migration{
 	{To: 26, Name: "orienting-skill-backfill", Apply: treeOnly(applyOrientingSkillBackfill)},
 	{To: 27, Name: "adr-number-provenance", Apply: treeOnly(applyADRNumberProvenance)},
 	{To: adrFormatV3Generation, Name: "adr-format-v3-cutoff", Apply: treeOnly(applyADRFormatV3Cutoff), OwnsSchemaStamp: true},
+	{To: integrationBranchGeneration, Name: "integration-branch-explicit", Apply: treeOnly(applyIntegrationBranch)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -132,6 +133,26 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 				var err error
 				out, err = config.RemoveMappingKey(out, "currentState", key)
 				if err != nil {
+					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+				}
+			}
+		}
+		// Unlike the pure removals above, this case materializes a key the
+		// committed bytes never had, and it must. integrationBranch is
+		// required with no in-code default (ADR-0194 Decision 6), so a
+		// historical config without it does not merely lack a value: it fails
+		// Validate, and the whole before-side load a transition check depends
+		// on aborts. Seeding exactly what the migration writes is the faithful
+		// port-forward. A config that somehow already carries the key keeps its
+		// own value.
+		if migration.To == integrationBranchGeneration {
+			present, err := config.HasKey(out, "integrationBranch")
+			if err != nil {
+				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+			}
+			if !present {
+				out, err = config.SetString(out, "integrationBranch", "main")
+				if err != nil { // coverage-ignore: HasKey parsed these same bytes as a mapping one statement above, so SetString cannot fail here
 					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 				}
 			}

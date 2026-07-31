@@ -191,7 +191,9 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\n"
+	// The port-forward crosses every later generation too, so it also seeds the
+	// required integrationBranch key (ADR-0194 Decision 6).
+	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\nintegrationBranch: main\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}
@@ -204,11 +206,14 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 	if string(again) != want {
 		t.Fatalf("not idempotent: %q", again)
 	}
+	// A generation at or past 25 skips the removal branch: the severity keys
+	// survive. The later integrationBranch seed still applies, so compare the
+	// removal's own effect rather than the whole document.
 	at25, err := ConfigForCurrentSchema(src, 25)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(at25) != string(src) {
+	if !strings.Contains(string(at25), "topicCoverage: error") || !strings.Contains(string(at25), "topicFanout: warn") {
 		t.Fatalf("generation 25 must not re-apply the removal, got %q", at25)
 	}
 }

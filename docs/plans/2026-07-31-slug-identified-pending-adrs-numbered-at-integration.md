@@ -308,14 +308,14 @@ feat(adr-system): make pending V3 records first-class corpus members
 **Execution mode: subagent-driven.** Baseline: `git status --short` empty; `./x gate`
 exits 0; `./awf check` clean.
 
-- [ ] **Task 3.1: Top-level scalar config editor.** In `internal/config/edit.go`, add
+- [x] **Task 3.1: Top-level scalar config editor.** In `internal/config/edit.go`, add
   `SetString(src []byte, key, value string) ([]byte, error)`: create-or-replace a
   top-level scalar mapping entry, mirroring `SetArray`'s node handling (:107-122) with a
   scalar value node. Test: create-new, replace-existing, preserved comments/order,
   invalid-yaml error. The `config-serialization-owned` claim's closed editor
   enumeration gains `SetString` (the claim update is declared by ADR-0194 and applies
   in this phase's batch, Task 3.7).
-- [ ] **Task 3.2: `integrationBranch` config key.** In `internal/config/config.go`: add
+- [x] **Task 3.2: `integrationBranch` config key.** In `internal/config/config.go`: add
   `IntegrationBranch string` (`yaml:"integrationBranch"`) beside `Prefix` (:44); NO
   default in `ParseTree` (the `Prefix` precedent, not `DocsDir`). Validation: required
   non-empty and free of whitespace; slashes are legal (`release/1.0`); leading `-` is
@@ -331,7 +331,7 @@ exits 0; `./awf check` clean.
   (`internal/config/edit.go:19-30`) and set it to `"main"` in `ScaffoldConfig`
   (`internal/project/scaffold.go:73-88`), with a test asserting a freshly scaffolded
   config validates.
-- [ ] **Task 3.3: Migration writing the key.** New
+- [x] **Task 3.3: Migration writing the key.** New
   `internal/migrate/integrationbranch.go` on the `applyOrientingSkillBackfill` shape
   (`orientingbackfill.go:19-38`): inside `editConfig`, call
   `config.SetString(src, "integrationBranch", "main")` only when the key is absent, and
@@ -343,7 +343,7 @@ exits 0; `./awf check` clean.
   `examples/sundial/.awf/awf.lock`, and `examples/sundial/.awf/config.yaml` (both
   configs gain the visible `integrationBranch: main` line; without it Task 3.2's
   required-key validation reds both trees).
-- [ ] **Task 3.4: Seam branch-detection entrypoint.** Already shipped by the landed
+- [x] **Task 3.4: Seam branch-detection entrypoint.** Already shipped by the landed
   seam ADR (0193); Phase 1 Task 1.3 verified the shape on 2026-07-31.
   `(*Repo).CurrentBranch(ctx)` (`internal/git/lifecycle.go:100`) implements
   `git symbolic-ref -q --short HEAD` semantics and reports detached HEAD as a
@@ -355,7 +355,7 @@ exits 0; `./awf check` clean.
   reduces to re-running the post-check at execution time -
   `grep -rn "symbolic-ref" internal/ cmd/ --include="*.go" | grep -v _test | grep -v
   internal/git/` returns no output.
-- [ ] **Task 3.5: Branch-aware scaffold with refusals.** In
+- [x] **Task 3.5: Branch-aware scaffold with refusals.** In
   `internal/project/project.go` `NewADR` (:549-564): resolve the current branch through
   the Task 3.4 entrypoint; positive match against `cfg.IntegrationBranch` scaffolds
   numbered (existing path; format V3 when the allocated number is at or past
@@ -378,7 +378,7 @@ exits 0; `./awf check` clean.
   branch-conditional shape. Tests: numbered-on-integration-branch,
   pending-elsewhere, pending-on-detached, both refusal paths, slug key present in both
   scaffold outputs.
-- [ ] **Task 3.6: Pending block on the integration branch.** In
+- [x] **Task 3.6: Pending block on the integration branch.** In
   `internal/project/check.go`, in the corpus-level check path that already walks
   decisions (near `checkPlans`, :596): when the corpus contains at least one pending
   record AND the Task 3.4 entrypoint positively identifies the current checkout's
@@ -387,7 +387,7 @@ exits 0; `./awf check` clean.
   Detached HEAD, another branch, or a probe error emits nothing (positive
   identification only, per ADR-0194 item 7). Test both firing and all three
   non-firing outcomes with a mocked seam.
-- [ ] **Task 3.7: Claim mutations and batch 2.** In the adr-lifecycle part: update
+- [x] **Task 3.7: Claim mutations and batch 2.** In the adr-lifecycle part: update
   `adr-new-sequential-numbering` (branch-aware: highest-plus-one numbering on the
   integration branch, pending elsewhere; NextNumber semantics preserved over the
   numbered subset) and `adr-new-heading-matches-file` (covers `# ADR-<slug>:` matching
@@ -405,7 +405,7 @@ exits 0; `./awf check` clean.
   update `adr-new-sequential-numbering`, update `adr-new-heading-matches-file`, add
   `pending-blocked-from-integration-branch`, add `integration-branch-explicit`, update
   `config-serialization-owned` (five operations, declaration-ordered). `./x render`.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 feat(config): branch-aware ADR scaffolding behind integrationBranch
@@ -714,3 +714,45 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - Deferred, not owed by any phase: `currentstate.Loaded` carries both `ADRs` and the
   `Corpus` that contains them, two representations of one thing that can drift. Retiring
   `ADRs` in favour of `Corpus.All()` is a worthwhile follow-up outside this plan's scope.
+- 2026-07-31, Phase 3 execution findings, four deviations from the task wording:
+  - Task 3.2's `loadForMigration` question resolves to "no gate needed": `Validate` is
+    called only from `project.Loader.Open` and `loadTreeCurrentState`, never from the
+    migration path (`loadForMigration` uses `config.Parse`, which does not validate), and
+    `runUpgrade` reaches its terminal sync only after the migrations have written the key.
+    The requiredness is therefore unconditional, and
+    `TestIntegrationBranchMigration` plus `TestRunUpgradeAppliesLegacyMigration` prove an
+    upgrade still runs on a pre-key tree.
+  - Task 3.5's refusal set forbids two records sharing a slug, which the pre-existing
+    `TestNewFileSequentialCallsGetDifferentNumbers` violated by scaffolding the same title
+    twice. Its premise is falsified by item 2 (a slug is now an identity), so it was
+    rewritten over two titles and the collision it used to assert moved into
+    `TestNewFileRefusesSlugAlreadyInCorpus`.
+  - Task 3.5's scaffold was split into `NewFile` (numbered) and `NewPendingFile` (pending)
+    over one private writer rather than given a boolean parameter, and the writer derives
+    both the next number and the slug-collision answer from a single `LoadCorpus`, so the
+    scaffold parses the decisions directory once instead of twice.
+  - Tasks 3.5 and 3.6 use real git fixtures rather than the prescribed mocked seam. The
+    plan's "mocked seam" would have needed a new consumer-side interface in
+    internal/project, which the settled single-home constraint argues against; a
+    `gitfixture` repository exercises the same four outcomes (on-branch, other branch,
+    detached HEAD, probe failure) against the real seam. The advisory `touches-state:`
+    markers the tasks implied for `internal/project` production sites were dropped: the
+    adr-lifecycle topic's declared scope is `internal/adr/**`, so a production marker
+    there is out of scope; the `Backing: test` proofs live on the tests, which
+    `currentState.testGlobs` admits.
+  A fifth deviation, found only at the phase close: a required key with no in-code default
+  breaks the before-side of every transition check until the introducing commit ages out of
+  the diff, because `loadTreeCurrentState` validates the HEAD-side config after porting it
+  forward. `ConfigForCurrentSchema` therefore gained a generation-29 case seeding
+  `integrationBranch: main` when absent - the first case in that function to materialize a
+  key rather than remove one, which its own comment argues against for the generation-25
+  removal. The distinction is that a missing required key is not a lost value but a failed
+  load, so seeding exactly what the migration writes is the faithful port-forward; a config
+  already naming a branch keeps it. `config.HasKey` was added beside `HasMapping` to ask
+  the presence question without parsing config.yaml outside internal/config.
+  Two consequences worth carrying forward: the now-required `integrationBranch` key made
+  every project-fixture config in the suite incomplete, so about 300 test fixtures gained
+  the key (the minimal set, verified by stripping and re-running per package; the
+  `internal/project` fixtures carry it uniformly). And the 100% coverage gate is the
+  detector for a fixture that starts failing validation before reaching its real
+  assertion: three targets/validation branches went dark that way and were restored.

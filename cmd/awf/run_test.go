@@ -28,6 +28,7 @@ import (
 
 // minimalYAML is a valid tree-config for a scaffolded fixture project.
 const minimalYAML = `prefix: example
+integrationBranch: master
 vars: {testCmd: go test ./..., gateCmd: make gate}
 skills: [tdd]
 agents: []
@@ -548,6 +549,12 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			}
 			gitfixture.AddAll(t, repo)
 			gitfixture.Commit(t, repo, "initialize", nil)
+			// The scaffold writes integrationBranch: main while a go-git
+			// fixture starts on master; put the checkout on the branch the
+			// scaffolded config names, so `new adr` takes the numbered path
+			// this test is about (ADR-0194 item 5).
+			gitfixture.NativeBranch(t, repo, "main")
+			gitfixture.NativeCheckout(t, repo, "main")
 			if err := runNew(ctx, root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
 				t.Fatal(err)
 			}

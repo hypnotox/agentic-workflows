@@ -23,7 +23,7 @@ func writeConfig(t *testing.T, body string) string {
 
 // invariant: config/validation:duplicate-target-rejected
 func TestConfigRejectsDuplicateTargets(t *testing.T) {
-	cfg, err := Load(writeConfig(t, "prefix: awf\nskills: []\nagents: []\ntargets: [claude, claude]\n"))
+	cfg, err := Load(writeConfig(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude, claude]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,12 +367,12 @@ func TestValidateRejectsPathInPrefix(t *testing.T) {
 // invariant: config/validation:domain-name-validated
 func TestValidateRejectsBadDomainName(t *testing.T) {
 	for _, bad := range []string{"", "../evil", "foo/bar", "a\\b"} {
-		c := &Config{Prefix: "x", DocsDir: "docs", Domains: []string{bad}}
+		c := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Domains: []string{bad}}
 		if err := c.Validate(); err == nil {
 			t.Errorf("expected error for domain name %q", bad)
 		}
 	}
-	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Domains: []string{"rendering", "config"}}
+	ok := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, Domains: []string{"rendering", "config"}}
 	if err := ok.Validate(); err != nil {
 		t.Errorf("clean domain names should validate, got: %v", err)
 	}
@@ -398,14 +398,14 @@ func TestTargetsDefaultAndValidation(t *testing.T) {
 		t.Errorf("absent targets should default to [claude], got %v", c.Targets)
 	}
 	// An explicitly-empty list is rejected by Validate.
-	empty := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{}}
-	if err := empty.Validate(); err == nil {
-		t.Error("expected empty targets list to be rejected")
+	empty := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{}}
+	if err := empty.Validate(); err == nil || !strings.Contains(err.Error(), "targets must not be empty") {
+		t.Errorf("expected empty targets list to be rejected, got %v", err)
 	}
 	// A path-separator name is rejected by Validate.
-	bad := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"a/b"}}
-	if err := bad.Validate(); err == nil {
-		t.Error("expected path-separator target name to be rejected")
+	bad := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"a/b"}}
+	if err := bad.Validate(); err == nil || !strings.Contains(err.Error(), "without path separators") {
+		t.Errorf("expected path-separator target name to be rejected, got %v", err)
 	}
 }
 
@@ -449,7 +449,7 @@ func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 		t.Fatalf("absent currentState = %#v, effective topic max = %d, effective claim max = %d", absent.CurrentState, absent.CurrentState.EffectiveMaxTopicsPerPath(), absent.CurrentState.EffectiveMaxClaimsPerTopic())
 	}
 
-	cfg, err := Parse("staged/.awf", []byte("prefix: x\ncurrentState: {}\n"))
+	cfg, err := Parse("staged/.awf", []byte("prefix: x\nintegrationBranch: main\ncurrentState: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +465,7 @@ func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 
 	max := 3
 	claimMax := 7
-	direct := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, CurrentState: &CurrentStateConfig{MaxTopicsPerPath: &max, MaxClaimsPerTopic: &claimMax}}
+	direct := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, CurrentState: &CurrentStateConfig{MaxTopicsPerPath: &max, MaxClaimsPerTopic: &claimMax}}
 	if err := direct.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -478,6 +478,7 @@ func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 // invariant: config/configuration:severity-not-configurable
 func TestCurrentStateStrictValidation(t *testing.T) {
 	valid := `prefix: x
+integrationBranch: main
 currentState:
   sources:
     - globs: ['**/*.go']
@@ -513,7 +514,7 @@ currentState:
 		{"malformed test glob", "  testGlobs: ['[']\n", "malformed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			parsed, err := Parse("staged/.awf", []byte("prefix: x\ncurrentState:\n"+tc.fragment))
+			parsed, err := Parse("staged/.awf", []byte("prefix: x\nintegrationBranch: main\ncurrentState:\n"+tc.fragment))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -613,14 +614,50 @@ func TestCurrentStateRejectsWrongValueTypes(t *testing.T) {
 	}
 }
 
+// integrationBranch is required and has no in-code default: an absent, empty,
+// whitespace-bearing, or dash-leading value is rejected, while an ordinary or
+// slashed branch name is accepted (ADR-0194 Decision 6).
+// invariant: config/configuration:integration-branch-explicit
+func TestIntegrationBranchValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name, branch, want string
+	}{
+		{"absent", "", "integrationBranch must not be empty"},
+		{"inner whitespace", "my branch", "must not contain whitespace"},
+		{"tab", "my\tbranch", "must not contain whitespace"},
+		{"leading dash", "-force", `must not start with "-"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Config{Prefix: "x", IntegrationBranch: tc.branch, DocsDir: "docs", Targets: []string{"claude"}}
+			if err := c.Validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Validate = %v, want error containing %q", err, tc.want)
+			}
+		})
+	}
+	for _, branch := range []string{"main", "master", "release/1.0"} {
+		c := &Config{Prefix: "x", IntegrationBranch: branch, DocsDir: "docs", Targets: []string{"claude"}}
+		if err := c.Validate(); err != nil {
+			t.Errorf("branch %q rejected: %v", branch, err)
+		}
+	}
+	// Absence is absence: no default is materialized at parse time.
+	parsed, err := Parse("staged/.awf", []byte("prefix: x\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.IntegrationBranch != "" {
+		t.Errorf("ParseTree materialized an in-code default %q", parsed.IntegrationBranch)
+	}
+}
+
 func TestAuditDependencyManifestValidation(t *testing.T) {
-	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
+	ok := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
 		DependencyManifests: []string{"go.mod", "**/*.csproj", "src/go.mod"},
 	}}
 	if err := ok.Validate(); err != nil {
 		t.Errorf("valid manifest globs (path globs included, ADR-0077) rejected: %v", err)
 	}
-	bad := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{
+	bad := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Audit: &AuditConfig{
 		DependencyManifests: []string{"["},
 	}}
 	if err := bad.Validate(); err == nil {

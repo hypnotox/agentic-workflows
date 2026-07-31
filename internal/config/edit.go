@@ -17,16 +17,20 @@ import (
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
 type Skeleton struct {
-	Prefix       string                `yaml:"prefix"`
-	Vars         map[string]string     `yaml:"vars"`
-	Skills       []string              `yaml:"skills"`
-	Agents       []string              `yaml:"agents"`
-	Docs         []string              `yaml:"docs"`
-	Audit        *SkeletonAudit        `yaml:"audit,omitempty"`
-	Bootstrap    *BootstrapConfig      `yaml:"bootstrap,omitempty"`
-	Hooks        *HooksConfig          `yaml:"hooks,omitempty"`
-	Runner       *RunnerConfig         `yaml:"runner,omitempty"`
-	CurrentState *SkeletonCurrentState `yaml:"currentState,omitempty"`
+	Prefix string `yaml:"prefix"`
+	// IntegrationBranch is written explicitly because the key is required and
+	// carries no in-code default (ADR-0194 Decision 6): a scaffold omitting it
+	// would emit a config that fails its own validation on the next open.
+	IntegrationBranch string                `yaml:"integrationBranch"`
+	Vars              map[string]string     `yaml:"vars"`
+	Skills            []string              `yaml:"skills"`
+	Agents            []string              `yaml:"agents"`
+	Docs              []string              `yaml:"docs"`
+	Audit             *SkeletonAudit        `yaml:"audit,omitempty"`
+	Bootstrap         *BootstrapConfig      `yaml:"bootstrap,omitempty"`
+	Hooks             *HooksConfig          `yaml:"hooks,omitempty"`
+	Runner            *RunnerConfig         `yaml:"runner,omitempty"`
+	CurrentState      *SkeletonCurrentState `yaml:"currentState,omitempty"`
 }
 
 // SkeletonCurrentState carries current-state defaults written by a fresh init.
@@ -117,6 +121,26 @@ func SetArray(src []byte, key string, values []string) ([]byte, error) {
 		root.Content[vi] = seq
 	} else {
 		root.Content = append(root.Content, strScalar(key), seq)
+	}
+	return encode(doc)
+}
+
+// SetString sets the top-level scalar entry under key to value, creating the
+// key if it is absent and replacing whatever is there otherwise, via a
+// yaml.Node round-trip that preserves comments and every untouched key
+// (ADR-0026). It is the top-level string sibling of SetArray (sequence):
+// the required-explicit integrationBranch key has no in-code default, so its
+// schema migration must materialize a visible scalar line rather than append
+// to or seed a nested block (ADR-0194 Decision 6).
+func SetString(src []byte, key, value string) ([]byte, error) {
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
+	}
+	if _, vi := mapValue(root, key); vi >= 0 {
+		root.Content[vi] = strScalar(value)
+	} else {
+		root.Content = append(root.Content, strScalar(key), strScalar(value))
 	}
 	return encode(doc)
 }
@@ -286,6 +310,20 @@ func HasMapping(src []byte, key string) (bool, error) {
 	}
 	val, _ := mapValue(root, key)
 	return val != nil && val.Kind == yaml.MappingNode, nil
+}
+
+// HasKey reports whether src carries a top-level key at all, whatever its
+// value, so a caller can distinguish an absent key from a present-but-empty
+// one without parsing config.yaml itself (ADR-0026 keeps that knowledge here).
+// It is the flat-scalar sibling of HasMapping, which answers the narrower
+// question of whether a present key holds a mapping.
+func HasKey(src []byte, key string) (bool, error) {
+	_, root, err := parseMapping(src)
+	if err != nil {
+		return false, err
+	}
+	_, vi := mapValue(root, key)
+	return vi >= 0, nil
 }
 
 func boolScalar(v string) *yaml.Node {

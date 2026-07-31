@@ -534,25 +534,124 @@ func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
 	}
 }
 
+// Numbering is highest-plus-one over the numbered subset. Two titles, not one:
+// a repeated title is now a slug collision (ADR-0194 item 2 makes the slug an
+// identity), which TestNewFileRefusals covers.
+// invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering
 func TestNewFileSequentialCallsGetDifferentNumbers(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
 	swapNow(t, fixedNow)
-	first, err := adr.NewFile(dir, "Same Title", adr.CurrentStateV1)
+	first, err := adr.NewFile(dir, "First Title", adr.CurrentStateV1)
 	if err != nil {
 		t.Fatalf("first NewFile: %v", err)
 	}
-	second, err := adr.NewFile(dir, "Same Title", adr.CurrentStateV1)
+	second, err := adr.NewFile(dir, "Second Title", adr.CurrentStateV1)
 	if err != nil {
 		t.Fatalf("second NewFile: %v", err)
 	}
-	if first == second {
-		t.Fatalf("expected distinct paths, both were %q", first)
-	}
-	wantFirst := filepath.Join(dir, "0001-same-title.md")
-	wantSecond := filepath.Join(dir, "0002-same-title.md")
+	wantFirst := filepath.Join(dir, "0001-first-title.md")
+	wantSecond := filepath.Join(dir, "0002-second-title.md")
 	if first != wantFirst || second != wantSecond {
 		t.Errorf("got (%q, %q), want (%q, %q)", first, second, wantFirst, wantSecond)
+	}
+}
+
+// A pending scaffold writes `<slug>.md` with a `# ADR-<slug>:` heading, the
+// mandatory slug key, and no number; a numbered V3 scaffold keeps the numbered
+// spelling. Both carry the retained slug.
+// invariant: adr-system/adr-lifecycle:pending-adr-slug-identity
+// invariant: adr-system/adr-lifecycle:adr-new-heading-matches-file
+func TestNewPendingFileWritesSlugIdentity(t *testing.T) {
+	dir := t.TempDir()
+	writeTemplateFixture(t, dir)
+	swapNow(t, fixedNow)
+	path, err := adr.NewPendingFile(dir, "Pending Record Here")
+	if err != nil {
+		t.Fatalf("NewPendingFile: %v", err)
+	}
+	if want := filepath.Join(dir, "pending-record-here.md"); path != want {
+		t.Fatalf("path = %q, want %q", path, want)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"format: current-state-v3\n", "slug: pending-record-here\n", "# ADR-pending-record-here: Pending Record Here"} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("pending scaffold missing %q:\n%s", want, body)
+		}
+	}
+	// The record it just wrote parses as a pending member of the corpus.
+	parsed, err := adr.ParseV3(filepath.Base(path), body)
+	if err != nil {
+		t.Fatalf("scaffolded pending record does not parse: %v", err)
+	}
+	if parsed.Number != "" || parsed.Slug != "pending-record-here" {
+		t.Errorf("parsed identity = (%q, %q), want ((empty), pending-record-here)", parsed.Number, parsed.Slug)
+	}
+}
+
+// Every refusal fires before any file is written, in both scaffold forms.
+// invariant: adr-system/adr-lifecycle:adr-slug-frontmatter-mandatory
+func TestNewFileRefusals(t *testing.T) {
+	for _, tc := range []struct{ name, title, want string }{
+		{"reserved stem", "Template", `slugifies to reserved name "template"`},
+		{"reserved stem index", "Index", `slugifies to reserved name "index"`},
+		{"numbered-looking slug", "2026 Roadmap Refresh", `slugifies to "2026-roadmap-refresh", which reads as a numbered filename`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, form := range []struct {
+				name string
+				call func(dir string) (string, error)
+			}{
+				{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, tc.title, adr.CurrentStateV3) }},
+				{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, tc.title) }},
+			} {
+				t.Run(form.name, func(t *testing.T) {
+					dir := t.TempDir()
+					writeTemplateFixture(t, dir)
+					swapNow(t, fixedNow)
+					if _, err := form.call(dir); err == nil || !strings.Contains(err.Error(), tc.want) {
+						t.Fatalf("err = %v, want one containing %q", err, tc.want)
+					}
+					written, err := filepath.Glob(filepath.Join(dir, "*.md"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(written) != 1 {
+						t.Errorf("a refusal must write nothing, found %v", written)
+					}
+				})
+			}
+		})
+	}
+}
+
+// A slug already claimed by the corpus is refused, whether the claim comes from
+// a retained slug key or only from a numbered filename's slug segment.
+// invariant: adr-system/adr-lifecycle:corpus-single-identity-key
+func TestNewFileRefusesSlugAlreadyInCorpus(t *testing.T) {
+	for _, tc := range []struct{ name, seed string }{
+		{"numbered filename segment", "numbered"},
+		{"retained slug key", "pending"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeTemplateFixture(t, dir)
+			swapNow(t, fixedNow)
+			if tc.seed == "numbered" {
+				if _, err := adr.NewFile(dir, "Taken Title", adr.CurrentStateV1); err != nil {
+					t.Fatal(err)
+				}
+			} else if _, err := adr.NewPendingFile(dir, "Taken Title"); err != nil {
+				t.Fatal(err)
+			}
+			_, err := adr.NewPendingFile(dir, "Taken Title")
+			if err == nil || !strings.Contains(err.Error(), `slug "taken-title" already used by`) {
+				t.Fatalf("err = %v, want the slug-collision refusal", err)
+			}
+		})
 	}
 }
 

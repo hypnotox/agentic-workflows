@@ -459,7 +459,35 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 	}
 	drift = append(drift, tagDrift...)
 	drift = append(drift, p.checkADRRelatedLinks(corpus)...)
+	drift = append(drift, p.checkPendingADRs(ctx, corpus)...)
 	return drift, nil
+}
+
+// checkPendingADRs refuses a slug-identified pending record on the integration
+// branch. Numbering happens at integration, so a pending record that reached
+// the integration branch was never numbered, and every `ADR-<slug>` provenance
+// reference it left behind resolves to nothing.
+//
+// The block fires only on a positive branch identification (ADR-0194 item 7):
+// a detached HEAD, another branch, or an unreadable repository emits nothing,
+// because an indeterminate answer is not evidence that the record is in the
+// wrong place. That deliberately leaves automated detached-HEAD runs to the
+// branch-independent duplicate-identity check, which is the real corruption
+// backstop; this check exists to make the missing numbering step visible where
+// it is actually owed.
+func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []manifest.Drift {
+	if !p.onIntegrationBranch(ctx) {
+		return nil
+	}
+	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	var drift []manifest.Drift
+	for _, a := range corpus.All() {
+		if a.Number != "" {
+			continue
+		}
+		drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "pending-adr-on-integration-branch", Detail: a.Slug})
+	}
+	return drift
 }
 
 // checkLockedFiles compares each lock entry (except the separately-checked
