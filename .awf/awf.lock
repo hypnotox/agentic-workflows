@@ -65,8 +65,8 @@
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:c3b77a03eae82f65eebb9a2478274f6d0a910b9cfa56a0d1a87e6178a9f91b3c",
-      "configHash": "sha256:c1c230a5147206d9ab00fa66d96a281d05d9f448bbdb0b2b764a25a039365aee",
-      "outputHash": "sha256:b0b1566e501ee171cdd7b078d32e82851c89b7a97280b0a33f7ee106615bdee5"
+      "configHash": "sha256:d9b24549c2c4cc89d1a127470cada5313afd9b8fca6d5caacb60e252e1b2cb2f",
+      "outputHash": "sha256:87fab19976d97005c464c75453ecb8fb44e4e6c86535a023024ce25699286536"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -209,8 +209,8 @@
     ".pi/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:c3b77a03eae82f65eebb9a2478274f6d0a910b9cfa56a0d1a87e6178a9f91b3c",
-      "configHash": "sha256:60fe59c6a13a8aaa47061d46f340ac0e32fa4228cdb86b9ed148332782734b5a",
-      "outputHash": "sha256:b0b1566e501ee171cdd7b078d32e82851c89b7a97280b0a33f7ee106615bdee5"
+      "configHash": "sha256:e821988fba1e68e2d6f739d7b214ada52f6a46e0dda105b85b5fdad03c9dbb63",
+      "outputHash": "sha256:87fab19976d97005c464c75453ecb8fb44e4e6c86535a023024ce25699286536"
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
@@ -469,8 +469,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:84f560661e9034c5c2d8ae5d871912862d69e200c80ec6c7112d03ff1f30ee2f",
-      "outputHash": "sha256:f2c8f40a5c2b935820edb2cb73185ec42cab543c283ec2d118ef3cd9b4ea187b"
+      "configHash": "sha256:cfd276fc2b4e3153fec1bfca93daf0a8f6f1242ecabc28000478b9740701db05",
+      "outputHash": "sha256:2289ac814e6275ed10cfb813ffca7724e7d12475ffc20ca3d39c246b944a2321"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",

@@ -1,5 +1,34 @@
 data:
   pitfalls:
+    - title: "A renumber cannot follow a rebase or merge as its own commit; it must land inside the transition"
+      domains: [adr-system]
+      tags: [adr-lifecycle]
+      body: |
+        When main has taken a number a branch's ADR also declares, rebasing or merging first and
+        renumbering after does not work: every intermediate commit AND the resulting HEAD declare the
+        number twice, and `awf check --staged` refuses to evaluate any transition from a
+        duplicate-number HEAD, which blocks every commit including the renumber itself. The rename
+        has to land inside the transition that first combines the two histories - during a rebase,
+        fold it into the first replayed commit's conflict resolution (git rename detection carries
+        the later commits' edits onto the new path); during a merge, rename and update references
+        before the merge commit. The decompose effort hit this twice in one day (0191 to 0194 at
+        rebase, 0194 to 0195 at integration); the first attempt as a post-rebase commit was
+        structurally refused and forced a redo of the whole rebase.
+    - title: "An applied claim's prose only changes beside an update operation, so prose findings rewrite the phase commit"
+      domains: [adr-system]
+      tags: [adr-lifecycle, verification-discipline]
+      body: |
+        The transition validator refuses a claim body edit with no ADR update operation for that
+        claim in the same HEAD-to-index step ("changed with no ADR update operation"). A review
+        finding against claim prose therefore cannot land as a normal settlement commit once the
+        phase that applied the claim has committed: the only legal homes are the transition that
+        carries the claim's own operation, or a later ADR's update operation. While the phase-close
+        commit is still branch-local, the practical response is soft-reset, fold the reword in, and
+        recommit the phase (recompute the Implementing digest if the ADR body also changed; no
+        Amended event is needed for changes landing before the stamp's commit). The decompose effort
+        did this three times - review reworded a plan-prescribed claim body at Phases 1, 5, and 6 -
+        so settle prose-touching findings BEFORE the phase-close commit when the review can run
+        earlier.
     - title: "An ADR citation in a Go comment survives a renumber, because nothing validates it"
       domains: [adr-system]
       tags: [adr-lifecycle, verification-discipline]
