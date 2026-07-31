@@ -21,6 +21,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"golang.org/x/mod/semver"
@@ -126,13 +127,15 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 type Project struct {
 	// Root is the invoking checkout and remains the sole tracked-config authority.
 	Root string
-	// residentRoot is the primary checkout selected by Git's common control root.
-	// Non-Git fixture projects retain Root so ordinary config-only tests remain useful.
-	residentRoot string
-	Cfg          *config.Config
-	Cat          *catalog.Catalog
-	Targets      []Target
-	standard     *catalog.Catalog
+	// roots anchors output resolution: its tracked half mirrors Root, its
+	// resident half is the primary checkout selected by Git's common control
+	// root. Non-Git fixture projects retain Root so ordinary config-only tests
+	// remain useful. Constructed once, where the project is.
+	roots    resident.Roots
+	Cfg      *config.Config
+	Cat      *catalog.Catalog
+	Targets  []Target
+	standard *catalog.Catalog
 	// repo is the Git handle selected at the composition root and written once
 	// here, nil when the project tree carries no repository.
 	repo *awfgit.Repo
@@ -181,12 +184,12 @@ func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 		return nil, err
 	}
 	p := &Project{
-		Root:         root,
-		residentRoot: l.resolveResidentRoot(ctx, root),
-		Cfg:          cfg,
-		Targets:      targets,
-		standard:     l.standard,
-		repo:         l.repo,
+		Root:     root,
+		roots:    resident.NewRoots(root, l.resolveResidentRoot(ctx, root)),
+		Cfg:      cfg,
+		Targets:  targets,
+		standard: l.standard,
+		repo:     l.repo,
 	}
 	cat, err := p.effectiveCatalog()
 	if err != nil {
@@ -226,7 +229,7 @@ func openRootProject(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Root: root, standard: catalog.Standard, repo: repo}, nil
+	return &Project{Root: root, roots: resident.NewRoots(root, ""), standard: catalog.Standard, repo: repo}, nil
 }
 
 // Backup records a foreign file preserved before sync overwrote its path.
@@ -313,7 +316,7 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a permanent lock; use the bridge release to attest")
 		}
 	}
-	preservedResidents, err := inspectResidentRoots(p.residentRoot)
+	preservedResidents, err := resident.InspectRoots(p.roots.Resident)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -363,12 +366,12 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 	}
 	want := map[string]bool{}
 	for _, f := range files {
-		abs := p.outputPath(f.Path)
+		abs := p.roots.ResolveOutput(f.Path)
 		dir := filepath.Dir(abs)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, nil, nil, err
 		}
-		if strings.HasPrefix(f.Path, config.DirName+"/") && strings.HasSuffix(f.Path, "/.gitignore") && isResidentPath(strings.TrimSuffix(f.Path, "/.gitignore")) {
+		if strings.HasPrefix(f.Path, config.DirName+"/") && strings.HasSuffix(f.Path, "/.gitignore") && resident.IsResidentPath(strings.TrimSuffix(f.Path, "/.gitignore")) {
 			if err := os.Chmod(dir, 0o700); err != nil { // coverage-ignore: MkdirAll just established the confined directory; a permission race is not deterministic under the root gate
 				return nil, nil, nil, err
 			}
@@ -421,7 +424,7 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 	if old != nil {
 		dirs := map[string]bool{}
 		for path, entry := range old.Files {
-			if want[path] || preserveResidentRemoval(path, preservedResidents) {
+			if want[path] || resident.PreserveRemoval(path, preservedResidents) {
 				continue
 			}
 			// A non-local entry (corrupted or malicious lock) would delete outside
@@ -429,7 +432,7 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 			if !filepath.IsLocal(filepath.FromSlash(path)) {
 				continue
 			}
-			file := p.outputPath(path)
+			file := p.roots.ResolveOutput(path)
 			// The outgoing co-owned runner is the one pruned output an adopter
 			// hand-authored inside (its in-place verb bodies), so it is backed
 			// up before removal for the one-time hand-port instead of vanishing
@@ -448,8 +451,8 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 				pruned = append(pruned, path)
 			}
 			base := p.Root
-			if isResidentPath(path) {
-				base = p.residentRoot
+			if resident.IsResidentPath(path) {
+				base = p.roots.Resident
 			}
 			for d := filepath.Dir(file); d != base; d = filepath.Dir(d) {
 				dirs[d] = true
@@ -505,15 +508,6 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 
 func (p *Project) lockPath() string {
 	return config.LockPath(p.Root)
-}
-
-// outputPath resolves resident root artifacts at the primary control root while
-// leaving every tracked output anchored at the invoking checkout.
-func (p *Project) outputPath(path string) string {
-	if isResidentPath(path) {
-		return filepath.Join(p.residentRoot, filepath.FromSlash(path))
-	}
-	return filepath.Join(p.Root, filepath.FromSlash(path))
 }
 
 // deriveOperationState derives the three values a lifecycle operation needs

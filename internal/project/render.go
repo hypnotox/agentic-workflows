@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -648,8 +649,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	}
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
-	for _, resident := range residentRoots {
-		rf, err := p.renderTarget(resident.Name, "", resident.TemplateID, nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+resident.Name+"/.gitignore", eff)
+	for _, root := range resident.Table() {
+		rf, err := p.renderTarget(root.Name, "", root.TemplateID, nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+root.Name+"/.gitignore", eff)
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}
@@ -752,7 +753,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "efforts" && kind != "worktrees" && kind != "runner" {
+	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err

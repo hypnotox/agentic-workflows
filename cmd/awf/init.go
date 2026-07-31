@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 func runInit(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
@@ -222,7 +223,7 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
 		return nil, err
 	}
-	return project.CollisionsAt(root, planned)
+	return resident.CollisionsAt(root, planned)
 }
 
 // initNextSteps is the fixed orientation block init prints after a

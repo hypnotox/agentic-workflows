@@ -1,0 +1,226 @@
+// Package resident owns resident-root policy and path anchoring: the closed
+// table of repository-wide roots awf owns at the primary control root, the
+// predicate that recognises a path or a render kind as resident, the Roots
+// value that resolves an output path against the right anchor, and the
+// resident lifecycle operations. The sync core depends on this package; this
+// package never depends on the core.
+package resident
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"maps"
+	"os"
+	"path/filepath"
+	"slices"
+	"sort"
+	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+)
+
+// Root is one owned resident root: the root's name under the config dir,
+// paired with the template that renders its one governed .gitignore.
+type Root struct{ Name, TemplateID string }
+
+// roots is the closed set of repository-wide resident roots awf owns,
+// each paired with the template that renders its one governed .gitignore.
+// Output planning, render, drift, backup detection, current-state and context
+// discovery, sweep, nested-adopter filtering, install, and uninstall all read
+// this single table, so a root joins or leaves awf's ownership here and only
+// here. Everything below a root is dynamic local authority: it is never
+// rendered, manifested, recursed into, or deleted.
+var roots = []Root{
+	{"efforts", "efforts/gitignore.tmpl"},
+	{"worktrees", "worktrees/gitignore.tmpl"},
+}
+
+// Table returns the owned resident roots in table order. It hands back a copy
+// so the single declaration above stays the only writable home of the set.
+func Table() []Root { return slices.Clone(roots) }
+
+// RootNames returns just the owned root names, in table order.
+func RootNames() []string {
+	names := make([]string, len(roots))
+	for i, resident := range roots {
+		names[i] = resident.Name
+	}
+	return names
+}
+
+// IsResidentPath reports whether a config-relative slash path names a resident
+// root or something below one.
+func IsResidentPath(path string) bool {
+	path = filepath.ToSlash(filepath.Clean(path))
+	for _, name := range RootNames() {
+		root := config.DirName + "/" + name
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// IsResidentKind reports whether a render kind is one of the resident roots'
+// self-ignoring render units, so a caller never spells the names to decide it.
+func IsResidentKind(kind string) bool {
+	return slices.Contains(RootNames(), kind)
+}
+
+// Roots anchors output paths. Tracked is the invoking checkout that owns every
+// tracked output; Resident is the primary control root that owns the dynamic
+// resident trees. Both are construction inputs, fixed when a project opens.
+type Roots struct {
+	Tracked  string
+	Resident string
+}
+
+// NewRoots pairs the tracked and resident anchors into the value that owns
+// output-path resolution.
+func NewRoots(tracked, resident string) Roots {
+	return Roots{Tracked: tracked, Resident: resident}
+}
+
+// ResolveOutput resolves resident root artifacts at the primary control root
+// while leaving every tracked output anchored at the invoking checkout.
+func (r Roots) ResolveOutput(path string) string {
+	if IsResidentPath(path) {
+		return filepath.Join(r.Resident, filepath.FromSlash(path))
+	}
+	return filepath.Join(r.Tracked, filepath.FromSlash(path))
+}
+
+// CollisionsAt filters planned project-relative paths to those that already
+// exist under root and are not recorded in root's lock (not awf-managed).
+// Split from InitCollisions so init's pre-prompt probe can plan outputs in a
+// throwaway scaffold and test them against the real root; the ADR-0016
+// collision semantics are unchanged.
+func CollisionsAt(root string, planned []string) ([]string, error) {
+	managed := map[string]bool{}
+	lock, _, err := manifest.LoadOptional(config.LockPath(root))
+	if err != nil {
+		return nil, err
+	}
+	if lock != nil {
+		for path := range lock.Files {
+			managed[path] = true
+		}
+	}
+	var collisions []string
+	for _, rel := range planned {
+		if managed[rel] {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(root, rel)); err == nil {
+			collisions = append(collisions, rel)
+		}
+	}
+	sort.Strings(collisions)
+	return collisions, nil
+}
+
+type UninstallReport struct {
+	Removed           int
+	PreservedRoots    []string
+	ResidentPreserved bool // compatibility summary for callers; roots are authoritative.
+}
+
+// InspectRoots examines direct children only. It never traverses a
+// dynamic resident tree; a descendant other than the managed .gitignore keeps
+// its root intact.
+func InspectRoots(root string) ([]string, error) {
+	preserved := []string{}
+	for _, name := range RootNames() {
+		path := filepath.Join(root, config.DirName, name)
+		info, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil { // coverage-ignore: root discovery's lstat error needs an external filesystem fault; unsafe and non-empty roots are covered
+			return nil, fmt.Errorf("inspect resident root %s: %w", name, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() { // coverage-ignore: resident-root tests exercise unsafe filesystem entries through the public uninstall path
+			return nil, fmt.Errorf("unsafe resident root %s", name)
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range entries {
+			if entry.Name() != ".gitignore" {
+				preserved = append(preserved, name)
+				break
+			}
+		}
+	}
+	slices.Sort(preserved)
+	return preserved, nil
+}
+
+// PreserveRemoval reports whether a lock-relative path lies inside a resident
+// root the inspection found to hold dynamic data, so removal must skip it.
+func PreserveRemoval(path string, preserved []string) bool {
+	path = filepath.ToSlash(filepath.Clean(path))
+	for _, name := range preserved {
+		root := config.DirName + "/" + name
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// Uninstall removes awf's generated footprint while preserving dynamic resident
+// state. It is a free function so a broken config does not block it.
+// touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in resident_test.go
+func Uninstall(ctx context.Context, root string) (UninstallReport, error) {
+	lockPath := config.LockPath(root)
+	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
+	lock, found, err := manifest.LoadOptional(lockPath)
+	if err != nil {
+		return UninstallReport{}, err
+	}
+	if !found {
+		return UninstallReport{}, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
+	}
+	preserved, err := InspectRoots(residentRoot)
+	if err != nil {
+		return UninstallReport{}, err
+	}
+	report := UninstallReport{PreservedRoots: preserved}
+	dirs := map[string]bool{}
+	for path := range lock.Files {
+		// A non-local entry (corrupted or malicious lock) would delete outside
+		// the root. Runtime-shaped resident entries are corrupt and never removed.
+		if !filepath.IsLocal(filepath.FromSlash(path)) || PreserveRemoval(path, preserved) {
+			continue
+		}
+		abs := filepath.Join(root, path)
+		if IsResidentPath(path) {
+			abs = filepath.Join(residentRoot, filepath.FromSlash(path))
+		}
+		if err := os.Remove(abs); err == nil {
+			report.Removed++
+		}
+		base := root
+		if IsResidentPath(path) {
+			base = residentRoot
+		}
+		for d := filepath.Dir(abs); d != base; d = filepath.Dir(d) {
+			dirs[d] = true
+		}
+	}
+	// Remove now-empty directories deepest-first.
+	dirList := slices.Collect(maps.Keys(dirs))
+	slices.SortFunc(dirList, func(a, b string) int { return len(b) - len(a) })
+	for _, d := range dirList {
+		_ = os.Remove(d)
+	}
+	if err := os.Remove(lockPath); err != nil { // coverage-ignore: lock was just loaded, so removal fails only on a permission fault root bypasses
+		return report, fmt.Errorf("remove lock: %w", err)
+	}
+	return report, nil
+}

@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -122,7 +123,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	}
 	nested := []string{}
 	for _, f := range state.Tree.List() {
-		if !isResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
+		if !resident.IsResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
 			nested = append(nested, strings.TrimSuffix(f.Path, "/"+config.DirName+"/config.yaml"))
 		}
 	}

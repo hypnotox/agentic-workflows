@@ -3,7 +3,7 @@
 
 Workflow-chain and task-skill template contracts.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/workflow-skill-templates --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/workflow-skill-templates --coverage` for current matched paths and marker sites.
 
 Workflow-chain and task-skill template contracts: chain ordering, exploration and review behaviour, and memory checkpoints.
 

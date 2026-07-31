@@ -52,6 +52,12 @@ Post-processing of each output, frontmatter validation, link scanning, and skill
 Origin: ADR-0124
 Backing: test
 
+### `invariant: resident-policy-single-home`
+
+The resident-root table, the resident-path predicate, and anchored output-path resolution have exactly one production home in internal/resident; core consumes them through the Roots value constructed once at project open, and no file under internal/project or cmd redeclares or re-derives the table or predicate (internal/git's seam-owned ResidentName spelling is the recorded tolerated parallel).
+Origin: ADR-0194
+Backing: test
+
 ### `invariant: reviewing-skill-agent-pairing`
 
 Opening a project fails when an enabled non-local skill declares a required agent that is absent from the agents enable array, with an error naming both the skill and the agent.

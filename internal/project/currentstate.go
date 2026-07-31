@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -547,16 +548,6 @@ func (p *Project) eligibleCoveragePaths(tree *snapshot.Tree, lock *manifest.Lock
 // lock entry) nor matched by one of the contextIgnore globs. It takes the
 // contextIgnore list explicitly so the staged check can filter the index
 // universe by the index config rather than the working config.
-func isResidentPath(path string) bool {
-	path = filepath.ToSlash(filepath.Clean(path))
-	for _, name := range residentRootNames() {
-		root := config.DirName + "/" + name
-		if path == root || strings.HasPrefix(path, root+"/") {
-			return true
-		}
-	}
-	return false
-}
 func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) []string {
 	generated := map[string]bool{}
 	if lock != nil {
@@ -567,7 +558,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	files := tree.List()
 	var nested []string
 	for _, f := range files {
-		if !f.Scannable() || isResidentPath(f.Path) {
+		if !f.Scannable() || resident.IsResidentPath(f.Path) {
 			continue
 		}
 		const suffix = "/" + config.DirName + "/config.yaml"
@@ -577,7 +568,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	}
 	var out []string
 	for _, f := range files {
-		if !f.Scannable() || isResidentPath(f.Path) {
+		if !f.Scannable() || resident.IsResidentPath(f.Path) {
 			continue
 		}
 		insideNested := false

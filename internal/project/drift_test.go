@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -527,13 +528,13 @@ func TestUninstallSplitsMissingVsCorrupt(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	if _, err := Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := resident.Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("corrupt lock must refuse uninstall with the hint, got %v", err)
 	}
 	if err := os.Remove(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
+	if _, err := resident.Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
 		t.Fatalf("missing lock lost its message: %v", err)
 	}
 }
@@ -549,7 +550,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("Audit: %v", err)
 	}
-	if _, err := CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := resident.CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("CollisionsAt: %v", err)
 	}
 }

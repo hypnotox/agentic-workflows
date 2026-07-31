@@ -3,6 +3,8 @@ package project
 import (
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 // TestResidentGitignoresAlwaysOn asserts RenderAll unconditionally emits one
@@ -26,7 +28,7 @@ func TestResidentGitignoresAlwaysOn(t *testing.T) {
 		rendered[out[i].Path] = out[i].Content
 	}
 	want := "# " + bannerText + "\n*\n!.gitignore\n"
-	for _, name := range residentRootNames() {
+	for _, name := range resident.RootNames() {
 		path := ".awf/" + name + "/.gitignore"
 		content, found := rendered[path]
 		if !found {

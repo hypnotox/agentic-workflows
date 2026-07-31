@@ -3,7 +3,7 @@
 
 How a project assembles its render set, output plan, drift check, and prune behaviour.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current matched paths and marker sites.
 
 The project package assembles the full render set, computes the output plan and config hash, checks drift, and prunes stale outputs. The claims below capture the current output-plan and render-orchestration contracts.
 
@@ -57,6 +57,12 @@ Backing: test
 
 Post-processing of each output, frontmatter validation, link scanning, and skill-reference scanning, is selected by that output's declared policy rather than its file suffix. A non-Markdown path with a Markdown policy is still validated and scanned, a Markdown-looking path with a plain policy is not, and the zero-value policy scans nothing.
 Origin: ADR-0124
+Backing: test
+
+### `invariant: resident-policy-single-home`
+
+The resident-root table, the resident-path predicate, and anchored output-path resolution have exactly one production home in internal/resident; core consumes them through the Roots value constructed once at project open, and no file under internal/project or cmd redeclares or re-derives the table or predicate (internal/git's seam-owned ResidentName spelling is the recorded tolerated parallel).
+Origin: ADR-0194
 Backing: test
 
 ### `invariant: reviewing-skill-agent-pairing`

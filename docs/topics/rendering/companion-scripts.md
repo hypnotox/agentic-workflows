@@ -3,7 +3,7 @@
 
 Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/companion-scripts --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/companion-scripts --coverage` for current matched paths and marker sites.
 
 Rendered companion script contracts: the bootstrap and upgrade scripts, the command runner, and hook payload fallback behaviour.
 

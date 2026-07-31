@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -343,8 +344,8 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(".awf/hooks/"+n+".sh", "hooks/"+n+".sh.tmpl", "hooks/"+n+".sh.tmpl", inputs("hooks/"+n+".sh.tmpl"), false)
 		}
 	}
-	for _, resident := range residentRoots {
-		add(".awf/"+resident.Name+"/.gitignore", resident.TemplateID, resident.TemplateID, inputs(resident.TemplateID), false)
+	for _, root := range resident.Table() {
+		add(".awf/"+root.Name+"/.gitignore", root.TemplateID, root.TemplateID, inputs(root.TemplateID), false)
 	}
 	for i := range decls {
 		switch decls[i].TemplateID {
@@ -717,7 +718,7 @@ func (p *Project) localReservations(op *OutputPlan, fail func(string, error)) {
 		if !n.Reservation || !n.Policy.LocalValidation {
 			continue
 		}
-		b, err := os.ReadFile(p.outputPath(n.Path))
+		b, err := os.ReadFile(p.roots.ResolveOutput(n.Path))
 		if err != nil {
 			fail(n.Path, errors.New("local artifact file absent"))
 			continue

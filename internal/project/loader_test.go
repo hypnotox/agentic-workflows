@@ -117,8 +117,8 @@ func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved != root || p.Root != root || p.residentRoot != resident {
-		t.Fatalf("roots: resolved=%q root=%q resident=%q", resolved, p.Root, p.residentRoot)
+	if resolved != root || p.Root != root || p.roots.Resident != resident {
+		t.Fatalf("roots: resolved=%q root=%q resident=%q", resolved, p.Root, p.roots.Resident)
 	}
 	if len(p.Targets) != 1 || p.Targets[0].Name != "claude" {
 		t.Fatalf("targets = %#v", p.Targets)
@@ -196,8 +196,8 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.residentRoot != root {
-		t.Fatalf("resident root = %q, want invoking root", p.residentRoot)
+	if p.roots.Resident != root {
+		t.Fatalf("resident root = %q, want invoking root", p.roots.Resident)
 	}
 }
 
