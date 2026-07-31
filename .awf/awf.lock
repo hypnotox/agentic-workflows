@@ -547,8 +547,8 @@
     "docs/topics/code-design/package-composition.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:9518b019859ea9244b78ab3de13f984bd9c4048b6eb5acf8805ee8e15f453648",
-      "outputHash": "sha256:61cedfa287dce8e59690a60792e730482934a3ec038349cd498477fb980b3c52"
+      "configHash": "sha256:d516c1aef8d8e76c3667e740e3bc69a3d2efee5b9a6d1f9b038b3b2c9c4b7633",
+      "outputHash": "sha256:be0e855849e15bd6f285f8dbc44340272c889f122fe883e260b830c1be7c4528"
     },
     "docs/topics/code-design/presentation-ownership.md": {
       "templateId": "topics/topic.md.tmpl",

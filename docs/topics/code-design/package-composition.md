@@ -6,8 +6,9 @@ What a package owns and states, what earns an export, and how exported surface s
 **Applicability:** Global topic within owning domain selectors none. Run `awf topic code-design/package-composition --coverage` for current matched paths and marker sites.
 
 This topic governs packages and exported surface introduced by new work and sites
-deliberately converted under its authority. Existing undocumented exported declarations
-remain bounded future candidates until a deliberate conversion brings them into scope.
+deliberately converted under its authority. Existing undocumented exported declarations,
+latent grab-bag files, and exports without an outside-package production consumer remain
+bounded future candidates until a deliberate conversion brings them into scope.
 A package split is judged by fan-out combined with size, never by a line-count threshold
 alone; that judgment stays here as guidance because a numeric-threshold violation is not
 always an anti-pattern. The judgment-level companion to these claims is the Readability
