@@ -7,11 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/filemode"
-	indexformat "github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // proseGateRepo writes an .awf/config.yaml with the given proseGate block, git-
@@ -21,29 +18,9 @@ func proseGateRepo(t *testing.T, proseGateYAML string, stage map[string]string) 
 	t.Helper()
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n"+proseGateYAML)
-	repo, err := git.PlainInit(root, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add(".awf/config.yaml"); err != nil {
-		t.Fatal(err)
-	}
-	for name, content := range stage {
-		full := filepath.Join(root, name)
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := wt.Add(name); err != nil {
-			t.Fatal(err)
-		}
-	}
+	repo := gitfixture.InitRepoAt(t, root)
+	gitfixture.Add(t, repo, ".awf/config.yaml")
+	gitfixture.Stage(t, repo, stage)
 	return root
 }
 
@@ -66,10 +43,7 @@ func TestProseGateKnobOff(t *testing.T) {
 func TestProseGateRefusesMissingOrInvalidStagedConfig(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := t.TempDir()
-	if _, err := git.PlainInit(root, false); err != nil {
-		t.Fatal(err)
-	}
+	root := gitfixture.InitRepo(t).Root()
 	if err := runProseGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "staged snapshot has no") {
 		t.Fatalf("missing staged config: %v", err)
 	}
@@ -209,18 +183,7 @@ func TestProseGateSkipsStagedGitlink(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "clean\n"})
-	repo, err := git.PlainOpen(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	idx, err := repo.Storer.Index()
-	if err != nil {
-		t.Fatal(err)
-	}
-	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "submodule", Mode: filemode.Submodule, Hash: plumbing.NewHash("0123456789012345678901234567890123456789")})
-	if err := repo.Storer.SetIndex(idx); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.StageGitlink(t, gitfixture.At(root), "submodule")
 	if err := runProseGate(ctx, root, io.Discard); err != nil {
 		t.Fatalf("gitlink must not block regular staged files: %v", err)
 	}

@@ -186,7 +186,7 @@ func TestLoaderOpenReturnsConformanceError(t *testing.T) {
 }
 
 func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
-	_, root := gitfixture.InitRepo(t)
+	root := gitfixture.InitRepo(t).Root()
 	external := t.TempDir()
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)

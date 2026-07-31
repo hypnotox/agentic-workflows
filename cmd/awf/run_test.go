@@ -10,14 +10,12 @@ import (
 	"go/token"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-git/go-git/v5"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -44,8 +42,9 @@ func initializeProject(ctx context.Context, root string, out io.Writer) error {
 
 func scaffoldProject(t *testing.T) string {
 	t.Helper()
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, minimalYAML)
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("scaffold sync: %v", err)
@@ -65,13 +64,11 @@ func mustOpenGit(t *testing.T, root string) *awfgit.Repo {
 func TestResolveProjectResidentRoot(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, primary := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, primary, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	primary := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	linked := filepath.Join(t.TempDir(), "linked")
-	cmd := exec.Command("git", "-C", primary, "worktree", "add", "-b", "linked", linked)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git worktree add: %v\n%s", err, out)
-	}
+	gitfixture.NativeWorktreeAdd(t, repo, linked, "linked")
 	if got := awfgit.ProjectResidentRoot(ctx, linked); got != primary {
 		t.Fatalf("resident root = %q, want primary %q", got, primary)
 	}
@@ -89,7 +86,7 @@ func TestResolveProjectResidentRootFallsBackOutsideGit(t *testing.T) {
 func TestResolveProjectResidentRootFallsBackOnUnsafeResident(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	_, root := gitfixture.InitRepo(t)
+	root := gitfixture.InitRepo(t).Root()
 	external := t.TempDir()
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)
@@ -182,8 +179,9 @@ func TestRunSyncEntryPointsRejectMalformedRepository(t *testing.T) {
 func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, minimalYAML)
 	if _, err := os.Stat(config.LockPath(root)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("lock stat error = %v, want not exist", err)
@@ -315,10 +313,11 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
-	gitfixture.Stage(t, repo, root, map[string]string{"docs/decisions/0001-existing.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Existing"))})
-	gitfixture.Commit(t, repo, root, "existing ADR", nil)
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	gitfixture.Stage(t, repo, map[string]string{"docs/decisions/0001-existing.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Existing"))})
+	gitfixture.Commit(t, repo, "existing ADR", nil)
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	// The gateCmd answer keeps the scaffold's enabled hooks singleton valid
 	// for the ordinary syncs below (ADR-0156 Decision 5).
@@ -352,16 +351,8 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	}
 	assertAuthority("forced init")
 
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := wt.AddWithOptions(&git.AddOptions{All: true}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Commit("initialize", &git.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "initialize", nil)
 	for _, tc := range []struct {
 		name   string
 		mutate func(*manifest.Lock)
@@ -383,18 +374,14 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 			if err := mutated.Save(config.LockPath(root)); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := wt.Add(".awf/awf.lock"); err != nil {
-				t.Fatal(err)
-			}
+			gitfixture.Add(t, repo, ".awf/awf.lock")
 			if err := runCheck(ctx, root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.name) {
 				t.Fatalf("staged %s mutation error = %v", tc.name, err)
 			}
 			if err := initial.Save(config.LockPath(root)); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := wt.Add(".awf/awf.lock"); err != nil {
-				t.Fatal(err)
-			}
+			gitfixture.Add(t, repo, ".awf/awf.lock")
 		})
 	}
 }
@@ -547,8 +534,9 @@ func testInitFirstADRChecksClean(t *testing.T) {
 		{name: "brownfield", legacy: []string{"0001-old.md", "0003-old.md"}, cutoff: 4, gaps: []int{2}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			repo, root := gitfixture.InitRepo(t)
-			gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+			repo := gitfixture.InitRepo(t)
+			root := repo.Root()
+			gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 			for _, name := range tc.legacy {
 				testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name), testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(name[:4]+": Old")))
 			}
@@ -565,16 +553,8 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if lock.ADRFormatV1From != tc.cutoff || lock.ADRFormatV2From != tc.cutoff || !slices.Equal(lock.LegacyADRGaps, tc.gaps) {
 				t.Fatalf("initial authority = cutoffs %d/%d gaps %v, want %d/%d gaps %v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.LegacyADRGaps, tc.cutoff, tc.cutoff, tc.gaps)
 			}
-			wt, err := repo.Worktree()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := wt.AddWithOptions(&git.AddOptions{All: true}); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := wt.Commit("initialize", &git.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
-				t.Fatal(err)
-			}
+			gitfixture.AddAll(t, repo)
+			gitfixture.Commit(t, repo, "initialize", nil)
 			if err := runNew(ctx, root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
 				t.Fatal(err)
 			}
@@ -981,7 +961,7 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 	_ = ctx
 	// A legacy single-file project migrates to the tree layout, covering the
 	// applied-migrations loop and the terminal sync.
-	_, root := gitfixture.InitRepo(t)
+	root := gitfixture.InitRepo(t).Root()
 	claude := filepath.Join(root, ".claude")
 	if err := os.MkdirAll(claude, 0o755); err != nil {
 		t.Fatal(err)
@@ -1008,8 +988,9 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: []\n")
 	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {

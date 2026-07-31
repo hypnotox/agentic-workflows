@@ -42,11 +42,12 @@ func TestGateStagedLoadErrors(t *testing.T) {
 	if _, _, _, err := checkLockVsBinary(testContext(t), nonRepo, true); err == nil {
 		t.Fatal("staged ahead-note loader accepted a non-repository")
 	}
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	if _, err := stagedLock(ctx, dir); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
 		t.Fatalf("missing staged lock error = %v", err)
 	}
-	gitfixture.Stage(t, repo, dir, map[string]string{".awf/awf.lock": "{not json"})
+	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": "{not json"})
 	if err := gateStaged(ctx, dir); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
 		t.Fatalf("gateStaged malformed lock error = %v", err)
 	}

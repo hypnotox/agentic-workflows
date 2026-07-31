@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	gogit "github.com/go-git/go-git/v5"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -16,29 +15,22 @@ import (
 // their mode preserved, symlinks skipped, deterministic path order, and byte
 // ownership. It reads only committed content, never the mutated working tree.
 func TestCommitTree(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeStage(t, wt, dir, "b.txt", "bee\n", 0o644)
-	writeStage(t, wt, dir, "a/exec.sh", "run\n", 0o755)
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.StageFile(t, repo, "b.txt", "bee\n", 0o644)
+	gitfixture.StageFile(t, repo, "a/exec.sh", "run\n", 0o755)
 	if err := os.Symlink("b.txt", filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wt.Add("link"); err != nil {
-		t.Fatal(err)
-	}
-	head, err := wt.Commit("c", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig})
-	if err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.Add(t, repo, "link")
+	head := gitfixture.Commit(t, repo, "c", nil)
 	// Mutate the working tree after committing: CommitTree must ignore it.
 	if err := os.WriteFile(filepath.Join(dir, "b.txt"), []byte("EDITED"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	tree, err := snapshot.CommitTree(testContext(t), snapshotRepo(t, dir), head.String())
+	tree, err := snapshot.CommitTree(testContext(t), snapshotRepo(t, dir), head)
 	if err != nil {
 		t.Fatalf("CommitTree: %v", err)
 	}
@@ -71,6 +63,7 @@ func TestCommitTree(t *testing.T) {
 
 // TestCommitTreeOutsideRepo wraps git.CommitBlobs' open-repo failure.
 func TestCommitTreeOutsideRepo(t *testing.T) {
+	t.Parallel()
 	if _, err := awfgit.Open(t.TempDir()); err == nil {
 		t.Fatal("expected an error outside a repository")
 	}
@@ -78,8 +71,10 @@ func TestCommitTreeOutsideRepo(t *testing.T) {
 
 // TestCommitTreeBadRevision wraps the revision-resolution failure.
 func TestCommitTreeBadRevision(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	if _, err := snapshot.CommitTree(testContext(t), snapshotRepo(t, dir), "does-not-exist"); err == nil {
 		t.Fatal("expected an error for an unresolvable revision")
 	} else if errors.Is(err, os.ErrNotExist) {

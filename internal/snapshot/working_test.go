@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	gogit "github.com/go-git/go-git/v5"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -16,21 +15,17 @@ import (
 // untracked files; it skips symlinks (not followed), a staged deletion, and
 // ignored files. It also confirms byte ownership.
 func TestWorkingTree(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	// Committed set: a regular file, an executable, an ignored pattern, a
 	// to-be-deleted file, and .gitignore itself.
-	writeStage(t, wt, dir, "tracked.txt", "orig\n", 0o644)
-	writeStage(t, wt, dir, "run.sh", "run\n", 0o755)
-	writeStage(t, wt, dir, "gone.txt", "gone\n", 0o644)
-	writeStage(t, wt, dir, "recreated.txt", "old\n", 0o644)
-	writeStage(t, wt, dir, ".gitignore", "ignored.txt\n", 0o644)
-	if _, err := wt.Commit("base", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.StageFile(t, repo, "tracked.txt", "orig\n", 0o644)
+	gitfixture.StageFile(t, repo, "run.sh", "run\n", 0o755)
+	gitfixture.StageFile(t, repo, "gone.txt", "gone\n", 0o644)
+	gitfixture.StageFile(t, repo, "recreated.txt", "old\n", 0o644)
+	gitfixture.StageFile(t, repo, ".gitignore", "ignored.txt\n", 0o644)
+	gitfixture.Commit(t, repo, "base", nil)
 	// Working-tree mutations after the commit.
 	if err := os.WriteFile(filepath.Join(dir, "tracked.txt"), []byte("edited\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -47,9 +42,7 @@ func TestWorkingTree(t *testing.T) {
 	if err := os.Remove(filepath.Join(dir, "gone.txt")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wt.Remove("recreated.txt"); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.StageRemoval(t, repo, "recreated.txt")
 	if err := os.WriteFile(filepath.Join(dir, "recreated.txt"), []byte("new\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -98,15 +91,11 @@ func TestWorkingTree(t *testing.T) {
 }
 
 func TestWorkingTreeExcludesIgnoredResidentDescendants(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeStage(t, wt, dir, ".awf/worktrees/.gitignore", "*\n!.gitignore\n", 0o644)
-	if _, err := wt.Commit("resident ignore", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
-		t.Fatal(err)
-	}
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.StageFile(t, repo, ".awf/worktrees/.gitignore", "*\n!.gitignore\n", 0o644)
+	gitfixture.Commit(t, repo, "resident ignore", nil)
 	path := filepath.Join(dir, ".awf", "worktrees", "efforts", "e", "sessions", "s.jsonl")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
@@ -128,7 +117,8 @@ func TestWorkingTreeExcludesIgnoredResidentDescendants(t *testing.T) {
 
 // invariant: tooling/init-and-enablement:init-unborn-head-supported
 func TestWorkingTreeUnborn(t *testing.T) {
-	_, dir := gitfixture.InitRepo(t)
+	t.Parallel()
+	dir := gitfixture.InitRepo(t).Root()
 	if err := os.WriteFile(filepath.Join(dir, "eligible.txt"), []byte("working\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +138,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 	})
 
 	t.Run("corrupt-reference", func(t *testing.T) {
-		_, dir := gitfixture.InitRepo(t)
+		dir := gitfixture.InitRepo(t).Root()
 		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("not a reference\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -158,7 +148,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 	})
 
 	t.Run("dangling-reference", func(t *testing.T) {
-		_, dir := gitfixture.InitRepo(t)
+		dir := gitfixture.InitRepo(t).Root()
 		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("0123456789012345678901234567890123456789\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -168,13 +158,11 @@ func TestWorkingTreeUnborn(t *testing.T) {
 	})
 
 	t.Run("missing-object", func(t *testing.T) {
-		repo, dir := gitfixture.InitRepo(t)
-		head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked\n"})
-		commit, err := repo.CommitObject(head)
-		if err != nil {
-			t.Fatal(err)
-		}
-		treeObject := filepath.Join(dir, ".git", "objects", commit.TreeHash.String()[:2], commit.TreeHash.String()[2:])
+		repo := gitfixture.InitRepo(t)
+		dir := repo.Root()
+		head := gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked\n"})
+		tree := gitfixture.TreeHash(t, repo, head)
+		treeObject := filepath.Join(dir, ".git", "objects", tree[:2], tree[2:])
 		if err := os.Remove(treeObject); err != nil {
 			t.Fatal(err)
 		}

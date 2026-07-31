@@ -142,10 +142,11 @@ const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: 
 // supplies its own decisions file.
 func csRepo(t *testing.T, cfg string, files map[string]string) *Project {
 	t.Helper()
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	// A base commit so the working Tree can resolve HEAD; the fixture files below
 	// stay untracked-nonignored and are still part of the working universe.
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, cfg)
 	if _, ok := files["docs/decisions/0001-first.md"]; !ok {
 		files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented",

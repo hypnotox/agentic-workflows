@@ -59,8 +59,9 @@ func TestParseWorktreeStatusRejectsMalformedRecords(t *testing.T) {
 }
 
 func TestWorktreeChangeCountsDoesNotRefreshIndex(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked"})
 	indexPath := filepath.Join(dir, ".git", "index")
 	before, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -108,8 +109,9 @@ func TestChangeCountsHonorsGlobalExcludes(t *testing.T) {
 		_ = os.Remove(gitconfig)
 		_ = os.Remove(excludes)
 	})
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked"})
 	if err := os.WriteFile(filepath.Join(dir, "globally-ignored.txt"), []byte("ignored"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -136,14 +138,16 @@ func TestWorktreeChangeCountsRejectsNonRepository(t *testing.T) {
 // inherited GIT_DIR selects a different repository, so the audit's clean-tree
 // verdict would describe whichever repository the environment happened to name.
 func TestWorktreeChangeCountsIgnoresInheritedGitEnvironment(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked"})
 	if err := os.WriteFile(filepath.Join(dir, "loose.txt"), []byte("loose"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// A second, entirely clean repository whose .git the environment points at.
-	otherRepo, other := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, otherRepo, other, "base", map[string]string{"only.txt": "only"})
+	otherRepo := gitfixture.InitRepo(t)
+	other := otherRepo.Root()
+	gitfixture.Commit(t, otherRepo, "base", map[string]string{"only.txt": "only"})
 	t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
 	t.Setenv("GIT_WORK_TREE", other)
 

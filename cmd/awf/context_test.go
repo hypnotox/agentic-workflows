@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -68,8 +67,9 @@ func acceptedV1(t *testing.T, num, title, date, stateChanges string) string {
 // a state marker under internal/foo/x.go.
 func ctxCmdFixture(t *testing.T) string {
 	t.Helper()
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, ctxCmdYAML)
 	lock := &manifest.Lock{
 		AWFVersion: awfVersion(), SchemaVersion: migrate.Current(),
@@ -406,13 +406,14 @@ func TestRunContextSelectionAndProjectErrors(t *testing.T) {
 	if err := runContext(ctx, root, nil, false, "bad-range", false, false, nil, io.Discard); err == nil {
 		t.Fatal("bad range accepted")
 	}
-	repo, rangeRoot := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, rangeRoot, "one", map[string]string{"a": "1"})
-	gitfixture.Commit(t, repo, rangeRoot, "two", map[string]string{"a": "2"})
+	repo := gitfixture.InitRepo(t)
+	rangeRoot := repo.Root()
+	gitfixture.Commit(t, repo, "one", map[string]string{"a": "1"})
+	gitfixture.Commit(t, repo, "two", map[string]string{"a": "2"})
 	if err := runContext(ctx, rangeRoot, nil, false, "HEAD~1..HEAD", false, false, nil, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	_, clean := gitfixture.InitRepo(t)
+	clean := gitfixture.InitRepo(t).Root()
 	if err := runContext(ctx, clean, nil, true, "", false, false, nil, io.Discard); err == nil || !strings.Contains(err.Error(), "no changed paths") {
 		t.Fatalf("empty staged err=%v", err)
 	}
@@ -420,11 +421,7 @@ func TestRunContextSelectionAndProjectErrors(t *testing.T) {
 		t.Fatal("invalid staged transition accepted")
 	}
 	stagedRoot := ctxCmdFixture(t)
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = stagedRoot
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git add: %v %s", err, output)
-	}
+	gitfixture.AddAll(t, gitfixture.At(stagedRoot))
 	_ = runContext(ctx, stagedRoot, []string{"internal/foo/x.go"}, true, "", false, false, nil, io.Discard)
 	_ = runContext(ctx, stagedRoot, nil, true, "", true, false, nil, io.Discard)
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(ctxCmdYAML+"targets: [unknown]\n"), 0o644); err != nil {

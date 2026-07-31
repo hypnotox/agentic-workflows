@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -478,11 +479,7 @@ currentState:
       marker: "//"
   testGlobs: ["internal/**/*_test.go"]
 `, map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
-	initRepo := exec.Command("git", "init")
-	initRepo.Dir = root
-	if output, err := initRepo.CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, output)
-	}
+	gitfixture.InitRepoAt(t, root)
 	writeADR(t, root, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule"), testsupport.WithTitle("0001: Scheduling contracts"), testsupport.WithBody("## Decision\n\n1. Define scheduling.\n\n## Invariants\n\n- `invariant: legacy-scheduling` - legacy authority remains stable.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "internal/legacy_test.go"), "package internal\n// invariant: legacy-scheduling\n// invariant: schedule\n")
 	p, err := Open(testContext(t), root)

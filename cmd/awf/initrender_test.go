@@ -23,7 +23,7 @@ func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	forceNonInteractive(t)
-	_, root := gitfixture.InitRepo(t)
+	root := gitfixture.InitRepo(t).Root()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 
 	var initOut, initErr bytes.Buffer
@@ -79,8 +79,9 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	forceNonInteractive(t)
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
@@ -195,8 +196,9 @@ func isTableSeparator(line string) bool {
 func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
@@ -215,8 +217,9 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
 		"<!-- awf:stub -->\nstarter notes\n")

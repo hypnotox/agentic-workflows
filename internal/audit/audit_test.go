@@ -533,8 +533,9 @@ func TestRulePlainPunctuation(t *testing.T) {
 // and the new notice reports it without turning it into a finding.
 // invariant: tooling/audit-and-snapshots:audit-empty-range-clean
 func TestCollectEmptyRangeIsClean(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"a.txt": "x"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"a.txt": "x"})
 	findings, _, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{})
 	if err != nil || len(findings) != 0 {
 		t.Fatalf("findings = %#v, %v", findings, err)
@@ -542,8 +543,9 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 }
 
 func TestRuleUncommittedChanges(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "init", map[string]string{"a.txt": "a"})
 	handle, _, err := awfgit.OpenContaining(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -572,8 +574,9 @@ func TestRuleUncommittedChanges(t *testing.T) {
 }
 
 func TestRunIncludesUncommittedChanges(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "init", map[string]string{"a.txt": "a"})
 	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -593,15 +596,16 @@ func TestRuleUncommittedChangesDisabled(t *testing.T) {
 }
 
 func TestRunNestedAdopterFiltersAndReroots(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	if err := os.MkdirAll(filepath.Join(dir, "nested", "docs", "decisions"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{"nested/README.md": "base\n", "outside.txt": "old\n"})
-	gitfixture.Commit(t, repo, dir, "not a conventional commit", map[string]string{"outside.txt": "new\n"})
-	gitfixture.Commit(t, repo, dir, "feat: nested", map[string]string{"nested/docs/decisions/0001-x.md": "---\nstatus: [unclosed\n---\n"})
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/README.md": "base\n", "outside.txt": "old\n"})
+	gitfixture.Commit(t, repo, "not a conventional commit", map[string]string{"outside.txt": "new\n"})
+	gitfixture.Commit(t, repo, "feat: nested", map[string]string{"nested/docs/decisions/0001-x.md": "---\nstatus: [unclosed\n---\n"})
 
-	findings, _, err := Run(testContext(t), filepath.Join(dir, "nested"), base.String(), "HEAD", Inputs{ADRDir: "docs/decisions"})
+	findings, _, err := Run(testContext(t), filepath.Join(dir, "nested"), base, "HEAD", Inputs{ADRDir: "docs/decisions"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,16 +618,18 @@ func TestRunPropagatesOpenAndWalkErrors(t *testing.T) {
 	if _, _, err := Run(testContext(t), t.TempDir(), "base", "HEAD", Inputs{}); err == nil {
 		t.Fatal("non-repository accepted")
 	}
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	if _, _, err := Run(testContext(t), dir, "missing", "HEAD", Inputs{}); err == nil {
 		t.Fatal("missing revision accepted")
 	}
 }
 
 func TestRuleUncommittedChangesPropagatesStatusError(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "init", map[string]string{"a.txt": "a"})
 	handle, _, err := awfgit.OpenContaining(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -635,8 +641,9 @@ func TestRuleUncommittedChangesPropagatesStatusError(t *testing.T) {
 }
 
 func TestRunPropagatesUncommittedStatusError(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "init", map[string]string{"a.txt": "a"})
 	t.Setenv("PATH", t.TempDir())
 	if _, _, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}}); err == nil {
 		t.Fatal("unavailable native git accepted")
@@ -645,8 +652,9 @@ func TestRunPropagatesUncommittedStatusError(t *testing.T) {
 
 // invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
 func TestRuleUncommittedChangesIgnoresManagedWorktreeResidents(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "init", map[string]string{".gitignore": ".awf/worktrees/\n", "a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "init", map[string]string{".gitignore": ".awf/worktrees/\n", "a.txt": "a"})
 	resident := filepath.Join(dir, ".awf", "worktrees", "other", ".awf", "memory", ".gitignore")
 	if err := os.MkdirAll(filepath.Dir(resident), 0o755); err != nil {
 		t.Fatal(err)

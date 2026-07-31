@@ -222,7 +222,8 @@ func TestRunCheckClaimBudgetNote(t *testing.T) {
 // HEAD-to-index delta. The config lives in commit, so Open resolves it.
 func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) string {
 	t.Helper()
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	committed := map[string]string{}
 	for path, body := range commit {
 		committed[path] = body
@@ -235,10 +236,10 @@ func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) strin
 		}
 		committed[".awf/awf.lock"] = string(b)
 	}
-	gitfixture.Stage(t, repo, dir, committed)
-	gitfixture.Commit(t, repo, dir, "head", nil)
+	gitfixture.Stage(t, repo, committed)
+	gitfixture.Commit(t, repo, "head", nil)
 	if len(stageOnly) > 0 {
-		gitfixture.Stage(t, repo, dir, stageOnly)
+		gitfixture.Stage(t, repo, stageOnly)
 	}
 	return dir
 }
@@ -486,8 +487,9 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Stage(t, repo, dir, map[string]string{"README.md": "staged\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, map[string]string{"README.md": "staged\n"})
 	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
 	if err != nil {
 		t.Fatal(err)
@@ -506,7 +508,8 @@ func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
 func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
@@ -530,9 +533,9 @@ func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *tes
 		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
 		prefix + "docs/decisions/0001-first.md":                 testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First")),
 	}
-	gitfixture.Stage(t, repo, dir, files)
-	gitfixture.Commit(t, repo, dir, "nested head", nil)
-	gitfixture.Stage(t, repo, dir, map[string]string{
+	gitfixture.Stage(t, repo, files)
+	gitfixture.Commit(t, repo, "nested head", nil)
+	gitfixture.Stage(t, repo, map[string]string{
 		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n",
 	})
 
@@ -601,15 +604,16 @@ func TestHookCommandHelper(t *testing.T) {
 func TestRunCheckStagedError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Stage(t, repo, dir, map[string]string{
+	gitfixture.Stage(t, repo, map[string]string{
 		".awf/awf.lock": string(lockBytes),
 		"internal/x.go": "package x\n",
 	})

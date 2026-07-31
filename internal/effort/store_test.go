@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -13,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 const (
@@ -21,6 +22,7 @@ const (
 )
 
 func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
+	t.Parallel()
 	root := initEffortRepo(t)
 	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
 	ids := []string{testIDA, testIDB}
@@ -92,6 +94,7 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 }
 
 func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
+	t.Parallel()
 	stages := []string{
 		"reserve.directory",
 		"memory.write", "memory.fsync", "memory.rename", "memory.directory-fsync",
@@ -150,6 +153,7 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 }
 
 func TestConcurrentSameSlugCreationHasOneWinner(t *testing.T) {
+	t.Parallel()
 	root := initEffortRepo(t)
 	var wg sync.WaitGroup
 	errs := make(chan error, 2)
@@ -185,6 +189,7 @@ func TestConcurrentSameSlugCreationHasOneWinner(t *testing.T) {
 }
 
 func TestEnumerationPreservesAndDiagnosesForeignResidents(t *testing.T) {
+	t.Parallel()
 	tests := map[string]func(*testing.T, string){
 		"invalid entry": func(t *testing.T, root string) {
 			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "foreign.json"), "foreign")
@@ -230,6 +235,7 @@ func TestEnumerationPreservesAndDiagnosesForeignResidents(t *testing.T) {
 }
 
 func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
+	t.Parallel()
 	if got := (&CorruptError{Err: os.ErrInvalid}).Unwrap(); !errors.Is(got, os.ErrInvalid) {
 		t.Fatalf("unwrap = %v", got)
 	}
@@ -501,29 +507,12 @@ func openEffortService(t *testing.T, root string, now time.Time) *Service {
 func initEffortRepo(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	runEffortGit(t, "init", root)
-	writeEffortFile(t, filepath.Join(root, "tracked.txt"), "base\n")
-	runEffortGit(t, "-C", root, "add", "tracked.txt")
-	runEffortGit(t, "-C", root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "base")
+	repo := gitfixture.InitRepoAt(t, root)
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "base\n"})
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "efforts"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	return root
-}
-
-func runEffortGit(t *testing.T, args ...string) {
-	t.Helper()
-	_ = runEffortGitOutput(t, args...)
-}
-
-func runEffortGitOutput(t *testing.T, args ...string) string {
-	t.Helper()
-	command := exec.Command("git", args...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %v: %v\n%s", args, err, output)
-	}
-	return string(output)
 }
 
 func writeEffortFile(t *testing.T, path, content string) {

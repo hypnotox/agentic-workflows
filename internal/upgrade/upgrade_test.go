@@ -30,7 +30,8 @@ currentState:
 // attestation.
 func sealedRepo(t *testing.T) (dir, head, digest string) {
 	t.Helper()
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir = repo.Root()
 	files := map[string]string{
 		".awf/config.yaml":                              sealedConfig,
 		".awf/domains/alpha.yaml":                       "paths:\n  - internal/**\n",
@@ -44,7 +45,7 @@ func sealedRepo(t *testing.T) (dir, head, digest string) {
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(dir, rel), body)
 	}
-	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Stage(t, repo, files)
 	gitfixture.Merge(t, repo, "prepared")
 	head, err := headHash(t, dir)
 	if err != nil {
@@ -178,7 +179,7 @@ func TestVerifyOutsideRepo(t *testing.T) {
 }
 
 func TestVerifyRejectsUnbornHead(t *testing.T) {
-	_, root := gitfixture.InitRepo(t)
+	root := gitfixture.InitRepo(t).Root()
 	if err := Verify(testContext(t), root, sealedAtt("x", "y")); err == nil {
 		t.Fatal("verify accepted a repository with an unborn HEAD")
 	}

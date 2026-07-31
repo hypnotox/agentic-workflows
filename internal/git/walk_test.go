@@ -33,20 +33,21 @@ func walkRepo(t *testing.T, root string) *Repo {
 }
 
 func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
 		"a.md":       "old\n",
 		"delete.txt": "gone\n",
 		"rename.txt": "rename\n",
 	})
-	gitfixture.Commit(t, repo, dir, "feat(awf): one\r\n\r\nbody text\r\nmore\r\n", map[string]string{
+	gitfixture.Commit(t, repo, "feat(awf): one\r\n\r\nbody text\r\nmore\r\n", map[string]string{
 		"a.md":        "new\n",
 		"create.txt":  "made\n",
 		"renamed.txt": "rename\n",
 	}, "delete.txt", "rename.txt")
-	gitfixture.Commit(t, repo, dir, "fix(awf): two", map[string]string{"c.md": "new\n"})
+	gitfixture.Commit(t, repo, "fix(awf): two", map[string]string{"c.md": "new\n"})
 
-	commits, err := walkRepo(t, dir).RangeCommits(testContext(t), base.String(), "HEAD")
+	commits, err := walkRepo(t, dir).RangeCommits(testContext(t), base, "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +78,7 @@ func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
 	if c, ok := findWalkChange(commits[0].Changes, "c.md"); !ok || c.Action != Added || c.NewText != "new\n" {
 		t.Fatalf("second commit = %#v", c)
 	}
-	if text, found, err := walkRepo(t, dir).FileText(testContext(t), base.String(), "a.md"); err != nil || !found || text != "old\n" {
+	if text, found, err := walkRepo(t, dir).FileText(testContext(t), base, "a.md"); err != nil || !found || text != "old\n" {
 		t.Fatalf("base text = %q, %t, %v", text, found, err)
 	}
 	if text, found, err := walkRepo(t, dir).FileText(testContext(t), "HEAD", "a.md"); err != nil || !found || text != "new\n" {
@@ -86,26 +87,14 @@ func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
 }
 
 func TestRangeCommitsMergedRangeKeepsMergeAndNoChanges(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	base := gitfixture.Commit(t, repo, dir, "chore: base", map[string]string{"README.md": "base\n"})
-	main := gitfixture.Commit(t, repo, dir, "feat: main-side work", map[string]string{"mainside.txt": "main\n"})
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := wt.Checkout(&gogit.CheckoutOptions{Hash: base, Branch: plumbing.NewBranchReferenceName("feature"), Create: true}); err != nil {
-		t.Fatal(err)
-	}
-	feature := gitfixture.Commit(t, repo, dir, "feat(awf): branch work", map[string]string{"branch.txt": "branch\n"})
-	if err := os.WriteFile(filepath.Join(dir, "mainside.txt"), []byte("main\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add("mainside.txt"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Commit("Merge branch 'master' into feature", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig, Parents: []plumbing.Hash{feature, main}}); err != nil {
-		t.Fatal(err)
-	}
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "chore: base", map[string]string{"README.md": "base\n"})
+	main := gitfixture.Commit(t, repo, "feat: main-side work", map[string]string{"mainside.txt": "main\n"})
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feat(awf): branch work", map[string]string{"branch.txt": "branch\n"})
+	gitfixture.StageFile(t, repo, "mainside.txt", "main\n", 0o644)
+	gitfixture.Merge(t, repo, "Merge branch 'master' into feature", feature, main)
 
 	commits, err := walkRepo(t, dir).RangeCommits(testContext(t), "master", "HEAD")
 	if err != nil {
@@ -120,15 +109,16 @@ func TestRangeCommitsMergedRangeKeepsMergeAndNoChanges(t *testing.T) {
 }
 
 func TestRangeCommitsNestedScopeFiltersAndReroots(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	if err := os.MkdirAll(filepath.Join(dir, "nested", "docs"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{"nested/docs/old.md": "old\n", "outside.txt": "old\n"})
-	gitfixture.Commit(t, repo, dir, "outside", map[string]string{"outside.txt": "new\n"})
-	gitfixture.Commit(t, repo, dir, "inside", map[string]string{"nested/docs/old.md": "new\n", "nested/new.txt": "new\n"})
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/docs/old.md": "old\n", "outside.txt": "old\n"})
+	gitfixture.Commit(t, repo, "outside", map[string]string{"outside.txt": "new\n"})
+	gitfixture.Commit(t, repo, "inside", map[string]string{"nested/docs/old.md": "new\n", "nested/new.txt": "new\n"})
 
-	commits, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), base.String(), "HEAD")
+	commits, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), base, "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,13 +142,11 @@ func TestRangeCommitsNestedScopeFiltersAndReroots(t *testing.T) {
 }
 
 func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	root := gitfixture.Commit(t, repo, dir, "root", map[string]string{"a.md": "root\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	root := gitfixture.Commit(t, repo, "root", map[string]string{"a.md": "root\n"})
 	handle := walkRepo(t, dir)
-	rootCommit, err := repo.CommitObject(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	rootCommit := walkCommitObject(t, dir, root)
 	commit, err := toCommit(rootCommit, "")
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +157,7 @@ func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 	if _, found, err := handle.FileText(testContext(t), "HEAD", "missing.md"); err != nil || found {
 		t.Fatalf("missing text = %t, %v", found, err)
 	}
-	if commits, err := handle.RangeCommits(testContext(t), root.String(), "HEAD"); err != nil || commits != nil {
+	if commits, err := handle.RangeCommits(testContext(t), root, "HEAD"); err != nil || commits != nil {
 		t.Fatalf("empty range = %#v, %v", commits, err)
 	}
 	if _, err := handle.RangeCommits(testContext(t), "missing", "HEAD"); err == nil {
@@ -211,23 +199,25 @@ func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 }
 
 func TestRangeCommitsUnrelatedHistoryAndWorktreeConfig(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	gitfixture.Commit(t, repo, dir, "head", map[string]string{"a.txt": "b"})
-	orphan := storeOrphan(t, repo)
-	if _, err := walkRepo(t, dir).RangeCommits(testContext(t), orphan.String(), "HEAD"); err == nil || !strings.Contains(err.Error(), "unrelated histories") {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
+	gitfixture.Commit(t, repo, "head", map[string]string{"a.txt": "b"})
+	orphan := storeOrphan(t, dir)
+	if _, err := walkRepo(t, dir).RangeCommits(testContext(t), orphan, "HEAD"); err == nil || !strings.Contains(err.Error(), "unrelated histories") {
 		t.Fatalf("unrelated histories = %v", err)
 	}
-	enableWalkWorktreeConfig(t, repo)
-	if commits, err := walkRepo(t, dir).RangeCommits(testContext(t), base.String(), "HEAD"); err != nil || len(commits) != 1 {
+	enableWalkWorktreeConfig(t, dir)
+	if commits, err := walkRepo(t, dir).RangeCommits(testContext(t), base, "HEAD"); err != nil || len(commits) != 1 {
 		t.Fatalf("worktreeConfig range = %#v, %v", commits, err)
 	}
 }
 
 func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.go": "package a\n"})
-	gitfixture.Commit(t, repo, dir, "head", map[string]string{"a.go": "package a\n\nvar x int\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.go": "package a\n"})
+	gitfixture.Commit(t, repo, "head", map[string]string{"a.go": "package a\n\nvar x int\n"})
 	handle := walkRepo(t, dir)
 	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
@@ -264,18 +254,19 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 }
 
 func TestRangeNativeReadOperations(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.go": "package a\n"})
-	head := gitfixture.Commit(t, repo, dir, "head", map[string]string{"a.go": "package a\n\nvar x = 1\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.go": "package a\n"})
+	head := gitfixture.Commit(t, repo, "head", map[string]string{"a.go": "package a\n\nvar x = 1\n"})
 	handle := walkRepo(t, dir)
 	ctx := testContext(t)
-	if got, err := handle.MergeBase(ctx, base.String(), head.String()); err != nil || got != base.String() {
+	if got, err := handle.MergeBase(ctx, base, head); err != nil || got != base {
 		t.Fatalf("merge base = %q, %v", got, err)
 	}
-	if got, err := handle.RangeChangedPaths(ctx, base.String(), head.String()); err != nil || len(got) != 1 || got[0] != "a.go" {
+	if got, err := handle.RangeChangedPaths(ctx, base, head); err != nil || len(got) != 1 || got[0] != "a.go" {
 		t.Fatalf("paths = %#v, %v", got, err)
 	}
-	if got, err := handle.RangeDiffText(ctx, base.String(), head.String()); err != nil || !strings.Contains(got, "+++ b/a.go") {
+	if got, err := handle.RangeDiffText(ctx, base, head); err != nil || !strings.Contains(got, "+++ b/a.go") {
 		t.Fatalf("diff = %q, %v", got, err)
 	}
 }
@@ -302,8 +293,29 @@ func (c *cancelAfterContext) Err() error {
 	return c.Context.Err()
 }
 
-func storeOrphan(t *testing.T, repo *gogit.Repository) plumbing.Hash {
+// walkCommitObject reads a commit object directly, for the package-internal
+// helpers whose subject is a go-git commit rather than a seam entrypoint.
+func walkCommitObject(t *testing.T, dir, rev string) *object.Commit {
 	t.Helper()
+	commit, err := openWalkRepo(t, dir).CommitObject(plumbing.NewHash(rev))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return commit
+}
+
+func openWalkRepo(t *testing.T, dir string) *gogit.Repository {
+	t.Helper()
+	repo, err := gogit.PlainOpen(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return repo
+}
+
+func storeOrphan(t *testing.T, dir string) string {
+	t.Helper()
+	repo := openWalkRepo(t, dir)
 	tree := &object.Tree{}
 	encodedTree := repo.Storer.NewEncodedObject()
 	if err := tree.Encode(encodedTree); err != nil {
@@ -322,11 +334,12 @@ func storeOrphan(t *testing.T, repo *gogit.Repository) plumbing.Hash {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return hash
+	return hash.String()
 }
 
-func enableWalkWorktreeConfig(t *testing.T, repo *gogit.Repository) {
+func enableWalkWorktreeConfig(t *testing.T, dir string) {
 	t.Helper()
+	repo := openWalkRepo(t, dir)
 	cfg, err := repo.Storer.Config()
 	if err != nil {
 		t.Fatal(err)

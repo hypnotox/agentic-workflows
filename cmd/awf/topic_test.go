@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -19,13 +18,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 func topicCmdFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	runGit(t, root, "init")
+	gitfixture.InitNativeAt(t, root)
 	testsupport.WriteAwfConfig(t, root, `prefix: example
 skills: []
 agents: []
@@ -381,9 +381,9 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 	}
 
 	root = topicCmdFixture(t)
-	runGit(t, root, "init")
-	runGit(t, root, "add", ".")
-	beforeTree, beforeIndex := digestFiles(t, root), runGit(t, root, "write-tree")
+	fixture := gitfixture.At(root)
+	gitfixture.NativeAdd(t, fixture, ".")
+	beforeTree, beforeIndex := digestFiles(t, root), gitfixture.NativeWriteTree(t, fixture)
 	for _, args := range [][]string{{"schedule/contracts"}, {"schedule/contracts:stable-output", "--json"}, {"schedule/contracts", "--history", "--references", "--coverage"}} {
 		var out bytes.Buffer
 		if err := runTopic(ctx, root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), strings.Contains(strings.Join(args, " "), "--json"), &out); err != nil {
@@ -393,20 +393,9 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 	if after := digestFiles(t, root); after != beforeTree {
 		t.Fatalf("topic query mutated tree: %s != %s", after, beforeTree)
 	}
-	if after := runGit(t, root, "write-tree"); after != beforeIndex {
+	if after := gitfixture.NativeWriteTree(t, fixture); after != beforeIndex {
 		t.Fatalf("topic query mutated index: %s != %s", after, beforeIndex)
 	}
-}
-
-func runGit(t *testing.T, root string, args ...string) string {
-	t.Helper()
-	cmd := exec.Command("git", args...)
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %v: %v: %s", args, err, out)
-	}
-	return strings.TrimSpace(string(out))
 }
 
 func digestFiles(t *testing.T, root string) string {

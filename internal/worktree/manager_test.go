@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 const worktreeTestID = "018f47a0-7b3d-4c52-8f1a-123456789abc"
@@ -59,7 +59,7 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	if _, err := os.Lstat(managed); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("managed path remains: %v", err)
 	}
-	if commandSucceeds(root, "show-ref", "--verify", "--quiet", "refs/heads/awf/managed-result") {
+	if gitfixture.NativeRevisionExists(gitfixture.At(root), "refs/heads/awf/managed-result") {
 		t.Fatal("managed branch remains")
 	}
 	again, err := manager.Remove(testContext(t), "managed-result")
@@ -93,14 +93,14 @@ func TestDivergentIntegrationStopsBeforeCommit(t *testing.T) {
 		strings.Contains(result.NextAction, "./x gate") {
 		t.Fatalf("divergent result = %#v", result)
 	}
-	mergeHead := strings.TrimSpace(runWorktreeGit(t, root, "rev-parse", "--git-path", "MERGE_HEAD"))
+	mergeHead := gitfixture.NativeGitPath(t, gitfixture.At(root), "MERGE_HEAD")
 	if !filepath.IsAbs(mergeHead) {
 		mergeHead = filepath.Join(root, mergeHead)
 	}
 	if _, err := os.Stat(mergeHead); err != nil {
 		t.Fatalf("MERGE_HEAD absent: %v", err)
 	}
-	runWorktreeGit(t, root, "merge", "--abort")
+	gitfixture.NativeMergeAbort(t, gitfixture.At(root))
 }
 
 func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testing.T) {
@@ -121,10 +121,10 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 			!strings.Contains(err.Error(), "`make gate`") || strings.Contains(err.Error(), "./x gate") {
 			t.Fatalf("conflict error = %v", err)
 		}
-		if !commandSucceeds(root, "rev-parse", "--verify", "MERGE_HEAD") {
+		if !gitfixture.NativeRevisionExists(gitfixture.At(root), "MERGE_HEAD") {
 			t.Fatal("conflict merge state was hidden")
 		}
-		runWorktreeGit(t, root, "merge", "--abort")
+		gitfixture.NativeMergeAbort(t, gitfixture.At(root))
 	})
 
 	t.Run("unrelated", func(t *testing.T) {
@@ -135,18 +135,18 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 			t.Fatal(err)
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", "unrelated-result")
-		runWorktreeGit(t, managed, "checkout", "--orphan", "unrelated-temp")
-		runWorktreeGit(t, managed, "rm", "-rf", ".")
+		gitfixture.NativeCheckoutOrphan(t, gitfixture.At(managed), "unrelated-temp")
+		gitfixture.NativeRemoveAll(t, gitfixture.At(managed))
 		writeWorktreeFile(t, filepath.Join(managed, "orphan.txt"), "orphan\n")
 		commitWorktree(t, managed, "orphan")
-		runWorktreeGit(t, root, "branch", "-f", "awf/unrelated-result", "unrelated-temp")
-		runWorktreeGit(t, managed, "checkout", "awf/unrelated-result")
-		before := runWorktreeGit(t, root, "rev-parse", "HEAD")
+		gitfixture.NativeBranchForce(t, gitfixture.At(root), "awf/unrelated-result", "unrelated-temp")
+		gitfixture.NativeCheckout(t, gitfixture.At(managed), "awf/unrelated-result")
+		before := gitfixture.NativeRevParse(t, gitfixture.At(root), "HEAD")
 		_, err := manager.Integrate(testContext(t), "unrelated-result", "")
 		if err == nil || !strings.Contains(err.Error(), "no proven common ancestor") || !strings.Contains(err.Error(), "changed topology: no") || !strings.Contains(err.Error(), "do not use --allow-unrelated-histories") {
 			t.Fatalf("unrelated error = %v", err)
 		}
-		if after := runWorktreeGit(t, root, "rev-parse", "HEAD"); after != before {
+		if after := gitfixture.NativeRevParse(t, gitfixture.At(root), "HEAD"); after != before {
 			t.Fatalf("target changed from %s to %s", before, after)
 		}
 	})
@@ -505,7 +505,7 @@ func TestAddPreconditionAndRunnerFailureBranches(t *testing.T) {
 	})
 	t.Run("existing branch", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Add branch")
-		runWorktreeGit(t, root, "branch", "awf/add-branch")
+		gitfixture.NativeBranch(t, gitfixture.At(root), "awf/add-branch")
 		if _, err := m.Add(testContext(t), "add-branch", "HEAD"); err == nil || !strings.Contains(err.Error(), "branch already exists") {
 			t.Fatalf("error = %v", err)
 		}
@@ -715,7 +715,7 @@ func TestIntegratePreconditionAndMutationFailureBranches(t *testing.T) {
 		if _, err := m.Integrate(testContext(t), "integrate-ff-failure", ""); err == nil || !strings.Contains(err.Error(), "fast-forward failed") {
 			t.Fatalf("error = %v", err)
 		}
-		before := runWorktreeGit(t, root, "rev-parse", "HEAD")
+		before := gitfixture.NativeRevParse(t, gitfixture.At(root), "HEAD")
 		if m.targetChanged(testContext(t), before) {
 			t.Fatal("unchanged target reported changed")
 		}
@@ -787,8 +787,8 @@ func TestManagerMutationPropagationBranches(t *testing.T) {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "validate-prerequisites")
-		target := runWorktreeGit(t, root, "rev-parse", "HEAD")
-		tip := runWorktreeGit(t, root, "rev-parse", "awf/validate-prerequisites")
+		target := gitfixture.NativeRevParse(t, gitfixture.At(root), "HEAD")
+		tip := gitfixture.NativeRevParse(t, gitfixture.At(root), "awf/validate-prerequisites")
 		drifted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.InvokingRoot = t.TempDir() }, nil)
 		if err := drifted.validateIntegrationFacts(testContext(t), path, "validate-prerequisites", target, tip); err == nil {
 			t.Fatal("invalid invoking checkout accepted")
@@ -879,8 +879,8 @@ func TestIntegrationFactDriftBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".awf", "worktrees", "fact-drift")
-	target := runWorktreeGit(t, root, "rev-parse", "HEAD")
-	tip := runWorktreeGit(t, root, "rev-parse", "awf/fact-drift")
+	target := gitfixture.NativeRevParse(t, gitfixture.At(root), "HEAD")
+	tip := gitfixture.NativeRevParse(t, gitfixture.At(root), "awf/fact-drift")
 	if err := m.validateIntegrationFacts(testContext(t), path, "fact-drift", "0000000000000000000000000000000000000000", tip); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
 		t.Fatalf("target drift error = %v", err)
 	}
@@ -917,7 +917,7 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 		if _, err := m.Add(testContext(t), "remove-operation", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
-		mergeHead := strings.TrimSpace(runWorktreeGit(t, root, "rev-parse", "--git-path", "MERGE_HEAD"))
+		mergeHead := gitfixture.NativeGitPath(t, gitfixture.At(root), "MERGE_HEAD")
 		if !filepath.IsAbs(mergeHead) {
 			mergeHead = filepath.Join(root, mergeHead)
 		}
@@ -945,7 +945,7 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 					t.Fatal(err)
 				}
 				if name == "branch delete" {
-					runWorktreeGit(t, root, "worktree", "remove", filepath.Join(root, ".awf", "worktrees", slug))
+					gitfixture.NativeWorktreeRemove(t, gitfixture.At(root), filepath.Join(root, ".awf", "worktrees", slug))
 				}
 				m := managerWith(t, root, invokingStub(root, broken))
 				if _, err := m.Remove(testContext(t), slug); err == nil {
@@ -1253,7 +1253,7 @@ func freshWorktreeManager(t *testing.T, root string) *Manager {
 
 func worktreeBranchExists(t *testing.T, root, slug string) bool {
 	t.Helper()
-	return runWorktreeGit(t, root, "branch", "--list", "awf/"+slug) != ""
+	return gitfixture.NativeRevisionExists(gitfixture.At(root), "refs/heads/awf/"+slug)
 }
 
 func newManagerWithEffort(t *testing.T, title string) (*Manager, string) {
@@ -1276,28 +1276,18 @@ func createEffort(t *testing.T, root, title string) {
 // carrying the resident .gitignore files awf renders, so owned effort and
 // worktree state is invisible to the cleanliness oracle exactly as it is in a
 // real project.
+// initWorktreeRepo builds the manager's baseline checkout: a repository whose
+// resident .gitignore files are TRACKED, which is the entire reason owned
+// effort and worktree state stays invisible to the cleanliness oracle.
 func initWorktreeRepo(t *testing.T, format string) string {
 	t.Helper()
-	root := t.TempDir()
-	args := []string{"init"}
-	if format == "sha256" {
-		args = append(args, "--object-format=sha256")
-	}
-	args = append(args, root)
-	command := exec.Command("git", args...)
-	if output, err := command.CombinedOutput(); err != nil {
-		if format == "sha256" {
-			t.Skipf("installed Git lacks SHA-256 repositories: %v: %s", err, output)
-		}
-		t.Fatalf("git init: %v: %s", err, output)
-	}
-	runWorktreeGit(t, root, "config", "user.name", "Test")
-	runWorktreeGit(t, root, "config", "user.email", "test@example.com")
+	repo := gitfixture.InitNativeObjectFormat(t, t.TempDir(), format)
+	root := repo.Root()
 	writeWorktreeFile(t, filepath.Join(root, "tracked.txt"), "base\n")
 	for _, resident := range []string{"efforts", "worktrees"} {
 		ignore := filepath.Join(root, ".awf", resident, ".gitignore")
 		writeWorktreeFile(t, ignore, "*\n!.gitignore\n")
-		runWorktreeGit(t, root, "add", "--", filepath.ToSlash(filepath.Join(".awf", resident, ".gitignore")))
+		gitfixture.NativeAdd(t, repo, filepath.ToSlash(filepath.Join(".awf", resident, ".gitignore")))
 	}
 	commitWorktree(t, root, "base")
 	return root
@@ -1313,24 +1303,11 @@ func writeWorktreeFile(t *testing.T, path, content string) {
 	}
 }
 
+// commitWorktree commits everything outside .awf, so the managed-worktree roots
+// under .awf/worktrees never enter the parent checkout's index.
 func commitWorktree(t *testing.T, root, message string) {
 	t.Helper()
-	runWorktreeGit(t, root, "add", "-A", "--", ".", ":(exclude).awf")
-	runWorktreeGit(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", message)
-}
-
-func runWorktreeGit(t *testing.T, root string, args ...string) string {
-	t.Helper()
-	fixed := append([]string{"-C", root}, args...)
-	command := exec.Command("git", fixed...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %v: %v\n%s", fixed, err, output)
-	}
-	return strings.TrimSpace(string(output))
-}
-
-func commandSucceeds(root string, args ...string) bool {
-	fixed := append([]string{"-C", root}, args...)
-	return exec.Command("git", fixed...).Run() == nil
+	repo := gitfixture.At(root)
+	gitfixture.NativeAddAllExcept(t, repo, ".awf")
+	gitfixture.NativeCommit(t, repo, message)
 }

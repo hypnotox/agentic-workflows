@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	gogit "github.com/go-git/go-git/v5"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -27,8 +26,9 @@ func lifecycleGit(t *testing.T, dir string, args ...string) string {
 
 func lifecycleRepo(t *testing.T) (*Repo, string) {
 	t.Helper()
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "base\n"})
 	// The seam's isolated environment strips user and system config, so an
 	// operation that records a commit needs the identity in the repository's own
 	// config - which is where a real checkout carries it too.
@@ -176,21 +176,21 @@ func TestChangeCountsSeparatesEveryDirtyTreeState(t *testing.T) {
 	ctx := testContext(t)
 	for _, test := range []struct {
 		name               string
-		dirty              func(t *testing.T, repo *gitfixtureRepo)
+		dirty              func(t *testing.T, f gitfixture.Fixture)
 		tracked, untracked int
 	}{
 		{name: "clean"},
 		{
 			name: "staged only",
-			dirty: func(t *testing.T, f *gitfixtureRepo) {
-				gitfixture.Stage(t, f.repo, f.dir, map[string]string{"tracked.txt": "staged\n"})
+			dirty: func(t *testing.T, f gitfixture.Fixture) {
+				gitfixture.Stage(t, f, map[string]string{"tracked.txt": "staged\n"})
 			},
 			tracked: 1,
 		},
 		{
 			name: "unstaged only",
-			dirty: func(t *testing.T, f *gitfixtureRepo) {
-				if err := os.WriteFile(filepath.Join(f.dir, "tracked.txt"), []byte("unstaged\n"), 0o644); err != nil {
+			dirty: func(t *testing.T, f gitfixture.Fixture) {
+				if err := os.WriteFile(filepath.Join(f.Root(), "tracked.txt"), []byte("unstaged\n"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -198,8 +198,8 @@ func TestChangeCountsSeparatesEveryDirtyTreeState(t *testing.T) {
 		},
 		{
 			name: "untracked only",
-			dirty: func(t *testing.T, f *gitfixtureRepo) {
-				if err := os.WriteFile(filepath.Join(f.dir, "loose.txt"), []byte("loose\n"), 0o644); err != nil {
+			dirty: func(t *testing.T, f gitfixture.Fixture) {
+				if err := os.WriteFile(filepath.Join(f.Root(), "loose.txt"), []byte("loose\n"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -211,12 +211,12 @@ func TestChangeCountsSeparatesEveryDirtyTreeState(t *testing.T) {
 			// resident from reading as dirt. Pin it here, because the worktree
 			// manager's refusal now depends on it and nothing else states it.
 			name: "ignored resident is not dirt",
-			dirty: func(t *testing.T, f *gitfixtureRepo) {
-				resident := filepath.Join(f.dir, ".awf", "efforts")
+			dirty: func(t *testing.T, f gitfixture.Fixture) {
+				resident := filepath.Join(f.Root(), ".awf", "efforts")
 				if err := os.MkdirAll(resident, 0o700); err != nil {
 					t.Fatal(err)
 				}
-				gitfixture.Commit(t, f.repo, f.dir, "resident gitignore", map[string]string{".awf/efforts/.gitignore": "*\n!.gitignore\n"})
+				gitfixture.Commit(t, f, "resident gitignore", map[string]string{".awf/efforts/.gitignore": "*\n!.gitignore\n"})
 				if err := os.WriteFile(filepath.Join(resident, "memory.md"), []byte("Effort: x\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
@@ -224,11 +224,12 @@ func TestChangeCountsSeparatesEveryDirtyTreeState(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			repo, dir := gitfixture.InitRepo(t)
-			gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "base\n"})
+			repo := gitfixture.InitRepo(t)
+			dir := repo.Root()
+			gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "base\n"})
 			handle := statusRepo(t, dir)
 			if test.dirty != nil {
-				test.dirty(t, &gitfixtureRepo{repo: repo, dir: dir})
+				test.dirty(t, repo)
 			}
 			tracked, untracked, err := handle.ChangeCounts(ctx)
 			if err != nil || tracked != test.tracked || untracked != test.untracked {
@@ -338,10 +339,4 @@ func TestLifecycleReadsRefuseAnUnusableRepositoryAndResponse(t *testing.T) {
 	if _, err := truncated.ResolveCommit(ctx, "HEAD"); err == nil || !strings.Contains(err.Error(), "invalid object ID") {
 		t.Fatalf("truncated revision response error = %v, want an invalid-object-ID refusal", err)
 	}
-}
-
-// gitfixtureRepo carries the two fixture handles a dirty-state setup needs.
-type gitfixtureRepo struct {
-	repo *gogit.Repository
-	dir  string
 }

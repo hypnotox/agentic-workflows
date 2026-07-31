@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 const (
@@ -283,26 +284,27 @@ func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 	// newRepo builds a committed repository whose primary checkout carries the
 	// legacy record for legacyIDA.
-	newRepo := func(t *testing.T) string {
+	newRepo := func(t *testing.T) gitfixture.Fixture {
 		t.Helper()
 		primary := filepath.Join(t.TempDir(), "primary")
-		git(t, "init", primary)
+		repo := gitfixture.InitNativeAt(t, primary)
 		if err := os.WriteFile(filepath.Join(primary, "tracked"), []byte("x"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		git(t, "-C", primary, "add", "tracked")
-		git(t, "-C", primary, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-m", "base")
+		gitfixture.NativeAdd(t, repo, "tracked")
+		gitfixture.NativeCommit(t, repo, "base")
 		if err := os.MkdirAll(filepath.Join(primary, filepath.FromSlash(legacyEffortsRel)), 0o700); err != nil {
 			t.Fatal(err)
 		}
 		writeLegacyRecord(t, primary, legacyIDA)
-		return primary
+		return repo
 	}
 	managedRel := legacyWorktreesRel + "/" + legacyIDA
 
 	t.Run("registered-managed-worktree", func(t *testing.T) {
-		primary := newRepo(t)
-		git(t, "-C", primary, "worktree", "add", "-b", legacyBranchPrefix+legacyIDA, filepath.Join(primary, filepath.FromSlash(managedRel)), "HEAD")
+		repo := newRepo(t)
+		primary := repo.Root()
+		gitfixture.NativeWorktreeAdd(t, repo, filepath.Join(primary, filepath.FromSlash(managedRel)), legacyBranchPrefix+legacyIDA)
 		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "legacy managed worktree path", legacyWorktreeNextAction(legacyIDA))
 		if _, err := os.Stat(filepath.Join(primary, filepath.FromSlash(legacyEffortsRel), legacyIDA+".json")); err != nil {
@@ -310,9 +312,10 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		}
 	})
 	t.Run("registration-without-its-path", func(t *testing.T) {
-		primary := newRepo(t)
+		repo := newRepo(t)
+		primary := repo.Root()
 		managed := filepath.Join(primary, filepath.FromSlash(managedRel))
-		git(t, "-C", primary, "worktree", "add", "-b", legacyBranchPrefix+legacyIDA, managed, "HEAD")
+		gitfixture.NativeWorktreeAdd(t, repo, managed, legacyBranchPrefix+legacyIDA)
 		if err := os.RemoveAll(managed); err != nil {
 			t.Fatal(err)
 		}
@@ -320,24 +323,27 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		requireRefusal(t, err, "is still registered with Git", legacyWorktreeNextAction(legacyIDA))
 	})
 	t.Run("branch-only", func(t *testing.T) {
-		primary := newRepo(t)
-		git(t, "-C", primary, "branch", legacyBranchPrefix+legacyIDA)
+		repo := newRepo(t)
+		primary := repo.Root()
+		gitfixture.NativeBranch(t, repo, legacyBranchPrefix+legacyIDA)
 		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "legacy managed branch", legacyWorktreeNextAction(legacyIDA))
 	})
 	t.Run("branch-with-no-surviving-record", func(t *testing.T) {
 		// Git topology alone is enough: the identifier is recovered from the
 		// branch name even though nothing under .awf names it any more.
-		primary := newRepo(t)
+		repo := newRepo(t)
+		primary := repo.Root()
 		if err := os.Remove(filepath.Join(primary, filepath.FromSlash(legacyEffortsRel), legacyIDA+".json")); err != nil {
 			t.Fatal(err)
 		}
-		git(t, "-C", primary, "branch", legacyBranchPrefix+legacyIDB)
+		gitfixture.NativeBranch(t, repo, legacyBranchPrefix+legacyIDB)
 		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "legacy managed branch "+legacyBranchPrefix+legacyIDB, legacyWorktreeNextAction(legacyIDB))
 	})
 	t.Run("managed-directory-without-git-facts", func(t *testing.T) {
-		primary := newRepo(t)
+		repo := newRepo(t)
+		primary := repo.Root()
 		if err := os.MkdirAll(filepath.Join(primary, filepath.FromSlash(managedRel)), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -345,10 +351,11 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		requireRefusal(t, err, "legacy managed worktree path", legacyWorktreeNextAction(legacyIDA))
 	})
 	t.Run("deterministic-refusal-order", func(t *testing.T) {
-		primary := newRepo(t)
+		repo := newRepo(t)
+		primary := repo.Root()
 		writeLegacyRecord(t, primary, legacyIDB)
 		for _, id := range []string{legacyIDA, legacyIDB} {
-			git(t, "-C", primary, "branch", legacyBranchPrefix+id)
+			gitfixture.NativeBranch(t, repo, legacyBranchPrefix+id)
 		}
 		first, err := ClassifyLegacyResidents(testContext(t), primary)
 		second, secondErr := ClassifyLegacyResidents(testContext(t), primary)
@@ -364,9 +371,10 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 	t.Run("managed-branch-checked-out-elsewhere", func(t *testing.T) {
 		// The branch is what makes the effort's work reachable, so it refuses
 		// wherever it is checked out, not only under the managed root.
-		primary := newRepo(t)
+		repo := newRepo(t)
+		primary := repo.Root()
 		elsewhere := filepath.Join(filepath.Dir(primary), "elsewhere")
-		git(t, "-C", primary, "worktree", "add", "-b", legacyBranchPrefix+legacyIDA, elsewhere, "HEAD")
+		gitfixture.NativeWorktreeAdd(t, repo, elsewhere, legacyBranchPrefix+legacyIDA)
 		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "is checked out at "+elsewhere, legacyWorktreeNextAction(legacyIDA))
 	})
@@ -378,7 +386,8 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		}
 	})
 	t.Run("clean-repository-classifies", func(t *testing.T) {
-		primary := newRepo(t)
+		repo := newRepo(t)
+		primary := repo.Root()
 		result, err := ClassifyLegacyResidents(testContext(t), primary)
 		if err != nil {
 			t.Fatalf("classify: %v", err)
@@ -391,9 +400,10 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		}
 	})
 	t.Run("linked-worktree-classifies-the-primary-root", func(t *testing.T) {
-		primary := newRepo(t)
+		repo := newRepo(t)
+		primary := repo.Root()
 		linked := filepath.Join(filepath.Dir(primary), "linked")
-		git(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+		gitfixture.NativeWorktreeAddDetached(t, repo, linked, "HEAD")
 		result, err := ClassifyLegacyResidents(testContext(t), linked)
 		if err != nil {
 			t.Fatalf("classify from a linked checkout: %v", err)
@@ -461,7 +471,7 @@ func TestClassifyLegacyResidentsGitFailures(t *testing.T) {
 	})
 	t.Run("unsafe-topology-propagates", func(t *testing.T) {
 		primary := filepath.Join(t.TempDir(), "primary")
-		git(t, "init", primary)
+		gitfixture.InitNativeAt(t, primary)
 		alias := filepath.Join(filepath.Dir(primary), "alias")
 		if err := os.Symlink(primary, alias); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
@@ -491,17 +501,17 @@ func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 	})
 	t.Run("residents-outside-the-invoking-checkout", func(t *testing.T) {
 		primary := filepath.Join(t.TempDir(), "primary")
-		git(t, "init", primary)
+		repo := gitfixture.InitNativeAt(t, primary)
 		if err := os.WriteFile(filepath.Join(primary, "tracked"), []byte("x"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		git(t, "-C", primary, "add", "tracked")
-		git(t, "-C", primary, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-m", "base")
+		gitfixture.NativeAdd(t, repo, "tracked")
+		gitfixture.NativeCommit(t, repo, "base")
 		if err := os.MkdirAll(filepath.Join(primary, filepath.FromSlash(legacyMemoryRel)), 0o700); err != nil {
 			t.Fatal(err)
 		}
 		linked := filepath.Join(filepath.Dir(primary), "linked")
-		git(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+		gitfixture.NativeWorktreeAddDetached(t, repo, linked, "HEAD")
 		var out bytes.Buffer
 		// One journal spans one root, so the split is refused rather than
 		// half-applied across two checkouts.

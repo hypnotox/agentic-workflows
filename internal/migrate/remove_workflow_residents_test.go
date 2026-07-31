@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // invariant: config/migrations-and-locks:workflow-telemetry-config-migration
@@ -81,7 +81,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	})
 	t.Run("Git safety error propagates without deletion", func(t *testing.T) {
 		primary := filepath.Join(t.TempDir(), "primary")
-		git(t, "init", primary)
+		gitfixture.InitNativeAt(t, primary)
 		makeResidents(t, primary)
 		alias := filepath.Join(filepath.Dir(primary), "alias")
 		if err := os.Symlink(primary, alias); err != nil {
@@ -184,14 +184,14 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	})
 	t.Run("linked-worktree-primary-root", func(t *testing.T) {
 		primary := filepath.Join(t.TempDir(), "primary")
-		git(t, "init", primary)
+		repo := gitfixture.InitNativeAt(t, primary)
 		if err := os.WriteFile(filepath.Join(primary, "tracked"), []byte("x"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		git(t, "-C", primary, "add", "tracked")
-		git(t, "-C", primary, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-m", "base")
+		gitfixture.NativeAdd(t, repo, "tracked")
+		gitfixture.NativeCommit(t, repo, "base")
 		linked := filepath.Join(filepath.Dir(primary), "linked")
-		git(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+		gitfixture.NativeWorktreeAddDetached(t, repo, linked, "HEAD")
 		makeResidents(t, primary)
 		var out bytes.Buffer
 		if err := applyRemoveWorkflowResidents(testContext(t), linked, &out); err != nil {
@@ -207,12 +207,4 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		}
 		assertRetained(t, primary)
 	})
-}
-
-func git(t *testing.T, args ...string) {
-	t.Helper()
-	cmd := exec.Command("git", args...)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
-	}
 }

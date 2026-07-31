@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-git/go-git/v5"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // dir is the working-memory prefix; every fixture below builds its citation
@@ -22,29 +22,9 @@ func memoryGateRepo(t *testing.T, memoryCiteYAML string, stage map[string]string
 	t.Helper()
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n"+memoryCiteYAML)
-	repo, err := git.PlainInit(root, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add(".awf/config.yaml"); err != nil {
-		t.Fatal(err)
-	}
-	for name, content := range stage {
-		full := filepath.Join(root, name)
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := wt.Add(name); err != nil {
-			t.Fatal(err)
-		}
-	}
+	repo := gitfixture.InitRepoAt(t, root)
+	gitfixture.Add(t, repo, ".awf/config.yaml")
+	gitfixture.Stage(t, repo, stage)
 	return root
 }
 
@@ -69,10 +49,7 @@ func TestMemoryGateKnobOff(t *testing.T) {
 func TestMemoryGateRefusesMissingOrInvalidStagedConfig(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := t.TempDir()
-	if _, err := git.PlainInit(root, false); err != nil {
-		t.Fatal(err)
-	}
+	root := gitfixture.InitRepo(t).Root()
 	if err := runMemoryGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "staged snapshot has no") {
 		t.Fatalf("missing staged config: %v", err)
 	}
@@ -175,17 +152,7 @@ func TestMemoryGateSkipsStagedSymlink(t *testing.T) {
 	if err := os.Symlink(cite(), filepath.Join(root, "docs/plans/link.md")); err != nil {
 		t.Fatal(err)
 	}
-	repo, err := git.PlainOpen(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add("docs/plans/link.md"); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.Add(t, gitfixture.At(root), "docs/plans/link.md")
 	if err := runMemoryGate(ctx, root, io.Discard); err != nil {
 		t.Fatalf("a staged symlink must not block regular staged files: %v", err)
 	}

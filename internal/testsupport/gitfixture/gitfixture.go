@@ -1,9 +1,21 @@
-// Package gitfixture provides go-git-backed test fixtures (a fixed commit
-// signature, a fresh repo, and a write+commit helper) for awf's test suites
-// that need a real git repository. It is kept separate from
-// internal/testsupport so a caller that only needs e.g.
-// testsupport.WriteFile does not have to pull go-git into its test binary
-// (ADR-0044).
+// Package gitfixture is the single home for building git repository state in
+// awf's test suites. It exposes two lanes over one opaque Fixture value: a
+// go-git lane that constructs state in process, and a native lane (this
+// package's own os/exec calls) for the states go-git cannot express -
+// registered worktrees, orphan branches, an in-progress merge, and a
+// non-default object format.
+//
+// The exported surface is backend-neutral: commits are hex strings and
+// repositories are Fixture values, so a consumer never names a go-git or
+// plumbing type to build a fixture. Sig is the one deliberate exception, kept
+// for the internal/git suites that drive go-git directly.
+//
+// The package deliberately does not import internal/git
+// (tooling/quality-gates:testsupport-zero-internal-deps), so the native lane
+// carries its own copy of the isolated-environment construction rather than
+// reusing the seam's. It is kept out of internal/testsupport so a caller that
+// only needs e.g. testsupport.WriteFile does not pull go-git into its test
+// binary (ADR-0044).
 package gitfixture
 
 import (
@@ -14,90 +26,277 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
+	indexformat "github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-// Sig is the fixed commit signature used by InitRepo/Commit fixtures across
-// awf's test suites.
-var Sig = &object.Signature{Name: "T", Email: "t@example.com", When: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+// authorName and authorEmail are the fixed commit identity both lanes use, so a
+// go-git-built and a natively-built fixture carry the same authorship.
+const (
+	authorName  = "T"
+	authorEmail = "t@example.com"
+)
 
-// InitRepo creates a fresh git repository in a new t.TempDir(), returning the
-// repository and its root path.
-func InitRepo(t *testing.T) (*git.Repository, string) {
-	t.Helper()
-	dir := t.TempDir()
-	repo, err := git.PlainInit(dir, false)
-	if err != nil { // coverage-ignore: PlainInit into a fresh empty t.TempDir() fails only on a permission fault a test cannot trigger
-		t.Fatalf("init: %v", err)
-	}
-	return repo, dir
+// Sig is the fixed commit signature the go-git lane writes. It stays exported
+// for the internal/git suites, which are allowed to drive go-git directly and
+// need the same identity on the commits they build by hand.
+var Sig = &object.Signature{Name: authorName, Email: authorEmail, When: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+
+// Fixture identifies a fixture repository by its root. Both lanes operate on
+// it, and it is the only repository value the package hands out.
+type Fixture struct {
+	root string
 }
 
-// Stage writes the given paths into repo's worktree (rooted at dir, creating any
-// parent directories) and adds them to the index without committing, so a test
-// can exercise a staged-but-uncommitted index universe distinct from the working
-// tree.
-func Stage(t *testing.T, repo *git.Repository, dir string, write map[string]string) {
+// Root reports the fixture repository's working-tree root.
+func (f Fixture) Root() string { return f.root }
+
+// At names an existing repository checkout, including a linked worktree the
+// code under test registered, so fixture operations can be aimed at it.
+func At(root string) Fixture { return Fixture{root: root} }
+
+// InitRepo creates a fresh git repository in a new t.TempDir().
+func InitRepo(t *testing.T) Fixture {
 	t.Helper()
-	wt, err := repo.Worktree()
-	if err != nil { // coverage-ignore: Worktree() on a just-initialized non-bare repo cannot fail
-		t.Fatalf("worktree: %v", err)
+	return InitRepoAt(t, t.TempDir())
+}
+
+// InitRepoAt creates a git repository in root, which may already hold files a
+// test wrote before the repository existed.
+func InitRepoAt(t *testing.T, root string) Fixture {
+	t.Helper()
+	if _, err := git.PlainInit(root, false); err != nil { // coverage-ignore: PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger
+		t.Fatalf("init: %v", err)
 	}
+	return Fixture{root: root}
+}
+
+// Stage writes the given paths into the fixture's worktree (creating any parent
+// directories) and adds them to the index without committing, so a test can
+// exercise a staged-but-uncommitted index universe distinct from the working
+// tree.
+func Stage(t *testing.T, f Fixture, write map[string]string) {
+	t.Helper()
+	stageInto(t, worktree(t, f), f.root, write)
+}
+
+// StageFile writes one path with an explicit file mode and stages it, so a
+// fixture can pin an executable bit the index must preserve.
+func StageFile(t *testing.T, f Fixture, name, content string, mode os.FileMode) {
+	t.Helper()
+	writeUnder(t, f.root, name, content, mode)
+	Add(t, f, name)
+}
+
+// Add stages paths that already exist in the worktree, including a symlink the
+// test created itself.
+func Add(t *testing.T, f Fixture, paths ...string) {
+	t.Helper()
+	addAll(t, worktree(t, f), paths)
+}
+
+// AddAll stages every change in the worktree, matching `git add -A` at the
+// repository root.
+func AddAll(t *testing.T, f Fixture) {
+	t.Helper()
+	if err := worktree(t, f).AddWithOptions(&git.AddOptions{All: true}); err != nil { // coverage-ignore: staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger
+		t.Fatalf("add all: %v", err)
+	}
+}
+
+// StageRemoval stages the deletion of tracked paths without committing, so a
+// test can distinguish a staged deletion from a working-tree one.
+func StageRemoval(t *testing.T, f Fixture, names ...string) {
+	t.Helper()
+	removeFrom(t, worktree(t, f), names)
+}
+
+// StageGitlink appends a gitlink (submodule) index entry, which carries no
+// regular file content and so exercises the readers' skip path.
+func StageGitlink(t *testing.T, f Fixture, name string) {
+	t.Helper()
+	appendIndexEntry(t, f, &indexformat.Entry{
+		Name: name,
+		Mode: filemode.Submodule,
+		Hash: plumbing.NewHash("0123456789012345678901234567890123456789"),
+	})
+}
+
+// StageUnmerged appends a conflicted (stage-2) index entry, so a test can drive
+// the unmerged-index refusal.
+func StageUnmerged(t *testing.T, f Fixture, name string) {
+	t.Helper()
+	appendIndexEntry(t, f, &indexformat.Entry{Name: name, Mode: filemode.Regular, Stage: indexformat.OurMode})
+}
+
+// Commit writes/removes the given paths in the fixture's worktree, stages them,
+// and commits with Sig, returning the commit's hex hash.
+func Commit(t *testing.T, f Fixture, msg string, write map[string]string, remove ...string) string {
+	t.Helper()
+	wt := worktree(t, f)
+	stageInto(t, wt, f.root, write)
+	removeFrom(t, wt, remove)
+	h, err := wt.Commit(msg, &git.CommitOptions{Author: Sig, Committer: Sig})
+	if err != nil { // coverage-ignore: Commit with a valid signature and staged tree cannot fail
+		t.Fatalf("commit: %v", err)
+	}
+	return h.String()
+}
+
+// Merge creates a commit whose tree is the current index, with the given
+// parents in order (the first is the first parent), so a fixture can exercise
+// first-parent range semantics. It allows an empty commit, so a merge can
+// integrate a branch whose tree already matches HEAD, and with no parents named
+// it simply commits the index on top of HEAD.
+func Merge(t *testing.T, f Fixture, msg string, parents ...string) string {
+	t.Helper()
+	h, err := worktree(t, f).Commit(msg, &git.CommitOptions{
+		Parents:           hashes(parents),
+		AllowEmptyCommits: true,
+		Author:            Sig,
+		Committer:         Sig,
+	})
+	if err != nil { // coverage-ignore: Commit with valid parents and signature on a healthy worktree cannot fail
+		t.Fatalf("merge commit: %v", err)
+	}
+	return h.String()
+}
+
+// Graft writes a commit object directly, taking its tree from treeFrom and its
+// parents as given, without moving any reference. It builds the shapes an
+// ordinary commit cannot reach, such as a merge whose tree deliberately differs
+// from its first parent's.
+func Graft(t *testing.T, f Fixture, msg, treeFrom string, parents ...string) string {
+	t.Helper()
+	commit := &object.Commit{
+		Author:       *Sig,
+		Committer:    *Sig,
+		Message:      msg,
+		TreeHash:     plumbing.NewHash(TreeHash(t, f, treeFrom)),
+		ParentHashes: hashes(parents),
+	}
+	repo := open(t, f)
+	encoded := repo.Storer.NewEncodedObject()
+	if err := commit.Encode(encoded); err != nil { // coverage-ignore: encoding a commit built from resolved fixture hashes cannot fail
+		t.Fatalf("encode graft: %v", err)
+	}
+	h, err := repo.Storer.SetEncodedObject(encoded)
+	if err != nil { // coverage-ignore: storing an encoded object into the fixture's own object database cannot fail
+		t.Fatalf("store graft: %v", err)
+	}
+	return h.String()
+}
+
+// TreeHash reports the hex tree hash of the commit named by rev.
+func TreeHash(t *testing.T, f Fixture, rev string) string {
+	t.Helper()
+	commit, err := open(t, f).CommitObject(plumbing.NewHash(rev))
+	if err != nil { // coverage-ignore: reading back a commit the fixture just wrote cannot fail
+		t.Fatalf("commit object %s: %v", rev, err)
+	}
+	return commit.TreeHash.String()
+}
+
+// CheckoutNewBranch creates a branch at the given commit and checks it out, so
+// a fixture can put history on a branch other than the initial one.
+func CheckoutNewBranch(t *testing.T, f Fixture, name, at string) {
+	t.Helper()
+	options := &git.CheckoutOptions{
+		Hash:   plumbing.NewHash(at),
+		Branch: plumbing.NewBranchReferenceName(name),
+		Create: true,
+	}
+	if err := worktree(t, f).Checkout(options); err != nil { // coverage-ignore: creating a branch at a commit the fixture just wrote cannot fail
+		t.Fatalf("checkout -b %s: %v", name, err)
+	}
+}
+
+// appendIndexEntry adds a raw index entry, the escape hatch for index states
+// (gitlink, conflicted) that no worktree operation produces.
+func appendIndexEntry(t *testing.T, f Fixture, entry *indexformat.Entry) {
+	t.Helper()
+	repo := open(t, f)
+	idx, err := repo.Storer.Index()
+	if err != nil { // coverage-ignore: reading the index of a healthy fixture repository cannot fail
+		t.Fatalf("read index: %v", err)
+	}
+	idx.Entries = append(idx.Entries, entry)
+	if err := repo.Storer.SetIndex(idx); err != nil { // coverage-ignore: writing back an index just read cannot fail
+		t.Fatalf("write index: %v", err)
+	}
+}
+
+// stageInto writes and stages a whole path set through one open worktree.
+func stageInto(t *testing.T, wt *git.Worktree, root string, write map[string]string) {
+	t.Helper()
 	for name, content := range write {
-		full := filepath.Join(dir, name)
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { // coverage-ignore: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger
-			t.Fatalf("mkdir %s: %v", name, err)
-		}
-		if err := os.WriteFile(full, []byte(content), 0o644); err != nil { // coverage-ignore: writing into the repo's own worktree dir fails only on a permission fault a test cannot trigger
-			t.Fatalf("write %s: %v", name, err)
-		}
-		if _, err := wt.Add(name); err != nil { // coverage-ignore: Add of a path just written above cannot fail
+		writeUnder(t, root, name, content, 0o644)
+		addAll(t, wt, []string{name})
+	}
+}
+
+// addAll stages existing paths through an already-open worktree.
+func addAll(t *testing.T, wt *git.Worktree, paths []string) {
+	t.Helper()
+	for _, name := range paths {
+		if _, err := wt.Add(name); err != nil { // coverage-ignore: Add of a path the caller asserts exists cannot fail in a test fixture
 			t.Fatalf("add %s: %v", name, err)
 		}
 	}
 }
 
-// Merge creates a merge commit whose tree is the current index, with the given
-// parents in order (the first is the first parent), so a fixture can exercise
-// first-parent range semantics. It allows an empty commit, so a merge can
-// integrate a branch whose tree already matches HEAD.
-func Merge(t *testing.T, repo *git.Repository, msg string, parents ...plumbing.Hash) plumbing.Hash {
+// removeFrom stages deletions through an already-open worktree.
+func removeFrom(t *testing.T, wt *git.Worktree, names []string) {
 	t.Helper()
-	wt, err := repo.Worktree()
-	if err != nil { // coverage-ignore: Worktree() on a just-initialized non-bare repo cannot fail
-		t.Fatalf("worktree: %v", err)
+	for _, name := range names {
+		if _, err := wt.Remove(name); err != nil { // coverage-ignore: Remove of a path the caller asserts is tracked cannot fail in a test fixture
+			t.Fatalf("remove %s: %v", name, err)
+		}
 	}
-	h, err := wt.Commit(msg, &git.CommitOptions{Parents: parents, AllowEmptyCommits: true, Author: Sig, Committer: Sig})
-	if err != nil { // coverage-ignore: Commit with valid parents and signature on a healthy worktree cannot fail
-		t.Fatalf("merge commit: %v", err)
-	}
-	return h
 }
 
-// Commit writes/removes the given paths in repo's worktree (rooted at dir),
-// stages them, and commits with Sig, returning the commit hash.
-func Commit(t *testing.T, repo *git.Repository, dir, msg string, write map[string]string, remove ...string) plumbing.Hash {
+// writeUnder writes content at name relative to root, creating parents.
+func writeUnder(t *testing.T, root, name, content string, mode os.FileMode) {
 	t.Helper()
-	wt, err := repo.Worktree()
-	if err != nil { // coverage-ignore: Worktree() on a just-initialized non-bare repo cannot fail
+	full := filepath.Join(root, name)
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { // coverage-ignore: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger
+		t.Fatalf("mkdir %s: %v", name, err)
+	}
+	if err := os.WriteFile(full, []byte(content), mode); err != nil { // coverage-ignore: writing into the repo's own worktree dir fails only on a permission fault a test cannot trigger
+		t.Fatalf("write %s: %v", name, err)
+	}
+}
+
+// open returns the go-git repository behind the fixture.
+func open(t *testing.T, f Fixture) *git.Repository {
+	t.Helper()
+	repo, err := git.PlainOpen(f.root)
+	if err != nil { // coverage-ignore: opening a repository the fixture itself created cannot fail
+		t.Fatalf("open %s: %v", f.root, err)
+	}
+	return repo
+}
+
+// worktree returns the fixture repository's worktree.
+func worktree(t *testing.T, f Fixture) *git.Worktree {
+	t.Helper()
+	wt, err := open(t, f).Worktree()
+	if err != nil { // coverage-ignore: Worktree() on a non-bare fixture repository cannot fail
 		t.Fatalf("worktree: %v", err)
 	}
-	for name, content := range write {
-		if werr := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); werr != nil { // coverage-ignore: writing into the repo's own worktree dir fails only on a permission fault a test cannot trigger
-			t.Fatalf("write %s: %v", name, werr)
-		}
-		if _, aerr := wt.Add(name); aerr != nil { // coverage-ignore: Add of a path just written above cannot fail
-			t.Fatalf("add %s: %v", name, aerr)
-		}
+	return wt
+}
+
+// hashes converts hex commit ids to plumbing hashes, keeping the exported
+// surface free of go-git types.
+func hashes(revs []string) []plumbing.Hash {
+	if len(revs) == 0 {
+		return nil
 	}
-	for _, name := range remove {
-		if _, rerr := wt.Remove(name); rerr != nil { // coverage-ignore: Remove of a path the caller asserts is tracked cannot fail in a test fixture
-			t.Fatalf("remove %s: %v", name, rerr)
-		}
+	converted := make([]plumbing.Hash, 0, len(revs))
+	for _, rev := range revs {
+		converted = append(converted, plumbing.NewHash(rev))
 	}
-	h, err := wt.Commit(msg, &git.CommitOptions{Author: Sig, Committer: Sig})
-	if err != nil { // coverage-ignore: Commit with a valid signature and staged tree cannot fail
-		t.Fatalf("commit: %v", err)
-	}
-	return h
+	return converted
 }

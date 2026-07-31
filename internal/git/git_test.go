@@ -23,8 +23,9 @@ import (
 func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "awf-git-test-home")) }
 
 func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked"})
 	ctx, cancel := context.WithCancel(testsupport.Context(t))
 	cancel()
 	for name, call := range map[string]func() error{
@@ -59,10 +60,11 @@ func (c *cancelOnErrCall) Err() error {
 }
 
 func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
-	fixture, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, fixture, dir, "base", map[string]string{"tracked.txt": "base"})
-	gitfixture.Commit(t, fixture, dir, "changed", map[string]string{"tracked.txt": "changed"})
-	gitfixture.Stage(t, fixture, dir, map[string]string{"staged.txt": "staged"})
+	fixture := gitfixture.InitRepo(t)
+	dir := fixture.Root()
+	gitfixture.Commit(t, fixture, "base", map[string]string{"tracked.txt": "base"})
+	gitfixture.Commit(t, fixture, "changed", map[string]string{"tracked.txt": "changed"})
+	gitfixture.Stage(t, fixture, map[string]string{"staged.txt": "staged"})
 	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("untracked"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -106,11 +108,12 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 }
 
 func TestWorkingPaths(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"src/a.txt": "a", "gone.txt": "gone", ".gitignore": "ignored.txt\n"})
+	gitfixture.Commit(t, repo, "base", map[string]string{"src/a.txt": "a", "gone.txt": "gone", ".gitignore": "ignored.txt\n"})
 	if err := os.Remove(filepath.Join(dir, "gone.txt")); err != nil {
 		t.Fatal(err)
 	}
@@ -138,8 +141,9 @@ func TestWorkingPaths(t *testing.T) {
 // WorkingPaths second). A future staged-only status consumer that never reads
 // untracked entries earns an explicit path exemption here instead.
 func TestWorkingPathsExcludesNestedFileBelowIgnoredManagedWorktreeRoot(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{".gitignore": ".awf/worktrees/\n", "tracked.txt": "tracked"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{".gitignore": ".awf/worktrees/\n", "tracked.txt": "tracked"})
 	managed := filepath.Join(dir, ".awf", "worktrees", "managed")
 	cmd := exec.CommandContext(testsupport.Context(t), "git", "-C", dir, "worktree", "add", "-b", "managed", managed, "HEAD")
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -171,8 +175,9 @@ func TestWorkingPathsHonorsGlobalExcludes(t *testing.T) {
 		_ = os.Remove(gitconfig)
 		_ = os.Remove(excludes)
 	})
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked"})
 	if err := os.WriteFile(filepath.Join(dir, "globally-ignored.txt"), []byte("junk"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -210,11 +215,12 @@ func TestOpenContainingStopsAtMalformedCandidateAndHidesBackendErrors(t *testing
 }
 
 func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	if err := os.MkdirAll(filepath.Join(dir, "nested", ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{
+	gitfixture.Commit(t, repo, "base", map[string]string{
 		"nested/.awf/config.yaml": "prefix: nested\n",
 		"nested/tracked.txt":      "tracked",
 		"outside.txt":             "outside",
@@ -266,7 +272,7 @@ func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 }
 
 func TestWorkingPathsUnborn(t *testing.T) {
-	_, dir := gitfixture.InitRepo(t)
+	dir := gitfixture.InitRepo(t).Root()
 	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("ignored.txt\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +300,7 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 	})
 
 	t.Run("corrupt-head-store", func(t *testing.T) {
-		_, dir := gitfixture.InitRepo(t)
+		dir := gitfixture.InitRepo(t).Root()
 		headPath := filepath.Join(dir, ".git", "HEAD")
 		if err := os.Remove(headPath); err != nil {
 			t.Fatal(err)
@@ -308,7 +314,7 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 	})
 
 	t.Run("dangling-reference", func(t *testing.T) {
-		_, dir := gitfixture.InitRepo(t)
+		dir := gitfixture.InitRepo(t).Root()
 		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("0123456789012345678901234567890123456789\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -318,32 +324,30 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 	})
 
 	t.Run("missing-commit-object", func(t *testing.T) {
-		repo, dir := gitfixture.InitRepo(t)
-		head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked\n"})
-		commitObject := filepath.Join(dir, ".git", "objects", head.String()[:2], head.String()[2:])
+		repo := gitfixture.InitRepo(t)
+		dir := repo.Root()
+		head := gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked\n"})
+		commitObject := filepath.Join(dir, ".git", "objects", head[:2], head[2:])
 		if err := os.Remove(commitObject); err != nil {
 			t.Fatal(err)
 		}
 		_, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
-		wantContext := "resolve working paths HEAD commit " + head.String() + ": "
+		wantContext := "resolve working paths HEAD commit " + head + ": "
 		if err == nil || !strings.HasPrefix(err.Error(), wantContext) {
 			t.Fatalf("missing commit error = %v, want prefix %q", err, wantContext)
 		}
 	})
 
 	t.Run("missing-tree-object", func(t *testing.T) {
-		repo, dir := gitfixture.InitRepo(t)
-		head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked\n"})
-		commit, err := repo.CommitObject(head)
-		if err != nil {
-			t.Fatal(err)
-		}
-		treeHash := commit.TreeHash.String()
+		repo := gitfixture.InitRepo(t)
+		dir := repo.Root()
+		head := gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked\n"})
+		treeHash := gitfixture.TreeHash(t, repo, head)
 		treeObject := filepath.Join(dir, ".git", "objects", treeHash[:2], treeHash[2:])
 		if err := os.Remove(treeObject); err != nil {
 			t.Fatal(err)
 		}
-		_, err = gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
+		_, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
 		wantContext := "resolve working paths HEAD tree " + treeHash + ": "
 		if err == nil || !strings.HasPrefix(err.Error(), wantContext) {
 			t.Fatalf("missing tree error = %v, want prefix %q", err, wantContext)
@@ -352,12 +356,13 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 }
 
 func TestHeadExists(t *testing.T) {
-	_, unborn := gitfixture.InitRepo(t)
+	unborn := gitfixture.InitRepo(t).Root()
 	if has, err := gitRepo(t, unborn).HeadExists(testsupport.Context(t)); err != nil || has {
 		t.Fatalf("unborn HEAD: has=%v err=%v; want false, nil", has, err)
 	}
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	if has, err := gitRepo(t, dir).HeadExists(testsupport.Context(t)); err != nil || !has {
 		t.Fatalf("born HEAD: has=%v err=%v; want true, nil", has, err)
 	}
@@ -383,7 +388,7 @@ func TestHeadExistsRejectsBrokenSymbolicChains(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, dir := gitfixture.InitRepo(t)
+			dir := gitfixture.InitRepo(t).Root()
 			for ref, content := range refs {
 				path := filepath.Join(dir, ".git", filepath.FromSlash(ref))
 				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -404,13 +409,14 @@ func TestHeadExistsRejectsBrokenSymbolicChains(t *testing.T) {
 }
 
 func TestHeadHash(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	if h, err := gitRepo(t, dir).HeadHash(testsupport.Context(t)); err != nil || h == "" {
 		t.Fatalf("born HEAD: hash=%q err=%v; want a hash, nil", h, err)
 	}
 	// An unborn HEAD (a repo with no commits) surfaces the resolve error.
-	_, unborn := gitfixture.InitRepo(t)
+	unborn := gitfixture.InitRepo(t).Root()
 	if _, err := gitRepo(t, unborn).HeadHash(testsupport.Context(t)); err == nil {
 		t.Fatal("unborn HEAD must surface a resolve error")
 	} else if errors.Is(err, plumbing.ErrReferenceNotFound) {
@@ -423,7 +429,7 @@ func TestHeadHash(t *testing.T) {
 }
 
 func TestChangeCountsExposesOnlySeamAndContextErrors(t *testing.T) {
-	_, dir := gitfixture.InitRepo(t)
+	dir := gitfixture.InitRepo(t).Root()
 	repo := gitRepo(t, dir)
 	assertNoExecError := func(t *testing.T, err error) {
 		t.Helper()
@@ -481,11 +487,12 @@ func TestChangeCountsExposesOnlySeamAndContextErrors(t *testing.T) {
 }
 
 func TestChangedPathsRange(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "one", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "one", map[string]string{"a.txt": "a"})
 	// Modify a.txt (From.Name is set) and add b.txt (From.Name empty) so both
 	// sides of the change are exercised.
-	gitfixture.Commit(t, repo, dir, "two", map[string]string{"a.txt": "aa", "b.txt": "b"})
+	gitfixture.Commit(t, repo, "two", map[string]string{"a.txt": "aa", "b.txt": "b"})
 
 	got, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), false, "HEAD~1..HEAD")
 	if err != nil {
@@ -497,20 +504,12 @@ func TestChangedPathsRange(t *testing.T) {
 }
 
 func TestChangedPathsStaged(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 
 	// Stage a new file without committing; leave a second file untracked.
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "staged.txt"), []byte("s"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add("staged.txt"); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.Stage(t, repo, map[string]string{"staged.txt": "s"})
 	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("u"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -525,21 +524,22 @@ func TestChangedPathsStaged(t *testing.T) {
 }
 
 func TestChangedPathsNestedAdopter(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	if err := os.MkdirAll(filepath.Join(dir, "nested"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{
+	base := gitfixture.Commit(t, repo, "base", map[string]string{
 		"nested/inside.txt": "old\n",
 		"outside.txt":       "old\n",
 	})
-	gitfixture.Commit(t, repo, dir, "range changes", map[string]string{
+	gitfixture.Commit(t, repo, "range changes", map[string]string{
 		"nested/inside.txt": "new\n",
 		"nested/added.txt":  "new\n",
 		"outside.txt":       "new\n",
 	})
 	root := filepath.Join(dir, "nested")
-	got, err := gitRepo(t, root).ChangedPaths(testsupport.Context(t), false, base.String()+"..HEAD")
+	got, err := gitRepo(t, root).ChangedPaths(testsupport.Context(t), false, base+"..HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +547,7 @@ func TestChangedPathsNestedAdopter(t *testing.T) {
 		t.Fatalf("nested range paths = %q, want %q", joined, "added.txt,inside.txt")
 	}
 
-	gitfixture.Stage(t, repo, dir, map[string]string{
+	gitfixture.Stage(t, repo, map[string]string{
 		"nested/staged.txt":  "staged\n",
 		"outside-staged.txt": "outside\n",
 	})
@@ -561,8 +561,9 @@ func TestChangedPathsNestedAdopter(t *testing.T) {
 }
 
 func TestChangedPathsNothingStaged(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	got, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), true, "")
 	if err != nil {
 		t.Fatal(err)
@@ -573,8 +574,9 @@ func TestChangedPathsNothingStaged(t *testing.T) {
 }
 
 func TestChangedPathsErrors(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 
 	if _, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), false, "no-separator"); err == nil {
 		t.Error("expected a malformed-range error")
@@ -593,7 +595,7 @@ func TestChangedPathsErrors(t *testing.T) {
 // OpenRepo resolves a normal repository and reports the canonical
 // not-a-repository error outside one.
 func TestOpenRepo(t *testing.T) {
-	_, dir := gitfixture.InitRepo(t)
+	dir := gitfixture.InitRepo(t).Root()
 	if _, err := awfgit.Open(dir); err != nil {
 		t.Fatalf("open a fresh repo: %v", err)
 	}
@@ -609,8 +611,9 @@ func TestOpenRepo(t *testing.T) {
 // repository may carry this extension after native worktree operations, and
 // opening its seam handle must not expose go-git's rejection to consumers.
 func TestOpenToleratesWorktreeConfig(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	configPath := filepath.Join(dir, ".git", "config")
 	file, err := os.OpenFile(configPath, os.O_APPEND|os.O_WRONLY, 0)
 	if err != nil {
@@ -629,8 +632,9 @@ func TestOpenToleratesWorktreeConfig(t *testing.T) {
 }
 
 func TestOpenRepoMalformedConfig(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"go.mod": "module x\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"go.mod": "module x\n"})
 	if err := os.WriteFile(filepath.Join(dir, ".git", "config"), []byte("[core\nbroken = = =\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -675,12 +679,13 @@ func linkedWorktree(t *testing.T, mainDir, name, head, commondir string) string 
 // forms git may write), and a relative pointer to a self-contained gitdir
 // without a commondir (the submodule layout).
 func TestOpenRepoGitfileLayouts(t *testing.T) {
-	repo, mainDir := gitfixture.InitRepo(t)
-	head := gitfixture.Commit(t, repo, mainDir, "base", map[string]string{"go.mod": "module x\n"})
+	repo := gitfixture.InitRepo(t)
+	mainDir := repo.Root()
+	head := gitfixture.Commit(t, repo, "base", map[string]string{"go.mod": "module x\n"})
 
 	for name, tc := range map[string]struct{ head, commondir string }{
 		"relative-commondir-symbolic-head": {"ref: refs/heads/master", "../.."},
-		"absolute-commondir-detached-head": {head.String(), filepath.Join(mainDir, ".git")},
+		"absolute-commondir-detached-head": {head, filepath.Join(mainDir, ".git")},
 	} {
 		t.Run(name, func(t *testing.T) {
 			wtRoot := linkedWorktree(t, mainDir, name, tc.head, tc.commondir)
@@ -695,8 +700,9 @@ func TestOpenRepoGitfileLayouts(t *testing.T) {
 	}
 
 	t.Run("relative-gitfile-without-commondir", func(t *testing.T) {
-		sub, dir := gitfixture.InitRepo(t)
-		gitfixture.Commit(t, sub, dir, "x", map[string]string{"a.txt": "a"})
+		sub := gitfixture.InitRepo(t)
+		dir := sub.Root()
+		gitfixture.Commit(t, sub, "x", map[string]string{"a.txt": "a"})
 		if err := os.Rename(filepath.Join(dir, ".git"), filepath.Join(dir, ".realgit")); err != nil {
 			t.Fatalf("rename: %v", err)
 		}
@@ -737,24 +743,14 @@ func TestOpenRepoMalformedGitfile(t *testing.T) {
 // names present before the transition must disappear afterwards, while the
 // renamed blob remains readable in both the index and commit universes.
 func TestObjectReadContracts(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{"old.txt": "old", "gone.txt": "gone"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"old.txt": "old", "gone.txt": "gone"})
 	if err := os.Rename(filepath.Join(dir, "old.txt"), filepath.Join(dir, "renamed.txt")); err != nil {
 		t.Fatal(err)
 	}
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Remove("old.txt"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Remove("gone.txt"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add("renamed.txt"); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.StageRemoval(t, repo, "old.txt", "gone.txt")
+	gitfixture.Add(t, repo, "renamed.txt")
 	handle := gitRepo(t, dir)
 	indexed, err := handle.IndexBlobs(testsupport.Context(t))
 	if err != nil {
@@ -763,62 +759,42 @@ func TestObjectReadContracts(t *testing.T) {
 	if len(indexed) != 1 || indexed[0].Path != "renamed.txt" || string(indexed[0].Bytes) != "old" {
 		t.Fatalf("staged blobs = %#v", indexed)
 	}
-	head, err := wt.Commit("rename and delete", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig})
-	if err != nil {
-		t.Fatal(err)
-	}
-	committed, err := handle.CommitBlobs(testsupport.Context(t), head.String())
+	head := gitfixture.Commit(t, repo, "rename and delete", nil)
+	committed, err := handle.CommitBlobs(testsupport.Context(t), head)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(committed) != 1 || committed[0].Path != "renamed.txt" {
 		t.Fatalf("committed blobs = %#v", committed)
 	}
-	before, after, err := handle.RangeBlobs(testsupport.Context(t), head.String())
+	before, after, err := handle.RangeBlobs(testsupport.Context(t), head)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(before) != 2 || len(after) != 1 || before[0].Path != "gone.txt" || before[1].Path != "old.txt" || after[0].Path != "renamed.txt" {
 		t.Fatalf("range blobs = before %#v after %#v", before, after)
 	}
-	if base.String() == head.String() {
+	if base == head {
 		t.Fatal("fixture transition did not create a new commit")
 	}
 }
 
 func TestIndexBlobs(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"base.txt": "base"})
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"base.txt": "base"})
 	for name, content := range map[string]string{"ordinary.txt": "ordinary bytes\n", "executable.sh": "executable bytes\n"} {
 		mode := os.FileMode(0o644)
 		if name == "executable.sh" {
 			mode = 0o755
 		}
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), mode); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := wt.Add(name); err != nil {
-			t.Fatal(err)
-		}
+		gitfixture.StageFile(t, repo, name, content, mode)
 	}
 	if err := os.Symlink("ordinary.txt", filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wt.Add("link"); err != nil {
-		t.Fatal(err)
-	}
-	idx, err := repo.Storer.Index()
-	if err != nil {
-		t.Fatal(err)
-	}
-	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "submodule", Mode: filemode.Submodule, Hash: plumbing.NewHash("0123456789012345678901234567890123456789")})
-	if err := repo.Storer.SetIndex(idx); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.Add(t, repo, "link")
+	gitfixture.StageGitlink(t, repo, "submodule")
 
 	got, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t))
 	if err != nil {
@@ -842,14 +818,7 @@ func TestIndexBlobs(t *testing.T) {
 		}
 	}
 
-	idx, err = repo.Storer.Index()
-	if err != nil {
-		t.Fatal(err)
-	}
-	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "conflict.md", Mode: filemode.Regular, Stage: indexformat.OurMode})
-	if err := repo.Storer.SetIndex(idx); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.StageUnmerged(t, repo, "conflict.md")
 	if _, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t)); !errors.Is(err, awfgit.ErrIndexUnmerged) {
 		t.Fatalf("unmerged index: got %v, want ErrIndexUnmerged", err)
 	}
@@ -860,8 +829,9 @@ func TestIndexBlobsErrors(t *testing.T) {
 		t.Fatalf("outside repository: got %v", err)
 	}
 
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
 	if err := os.WriteFile(filepath.Join(dir, ".git", "index"), []byte("garbage"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -869,17 +839,31 @@ func TestIndexBlobsErrors(t *testing.T) {
 		t.Fatalf("corrupt index: got %v", err)
 	}
 
-	repo, dir = gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	repo = gitfixture.InitRepo(t)
+	dir = repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
+	stageContentlessEntry(t, dir, "empty.md")
+	if _, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t)); !errors.Is(err, awfgit.ErrIndexBlob) {
+		t.Fatalf("content-less entry: got %v, want ErrIndexBlob", err)
+	}
+}
+
+// stageContentlessEntry appends an index entry whose hash names no object, the
+// storage-level corruption that drives IndexBlobs' blob-read failure. It stays
+// here rather than in gitfixture because it is a fault this reader alone must
+// answer for, not a repository state a fixture consumer builds.
+func stageContentlessEntry(t *testing.T, dir, name string) {
+	t.Helper()
+	repo, err := gogit.PlainOpen(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	idx, err := repo.Storer.Index()
 	if err != nil {
 		t.Fatal(err)
 	}
-	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "empty.md", Mode: filemode.Regular})
+	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: name, Mode: filemode.Regular})
 	if err := repo.Storer.SetIndex(idx); err != nil {
 		t.Fatal(err)
-	}
-	if _, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t)); !errors.Is(err, awfgit.ErrIndexBlob) {
-		t.Fatalf("content-less entry: got %v, want ErrIndexBlob", err)
 	}
 }

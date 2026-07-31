@@ -150,17 +150,18 @@ func TestCheckUnknownSubcommand(t *testing.T) {
 // repository, before consulting their own knob.
 func aheadSchemaGitProject(t *testing.T) string {
 	t.Helper()
-	repo, root := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
 	lock := &manifest.Lock{AWFVersion: "0.4.0", SchemaVersion: migrate.Current() + 1, Files: map[string]manifest.Entry{}}
 	b, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Stage(t, repo, root, map[string]string{
+	gitfixture.Stage(t, repo, map[string]string{
 		".awf/config.yaml": "prefix: ex\n",
 		".awf/awf.lock":    string(b),
 	})
-	gitfixture.Commit(t, repo, root, "head", nil)
+	gitfixture.Commit(t, repo, "head", nil)
 	return root
 }
 
@@ -220,7 +221,8 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 	// guarded builds a git-backed project in the named guarded state.
 	guarded := func(t *testing.T, journaled bool) string {
 		t.Helper()
-		repo, root := gitfixture.InitRepo(t)
+		repo := gitfixture.InitRepo(t)
+		root := repo.Root()
 		files := map[string]string{
 			".awf/config.yaml": configText,
 			".awf/awf.lock":    lockText(t, !journaled),
@@ -228,8 +230,8 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 		if journaled {
 			files[".awf/current-state-upgrade.journal"] = journal
 		}
-		gitfixture.Stage(t, repo, root, files)
-		gitfixture.Commit(t, repo, root, "head", nil)
+		gitfixture.Stage(t, repo, files)
+		gitfixture.Commit(t, repo, "head", nil)
 		return root
 	}
 
