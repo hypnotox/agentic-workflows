@@ -229,7 +229,7 @@ entering `Implementing` and Applied batch 1.
 - [ ] **Task 2.6: Slug-form provenance.** In `internal/topic/topic.go`: widen the
   `Origin:`/`Revised-by:` grammar (`adrRE`, :22) to accept `ADR-<slug>` where `<slug>`
   matches `^[a-z0-9]+(-[a-z0-9]+)*$` and is non-numeric; store the reference as its
-  string form. In `internal/currentstate/check.go` `checkBackward` (:344-380): the
+  string form. In `internal/currentstate/check.go` `checkBackward` (:340): the
   operation index key becomes the owning record's identity - `Number` when numbered,
   slug otherwise - and a slug-form `Origin:`/`Revised-by:` entry resolves ONLY against a
   pending record's slug. A slug reference with no matching pending record is the
