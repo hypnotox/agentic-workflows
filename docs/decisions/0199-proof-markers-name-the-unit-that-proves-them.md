@@ -22,8 +22,8 @@ This inverts the symmetry ADR-0134 established. `Backing: test` is the strong fo
 marker gives a claim the appearance of the strong form with less real assurance than the weak
 one, because an unbacked claim is at least honest about being a contract.
 
-Commit 4c61356a ("feat(rendering): simplify Pi effort workflows (implements 0164)") deleted three
-marker-bearing tests and left four proof markers attached to nothing. Two of them, in
+Commit 4c61356a ("feat(rendering): simplify Pi effort workflows (implements 0164)") left four
+proof markers attached to nothing across two files. Two of them, in
 `internal/project/example_wiring_test.go`, stayed in place after `TestPiExtensionContainerGateWiring`
 and `TestPiExtensionEditorQuietStrip` were deleted; ADR-0198 has since repaired both. The other
 two are still live: the same commit deleted `TestWorkflowTelemetryConfigContract` from
@@ -49,8 +49,8 @@ The 96 in-body markers are deliberate: they sit on the assertion that proves the
 than above the enclosing function, a pattern ADR-0131 introduced. So 111 of 538 markers
 legitimately do not sit above a test function, and any rule that associates a marker with a
 following declaration rejects a fifth of the corpus however precisely it is computed. Such a rule
-would also have missed the `example_wiring_test.go` case, where a stranded marker had a live but
-unrelated test directly beneath it.
+would also have missed the container-gate stranding in `example_wiring_test.go`, where the marker
+had a live but unrelated test directly beneath it.
 
 Position is therefore close to uninformative here. What has to be detected is that the thing the
 marker was written to point at is gone, which is a naming problem rather than a parsing problem.
@@ -65,26 +65,42 @@ file, or a stack becomes self-satisfying.
 1. The proof marker payload gains a required trailing name in parentheses:
    `invariant: <domain>/<topic>:<slug> (<name>)`. The name identifies the unit that proves the
    claim. The name capture is scoped to the `invariant:` alternative of `markerPayloadRE` in
-   `internal/topic/markers.go`, not to the shared alternation, and a proof marker parsed without
-   a name is an error.
+   `internal/topic/markers.go`, not to the shared alternation, and it extends to the payload's
+   final closing parenthesis rather than the first. A proof marker parsed without a name is an
+   error.
 
 2. The name is free text, not an identifier. Its only requirements are that it is non-empty,
    carries no leading or trailing whitespace, and does not contain the source family's closing
-   token. This is what keeps the rule portable: a Go or Python adopter names a function, while a
-   JavaScript or TypeScript adopter's test is a string literal such as `it('strips the header')`
-   and has no identifier to name.
+   token; it may itself contain parentheses, which is why item 1's capture is greedy. This is
+   what keeps the rule portable: a Go or Python adopter names a function, while a JavaScript or
+   TypeScript adopter's test is a string literal such as `it('strips the header')` and has no
+   identifier to name.
 
 3. The check is a string search over the marker's own file. The named text must occur verbatim on
-   at least one line of that file that the scan does not recognise as a current-state marker, and
-   the occurrence must not be flanked on either side by a character in `[A-Za-z0-9_]`.
+   at least one line of that file whose trimmed form does not begin with the source family's
+   marker token, and the occurrence must not be flanked on either side by a character in
+   `[A-Za-z0-9_]`.
 
-   Excluding every marker line, rather than only the marker's own line, is what stops a stack from
-   satisfying itself. Twelve markers above one function all name that function, so under a
-   self-line-only exclusion each is satisfied by its eleven neighbours and deleting the function
-   strands twelve claims silently. The flanking condition is load-bearing in both directions:
-   without it a marker naming `TestFoo` would be satisfied by a surviving `TestFooBar`, missing
-   exactly the rename this decision exists to catch, while with it a free-text phrase flanked by
-   quotes or parentheses still matches, because neither is an identifier character.
+   Because a family's marker token is its comment leader by construction, `//` for Go and `#` for
+   Python, this excludes comments, and every marker line is a special case of a comment line. One
+   condition therefore replaces two, and it is purely syntactic and line-local: recognition tests
+   a line's leading token, never whether that line resolves to a valid claim, so it introduces no
+   error of its own and the scan keeps reporting the first failure in line order.
+
+   Both exclusions are load-bearing, and measurement rather than intuition set the boundary.
+   Excluding only the marker's own line lets a stack satisfy itself: twelve markers above one
+   function in `internal/contextq/adapter_outputs_test.go` all name that function, so each is
+   satisfied by its eleven neighbours and deleting the function strands twelve claims silently.
+   Excluding marker lines alone is still not enough, because this repository's convention places a
+   doc comment naming the test above the marker block. Simulating the deletion of every anchor
+   function shows 120 of 425 markers above a test still finding their name in such a comment, a
+   28% false-negative rate that includes that same twelve-marker stack. Excluding comments closes
+   all 120 at no measured cost, since every anchor the migration writes is a code line.
+
+   The flanking condition is load-bearing in both directions: without it a marker naming `TestFoo`
+   would be satisfied by a surviving `TestFooBar`, missing exactly the rename this decision exists
+   to catch, while with it a free-text phrase flanked by quotes or parentheses still matches,
+   because neither is an identifier character.
 
 4. `state:` and `touches-state:` markers are unchanged, and neither gains an error of its own.
    Because the name capture is scoped to the `invariant:` alternative, a `state:` marker carrying
@@ -114,8 +130,12 @@ file, or a stack becomes self-satisfying.
    the Go AST, to derive each name. Language knowledge is admissible once, to migrate, and never
    to enforce. That separation is what makes the rule adoptable by a project awf cannot parse.
 
-10. The migration writes the nearest unique anchor available, falling back to the enclosing or
-    following function's identifier when no finer one exists. Where a marker sits above a single
+10. The migration writes the nearest unique anchor available, where unique means unique among the
+    lines the check will search in that file, falling back to the enclosing or following
+    function's identifier when no finer one exists. Item 3's comment exclusion is what makes that
+    fallback well defined: a function identifier repeated in the file's own doc comment is unique
+    within the searched lines even though it is not unique within the file. Where a marker sits
+    above a single
     table row, the row's own literal is the better name, because deleting that row then fails the
     check while naming the enclosing function would not. The written string persists in the marker
     and is what the check verifies from then on, so a marker name means "the text that identifies
@@ -150,11 +170,18 @@ run rather than a list. The scan keeps its abort-on-first-error model, because c
 separate concern from this decision; the migration script is expected to produce correct names in
 one pass, so the serial diagnostic is a cost paid during hand repair rather than during migration.
 
-One false negative is accepted: a name that survives its unit incidentally, such as `TestFoo`
-deleted while `t.Run("TestFoo")` remains elsewhere in the file. Closing it would require knowing
-which occurrence is a declaration, which is the language knowledge this decision refuses to take
-on. The residual requires the name to persist in prose after the unit dies, which no observed
-stranding resembles.
+One false negative is accepted: a name that survives its unit incidentally on a searched line,
+such as `TestFoo` deleted while a `t.Run("TestFoo")` string remains elsewhere in the file.
+Closing it would require knowing which occurrence is a declaration, which is the language
+knowledge this decision refuses to take on.
+
+The much larger comment-borne form of that residual is closed rather than accepted, and it was
+measured rather than assumed. Naming a test in a doc comment above its marker block is this
+repository's dominant convention, so a rule that searched comments would have missed 120 of 425
+markers above a test, and the tree already contains an instance: `internal/project/example_wiring_test.go`
+carries a doc comment naming `TestSundialCurrentStateMigrated`, a test that no longer exists
+anywhere. Item 3's comment exclusion catches that today. The remaining residual needs the name to
+survive on a code line, which is a far narrower accident than surviving in prose.
 
 More fundamentally, the check constrains the *form* of a marker, not the *discrimination* of its
 name. Nothing requires the name to be specific, so a weak or over-general name that happens to
@@ -196,7 +223,7 @@ rather than exhaustive.
 
 | Alternative | Why not chosen |
 |---|---|
-| Require content after the marker | Catches only the 2 end-of-file strandings. Would not have caught the `example_wiring_test.go` case, where a live but unrelated test sat directly beneath the marker. |
+| Require content after the marker | Catches only the 2 end-of-file strandings, and of the two `example_wiring_test.go` strandings it would have caught only the strip marker, which was that file's last line. The container-gate marker had a live but unrelated test directly beneath it. |
 | Name the proving unit in the claim instead of the marker | Splits one relationship across two files and forces a join the marker can no longer answer alone. Claims with markers in several files need a rule for which file must carry the name, and claims with several proofs need a list. |
 | Name the unit and enforce marker position against it | Needs to know what a declaration is, which puts language knowledge in the shipped checker. The census shows 111 of 538 markers legitimately violate any positional rule. |
 | Ship the rule as an opt-in gate like `check prose` | Costs a config key and a second enforcement path, and leaves adopters unprotected by default, to avoid a migration that is mechanical and currently small. |
