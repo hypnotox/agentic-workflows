@@ -513,16 +513,20 @@ terminal transaction described in Notes.
   markers in that file. A marker on the `notes_test.go` producer test would satisfy the textual
   ledger while proving nothing about the exit code.
 
-- [ ] **Task 4.3: Leave both advisory claims unauthored.** This is a deliberate non-action, recorded
-  so an executor does not helpfully add them. `glossary-terseness-advisory` and
-  `terseness-advisory-nonfailing` are the fourth batch's claims and must arrive in the same
-  transaction as their Applied event, which the terminal-review flow owns (see Notes). Authoring
-  them here would make `checkMutations` report a claim mutation with no operation and phase 4 could
-  not close green.
+- [ ] **Task 4.3: Leave both advisory claims unauthored, and their proof markers with them.** This
+  is a deliberate non-action, recorded so an executor does not helpfully add either.
+  `glossary-terseness-advisory` and `terseness-advisory-nonfailing` are the fourth batch's claims
+  and must arrive in the same transaction as their Applied event, which the terminal-review flow
+  owns (see Notes). Authoring them here would make `checkMutations` report a claim mutation with no
+  operation and phase 4 could not close green.
 
-  The proof markers placed in tasks 4.1 and 4.2 do land in this phase and are momentarily orphaned.
-  That is safe: backing validation runs claim to marker, never marker to claim, so a marker whose
-  claim does not yet exist is inert.
+  The two proof markers stay out of this phase for the mirror-image reason. An earlier revision of
+  this plan placed them here, reasoning that backing validation runs claim to marker and never the
+  reverse, so an orphaned marker would be inert. That is wrong: the current-state marker scan
+  validates marker to claim as well, failing with `unknown claim ID <domain>/<topic>:<slug>` before
+  any backing comparison runs, so an orphaned marker is hard-red rather than inert. Both markers
+  therefore land in the terminal transaction beside the claims they prove. The tests themselves do
+  land in this phase, simply carrying no marker yet; a test without a marker is legal.
 
 - [ ] **Task 4.4: Add the glossary rule to the documentation standard.** In
   `templates/docs/doc-standard.md.tmpl`, add a rule to the `rules` section, immediately after the
@@ -625,13 +629,18 @@ feat(rendering): add the terseness advisory and clean the glossary
 
   1. `glossary-terseness-advisory` in `.awf/topics/parts/rendering/doc-outputs/current-state.md`
      (`Origin: ADR-0198`, `Backing: test`): the advisory reports one note per glossary term whose
-     meaning exceeds the threshold, over the merged shipped-and-authored set. Its proof marker is
-     already on the task 4.1 producer test.
+     meaning exceeds the threshold, over the merged shipped-and-authored set. Its proof marker
+     `invariant: rendering/doc-outputs:glossary-terseness-advisory` is added here, on the task 4.1
+     producer test `TestGlossaryTersenessNotes` in `internal/project/notes_test.go`.
   2. `terseness-advisory-nonfailing` in `.awf/topics/parts/tooling/cli/current-state.md`
      (`Origin: ADR-0198`, `Backing: test`), worded to match `completeness-advisory-nonfailing` and
      `stub-advisory-nonfailing`: the glossary terseness notes `awf check` prints are informational
-     only and never change the command's exit code. Its proof marker is already on the task 4.2
-     test.
+     only and never change the command's exit code. Its proof marker
+     `invariant: tooling/cli:terseness-advisory-nonfailing` is added here, on the task 4.2 test
+     `TestCheckGlossaryTersenessNotesAreNonFailing` in `cmd/awf/initrender_test.go`.
+
+  Both markers land in this transaction rather than in phase 4 because the current-state marker
+  scan rejects a marker naming a claim that does not exist yet (task 4.3).
   3. The fourth Applied event:
      `- <date>: Applied; operations: add `rendering/doc-outputs:glossary-terseness-advisory`, add `tooling/cli:terseness-advisory-nonfailing``
   4. `status: Implemented` in the frontmatter plus the matching Implemented history event, stamped

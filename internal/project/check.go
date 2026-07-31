@@ -61,6 +61,42 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	notes = append(notes, pcs...)
+	gt, err := p.glossaryTersenessNotes()
+	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
+		return nil, err
+	}
+	notes = append(notes, gt...)
+	return notes, nil
+}
+
+// glossaryTersenessNotes returns advisory (non-failing) notes for each glossary
+// term whose meaning exceeds glossaryMeaningMax. It evaluates the MERGED set,
+// so the threshold bounds the vocabulary awf ships as well as the project's own
+// terms (ADR-0198 decision 10). Inert when the glossary doc is disabled.
+func (p *Project) glossaryTersenessNotes() ([]string, error) {
+	if !slices.Contains(p.Cfg.Docs, "glossary") {
+		return nil, nil
+	}
+	sc, err := p.Cfg.Sidecar("docs", "glossary")
+	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
+		return nil, err
+	}
+	// The on-disk sidecar never carries standardTerms, so overlay the catalog
+	// default exactly as render.go does upstream of the transform; without this
+	// the shipped layer would escape the threshold entirely.
+	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data))
+	if err != nil { // coverage-ignore: AdvisoryNotes already rendered this same sidecar through the transform above, so a second ingestion cannot newly fail
+		return nil, err
+	}
+	slices.SortFunc(records, func(a, b glossaryRecord) int {
+		return strings.Compare(strings.ToLower(a.Term), strings.ToLower(b.Term))
+	})
+	var notes []string
+	for _, r := range records {
+		if len(r.Meaning) > glossaryMeaningMax {
+			notes = append(notes, fmt.Sprintf("%s: term %q meaning is %d characters, over the %d-character guideline; tighten it", glossarySidecarPath, r.Term, len(r.Meaning), glossaryMeaningMax))
+		}
+	}
 	return notes, nil
 }
 

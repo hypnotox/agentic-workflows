@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -492,4 +493,81 @@ func TestAdvisoryNotesSurfacesTagHealthError(t *testing.T) {
 	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the tag-health ADR parse error")
 	}
+}
+
+// The terseness advisory notes one merged term per over-length meaning, naming
+// the term and its length, and stays silent for a meaning at or under the
+// threshold. It evaluates the merged set, so a shipped standard term is bound
+// by the same guideline as an authored one.
+func TestGlossaryTersenessNotes(t *testing.T) {
+	long := strings.Repeat("x", glossaryMeaningMax+1)
+	atLimit := strings.Repeat("y", glossaryMeaningMax)
+	root := scaffoldFiles(t, "prefix: awf\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n" +
+			"    - term: bloated\n      meaning: \"" + long + "\"\n" +
+			"    - term: exactly-at-limit\n      meaning: \"" + atLimit + "\"\n" +
+			"    - term: terse\n      meaning: short and clear\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.glossaryTersenessNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 1 {
+		t.Fatalf("want exactly one note (only the over-length term), got %v", notes)
+	}
+	if !strings.Contains(notes[0], `"bloated"`) ||
+		!strings.Contains(notes[0], fmt.Sprintf("%d characters", glossaryMeaningMax+1)) ||
+		!strings.Contains(notes[0], glossarySidecarPath) {
+		t.Errorf("note must name the sidecar, the term, and its length, got %q", notes[0])
+	}
+}
+
+// The producer is inert when the glossary doc is disabled, mirroring the other
+// doc-scoped families, so a project that renders no glossary is never nagged.
+func TestGlossaryTersenessNotesDisabled(t *testing.T) {
+	p, err := Open(testContext(t), scaffold(t, "prefix: awf\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.glossaryTersenessNotes()
+	if err != nil || notes != nil {
+		t.Errorf("disabled glossary must yield no notes, got %v / %v", notes, err)
+	}
+}
+
+// The shipped layer is inside the threshold's reach: the producer wraps the
+// sidecar in the catalog default before merging, so a project authoring no
+// terms at all is still evaluated over the standard vocabulary.
+func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
+	p, err := Open(testContext(t), scaffold(t, "prefix: awf\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.glossaryTersenessNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("the shipped vocabulary must itself be under the threshold, got %v", notes)
+	}
+	records, err := mergedGlossaryRecords(withDefaultData(mustGlossarySidecar(t, p), p.Cat.Docs["glossary"].Data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) == 0 {
+		t.Fatal("the producer must have had the shipped layer to evaluate, but the merged set was empty")
+	}
+}
+
+// mustGlossarySidecar reads the glossary sidecar or fails the test.
+func mustGlossarySidecar(t *testing.T, p *Project) config.Sidecar {
+	t.Helper()
+	sc, err := p.Cfg.Sidecar("docs", "glossary")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sc
 }

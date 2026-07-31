@@ -236,6 +236,32 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	}
 }
 
+// Glossary terseness notes are advisory: they print and never affect the exit
+// code, exactly like the unset-var and stub families. Its proof marker for
+// tooling/cli:terseness-advisory-nonfailing lands with that claim in the
+// terminal transaction; a marker whose claim does not exist yet fails the
+// current-state marker scan.
+func TestCheckGlossaryTersenessNotesAreNonFailing(t *testing.T) {
+	ctx := testContext(t)
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "glossary.yaml"),
+		"data:\n  terms:\n    - term: bloated\n      meaning: \""+strings.Repeat("x", 400)+"\"\n")
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+	var out bytes.Buffer
+	if err := runCheck(ctx, root, false, &out); err != nil {
+		t.Fatalf("check must stay clean with an over-length glossary meaning, got: %v", err)
+	}
+	if !strings.Contains(out.String(), "note: ") ||
+		!strings.Contains(out.String(), `term "bloated" meaning is 400 characters`) {
+		t.Errorf("missing glossary terseness note, got:\n%s", out.String())
+	}
+}
+
 func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

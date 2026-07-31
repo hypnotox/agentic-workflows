@@ -1008,7 +1008,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:349ea7fdb10781b64532ae18f2de1cc58ec0134dfee10014288a6c08987f57ae",
+      "outputHash": "sha256:683fb5bb45e606cff3ed8e5c798957fdf0a162bb7ef0526eb1d7cf8dd8b12202",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -1044,9 +1044,9 @@
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
-      "templateHash": "sha256:54bc863fc5234c407f5ecf36862bb69d59a3c75c5e0e7448e69282e4f6a01794",
+      "templateHash": "sha256:ec3d36b364d35781ef506c193840ccee837c116fea5a1b34567d160e12a4f5b9",
       "configHash": "sha256:3c76d2d8f2ed4aceb84a6618573329dbb6f665880ce7b80ad8827e95582d0f42",
-      "outputHash": "sha256:4f49a28c214400482d28b226da911b2dbcbe74e462f7f274711777c93e736749"
+      "outputHash": "sha256:3f655ff65ac952a3271fa4313a70370526a02d75218ab850b4e2899d8d25ad6a"
     },
     "docs/domains/almanac.md": {
       "templateId": "",

@@ -191,6 +191,11 @@ query a single version or a range.
   uncommitted work included.
 
 ### Features
+- `awf check` now reports a non-failing advisory for any glossary meaning longer than the
+  terseness guideline, naming the term and its length. It evaluates the merged set, so the
+  vocabulary awf ships is bound by the same guideline as your own terms. The rule itself is
+  stated in the documentation standard: one sentence saying what the thing is, a second only
+  when a contrast or boundary is load-bearing.
 - The glossary now renders two layers: a standard vocabulary awf ships, merged with the
   project's own `data.terms` into one sorted table. A project term overrides a shipped term of
   the same case-insensitive name, which is the supported way to reword or retire one; the
