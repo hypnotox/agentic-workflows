@@ -120,6 +120,9 @@ Apply all lenses to every plan:
 **package-composition-authority**: when a plan adds a package or exported surface, consult code-design/package-composition and flag a task that creates a package without a one-sentence ownership statement, names a grab-bag home, exports a symbol without naming its outside-package production consumer, or leaves a new exported declaration undocumented
 
 
+**test-design-authority**: when a plan shapes tests or test seams, consult code-design/test-design and flag a task that introduces an assertion library or mints a new package-level swap variable instead of constructor or parameter injection
+
+
 **quoted-claim-body-quantifies-verified-reality**: a plan task that quotes a claim body verbatim states a future truth the executor will land unexamined: read each universal in the quoted sentence ("every consumer", "alone", "derived by the operation") against the repository at plan time and against what the plan's own tasks actually make true, and flag any quantifier that outruns both. The decompose plan shipped three such bodies in one plan - a module-wide kind-dispatch universal falsified by in-core sites its tasks never touched, a two-table derivation claim when the tasks sanctioned four files, and a derive-and-thread lifecycle asserted for a value its own design fixed at construction - each caught only at execution review, each forcing a phase-commit rewrite because applied claim prose cannot change without its operation
 
 

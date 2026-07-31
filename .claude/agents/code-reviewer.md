@@ -134,6 +134,9 @@ Apply all lenses to every implementation diff:
 **package-composition-authority**: when the diff adds a package, file, or exported surface, consult code-design/package-composition and flag a package doc comment that cannot state its ownership in one sentence, a grab-bag package or production file name, a new export with no outside-package production consumer in the same commit, and a new exported declaration of a bound kind without a doc comment
 
 
+**test-design-authority**: when the diff adds or converts Go tests, consult code-design/test-design and flag an assertion or matcher library import and a new package-level variable minted to be swapped by a test instead of constructor or parameter injection; swapping an existing census seam stays legal
+
+
 
 ## Doc-currency checklist
 

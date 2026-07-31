@@ -90,6 +90,9 @@ Apply all lenses to every ADR:
 **package-composition-authority**: when the ADR adds a package or exported surface, consult code-design/package-composition and flag a package without a one-sentence ownership statement, a grab-bag home, an export without an outside-package production consumer, and an undocumented exported declaration
 
 
+**test-design-authority**: when the ADR shapes test strategy or test seams, consult code-design/test-design and flag a design that assumes an assertion library or mints a new package-level variable existing to be swapped by tests
+
+
 **claim-agrees-with-its-own-decision**: read EACH claim this ADR adds or updates against the Decision items of THIS SAME ADR, and flag any clause that contradicts one. No mechanical layer catches this: backing validation is structural, so it confirms a proof marker exists and never compares claim prose to the Decision or to what the proof asserts, and a decision that disagrees with itself leaves every layer mutually consistent and the gate green. ADR-0183 shipped exactly this defect and it survived two schema generations: item 1 committed to "topic coverage and topic fan-out always evaluate" while the same ADR's `config/configuration:severity-not-configurable` claim ended "a tree that declares no currentState block requests neither", and a test pinned the claim's side, so the implementation followed the claim and nothing ever went red. ADR-0192 had to correct it. The asymmetry to watch for is a claim clause that quietly scopes, qualifies, or excepts something the Decision states without qualification, and an aside appended to a claim about a different subject is where it hides.
 
 
