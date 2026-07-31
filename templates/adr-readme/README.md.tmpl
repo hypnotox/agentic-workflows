@@ -59,7 +59,9 @@ date: YYYY-MM-DD
 
 `slug` is derived from the title at scaffold time, is unique across the whole corpus, and
 is retained forever: it does not track later title edits, and it survives numbering so a
-pending-form reference stays resolvable. A pending record heads itself `# ADR-kebab-title:
+pending-form reference stays resolvable. The skeleton at `{{ .layout.adrTemplate }}` does
+not show the key, and must not: the scaffold derives one slug per record and refuses a
+template that fixes it, which would otherwise freeze every record on the same identity. A pending record heads itself `# ADR-kebab-title:
 Title` instead, and takes the `# ADR-NNNN:` form when it is numbered.
 
 The number and title come from the filename and the `# ` heading, never duplicated in

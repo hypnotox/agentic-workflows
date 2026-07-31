@@ -148,9 +148,9 @@
     },
     ".claude/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
-      "templateHash": "sha256:e7b71387de5b1335520dbc169ba2da36b033fc4b0656d43a20164f238034b01a",
+      "templateHash": "sha256:f702da0159e5abf629f92babb6a01dcb67e88c6b28c3c7529bba24758677f93e",
       "configHash": "sha256:6d8cee30db79275571c5881172ce668aa2552c41b19aedab00b124c9d0b1d34b",
-      "outputHash": "sha256:30dfb0fb809f17b9d7d09e9cf5a66f60dc778777764d2aaab4baf35edb24aac5"
+      "outputHash": "sha256:73fdc2e4cca295fde2b5f1657872a50e446eb870f7a55242c3de5b645468d1d7"
     },
     ".claude/skills/awf-reviewing-plan-resync/SKILL.md": {
       "templateId": "skills/reviewing-plan-resync/SKILL.md.tmpl",
@@ -316,9 +316,9 @@
     },
     ".pi/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
-      "templateHash": "sha256:e7b71387de5b1335520dbc169ba2da36b033fc4b0656d43a20164f238034b01a",
+      "templateHash": "sha256:f702da0159e5abf629f92babb6a01dcb67e88c6b28c3c7529bba24758677f93e",
       "configHash": "sha256:1d97d7f55f41d0b1bb8bc2ac655cb6f538cf017143d74a936c22988c341d06f9",
-      "outputHash": "sha256:5b7f354acfd69c71a9b84526a98b0e4d97ba4c9b8656f00ded9de697fa30504f"
+      "outputHash": "sha256:bb372278106108d5b4c4c4e68d411b28ce15eb9404227945f0315d983f8c5d4a"
     },
     ".pi/skills/awf-reviewing-plan-resync/SKILL.md": {
       "templateId": "skills/reviewing-plan-resync/SKILL.md.tmpl",
@@ -396,9 +396,9 @@
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
-      "templateHash": "sha256:77940eb5cce62096a2eb778fce894e2fc3cd62561bf73c37b7552227ececf16f",
+      "templateHash": "sha256:531f506952718fd07991125a4a047beb553af3ba0a3d40cb802f0bc3893b293d",
       "configHash": "sha256:6851ddeff5daac987a969adb2d0fb68969a3ac604c12029fece22d55e0c63f81",
-      "outputHash": "sha256:62ff7431e6a5042830e497aa28f9da0f8052fb67e7f526fe5238ec09763086da"
+      "outputHash": "sha256:0a0297e08523e5b1fb60b305abbb7fb19b78cc41536f81bf3834ed4ff800d270"
     },
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",

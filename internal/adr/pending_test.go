@@ -388,3 +388,32 @@ func TestRenderIndexMDSortsNumberedBeforePending(t *testing.T) {
 		t.Fatalf("index =\n%s\nwant prefix\n%s", got, want)
 	}
 }
+
+// The numbered identity form is exactly four digits. That width is the boundary
+// IsSlugIdentity, IdentityOrder, and Corpus.ByIdentity all key on, so a digit
+// string of any other width has to fall on the slug side and rank with the
+// pending records. Nothing sanctioned mints one - the scaffold refuses an
+// all-digit title slug - but a hand-authored record can carry it, and widening
+// the form would silently move it between identity classes. The rank is compared
+// against an ordinary slug rather than a literal so the case pins the grouping,
+// not the constant.
+// invariant: adr-system/adr-lifecycle:pending-adr-slug-identity
+func TestNumberedIdentityFormIsExactlyFourDigits(t *testing.T) {
+	slugRank := adr.IdentityOrder("an-ordinary-slug")
+	for _, ref := range []string{"1", "123", "12345", "000000"} {
+		if !adr.IsSlugIdentity(ref) {
+			t.Errorf("%q is not the four-digit numbered form and must read as a slug identity", ref)
+		}
+		if got := adr.IdentityOrder(ref); got != slugRank {
+			t.Errorf("%q ranks %d, but every slug identity ranks %d", ref, got, slugRank)
+		}
+	}
+	for _, ref := range []string{"0001", "0200", "9999"} {
+		if adr.IsSlugIdentity(ref) {
+			t.Errorf("%q is the numbered identity form", ref)
+		}
+		if adr.IdentityOrder(ref) >= slugRank {
+			t.Errorf("%q must rank below every pending identity", ref)
+		}
+	}
+}

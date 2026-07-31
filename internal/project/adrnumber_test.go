@@ -391,3 +391,39 @@ func keysOf(m map[string]string) []string {
 	}
 	return out
 }
+
+// Numbering deliberately does not precondition on a green check (ADR-0194 item
+// 11): a green check between merge-in and numbering is the norm, but an
+// unrelated finding must not deadlock the one command that resolves the corpus.
+// The claim says so about this engine, and every other proof for it sits on the
+// transition-validation layer, so this is the case that can falsify it: a tree
+// carrying real rendered-output drift still numbers.
+// invariant: adr-system/adr-lifecycle:numbering-transition-mode
+func TestNumberPendingADRsIgnoresUnrelatedDrift(t *testing.T) {
+	p, root := numberingProject(t, map[string]string{
+		"docs/decisions/only.md": pendingRecord(t, "only", "add `alpha/one:seed-two`"),
+	})
+	// Hand-edit a rendered output so the drift oracle is red for a reason that
+	// has nothing to do with numbering.
+	rendered := filepath.Join(root, "docs/topics/alpha/one.md")
+	body, err := os.ReadFile(rendered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, rendered, string(body)+"\nhand-edited drift\n")
+	drift, err := p.Check(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drift) == 0 {
+		t.Fatal("the fixture must be drifted for this test to mean anything")
+	}
+
+	report, err := p.NumberPendingADRs(testContext(t), nil)
+	if err != nil {
+		t.Fatalf("numbering must not require a green check: %v", err)
+	}
+	if got := report.String(); got != "only -> 0002\n" {
+		t.Errorf("mapping = %q", got)
+	}
+}

@@ -1626,7 +1626,7 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 // set) replaces the layout docs map - used by RequiresDoc-gated templates
 // whose doc path must resolve. TestConditionalTemplatesHaveFallbackCases
 // requires an entry per conditional catalog template (ADR-0080).
-func TestV2ADRTemplateEmptyDataFallback(t *testing.T) {
+func TestV3ADRTemplateEmptyDataFallback(t *testing.T) {
 	assertV3ADRTemplatePublicationSafe(t)
 }
 
