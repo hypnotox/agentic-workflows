@@ -179,6 +179,22 @@ query a single version or a range.
 - Divergent effort-integration guidance now derives the project gate command from `vars.gateCmd` and uses generic project-gate prose when that value is unavailable.
 - Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.
 - Managed effort worktrees now support current-user-owned checkouts beneath system-owned filesystem ancestors while retaining ancestor symlink, resident ownership, and repository-identity protections.
+- `awf render` and `awf check` now fail when a directory under the project tree cannot be read,
+  instead of silently enumerating what they could reach. A truncated enumeration narrowed the set
+  of managed outputs the drift oracle was computed over, so an unreadable directory could produce
+  a clean verdict and exit 0 over a tree that was never fully inspected.
+- Every command now refuses when it cannot determine whether a current-state upgrade journal
+  exists, instead of reading the failed check as "no journal". An unreadable `.awf` therefore no
+  longer permits the commands an unrecovered upgrade is meant to block.
+- `awf upgrade --recover` now restores each journaled file through a temp-file-plus-rename write,
+  so an interrupted recovery cannot leave a partially written file at a path the journal records
+  as holding a whole image. The restored file keeps its recorded permissions.
+- `awf audit`'s uncommitted-changes rule now reads the worktree it was asked about. It shelled out
+  to Git with the inherited environment, so an inherited `GIT_DIR` selected a different repository
+  and the rule could report a dirty tree as clean.
+- `awf context` now classifies an absolute request as outside the repository on Windows. The check
+  asked only `filepath.IsAbs`, which answers false there for a slash-rooted path, so such a request
+  was reported as merely not found. Unix behaviour is unchanged.
 
 ## [0.22.0] - 2026-07-24
 
