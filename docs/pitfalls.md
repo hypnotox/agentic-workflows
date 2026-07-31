@@ -212,6 +212,42 @@ blocked until the Applied line exists. `awf check` reports that claim-provenance
 ahead of any drift, which also means the documented digest probe only becomes reachable
 once the batch line is present, even with a placeholder digest.
 
+## Parallel efforts collide on ADR numbers and schema generations at integration
+
+_Domains: adr-system, config_
+
+_Related: ADR-0191_
+
+Until slug-identified pending ADRs land, an effort branch and the target can both consume
+the same ADR number and the same schema generation while apart; the 0191 integration hit
+both at once (its ADR authored as 0189 collided with the target's 0189, and both sides
+registered generation 26). Resolve inside the merge, where both sides are visible. For the
+ADR: rename the file to the next free number, rewrite the heading and every branch-owned
+reference (topic Origin and Revised-by lines, plan frontmatter and prose, glossary,
+changelog, code comments), and, because in-body self-references are digest-covered, record
+the edit as an Amended event with the recomputed digest while the ADR is still
+nonterminal. For the migration: move the registry entry to the next generation, update the
+minimum-version map and every generation-pinning test, and resolve the lock conflict to
+the TARGET side's generation so `awf upgrade` re-runs the moved migration over the merged
+corpus; taking the branch lock skips it silently. Grep for the old number afterwards and
+sort surviving hits into the other effort's legitimate references versus your leftovers.
+
+## Retiring a concept needs paraphrase sweeps, not just identifier greps
+
+_Domains: rendering, adr-system_
+
+_Related: ADR-0191_
+
+Grepping for a retired concept's identifier misses the prose that teaches the concept
+without naming it. Retiring `state-sequence` left "sequences are consecutive", "global
+sequence order", and "a contiguous global sequence" untouched in the reviewer-agent
+lenses, skill notes, and the glossary through a full plan review; a resync pass and a
+spot-check found them only by grepping the concept's behavioral vocabulary ("global
+sequence", "consecutive"). When a change retires or redefines a concept, derive a
+paraphrase list from how the docs actually describe its behavior and sweep templates,
+agent configs, glossary, domain parts, and pitfalls with those terms too; the review
+catalog's own lens prose is governed text and drifts like any other doc.
+
 ## A schema-generation bump needs `awf upgrade`, not `awf render`
 
 _Domains: config, tooling_
