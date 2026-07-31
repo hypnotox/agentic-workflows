@@ -69,7 +69,7 @@ claim.
   - `changelog/CHANGELOG.md`
   - `docs/decisions/0194-retire-the-topic-claim-count-advisory-for-authoring-guidance-and-a-review-lens.md`
   - every file `./x render` regenerates from the above, including `docs/doc-standard.md`,
-    `docs/working-with-awf.md`, `docs/agents-md-standard.md`, `docs/config-reference.md`,
+    `docs/agents-md-standard.md`, `docs/config-reference.md`,
     `docs/testing.md`, `docs/roadmap.md`, `docs/topics/tooling/cli.md`,
     `docs/topics/config/configuration.md`, `docs/topics/config/migrations-and-locks.md`,
     `docs/decisions/INDEX.md`, `.claude/agents/adr-reviewer.md`, `.pi/agents/adr-reviewer.md`,
@@ -95,8 +95,11 @@ retirement begins.
 
   It must contain no digit and no project-specific identifier: the rule ships to every adopter
   and ADR-0194 item 8 requires it to be publication-safe and generic. Do not add a
-  project-local `.awf/docs/parts/doc-standard/rules.md` override; that would replace the whole
-  rules section and fork every shipped rule.
+  project-local `.awf/parts/doc-standard/rules.md` override; that would replace the whole
+  rules section and fork every shipped rule. (`doc-standard` is a singleton, so its convention
+  parts live under `.awf/parts/`, not `.awf/docs/parts/`; no such part exists today, which is
+  why one edit to the shipped template reaches both this repository's render and the example
+  adopter's.)
 
 - [ ] **Task 1.2: Add the cohesion lens to the catalog default for `adr-reviewer`.** In
   `internal/catalog/standard.go`, in the `adr-reviewer` entry's `"focusItems"` slice (which
@@ -485,7 +488,11 @@ claim that does not yet exist.
     The paragraph currently ends `...which vars are set, what consumes them, and what enabling
     would activate. \`currentState.maxClaimsPerTopic\` is a positive topic-size advisory ... while
     an omitted value still reads as 20.` Truncate it so it ends at `...what enabling would
-    activate.` and delete the rest of the paragraph.
+    activate.` and delete the rest of the paragraph. This edit is adopter-facing only: this
+    project overrides that template's whole `config-and-overrides` section with the convention
+    part `.awf/parts/working-with-awf/config-and-overrides.md`, which carries no advisory
+    text, so `docs/working-with-awf.md` does not change and only
+    `examples/sundial/docs/working-with-awf.md` re-renders. Do not chase a root-render diff.
   - `templates/docs/agents-md-standard.md.tmpl`: in the `rules` section paragraph, delete the
     single sentence `A configured \`currentState.maxClaimsPerTopic\` note is advisory and never
     truncates either projection. ` leaving the surrounding sentences and their spacing intact.
@@ -536,7 +543,7 @@ claim that does not yet exist.
   rather than adding a `coverage-ignore`.
 
 ```commit
-refactor(config): retire the topic claim-count advisory
+refactor(config): retire the topic claim-count advisory (0194 batch)
 
 Removes currentState.maxClaimsPerTopic and the awf check note it drove,
 across config, configspec, the generated reference, the scaffold

@@ -90,6 +90,14 @@ the table at review time.
    names need no code change: they hash config content rather than reading this key by name,
    so removing it changes the recorded hashes and nothing else.
 
+   Generation 28 also carries a byte-level branch in `migrate.ConfigForCurrentSchema`, a pure
+   removal with no seed. That function is not optional bookkeeping: `awf check --staged` reads
+   the before-side config from HEAD, whose lock still records the previous generation, and
+   forward-ports it through this function so the current strict parser can read it. Without
+   the branch the retired key survives forward-porting and `config.ParseTree` rejects it on
+   the very commit that removes it. The generation-25 severity removal carries the same branch
+   for the same reason, and this one omits its seed for the reason item 4 already gives.
+
    Registering the generation also breaks three assertions that pin the current one, which
    land in the same transaction: `internal/project/version_test.go` asserts both that
    `minVersionBySchema[27]` equals `Version` and that `ValidateSchemaMinimumVersion(28, ...)`
@@ -118,6 +126,13 @@ the table at review time.
    `maxTopicsPerPath` default; and `internal/configspec/spec_test.go` also asserts the
    surviving `currentState` configspec key set. Fixture data that uses the retired key merely
    as a sample nested key is rewritten to a surviving one.
+
+   One further test changes that carries no marker for either retired claim: the proof test
+   backing the retained `config/migrations-and-locks:severity-keys-dropped` asserts that the
+   generation-25 migration left `maxClaimsPerTopic` intact, and that assertion stops compiling
+   once the field is gone. It is dropped, and no `update` operation is owed on that claim: its
+   wording commits to leaving every other configured key and value intact, which is unchanged
+   and stays falsifiable through the test's surviving sibling assertions.
 
 8. Add a topic-cohesion authoring rule to the `rules` section of the shipped
    `templates/docs/doc-standard.md.tmpl`. It directs the author to judge whether a topic's
