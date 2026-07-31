@@ -40,8 +40,15 @@ func (m MarkerIndex) All() []MarkerSite {
 	return out
 }
 
-var markerPayloadRE = regexp.MustCompile(`^(state|invariant): ([a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*)$`)
-var touchesPayloadRE = regexp.MustCompile(`^touches-state: ([a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*) - (.+)$`)
+const claimIDPattern = `[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*`
+
+// Each marker kind gets its own expression so a trailing name is grammatically
+// available only to a proof marker (ADR-0199). The name group is greedy, so a
+// name containing parentheses captures through to the payload's final closing
+// parenthesis; nothing reads it until the occurrence check lands.
+var statePayloadRE = regexp.MustCompile(`^state: (` + claimIDPattern + `)$`)
+var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `)(?: \((.+)\))?$`)
+var touchesPayloadRE = regexp.MustCompile(`^touches-state: (` + claimIDPattern + `) - (.+)$`)
 
 type markerWalkDir func(string, fs.WalkDirFunc) error
 
@@ -188,9 +195,12 @@ func markerCandidate(payload string) bool {
 }
 func resolveMarker(path string, line int, payload string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerSite, error) {
 	s := MarkerSite{Path: path, Line: line}
-	if m := markerPayloadRE.FindStringSubmatch(payload); m != nil {
-		s.Kind = MarkerKind(m[1])
-		s.ClaimID = m[2]
+	if m := statePayloadRE.FindStringSubmatch(payload); m != nil {
+		s.Kind = StateMarker
+		s.ClaimID = m[1]
+	} else if m := proofPayloadRE.FindStringSubmatch(payload); m != nil {
+		s.Kind = ProofMarker
+		s.ClaimID = m[1]
 	} else if m := touchesPayloadRE.FindStringSubmatch(payload); m != nil {
 		s.Kind = TouchesMarker
 		s.ClaimID = m[1]
