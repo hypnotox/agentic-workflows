@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
+- [ADR-0192: Topic coverage and fan-out evaluate independently of config block presence](0192-topic-coverage-and-fan-out-evaluate-independently-of-config-block-presence.md) (Proposed)
 
 ## History
 
