@@ -1,4 +1,55 @@
-<!-- awf:comment Replace the placeholder prose below, edit metadata paths, and add reviewed claims manually. -->
-Current project contracts for this topic are documented here.
+This topic governs outcomes introduced by new work and sites deliberately converted under
+its authority, failure and success alike. Existing message-text identities, shallow
+predicates, operation-taxonomy category literals, and exported types no caller matches
+remain bounded future candidates until a deliberate conversion brings them into scope.
+The rendering implementation of the protocol follows `code-design/presentation-ownership`
+(the package owning the outcome model renders it); the moment a second package implements
+the numbered-step format, `code-design/single-home` requires the shared helper.
 
 ## Claims
+
+### `invariant: actionable-outcome-protocol`
+
+A new or deliberately converted refusal or partial-progress outcome that observes
+repository, worktree, or effort state carries the actionable outcome protocol: a category
+from the closed state-kind vocabulary (`cleanliness`, `operation`, `topology`, `ancestry`,
+`repository-identity`, `merge-conflict`), a present-tense condition stating the observed
+state rather than what the command attempted (a failed mechanism call is itself an
+observed state whose detail rides along as the cause), one boolean changed-observation per
+axis whose movement would make a naive retry unsafe, an ordered remedy whose steps are
+each independently executable and render on one line (numbered `1) ... 2) ...` only when
+more than one), and a cause present exactly when the condition observes a failed call.
+When no axis moved, the steps address only the condition; when any axis moved, the steps
+address the residue before retrying.
+Origin: ADR-0199
+Backing: unbacked
+Verify: For each changed outcome site, check the category against the vocabulary, the condition's tense against observed state, each changed axis against what the operation could move, the rendering against the one-line numbered form, and the remedy against the movement rule: condition-only steps when nothing moved, residue-first steps when anything did.
+
+### `invariant: typed-outcome-for-caller-branching`
+
+A cause a caller must branch on in new or deliberately converted code is a distinct error
+type or sentinel, exported when the branching caller sits outside the defining package,
+carrying `Unwrap` when it wraps a cause, and matched with `errors.Is` or `errors.As`;
+production control flow never branches on message substrings.
+Origin: ADR-0199
+Backing: unbacked
+Verify: For each changed branching site, confirm the branch tests identity through errors.Is or errors.As on a declared type or sentinel, and that no substring match on an error message decides production control flow.
+
+### `invariant: errors-is-over-os-predicates`
+
+New or deliberately converted code matches a standard-library condition with the
+`errors.Is` identity family (`fs.ErrNotExist`, `fs.ErrExist`, `fs.ErrPermission`), never
+the shallow `os.IsNotExist`, `os.IsExist`, or `os.IsPermission` predicates, which do not
+unwrap.
+Origin: ADR-0199
+Backing: unbacked
+Verify: Search the changed files for os.IsNotExist, os.IsExist, and os.IsPermission; any occurrence in a new or deliberately converted site fails.
+
+### `invariant: test-identity-assertions`
+
+A new or deliberately converted test asserts a produced error's identity through
+`errors.Is`, `errors.As`, or the exported type, and asserts message text only where the
+rendered message is itself the contract, such as CLI or report output.
+Origin: ADR-0199
+Backing: unbacked
+Verify: For each changed test that asserts an error, confirm identity flows through Is, As, or a typed match, and that any message-text assertion targets output whose exact rendered text is the contract under test.
