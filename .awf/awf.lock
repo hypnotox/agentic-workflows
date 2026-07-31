@@ -404,7 +404,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:00bd884318eddee425d73644942f728764c89fa3a6fe59603879405bb05b08eb",
+      "outputHash": "sha256:b87aeb01a3d078822bd7ef5305db7afc0a8b54d62cfc238fda8f268ce3fe49e3",
       "regenChecked": true
     },
     "docs/domains/code-design.md": {
@@ -445,8 +445,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:c3fbdf37282efd67e147416cd72900eec9cf7c93b24e8e74a465d67b79051da2",
-      "configHash": "sha256:73afd1879ae2266ff719fba69f4128915a61a2819be8fd838d2cb2c9252746ac",
-      "outputHash": "sha256:c28da69f3fef81f562af26f329f0b8d3e57c4aaa8db10d49a9090499893b4648"
+      "configHash": "sha256:7c99bcdbbee3188b88c55f4ca54f50a0605b170e30f6974b05c7287df7bc568e",
+      "outputHash": "sha256:000de3a851d453e7cf8e140a2629ecd2ec3132ac57b3adbd3f80b4c4bcd44f79"
     },
     "docs/maintainable-code-design.md": {
       "templateId": "docs/maintainable-code-design.md.tmpl",

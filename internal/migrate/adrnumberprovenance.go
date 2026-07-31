@@ -22,7 +22,9 @@ var (
 	// metadata tail, where it sits after the digest and before any rationale.
 	statusSequenceRe = regexp.MustCompile(`(?m)^(- \d{4}-\d{2}-\d{2}: (?:Proposed|Accepted|Implementing|Implemented|Abandoned)[^\n]*?); state-sequence: [1-9][0-9]*((?:; rationale: [^\n]*)?)$`)
 	// residualSequenceRe detects any state-sequence text the two rewrites left
-	// behind, which means a malformed line this migration must not guess at.
+	// behind, which means a malformed line this migration must not guess at. A
+	// terminal rationale is free prose and is cut before the scan, so a
+	// rationale that merely mentions the term never aborts the migration.
 	residualSequenceRe = regexp.MustCompile(`(?m)^[^\n]*state-sequence[^\n]*$`)
 	// revisedByLineRe matches one canonical Revised-by provenance line in a
 	// topic part.
@@ -68,7 +70,7 @@ func applyADRNumberProvenance(root string, out io.Writer) error {
 			head, history := raw[:at], raw[at:]
 			rewritten := appliedSequenceRe.ReplaceAllString(history, "$1$2")
 			rewritten = statusSequenceRe.ReplaceAllString(rewritten, "$1$2")
-			if loc := residualSequenceRe.FindString(rewritten); loc != "" {
+			if loc := residualSequenceRe.FindString(cutRationales(rewritten)); loc != "" {
 				return fmt.Errorf("adr-number-provenance: %s: cannot rewrite status-history line %q; fix it by hand and re-run", a.Filename, loc)
 			}
 			if rewritten == history {
@@ -103,6 +105,18 @@ func applyADRNumberProvenance(root string, out io.Writer) error {
 		fmt.Fprintf(out, "adr-number-provenance: %s: Revised-by canonicalized to ascending ADR number\n", filepath.ToSlash(rel))
 	}
 	return nil
+}
+
+// cutRationales removes every line's terminal `; rationale: ...` free prose so
+// the residual scan only sees structural metadata.
+func cutRationales(history string) string {
+	lines := strings.Split(history, "\n")
+	for i, line := range lines {
+		if at := strings.Index(line, "; rationale: "); at >= 0 {
+			lines[i] = line[:at]
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // canonicalRevisedByLine rewrites one matched Revised-by line to duplicate-free

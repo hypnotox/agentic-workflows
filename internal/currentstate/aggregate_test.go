@@ -259,6 +259,18 @@ func TestMergeAggregateOrdersBatchesByADRNumber(t *testing.T) {
 	if !strings.Contains(got, "an add must be the first operation") {
 		t.Fatalf("an add owned by the higher ADR number must be taken after the update and rejected:\n%s", got)
 	}
+
+	// Within one ADR the tiebreak is history position: batch 0 adds and batch 1
+	// removes, which is legal exactly because position orders the chain.
+	addC, removeC := op(adr.OpAdd, "d/t:c"), op(adr.OpRemove, "d/t:c")
+	oneADR := v2rec("0141", "Implemented", []adr.Operation{addC, removeC},
+		v2status("Proposed"), v2status("Implementing"), v2batch(addC), v2batch(removeC), v2status("Implemented"))
+	if f := currentstate.CheckPair(
+		uni([]adr.ADR{base}, baseClaim),
+		uni([]adr.ADR{base, oneADR}, baseClaim),
+		currentstate.MergeAggregate); len(f) != 0 {
+		t.Fatalf("intra-ADR batches must order by history position:\n%s", messages(f))
+	}
 }
 
 // TestMergeAggregateNetNoopMustLeaveTheClaimAbsent covers the fold's one

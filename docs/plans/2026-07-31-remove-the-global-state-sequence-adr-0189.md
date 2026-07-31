@@ -467,3 +467,14 @@ docs(adr): implement 0189 ADR-number provenance order
 - The digest probe workflow survives for `content-sha256`; only its sequence half is retired.
 - The merge-time numbering effort consumes this change (no sequence shifting at integration); its
   design updates are out of scope here.
+- Implementation deviation, found necessary during phase 2 and pinned by
+  `TestRevisedByCanonicalReorderIsNotAMutation`: `checkUnmatchedMutation` compares `Revised-by`
+  membership as a set rather than an ordered list, because canonical order is derived (ascending
+  ADR number) and the migration's reorder of the two legacy inversions must not read as an
+  unmatched mutation in the phase-2 staged transaction. `historiesEqual` likewise ignores the
+  `LegacySequence` flag so the migration's stripped event lines compare as an exact history
+  prefix.
+- Terminal-review additions: the migration's residual scan cuts rationale prose first (an
+  adopter rationale mentioning the retired term must not abort `awf upgrade`), the
+  legacy-segment finding reports once per ADR, and glossary entries for `absorbing tombstone`
+  and `dominated operation` landed with the review fixes.

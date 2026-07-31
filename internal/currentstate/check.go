@@ -116,6 +116,7 @@ func checkLegacySegments(records []adr.ADR) []Finding {
 		for _, event := range record.History {
 			if event.LegacySequence {
 				findings = append(findings, Finding{fmt.Sprintf("ADR-%s carries a retired state-sequence segment; run awf upgrade", record.Number)})
+				break
 			}
 		}
 	}
@@ -252,23 +253,19 @@ func retiredTopicOperations(applied []operationAt, topics map[string]bool) map[s
 				}
 				return history[i].batchIdx < history[j].batchIdx
 			})
-			adds, removes, removeIdx := 0, 0, -1
-			for i, operation := range history {
+			adds, removes := 0, 0
+			for _, operation := range history {
 				if operation.op.Verb == adr.OpAdd {
 					adds++
 				}
 				if operation.op.Verb == adr.OpRemove {
 					removes++
-					removeIdx = i
 				}
 			}
-			dominatedTail := true
-			for i := removeIdx + 1; removeIdx >= 0 && i < len(history); i++ {
-				if history[i].op.Verb != adr.OpUpdate {
-					dominatedTail = false
-				}
-			}
-			if history[0].op.Verb != adr.OpAdd || removes != 1 || adds != 1 || !dominatedTail {
+			// With exactly one add first and one remove, any trailing
+			// operation is necessarily a dominated update, which retirement
+			// tolerates (ADR-0189).
+			if history[0].op.Verb != adr.OpAdd || removes != 1 || adds != 1 {
 				complete = false
 			}
 		}

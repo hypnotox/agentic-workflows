@@ -506,6 +506,10 @@ func TestCheckBackwardOrdersRevisedByByADRNumber(t *testing.T) {
 		t.Fatalf("descending Revised-by must be a finding:\n%s", got)
 	}
 
+	if got := messages(currentstate.Check(records, topics(claim("d/t:c", "0140", "0141", "0141")))); !strings.Contains(got, "not in ascending ADR-number order at ADR-0141") {
+		t.Fatalf("a duplicated Revised-by entry must be a finding:\n%s", got)
+	}
+
 	lowUpdate := v2rec("0139", "Implemented", []adr.Operation{update},
 		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
 	if got := messages(currentstate.Check([]adr.ADR{origin, lowUpdate}, topics(claim("d/t:c", "0140", "0139")))); !strings.Contains(got, "not in ascending ADR-number order at ADR-0139") {

@@ -623,8 +623,10 @@ func TestLoadCorpusHydratesGovernedRecords(t *testing.T) {
 
 // TestClaimOperationHistoryOrdersByADRNumber proves per-claim provenance order
 // is ascending ADR number (ADR-0189), not insertion or any other order: the
-// corpus below is built with its ADRs out of numeric order, and the claim's
-// applied operations must still resolve as 0001, then 0003, then 0005.
+// corpus below is built with its ADRs out of numeric order, carries two
+// updates whose corpus order is descending, and the claim's applied
+// operations must still resolve as 0001, then 0002 and 0003, then 0005.
+// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number
 func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	claimID := "tooling/query:removed"
 	record := func(number, title, status, verb string) adr.ADR {
@@ -640,6 +642,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 		invalid,
 		record("0003", "Revise claim", "Implemented", "update"),
 		record("0004", "Ignored proposal", "Proposed", "remove"),
+		record("0002", "Revise claim first", "Implemented", "update"),
 		record("0001", "Add claim", "Implemented", "add"),
 		record("0005", "Remove claim", "Implemented", "remove"),
 	})
@@ -648,7 +651,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	if !ok || got.Origin == nil || got.Origin.Number != "0001" || got.Origin.Status != "Implemented" {
 		t.Fatalf("origin = %#v, found %v", got.Origin, ok)
 	}
-	if len(got.RevisedBy) != 1 || got.RevisedBy[0].Number != "0003" {
+	if len(got.RevisedBy) != 2 || got.RevisedBy[0].Number != "0002" || got.RevisedBy[1].Number != "0003" {
 		t.Fatalf("revisions = %#v", got.RevisedBy)
 	}
 	if got.LegacyBaseline || got.RemovedBy == nil || got.RemovedBy.Number != "0005" {
@@ -660,7 +663,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	}
 	got.RevisedBy[0].Number = "mutated"
 	again, _ := corpus.ClaimOperationHistory(claimID)
-	if again.RevisedBy[0].Number != "0003" {
+	if again.RevisedBy[0].Number != "0002" {
 		t.Fatalf("revision slice aliases a prior result: %#v", again.RevisedBy)
 	}
 	if _, ok := corpus.ClaimOperationHistory("tooling/query:unknown"); ok {

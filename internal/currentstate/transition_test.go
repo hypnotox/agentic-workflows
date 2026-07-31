@@ -569,6 +569,17 @@ func TestAppliedRemoveAbsorbsConcurrentUpdate(t *testing.T) {
 		}
 	})
 
+	t.Run("a net remove is attributed to the removing ADR", func(t *testing.T) {
+		// The claim is absent on the before side, so the net-remove finding
+		// fires; it must name the remover, never the dominated updater.
+		before := uni([]adr.ADR{origin})
+		after := uni([]adr.ADR{origin, remover, updater})
+		got := messages(currentstate.CheckPair(before, after, currentstate.MergeAggregate))
+		if !strings.Contains(got, "ADR-0142 removes claim d/t:c, which did not exist before this transition") {
+			t.Fatalf("the net remove must be attributed to the removing ADR-0142:\n%s", got)
+		}
+	})
+
 	t.Run("a dominated chain must not resurrect the claim", func(t *testing.T) {
 		before := uni([]adr.ADR{origin, remover})
 		after := uni([]adr.ADR{origin, remover, updater}, prosed(claim("d/t:c", "0140", "0141"), "revived"))
@@ -577,4 +588,29 @@ func TestAppliedRemoveAbsorbsConcurrentUpdate(t *testing.T) {
 			t.Fatalf("a surviving claim under a dominated chain must be rejected:\n%s", got)
 		}
 	})
+}
+
+// TestRevisedByCanonicalReorderIsNotAMutation pins the deliberate set
+// comparison in checkUnmatchedMutation: reordering a Revised-by list to its
+// canonical ascending form with no ADR operation in the pair is not a change
+// (migration 26 does exactly this), while a membership change still is.
+func TestRevisedByCanonicalReorderIsNotAMutation(t *testing.T) {
+	add := op(adr.OpAdd, "d/t:c")
+	update := op(adr.OpUpdate, "d/t:c")
+	origin := v2rec("0140", "Implemented", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	first := v2rec("0141", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	second := v2rec("0142", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	records := []adr.ADR{origin, first, second}
+
+	before := uni(records, claim("d/t:c", "0140", "0142", "0141"))
+	if f := currentstate.CheckPair(before, uni(records, claim("d/t:c", "0140", "0141", "0142")), currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("a canonical reorder with no operation must not be a mutation:\n%s", messages(f))
+	}
+	got := messages(currentstate.CheckPair(before, uni(records, claim("d/t:c", "0140", "0141")), currentstate.AuthoredCommit))
+	if !strings.Contains(got, "changed with no ADR update operation") {
+		t.Fatalf("a membership change without an operation must stay a mutation finding:\n%s", got)
+	}
 }

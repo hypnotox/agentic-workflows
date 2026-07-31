@@ -63,11 +63,15 @@ func TestADRNumberProvenanceMigration(t *testing.T) {
 	abandoned := "---\nstatus: Abandoned\ndate: 2026-01-05\n---\n" +
 		"# ADR-0004: Abandoned\n\n## Status history\n\n- 2026-01-04: Proposed\n" +
 		"- 2026-01-05: Abandoned; content-sha256: " + provenanceDigest + "; rationale: kept; reason text\n"
+	mentioning := "---\nstatus: Abandoned\ndate: 2026-01-07\n---\n" +
+		"# ADR-0006: Mentioning\n\n## Status history\n\n- 2026-01-06: Proposed\n" +
+		"- 2026-01-07: Abandoned; content-sha256: " + provenanceDigest + "; state-sequence: 4; rationale: dropped with the state-sequence namespace\n"
 	root := writeProvenanceFixture(t, map[string]string{
 		"0002-explicit.md": explicit,
 		"0003-implicit.md": implicit,
 		"0004-kept.md":     abandoned,
 		"0005-headless.md": headless,
+		"0006-mention.md":  mentioning,
 	}, map[string]string{
 		"rendering/pi/current-state.md":  "### `invariant: x`\n\nProse.\nOrigin: ADR-0001\nRevised-by: ADR-0167, ADR-0166, ADR-0166\nBacking: test\n",
 		"tooling/cli/current-state.md":   "### `invariant: y`\n\nProse.\nOrigin: ADR-0001\nRevised-by: ADR-0100, ADR-0101\nBacking: test\n",
@@ -108,6 +112,12 @@ func TestADRNumberProvenanceMigration(t *testing.T) {
 	}
 	if got := read("docs/decisions/0005-headless.md"); got != headless {
 		t.Errorf("record without a Status history section must stay byte-identical:\n got: %q", got)
+	}
+	wantMentioning := "---\nstatus: Abandoned\ndate: 2026-01-07\n---\n" +
+		"# ADR-0006: Mentioning\n\n## Status history\n\n- 2026-01-06: Proposed\n" +
+		"- 2026-01-07: Abandoned; content-sha256: " + provenanceDigest + "; rationale: dropped with the state-sequence namespace\n"
+	if got := read("docs/decisions/0006-mention.md"); got != wantMentioning {
+		t.Errorf("a rationale mentioning the term must not abort the rewrite:\n got: %q\nwant: %q", got, wantMentioning)
 	}
 	wantPart := "### `invariant: x`\n\nProse.\nOrigin: ADR-0001\nRevised-by: ADR-0166, ADR-0167\nBacking: test\n"
 	if got := read(".awf/topics/parts/rendering/pi/current-state.md"); got != wantPart {
