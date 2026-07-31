@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
+- [ADR-0190: Slug-identified pending ADRs numbered at integration](0190-slug-identified-pending-adrs-numbered-at-integration.md) (Proposed)
 
 ## History
 
