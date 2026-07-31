@@ -130,7 +130,7 @@ func FormatMarker(format Format) string {
 		return V3FormatMarker
 	case Legacy:
 	}
-	return "" // coverage-ignore: every caller asks only about an already-governed record
+	return ""
 }
 
 // decisionItemRe matches a column-0 numbered Decision item lead. Column-0
@@ -504,10 +504,14 @@ func NewFile(dir, title string, format Format) (string, error) {
 		return "", errors.New("adr: template missing frontmatter")
 	}
 	var formatMarkers []string
+	declaresSlug := false
 	for _, line := range strings.Split(string(block), "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "format:") {
 			formatMarkers = append(formatMarkers, strings.TrimSpace(strings.TrimPrefix(line, "format:")))
+		}
+		if strings.HasPrefix(line, "slug:") {
+			declaresSlug = true
 		}
 	}
 	if len(formatMarkers) == 0 {
@@ -517,8 +521,14 @@ func NewFile(dir, title string, format Format) (string, error) {
 		return "", errors.New("adr: template frontmatter must contain exactly one governed format marker")
 	}
 	templateMarker := formatMarkers[0]
-	if templateMarker != V1FormatMarker && templateMarker != V2FormatMarker {
+	if templateMarker != V1FormatMarker && templateMarker != V2FormatMarker && templateMarker != V3FormatMarker {
 		return "", fmt.Errorf("adr: template frontmatter has unsupported governed format marker %q", templateMarker)
+	}
+	// The slug is derived per record, so the scaffold is its only writer: a
+	// template that fixed one would either duplicate the injected key or freeze
+	// every record on the same identity.
+	if declaresSlug {
+		return "", errors.New("adr: template frontmatter must not declare slug, which the scaffold derives per record")
 	}
 	front := strings.Replace(string(block), "format: "+templateMarker, "format: "+marker, 1)
 	if format == CurrentStateV3 {

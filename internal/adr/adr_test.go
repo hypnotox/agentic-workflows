@@ -506,6 +506,34 @@ func TestNewFileRejectsNonGovernedFormatAndMissingFrontmatter(t *testing.T) {
 	}
 }
 
+// The template is the one authored surface the scaffold reads, and Phase 6
+// rewrites its frontmatter to the V3 shape. A V3 marker must therefore be
+// accepted, and the per-record slug must stay the scaffold's to write.
+func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
+	dir := t.TempDir()
+	v3Template := strings.Replace(adrTemplateFixture, "format: current-state-v1", "format: current-state-v3", 1)
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(v3Template), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path, err := adr.NewFile(dir, "Keep The Corpus", adr.CurrentStateV3)
+	if err != nil {
+		t.Fatalf("V3 template scaffold: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "slug: keep-the-corpus\n") || strings.Count(string(data), "slug:") != 1 {
+		t.Fatalf("scaffolded slug key:\n%s", data)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(strings.Replace(v3Template, "status: Proposed", "slug: fixed\nstatus: Proposed", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adr.NewFile(dir, "Declared Slug", adr.CurrentStateV3); err == nil || !strings.Contains(err.Error(), "must not declare slug") {
+		t.Fatalf("declared-slug refusal = %v", err)
+	}
+}
+
 func TestNewFileSequentialCallsGetDifferentNumbers(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
@@ -560,7 +588,9 @@ func TestNewFileRejectsInvalidGovernedTemplateMarkers(t *testing.T) {
 		{"missing", "", "missing governed format marker"},
 		{"multiple same", "format: current-state-v1\nformat: current-state-v1\n", "exactly one"},
 		{"multiple mixed", "format: current-state-v1\nformat: current-state-v2\n", "exactly one"},
-		{"unsupported", "format: current-state-v3\n", "unsupported governed format marker"},
+		// Every governed format the scaffold knows is accepted, so the refusal
+		// is reached only by a marker no format defines.
+		{"unsupported", "format: current-state-v9\n", "unsupported governed format marker"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
