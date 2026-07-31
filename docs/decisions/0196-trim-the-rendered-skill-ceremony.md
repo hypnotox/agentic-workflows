@@ -10,18 +10,21 @@ date: 2026-07-31
 The rendered workflow skills carry several protocol blocks inlined in full at every
 applicable site. The 2026-07-31 ceremony survey measured the repetition in this repository's
 rendered corpus: the `AWF_CONTEXT_SPILL_V1` recovery paragraph is included at 14 template
-sites, the routine-checkpoint block (roughly 150-200 words) at 10 sites plus 2
-approval-variant sites, and the coverage-regression reminder at 3 sites. All of these are
+sites, the routine-checkpoint block (roughly 380 words, with a roughly 300-word
+approval variant) at 10 sites plus 2 approval-variant sites, and the
+coverage-regression reminder at 3 sites. All of these are
 already template partials: template-level maintenance is single-sourced, so the cost is not
 drift risk but rendered context weight, paid on every skill invocation in every adopter
 repository. The trade this decision makes is explicit: in-context availability of rarely
 exercised or deterministically backstopped prose is exchanged for a smaller always-loaded
 surface, with each displaced protocol keeping exactly one canonical rendered home.
 
-Review ceremony has an analogous unconditional cost. The four reviewing skills
-(reviewing-adr, reviewing-plan, reviewing-plan-resync, reviewing-impl) dispatch a verify
-pass after every fix application, doubling every reviewer dispatch even when the applied
-fixes were a single mechanical one-liner. The recorded firing history of verify passes in
+Review ceremony has an analogous unconditional cost. ADR-0074 established the verify-pass
+contract the four reviewing skills (reviewing-adr, reviewing-plan, reviewing-plan-resync,
+reviewing-impl) render: a review that surfaces no fixable findings incurs no verify pass,
+but every review that applied fixes dispatches one, doubling the reviewer dispatch even
+when the applied fixes were a single mechanical one-liner. This decision narrows that
+contract rather than replacing it. The recorded firing history of verify passes in
 this repository's decision corpus shows real catches (a wrongly applied reviewer nit, two
 marked-but-unproven invariants), and every recorded catch followed a reasoned or structural
 fix; no recorded catch followed a solely-mechanical fix round. Separately, the
@@ -47,6 +50,16 @@ Constraints and prior art:
 - No current-state claim pins the verify pass in any reviewing skill (repository sweep of
   `docs/topics/` returned zero hits), so the verify-pass condition is a template and test
   change only.
+- Three further `Backing: test` claims have proofs that pin literals on surfaces this
+  decision touches while their claim prose survives unchanged, so no operation is declared
+  for them and their proofs are rewritten in the same transaction:
+  `rendering/workflow-skill-templates:orienting-single-home` and
+  `rendering/guide-and-doc-templates:working-memory-single-home` (both pin the orienting
+  resume-revalidation literal touched by item 4's co-edits) and
+  `rendering/workflow-skill-templates:implementer-role-contract` (its unset-fallback proof
+  pins the reviewing skills' scope-fallback literal item 5 rewords). Likewise
+  `tooling/effort-management:memory-skeleton-purpose-partition` survives item 4 unchanged:
+  the scaffolded skeleton's placeholder text is a co-edited surface, not a claim change.
 - The Conventional-Commits scope list is restated in the four reviewing skill templates
   while `awf check commit` already rejects a wrong scope deterministically at commit time;
   the coverage-regression reminder is restated in three task skills while the 100%-coverage
@@ -55,39 +68,56 @@ Constraints and prior art:
 
 ## Decision
 
-1. The `AWF_CONTEXT_SPILL_V1` recovery contract moves to one canonical rendered home: the
-   managed-context section of the working-with-awf doc. Every managed context-calling skill
-   replaces the expanded paragraph with a single sentence naming the spill notice and
-   pointing at that home. The spill partial becomes the pointer sentence; the full contract
-   text renders only in the doc.
+1. The `AWF_CONTEXT_SPILL_V1` recovery contract moves to one canonical rendered home: a new
+   named `### Context spill notices` subsection under `## Commands` in
+   `templates/docs/working-with-awf.md.tmpl`, created by this decision (the template edit
+   is a same-commit surface; the doc is Mandatory and the section stays part-overridable).
+   Every managed context-calling skill and the grounding-checker agent body replace the
+   expanded paragraph with a single sentence naming the spill notice and pointing at that
+   home. The spill partial becomes the pointer sentence; the full contract text renders
+   only in the doc.
 2. The routine-checkpoint partial compresses to a four-step digest: classify the outcome
    (a minimal simple fix uses no effort, reaching a checkpoint never creates one); validate
-   the one immutable slug and owned `.awf/efforts/<slug>/memory.md` path and update the
-   memory file in its own writer-owned batch; decide whether user attention is required
-   using the existing trigger list; then raise a check-in and stop, or state a continuity
-   notice and continue. The digest points at the workflow doc's working-memory section for
-   the file skeleton, ground rules, and the full protocol, which remain rendered there in
-   full. The approval-variant partial compresses the same way while keeping its
-   stop-is-the-protocol clause.
-3. The four reviewing skills dispatch the verify pass conditionally: it is dispatched when
-   at least one applied fix is classified reasoned or user-decision-driven, and a fix round
-   consisting solely of mechanical fixes skips it, recording the skip and its ground in the
-   review summary. Finding classification vocabulary is unchanged.
+   the one immutable slug and owned `.awf/efforts/<slug>/memory.md` path (confirming the
+   `Effort: <slug>` first line, continuing in the effort's managed worktree when one
+   exists) and update the memory file in its own writer-owned batch, setting `Phase:` and
+   `Next:`, appending one `## Handoff log` line and any unrecorded settled decision and
+   observation, and refreshing `Updated:`; decide whether user attention is required using
+   the existing trigger list; then raise a check-in and stop, or state a continuity notice
+   and continue. Element dispositions are explicit: the field set, slug confirmation, and
+   worktree continuation stay in the digest; repository-authority precedence and the
+   one-writer/report-only-child contract move to the pointer (the workflow doc's
+   working-memory section already states both); the Pi handoff branch is behaviour, not
+   ceremony, and renders unchanged. The digest points at the workflow doc's working-memory
+   section for the file skeleton, ground rules, and the full protocol, which remain
+   rendered there in full. The approval-variant partial compresses the same way while
+   keeping its stop-is-the-protocol clause and its full step 4 (rejection-revision loop,
+   post-approval persistence, continuation) in compressed form.
+3. The four reviewing skills dispatch the verify pass conditionally, narrowing ADR-0074's
+   after-fixes rule: a review that applied no fixes incurs no verify pass (unchanged); a
+   fix round whose applied fixes are all classified `mechanical` skips the verify pass and
+   records the skip and its ground in the digest the skill presents at its check-in; a fix
+   round with at least one fix classified `reasoned`, or applied under a `user-decision`
+   ruling, dispatches exactly one verify pass as today. Finding classification vocabulary
+   is unchanged.
 4. The working-memory protocol narrows the `Record:` requirement to material decisions: an
    entry whose decision changes scope, design, authority, or previously-approved output
    carries the indented verbatim `Record:` block; any other user-provenance entry is a
    plain decision-log entry without one. Reviewer briefs paste user entries verbatim
    including whatever `Record:` blocks exist. The co-edited surfaces are the workflow doc
    template, the review-spine-head partial, the three reviewer-skill paste instructions,
-   and the orienting skill's resume-revalidation enumeration.
-5. Gate-duplicated prose is deleted: the four reviewing skills' restated scope list becomes
-   "a Conventional-Commits scope the commit gate accepts", the coverage-regression reminder
-   partial and its three inclusions are removed, and proposing-adr's duplicated INDEX.md
-   hand-edit warning collapses to one mention per rendered skill. Repetition without
-   deterministic backing (never `--amend`, doc-currency reminders) is kept unchanged.
+   the orienting skill's resume-revalidation enumeration, and the binary-scaffolded memory
+   skeleton's `## Decision log` placeholder in `internal/effort/memory.go` with its golden
+   test, so a fresh effort's first surface states the narrowed rule.
+5. Gate-duplicated prose is deleted: the four reviewing skills' restated scope list is
+   replaced by a publication-safe reference to the project's commit scope conventions, and
+   the coverage-regression reminder partial and its three inclusions are removed.
+   Repetition without deterministic backing (never `--amend`, doc-currency reminders) is
+   kept unchanged.
 6. `templates/docs/working-with-awf.md.tmpl` includes `templates/partials/model-selection.md`
-   instead of hand-inlining its text; rendered output stays value-identical for a project
-   whose override does not replace that section.
+   instead of hand-inlining its text; the rendered prose stays semantically identical
+   within the same paragraph, with source line wrapping reflowed by the include, so golden
+   updates are expected rather than a surprise.
 7. Explicitly declined relaxations, recorded here so they are not re-litigated: the two
    audits in reviewing-impl stay unconditional (deterministic and cheap is the kind of
    check this effort keeps), and the two mandatory approval stops at brainstorming end and
@@ -118,6 +148,10 @@ Constraints and prior art:
 - Small user decisions lose their verbatim evidence block; a reviewer checking consensus
   adherence on an immaterial decision has the entry's paraphrase only. Named and accepted;
   material decisions keep the full block.
+- The item 5 deletions ship to every adopter, including one whose repository wires neither
+  a commit-message gate nor a coverage gate; such an adopter loses a reminder, not a
+  control, since nothing enforced either rule there before. Named and accepted by user
+  decision; the replacement scope reference stays publication-safe and asserts no gate.
 - The four updated claims narrow with their proofs in the same transaction; the spine and
   chain tests that expand the spill contract and enumerate checkpoint elements are
   rewritten against the digest and pointer forms.
@@ -126,6 +160,7 @@ Constraints and prior art:
 
 | Alternative | Why not chosen |
 |---|---|
+| Configurable verbosity (a var or per-target profile selecting expanded or pointer form) | Two rendered shapes to test and keep publication-safe for every affected surface; a doubled drift and review surface for a one-time trim |
 | Compress the model-selection dispatch sites further | Reverts ADR-0190's week-old pinned design; the compressed-rule-plus-pointer shape is the settled optimum |
 | Move the spill contract into the agent guide instead of the doc | The guide is the always-loaded surface ADR-0157 deliberately slimmed; a rare-path contract belongs in an on-demand doc |
 | Drop the verify pass entirely | Its recorded catch history on reasoned fixes is real; conditioning keeps the protection where it fires |
