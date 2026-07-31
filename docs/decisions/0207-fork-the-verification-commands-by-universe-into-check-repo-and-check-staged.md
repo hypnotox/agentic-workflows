@@ -84,15 +84,6 @@ simply stop appearing, and `internal/project/gatedcommands.go:18` carries a cove
 stated assumption ("the table always carries the three ungated check children") this decision
 falsifies from both directions.
 
-### The staged scanners are broken for a nested adopter
-
-`runProseGate` looks up `.awf/config.yaml` at the index root (`cmd/awf/prosegate.go:21`) while
-`stagedTree` opens the *containing* repository. Running `awf check prose` inside
-`examples/sundial` therefore reads awf's own config and resolves awf's paths against sundial's
-root, failing with a stat error on a path that exists only in the parent. `cmd/awf/memorygate.go:24`
-has the same shape. The nested adopter's staged current-state check works today only because it
-resolves against the project root instead.
-
 ### Blast radius, measured
 
 Counting tracked files, split by how each population is maintained:
@@ -206,19 +197,7 @@ the append-only column records what the commands were called when those decision
    `.githooks/check-nested-staged:7`, which hardcodes the spelling and so respells by direct edit
    rather than through either composition site item 1 names.
 
-9. The staged scanners resolve their config, their scan corpus, and their scanned path prefixes
-   against the project root rather than the index root, so `check repo prose` and `check repo memory`
-   are correct inside a nested adopter tree. Resolving the config alone is insufficient: `stagedTree`
-   opens the *containing* repository and `snapshot.IndexTree` returns that repository's whole index
-   under containing-repo-relative paths, so `runProseGate` would scan every tracked file of the
-   parent (`cmd/awf/prosegate.go:40-44` passes `tree.List()` through unfiltered) and
-   `runMemoryGate`'s `docs/decisions/` and `docs/plans/` prefixes (`cmd/awf/memorygate.go:39-40`)
-   would never match the nested tree's actual keys. Both scanners therefore filter the index tree to
-   the project subtree and rebase blob paths to project-relative before scanning, which is also what
-   makes a project-relative `proseGate.exemptions` entry match. Item 8 depends on this: sundial
-   cannot enable either gate until it holds.
-
-   Both scanners also consult their enablement knob before reading any index. Today they open the
+9. The staged scanners consult their enablement knob before reading any index. Today they open the
    repository first (`cmd/awf/prosegate.go:17` ahead of the knob at `:29`), so a disabled gate
    hard-errors outside a git repository instead of reporting itself disabled. That ordering is what
    would otherwise defeat item 4's degradation: the repo universe carries these two index readers,
@@ -228,6 +207,11 @@ the append-only column records what the commands were called when those decision
    refuses, which is the substantive half of the
    `tooling/quality-gates:prose-gate-refuses-without-git` update: that claim narrows from refusing
    unconditionally to refusing when the gate is on.
+
+   Nothing else about these two scanners changes. Their corpus and path resolution are already
+   project-root correct: `internal/git/handle.go` reroots every index entry through the project
+   prefix that `OpenContaining` computes, so a nested adopter already reads its own config and its
+   own subtree.
 
 10. `resolve` returns the leaf node, so a grandchild's project-guard exemption is read from the node
     the driver dispatches rather than from its group. `globalHelp` recurses to any depth. Gating
@@ -335,8 +319,8 @@ correctness prerequisite rather than a tidy-up. And `check staged drift` ships n
 the difference rather than leaving it to be discovered.
 
 Enabling both gates in sundial (item 8) makes the showcase adopter subject to the punctuation and
-citation rules, which is the point, but it also means item 9 must land first or the example cannot
-be rendered green.
+citation rules, which is the point. It carries no ordering dependency on item 9: the scanners are
+already correct in a nested tree, and item 9's knob-first change binds only when a gate is off.
 
 Respelling a flag as a positional makes the hook payload's composition order-sensitive. Appending
 `--staged` to a configured command tolerated a command that already carried flags; appending
