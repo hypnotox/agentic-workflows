@@ -21,10 +21,12 @@ rebased or fast-forwarded onto that state. Baseline before Phase 1: `git merge -
 
 **Claim application (V2):** the ADR flips to `Implementing` in Phase 1's closing commit (first
 batch). Batches follow the ADR's declaration order exactly: Phase 1 applies op 1, Phase 2 op 2,
-Phase 3 op 3, Phase 4 op 4, Phase 5 op 5, Phase 6 ops 6 and 7 (final batch). Each phase-closing
-commit that applies a batch appends its Applied event to the ADR Status history and lands the
-claim prose given in that phase; the `Implemented` flip is owned by terminal review, not this
-plan.
+Phase 3 op 3, Phase 4 op 4, Phase 5 op 5, Phase 6 op 6. Operation 7 is the final batch and
+rides the terminal-review transaction together with the `Implemented` flip (an all-applied
+`Implementing` state is illegal, so the last Applied event and the flip must land together);
+that transaction is owned by terminal review, not a plan phase, and its exact contents are
+listed after Phase 6. Each phase-closing commit that applies a batch appends its Applied event
+to the ADR Status history and lands the claim prose given in that phase.
 
 ## Architecture summary
 
@@ -169,11 +171,16 @@ refactor(code-design): repair core straddles and widen kind dispatch
   if it needs project); keep tests of `InitCollisions`/`BackupFile` in project. The
   `touches-state` markers currently in `install.go` move with their functions; they stay valid
   because Task 2.5 widens the owning selectors in this same transaction.
-- [ ] **Task 2.4: The single-home proof.** New structural test
-  `internal/resident/singlehome_test.go`: AST-scan all production packages and fail if a second
-  production declaration of a resident-root table literal or a resident-path predicate exists
-  outside `internal/resident` (match by the table's field shape and by any function whose body
-  string-compares against the resident root names). Carry the proof marker for
+- [ ] **Task 2.4: Route the render kind comparison and prove single home.** First, route
+  `internal/project/render.go`'s `kind != "efforts" && kind != "worktrees"` comparison
+  (~:755) through the resident package (an exported name-set predicate, for example
+  `resident.IsResidentKind(kind string) bool`). Then add the structural test
+  `internal/resident/singlehome_test.go`: AST-scan production files under `internal/project`
+  and `cmd/` and fail if any re-declares the resident-root table shape or string-compares
+  against the resident root names outside the resident package. `internal/git`'s
+  `ResidentName` constants are deliberately out of the predicate's scope: they are the git
+  seam's own spelling, decided untouched (ADR-0191 item 7), and the ADR Consequences records
+  the tolerated parallel. Carry the proof marker for
   `rendering/project-output-plan:resident-policy-single-home`.
 - [ ] **Task 2.5: Ownership, claim prose, Applied event.** Add `internal/resident/**` to
   `.awf/domains/rendering.yaml` paths and to
@@ -181,9 +188,10 @@ refactor(code-design): repair core straddles and widen kind dispatch
   `.awf/topics/parts/rendering/project-output-plan/current-state.md`: slug
   `resident-policy-single-home`, body: "The resident-root table, the resident-path predicate,
   and anchored output-path resolution have exactly one production home in internal/resident;
-  core consumes them through the Roots value constructed once at project open, and no second
-  production definition of the table or predicate exists." `Origin: ADR-0191`,
-  `Backing: test`. Update the architecture source part sentence describing the resident-root
+  core consumes them through the Roots value constructed once at project open, and no file
+  under internal/project or cmd redeclares or re-derives the table or predicate
+  (internal/git's seam-owned ResidentName spelling is the recorded tolerated parallel)."
+  `Origin: ADR-0191`, `Backing: test`. Update the architecture source part sentence describing the resident-root
   table (`.awf/docs/parts/architecture/`) to name `internal/resident`. Append the Applied event
   for operation 2 to the ADR. `./x render`; post-check `./awf check --staged` clean and
   `./awf context internal/resident` reports the package covered, not unowned.
@@ -211,10 +219,11 @@ refactor(code-design): carve internal/resident below the core
 - [ ] **Task 3.2: Move the query.** Move `context.go`, `context_paths.go`,
   `context_projection.go`, `context_artifacts.go`, `context_adr.go` (minus the symbols already
   relocated in Phase 1 and minus the load halves absorbed into Task 3.1) to
-  `internal/contextq/`, package `contextq`, with `New(state project.ContextState)` (or free
-  functions over the state value - implementer's choice, one construction path only) replacing
+  `internal/contextq/`, package `contextq`, with one constructor
+  `New(state project.ContextState) *Query` and every moved entry point a method on `*Query`
+  (one construction path, full construction invariant; no free-function alternative) replacing
   the `*Project` receivers. `ContextForOptions` and `Uncovered` and the staged query entry
-  points become `contextq` functions. `ArtifactRole` references become `project.ArtifactRole`.
+  points become `*Query` methods. `ArtifactRole` references become `project.ArtifactRole`.
   Unlisted unexported helpers of those files move with them; `contextq` receives its own
   private copy of `safelyMatchablePaths` per Task 1.2. Post-check: `go build ./...` clean;
   `grep -rn "classifyContextPath\|projectTopicImpact\|assembleContextUniverse" internal/project/*.go`
@@ -370,34 +379,47 @@ refactor(rendering): derive every template ID from the tables
   corpus, effective skill set, context state, and Roots are derived by the operation that
   needs them and threaded to their consumers." Keep `Origin: ADR-0180`, add
   `Revised-by: ADR-0191`, keep `Backing: test`.
-- [ ] **Task 6.3: The ownership guard.** New structural test (in `internal/topic`'s test files,
-  where domain-coverage machinery lives): resolve the repository root by walking upward from
-  the test's working directory to the directory containing `go.mod`, enumerate every
-  production package under `internal/` and `cmd/` (directories containing non-test `.go`
-  files, excluding `internal/testsupport/testdata`, whose Go files are fixtures), and fail if
-  any package's path is matched by no domain's `paths` selectors (load the domain metadata the
-  same way production coverage code does). Carry the proof marker for
-  `tooling/context-and-topic:production-packages-domain-owned`. Land that claim in
-  `.awf/topics/parts/tooling/context-and-topic/current-state.md`, body: "Every production
-  package under internal/ and cmd/ is matched by at least one domain's paths; a package
-  omitted from domain ownership fails the structural test rather than degrading silently to
-  unowned." `Origin: ADR-0191`, `Backing: test`.
-- [ ] **Task 6.4: Close the record.** Rewrite the roadmap's deferred-decomposition section
+- [ ] **Task 6.3: Close the record.** Rewrite the roadmap's deferred-decomposition section
   (`.awf/docs/parts/roadmap/deferred.md`) to point at ADR-0191, recording the sequencing
   reversal and keeping `receiver-reads-owned-state` explicitly open for a future cohesion
   pattern. Verify the architecture part passages from Phases 2 and 3 are current. Append the
-  final Applied event covering operations 6 and 7. `./x render`; `./awf check --staged` clean.
+  Applied event for operation 6. `./x render`; `./awf check --staged` clean.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
-feat(code-design): widen state ownership, add the ownership guard
+feat(code-design): widen state ownership and close the record
 ```
+
+## Terminal transaction (owned by terminal review, not a plan phase)
+
+After the terminal implementation review settles, the reviewing-impl flow lands the final
+Applied batch and the status flip in one transaction (`awf-adr-lifecycle` mechanics). Its
+contents, so the reviewer executes rather than designs:
+
+- The ownership guard: new structural test in `internal/topic`'s test files (domain-coverage
+  machinery lives there): resolve the repository root by walking upward from the test's
+  working directory to the directory containing `go.mod`, enumerate every production package
+  under `internal/` and `cmd/` (directories containing non-test `.go` files, excluding
+  `internal/testsupport/testdata`, whose Go files are fixtures), and fail if any package's
+  path is matched by no domain's `paths` selectors (load the domain metadata the same way
+  production coverage code does). Carry the proof marker for
+  `tooling/context-and-topic:production-packages-domain-owned`.
+- The claim prose in `.awf/topics/parts/tooling/context-and-topic/current-state.md`, slug
+  `production-packages-domain-owned`, body: "Every production package under internal/ and
+  cmd/ is matched by at least one domain's paths; a package omitted from domain ownership
+  fails the structural test rather than degrading silently to unowned." `Origin: ADR-0191`,
+  `Backing: test`.
+- The final Applied event for operation 7 and, immediately after it, the `Implemented` status
+  event (same content stamp plus the batch state sequence), plus this plan's
+  `status: Implemented` flip. An all-applied `Implementing` state is illegal, which is why
+  operation 7 and the flip travel together.
 
 ## Verification
 
 - `./x check` and `./x gate` clean at every phase close; the whole-effort acceptance is the
   final gate plus: `./awf context internal/contextq internal/resident` reports both packages
-  covered; `awf check` reports every ADR-0191 operation Applied; rendered outputs are
+  covered; `awf check` reports ADR-0191 operations 1-6 Applied with operation 7 remaining
+  for the terminal transaction; rendered outputs are
   byte-identical across Phases 1-3 and 5 (`./x render` reports no change at each close after
   the phase's own config edits are accounted for); the export baseline shrank
   (`go doc ./internal/project | grep -c "^func\|^type"` is indicative only, not a gate).

@@ -204,8 +204,8 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    glossary additions of item 11.
 10. Claim forms and backing. `rendering/project-output-plan:resident-policy-single-home` is an
    invariant, Backing: test, proven by a structural source-scanning test in the resident
-   package asserting the resident-root table and the resident-path predicate have no second
-   production definition. `rendering/project-output-plan:template-id-single-derivation` is an
+   package asserting no file under internal/project or cmd redeclares or re-derives the
+   resident-root table or the resident-path predicate. `rendering/project-output-plan:template-id-single-derivation` is an
    invariant, Backing: test, proven by a structural test asserting no production file outside
    the sanctioned descriptor and declaration table files contains a template-ID string
    literal. `tooling/context-and-topic:context-query-boundary` is an invariant, Backing: test,
@@ -268,7 +268,11 @@ as well.
 
 Risks: the git-seam branch is unlanded, so item 7's premises could shift; while this ADR is
 pre-terminal, drift is absorbed by amendment (ADR-0188). The decision deliberately creates no
-claim about the git-access surface, which belongs to the git-seam decision.
+claim about the git-access surface, which belongs to the git-seam decision. For the same
+reason, `internal/git`'s `ResidentName` constants remain a knowingly-tolerated parallel
+spelling of the resident-root names: the seam owns its own vocabulary, and the resident
+single-home claim scopes itself to internal/project and cmd rather than reaching into the
+package item 7 leaves untouched.
 
 Downstream: a written plan is warranted (multi-phase, two package carves, claim migrations, a
 claim update reaching cmd/awf); the export-surface baseline for later trims moves from the
