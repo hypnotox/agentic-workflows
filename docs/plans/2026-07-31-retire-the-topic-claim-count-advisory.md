@@ -11,28 +11,34 @@ Execute ADR-0194: remove `currentState.maxClaimsPerTopic` and the `awf check` to
 claim-count note from every surface, ship a schema-28 migration that removes the key from an
 adopter tree, and land the replacement guidance (a topic-cohesion rule in the shipped
 doc-standard template and a cohesion focus lens on `adr-reviewer`). Non-goals: this plan does
-not touch `currentState.maxTopicsPerPath`, does not split
-`rendering/workflow-skill-templates`, and does not flip ADR-0194 to `Implemented`.
+not touch `currentState.maxTopicsPerPath` and does not split
+`rendering/workflow-skill-templates`.
 
 ## Architecture summary
 
-Two phases, in order.
+Three phases, matching ADR-0194's V2 operation batching.
 
 Phase 1 is purely additive: the doc-standard rule and the `adr-reviewer` lens. It closes green
 on its own because nothing yet depends on it and no claim changes.
 
-Phase 2 is one indivisible transaction. It cannot be sliced further: `.awf/config.yaml` is
-strict-parsed, so the moment the `MaxClaimsPerTopic` field leaves `internal/config` the key
-must already be gone from both config trees; `awf check` enforces claim/proof-marker symmetry
-in both directions, so the two claim removals and their four markers must move together; and
-`migrate.Current()` reads the registry tail, so registering generation 28 obliges both locks
-to advance in the same commit. Docs travel with the change by invariant. The phase therefore
-lands code, config, migration, tests, claim mutations, the ADR's `Implementing` and `Applied`
-events, docs, and the changelog as one commit.
+Phase 2 is the retirement, and it is one indivisible transaction. It cannot be sliced:
+`.awf/config.yaml` is strict-parsed, so the moment the `MaxClaimsPerTopic` field leaves
+`internal/config` the key must already be gone from both config trees; `awf check` enforces
+claim/proof-marker symmetry in both directions, so the two claim removals and their four
+markers must move together; and `migrate.Current()` reads the registry tail, so registering
+generation 28 obliges both locks to advance in the same commit. Docs travel with the change by
+invariant. Phase 2 applies two of the three declared operations and moves ADR-0194 to
+`Implementing`.
 
-The ADR-0194 `Implemented` flip and this plan's `status: Implemented` freeze are deliberately
-out of scope; they belong to the deferred post-review transaction that `awf-reviewing-impl`
-owns.
+Phase 3 is the deferred final batch, and it runs after terminal review. It adds
+`config/migrations-and-locks:claim-budget-key-dropped`, places that claim's proof marker onto
+the migration test Phase 2 leaves unmarked, flips ADR-0194 to `Implemented`, and freezes this
+plan. The split is forced, not stylistic: `internal/adr/application.go` rejects an
+`Implementing` status whose operations are all applied (it requires at least one still
+pending), while the executing-plans contract requires the `Implemented` flip to follow
+terminal review. Applying all three operations in Phase 2 is therefore illegal in both
+readings, and the new claim's proof marker would orphan `awf check` if it landed before its
+claim.
 
 ## File structure
 
@@ -48,7 +54,8 @@ owns.
     `internal/project/configreference.go`, `internal/project/project.go`
   - `internal/topic/coverage.go`
   - `internal/configspec/spec.go`
-  - `internal/migrate/migrate.go`, `internal/migrate/dropworkflowtelemetry_test.go`
+  - `internal/migrate/migrate.go`, `internal/migrate/dropworkflowtelemetry_test.go`,
+    `internal/migrate/dropseveritysettings_test.go`
   - `internal/project/version_test.go`, `internal/config/config_test.go`,
     `internal/config/edit_test.go`, `internal/configspec/spec_test.go`,
     `internal/topic/coverage_test.go`, `internal/project/currentstate_test.go`,
@@ -65,8 +72,8 @@ owns.
     `docs/working-with-awf.md`, `docs/agents-md-standard.md`, `docs/config-reference.md`,
     `docs/testing.md`, `docs/roadmap.md`, `docs/topics/tooling/cli.md`,
     `docs/topics/config/configuration.md`, `docs/topics/config/migrations-and-locks.md`,
-    `.claude/agents/adr-reviewer.md`, `.pi/agents/adr-reviewer.md`, `.awf/awf.lock`, and the
-    corresponding `examples/sundial/` renders and lock
+    `docs/decisions/INDEX.md`, `.claude/agents/adr-reviewer.md`, `.pi/agents/adr-reviewer.md`,
+    `.awf/awf.lock`, and the corresponding `examples/sundial/` renders and lock
 - **Deleted:** none. `internal/migrate/maxclaimspertopic.go` and its test are retained by
   ADR-0194 item 6; historical migrations are never deleted.
 
@@ -141,12 +148,17 @@ The lens is added in both internal/catalog/standard.go and
 focusItems per key rather than appending to it.
 ```
 
-## Phase 2: Retire the key, the note, and their claims
+## Phase 2: Retire the key, the note, and their two claims
 
 **Execution mode: inline.** This phase is one independently green coherent implementation
 transaction, and it is indivisible for the three reasons named in the Architecture summary.
 Checkbox tasks are ordered steps, not transaction boundaries; the working tree will not build
 or check cleanly between them, and that is expected. Only the phase-close is verified.
+
+This phase applies the first two declared operations only. It does **not** author
+`config/migrations-and-locks:claim-budget-key-dropped` and does **not** place that claim's
+proof marker; both belong to Phase 3, and landing either here would orphan a marker against a
+claim that does not yet exist.
 
 - [ ] **Task 2.1: Remove the config surface.** In `internal/config/config.go`:
   - delete the `MaxClaimsPerTopic *int \`yaml:"maxClaimsPerTopic"\`` field from
@@ -205,7 +217,7 @@ or check cleanly between them, and that is expected. Only the phase-close is ver
   `Path: "currentState.maxClaimsPerTopic"`, including its `Type`, `Default`, `Description`,
   and `Availability` fields.
 
-- [ ] **Task 2.5: Add the generation-28 migration.** Create
+- [ ] **Task 2.5: Add the generation-28 migration and its forward-port branch.** Create
   `internal/migrate/dropmaxclaimspertopic.go` with exactly this content:
 
   ```go
@@ -255,13 +267,32 @@ or check cleanly between them, and that is expected. Only the phase-close is ver
   `Current()` returns `registry[len(registry)-1].To`, so this alone advances the generation to
   28; do not edit `Current()`.
 
+  Then add the matching byte-level branch to `ConfigForCurrentSchema` in the same file, after
+  the existing `if migration.To == 25 { ... }` block:
+
+  ```go
+  		if migration.To == 28 {
+  			var err error
+  			out, err = config.RemoveMappingKey(out, "currentState", "maxClaimsPerTopic")
+  			if err != nil {
+  				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+  			}
+  		}
+  ```
+
+  This branch is not optional and its omission is a silent trap. `awf check --staged` reads
+  the before-side config from HEAD, whose lock still records schema 27, and forward-ports it
+  through `ConfigForCurrentSchema` so the current strict parser can read it. Without this
+  branch the retired key survives forward-porting, `config.ParseTree` rejects it, and the
+  staged check fails on the very commit that removes the key. The generation-25 severity
+  removal carries the same branch for the same reason.
+
 - [ ] **Task 2.6: Test the migration to the 100% statement gate.** Create
   `internal/migrate/dropmaxclaimspertopic_test.go`, following the table shape of the sibling
-  `internal/migrate/dropseveritysettings_test.go`. Carry the proof marker
-  `// invariant: config/migrations-and-locks:claim-budget-key-dropped` on the test that
-  asserts the removal behaviour (Task 2.10 authors the claim). Cover exactly these cases,
-  each asserting both the resulting config bytes and the announcement text written to the
-  writer:
+  `internal/migrate/dropseveritysettings_test.go`. Do **not** add a proof marker: the claim it
+  would name does not exist until Phase 3, and an orphaned marker fails `awf check`. Cover
+  exactly these cases, each asserting both the resulting config bytes and the announcement
+  text written to the writer:
   - key present alongside a sibling: `currentState:\n  maxTopicsPerPath: 8\n  maxClaimsPerTopic: 20\n`
     becomes `currentState:\n  maxTopicsPerPath: 8\n`, and the writer receives
     `drop-max-claims-per-topic: removed currentState.maxClaimsPerTopic\n`;
@@ -275,18 +306,24 @@ or check cleanly between them, and that is expected. Only the phase-close is ver
   - malformed YAML: `applyDropMaxClaimsPerTopic` returns a non-nil error and writes no
     announcement.
 
-  Also assert registration: add a test asserting `Current() == 28` and that the last registry
-  entry's `Name` is `"drop-max-claims-per-topic"`. Run `go test ./internal/migrate/...`;
-  expected terminal state `ok`.
+  Cover the forward-port branch separately, because `ConfigForCurrentSchema` is a distinct
+  function from the migration: assert that
+  `ConfigForCurrentSchema([]byte("prefix: x\ncurrentState:\n  maxTopicsPerPath: 8\n  maxClaimsPerTopic: 20\n"), 27)`
+  returns bytes with no `maxClaimsPerTopic`, and that a malformed input at `from` 27 returns
+  an error whose message contains `drop-max-claims-per-topic`.
+
+  Also assert registration: `Current() == 28` and the last registry entry's `Name` is
+  `"drop-max-claims-per-topic"`. Run `go test ./internal/migrate/...`; expected terminal state
+  `ok`.
 
 - [ ] **Task 2.7: Map the generation and move the three generation pins.** In
   `internal/project/project.go`, add `28: "0.30.0",` to `minVersionBySchema` after the
   `27: "0.30.0",` entry. Do **not** change `const Version`: ADR-0194 item 4 records that
   0.30.0 is unreleased and generations 26 and 27 already share it, so the locks' `awfVersion`
-  stays `0.30.0` and only `schemaVersion` moves. Then update the three assertions that pin the
+  stays `0.30.0` and only `schemaVersion` moves. Then update the assertions that pin the
   current generation:
-  - `internal/project/version_test.go`: the `minVersionBySchema[27] != Version` assertion is
-    still true and stays as is; change the unmapped-schema probe from
+  - `internal/project/version_test.go`: the `minVersionBySchema[27] != Version` assertion
+    remains true and stays as is; change the unmapped-schema probe from
     `ValidateSchemaMinimumVersion(28, Version)` to `ValidateSchemaMinimumVersion(29, Version)`,
     keeping the `no minimum` substring assertion and updating the failure message's generation
     number to match;
@@ -307,12 +344,14 @@ or check cleanly between them, and that is expected. Only the phase-close is ver
   ```
 
   Each must report the generation-28 migration and leave its `.awf/awf.lock` at
-  `schemaVersion: 28` with `awfVersion: 0.30.0` unchanged. Because Task 2.8 already removed the
-  key by hand, the migration finds nothing to remove and prints no removal announcement; that
-  is expected and is not a failure.
+  `schemaVersion: 28` with `awfVersion: 0.30.0` unchanged. Because this task already removed
+  the key by hand, the migration finds nothing to remove and prints no removal announcement;
+  that is expected and is not a failure.
 
-- [ ] **Task 2.9: Delete the four proof markers and settle the affected tests.** This is a
-  batch task over an exhaustive site set; every site is parent-owned and there are no helpers.
+- [ ] **Task 2.9: Settle every test that reads the retired surface.** This is a batch task
+  over an exhaustive site set; every site is parent-owned and there are no helpers. Each entry
+  states its disposition, because "remove every reference" would hide a design choice where a
+  test proves something worth keeping.
 
   Exact representative (marker deleted, test kept) in `internal/config/edit_test.go`: delete
   the line `// invariant: config/configuration:topic-claim-budget-configured` immediately above
@@ -329,65 +368,94 @@ or check cleanly between them, and that is expected. Only the phase-close is ver
   `func TestRunCheckStagedSuppressesClaimBudgetNote`, which carries no marker but asserts the
   staged suppression of a note that no longer exists.
 
-  Exhaustive affected-site set:
-  - `cmd/awf/check_test.go` (marker plus both functions above)
-  - `internal/config/edit_test.go` (marker only, per the representative)
-  - `internal/config/config_test.go` (marker only; the marked test also asserts `currentState`
-    presence and absence and the `maxTopicsPerPath` default, so keep the test and drop only
-    the assertions that read `MaxClaimsPerTopic` or `EffectiveMaxClaimsPerTopic`)
-  - `internal/configspec/spec_test.go` (marker only; the marked test also asserts the
-    surviving `currentState` configspec key set, so keep the test and remove
-    `currentState.maxClaimsPerTopic` from its expected key list)
-  - `internal/topic/coverage_test.go` (delete every test and helper that calls the removed
-    `ClaimBudgetNotes`)
-  - `internal/project/currentstate_test.go`, `internal/project/configreference_test.go`,
-    `internal/project/drift_test.go`, `cmd/awf/config_test.go` (remove every reference to the
-    retired key, the removed accessor, and the removed `Advisories` field)
+  Exhaustive affected-site set with dispositions:
+  - `cmd/awf/check_test.go`: per the edge above.
+  - `internal/config/edit_test.go`: per the representative above.
+  - `internal/config/config_test.go`: four tests break, not one. Delete the
+    `// invariant: config/configuration:topic-claim-budget-configured` marker above
+    `TestCurrentStateDefaultsAndPresence` and drop that test's assertions reading
+    `MaxClaimsPerTopic` or `EffectiveMaxClaimsPerTopic`, keeping its `maxTopicsPerPath` twins.
+    In `TestCurrentStateStrictValidation`, remove `maxClaimsPerTopic: 20` from the `valid`
+    fixture and delete the `zero claim maximum` and `negative claim maximum` cases. In
+    `TestCurrentStateMaximumIntegerOverflow`, reduce the looped field list to
+    `maxTopicsPerPath` alone. In `TestCurrentStateRejectsWrongValueTypes`, delete the five
+    `maxClaimsPerTopic` fixtures, and rewrite the duplicate-key case
+    `"prefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n  maxClaimsPerTopic: 21\n"` to use
+    `maxTopicsPerPath` twice so the `already set` assertion survives. Deleting rather than
+    re-pointing the other cases is coverage-safe because the surviving `maxTopicsPerPath`
+    twins already exercise every `decodeIntegerScalar` branch; confirm with the gate, not by
+    inspection.
+  - `internal/configspec/spec_test.go`: delete the marker only; the marked test also asserts
+    the surviving `currentState` configspec key set, so keep the test and remove
+    `currentState.maxClaimsPerTopic` from its expected key list.
+  - `internal/migrate/dropseveritysettings_test.go`: this file must change even though it
+    tests a retained historical migration. Delete the
+    `cfg.CurrentState.MaxClaimsPerTopic` assertion, which will not compile once Task 2.1
+    lands; remove `maxClaimsPerTopic: 20` from the fixture that feeds `config.Parse`, which
+    would otherwise fail strict parsing; and correct the
+    `"currentState block must survive: three siblings remain"` message to name two siblings.
+    Leave the fixtures at lines that only feed `applyDropSeveritySettings` byte-level helpers
+    unchanged, since those never reach the strict parser.
+  - `internal/topic/coverage_test.go`: delete every test and helper that calls the removed
+    `ClaimBudgetNotes`.
+  - `internal/project/currentstate_test.go`: delete
+    `TestCheckCurrentStateClaimBudgetAdvisory` outright; it is wholly about the retired
+    behaviour and has no surviving subject.
+  - `internal/project/drift_test.go`: `TestClaimBudgetDriftIsLimitedToConsumingGuidance`
+    proves that changing a `currentState` integer key drifts only the guidance that consumes
+    it. That regression is about the drift mechanism, not about this key, so re-point it at
+    `maxTopicsPerPath` and rename it to `TestTopicMaximumDriftIsLimitedToConsumingGuidance`
+    rather than deleting it. Deleting it would lose the drift-scoping coverage with no
+    replacement.
+  - `internal/project/configreference_test.go` and `cmd/awf/config_test.go`: remove the
+    assertions naming the retired key and the removed accessor, keeping their
+    `maxTopicsPerPath` counterparts.
 
-  Deterministic post-check: `grep -rn 'MaxClaimsPerTopic\|maxClaimsPerTopic\|ClaimBudgetNotes'
-  --include='*.go' .` returns output only from `internal/migrate/maxclaimspertopic.go`,
-  `internal/migrate/maxclaimspertopic_test.go`, `internal/migrate/dropmaxclaimspertopic.go`,
-  `internal/migrate/dropmaxclaimspertopic_test.go`, and
-  `internal/migrate/dropseveritysettings_test.go`. Every other Go hit must be gone. Then
-  `grep -rn 'topic-claim-budget' --include='*.go' .` returns no output at all.
+  Deterministic post-check, in order:
+  - `grep -rn 'MaxClaimsPerTopic\|maxClaimsPerTopic\|ClaimBudgetNotes' --include='*.go' .`
+    returns output only from `internal/migrate/maxclaimspertopic.go`,
+    `internal/migrate/maxclaimspertopic_test.go`, `internal/migrate/dropmaxclaimspertopic.go`,
+    `internal/migrate/dropmaxclaimspertopic_test.go`, and `internal/migrate/migrate.go`. Every
+    other Go hit must be gone.
+  - `grep -rn 'invariant: .*topic-claim-budget' --include='*.go' .` returns no output. The
+    grep is scoped to the marker form deliberately: the plain string `topic-claim-budget`
+    survives in `internal/migrate/maxclaimspertopic_test.go`, which asserts the retained
+    historical migration's announcement text, and must not be treated as a leftover.
 
-- [ ] **Task 2.10: Author the three claim mutations.** In
+- [ ] **Task 2.10: Author the two claim removals.** In
   `.awf/topics/parts/tooling/cli/current-state.md`, delete the whole
   `### \`invariant: topic-claim-budget-advisory\`` block including its prose, `Origin:`, and
   `Backing:` lines. In `.awf/topics/parts/config/configuration/current-state.md`, delete the
-  whole `### \`invariant: topic-claim-budget-configured\`` block the same way. In
-  `.awf/topics/parts/config/migrations-and-locks/current-state.md`, add:
+  whole `### \`invariant: topic-claim-budget-configured\`` block the same way. Do not touch
+  `.awf/topics/parts/config/migrations-and-locks/current-state.md` in this phase; the third
+  operation is Phase 3's.
 
-  ```
-  ### `invariant: claim-budget-key-dropped`
+- [ ] **Task 2.11: Move ADR-0194 to Implementing and record the first batch.** In
+  `docs/decisions/0194-retire-the-topic-claim-count-advisory-for-authoring-guidance-and-a-review-lens.md`:
+  - change the frontmatter `status: Proposed` to `status: Implementing`. This is required, not
+    cosmetic: `internal/adr/application.go` rejects applied operations under a `Proposed`
+    status, and rejects an `Implementing` status whose operations are all applied. Applying
+    two of three leaves one pending, which is exactly the state `Implementing` requires.
+  - append to `## Status history`, after the existing `- 2026-07-31: Proposed` line, exactly
+    these two events in this order:
 
-  Schema generation 28 removes currentState.maxClaimsPerTopic from a config tree, announcing the removal it performs, and leaves every other configured key and its value intact. It seeds no replacement child, so a currentState block whose only remaining member was the retired key is dropped with it.
-  Origin: ADR-0194
-  Backing: test
-  ```
+    ```
+    - <today>: Implementing; content-sha256: <digest>
+    - <today>: Applied; operations: remove `tooling/cli:topic-claim-budget-advisory`, remove `config/configuration:topic-claim-budget-configured`
+    ```
 
-  Place it adjacent to the sibling migration claims in that file so generation order reads
-  naturally. Do not add a `Revised-by:` line: this claim is new.
+  The two operations must appear in the ADR's `State changes` declaration order, which is the
+  order written above, and each id sits in an inline code span. The `Implementing` event
+  carries a `content-sha256`; the `Applied` event carries `operations:` and **no** digest.
 
-- [ ] **Task 2.11: Append the ADR history events.** In
-  `docs/decisions/0194-retire-the-topic-claim-count-advisory-for-authoring-guidance-and-a-review-lens.md`,
-  append to `## Status history`, after the existing `- 2026-07-31: Proposed` line, exactly two
-  events in this order, matching the shape ADR-0192 uses:
-
-  ```
-  - <today>: Implementing; content-sha256: <digest>
-  - <today>: Applied; operations: remove `tooling/cli:topic-claim-budget-advisory`, remove `config/configuration:topic-claim-budget-configured`, add `config/migrations-and-locks:claim-budget-key-dropped`
-  ```
-
-  The operations must appear in the ADR's `State changes` declaration order, which is the order
-  written above. Do **not** append an `Implemented` event; that belongs to the deferred
-  post-review transaction.
-
-  To obtain `<digest>`: write any 64-character lowercase hex placeholder, run
+  `<digest>` is `adr.ContentDigest` over the five canonical sections (Context, Decision, State
+  changes, Consequences, Alternatives Considered) in that fixed order, excluding frontmatter
+  and Status history. It is not a `sha256sum` of the file. Obtain it after Task 2.14's render,
+  when `awf check` is otherwise clean: write any 64-character lowercase hex placeholder, run
   `go run ./cmd/awf check`, and read the real value from the resulting
   `latest stamped content-sha256 "<placeholder>" does not match the computed digest "<real>"`
-  error. Substitute the real value and re-run; the error must disappear. Both events carry the
-  same digest, because no canonical section changes between them.
+  error. Substitute it and re-run; that error must disappear. Running this before the render
+  risks the message being masked by unrelated drift failures.
 
 - [ ] **Task 2.12: Update the authored doc sources.** Edit authored sources only; never a
   generated file.
@@ -431,15 +499,15 @@ or check cleanly between them, and that is expected. Only the phase-close is ver
   absent. Confirm the retirement reached every surface:
   - `grep -rn 'maxClaimsPerTopic' docs/ examples/sundial/docs/ AGENTS.md` returns hits only
     inside `docs/decisions/` and `docs/plans/`, which are frozen or in-flight records;
-  - `go run ./cmd/awf check invariants` reports no unbacked or orphaned claim;
-  - `go run ./cmd/awf topic config/migrations-and-locks` lists `claim-budget-key-dropped` with
-    its proof site.
+  - `go run ./cmd/awf check invariants` reports no unbacked or orphaned claim.
+
+  Task 2.11's digest is resolved here, once this render leaves the tree otherwise clean.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction
   explicitly by path (no `git add -A`); run `go run ./cmd/awf check --staged` then `./x gate`.
   Both must pass. The gate must report 100% statement coverage and no dead code; if the new
-  migration leaves an uncovered statement, extend Task 2.6's table rather than adding a
-  `coverage-ignore`.
+  migration or its forward-port branch leaves an uncovered statement, extend Task 2.6's table
+  rather than adding a `coverage-ignore`.
 
 ```commit
 refactor(config): retire the topic claim-count advisory
@@ -455,10 +523,81 @@ config trees in the same commit the field leaves internal/config, claim
 and proof-marker symmetry is enforced in both directions, and
 migrate.Current() obliges both locks to advance together.
 
-Retires tooling/cli:topic-claim-budget-advisory and
-config/configuration:topic-claim-budget-configured, and adds
-config/migrations-and-locks:claim-budget-key-dropped, which pins the
-deliberate absence of a block-preservation seed.
+Applies the first ADR-0194 batch, retiring
+tooling/cli:topic-claim-budget-advisory and
+config/configuration:topic-claim-budget-configured, and moves the
+decision to Implementing with one operation still pending.
+```
+
+## Phase 3: Add the backing claim and flip
+
+**Execution mode: inline.** This phase is one independently green coherent implementation
+transaction. It runs **after terminal review has settled**, not immediately after Phase 2:
+the executing-plans contract places the `Implemented` flip after terminal review, and the
+lifecycle cannot represent an all-applied `Implementing` state, so the final operation and the
+flip travel together here.
+
+- [ ] **Task 3.1: Author the migration claim.** In
+  `.awf/topics/parts/config/migrations-and-locks/current-state.md`, add:
+
+  ```
+  ### `invariant: claim-budget-key-dropped`
+
+  Schema generation 28 removes currentState.maxClaimsPerTopic from a config tree, announcing the removal it performs, and leaves every other configured key and its value intact. It seeds no replacement child, so a currentState block whose only remaining member was the retired key is dropped with it.
+  Origin: ADR-0194
+  Backing: test
+  ```
+
+  That file orders its claims alphabetically by slug, so place this block between
+  `### \`invariant: awf-relocation-migration\`` and
+  `### \`invariant: close-enabled-set-migration\``. Do not add a `Revised-by:` line: the claim
+  is new.
+
+- [ ] **Task 3.2: Place the proof marker.** In `internal/migrate/dropmaxclaimspertopic_test.go`,
+  add the line `// invariant: config/migrations-and-locks:claim-budget-key-dropped`
+  immediately above the test that asserts the removal behaviour and the no-seed block drop.
+  Marker and claim must land in the same commit; either alone fails `awf check`.
+
+- [ ] **Task 3.3: Apply the final batch and flip ADR-0194.** In
+  `docs/decisions/0194-retire-the-topic-claim-count-advisory-for-authoring-guidance-and-a-review-lens.md`,
+  change the frontmatter `status: Implementing` to `status: Implemented`, and append to
+  `## Status history`, in this order:
+
+  ```
+  - <today>: Applied; operations: add `config/migrations-and-locks:claim-budget-key-dropped`
+  - <today>: Implemented; content-sha256: <digest>
+  ```
+
+  `<digest>` is the same value Phase 2 stamped, because no canonical section changes between
+  the two phases; confirm rather than assume by the `awf check` mismatch procedure in Task
+  2.11. With all three operations applied, `Implemented` has no remaining operations, which is
+  what `internal/adr/application.go` requires of a terminal status.
+
+- [ ] **Task 3.4: Freeze this plan.** Change this file's frontmatter `status: Proposed` to
+  `status: Implemented`, and record in the Notes section any finding surfaced during
+  implementation: a wrong diff, an unsliceable phase, a bad estimate.
+
+- [ ] **Task 3.5: Regenerate and verify.** Run `./x render`, then `./x check`; expected
+  terminal state `awf check: clean`. Confirm the claim landed with its proof:
+  `go run ./cmd/awf topic config/migrations-and-locks` lists `claim-budget-key-dropped` with
+  its proof site, and `go run ./cmd/awf check invariants` reports it backed.
+
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction
+  explicitly by path (no `git add -A`); run `go run ./cmd/awf check --staged` then `./x gate`.
+  Both must pass.
+
+```commit
+feat(invariants): back the generation-28 key removal (0194 batch)
+
+Applies the final ADR-0194 operation: adds
+config/migrations-and-locks:claim-budget-key-dropped with its proof
+marker on the generation-28 migration test, pinning the deliberate
+absence of a block-preservation seed.
+
+Flips ADR-0194 to Implemented and freezes the plan. The operation is
+deferred to this batch because the lifecycle rejects an all-applied
+Implementing state while the Implemented flip must follow terminal
+review.
 ```
 
 ## Verification
@@ -477,6 +616,8 @@ Beyond the per-phase gates, the effort is done when all of the following hold:
   again and confirm the check returns to clean.
 - `go run ./cmd/awf upgrade` on a tree pinned at schema 27 advances it to 28 and prints the
   removal announcement.
+- After Phase 3, `go run ./cmd/awf check` validates ADR-0194's terminal status: all three
+  declared operations applied, none remaining.
 
 ## Notes
 
@@ -491,9 +632,6 @@ Beyond the per-phase gates, the effort is done when all of the following hold:
   history-prefix rule refuses a renumber once an Applied batch exists. Renumbering after Phase
   2 means rewriting that commit too, including this plan's `adrs:` frontmatter and every
   in-file `ADR-0194` reference.
-- **Deferred to the post-review transaction:** flipping ADR-0194 to `Implemented` with its
-  content stamp, and flipping this plan to `status: Implemented`. Both belong to the deferred
-  co-flip that `awf-reviewing-impl` owns after terminal review settles.
 - **Out of scope, worth fixing separately:** `docs/topics/tooling/git-access.md.awf-bak` is a
   stray backup file committed to main by the git-seam merge. It is tracked, `awf check` does
   not flag it, and it belongs to no phase here.
