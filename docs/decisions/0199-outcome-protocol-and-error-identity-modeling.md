@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-07-31
 ---
 # ADR-0199: Outcome protocol and error identity modeling
@@ -188,3 +188,4 @@ this decision.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-08-01: Accepted; content-sha256: 30f44fef4616e7315c60d7a8a4504f3960c3c898f22a76a1e845b037ce2d657a
