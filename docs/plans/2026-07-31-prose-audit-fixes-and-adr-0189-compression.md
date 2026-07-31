@@ -496,14 +496,13 @@ phrase blocks is out of scope.
   taught, and `grep -n 'all six\|6-category' templates/skills/refactor-coupling-audit/`
   returns no output.
 - [ ] **Task 5.6: Reduce the sidecar duplication (B5, E2).**
-  - `.awf/agents/plan-reviewer.yaml` `step-exactness`: replace the ~200-word item with
-    the single settled sentence carrying the consolidated Reject list, e.g.:
-    "step-exactness: Reject any task that hides a design choice or defers content:
-    `TBD`, `implement later`, outcome-only summaries, vague similar-to deferrals, or a
-    phase-closing subject that is not exactly one commit." (Genuine deltas only - the
-    imperative framing and the Reject enumeration; everything else is the universal
-    executability lens.) Keep the sibling focus items untouched (they carry incident
-    narrative).
+  - `.awf/agents/plan-reviewer.yaml` `step-exactness`: reduce the ~200-word item to
+    its EXISTING final sentence, kept verbatim as the sole content: "Reject task-level
+    boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode
+    inference, and placeholders." (User ruling 2026-07-31: this sentence carries the
+    four rejects the universal executability lens does not enumerate; everything else
+    in the item restates that lens and is deleted. Do not author a new sentence.) Keep
+    the sibling focus items untouched (they carry incident narrative).
   - `.awf/agents/adr-reviewer.yaml`: delete the `decision-clarity` (lines 14-15) and
     `consequences-honesty` (lines 16-17) focus items (verbatim restates of universal
     lenses 1 and 4 with no "kept deliberately" note) and the INDEX-regen docCurrency
@@ -533,14 +532,17 @@ are line-anchored); restructure surrounding sentences accordingly.
   currently at `templates/skills/refactor-coupling-audit/SKILL.md.tmpl:35`,
   `templates/skills/tdd/SKILL.md.tmpl:21`, `templates/skills/debugging/SKILL.md.tmpl:37`,
   `templates/skills/bugfix/SKILL.md.tmpl:23`,
-  `templates/skills/writing-plans/SKILL.md.tmpl:60` ("start with bare context to orient
-  on the owning domains and applicable current-state claims, then drill down with
-  `awf topic` where ... touches a claimed surface" - take the exact common text from the
-  sites; where a site parameterises the middle clause, keep that clause in the site and
-  extract the shared frame). Replace each site's copy with the include directive on its
-  own line. Post-check: `grep -rln 'drill down with' templates/skills/` returns no
-  output (the phrase lives only in the partial); rendered skills still each carry the
-  full sentence.
+  `templates/skills/writing-plans/SKILL.md.tmpl:60`. The sites vary a mid-sentence
+  clause ("where the suspect surface / the change / a task touches a claimed surface"),
+  which one line-anchored include cannot express per-site; per the user ruling
+  (2026-07-31), NORMALIZE the clause to one wording across all five sites - "where the
+  work touches a claimed surface" - and extract the whole normalized sentence ("start
+  with bare context to orient on the owning domains and applicable current-state
+  claims, then drill down with `awf topic` where the work touches a claimed surface")
+  into the partial. Replace each site's copy with the include directive on its own
+  line, restructuring the surrounding sentence so the frame stands alone. Post-check:
+  `grep -rln 'drill down with' templates/skills/` returns no output (the phrase lives
+  only in the partial); rendered skills still each carry the full sentence.
 - [ ] **Task 6.2: Staged-transaction partial.** Create
   `templates/partials/staged-transaction.md` with the shared text at
   `templates/skills/adr-lifecycle/SKILL.md.tmpl:69`,
