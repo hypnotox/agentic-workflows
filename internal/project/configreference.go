@@ -49,7 +49,7 @@ func PotentialVarConsumers() (map[string][]string, error) {
 			}
 		}
 	}
-	if err := add("agents-doc/AGENTS.md.tmpl"); err != nil { // coverage-ignore: the agents-doc template is always embedded
+	if err := add(cat.Docs["agents-doc"].TID); err != nil { // coverage-ignore: the agents-doc template is always embedded
 		return nil, err
 	}
 	for _, sg := range plainSingletons {
@@ -58,7 +58,7 @@ func PotentialVarConsumers() (map[string][]string, error) {
 		}
 	}
 	for _, name := range hookNames {
-		if err := add("hooks/" + name + ".sh.tmpl"); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
+		if err := add(hookTID(name)); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
 			return nil, err
 		}
 	}
@@ -76,7 +76,7 @@ func enabledVarConsumers(files []RenderedFile) map[string][]string {
 	byVar := map[string]map[string]bool{}
 	for _, f := range files {
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
+		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
 			label = localLabel(f.TemplateID, f.Path)
 		}
 		if f.TemplateID == "" { // generated domain docs carry no template id
@@ -208,29 +208,63 @@ func (p *Project) varState(key string) string {
 	}
 }
 
-// configReferenceData builds the four dedicated template collections. files
-// is the consumption input: the output plan's write files plus the generated domain docs.
-func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, error) {
-	var configKeys, sidecarFields []map[string]any
+// ConfigKeyRow renders one config.yaml key or sidecar field in the config
+// reference: a `configKeys` row always carries a resolved Current value, a
+// `sidecarFields` row never does (there is no project-relative live value
+// for a sidecar's own field), and the static catalog-only model leaves
+// Current empty on every row.
+type ConfigKeyRow struct {
+	Path, Type, Default, Description, Availability, Current string
+}
+
+// VarRow renders one catalog var. State is the three-way live var state
+// (set, empty, absent); it is empty in the static catalog-only model.
+type VarRow struct {
+	Key, Description, Availability, State, Consumers string
+}
+
+// DataKeyRow renders one per-artifact data key. State notes an override or
+// catalog-default source; it is empty when neither applies.
+type DataKeyRow struct {
+	Artifact, Key, Description, State string
+}
+
+// ConfigReference is the typed presentation model for `awf config`: the four
+// dedicated collections PrintConfigReference renders, produced either with
+// live project state (ConfigReferenceModel) or catalog-only
+// (StaticConfigReference). It is the typed counterpart to the map[string]any
+// shape configReferenceData still builds for the doc generator - a renamed
+// field here is a compile error, never a silently empty render.
+type ConfigReference struct {
+	ConfigKeys    []ConfigKeyRow
+	VarEntries    []VarRow
+	SidecarFields []ConfigKeyRow
+	DataKeys      []DataKeyRow
+}
+
+// configReferenceRows builds the four reference collections as struct rows -
+// the single implementation behind both the `awf config` live model and, via
+// configReferenceData's map adaptation, the doc generator's template input.
+func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, error) {
+	var ref ConfigReference
 	for _, e := range configspec.Keys() {
-		row := map[string]any{
-			"path": e.Path, "type": e.Type, "default": e.Default,
-			"description": e.Description, "availability": e.Availability,
+		row := ConfigKeyRow{
+			Path: e.Path, Type: e.Type, Default: e.Default,
+			Description: e.Description, Availability: e.Availability,
 		}
 		if strings.HasPrefix(e.Path, "sidecar.") {
-			sidecarFields = append(sidecarFields, row)
+			ref.SidecarFields = append(ref.SidecarFields, row)
 			continue
 		}
-		row["current"] = p.currentValue(e.Path)
-		configKeys = append(configKeys, row)
+		row.Current = p.currentValue(e.Path)
+		ref.ConfigKeys = append(ref.ConfigKeys, row)
 	}
 
 	enabled := enabledVarConsumers(files)
 	potential, err := PotentialVarConsumers()
 	if err != nil { // coverage-ignore: PotentialVarConsumers reads only embedded templates
-		return nil, err
+		return ConfigReference{}, err
 	}
-	var varEntries []map[string]any
 	for _, v := range configspec.VarEntries() {
 		consumers := "No catalog artifact references it."
 		if c := enabled[v.Key]; len(c) > 0 {
@@ -238,15 +272,60 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 		} else if c := potential[v.Key]; len(c) > 0 {
 			consumers = "Dormant: no enabled artifact references it; enabling " + strings.Join(c, ", ") + " would."
 		}
-		varEntries = append(varEntries, map[string]any{
-			"key": v.Key, "description": v.Description, "availability": v.Availability,
-			"state": p.varState(v.Key), "consumers": consumers,
+		ref.VarEntries = append(ref.VarEntries, VarRow{
+			Key: v.Key, Description: v.Description, Availability: v.Availability,
+			State: p.varState(v.Key), Consumers: consumers,
 		})
 	}
 
-	dataKeys, err := p.dataKeyRows()
-	if err != nil { // coverage-ignore: dataKeyRows re-reads sidecars the render pass in outputPlan already read
+	dataKeys, err := p.dataKeyRowsTyped()
+	if err != nil { // coverage-ignore: dataKeyRowsTyped re-reads sidecars the render pass in outputPlan already read
+		return ConfigReference{}, err
+	}
+	ref.DataKeys = dataKeys
+	return ref, nil
+}
+
+// configReferenceData adapts configReferenceRows to the map[string]any shape
+// the doc generator's Go-template rendering consumes (a template keys a map by
+// field name). One builder feeds both surfaces, so the CLI model and
+// docs/config-reference.md cannot silently diverge; the render drift oracle
+// pins the adaptation. files is the consumption input: the output plan's
+// write files plus the generated domain docs.
+func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, error) {
+	ref, err := p.configReferenceRows(files)
+	if err != nil { // coverage-ignore: configReferenceRows fails only on the embedded-template and sidecar re-reads its own body already coverage-ignores
 		return nil, err
+	}
+	keyRow := func(r ConfigKeyRow, withCurrent bool) map[string]any {
+		row := map[string]any{
+			"path": r.Path, "type": r.Type, "default": r.Default,
+			"description": r.Description, "availability": r.Availability,
+		}
+		if withCurrent {
+			row["current"] = r.Current
+		}
+		return row
+	}
+	var configKeys, sidecarFields []map[string]any
+	for _, r := range ref.ConfigKeys {
+		configKeys = append(configKeys, keyRow(r, true))
+	}
+	for _, r := range ref.SidecarFields {
+		sidecarFields = append(sidecarFields, keyRow(r, false))
+	}
+	var varEntries []map[string]any
+	for _, v := range ref.VarEntries {
+		varEntries = append(varEntries, map[string]any{
+			"key": v.Key, "description": v.Description, "availability": v.Availability,
+			"state": v.State, "consumers": v.Consumers,
+		})
+	}
+	dataKeys := make([]map[string]any, len(ref.DataKeys))
+	for i, r := range ref.DataKeys {
+		dataKeys[i] = map[string]any{
+			"artifact": r.Artifact, "key": r.Key, "description": r.Description, "state": r.State,
+		}
 	}
 	return map[string]any{
 		"configKeys": configKeys, "varEntries": varEntries,
@@ -254,16 +333,16 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 	}, nil
 }
 
-// dataKeyRows filters the described data keys to this project: enabled
+// dataKeyRowsTyped filters the described data keys to this project: enabled
 // artifacts, the local base entries when a synthesized project-local artifact
 // of that kind exists, and the always-on agents-doc.
-func (p *Project) dataKeyRows() ([]map[string]any, error) {
+func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 	hasLocal := map[string]bool{
 		"skills": p.hasLocalArtifact("skills"),
 		"agents": p.hasLocalArtifact("agents"),
 		"docs":   p.hasLocalArtifact("docs"),
 	}
-	var rows []map[string]any
+	var rows []DataKeyRow
 	for _, d := range configspec.DataKeys() {
 		var label string
 		switch {
@@ -305,9 +384,7 @@ func (p *Project) dataKeyRows() ([]map[string]any, error) {
 				state = " (catalog default)"
 			}
 		}
-		rows = append(rows, map[string]any{
-			"artifact": label, "key": d.Key, "description": d.Description, "state": state,
-		})
+		rows = append(rows, DataKeyRow{Artifact: label, Key: d.Key, Description: d.Description, State: state})
 	}
 	return rows, nil
 }
@@ -335,7 +412,7 @@ func (p *Project) hasLocalArtifact(kind string) bool {
 		}
 	case "docs":
 		for _, n := range p.Cfg.Docs {
-			if p.Cat.Docs[n].TID == baseDocTID {
+			if p.Cat.Docs[n].TID == baseTID("docs") {
 				return true
 			}
 		}
@@ -387,21 +464,21 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 		Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, true, nil
 }
 
-// ConfigReferenceModel computes the reference's four collections
-// (configKeys, varEntries, sidecarFields, dataKeys) with live project state -
-// the `awf config` command's data source, sharing the doc's builder.
-func (p *Project) ConfigReferenceModel(ctx context.Context) (map[string]any, error) {
+// ConfigReferenceModel computes the reference's four typed collections
+// (ConfigKeys, VarEntries, SidecarFields, DataKeys) with live project state -
+// the `awf config` command's data source.
+func (p *Project) ConfigReferenceModel(ctx context.Context) (ConfigReference, error) {
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
-		return nil, err
+		return ConfigReference{}, err
 	}
 	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
-		return nil, err
+		return ConfigReference{}, err
 	}
 	dds, err := p.generateDomainDocs(topics, eff)
 	if err != nil { // coverage-ignore: the same producer ran inside outputPlan above over these identical inputs, so a second call cannot newly fail
-		return nil, err
+		return ConfigReference{}, err
 	}
-	return p.configReferenceData(slices.Concat(op.writeFiles(), dds))
+	return p.configReferenceRows(slices.Concat(op.writeFiles(), dds))
 }

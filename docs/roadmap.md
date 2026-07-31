@@ -214,30 +214,23 @@ their own decision; the pitfalls entry recording the occurrence is the interim m
 
 ## Decomposing the `internal/project` god object
 
-`internal/project.Project` carries roughly ninety-five production methods across
-thirty production files, imports seventeen internal packages, and is imported by
-exactly two. Fourteen of those files touch no `Project` field at all, which is
-the clearest signal that several cohesive units are sharing one type.
+Decided and executed by ADR-0195: `internal/contextq` (the context query behind
+the `ContextState` seam) and `internal/resident` (resident-root policy and
+anchoring) are carved out, the core keeps the cycle-bound sync engine, and the
+export surface shrank with each carve. The ADR's Context records why the
+sequencing reversed relative to this entry's earlier prescription: the
+boundaries were measured empirically (a cluster map, two verified cycles, a
+per-symbol coupling census), which grounds this package's split more strongly
+than a generic cohesion pattern would, and the direction half of any such
+pattern is already owned by `code-design/dependency-composition`.
 
-The split has been deferred repeatedly and, until now, was recorded only in
-ephemeral working memory under `.awf/efforts/`, so it vanished whenever an
-effort finished. This entry is the durable record.
-
-Two of its three prerequisites are settled. ADR-0178 established
-`code-design/dependency-composition`, so dependency direction and wiring have an
-authority to answer to. ADR-0180 established `code-design/state-ownership` and
-converted the three per-invocation derived fields, so the type no longer holds
-state written after construction and a future package boundary cannot inherit a
-hidden cache. The remaining prerequisite is a package-cohesion and boundary
-pattern, which is where the deferred `receiver-reads-owned-state` rule belongs:
-a method reads at least one receiver field, and behaviour that reads none takes
-parameters instead. Its evidence is already collected, the fourteen zero-field
-files and the four synthetic partial `Project` literals.
-
-Sequencing matters more than usual here. Half of "where does a package boundary
-go" is dependency direction, which `dependency-composition` already owns, so a
-cohesion pattern authored without reference to it would create dual authority.
-The decomposition itself should follow the pattern rather than accompany it.
+What stays open is the generalization, not the split: the deferred
+`receiver-reads-owned-state` rule (a method reads at least one receiver field;
+behaviour that reads none takes parameters instead) remains unowned by any
+topic and belongs to a future package-cohesion pattern that generalizes from
+ADR-0195's evidence rather than gating it. Further decomposition of the
+remaining core is likewise accepted at decision time as future-effort
+territory rather than silent scope; this entry is that record.
 
 ## A `coverage-ignore` the profile records as executed is a false ignore
 

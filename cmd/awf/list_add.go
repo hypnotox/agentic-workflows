@@ -108,7 +108,7 @@ func catalogNames(cat *catalog.Catalog, kind string) ([]string, bool) {
 }
 
 // isGraphKind reports whether kind is one the ADR-0081 resolver plans over.
-func isGraphKind(kind string) bool { return kind == "skill" || kind == "agent" || kind == "doc" }
+func isGraphKind(kind string) bool { return project.IsGraphKind(kind) }
 
 // checkGraphFlags rejects a graph-only flag on a non-graph kind, so no flag
 // is ever silently ignored (ADR-0081).
@@ -233,7 +233,7 @@ func toggle(ctx context.Context, root, kind, name string, dir direction, flags t
 		return err
 	}
 	if add {
-		if kind == "domain" {
+		if project.IsFreeformDomainKind(kind) {
 			if err := scaffoldDomainCurrentState(p, name); err != nil { // coverage-ignore: scaffoldDomainCurrentState only errors on an unreachable filesystem fault a test cannot trigger
 				return err
 			}
@@ -246,7 +246,7 @@ func toggle(ctx context.Context, root, kind, name string, dir direction, flags t
 			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them\n", op.Node.Kind, op.Node.Name)
 		}
 	}
-	if kind == "domain" && hasSidecarOrParts(root, key, name) {
+	if project.IsFreeformDomainKind(kind) && hasSidecarOrParts(root, key, name) {
 		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
 	}
 	noteUnrequiredAgents(p, plan, stdout)
@@ -295,7 +295,7 @@ func noteUnrequiredAgents(p *project.Project, plan []project.PlanOp, stdout io.W
 	wasRequiredBy := map[string]bool{}
 	for _, op := range plan {
 		removed[op.Node] = true
-		if op.Node.Kind == "skill" {
+		if project.IsSkillKind(op.Node.Kind) {
 			if a := p.Cat.Skills[op.Node.Name].RequiresAgent; a != "" {
 				wasRequiredBy[a] = true
 			}

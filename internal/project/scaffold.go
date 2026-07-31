@@ -50,7 +50,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 	// Hook payloads render by default (ADR-0048) - seed their vars (commitGateCmd)
 	// so an init prompt answer is not silently dropped.
 	for _, name := range hookNames {
-		if err := collectVars(templates.FS, "hooks/"+name+".sh.tmpl", varSet); err != nil { // coverage-ignore: every hookNames entry has a backing template in the embedded FS, so collectVars cannot fail
+		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil { // coverage-ignore: every hookNames entry has a backing template in the embedded FS, so collectVars cannot fail
 			return nil, nil, err
 		}
 	}
@@ -168,7 +168,7 @@ func NeededVars(trim *config.CatalogTrim) (map[string]bool, error) {
 			}
 		}
 	}
-	if err := collectVars(templates.FS, "agents-doc/AGENTS.md.tmpl", varSet); err != nil { // coverage-ignore: the agents-doc template is always embedded
+	if err := collectVars(templates.FS, cat.Docs["agents-doc"].TID, varSet); err != nil { // coverage-ignore: the agents-doc template is always embedded
 		return nil, err
 	}
 	for _, sg := range plainSingletons {
@@ -177,7 +177,7 @@ func NeededVars(trim *config.CatalogTrim) (map[string]bool, error) {
 		}
 	}
 	for _, name := range hookNames {
-		if err := collectVars(templates.FS, "hooks/"+name+".sh.tmpl", varSet); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
+		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
 			return nil, err
 		}
 	}
@@ -194,4 +194,24 @@ func collectVars(fsys fs.FS, path string, varSet map[string]bool) error {
 		varSet[v] = true
 	}
 	return nil
+}
+
+// ScaffoldVarRefs returns the vars referenced by the base template a new local
+// artifact of kind ("skill"/"agent") renders from - `awf new`'s seeding surface
+// (ADR-0087 Decision 4). Parts are raw (ADR-0034), so the base template is a
+// local artifact's only var channel; today both bases are varless and this
+// returns empty, but a future base gaining a var reference is seeded correct
+// by construction.
+func ScaffoldVarRefs(kind string) ([]string, error) {
+	plural, _ := PluralKind(kind)
+	tid := baseTID(plural)
+	src, err := fs.ReadFile(templates.FS, tid)
+	if err != nil { // coverage-ignore: awf new validates the kind before asking, so baseTID always resolves an embedded base template
+		return nil, err
+	}
+	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	if err != nil { // coverage-ignore: shipped base templates always expand
+		return nil, err
+	}
+	return render.ReferencedVars(expanded), nil
 }

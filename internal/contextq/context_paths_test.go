@@ -1,4 +1,4 @@
-package project
+package contextq
 
 import (
 	"reflect"
@@ -14,7 +14,7 @@ import (
 // is refused as outside the repository in either path space. The classifier
 // receives a slash-normalized path but asked only filepath.IsAbs, which on
 // Windows answers false for "/etc/passwd" and let it fall through to
-// PathNotFound.
+// pathNotFound.
 //
 // This is documentation, not a regression guard: on Unix path.IsAbs and
 // filepath.IsAbs agree on every input below, so the table stays green against
@@ -42,8 +42,8 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	covered := ContextPathImpact{Classification: PathCovered, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: ContextRelationships{State: []string{"d/t:kept"}, Touches: []string{}, Proofs: []string{}}, Provenance: []ContextProvenance{}, Warnings: []ContextWarning{}}
-	set := contextPathSet{tree: tree, nested: []string{"nested"}, outputs: map[string]bool{"generated": true}, ignores: []string{"ignored/**"}, domainPaths: map[string][]string{"d": {"owned/**"}}, impacts: map[string]ContextPathImpact{}}
+	covered := contextPathImpact{Classification: pathCovered, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: contextRelationships{State: []string{"d/t:kept"}, Touches: []string{}, Proofs: []string{}}, Provenance: []contextProvenance{}, Warnings: []contextWarning{}}
+	set := contextPathSet{tree: tree, nested: []string{"nested"}, outputs: map[string]bool{"generated": true}, ignores: []string{"ignored/**"}, domainPaths: map[string][]string{"d": {"owned/**"}}, impacts: map[string]contextPathImpact{}}
 	for _, f := range tree.List() {
 		class, nested, target := classifyContextPath(f.Path, set)
 		impact := covered
@@ -54,14 +54,14 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	}
 	for _, p := range []string{"link", "inside-link", "absolute-link"} {
 		impact := set.impacts[p]
-		impact.Relationships = ContextRelationships{State: []string{"d/t:excluded-symlink"}, Touches: []string{}, Proofs: []string{}}
+		impact.Relationships = contextRelationships{State: []string{"d/t:excluded-symlink"}, Touches: []string{}, Proofs: []string{}}
 		set.impacts[p] = impact
 	}
 	nestedImpact := set.impacts["nested/.awf/config.yaml"]
-	nestedImpact.Relationships = ContextRelationships{State: []string{"d/t:excluded-nested"}, Touches: []string{}, Proofs: []string{}}
+	nestedImpact.Relationships = contextRelationships{State: []string{"d/t:excluded-nested"}, Touches: []string{}, Proofs: []string{}}
 	set.impacts["nested/.awf/config.yaml"] = nestedImpact
 	ignoredImpact := set.impacts["ignored/x"]
-	ignoredImpact.Relationships = ContextRelationships{State: []string{"d/t:excluded"}, Touches: []string{}, Proofs: []string{}}
+	ignoredImpact.Relationships = contextRelationships{State: []string{"d/t:excluded"}, Touches: []string{}, Proofs: []string{}}
 	set.impacts["ignored/x"] = ignoredImpact
 	requests := buildContextRequests([]string{"", "owned", "owned/a.go", "owned/a.go", "  ", "ignored", "missing"}, set, ContextOptions{Selection: SelectionExplicit})
 	if len(requests) != 5 || requests[0].Argument != "owned" || requests[2].Argument != "owned/a.go" {
@@ -87,10 +87,10 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	}
 	set.impacts["owned/a.go"] = covered
 	git := buildContextRequests([]string{"owned/a.go"}, set, ContextOptions{Selection: SelectionStaged})
-	if git[0].Kind != RequestGitSelected || git[0].Exact == nil {
+	if git[0].Kind != requestGitSelected || git[0].Exact == nil {
 		t.Fatalf("git=%#v", git)
 	}
-	cases := map[string]PathClassification{"../x": PathOutsideRepository, "nested/x": PathNestedAdopter, "link": PathSymlink, "ignored/x": PathContextIgnored, "missing": PathNotFound, "owned/a.go": PathCovered, "generated": PathGeneratedOutput, "unowned": PathEligibleUnowned, "inside-link": PathSymlink, "absolute-link": PathSymlink}
+	cases := map[string]pathClassification{"../x": pathOutsideRepository, "nested/x": pathNestedAdopter, "link": pathSymlink, "ignored/x": pathContextIgnored, "missing": pathNotFound, "owned/a.go": pathCovered, "generated": pathGeneratedOutput, "unowned": pathEligibleUnowned, "inside-link": pathSymlink, "absolute-link": pathSymlink}
 	for p, want := range cases {
 		got, _, _ := classifyContextPath(p, set)
 		if got != want {
@@ -112,13 +112,13 @@ func TestContextRelationshipsCollectDeduplicateAndUnion(t *testing.T) {
 		{Kind: topic.TouchesMarker, ClaimID: "d/t:stable-z"},
 	}}
 	got := contextRelationshipsForPath(sites, "x.go")
-	want := ContextRelationships{State: []string{"d/t:order-a", "d/t:order-z"}, Touches: []string{"d/t:stable-a", "d/t:stable-z"}, Proofs: []string{"d/t:tested-a", "d/t:tested-z"}}
+	want := contextRelationships{State: []string{"d/t:order-a", "d/t:order-z"}, Touches: []string{"d/t:stable-a", "d/t:stable-z"}, Proofs: []string{"d/t:tested-a", "d/t:tested-z"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("relationships=%#v want=%#v", got, want)
 	}
-	other := ContextRelationships{State: []string{"d/t:another"}, Touches: []string{"d/t:stable-z"}, Proofs: []string{"d/t:tested-z"}}
-	gotBefore := ContextRelationships{State: slices.Clone(got.State), Touches: slices.Clone(got.Touches), Proofs: slices.Clone(got.Proofs)}
-	otherBefore := ContextRelationships{State: slices.Clone(other.State), Touches: slices.Clone(other.Touches), Proofs: slices.Clone(other.Proofs)}
+	other := contextRelationships{State: []string{"d/t:another"}, Touches: []string{"d/t:stable-z"}, Proofs: []string{"d/t:tested-z"}}
+	gotBefore := contextRelationships{State: slices.Clone(got.State), Touches: slices.Clone(got.Touches), Proofs: slices.Clone(got.Proofs)}
+	otherBefore := contextRelationships{State: slices.Clone(other.State), Touches: slices.Clone(other.Touches), Proofs: slices.Clone(other.Proofs)}
 	union := unionContextRelationships(got, other)
 	if !reflect.DeepEqual(got, gotBefore) || !reflect.DeepEqual(other, otherBefore) || !reflect.DeepEqual(union.State, []string{"d/t:another", "d/t:order-a", "d/t:order-z"}) {
 		t.Fatalf("union=%#v first=%#v second=%#v", union, got, other)
@@ -145,21 +145,21 @@ func TestContextFacetsAndGroupKey(t *testing.T) {
 	if _, err := ParseContextFacets([]string{"unknown"}, false); err == nil {
 		t.Fatal("unknown accepted")
 	}
-	a := ContextPathImpact{Classification: PathCovered, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []ContextWarning{}}
+	a := contextPathImpact{Classification: pathCovered, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}
 	inside := true
 	a.TargetInsideRepository = &inside
-	a.Provenance = []ContextProvenance{{Role: "template", Identity: "x", Sources: []ArtifactLink{{Path: "s", Label: "source"}}, Outputs: []ArtifactLink{{Path: "o", Label: "output"}}, Navigation: []ArtifactLink{{Path: "n", Label: "navigation"}}}}
-	a.Domains = []DomainRef{{Name: "d", CurrentState: "docs/d.md"}}
-	a.Topics = []ContextPathTopic{{ID: "d/t"}}
-	a.Relationships = ContextRelationships{State: []string{"d/t:r"}, Touches: []string{}, Proofs: []string{"d/t:i"}}
-	a.ADR = &ADRArtifactContext{Number: "0001", Status: "Implementing", Operations: []ADROperationContext{{Operation: "add", Claim: "d/t:r", Progress: "remaining", ClaimState: "not-yet-current"}}}
+	a.Provenance = []contextProvenance{{Role: "template", Identity: "x", Sources: []artifactLink{{Path: "s", Label: "source"}}, Outputs: []artifactLink{{Path: "o", Label: "output"}}, Navigation: []artifactLink{{Path: "n", Label: "navigation"}}}}
+	a.Domains = []domainRef{{Name: "d", CurrentState: "docs/d.md"}}
+	a.Topics = []contextPathTopic{{ID: "d/t"}}
+	a.Relationships = contextRelationships{State: []string{"d/t:r"}, Touches: []string{}, Proofs: []string{"d/t:i"}}
+	a.ADR = &adrArtifactContext{Number: "0001", Status: "Implementing", Operations: []adrOperationContext{{Operation: "add", Claim: "d/t:r", Progress: "remaining", ClaimState: "not-yet-current"}}}
 	_ = contextGroupKey(a, nil)
 	b := a
-	b.Warnings = []ContextWarning{WarningGlobLiteral}
+	b.Warnings = []contextWarning{warningGlobLiteral}
 	if contextGroupKey(a, nil) == contextGroupKey(b, nil) {
 		t.Fatal("warning omitted from key")
 	}
-	if !strings.Contains(string(WarningEligibleUnowned), "no domain") {
+	if !strings.Contains(string(warningEligibleUnowned), "no domain") {
 		t.Fatal("warning contract")
 	}
 }
@@ -170,17 +170,17 @@ func TestContextDirectoryGroupingUsesOnlyVisibleProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	makeImpact := func(claim, source string) ContextPathImpact {
-		return ContextPathImpact{
-			Classification: PathCovered,
-			Provenance:     []ContextProvenance{{Role: "template", Identity: "shared", Sources: []ArtifactLink{{Path: source, Label: "source"}}, Outputs: []ArtifactLink{}, Navigation: []ArtifactLink{}}},
-			Domains:        []DomainRef{{Name: "d", CurrentState: "docs/domains/d.md"}},
-			Topics:         []ContextPathTopic{{ID: "d/t"}},
-			Relationships:  ContextRelationships{State: []string{claim}, Touches: []string{}, Proofs: []string{}},
-			Warnings:       []ContextWarning{},
+	makeImpact := func(claim, source string) contextPathImpact {
+		return contextPathImpact{
+			Classification: pathCovered,
+			Provenance:     []contextProvenance{{Role: "template", Identity: "shared", Sources: []artifactLink{{Path: source, Label: "source"}}, Outputs: []artifactLink{}, Navigation: []artifactLink{}}},
+			Domains:        []domainRef{{Name: "d", CurrentState: "docs/domains/d.md"}},
+			Topics:         []contextPathTopic{{ID: "d/t"}},
+			Relationships:  contextRelationships{State: []string{claim}, Touches: []string{}, Proofs: []string{}},
+			Warnings:       []contextWarning{},
 		}
 	}
-	set := contextPathSet{tree: tree, impacts: map[string]ContextPathImpact{
+	set := contextPathSet{tree: tree, impacts: map[string]contextPathImpact{
 		"dir/a.go": makeImpact("d/t:a", "source-a"),
 		"dir/b.go": makeImpact("d/t:b", "source-b"),
 	}}

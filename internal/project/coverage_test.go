@@ -9,6 +9,7 @@ import (
 	"testing/fstest"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -263,7 +264,7 @@ func TestRenderTargetEncoderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	sc := config.Sidecar{}
-	if _, err := p.renderTarget("efforts", "", effortsTID, nil, sc, p.data(sc, mustDeriveSkills(t, p)), ".awf/efforts/.gitignore", mustDeriveSkills(t, p), &renderOutputOptions{encode: func(string) (string, error) {
+	if _, err := p.renderTarget(resident.RootNames()[0], "", residentGitignoreTID(resident.RootNames()[0]), nil, sc, p.data(sc, mustDeriveSkills(t, p)), ".awf/efforts/.gitignore", mustDeriveSkills(t, p), &renderOutputOptions{encode: func(string) (string, error) {
 		return "", errors.New("encode failure")
 	}}); err == nil {
 		t.Fatal("expected renderTarget to return the encoder error")

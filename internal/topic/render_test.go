@@ -1,9 +1,29 @@
 package topic
 
 import (
+	"io/fs"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/templates"
 )
+
+// The render entry takes template identity and content from its caller
+// (ADR-0195 item 5), so these tests supply the same embedded pair the render
+// pipeline holds. The ids are the caller's spelling, not this package's.
+const (
+	topicTemplateID = "topics/topic.md.tmpl"
+	indexTemplateID = "topics/index.md.tmpl"
+)
+
+func templateBytes(t *testing.T, tid string) []byte {
+	t.Helper()
+	b, err := fs.ReadFile(templates.FS, tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
 
 func TestRenderModelsAndTemplates(t *testing.T) {
 	topics := []Topic{{ID: TopicID{"d", "z"}, Metadata: Metadata{Title: "Beta", Summary: "Second.", Paths: []string{"x/**"}}, Part: "<!-- awf:comment -->\nAuthored {{ .raw }}.\n<!-- awf:endcomment -->\n## Claims\n"}, {ID: TopicID{"d", "a"}, Metadata: Metadata{Title: "Alpha", Summary: "First.", Applies: "global"}, Part: "## Claims\n"}, {ID: TopicID{"d", "c"}, Metadata: Metadata{Title: "Same", Summary: "A."}}, {ID: TopicID{"d", "b"}, Metadata: Metadata{Title: "Same", Summary: "A."}}, {ID: TopicID{"d", "d"}, Metadata: Metadata{Title: "Same", Summary: "B."}}}
@@ -15,16 +35,16 @@ func TestRenderModelsAndTemplates(t *testing.T) {
 	if nav.IndexLink != "../topics/d/index.md" || nav.Topics[0].Link != "../topics/d/a.md" {
 		t.Fatalf("%#v", nav)
 	}
-	out, err := RenderIndex(idx)
+	out, err := RenderIndex(indexTemplateID, templateBytes(t, indexTemplateID), idx)
 	if err != nil || !strings.Contains(out, "[Alpha](a.md)") {
 		t.Fatalf("%s %v", out, err)
 	}
-	empty, err := RenderIndex(BuildIndexModel("d", nil))
+	empty, err := RenderIndex(indexTemplateID, templateBytes(t, indexTemplateID), BuildIndexModel("d", nil))
 	if err != nil || !strings.Contains(empty, "No current-state topics") {
 		t.Fatalf("%s %v", empty, err)
 	}
 	model := BuildTopicModel(topics[0], []string{"x/pkg/**"}, MarkerIndex{}, []string{"x/pkg/a.go"})
-	out, err = RenderTopic(model)
+	out, err = RenderTopic(topicTemplateID, templateBytes(t, topicTemplateID), model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +93,7 @@ func TestApplicabilitySummarySelectorsOnly(t *testing.T) {
 	}
 }
 func TestRenderTopicTrimsTrailingNewlineFraming(t *testing.T) {
-	out, err := RenderTopic(TopicRenderModel{
+	out, err := RenderTopic(topicTemplateID, templateBytes(t, topicTemplateID), TopicRenderModel{
 		Title:         "Title",
 		Summary:       "Summary.",
 		Applicability: "Scope.",
@@ -89,19 +109,23 @@ func TestRenderTopicTrimsTrailingNewlineFraming(t *testing.T) {
 }
 
 func TestRenderErrors(t *testing.T) {
-	if _, err := RenderTopic(TopicRenderModel{Part: "<!-- awf:comment no close\n"}); err == nil {
+	if _, err := RenderTopic(topicTemplateID, templateBytes(t, topicTemplateID), TopicRenderModel{Part: "<!-- awf:comment no close\n"}); err == nil {
 		t.Fatal("malformed comment accepted")
 	}
-	if _, err := templateSource("topics/missing.tmpl"); err == nil {
-		t.Fatal("missing template accepted")
+	// A caller-supplied template is no longer guaranteed well-formed, so the
+	// strip failure must surface through every render seam rather than being
+	// assumed away.
+	malformed := []byte("<!-- awf:comment no close\n")
+	if _, err := templateSource(malformed); err == nil {
+		t.Fatal("malformed template source accepted")
 	}
-	if _, err := executeRaw("topics/missing.tmpl", nil, "raw"); err == nil {
-		t.Fatal("raw missing template accepted")
+	if _, err := executeRaw(topicTemplateID, malformed, nil, "raw"); err == nil {
+		t.Fatal("raw malformed template accepted")
 	}
-	if _, err := execute("topics/missing.tmpl", nil); err == nil {
-		t.Fatal("missing execute template accepted")
+	if _, err := execute(indexTemplateID, malformed, nil); err == nil {
+		t.Fatal("malformed execute template accepted")
 	}
-	if _, err := execute("topics/topic.md.tmpl", map[string]any{"Title": func() {}}); err == nil {
+	if _, err := execute(topicTemplateID, templateBytes(t, topicTemplateID), map[string]any{"Title": func() {}}); err == nil {
 		t.Fatal("execute error expected")
 	}
 }

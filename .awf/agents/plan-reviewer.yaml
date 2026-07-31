@@ -50,6 +50,8 @@ data:
           description: when a plan changes what a value owns, where derived state lives, or the lifetime of a cache, consult code-design/state-ownership and flag a field written after construction, a derivation stored on a value that outlives its operation, and any correctness that rests on a caller remembering to reset, reload, or order a call
         - name: single-home-authority
           description: when the plan introduces or converts a shared policy or mechanism, consult code-design/single-home and flag a task that would add a second implementation of a concern another package already owns, or that justifies a fork by coverage rather than by a materially different contract from a distinct source
+        - name: presentation-ownership-authority
+          description: when a plan moves or adds the rendering of a result model, consult code-design/presentation-ownership and flag a task that places the rendering outside the package owning the model or crosses a package boundary with a loosely-typed map
     docCurrencyItems:
         - check: the plan schedules updates for every document its changes invalidate, in the same commits
         - check: docs/decisions/INDEX.md task included whenever an ADR status flip is planned

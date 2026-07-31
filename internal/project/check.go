@@ -160,7 +160,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 			continue
 		}
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
+		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
 			label = localLabel(f.TemplateID, f.Path)
 		}
 		note := fmt.Sprintf("%s references unset vars: %s; set a value, or delete the key to accept the generic prose",
@@ -354,32 +354,10 @@ func artifactLabel(tid string) string {
 // "<prefix>-" prefix); adapter duplicates share one path-derived name, so note
 // dedup still collapses them.
 func localLabel(tid, path string) string {
-	if tid == baseSkillTID {
+	if tid == baseTID("skills") {
 		return "skill " + filepath.Base(filepath.Dir(path))
 	}
 	return "agent " + strings.TrimSuffix(filepath.Base(path), ".md")
-}
-
-// validateArtifact validates an artifact using its declared encoder, never a
-// filename suffix. This keeps policy routing independent of path spelling.
-func validateArtifact(content []byte, encoder AgentDialect) error {
-	if encoder == TOMLAgentDialect {
-		return validateTOMLAgent(content)
-	}
-	return validateFrontmatter(content)
-}
-
-// localOutPaths returns the conventional output paths for a local artifact.
-func (p *Project) localOutPaths(kind, name string) []string {
-	d, ok := descriptorByPlural(kind)
-	if !ok || d.outPath == nil {
-		return nil
-	}
-	paths := make([]string, 0, len(p.Targets))
-	for _, t := range p.Targets {
-		paths = append(paths, d.outPath(t, p.Cfg.Prefix, name))
-	}
-	return paths
 }
 
 // declaredSections returns the catalog-declared section names for a target.
@@ -485,7 +463,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 				drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})
 				continue
 			}
-			onDisk, err := os.ReadFile(p.outputPath(path))
+			onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 			if err != nil {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 				continue
@@ -510,7 +488,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"})
 			continue
 		}
-		onDisk, err := os.ReadFile(p.outputPath(path))
+		onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 		if err != nil {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 			continue

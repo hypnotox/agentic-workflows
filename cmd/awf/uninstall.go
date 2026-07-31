@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 // runUninstall removes awf's generated footprint from a project (delegated to
-// project.Uninstall: lock-tracked files, the dirs they leave empty, and the
+// resident.Uninstall: lock-tracked files, the dirs they leave empty, and the
 // lock). It deliberately leaves the authored .awf/ config (config.yaml,
 // sidecars, convention parts) in place.
 func runUninstall(ctx context.Context, root string, stdout io.Writer) error {
-	report, err := project.Uninstall(ctx, root)
+	report, err := resident.Uninstall(ctx, root)
 	if err != nil {
 		return err
 	}

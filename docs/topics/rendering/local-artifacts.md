@@ -3,7 +3,7 @@
 
 Local skill, agent, and doc declarations and their catalog and render semantics.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/local-artifacts --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/local-artifacts --coverage` for current matched paths and marker sites.
 
 Local skill, agent, and doc declarations: catalog cloning, shadow rejection, declaration requirements, and rendering from shared base templates.
 

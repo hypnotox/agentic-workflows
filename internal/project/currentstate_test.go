@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -92,7 +93,7 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 	if !slices.Contains(got, "internal/owned.go") {
 		t.Fatalf("ordinary source was filtered: %v", got)
 	}
-	if !isResidentPath(adversarial) || isResidentPath(".awf/effort/other") {
+	if !resident.IsResidentPath(adversarial) || resident.IsResidentPath(".awf/effort/other") {
 		t.Fatal("resident path predicate is not closed to resident roots")
 	}
 }

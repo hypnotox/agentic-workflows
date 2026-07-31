@@ -125,6 +125,9 @@ Apply all lenses to every implementation diff:
 **single-home-authority**: when the diff adds or converts a shared policy or mechanism, consult code-design/single-home and flag a second implementation of a concern another package already owns, a reduced copy where configuring the shared one would serve, and any fork or added coverage escape justified by coverage rather than by a materially different contract from a distinct source
 
 
+**presentation-ownership-authority**: when the diff changes where a result model is rendered for humans, or adds such a rendering, consult code-design/presentation-ownership and flag rendering that lives outside the package owning the model, and any model crossing a package boundary as a loosely-typed map whose discarded assertions turn a renamed field into a silently empty render under a green gate
+
+
 
 ## Doc-currency checklist
 

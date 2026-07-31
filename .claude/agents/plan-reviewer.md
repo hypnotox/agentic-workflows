@@ -111,6 +111,9 @@ Apply all lenses to every plan:
 **single-home-authority**: when the plan introduces or converts a shared policy or mechanism, consult code-design/single-home and flag a task that would add a second implementation of a concern another package already owns, or that justifies a fork by coverage rather than by a materially different contract from a distinct source
 
 
+**presentation-ownership-authority**: when a plan moves or adds the rendering of a result model, consult code-design/presentation-ownership and flag a task that places the rendering outside the package owning the model or crosses a package boundary with a loosely-typed map
+
+
 
 ## Doc-currency checklist
 

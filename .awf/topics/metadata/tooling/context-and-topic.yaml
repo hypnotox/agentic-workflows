@@ -3,6 +3,7 @@ summary: "The read-only orientation surfaces: context, topic, describe, uncovere
 paths:
   - cmd/**
   - internal/clispec/**
+  - internal/contextq/**
   - internal/contextdelivery/**
   - internal/contextspill/**
   - internal/initspec/**
