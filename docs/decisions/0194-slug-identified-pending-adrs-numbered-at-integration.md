@@ -101,14 +101,21 @@ reference surface is accepted.
    numbering. It runs in the effort worktree after merging the integration branch in and
    before merging back. With exactly one pending record, bare invocation numbers it.
    With several, `awf adr number <slug>...` numbers in explicit argument order; bare
-   invocation refuses and lists the pending slugs.
+   invocation refuses and lists the pending slugs. An explicit argument list must name
+   every pending record in the corpus: the integration-branch block leaves partial
+   numbering no legal destination, and completeness keeps item 9's canonicalization
+   total, so no mixed numeric-plus-slug provenance list survives numbering.
 9. Numbering performs exactly these effects and nothing else: rename `<slug>.md` to
    `NNNN-<slug>.md`; rewrite the heading to `# ADR-NNNN: <Title>`; substitute the slug
    with the number in `Origin:` and `Revised-by:` lines of the authored claim sources
    under the topic parts tree (never in a generated file), canonicalizing each touched
    `Revised-by:` list to the duplicate-free ascending order ADR-0191 requires;
    re-render so the generated topic docs and the INDEX match and the numbering commit
-   lands drift-clean. Numbering touches no status-history event: with the global state
+   lands drift-clean. The rename and heading rewrite are performed by an
+   internal/adr-owned rewrite seam, so `adr-system/adr-lifecycle:
+   corpus-raw-access-enumerated` stays true without an operation: no call site joins
+   the enumerated raw-bytes accessors, and no file outside internal/adr reads an ADR
+   path. Numbering touches no status-history event: with the global state
    sequence removed by ADR-0191, a pending record's Applied history is already in its
    final form. It prints the `<slug> -> NNNN` mapping for use in the integration commit
    message. Frozen bodies, plans, and commit messages keep their slug references.
@@ -217,7 +224,12 @@ reference surface is accepted.
   the original design; the record was re-grounded in place. A green check between
   merge-in and numbering is now the norm (the sequence collisions that made that window
   red are impossible), and the numbering command still refuses to precondition on a
-  full green check so an unrelated merge finding cannot deadlock numbering.
+  full green check so an unrelated merge finding cannot deadlock numbering. One 0191
+  forecast is corrected forward here per the append-only rule (0191 is terminal and
+  cannot say so itself): its Consequences predicted the transition-check mode dies with
+  the sequence shift, but Origin substitution and number-keyed transition pairing
+  independently refuse a numbering commit, so the sanctioned numbering transition
+  survives with a smaller effect surface.
 - Adopters carry a visible `integrationBranch` key after migration; there is no silent
   default to misconfigure.
 - The adr-lifecycle topic grows from 19 to 24 claims, past the maxClaimsPerTopic
