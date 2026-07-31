@@ -512,7 +512,13 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   (the omitted-slug and add-before-revise refusals included), the multi-pending
   ordering, the substitution's line anchoring (a body mention of `ADR-<slug>` is NOT
   rewritten), canonicalization (a substituted entry landing numerically below an
-  existing entry is re-sorted, not appended), and report formatting.
+  existing entry is re-sorted, not appended), and report formatting. One of those tests
+  must assert the plans-untouched half of `plan-adr-link-resolved` directly: run the
+  engine over a fixture whose `docs/plans/` holds a plan linking the pending record by
+  slug, and assert every file under `docs/plans/` is byte-identical afterwards and the
+  slug link still resolves. Phase 4 shipped that claim's "Numbering never rewrites a
+  plan" sentence, and this is the only test that can falsify it - ADR-0194 spent its one
+  operation on the claim in batch 4 and cannot amend the sentence again.
 - [ ] **Task 5.3: Slug-paired numbering transition validation.** In
   `internal/currentstate/transition.go`: the pairing key (`byNumber`, :456-457, and
   `pairOps`' lookups) becomes identity-based - a record's pair key is its `Slug` when
@@ -549,7 +555,12 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   internal/currentstate as `adr-number-immutable`'s proof home, but the refusals it
   proves live in the internal/project numbering engine (Task 5.2), so its marker
   lands on the internal/project test - a deliberate, stated deviation
-  (`currentState.testGlobs` admits it). Append Applied batch 5, declaration-ordered:
+  (`currentState.testGlobs` admits it). The plans-untouched test Task 5.2 adds also
+  carries a second `invariant: adr-system/plan-artifacts:plan-adr-link-resolved`
+  marker, joining the internal/project proof Phase 4 left; a claim takes any number of
+  proof markers, and this is what backs the sentence batch 4 froze. This adds no
+  operation: the claim's text is already applied and does not change here.
+  Append Applied batch 5, declaration-ordered:
   add `numbering-transition-mode`, add `adr-number-immutable` (two operations).
   `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
@@ -798,3 +809,9 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   unreachable through `Corpus.ByIdentity`, which routes a four-digit key to the number
   index. Recorded in docs/roadmap.md; it is Phase 2/3 scaffold code, not a Phase 4 effect,
   and closing it properly spans the scaffold refusal and the corpus identity guard.
+- 2026-07-31, Phase 4 review blocker, ruled by the user: the claim sentence "Numbering
+  never rewrites a plan." shipped in batch 4 with nothing able to falsify it, and
+  ADR-0194 cannot amend it (a claim carries at most one operation per ADR, and batch 4
+  spent it). Rather than a successor ADR, Phase 5 proves it: Task 5.2 gains a
+  plans-byte-identical test and Task 5.4 puts a second `plan-adr-link-resolved` proof
+  marker on it. No operation is added - the claim text does not change again.
