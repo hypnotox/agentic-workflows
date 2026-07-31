@@ -36,8 +36,9 @@ type ContextState struct {
 	Lock *manifest.Lock
 	// Declarations is the output plan the artifact projection attributes paths to.
 	Declarations []OutputDeclaration
-	// Eligible is the coverage universe: every snapshot file that is neither a
-	// generated output (a lock entry) nor matched by a contextIgnore glob.
+	// Eligible is the coverage universe: every scannable snapshot file that is
+	// not a generated output (a lock entry), not matched by a contextIgnore
+	// glob, not under a resident root, and not inside a nested adopter tree.
 	Eligible []string
 }
 

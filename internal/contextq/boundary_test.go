@@ -22,7 +22,10 @@ const (
 // movedVocabulary is the context result vocabulary this package took over
 // (ADR-0194 item 8). None of these names may reappear in internal/project's
 // exported surface: a re-export would mean the core grew a second home for the
-// query's own types, which is exactly what the carve removed.
+// query's own types, which is exactly what the carve removed. The list spans
+// both halves of the move: the names that unexported here, and the
+// command-facing names that stayed exported from this package - a core
+// re-export of either would be a second home.
 var movedVocabulary = []string{
 	"ADRArtifactContext", "ADROperationContext", "ADROperationDetail",
 	"ArtifactLink", "ArtifactRecord", "ArtifactSnapshot",
@@ -33,6 +36,8 @@ var movedVocabulary = []string{
 	"ContextRequestReport", "ContextSelectorImpact", "ContextWarning",
 	"DomainRef", "PathClassification", "PendingChange", "RequestStatus",
 	"TopicImpact", "UncoveredTopic", "UnownedEntry",
+	"ContextResult", "ContextOptions", "ContextFacet", "ContextFacetError",
+	"ContextSelection", "UncoveredResult",
 }
 
 // seamSurface is every internal/project symbol this package may name: the
