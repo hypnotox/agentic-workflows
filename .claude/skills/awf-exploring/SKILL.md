@@ -28,7 +28,7 @@ Report detail is ordered paths < summary < analysis and is independent of breadt
 <!-- awf:edit dispatch: default; create .awf/skills/parts/exploring/dispatch.md to override -->
 ## Dispatch
 
-Construct one self-contained task. Dispatch the `explorer` agent as one target-native fresh-context exploration subagent, providing the task, breadth, and detail; the agent's own contract carries the boundary, outcome, and report rules. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.
+Construct one self-contained task. Dispatch the `explorer` agent as one target-native fresh-context exploration subagent, providing the task, breadth, and detail; the agent's own contract carries the boundary, outcome, and report rules. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section.
 
 <!-- awf:edit results: default; create .awf/skills/parts/exploring/results.md to override -->
 ## Results

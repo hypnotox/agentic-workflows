@@ -422,7 +422,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				}
 			}
 			if target == "pi" {
-				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "Omit the `model` field entirely to use configured role routing", "tier's exact `provider/model-id`"} {
+				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "omit the `model` field to use configured role routing", "tier's exact `provider/model-id`"} {
 					if !strings.Contains(exploring, want) {
 						t.Errorf("Pi exploring skill missing %q", want)
 					}

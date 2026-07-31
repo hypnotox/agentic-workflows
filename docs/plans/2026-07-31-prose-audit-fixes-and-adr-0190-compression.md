@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [0190]
-status: Proposed
+status: Implemented
 ---
 # Plan: Prose audit fixes and ADR-0190 compression
 

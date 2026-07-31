@@ -108,8 +108,9 @@ Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
 
-Every final governed subagent dispatch chooses the smallest model expected to complete reliably from the semantic small, standard, and large tiers and reconsiders escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured role routing only by omitting the model field and overrides deliberately with an exact tier reference; other targets select a target-native model explicitly where supported and otherwise use the harness default with a visible unsupported-selection note. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables.
+Every final governed subagent dispatch chooses the smallest model expected to complete reliably from the semantic small, standard, and large tiers and reconsiders escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured role routing only by omitting the model field and overrides deliberately with an exact tier reference; other targets select a target-native model explicitly where supported and otherwise use the harness default with a visible unsupported-selection note. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables. Each governed dispatch section carries the compressed tier-and-escalation rule with its target branch rule, and the full tier definitions render once per target in the agent guide's workflow section, sourced from the shared model-selection partial.
 Origin: ADR-0173
+Revised-by: ADR-0190
 Backing: test
 
 ### `invariant: implementer-role-contract`
