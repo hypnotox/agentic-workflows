@@ -31,10 +31,10 @@ see through them, and feeds five call sites.
 The strongest existing outcome model is `internal/worktree`.
 `RefusalError{Category, Condition, ChangedTopology, NextAction, Err}`
 (internal/worktree/topology.go:15) with its `refusal` and `refusalCause` constructors has 25
-production call sites in the current tree (the effort's derivation measured 24 constructor
-calls plus 5 success-side constructions), and `Result` (internal/worktree/manager.go:45) is
-its deliberate success-side counterpart, carrying the same `Condition`, `ChangedTopology`,
-and `NextAction` trio alongside its `Path` and `Branch` payload: the `next action:`
+production call sites in the current tree, and `Result` (internal/worktree/manager.go:45),
+with 5 production construction sites, is its deliberate success-side counterpart, carrying
+the same `Condition`, `ChangedTopology`, and `NextAction` trio alongside its `Path` and
+`Branch` payload: the `next action:`
 vocabulary is not failure-only, since `cmd/awf/effort.go` prints it on a partial-finish
 success path with two changed axes (`changed active rename`, `changed cleanup`). The corpus also honours a latent rule nobody wrote down: when no axis moved, the
 remedy addresses only the observed condition; when any axis moved, the remedy addresses the
