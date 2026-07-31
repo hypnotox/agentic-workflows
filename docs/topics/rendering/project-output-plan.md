@@ -3,7 +3,7 @@
 
 How a project assembles its render set, output plan, drift check, and prune behaviour.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `internal/project/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/project/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/project-output-plan --coverage` for current matched paths and marker sites.
 
 The project package assembles the full render set, computes the output plan and config hash, checks drift, and prunes stale outputs. The claims below capture the current output-plan and render-orchestration contracts.
 
@@ -35,8 +35,9 @@ Backing: test
 
 ### `invariant: kind-dispatch-single-table`
 
-Every per-kind facet - the config enable array, catalog pool, declared sections, output path, and singular and plural labels - resolves through a single ordered kind-descriptor table in the project package, and a test asserts that table's kind set equals the catalog's kinds plus the freeform domains kind, so adding a catalog kind without a descriptor entry fails.
+Every per-kind facet - the config enable array, catalog pool, declared sections, output path, singular and plural labels, graph membership, and freeform-domain membership - is defined once in the single ordered kind-descriptor table in the project package, and cmd/awf decides no kind fact outside the table's exported accessors; a test asserts the table's kind set equals the catalog's kinds plus the freeform domains kind, and a source-scanning test over the cmd/awf sources asserts no kind-name equality or switch-case comparison remains there.
 Origin: ADR-0027
+Revised-by: ADR-0195
 Backing: test
 
 ### `invariant: multi-target-render`
@@ -56,6 +57,12 @@ Backing: test
 
 Post-processing of each output, frontmatter validation, link scanning, and skill-reference scanning, is selected by that output's declared policy rather than its file suffix. A non-Markdown path with a Markdown policy is still validated and scanned, a Markdown-looking path with a plain policy is not, and the zero-value policy scans nothing.
 Origin: ADR-0124
+Backing: test
+
+### `invariant: resident-policy-single-home`
+
+The resident-root table, the resident-path predicate, and anchored output-path resolution have exactly one production home in internal/resident; core consumes them through the Roots value constructed once at project open, and no file under internal/project or cmd redeclares or re-derives the table or predicate (internal/git's seam-owned ResidentName spelling is the recorded tolerated parallel).
+Origin: ADR-0195
 Backing: test
 
 ### `invariant: reviewing-skill-agent-pairing`
@@ -98,4 +105,10 @@ Backing: test
 
 A target descriptor is validated against closed sets: unknown capabilities, unknown agent dialects, unknown output encoders, out-of-set provenance values, path traversal in output paths, and undeclared or inconsistent output policies are all rejected, both when the descriptor is validated and again when the output plan is built.
 Origin: ADR-0124
+Backing: test
+
+### `invariant: template-id-single-derivation`
+
+Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree.
+Origin: ADR-0195
 Backing: test

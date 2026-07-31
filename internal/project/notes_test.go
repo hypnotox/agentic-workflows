@@ -79,10 +79,10 @@ func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := []RenderedFile{
-		{Path: ".claude/skills/example-a/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.alpha }}"},
-		{Path: ".claude/skills/example-b/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.beta }}"},
-		{Path: ".cursor/skills/example-b/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.beta }}"}, // adapter duplicate
-		{Path: ".claude/agents/reviewer.md", TemplateID: baseAgentTID, assembled: "{{ .vars.gamma }}"},
+		{Path: ".claude/skills/example-a/SKILL.md", TemplateID: baseTID("skills"), assembled: "{{ .vars.alpha }}"},
+		{Path: ".claude/skills/example-b/SKILL.md", TemplateID: baseTID("skills"), assembled: "{{ .vars.beta }}"},
+		{Path: ".cursor/skills/example-b/SKILL.md", TemplateID: baseTID("skills"), assembled: "{{ .vars.beta }}"}, // adapter duplicate
+		{Path: ".claude/agents/reviewer.md", TemplateID: baseTID("agents"), assembled: "{{ .vars.gamma }}"},
 	}
 	notes := p.unsetVarNotes(files)
 	joined := strings.Join(notes, "\n")

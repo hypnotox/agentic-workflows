@@ -66,3 +66,28 @@
   re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
   it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
   expensive.
+- Broaden the task-skill set. Nothing produces a PR title and body from the commits of an
+  effort; there is no skill for reviewing an incoming third-party PR, no security-review
+  lens, no refactor-execution skill (`refactor-coupling-audit` only scopes the decision),
+  and no dependency-upgrade skill. For the last, a concrete by-hand model exists from
+  2026-07-10: cooldown window, govulncheck reachability triage, SHA-pin bumps, changelog
+  entry.
+- Publish the standard as an artifact. No versioned spec exists (the standard is implied
+  by the renderer and its templates), there is no discoverability surface beyond the
+  GitHub README, and no examples gallery beyond `examples/sundial`.
+- Audit this repo's own overrides for dogfooding. The principle (user, 2026-07-26): only
+  overwrite what is really needed, otherwise dogfood the shipped defaults, and use
+  template defaults inside overrides so they keep rendering. A survey that day found 7
+  full-replacement parts under `.awf/parts/`, 2 under `.awf/skills/parts/`
+  (retrospective/procedure and debugging/debugging-surfaces are the worrying pair: awf
+  never renders those shipped defaults at all), and 14 under `.awf/docs/parts/`.
+- An advisory for hand-curated prose counts, which drift when the source-of-truth count
+  changes; two recorded occurrences (the agent-guide invariant list and the glossary
+  exemption count).
+- Align error-message prefixes across `cmd/awf`, `internal/adr`, and the changelog
+  tooling. Cosmetic, and blocked on deciding which convention wins before any sweep.
+- A plan-reviewer docCurrencyItem for the missing changelog task of an adopter-facing
+  plan, to be added if a second plan ships without one (first occurrence 2026-07-12; the
+  repo-local audit rule already catches the omission, just later than plan review would).
+- The init collision probe over-refuses on artifacts a `--set` trim would deselect.
+  Accepted as conservative design; revisit only if an adopter reports hitting it.

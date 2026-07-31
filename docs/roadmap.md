@@ -70,6 +70,31 @@
   re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
   it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
   expensive.
+- Broaden the task-skill set. Nothing produces a PR title and body from the commits of an
+  effort; there is no skill for reviewing an incoming third-party PR, no security-review
+  lens, no refactor-execution skill (`refactor-coupling-audit` only scopes the decision),
+  and no dependency-upgrade skill. For the last, a concrete by-hand model exists from
+  2026-07-10: cooldown window, govulncheck reachability triage, SHA-pin bumps, changelog
+  entry.
+- Publish the standard as an artifact. No versioned spec exists (the standard is implied
+  by the renderer and its templates), there is no discoverability surface beyond the
+  GitHub README, and no examples gallery beyond `examples/sundial`.
+- Audit this repo's own overrides for dogfooding. The principle (user, 2026-07-26): only
+  overwrite what is really needed, otherwise dogfood the shipped defaults, and use
+  template defaults inside overrides so they keep rendering. A survey that day found 7
+  full-replacement parts under `.awf/parts/`, 2 under `.awf/skills/parts/`
+  (retrospective/procedure and debugging/debugging-surfaces are the worrying pair: awf
+  never renders those shipped defaults at all), and 14 under `.awf/docs/parts/`.
+- An advisory for hand-curated prose counts, which drift when the source-of-truth count
+  changes; two recorded occurrences (the agent-guide invariant list and the glossary
+  exemption count).
+- Align error-message prefixes across `cmd/awf`, `internal/adr`, and the changelog
+  tooling. Cosmetic, and blocked on deciding which convention wins before any sweep.
+- A plan-reviewer docCurrencyItem for the missing changelog task of an adopter-facing
+  plan, to be added if a second plan ships without one (first occurrence 2026-07-12; the
+  repo-local audit rule already catches the omission, just later than plan review would).
+- The init collision probe over-refuses on artifacts a `--set` trim would deselect.
+  Accepted as conservative design; revisit only if an adopter reports hitting it.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
@@ -123,7 +148,7 @@ marker into a check failure directly. Confirm that against
 basis for the cheap fix. What is unresolved either way is what an association
 rule does to the two marker forms that deliberately do not attach to one test,
 `touches-state:` and `state:`, and whether a repo-wide sweep finds more than
-these two instances. ADR-0195 restores backing for both claims above as a
+these two instances. ADR-0198 restores backing for both claims above as a
 by-product of rewriting the code they describe; the general rule is not in its
 scope.
 ## The rationale site a token cannot address
@@ -216,30 +241,23 @@ their own decision; the pitfalls entry recording the occurrence is the interim m
 
 ## Decomposing the `internal/project` god object
 
-`internal/project.Project` carries roughly ninety-five production methods across
-thirty production files, imports seventeen internal packages, and is imported by
-exactly two. Fourteen of those files touch no `Project` field at all, which is
-the clearest signal that several cohesive units are sharing one type.
+Decided and executed by ADR-0198: `internal/contextq` (the context query behind
+the `ContextState` seam) and `internal/resident` (resident-root policy and
+anchoring) are carved out, the core keeps the cycle-bound sync engine, and the
+export surface shrank with each carve. The ADR's Context records why the
+sequencing reversed relative to this entry's earlier prescription: the
+boundaries were measured empirically (a cluster map, two verified cycles, a
+per-symbol coupling census), which grounds this package's split more strongly
+than a generic cohesion pattern would, and the direction half of any such
+pattern is already owned by `code-design/dependency-composition`.
 
-The split has been deferred repeatedly and, until now, was recorded only in
-ephemeral working memory under `.awf/efforts/`, so it vanished whenever an
-effort finished. This entry is the durable record.
-
-Two of its three prerequisites are settled. ADR-0178 established
-`code-design/dependency-composition`, so dependency direction and wiring have an
-authority to answer to. ADR-0180 established `code-design/state-ownership` and
-converted the three per-invocation derived fields, so the type no longer holds
-state written after construction and a future package boundary cannot inherit a
-hidden cache. The remaining prerequisite is a package-cohesion and boundary
-pattern, which is where the deferred `receiver-reads-owned-state` rule belongs:
-a method reads at least one receiver field, and behaviour that reads none takes
-parameters instead. Its evidence is already collected, the fourteen zero-field
-files and the four synthetic partial `Project` literals.
-
-Sequencing matters more than usual here. Half of "where does a package boundary
-go" is dependency direction, which `dependency-composition` already owns, so a
-cohesion pattern authored without reference to it would create dual authority.
-The decomposition itself should follow the pattern rather than accompany it.
+What stays open is the generalization, not the split: the deferred
+`receiver-reads-owned-state` rule (a method reads at least one receiver field;
+behaviour that reads none takes parameters instead) remains unowned by any
+topic and belongs to a future package-cohesion pattern that generalizes from
+ADR-0198's evidence rather than gating it. Further decomposition of the
+remaining core is likewise accepted at decision time as future-effort
+territory rather than silent scope; this entry is that record.
 
 ## A `coverage-ignore` the profile records as executed is a false ignore
 
@@ -266,13 +284,62 @@ Worth settling in the same decision: whether the rule is an error or a warning d
 transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
 subsumed by it or kept as the complementary "touched, re-evaluate" signal.
 
-## `awf context` disagrees with its own spec about a required path
+## The rendered pre-commit payload validates the worktree, not the staged slice
 
-`internal/clispec` declares `context` with `MinPos: 0`, but the handler rejects
-a bare `awf context` with a usage error and exit 2. One of the two is wrong:
-either the spec should require a positional path, or the handler should accept
-the bare form. Found in passing on 2026-07-31 while enumerating gated commands
-for the version-gate test, which had to pass a path to reach the gate at all.
-Low impact, since the usage error is clear either way, but the spec is what the
-CLI reference renders from, so the mismatch publishes a wrong arity.
+A partial-staging commit whose staged subset is drift-inconsistent (a rendered,
+lock, or config hunk left unstaged while the fixing hunk sits in the worktree)
+passes a pre-commit gate that checks the worktree, and lands a broken HEAD. It
+bit this repo at commit a85bd6a and the repo-local hook was extended on
+2026-07-15 to also run `awf check` on a checkout-index slice, but the shipped
+payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
+
+A fix is feasible and language-agnostic: checkout-index to a temporary tree and
+run the pinned `awf check` there, read-only, safer than `git stash
+--keep-index`. It is deferred because it changes ADR-0048's deliberately
+minimal, inert payload contract and adds per-commit latency to catch a
+power-user footgun (adopters who stage everything never hit it), so it needs
+its own ADR. The user chose repo-local-now, standard-level-recorded on
+2026-07-15.
+
+## Live-agent outcome evals
+
+The deterministic harness-integrity half shipped as ADR-0053 and ADR-0054: a
+fixture-based eval suite that pins chain handoffs and skill parity without
+executing an agent. The other half, live-agent outcome evals over a golden-task
+corpus (ADR-0017's original framing), stays deferred as cost-prohibitive; the
+field is choking on exactly that cost, which is why the deterministic in-lane
+variant was built instead. Revisit only with a concrete budget and a scoring
+harness design.
+
+## Partial-amendment back-pointer check
+
+When an ADR body cites another ADR's specific Decision item (a partial
+amendment), the cited ADR's `related:` should name the citing ADR, or the
+amendment is invisible from the amended side. The promotion trigger has fired:
+recorded misses at ADR-0065 (missed pointer to ADR-0079) and ADR-0093 (missed
+pointer to ADR-0024), each caught only in retrospective. Deferred because the
+rung is expensive: a detection heuristic over citation prose, tests at the 100%
+floor, and false-positive risk on citations that do not amend. Worth its own
+focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
+the natural shape of the fix.
+
+## The test suite leaks temp homes on interrupted runs
+
+An interrupted `go test` run orphans `awf-project-test-home*` directories in the system temp
+dir (13 stale ones found on 2026-07-31 while diagnosing a full 16G tmpfs; the sibling leak,
+the gate's mktemp coverage profile at ~45MB per interrupted run, was fixed structurally by
+ADR-0196's durable `coverage.out`). `t.TempDir` cannot clean up across a kill. Low priority:
+either a periodic cleanup note or naming the fixture dirs under one parent so a stale sweep
+is one `rm`.
+
+## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
+
+Neither subcommand is invoked by any hook payload, runner step, or CI job in this
+repository - every enforcement path calls bare `awf check`, which runs both halves
+together. Surveyed 2026-07-31 during the workflow-friction effort and deliberately
+kept: they are cheap, tested, and harmless single-half conveniences for focused
+debugging, and removing shipped CLI surface is more churn than a dormant tested
+branch. Tripwire, mirroring the removed `--json` precedent: if either subcommand
+starts misleading users about what bare `awf check` covers, cut it then. Do not
+keep re-asking why they are uninvoked.
 

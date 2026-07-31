@@ -41,7 +41,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Consensus adherence
 
-When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the ADR against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating ADR passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the ADR against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating ADR passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
 ## Universal lenses
 
@@ -79,6 +79,9 @@ Apply all lenses to every ADR:
 
 
 **single-home-authority**: when the ADR introduces or converts a shared policy or mechanism, consult code-design/single-home and flag a second implementation of a concern another package already owns, a reduced copy where configuring the shared one would serve, and any fork justified by coverage rather than by a materially different contract from a distinct source
+
+
+**presentation-ownership-authority**: when the ADR changes where a result model is rendered for humans, consult code-design/presentation-ownership and flag a design that renders a model outside the package owning it or passes a model across a package boundary as a loosely-typed map
 
 
 **claim-agrees-with-its-own-decision**: read EACH claim this ADR adds or updates against the Decision items of THIS SAME ADR, and flag any clause that contradicts one. No mechanical layer catches this: backing validation is structural, so it confirms a proof marker exists and never compares claim prose to the Decision or to what the proof asserts, and a decision that disagrees with itself leaves every layer mutually consistent and the gate green. ADR-0183 shipped exactly this defect and it survived two schema generations: item 1 committed to "topic coverage and topic fan-out always evaluate" while the same ADR's `config/configuration:severity-not-configurable` claim ended "a tree that declares no currentState block requests neither", and a test pinned the claim's side, so the implementation followed the claim and nothing ever went red. ADR-0192 had to correct it. The asymmetry to watch for is a claim clause that quietly scopes, qualifies, or excepts something the Decision states without qualification, and an aside appended to a claim about a different subject is where it hides.

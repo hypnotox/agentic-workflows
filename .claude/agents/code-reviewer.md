@@ -39,7 +39,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Consensus adherence
 
-When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the diff against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the diff against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
 ## Universal lenses
 
@@ -123,6 +123,9 @@ Apply all lenses to every implementation diff:
 
 
 **single-home-authority**: when the diff adds or converts a shared policy or mechanism, consult code-design/single-home and flag a second implementation of a concern another package already owns, a reduced copy where configuring the shared one would serve, and any fork or added coverage escape justified by coverage rather than by a materially different contract from a distinct source
+
+
+**presentation-ownership-authority**: when the diff changes where a result model is rendered for humans, or adds such a rendering, consult code-design/presentation-ownership and flag rendering that lives outside the package owning the model, and any model crossing a package boundary as a loosely-typed map whose discarded assertions turn a renamed field into a silently empty render under a green gate
 
 
 

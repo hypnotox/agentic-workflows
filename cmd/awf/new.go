@@ -22,14 +22,14 @@ import (
 // separate quoted description.
 // touches-state: tooling/cli:adr-new-version-gated - new-command version gate site; proof in gate_test.go
 func runNew(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
-	switch kind {
-	case "adr":
+	switch {
+	case kind == "adr":
 		return newADR(ctx, root, args, stdout)
-	case "plan":
+	case kind == "plan":
 		return newPlan(ctx, root, args, stdout)
-	case "topic":
+	case kind == "topic":
 		return newTopic(ctx, root, args, stdout)
-	case "skill", "agent", "doc":
+	case project.IsGraphKind(kind):
 		return newLocal(ctx, root, kind, args, stdout)
 	default:
 		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, skill, agent, doc)", kind)}
@@ -216,7 +216,7 @@ func newLocal(ctx context.Context, root, kind string, args []string, stdout io.W
 	if desc == "" {
 		return &usageErr{"description must not be empty"}
 	}
-	isDoc := kind == "doc"
+	isDoc := project.IsDocKind(kind)
 	if isDoc {
 		if err := config.ValidateDocName(name); err != nil {
 			return err

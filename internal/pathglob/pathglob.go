@@ -26,3 +26,13 @@ func Match(pattern, relPath string) bool {
 	ok, err := doublestar.Match(pattern, relPath)
 	return err == nil && ok
 }
+
+// MatchAny reports whether the path matches at least one of the patterns.
+func MatchAny(patterns []string, relPath string) bool {
+	for _, p := range patterns {
+		if Match(p, relPath) {
+			return true
+		}
+	}
+	return false
+}

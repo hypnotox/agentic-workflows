@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -377,13 +378,9 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	rendered, err := os.ReadFile(filepath.Join(root, ".claude/skills/example-reviewing-adr/SKILL.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(rendered), "using a Conventional-Commits scope from `awf`") {
-		t.Errorf("rendered prose does not quote audit.allowedScopes:\n%s", rendered)
-	}
+	// The guide template is the remaining .commitScopes consumer (ADR-0197
+	// removed the reviewing skills' restatement), so the scopes fold is
+	// proved on AGENTS.md: the edit below must reflag it and nothing else.
 	testsupport.WriteAwfConfig(t, root, chainClosureConfig("core"))
 	p2, err := Open(testContext(t), root)
 	if err != nil {
@@ -403,8 +400,8 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 		}
 		flagged[d.Path] = true
 	}
-	if !flagged[".claude/skills/example-reviewing-adr/SKILL.md"] {
-		t.Errorf("scopes edit did not reflag the referencing skill; drift = %v", drift)
+	if !flagged["AGENTS.md"] {
+		t.Errorf("scopes edit did not reflag the referencing guide; drift = %v", drift)
 	}
 	if flagged[".claude/skills/example-brainstorming/SKILL.md"] {
 		t.Error("scopes edit reflagged the non-referencing brainstorming skill")
@@ -527,13 +524,13 @@ func TestUninstallSplitsMissingVsCorrupt(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	if _, err := Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := resident.Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("corrupt lock must refuse uninstall with the hint, got %v", err)
 	}
 	if err := os.Remove(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
+	if _, err := resident.Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
 		t.Fatalf("missing lock lost its message: %v", err)
 	}
 }
@@ -549,7 +546,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("Audit: %v", err)
 	}
-	if _, err := CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := resident.CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("CollisionsAt: %v", err)
 	}
 }

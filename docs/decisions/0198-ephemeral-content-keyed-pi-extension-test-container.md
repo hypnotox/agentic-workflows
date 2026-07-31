@@ -3,7 +3,7 @@ format: current-state-v2
 status: Proposed
 date: 2026-07-31
 ---
-# ADR-0195: Ephemeral content-keyed Pi extension test container
+# ADR-0198: Ephemeral content-keyed Pi extension test container
 
 ## Context
 

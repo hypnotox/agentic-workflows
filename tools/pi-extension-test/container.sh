@@ -14,7 +14,7 @@ fi
 # Hash the file CONTENTS rather than sha256sum's output. sha256sum prints each
 # file's path beside its digest, so hashing that output made the fingerprint
 # vary with the absolute path of the checkout: no two paths ever shared an
-# image, and every worktree ran its own full npm ci build (ADR-0195).
+# image, and every worktree ran its own full npm ci build (ADR-0198).
 hash_files() {
   cat "$tool_dir/Dockerfile" "$tool_dir/package.json" "$tool_dir/package-lock.json" |
     sha256sum | cut -d' ' -f1
@@ -38,7 +38,7 @@ legacy_source_path() {
 # not running, or the source path recorded in its bind mount no longer exists,
 # which proves no new gate can be started against it. A running container whose
 # source path still exists belongs to a checkout that has not yet adopted
-# ADR-0195, and removing it would kill that checkout's in-flight gate.
+# ADR-0198, and removing it would kill that checkout's in-flight gate.
 reap_legacy_containers() {
   local id running source
   for id in $("$docker_cmd" ps -aq --filter "label=$legacy_label" || true); do
@@ -106,7 +106,7 @@ test_command="c8 --all --include='.pi/extensions/awf-subagents/runner.ts' --incl
 # Copy only what the suite compiles and runs, about 470 KB. The superseded
 # `cp -a /source/. /workspace/repo/` moved 376 MB, raced concurrent git activity
 # over .git/index.lock, and copied a host node_modules that then shadowed the
-# image's pinned tree during module resolution (ADR-0195). The ts-nocheck strip
+# image's pinned tree during module resolution (ADR-0198). The ts-nocheck strip
 # still runs after the source copy and before the TypeScript compiler.
 prepare_command="$(cat <<'COMMAND'
 find /workspace/repo -mindepth 1 -maxdepth 1 -exec rm -rf {} + && mkdir -p /workspace/repo/tools/pi-extension-test && cp -a /source/.pi /workspace/repo/.pi && cp -a /source/tools/pi-extension-test/tests /source/tools/pi-extension-test/fixtures /source/tools/pi-extension-test/tsconfig.json /workspace/repo/tools/pi-extension-test/ && printf '%s\n' '{"type":"module"}' > /workspace/repo/package.json && ln -s /opt/awf-pi-test/node_modules /workspace/repo/node_modules && find .pi/extensions -type f -name '*.ts' -print0 | sort -z | xargs -0 sed -i "s|^// @ts-nocheck$||" && tsc -p tools/pi-extension-test/tsconfig.json

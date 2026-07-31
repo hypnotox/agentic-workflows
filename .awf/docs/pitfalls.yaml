@@ -1,5 +1,38 @@
 data:
   pitfalls:
+    - title: "A renumber cannot follow a rebase or merge as its own commit; it must land inside the transition"
+      domains: [adr-system]
+      tags: [adr-lifecycle]
+      body: |
+        When main has taken a number a branch's ADR also declares, rebasing or merging first and
+        renumbering after does not work: every intermediate commit AND the resulting HEAD declare the
+        number twice, and `awf check --staged` refuses to evaluate any transition from a
+        duplicate-number HEAD, which blocks every commit including the renumber itself. The rename
+        has to land inside the transition that first combines the two histories - during a rebase,
+        fold it into the first replayed commit's conflict resolution (git rename detection carries
+        the later commits' edits onto the new path); during a merge, rename and update references
+        before the merge commit. The decompose effort hit this twice in one day (0191 to 0194 at
+        rebase, 0194 to 0195 at integration); the first attempt as a post-rebase commit was
+        structurally refused and forced a redo of the whole rebase. The workflow-friction effort
+        hit the same double renumber the same day (0194/0195 to 0195/0196 at rebase, then to
+        0196/0197 at integration when main took 0195 in between). One fact makes the fold cheap:
+        the content digest excludes frontmatter and the H1 title, so a renumber that edits only
+        the heading leaves every Implementing/Implemented stamp valid with no Amended event owed.
+    - title: "An applied claim's prose only changes beside an update operation, so prose findings rewrite the phase commit"
+      domains: [adr-system]
+      tags: [adr-lifecycle, verification-discipline]
+      body: |
+        The transition validator refuses a claim body edit with no ADR update operation for that
+        claim in the same HEAD-to-index step ("changed with no ADR update operation"). A review
+        finding against claim prose therefore cannot land as a normal settlement commit once the
+        phase that applied the claim has committed: the only legal homes are the transition that
+        carries the claim's own operation, or a later ADR's update operation. While the phase-close
+        commit is still branch-local, the practical response is soft-reset, fold the reword in, and
+        recommit the phase (recompute the Implementing digest if the ADR body also changed; no
+        Amended event is needed for changes landing before the stamp's commit). The decompose effort
+        did this three times - review reworded a plan-prescribed claim body at Phases 1, 5, and 6 -
+        so settle prose-touching findings BEFORE the phase-close commit when the review can run
+        earlier.
     - title: "An ADR citation in a Go comment survives a renumber, because nothing validates it"
       domains: [adr-system]
       tags: [adr-lifecycle, verification-discipline]
@@ -64,11 +97,11 @@ data:
         `SetMappingInteger` appends an absent parent at the end of the document, so repairing a
         collapsed block afterwards relocates it: seed the surviving key before the removals
         instead.
-    - title: "Three pi-extension lane flakes that ADR-0195 removed, and what they mean now"
+    - title: "Three pi-extension lane flakes that ADR-0198 removed, and what they mean now"
       domains: [tooling]
       tags: [worktree-isolation, verification-discipline]
       body: |
-        Until ADR-0195 the lane copied the whole repository root into its container and reused one
+        Until ADR-0198 the lane copied the whole repository root into its container and reused one
         long-lived container per checkout path, which produced three flake classes that a shared
         checkout hit repeatedly. All three are now structurally impossible, so this entry is kept
         inverted: if you see one of these signatures today, it is NOT the old race and rerunning
@@ -587,12 +620,12 @@ data:
       tags: [gofmt-doccomment]
       body: |
         Go's doc-comment normalization (gofmt since Go 1.19) treats a literal double-backtick pair in
-        a doc comment as the old quoting convention and rewrites it to a curly quote (`“`); so a
-        comment trying to *depict* markdown double-backtick spans gets silently mangled into wrong
-        typography, and restoring the backticks verbatim just re-triggers the rewrite (hit twice on
-        2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the construct out
-        in words ("a double-backtick quoting span"); literal backtick pairs are only safe inside
-        non-doc comments or raw strings.
+        a doc comment as the old quoting convention and rewrites it to a left curly quote (U+201C);
+        so a comment trying to *depict* markdown double-backtick spans gets silently mangled into
+        wrong typography, and restoring the backticks verbatim just re-triggers the rewrite (hit
+        twice on 2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the
+        construct out in words ("a double-backtick quoting span"); literal backtick pairs are only
+        safe inside non-doc comments or raw strings.
     - title: "Topic and decision edits regenerate navigation outside the authored file"
       domains: [adr-system]
       tags: [topic-navigation, adr-lifecycle]
@@ -905,6 +938,43 @@ data:
         that captured it. The rule gains its converse: **every commit in a shared checkout is a
         pathspec commit, including your effort's final one** - and the audit-rule follow-up on
         the roadmap now has five occurrences behind it.
+
+        **Scope after ADR-0189 (recorded 2026-07-31).** Managed worktrees are now the default
+        execution location: `awf effort new` creates one and directs execution there, so
+        cross-effort work is separated by default and every occurrence above predates that
+        cutover. The discipline in this entry still binds the residual shared-tree cases:
+        non-effort work in the primary checkout, two sessions inside one checkout or worktree,
+        and the effort-owned memory files that always live under the primary `.awf/efforts/`.
+        The live hazard shape under the worktree-default topology is different - a
+        primary-checkout path silently splitting a worktree transaction - and has its own entry.
+
+        **Sixth occurrence, 2026-07-31, and the first where the sweep rode a `git checkout`.**
+        `git checkout -- <path>` restores from the INDEX, not from HEAD, and in a shared checkout
+        the index is another writer's mutable state. A two-file doc edit (dropping two
+        `proseGate.exemptions` entries and the glyph they covered) was left uncommitted in the
+        primary checkout while a merge was open there; the index absorbed the working-tree edits,
+        so the intended `git checkout -- <paths>` revert restored that same content back onto disk
+        instead of dropping it, and it landed in the merge commit. The result is an evil merge:
+        `git show <merge>:<path>` carries the change while neither `^1` nor `^2` does, so the
+        change was never independently gated and is attributed to an unrelated merge subject.
+        Detection is its own trap - `git log -S<string> -- <path>` reports NOTHING, because
+        `git log -S` skips merge commits by default; diff the merge against both parents, or pass
+        `--diff-merges=first-parent`. The tell at the time was in plain sight and read backwards:
+        the file went from ` M` to `M ` across the checkout, i.e. it became STAGED rather than
+        clean, which is proof the revert restored rather than discarded. Rule: before reverting
+        your own uncommitted hunks in a shared checkout, run `git diff --cached -- <paths>` first;
+        if the index already holds your content, `git checkout --` is a no-op that re-lands it, and
+        the only safe revert is reverse-applying your own patch (`git apply -R`). Exposure here is
+        proportional to how long a merge stays open in a shared checkout, so anything that
+        shortens that window shrinks this hazard without removing the underlying rule.
+
+        **Sixth occurrence, 2026-07-31, hours after the scope note above was written, inside one
+        of its named residual cases.** Integration runs in the primary checkout, and resolving the
+        divergent merge with `git add -A` swept a concurrent session's uncommitted prose-exemption
+        edit into the merge commit undisclosed; the renewed terminal review caught it. Merge
+        resolution is not exempt from the pathspec rule: stage the resolved conflict paths and
+        your own renumber edits by name, and run a fresh `git status` first, because integration
+        is precisely the moment two sessions' work meets in one index.
     - title: "Link ADRs by their on-disk filename, never by constructing one from the title"
       domains: [adr-system]
       tags: [cross-references, link-resolution]
@@ -1638,9 +1708,9 @@ data:
         after integration as two batches, five operations moving it to `Implementing` and the sixth
         landing with the flip once terminal review settled. Treat the flip as the last thing that
         happens, after terminal review, and prefer an incremental batch whenever any question about
-        the decision's content is still open. Note also that a terminal event carrying explicit
-        `Applied` events must NOT repeat a `state-sequence`; mixing explicit batches with implicit
-        terminal sequencing is rejected outright.
+        the decision's content is still open. (The original note about a terminal event not
+        repeating a `state-sequence` retired with the global sequence itself in ADR-0191; Applied
+        events carry operations only.)
     - title: "In a managed worktree, a primary-checkout path silently splits the transaction"
       domains: [tooling]
       related: [189, 190]

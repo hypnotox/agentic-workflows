@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// The legacy sweep in container.sh is the one piece of ADR-0195 that can destroy
+// The legacy sweep in container.sh is the one piece of ADR-0198 that can destroy
 // something: it removes containers, and a wrong predicate kills a gate running in
 // another checkout. Review found two defects in it that source-substring matching
 // could not have caught, so it is exercised behaviourally through the script's own
@@ -58,7 +58,7 @@ exit 0
 	for _, id := range strings.Fields(string(raw)) {
 		got[id] = true
 	}
-	// ADR-0195 item 9: remove only when provably unused, and fail closed otherwise.
+	// ADR-0198 item 9: remove only when provably unused, and fail closed otherwise.
 	for id, want := range map[string]bool{
 		"runlive":  false, // running at a live path: could be backing another checkout's gate
 		"rundead":  true,  // recorded path is gone, so no new gate can start against it
@@ -116,7 +116,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 }
 
-// ADR-0195: the Pi-extension gate lane runs the extension suite inside a
+// ADR-0198: the Pi-extension gate lane runs the extension suite inside a
 // content-fingerprinted ephemeral Docker environment, so a contributor needs no
 // host Node or npm, and it keeps an explicit reset cleanup command. Every
 // property below is load-bearing for the claim and none is observable from the
@@ -132,10 +132,10 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 	}
 	script := string(rawX)
 	if !strings.Contains(script, "tools/pi-extension-test/container.sh run") {
-		t.Error("./x gate must wire the pi-extension lane (ADR-0195)")
+		t.Error("./x gate must wire the pi-extension lane (ADR-0198)")
 	}
 	if !strings.Contains(script, "usage: ./x pi-test <run|reset>") {
-		t.Error("./x pi-test must offer exactly run and reset (ADR-0195)")
+		t.Error("./x pi-test must offer exactly run and reset (ADR-0198)")
 	}
 
 	rawSh, err := os.ReadFile("../../tools/pi-extension-test/container.sh")
@@ -156,7 +156,7 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 		`${AWF_PI_TEST_DOCKER:-docker}`,
 	} {
 		if !strings.Contains(sh, want) {
-			t.Errorf("container.sh lost %q (ADR-0195)", want)
+			t.Errorf("container.sh lost %q (ADR-0198)", want)
 		}
 	}
 	for _, banned := range []string{
@@ -170,7 +170,7 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 		`stop)`,
 	} {
 		if strings.Contains(sh, banned) {
-			t.Errorf("container.sh must not reintroduce %q: the lane is ephemeral (ADR-0195)", banned)
+			t.Errorf("container.sh must not reintroduce %q: the lane is ephemeral (ADR-0198)", banned)
 		}
 	}
 
@@ -178,7 +178,7 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 	// each file's absolute path, which silently keys the image per checkout.
 	start := strings.Index(sh, "hash_files()")
 	if start < 0 {
-		t.Fatal("container.sh must define hash_files (ADR-0195)")
+		t.Fatal("container.sh must define hash_files (ADR-0198)")
 	}
 	body := sh[start:]
 	end := strings.Index(body, "}")
@@ -187,13 +187,13 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 	}
 	fingerprint := body[:end]
 	if !strings.Contains(fingerprint, "cat ") {
-		t.Error("hash_files must hash file contents, not sha256sum output (ADR-0195)")
+		t.Error("hash_files must hash file contents, not sha256sum output (ADR-0198)")
 	}
 	if strings.Contains(fingerprint, `sha256sum "$tool_dir`) {
-		t.Error("hash_files must not hash sha256sum's path-bearing output (ADR-0195)")
+		t.Error("hash_files must not hash sha256sum's path-bearing output (ADR-0198)")
 	}
 	if strings.Contains(sh, "repo_hash") {
-		t.Error("container.sh must not key any object on the repository path (ADR-0195)")
+		t.Error("container.sh must not key any object on the repository path (ADR-0198)")
 	}
 }
 
