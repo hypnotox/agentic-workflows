@@ -18,6 +18,28 @@ data:
         0196/0197 at integration when main took 0195 in between). One fact makes the fold cheap:
         the content digest excludes frontmatter and the H1 title, so a renumber that edits only
         the heading leaves every Implementing/Implemented stamp valid with no Amended event owed.
+    - title: "A renumber substitution must be scoped to the citations the effort owns"
+      domains: [adr-system]
+      tags: [adr-lifecycle, verification-discipline]
+      body: |
+        Renumbering inside the merge, as the entry above requires, puts the substitution in the one
+        place where both histories' text is present at once. A blanket
+        `sed 's/ADR-OLD/ADR-NEW/g'` over the files carrying the effort's references will then also
+        rewrite the OTHER side's citations of that same number, if the merge happened to bring them
+        into one of those files. ADR-0198 renumbered from 0195 and corrupted two sentences in
+        `.awf/docs/parts/roadmap/deferred.md` that main had just added about ITS ADR-0195, the
+        `internal/project` decomposition: the roadmap then told a reader that the decomposition was
+        decided by the Pi-extension container decision.
+        Nothing mechanical caught it, and nothing will. Every gate stayed green through the merge
+        commit, the render, the staged check, and the full gate, because no check reads a prose ADR
+        citation for meaning; only the post-merge review found it. Treat the number as ambiguous
+        rather than unique for the duration of the merge: substitute per known reference site, or
+        substitute blindly and then diff every touched file against the merge source, confirming
+        that nothing differs except the effort's own additions. The second form is the cheap one
+        and it is what proved the repair. Note the asymmetry with the sibling entry above, "An ADR
+        citation in a Go comment survives a renumber": one hazard is a citation the sweep misses,
+        the other is a citation the sweep should never have touched, and a sweep tuned to avoid one
+        walks straight into the other.
     - title: "An applied claim's prose only changes beside an update operation, so prose findings rewrite the phase commit"
       domains: [adr-system]
       tags: [adr-lifecycle, verification-discipline]
@@ -1772,3 +1794,17 @@ data:
         a regexp over source, where the language's syntax is richer than the pattern; and a
         check reused from another context, where the boundary it encodes may not be the boundary
         you need. Both look identical to a working check from the output alone.
+
+        A fourth shape inverts the failure: the check is fine and the FALSIFICATION is broken, so
+        the habit above silently degrades into the thing it was meant to replace. Planting a
+        violation with `sed -i "s|...|...|"` fails outright when the pattern contains `||`, since
+        the alternation collides with the `s|` delimiter; `sed` prints its usage error, the
+        surrounding script carries on, and the test then passes because nothing was ever mutated.
+        Two of three mutations in one ADR-0198 round failed exactly this way and their green
+        results were briefly read as evidence. A mutation that does not apply is indistinguishable
+        from a test that catches nothing, and it is the more dangerous of the two, because it
+        arrives wearing the costume of due diligence. Assert the mutation landed before trusting
+        its verdict: prefer a substitution that fails loudly on a missing pattern, such as python
+        with an `assert pattern in source` before the replace. One more trap in the same loop:
+        undoing a mutation with `git checkout -- <file>` also discards any UNCOMMITTED real edit
+        to that file, so a comment written minutes earlier vanishes with the mutation.
