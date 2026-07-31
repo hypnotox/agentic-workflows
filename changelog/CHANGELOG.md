@@ -10,6 +10,16 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Add the `current-state-v3` ADR format and its `adrFormatV3From` lock cutoff, sealed by schema
+  generation 28. V3 is `current-state-v2` plus a mandatory `slug:` frontmatter key that is
+  retained forever, and a record carrying no number routes into the corpus by that format marker
+  instead of by a cutoff. Two adopter-visible consequences land with it. A file under
+  `docs/decisions/` that is neither a reserved basename (`README.md`, `INDEX.md`, `template.md`)
+  nor a parseable record is now a corpus error, where it was silently ignored; move any such file
+  out of the decisions directory before upgrading. A duplicate ADR number, or a duplicate slug
+  across pending and numbered records, is now a hard error from one place rather than a silent
+  last-wins parse. Run `awf upgrade` to seal the cutoff; a fresh adoption seals V3 alongside V2.
+
 - Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
   every enabled skill, not only task skills). A local override of
   `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty
