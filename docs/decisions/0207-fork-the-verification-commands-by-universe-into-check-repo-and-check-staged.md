@@ -74,14 +74,15 @@ items 4 and 9 settle both halves.
 `resolve` (`cmd/awf/dispatch.go:205-216`) looks up `args[0]`, tests `args[1]` against `Children`,
 and returns; it has no recursion. It returns the depth-2 node as `cmd`, and `cmd/awf/main.go:119`
 reads `clispec.ResolvedGating(top, cmd)` while `cmd/awf/main.go:169` reads `cmd.StateExempt`.
-Left unchanged, `awf check repo prose` would resolve to the `repo` group and lose both its
-`Ungated` classification and its project-guard exemption, contradicting
-`tooling/cli:group-child-gating-honored` and `tooling/cli:group-child-project-guard-exemption`.
-Two further sites fail silently rather than loudly: `globalHelp` (`cmd/awf/main.go:51-54`) and
-`clispec.UngatedGroupChildren` (`internal/clispec/clispec.go:498-511`) each iterate one level of
-children, so grandchildren would simply stop appearing, and `internal/project/gatedcommands.go:18`
-carries a coverage-ignore whose stated assumption ("the table always carries the three ungated
-check children") this shape falsifies.
+Left unchanged, `awf check staged commit` would resolve to the `staged` group and lose its
+project-guard exemption, contradicting `tooling/cli:group-child-project-guard-exemption`. The
+parallel gating problem is real today but is dissolved rather than fixed by item 13, which leaves
+no group child declaring its own classification. Two further sites fail silently rather than
+loudly: `globalHelp` (`cmd/awf/main.go:51-54`) and `clispec.UngatedGroupChildren`
+(`internal/clispec/clispec.go:498-511`) each iterate one level of children, so grandchildren would
+simply stop appearing, and `internal/project/gatedcommands.go:18` carries a coverage-ignore whose
+stated assumption ("the table always carries the three ungated check children") this decision
+falsifies from both directions.
 
 ### The staged scanners are broken for a nested adopter
 
@@ -110,12 +111,17 @@ the append-only column records what the commands were called when those decision
    command surface entirely. `awf check --staged` becomes `awf check staged`. No alias is kept,
    following the ADR-0093 and ADR-0159 precedent of a clean break.
 
-   Two composition sites change with it. `templates/hooks/pre-commit.sh.tmpl:9` renders the staged
-   check by appending a token to the adopter's configured `checkCmd` (`{{ . }} --staged`), which
-   becomes a positional rather than a flag; the payload therefore stops appending and renders a
-   resolved command, so an adopter whose `checkCmd` already carries a flag does not render an
-   invocation the group handler rejects for subcommand order. This repository's `x` learns `staged`
-   for the same reason, its `checkCmd` being `./x check`.
+   The pre-commit payload stops naming the staged universe and the two scans at all. Bare check
+   covers both universes after item 4, so `templates/hooks/pre-commit.sh.tmpl` drops its
+   `{{ . }} --staged` line and its `check prose` and `check memory` lines, leaving the configured
+   `checkCmd` and the gate. This removes the append-a-token composition rather than respelling it,
+   which matters because `--staged` was a flag and `staged` is a positional: appending it to an
+   adopter `checkCmd` that already carried a flag would have rendered an invocation the group
+   handler rejects for subcommand order. No new adopter-visible var is introduced.
+
+   It also completes ADR-0196 Decision 3 rather than regressing it. That decision made the payload's
+   standalone scan lines the single local enforcement point; item 4 makes `checkCmd` cover them, so
+   keeping the standalone lines would run each scan and the staged universe twice per commit.
 
 2. Membership follows the subject axis. `check repo` holds `drift`, `state`, `prose`, and `memory`.
    `check staged` holds `state` (the HEAD-to-index transition check), `drift` (new, item 5), and
@@ -212,11 +218,22 @@ the append-only column records what the commands were called when those decision
    makes a project-relative `proseGate.exemptions` entry match. Item 8 depends on this: sundial
    cannot enable either gate until it holds.
 
-10. `resolve` returns the leaf node and `ResolvedGating` resolves along the full ancestor chain, so a
-    grandchild's gating and project-guard exemption are honoured. `globalHelp` and
-    `UngatedGroupChildren` recurse to any depth, and the coverage-ignore at
-    `internal/project/gatedcommands.go:18` is re-reasoned or removed against the new shape. Arity
-    stays with the leaf: fixing `resolve` is preferred to hand-parsing a third token in the handler,
+   Both scanners also consult their enablement knob before reading any index. Today they open the
+   repository first (`cmd/awf/prosegate.go:17` ahead of the knob at `:29`), so a disabled gate
+   hard-errors outside a git repository instead of reporting itself disabled. That ordering is what
+   would otherwise defeat item 4's degradation: the repo universe carries these two index readers,
+   so bare check outside a repository would fail on them even with the staged universe degraded, and
+   `rendering/project-output-plan:curated-init-skill-refs-clean` would still break. With the knob
+   read first, a disabled scan reports disabled without touching git and an enabled scan still
+   refuses, which is the substantive half of the
+   `tooling/quality-gates:prose-gate-refuses-without-git` update: that claim narrows from refusing
+   unconditionally to refusing when the gate is on.
+
+10. `resolve` returns the leaf node, so a grandchild's project-guard exemption is read from the node
+    the driver dispatches rather than from its group. `globalHelp` recurses to any depth. Gating
+    needs no chain, because item 13 leaves every `check` descendant inheriting the group's
+    classification. Arity stays with the leaf: fixing `resolve` is preferred to hand-parsing a third
+    token in the handler,
     which would otherwise stop `awf check staged commit extra-junk` being rejected.
 
     The resolved path, not a single token, reaches the handler. `cmdCtx.sub` is one string today
@@ -254,13 +271,39 @@ the append-only column records what the commands were called when those decision
     `.awf/docs/parts/roadmap/deferred.md:235` ("`awf check drift` and `awf check state`: deliberately
     kept, currently uninvoked") is resolved by item 4, which invokes both. `.awf/domains/parts/adr-system/current-state.md:7`
     and `.awf/parts/workflow/local-hooks.md:3` take the respelled invocation from item 1.
+    `.awf/parts/workflow/composing-the-gate.md:9-14` and `.awf/docs/parts/testing/gate.md:11-12`
+    take a semantic update rather than a respelling: both describe the two scans as separate
+    non-gate steps the payload runs on its own, which item 4 and item 1 together retire.
+
+13. Gating is unconditional across the whole `check` family: `check prose`, `check memory`, and
+    `check commit` lose the `Ungated` classification ADR-0159 Decision 4 gave them and inherit the
+    group's `Gated`. Ungated is reserved for a command that repairs a gate problem (`upgrade`) or one
+    genuinely disconnected from the config (`version`, `changelog`). All three read `.awf/config.yaml`
+    (the enablement knobs, and `docsDir` for the memory prefixes), so none qualifies, and a binary
+    behind the project cannot be repaired by committing. The behaviour change is accepted and named:
+    an adopter invoking these three directly on a stale binary now gets a refusal where they
+    previously got a scan.
+
+    The per-child gating mechanism goes with them. Those three are the only group children in the
+    table that declare their own classification (`internal/clispec/clispec.go:119`, `:132`, `:147`),
+    so with them inheriting, `ResolvedGating`'s child branch and `UngatedGroupChildren` have no
+    exercised path; the 100% coverage gate and the dead-code gate would force each to a vacuous
+    always-false branch or an always-empty result rather than let it stand. Both are removed, the
+    published projection collapses from two lists to one, and the coverage-ignore at
+    `internal/project/gatedcommands.go:18` is removed with the branch it guards.
+
+    The project-state exemption is a different guard and is retained where awf's own multi-commit
+    operations need it. `StateExempt` stays on `check commit`, because incremental claim application
+    spans commits by design and a commit-msg hook must function inside that window, which was
+    ADR-0159 Decision 5's actual justification. It is dropped from `check prose` and `check memory`,
+    which no longer run standalone from the payload after item 1.
 
 ## State changes
 
-- update `tooling/cli:group-child-gating-honored`
 - update `tooling/cli:group-child-project-guard-exemption`
 - update `tooling/cli:help-lists-group-children`
 - update `tooling/cli:gated-commands-generated`
+- remove `tooling/cli:group-child-gating-honored`
 - update `tooling/cli:invariants-in-check`
 - add `tooling/cli:check-universe-groups`
 - add `tooling/cli:check-disabled-child-disclosure`
