@@ -10,6 +10,12 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Remove the `currentState.maxClaimsPerTopic` config key and the non-failing topic claim-count
+  note `awf check` emitted from it. Schema generation 28 removes the key from an existing tree;
+  because `config.yaml` is strict-parsed, a tree that still carries the key fails to load on
+  this binary until `awf upgrade` runs. Topic cohesion is now an authoring and review concern:
+  see the `One subject per topic` rule in the documentation standard.
+
 - Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
   every enabled skill, not only task skills). A local override of
   `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty

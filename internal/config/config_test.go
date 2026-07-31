@@ -439,14 +439,13 @@ func TestDocsDirRejectsEscapingPath(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:topic-claim-budget-configured
 func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 	absent, err := Parse("staged/.awf", []byte("prefix: x\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if absent.CurrentState != nil || absent.CurrentState.EffectiveMaxTopicsPerPath() != 8 || absent.CurrentState.EffectiveMaxClaimsPerTopic() != 20 {
-		t.Fatalf("absent currentState = %#v, effective topic max = %d, effective claim max = %d", absent.CurrentState, absent.CurrentState.EffectiveMaxTopicsPerPath(), absent.CurrentState.EffectiveMaxClaimsPerTopic())
+	if absent.CurrentState != nil || absent.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
+		t.Fatalf("absent currentState = %#v, effective topic max = %d", absent.CurrentState, absent.CurrentState.EffectiveMaxTopicsPerPath())
 	}
 
 	cfg, err := Parse("staged/.awf", []byte("prefix: x\ncurrentState: {}\n"))
@@ -459,18 +458,17 @@ func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.CurrentState.MaxTopicsPerPath != nil || cfg.CurrentState.MaxClaimsPerTopic != nil || cfg.CurrentState.EffectiveMaxTopicsPerPath() != 8 || cfg.CurrentState.EffectiveMaxClaimsPerTopic() != 20 {
-		t.Errorf("defaults = %#v, effective topic max = %d, effective claim max = %d", cfg.CurrentState, cfg.CurrentState.EffectiveMaxTopicsPerPath(), cfg.CurrentState.EffectiveMaxClaimsPerTopic())
+	if cfg.CurrentState.MaxTopicsPerPath != nil || cfg.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
+		t.Errorf("defaults = %#v, effective topic max = %d", cfg.CurrentState, cfg.CurrentState.EffectiveMaxTopicsPerPath())
 	}
 
 	max := 3
-	claimMax := 7
-	direct := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, CurrentState: &CurrentStateConfig{MaxTopicsPerPath: &max, MaxClaimsPerTopic: &claimMax}}
+	direct := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, CurrentState: &CurrentStateConfig{MaxTopicsPerPath: &max}}
 	if err := direct.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if direct.CurrentState.MaxTopicsPerPath != &max || direct.CurrentState.EffectiveMaxTopicsPerPath() != 3 || direct.CurrentState.MaxClaimsPerTopic != &claimMax || direct.CurrentState.EffectiveMaxClaimsPerTopic() != 7 {
-		t.Errorf("explicit maximum was replaced: topics=%#v claims=%#v", direct.CurrentState.MaxTopicsPerPath, direct.CurrentState.MaxClaimsPerTopic)
+	if direct.CurrentState.MaxTopicsPerPath != &max || direct.CurrentState.EffectiveMaxTopicsPerPath() != 3 {
+		t.Errorf("explicit maximum was replaced: topics=%#v", direct.CurrentState.MaxTopicsPerPath)
 	}
 }
 
@@ -485,7 +483,6 @@ currentState:
       close: '*/'
   testGlobs: ['**/*_test.go']
   maxTopicsPerPath: 4
-  maxClaimsPerTopic: 20
 `
 	cfg, err := Parse("staged/.awf", []byte(valid))
 	if err != nil {
@@ -500,8 +497,6 @@ currentState:
 	}{
 		{"zero maximum", "  maxTopicsPerPath: 0\n", "must be positive"},
 		{"negative maximum", "  maxTopicsPerPath: -1\n", "must be positive"},
-		{"zero claim maximum", "  maxClaimsPerTopic: 0\n", "must be positive"},
-		{"negative claim maximum", "  maxClaimsPerTopic: -1\n", "must be positive"},
 		{"empty source globs", "  sources:\n    - globs: []\n      marker: '//'\n", "has no globs"},
 		{"duplicate source glob", "  sources:\n    - globs: ['**/*.go', '**/*.go']\n      marker: '//'\n", "duplicate glob"},
 		{"empty source glob", "  sources:\n    - globs: ['']\n      marker: '//'\n", "empty"},
@@ -530,7 +525,7 @@ currentState:
 		{"prefix: x\ncurrentState:\n  topicCoverage: error\n", "topicCoverage"},
 		{"prefix: x\ncurrentState:\n  topicFanout: warn\n", "topicFanout"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      unknown: true\n", "unknown"},
-		{"prefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n  maxClaimsPerTopic: 21\n", "already set"},
+		{"prefix: x\ncurrentState:\n  maxTopicsPerPath: 20\n  maxTopicsPerPath: 21\n", "already set"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      marker: '#'\n", "already set"},
 	} {
 		if _, err := Parse("staged/.awf", []byte(tc.body)); err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -540,7 +535,7 @@ currentState:
 }
 
 func TestCurrentStateMaximumIntegerOverflow(t *testing.T) {
-	for _, field := range []string{"maxTopicsPerPath", "maxClaimsPerTopic"} {
+	for _, field := range []string{"maxTopicsPerPath"} {
 		node := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
 			{Kind: yaml.ScalarNode, Tag: "!!str", Value: field},
 			{Kind: yaml.ScalarNode, Tag: "!!int", Value: "999999999999999999999999999999999999"},
@@ -598,11 +593,6 @@ func TestCurrentStateRejectsWrongValueTypes(t *testing.T) {
 		"prefix: x\ncurrentState:\n  maxTopicsPerPath: true\n",
 		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 1.5\n",
 		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 999999999999999999999999999999999999\n",
-		"prefix: x\ncurrentState:\n  maxClaimsPerTopic: null\n",
-		"prefix: x\ncurrentState:\n  maxClaimsPerTopic: nope\n",
-		"prefix: x\ncurrentState:\n  maxClaimsPerTopic: true\n",
-		"prefix: x\ncurrentState:\n  maxClaimsPerTopic: 1.5\n",
-		"prefix: x\ncurrentState:\n  maxClaimsPerTopic: 999999999999999999999999999999999999\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - globs: {}\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - marker: []\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - close: []\n",

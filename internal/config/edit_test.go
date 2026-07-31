@@ -113,21 +113,20 @@ func TestRemoveKey(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:topic-claim-budget-configured
 func TestSetMappingInteger(t *testing.T) {
 	for _, tc := range []struct {
 		name, src, want string
 		wantErr         bool
 	}{
-		{"creates mapping", "# top\nprefix: x\n", "# top\nprefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n", false},
-		{"adds child preserving comment", "currentState:\n  maxTopicsPerPath: 8 # keep\n", "currentState:\n  maxTopicsPerPath: 8 # keep\n  maxClaimsPerTopic: 20\n", false},
-		{"preserves existing integer", "currentState:\n  maxClaimsPerTopic: 7 # explicit\n", "currentState:\n  maxClaimsPerTopic: 7 # explicit\n", false},
+		{"creates mapping", "# top\nprefix: x\n", "# top\nprefix: x\ncurrentState:\n  maxTopicsPerPath: 20\n", false},
+		{"adds child preserving comment", "currentState:\n  sources: [] # keep\n", "currentState:\n  sources: [] # keep\n  maxTopicsPerPath: 20\n", false},
+		{"preserves existing integer", "currentState:\n  maxTopicsPerPath: 7 # explicit\n", "currentState:\n  maxTopicsPerPath: 7 # explicit\n", false},
 		{"rejects non-mapping", "currentState: nope\n", "", true},
-		{"rejects wrong existing kind", "currentState:\n  maxClaimsPerTopic: nope\n", "", true},
+		{"rejects wrong existing kind", "currentState:\n  maxTopicsPerPath: nope\n", "", true},
 		{"rejects malformed", "currentState: [bad\n", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := SetMappingInteger([]byte(tc.src), "currentState", "maxClaimsPerTopic", 20)
+			got, err := SetMappingInteger([]byte(tc.src), "currentState", "maxTopicsPerPath", 20)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("expected error, got %q", got)

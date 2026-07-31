@@ -49,11 +49,7 @@ Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, enable a
 audit, currentState), per-artifact sidecar YAMLs, and convention parts. Every key, var, sidecar
 field, and per-artifact data key is described in the generated
 [configuration reference](config-reference.md), including this project's live state: which
-vars are set, what consumes them, and what enabling would activate. `currentState.maxClaimsPerTopic`
-is a positive topic-size advisory with an effective default of 20: working-tree `awf check` prints a
-non-failing note for a topic strictly above it, while equality is quiet, staged checks suppress the
-advisory, and no query output is truncated. Schema generation 16 writes this explicit default during
-init or upgrade; older strict configs must run `awf upgrade`, while an omitted value still reads as 20.
+vars are set, what consumes them, and what enabling would activate.
 
 **Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter
 artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a

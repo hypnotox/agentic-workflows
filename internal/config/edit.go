@@ -17,21 +17,15 @@ import (
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
 type Skeleton struct {
-	Prefix       string                `yaml:"prefix"`
-	Vars         map[string]string     `yaml:"vars"`
-	Skills       []string              `yaml:"skills"`
-	Agents       []string              `yaml:"agents"`
-	Docs         []string              `yaml:"docs"`
-	Audit        *SkeletonAudit        `yaml:"audit,omitempty"`
-	Bootstrap    *BootstrapConfig      `yaml:"bootstrap,omitempty"`
-	Hooks        *HooksConfig          `yaml:"hooks,omitempty"`
-	Runner       *RunnerConfig         `yaml:"runner,omitempty"`
-	CurrentState *SkeletonCurrentState `yaml:"currentState,omitempty"`
-}
-
-// SkeletonCurrentState carries current-state defaults written by a fresh init.
-type SkeletonCurrentState struct {
-	MaxClaimsPerTopic int `yaml:"maxClaimsPerTopic"`
+	Prefix    string            `yaml:"prefix"`
+	Vars      map[string]string `yaml:"vars"`
+	Skills    []string          `yaml:"skills"`
+	Agents    []string          `yaml:"agents"`
+	Docs      []string          `yaml:"docs"`
+	Audit     *SkeletonAudit    `yaml:"audit,omitempty"`
+	Bootstrap *BootstrapConfig  `yaml:"bootstrap,omitempty"`
+	Hooks     *HooksConfig      `yaml:"hooks,omitempty"`
+	Runner    *RunnerConfig     `yaml:"runner,omitempty"`
 }
 
 // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
