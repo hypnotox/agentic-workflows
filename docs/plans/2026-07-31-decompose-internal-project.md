@@ -443,6 +443,28 @@ contents, so the reviewer executes rather than designs:
   bucketing and base-TID switch in scaffold.go) stays as found; the claim wording was narrowed
   to the proven scope instead (ADR-0194 item 6 records the reasoning). The scaffold base-TID
   switch may still fold into Phase 5's template-ID consolidation.
+- Phase 5 deviations (2026-07-31, all grounded at execution, all verified by review): (1)
+  `resident.Root` and `Table()` were deleted rather than kept one-field - with `TemplateID`
+  gone, `Table()` and `RootNames()` would be two accessors for one list and `Table()` would
+  be dead code; `roots` is now `[]string` with `RootNames()` the sole accessor. (2) Task
+  5.1's "core keeps `effortsTID`/`worktreesTID`" became one `residentGitignoreTIDSuffix`
+  derivation (`residentGitignoreTID(name)`/`isResidentGitignoreTID(tid)`): two constants
+  keyed by root name would force core to spell resident names, which
+  `TestResidentPolicyHasOneHome` forbids. (3) The resident shape detector converted to
+  `declaresResidentTable` (any slice/array literal enumerating a root name, direct or in a
+  row), fixtures extended, nothing weakened. (4) `output_plan.go:358`'s config-reference TID
+  routed through the catalog lookup though the file was sanctioned; the consolidation left
+  output_plan.go with zero literals, so review settlement removed it from the scan's
+  sanctioned set (the plan's Task 5.1/5.3 named it sanctioned) and added per-file vacuity
+  guards. (5) Two coverage gaps repaired with real tests instead of coverage-ignore; the
+  internal/topic `templateSource` ignore was replaced by real malformed-bytes error tests
+  (caller-supplied bytes can be malformed). (6) Task 5.4's claim clause "the catalog and
+  kind-descriptor declaration tables alone" shipped as "the catalog, the kind-descriptor
+  table, and the singleton and target declaration tables alone" - the plan's compression
+  under-named the derivation set. (7) The claim's topic re-read clause gained mechanical
+  backing (an internal/topic templates-import scan with its own negative case) beyond the
+  plan's one-time grep post-check. (8) The scaffold base-TID switch folded into the
+  descriptor facet, closing the Phase 1 deferred note's "may still fold" item.
 - Phase 3 deviations (2026-07-31, all grounded at execution, all verified by review): (1)
   the ContextState constructors take `context.Context` (both snapshot Git). (2) ContextState
   carries seven fields, not the planned nine: `Cat`, `Roots`, `Targets` are consumed only
