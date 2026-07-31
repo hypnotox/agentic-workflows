@@ -1,0 +1,3 @@
+title: Package composition
+summary: What a package owns and states, what earns an export, and how exported surface stays documented.
+applies: global

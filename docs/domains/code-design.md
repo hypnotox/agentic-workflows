@@ -11,6 +11,7 @@ The code-design domain owns cross-package structure guidance that does not belon
 
 - [Dependency composition](../topics/code-design/dependency-composition.md): How awf selects, owns, and wires volatile dependencies without speculative abstraction.
 - [Outcome modeling](../topics/code-design/outcome-modeling.md): How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
+- [Package composition](../topics/code-design/package-composition.md): What a package owns and states, what earns an export, and how exported surface stays documented.
 - [Presentation ownership](../topics/code-design/presentation-ownership.md): Which package renders a result model for humans, and what a command binary keeps.
 - [Single home](../topics/code-design/single-home.md): One implementation per shared concern, and the coverage-gate posture that protects it.
 - [State ownership](../topics/code-design/state-ownership.md): What a value owns, and where state derived during one operation lives.

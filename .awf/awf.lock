@@ -385,7 +385,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:9dbc6625b43aac6e94e9f843d9fe87aa885f7df9db3648cda7cfb0cb1859f40b",
+      "outputHash": "sha256:e0ec4da852e15f579156cbe207dbcfc68c46fa0fd1f8acd7d593216cd4185c41",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -423,7 +423,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:205990673edf6decd6abd54f355b5420fbe2c42a9046aeb50b1ff1f09ea7224e",
+      "outputHash": "sha256:34fe8a33abaa882b7ed7d6fccda93644a16dc0b6e31e3ad74a25b00c1a5b8ced",
       "regenChecked": true
     },
     "docs/domains/config.md": {
@@ -535,14 +535,20 @@
     "docs/topics/code-design/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:a2b4952de5af8a0a3de5a9d6f916e33d66bf3228441b3314a50b35f38007b23b",
-      "outputHash": "sha256:6f0fe86b6d97c9f5e115b0b5a391834ff4e596ce8536bc88caa4a30e0cc4fd82"
+      "configHash": "sha256:d70fa12156cfd8530e07d66532d858c592a957cadc14977e7262ad24e937b03e",
+      "outputHash": "sha256:a6280af28b4166dd73ea8e37093b6bc13465d175b300e808a22c8e72c91173c7"
     },
     "docs/topics/code-design/outcome-modeling.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
       "configHash": "sha256:238015c1a6044aa4d75c90f37d677ad1de7179228ed7d17f5c5d86d1b19188b5",
       "outputHash": "sha256:3b3910c72200e36601b3cb8f8245c2cc293ea2fe00f56755dd01a8f5f2a29598"
+    },
+    "docs/topics/code-design/package-composition.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:c9333065a41d42e90077e6b89a2c8ea2b4f46acdff0e1e951dc1d5978d85914a",
+      "outputHash": "sha256:edf33a0642e36186dcbd83d1aa137e842a88e69397fed363eae17259ad5b3652"
     },
     "docs/topics/code-design/presentation-ownership.md": {
       "templateId": "topics/topic.md.tmpl",

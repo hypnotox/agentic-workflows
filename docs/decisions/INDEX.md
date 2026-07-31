@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0199: Outcome protocol and error identity modeling](0199-outcome-protocol-and-error-identity-modeling.md) (Proposed)
+- [ADR-0200: Package composition and export discipline](0200-package-composition-and-export-discipline.md) (Proposed)
 
 ## History
 
