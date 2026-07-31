@@ -12,13 +12,18 @@ date: 2026-07-31
 it, naming the count, the limit, and the two paths to split. The staged check suppresses the
 note, so it is a working-tree authoring advisory only.
 
-The budget was introduced to stop a large topic from dominating a context answer. That harm
-no longer exists. The current projection contract,
-`tooling/context-and-topic:context-concise-projection`, states that every visible claim has
-a deterministic bounded summary and that non-direct invariant and rule summaries require
-their respective facets; a topic contributes its summary and its active claim counts, and
-its individual claims reach the reader only behind an explicit facet. The concise answer
-therefore does not scale with topic size, and no configured count changes that.
+The budget was introduced to stop a large topic from dominating an automatic context answer.
+That harm no longer exists there. The current projection contract,
+`tooling/context-and-topic:context-concise-projection`, states that context renders each
+topic summary and active invariant/rule count once, that direct claim summaries deduplicate
+globally, that non-direct invariant and rule summaries require their respective facets, and
+that every visible claim has a deterministic bounded summary. The concise answer therefore
+scales with what a request selects, not with how many claims the selected topic happens to
+hold, and no configured count changes that.
+
+The explicit drilldown is a separate surface and was never bounded either: `awf topic
+<domain>/<topic>` prints every claim body in full, and the threshold never truncated query
+output. So neither surface the reader can reach is protected by the count.
 
 What the advisory still measures is a raw claim count standing in for topic cohesion, and
 the count is a poor proxy that points the wrong way. Splitting one broad claim into two
@@ -57,9 +62,13 @@ the table at review time.
 
 2. Remove `topic.ClaimBudgetNotes` and its single production caller in
    `internal/project/currentstate.go`. `awf check` emits no claim-count note in any mode.
-   `currentState.maxTopicsPerPath` is deliberately untouched: it detects a path matching too
-   many topics, which is a different condition carrying real severity, and nothing here
-   argues against it.
+   Remove the `Advisories` field on `CurrentStateReport` with it, along with the
+   `slices.Clone` and nil-guard prologue in `Notes()`, so `Notes()` builds directly from the
+   warn-severity coverage findings. That caller is the field's only production writer, so
+   retaining the field would leave state nothing can populate and a guard branch only a test
+   can reach. `currentState.maxTopicsPerPath` is deliberately untouched: it detects a path
+   matching too many topics, which is a different condition carrying real severity, and
+   nothing here argues against it.
 
 3. Delete `config.SkeletonCurrentState` and the `CurrentState` field on the skeleton it
    populates, and drop the seed in `internal/project/scaffold.go`. A newly scaffolded tree
@@ -68,10 +77,16 @@ the table at review time.
    rather than emptied: an empty struct would leave the dead-code gate with an unreachable
    type.
 
-4. Add a schema migration at the next generation that removes `currentState.maxClaimsPerTopic`
-   and announces the removal on the command's output, modelled on the severity-key removal
-   but without its block-preservation seed, which ADR-0192 made unnecessary. Advance the
-   schema generation, add the matching `minVersionBySchema` entry, and bump `project.Version`.
+4. Add a schema migration at generation 28 that removes `currentState.maxClaimsPerTopic` and
+   announces the removal on the command's output, modelled on the severity-key removal but
+   without its block-preservation seed, which ADR-0192 made unnecessary. Advance the schema
+   generation to 28, add the matching `minVersionBySchema` entry, and bump `project.Version`
+   to the version that entry names. Both `.awf/awf.lock` and `examples/sundial/.awf/awf.lock`
+   sit at schema 27 and take the new `schemaVersion` and `awfVersion`, and the sundial tree
+   is migrated in the same commit as the rest of the transaction. The render-hash and
+   lock-input consumers the retired claim names need no code change: they hash config content
+   rather than reading this key by name, so removing it changes the recorded hashes and
+   nothing else.
 
 5. Reject a surviving key rather than tolerating it. `config.yaml` is strict-parsed, so an
    unmigrated tree hard-fails on the new binary with an actionable error naming the key.
@@ -81,7 +96,16 @@ the table at review time.
 6. Keep the historical migration that added the key. Historical migrations are never deleted
    or edited; the pair sits beside the equivalent add/drop pairs already in the registry.
 
-7. Add a topic-cohesion authoring rule to the `rules` section of the shipped
+7. Delete the four proof markers citing the two retired claims, because an orphaned marker
+   naming a removed claim id hard-fails `awf check` in the same commit. They are
+   `cmd/awf/check_test.go` for the advisory claim, and `internal/config/config_test.go`,
+   `internal/config/edit_test.go`, and `internal/configspec/spec_test.go` for the configured
+   claim. One is asymmetric: the `internal/config/edit_test.go` marker sits on the
+   `SetMappingInteger` test, which must survive because item 6 keeps the historical migration
+   that uses that setter. Its marker is deleted without deleting the test, and its fixture
+   data stops using the retired key name.
+
+8. Add a topic-cohesion authoring rule to the `rules` section of the shipped
    `templates/docs/doc-standard.md.tmpl`. It directs the author to judge whether a topic's
    claims describe one mechanism a reader would look up together, and to split on subject
    rather than on size. It is written generically and publication-safe, naming no count and
@@ -90,17 +114,32 @@ the table at review time.
    a project-local part because a part override replaces the whole `rules` section wholesale,
    which would fork the shipped rules to add one.
 
-8. Add a cohesion focus lens to the `adr-reviewer` agent, asking the reviewer to judge
+9. Add a cohesion focus lens to the `adr-reviewer` agent, asking the reviewer to judge
    whether each claim an ADR adds belongs in its chosen destination topic. It is added in
    both `internal/catalog/standard.go` and this repository's `.awf/agents/adr-reviewer.yaml`,
    because that sidecar replaces `focusItems` wholesale; adding it in one place alone would
    either ship it to every adopter while silently skipping this repository, or the reverse.
 
-9. Withdraw the roadmap idea proposing to promote this advisory from a non-failing note to a
-   fixed blocking rank. Retiring the check makes the idea incoherent rather than merely
-   stale, so it is removed rather than rewritten.
+10. Update every source that states the retired behaviour, in the same commit. Two are
+    shipped templates and therefore adopter-facing: `templates/docs/working-with-awf.md.tmpl`
+    carries a paragraph describing the advisory and its explicit default, and
+    `templates/docs/agents-md-standard.md.tmpl` carries a sentence on the note never
+    truncating a projection. The authored project sources are `.awf/docs/parts/testing/gate.md`
+    and its rendered `docs/testing.md`. The `./x render` sweep then regenerates the derived
+    surfaces, including `docs/agents-md-standard.md`, `docs/config-reference.md`, the two
+    topic docs, `docs/decisions/INDEX.md`, the `examples/sundial` renders of the same
+    templates, and both locks.
 
-10. Mint no claim for the authoring rule or the review lens. Neither is mechanically
+11. Add a `[Unreleased]` breaking-change entry to `changelog/CHANGELOG.md` naming the removed
+    key, the withdrawn note, the new schema generation, and `awf upgrade` as the remedy for an
+    unmigrated tree. Removing a config-schema key is adopter-facing, which is the same
+    reasoning the severity-key removal applied.
+
+12. Withdraw the roadmap idea proposing to promote this advisory from a non-failing note to a
+    fixed blocking rank. Retiring the check makes the idea incoherent rather than merely
+    stale, so it is removed rather than rewritten.
+
+13. Mint no claim for the authoring rule or the review lens. Neither is mechanically
     enforceable, and minting a claim to describe advice is what inflates a claim population
     without adding a checkable contract. The net effect on the corpus is two claims fewer.
 
@@ -125,9 +164,17 @@ signal being withdrawn pointed away from the outcome it was meant to protect, an
 signal is worse than an absent one. The two moments the replacement covers, prose authoring
 and destination-topic choice at ADR review, are the two moments a claim population changes.
 
+A freshly scaffolded tree now mentions `currentState` nowhere, because item 3 deletes the
+skeleton's only producer of that block. A new adopter therefore gets no in-file signal that
+`sources`, `testGlobs`, and `maxTopicsPerPath` exist, and discovers the family from the
+generated config reference instead. This is accepted rather than mitigated: seeding a block
+purely as documentation would reintroduce the write-a-key-to-keep-a-block-alive shape that
+ADR-0192 just removed the need for, and the config reference is the intended discovery path
+for every other key family already.
+
 The `adr-reviewer` lens must be added in two places that cannot be kept in sync
 mechanically, because per-key sidecar merging replaces `focusItems` rather than appending to
-it. Item 8 makes the duplication explicit; the same hazard is already recorded for this
+it. Item 9 makes the duplication explicit; the same hazard is already recorded for this
 agent's `docCurrencyItems`.
 
 `rendering/workflow-skill-templates` stops emitting its note. Whether that topic should be
