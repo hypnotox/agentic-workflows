@@ -1008,7 +1008,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:edd26e0ab583eaad189ff69862e7095d4f161a5800c57a1a3ac8a5d43850322f",
+      "outputHash": "sha256:6e5ef26355407cfe0ceca9b16e0b8b71ca54cbcfc7f1f62b968d98de010c1b9e",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -1064,7 +1064,7 @@
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
-      "templateHash": "sha256:c3fbdf37282efd67e147416cd72900eec9cf7c93b24e8e74a465d67b79051da2",
+      "templateHash": "sha256:dc751686b557a6bde2147cb6be97788269a3c375bfa64f3eebf5c0e08dc0bb45",
       "configHash": "sha256:d3ba5ebd659d8cf5358792b18f1d86077f4c048f440adef27364ef97a7ca1502",
       "outputHash": "sha256:1ad45fc3e6dbc6f0a1fa82fa1dc97968bcc49861cdb390fe3fe3a495141366cf"
     },

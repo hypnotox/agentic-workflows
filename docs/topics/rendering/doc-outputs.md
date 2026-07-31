@@ -52,6 +52,12 @@ Origin: ADR-0148
 Revised-by: ADR-0198
 Backing: test
 
+### `invariant: glossary-domains-resolved`
+
+check fails a glossary record whose domains list names a domain not configured in the project; a record with no domains is valid.
+Origin: ADR-0198
+Backing: test
+
 ### `invariant: skill-ref-dead-fails`
 
 awf check fails when a managed rendered artifact references a known skill name via its prefix-anchored token while that skill is not in the effective rendered set.

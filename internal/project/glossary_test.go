@@ -30,18 +30,18 @@ func renderGlossary(t *testing.T, root string) string {
 }
 
 // The rendered table is ordered case-insensitively by term regardless of the
-// authored map order, and two sidecars carrying the same entries in different
+// authored order, and two sidecars carrying the same records in a different
 // order render byte-identically.
 // invariant: rendering/guide-and-doc-templates:glossary-terms-sorted
 func TestGlossaryRendersSorted(t *testing.T) {
 	a := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
-		"docs/glossary.yaml": "data:\n  terms:\n    zeta: last\n    Alpha: first\n    beta: middle\n",
+		"docs/glossary.yaml": "data:\n  terms:\n    - term: zeta\n      meaning: last\n    - term: Alpha\n      meaning: first\n    - term: beta\n      meaning: middle\n",
 	}))
 	b := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
-		"docs/glossary.yaml": "data:\n  terms:\n    beta: middle\n    zeta: last\n    Alpha: first\n",
+		"docs/glossary.yaml": "data:\n  terms:\n    - term: beta\n      meaning: middle\n    - term: zeta\n      meaning: last\n    - term: Alpha\n      meaning: first\n",
 	}))
 	if a != b {
-		t.Errorf("equal entry sets must render byte-identically:\n%s\n---\n%s", a, b)
+		t.Errorf("equal record sets must render byte-identically:\n%s\n---\n%s", a, b)
 	}
 	iAlpha := strings.Index(a, "| Alpha |")
 	iBeta := strings.Index(a, "| beta |")
@@ -51,11 +51,26 @@ func TestGlossaryRendersSorted(t *testing.T) {
 	}
 }
 
+// An optional domains list is accepted and is not rendered: it feeds the
+// checkGlossary drift check, never the table.
+func TestGlossaryDomainsAcceptedAndUnrendered(t *testing.T) {
+	out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
+		// Domain names chosen so no generated framing text can contain them.
+		"docs/glossary.yaml": "data:\n  terms:\n    - term: tagged\n      meaning: a meaning\n      domains: [zzz-alpha, zzz-beta]\n",
+	}))
+	if !strings.Contains(out, "| tagged | a meaning |") {
+		t.Errorf("record with domains did not render:\n%s", out)
+	}
+	if strings.Contains(out, "zzz-") {
+		t.Errorf("domains must not reach the rendered table:\n%s", out)
+	}
+}
+
 // Pipes in terms and meanings are escaped so a code-span pipe cannot split a
 // GFM table cell; the header renders exactly once.
 func TestGlossaryEscapesPipes(t *testing.T) {
 	out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
-		"docs/glossary.yaml": "data:\n  terms:\n    pipe-term: \"a `x | y` table\"\n",
+		"docs/glossary.yaml": "data:\n  terms:\n    - term: pipe-term\n      meaning: \"a `x | y` table\"\n",
 	}))
 	if !strings.Contains(out, `a `+"`x \\| y`"+` table`) {
 		t.Errorf("meaning pipe not escaped:\n%s", out)
@@ -71,7 +86,7 @@ func TestGlossaryEscapesPipes(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:glossary-table-forced
 func TestGlossaryTableForcedBetweenFraming(t *testing.T) {
 	out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
-		"docs/glossary.yaml":             "data:\n  terms:\n    only: entry\n",
+		"docs/glossary.yaml":             "data:\n  terms:\n    - term: only\n      meaning: entry\n",
 		"docs/parts/glossary/prepend.md": "FRAMING-ABOVE\n",
 		"docs/parts/glossary/append.md":  "FRAMING-BELOW\n",
 	}))
@@ -83,13 +98,13 @@ func TestGlossaryTableForcedBetweenFraming(t *testing.T) {
 	}
 }
 
-// Absent data, an empty map, and an explicit null all degrade to the coherent
+// Absent data, an empty list, and an explicit null all degrade to the coherent
 // placeholder line naming the authoring surface - never a zero-row table
 // (ADR-0045 via ADR-0089 Decision 4).
 func TestGlossaryDegradesWithoutTerms(t *testing.T) {
 	for name, files := range map[string]map[string]string{
 		"no-sidecar": nil,
-		"empty-map":  {"docs/glossary.yaml": "data:\n  terms: {}\n"},
+		"empty-list": {"docs/glossary.yaml": "data:\n  terms: []\n"},
 		"null-terms": {"docs/glossary.yaml": "data:\n  terms:\n"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -104,19 +119,29 @@ func TestGlossaryDegradesWithoutTerms(t *testing.T) {
 	}
 }
 
-// Content violations fail the render naming the sidecar path and the key.
+// Content violations fail the render naming the sidecar path, and the offending
+// term wherever the term itself parsed.
 // invariant: rendering/guide-and-doc-templates:glossary-terms-validated
 func TestGlossaryContentViolations(t *testing.T) {
 	for name, tc := range map[string]struct{ yaml, wantErr string }{
-		"empty-term":      {"data:\n  terms:\n    \" \": meaning\n", "is empty"},
-		"empty-meaning":   {"data:\n  terms:\n    term: \"  \"\n", "meaning is empty"},
-		"null-meaning":    {"data:\n  terms:\n    term:\n", "must be a non-empty string"},
-		"non-string":      {"data:\n  terms:\n    term: 42\n", "must be a non-empty string"},
-		"newline-meaning": {"data:\n  terms:\n    term: \"a\\nb\"\n", "contains a newline"},
-		"newline-term":    {"data:\n  terms:\n    \"a\\nb\": meaning\n", "contains a newline"},
-		"case-dup":        {"data:\n  terms:\n    Foo: one\n    foo: two\n", "case-insensitive duplicates"},
-		"non-string-key":  {"data:\n  terms:\n    42: meaning\n", "is not a string"},
-		"terms-not-a-map": {"data:\n  terms: just a string\n", "must be a mapping"},
+		"terms-not-a-list":    {"data:\n  terms: just a string\n", "must be a list of {term, meaning} records"},
+		"record-not-a-map":    {"data:\n  terms:\n    - just a string\n", "record 0 must be a mapping"},
+		"non-string-key":      {"data:\n  terms:\n    - 42: meaning\n", "record 0: key 42 is not a string"},
+		"missing-term":        {"data:\n  terms:\n    - meaning: orphan\n", `record 0: missing "term"`},
+		"null-term":           {"data:\n  terms:\n    - term:\n      meaning: m\n", `record 0: "term" must be a non-empty string`},
+		"non-string-term":     {"data:\n  terms:\n    - term: 42\n      meaning: m\n", `record 0: "term" must be a non-empty string`},
+		"empty-term":          {"data:\n  terms:\n    - term: \"  \"\n      meaning: m\n", "record 0: term is empty"},
+		"newline-term":        {"data:\n  terms:\n    - term: \"a\\nb\"\n      meaning: m\n", "contains a newline"},
+		"missing-meaning":     {"data:\n  terms:\n    - term: lonely\n", `term "lonely": missing "meaning"`},
+		"null-meaning":        {"data:\n  terms:\n    - term: t\n      meaning:\n", `term "t": meaning must be a non-empty string`},
+		"non-string-meaning":  {"data:\n  terms:\n    - term: t\n      meaning: 42\n", `term "t": meaning must be a non-empty string`},
+		"empty-meaning":       {"data:\n  terms:\n    - term: t\n      meaning: \"  \"\n", `term "t": meaning is empty`},
+		"newline-meaning":     {"data:\n  terms:\n    - term: t\n      meaning: \"a\\nb\"\n", "meaning contains a newline"},
+		"domains-not-a-list":  {"data:\n  terms:\n    - term: t\n      meaning: m\n      domains: rendering\n", `term "t": "domains" must be a list`},
+		"domains-non-string":  {"data:\n  terms:\n    - term: t\n      meaning: m\n      domains: [42]\n", `term "t": "domains" entries must be non-empty strings`},
+		"domains-empty-entry": {"data:\n  terms:\n    - term: t\n      meaning: m\n      domains: [\"  \"]\n", `term "t": "domains" entries must be non-empty strings`},
+		"unknown-key":         {"data:\n  terms:\n    - term: t\n      meaning: m\n      alias: nope\n", `term "t": unknown key "alias"`},
+		"case-dup":            {"data:\n  terms:\n    - term: Foo\n      meaning: one\n    - term: foo\n      meaning: two\n", "case-insensitive duplicates"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p, err := Open(testContext(t), scaffoldFiles(t, glossaryCfg, map[string]string{"docs/glossary.yaml": tc.yaml}))
@@ -134,7 +159,10 @@ func TestGlossaryContentViolations(t *testing.T) {
 // yaml.v3 (that shape only arises alongside a non-string key) but reachable by
 // any caller handing the transform a constructed value.
 func TestGlossaryStringMapAnyKeys(t *testing.T) {
-	sc := config.Sidecar{Data: map[string]any{"terms": map[any]any{"b": "two", "a": "one"}}}
+	sc := config.Sidecar{Data: map[string]any{"terms": []any{
+		map[any]any{"term": "b", "meaning": "two"},
+		map[any]any{"term": "a", "meaning": "one"},
+	}}}
 	out, err := glossaryTransform(sc)
 	if err != nil {
 		t.Fatal(err)
@@ -144,16 +172,23 @@ func TestGlossaryStringMapAnyKeys(t *testing.T) {
 	}
 }
 
-// The transform never mutates the caller's sidecar data map.
+// The transform never mutates the caller's sidecar data map, and never reorders
+// the caller's record slice.
 func TestGlossaryTransformClonesData(t *testing.T) {
-	terms := map[string]any{"a": "one"}
+	terms := []any{
+		map[string]any{"term": "zeta", "meaning": "last"},
+		map[string]any{"term": "alpha", "meaning": "first"},
+	}
 	sc := config.Sidecar{Data: map[string]any{"terms": terms, "other": "kept"}}
 	out, err := glossaryTransform(sc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, still := sc.Data["terms"].(map[string]any); !still {
+	if _, still := sc.Data["terms"].([]any); !still {
 		t.Error("caller's data map was mutated")
+	}
+	if first := terms[0].(map[string]any)["term"]; first != "zeta" {
+		t.Errorf("caller's record slice was reordered: first is %q", first)
 	}
 	if out.Data["other"] != "kept" {
 		t.Error("unrelated data keys must carry over")

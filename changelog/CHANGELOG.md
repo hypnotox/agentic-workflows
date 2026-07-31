@@ -10,6 +10,13 @@ query a single version or a range.
 
 ### Breaking changes
 
+- `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of
+  `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts
+  it, following the precedent set for this same key. Convert by hand: each
+  `"<term>": "<meaning>"` pair becomes a `- term: <term>` / `  meaning: <meaning>` record, and
+  the optional `domains` list names configured domains. An unconverted tree fails the render
+  naming the sidecar, with `data.terms: must be a list of {term, meaning} records`.
+
 - Remove the `currentState.maxClaimsPerTopic` config key and the non-failing topic claim-count
   note `awf check` emitted from it. Schema generation 28 removes the key from an existing tree;
   because `config.yaml` is strict-parsed, a tree that still carries the key fails to load on

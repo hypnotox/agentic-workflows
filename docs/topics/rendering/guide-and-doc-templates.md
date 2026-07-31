@@ -41,14 +41,16 @@ Backing: test
 
 ### `invariant: glossary-terms-sorted`
 
-The rendered glossary table orders its rows case-insensitively by term regardless of the authored map order, and two sidecars carrying the same entries in different order render byte-identically.
+The rendered glossary table orders its rows case-insensitively by term regardless of the authored order, and two sidecars carrying the same entries in different order render byte-identically.
 Origin: ADR-0148
+Revised-by: ADR-0198
 Backing: test
 
 ### `invariant: glossary-terms-validated`
 
-An empty term, an empty, null, or non-string meaning, an interior newline in a term or meaning, a non-string map key, or a case-insensitive duplicate term in the glossary sidecar fails the render, naming the sidecar path and the offending key.
+An empty term, an empty, null, or non-string meaning, an interior newline in a term or meaning, a malformed record, an unknown record key, or a case-insensitive duplicate term within a single layer of the glossary sidecar fails the render, naming the sidecar path and the offending term.
 Origin: ADR-0148
+Revised-by: ADR-0198
 Backing: test
 
 ### `invariant: guide-scopes-derived`

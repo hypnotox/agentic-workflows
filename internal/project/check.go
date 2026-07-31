@@ -431,6 +431,11 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 		return nil, err
 	}
 	drift = append(drift, pitfallDrift...)
+	glossaryDrift, err := p.checkGlossary()
+	if err != nil {
+		return nil, err
+	}
+	drift = append(drift, glossaryDrift...)
 	tagDrift, err := p.checkTagVocabulary(corpus)
 	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
 		return nil, err
@@ -669,6 +674,38 @@ func (p *Project) checkPitfalls(corpus adr.Corpus) ([]manifest.Drift, error) {
 		for _, n := range e.Related {
 			if !corpus.Has(fmt.Sprintf("%04d", n)) {
 				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%q: ADR-%04d", e.Title, n)})
+			}
+		}
+	}
+	return drift, nil
+}
+
+// checkGlossary validates the glossary sidecar when the doc is enabled: each
+// record's domains: must resolve to a configured domain, mirroring checkPitfalls.
+// Structural validation (term/meaning) is the transform's job; this resolves the
+// domains the transform cannot see. A disabled glossary doc, or a sidecar with no
+// data.terms, yields no drift.
+func (p *Project) checkGlossary() ([]manifest.Drift, error) {
+	if !slices.Contains(p.Cfg.Docs, "glossary") {
+		return nil, nil
+	}
+	sc, err := p.Cfg.Sidecar("docs", "glossary")
+	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
+		return nil, err
+	}
+	records, err := glossaryRecords(sc.Data["terms"])
+	if err != nil {
+		return nil, err
+	}
+	domains := map[string]bool{}
+	for _, d := range p.Cfg.Domains {
+		domains[d] = true
+	}
+	var drift []manifest.Drift
+	for _, r := range records {
+		for _, d := range r.Domains {
+			if !domains[d] {
+				drift = append(drift, manifest.Drift{Path: glossarySidecarPath, Kind: "glossary-domain", Detail: fmt.Sprintf("%q: unknown domain %q", r.Term, d)})
 			}
 		}
 	}
