@@ -40,6 +40,44 @@ func TestJournalPresentSeparatesAbsenceFromFault(t *testing.T) {
 	}
 }
 
+// TestApplyImageRestoresContentAndModeAtomically pins that a restore keeps the
+// image's recorded mode and leaves no temp residue. applyImage writes through
+// the same atomic path as the journal that records it, so a crash mid-restore
+// cannot leave a truncated file where recovery promised a whole image.
+func TestApplyImageRestoresContentAndModeAtomically(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "a.txt"), []byte("current"))
+	before, err := os.Stat(filepath.Join(root, "a.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := applyImage(root, "a.txt", Image{Present: true, Mode: 0o600, Content: []byte("prior")}); err != nil {
+		t.Fatal(err)
+	}
+	// A rename-replaced target is a different file; truncating the original in
+	// place would keep identity, which is exactly the window a crash could catch
+	// half-written. os.SameFile compares inode identity portably.
+	after, err := os.Stat(filepath.Join(root, "a.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if os.SameFile(before, after) {
+		t.Fatal("restore truncated the existing file in place instead of renaming a replacement over it")
+	}
+	got, err := os.ReadFile(filepath.Join(root, "a.txt"))
+	if err != nil || string(got) != "prior" {
+		t.Fatalf("content = %q, err = %v", got, err)
+	}
+	info, err := os.Stat(filepath.Join(root, "a.txt"))
+	if err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("perm = %v, err = %v (want 0600)", info.Mode().Perm(), err)
+	}
+	ents, err := os.ReadDir(root)
+	if err != nil || len(ents) != 1 {
+		t.Fatalf("temp residue left behind: %v (err %v)", ents, err)
+	}
+}
+
 // journalPresence answers JournalPresent for the tests that assert presence or
 // absence and expect no fault reading it.
 func journalPresence(t *testing.T, root string) bool {

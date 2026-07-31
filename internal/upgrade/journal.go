@@ -141,10 +141,10 @@ func applyImage(root, path string, img Image) error {
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { // coverage-ignore: the parent of every journaled path exists in the prepared tree
 		return err
 	}
-	if err := os.WriteFile(full, img.Content, os.FileMode(img.Mode)); err != nil {
-		return err
-	}
-	return os.Chmod(full, os.FileMode(img.Mode))
+	// Atomic like the journal that records it: a crash mid-restore would
+	// otherwise leave a truncated file where the recovery had promised either
+	// the prior image or the replacement, and nothing in between.
+	return manifest.WriteFileAtomicMode(full, img.Content, os.FileMode(img.Mode))
 }
 
 // quarantineTree renames a resident tree aside. An absent source is already in

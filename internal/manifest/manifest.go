@@ -267,6 +267,14 @@ func LoadOptional(path string) (*Lock, bool, error) {
 // every supported OS including Windows.
 // touches-state: config/migrations-and-locks:lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
 func WriteFileAtomic(path string, data []byte) error {
+	return WriteFileAtomicMode(path, data, 0o644)
+}
+
+// WriteFileAtomicMode is WriteFileAtomic with an explicit final mode, for a
+// caller restoring a file whose recorded permissions must survive the write.
+// The mode is applied to the temp file before the rename, so the replacement is
+// never briefly observable with the wrong permissions.
+func WriteFileAtomicMode(path string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".awf-atomic-*")
 	if err != nil {
@@ -279,7 +287,7 @@ func WriteFileAtomic(path string, data []byte) error {
 		werr = cerr
 	}
 	if werr == nil {
-		werr = os.Chmod(name, 0o644)
+		werr = os.Chmod(name, mode)
 	}
 	if werr == nil {
 		werr = os.Rename(name, path)
