@@ -31,6 +31,22 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00bare value\x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00unknown\x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00"),
+		// Shapes the worktree manager's own parser used to reject before the seam
+		// became the single home for registration parsing.
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00prunable \x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00detached\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00detached \x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00locked reason\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00branch c\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00prunable one\x00prunable two\x00\x00"),
+		[]byte("worktree /a\x00bare\x00bare\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00bare\x00\x00"),
+		[]byte("bare \x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00\x00\x00\x00"),
+		[]byte("branch b\x00worktree /a\x00HEAD x\x00\x00"),
+		[]byte("detached\x00worktree /a\x00HEAD x\x00\x00"),
+		[]byte("bare\x00\x00"),
 	}
 	for i, raw := range cases {
 		if _, err := parseWorktreePorcelain(raw); err == nil {

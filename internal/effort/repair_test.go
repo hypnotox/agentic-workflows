@@ -9,10 +9,7 @@ import (
 
 func TestProtocol1AndMutableRepairShapesAreRejected(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	service := openTestService(t, root, nil)
 	for name, raw := range map[string]string{
 		"protocol1": `{"schemaVersion":1,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":"legacy-shape","title":"Legacy shape","createdAt":"2026-07-29T12:00:00Z"}`,
 		"mutable":   `{"schemaVersion":2,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":"legacy-shape","title":"Legacy shape","createdAt":"2026-07-29T12:00:00Z","state":"active"}`,

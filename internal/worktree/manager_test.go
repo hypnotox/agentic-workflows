@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 const worktreeTestID = "018f47a0-7b3d-4c52-8f1a-123456789abc"
@@ -18,11 +19,8 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	// invariant: tooling/effort-management:managed-worktree-lifecycle
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Managed result")
-	manager, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	added, err := manager.Add("managed-result", "HEAD")
+	manager := freshWorktreeManager(t, root)
+	added, err := manager.Add(testContext(t), "managed-result", "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,14 +34,14 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	writeWorktreeFile(t, filepath.Join(managed, "effort.txt"), "effort\n")
 	commitWorktree(t, managed, "effort")
 
-	integrated, err := manager.Integrate("managed-result", "")
+	integrated, err := manager.Integrate(testContext(t), "managed-result", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !integrated.ChangedTopology || !strings.Contains(integrated.Condition, "fast-forwarded") {
 		t.Fatalf("integrate result = %#v", integrated)
 	}
-	already, err := manager.Integrate("managed-result", "")
+	already, err := manager.Integrate(testContext(t), "managed-result", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +49,7 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 		t.Fatalf("already result = %#v", already)
 	}
 
-	removed, err := manager.Remove("managed-result")
+	removed, err := manager.Remove(testContext(t), "managed-result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +62,7 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	if commandSucceeds(root, "show-ref", "--verify", "--quiet", "refs/heads/awf/managed-result") {
 		t.Fatal("managed branch remains")
 	}
-	again, err := manager.Remove("managed-result")
+	again, err := manager.Remove(testContext(t), "managed-result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,11 +74,8 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 func TestDivergentIntegrationStopsBeforeCommit(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Divergent result")
-	manager, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := manager.Add("divergent-result", "HEAD"); err != nil {
+	manager := freshWorktreeManager(t, root)
+	if _, err := manager.Add(testContext(t), "divergent-result", "HEAD"); err != nil {
 		t.Fatal(err)
 	}
 	managed := filepath.Join(root, ".awf", "worktrees", "divergent-result")
@@ -89,7 +84,7 @@ func TestDivergentIntegrationStopsBeforeCommit(t *testing.T) {
 	writeWorktreeFile(t, filepath.Join(root, "target.txt"), "target\n")
 	commitWorktree(t, root, "target")
 
-	result, err := manager.Integrate("divergent-result", "")
+	result, err := manager.Integrate(testContext(t), "divergent-result", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,11 +107,8 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 	t.Run("conflict", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
 		createEffort(t, root, "Conflict result")
-		manager, err := Open(testContext(t), root, Options{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := manager.Add("conflict-result", "HEAD"); err != nil {
+		manager := freshWorktreeManager(t, root)
+		if _, err := manager.Add(testContext(t), "conflict-result", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", "conflict-result")
@@ -124,7 +116,7 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 		commitWorktree(t, managed, "effort conflict")
 		writeWorktreeFile(t, filepath.Join(root, "tracked.txt"), "target\n")
 		commitWorktree(t, root, "target conflict")
-		_, err = manager.Integrate("conflict-result", "make gate")
+		_, err := manager.Integrate(testContext(t), "conflict-result", "make gate")
 		if err == nil || !strings.Contains(err.Error(), "changed topology: yes") || !strings.Contains(err.Error(), "resolve or abort") ||
 			!strings.Contains(err.Error(), "`make gate`") || strings.Contains(err.Error(), "./x gate") {
 			t.Fatalf("conflict error = %v", err)
@@ -138,11 +130,8 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 	t.Run("unrelated", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
 		createEffort(t, root, "Unrelated result")
-		manager, err := Open(testContext(t), root, Options{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := manager.Add("unrelated-result", "HEAD"); err != nil {
+		manager := freshWorktreeManager(t, root)
+		if _, err := manager.Add(testContext(t), "unrelated-result", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", "unrelated-result")
@@ -153,7 +142,7 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 		runWorktreeGit(t, root, "branch", "-f", "awf/unrelated-result", "unrelated-temp")
 		runWorktreeGit(t, managed, "checkout", "awf/unrelated-result")
 		before := runWorktreeGit(t, root, "rev-parse", "HEAD")
-		_, err = manager.Integrate("unrelated-result", "")
+		_, err := manager.Integrate(testContext(t), "unrelated-result", "")
 		if err == nil || !strings.Contains(err.Error(), "no proven common ancestor") || !strings.Contains(err.Error(), "changed topology: no") || !strings.Contains(err.Error(), "do not use --allow-unrelated-histories") {
 			t.Fatalf("unrelated error = %v", err)
 		}
@@ -166,16 +155,13 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 func TestRemovalRefusesDirtyAndUnmergedWithoutForce(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Guard removal")
-	manager, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := manager.Add("guard-removal", "HEAD"); err != nil {
+	manager := freshWorktreeManager(t, root)
+	if _, err := manager.Add(testContext(t), "guard-removal", "HEAD"); err != nil {
 		t.Fatal(err)
 	}
 	managed := filepath.Join(root, ".awf", "worktrees", "guard-removal")
 	writeWorktreeFile(t, filepath.Join(managed, "dirty.txt"), "dirty\n")
-	_, err = manager.Remove("guard-removal")
+	_, err := manager.Remove(testContext(t), "guard-removal")
 	if err == nil || !strings.Contains(err.Error(), "not merged") {
 		// With no effort commit the branch is merged, so cleanliness is the first
 		// destructive precondition after identity.
@@ -188,7 +174,7 @@ func TestRemovalRefusesDirtyAndUnmergedWithoutForce(t *testing.T) {
 	}
 	writeWorktreeFile(t, filepath.Join(managed, "effort.txt"), "unmerged\n")
 	commitWorktree(t, managed, "unmerged")
-	_, err = manager.Remove("guard-removal")
+	_, err = manager.Remove(testContext(t), "guard-removal")
 	if err == nil || !strings.Contains(err.Error(), "not merged") || !strings.Contains(err.Error(), "native Git") {
 		t.Fatalf("unmerged removal error = %v", err)
 	}
@@ -200,26 +186,19 @@ func TestRemovalRefusesDirtyAndUnmergedWithoutForce(t *testing.T) {
 func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Partial add")
-	runner := func(ctx context.Context, directory string, args ...string) ([]byte, error) {
-		out, err := nativeRunner(ctx, directory, args...)
-		if len(args) >= 2 && args[0] == "worktree" && args[1] == "add" && err == nil {
-			return nil, errors.New("injected post-add failure")
+	manager := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+		stub.worktreeAdd = func(ctx context.Context, path, branch, base string) error {
+			if err := stub.Runner.WorktreeAdd(ctx, path, branch, base); err != nil {
+				return err
+			}
+			return failing("post-add failure")
 		}
-		return out, err
-	}
-	manager, err := Open(testContext(t), root, Options{Runner: runner})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = manager.Add("partial-add", "HEAD")
+	}))
+	_, err := manager.Add(testContext(t), "partial-add", "HEAD")
 	if err == nil || !strings.Contains(err.Error(), "changed topology: yes") || !strings.Contains(err.Error(), "actual Git topology") {
 		t.Fatalf("add failure = %v", err)
 	}
-	service, err := effort.Open(testContext(t), root, effort.Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.Show("partial-add"); err != nil {
+	if _, err := freshWorktreeManager(t, root).efforts.Show("partial-add"); err != nil {
 		t.Fatalf("complete effort changed by add failure: %v", err)
 	}
 }
@@ -227,11 +206,8 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 // invariant: tooling/effort-management:default-worktree-creation
 func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
-	manager, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	record, result, err := manager.NewEffort("Default creation", "")
+	manager := freshWorktreeManager(t, root)
+	record, result, err := manager.NewEffort(testContext(t), "Default creation", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,11 +233,10 @@ func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
 func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 	t.Run("rolled back", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
-		manager, err := Open(testContext(t), root, Options{Runner: runnerFailingPrefix(nativeRunner, "worktree add")})
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, _, err = manager.NewEffort("Rolled back", "")
+		manager := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeAdd = func(context.Context, string, string, string) error { return failing("worktree add") }
+		}))
+		_, _, err := manager.NewEffort(testContext(t), "Rolled back", "")
 		if err == nil || !strings.Contains(err.Error(), "effort rolled-back rolled back") || !strings.Contains(err.Error(), "retry `awf effort new`") {
 			t.Fatalf("rollback error = %v", err)
 		}
@@ -272,18 +247,15 @@ func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 
 	t.Run("retained with topology", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
-		runner := func(ctx context.Context, directory string, args ...string) ([]byte, error) {
-			out, err := nativeRunner(ctx, directory, args...)
-			if len(args) >= 2 && args[0] == "worktree" && args[1] == "add" && err == nil {
-				return nil, errors.New("injected post-add failure")
+		manager := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeAdd = func(ctx context.Context, path, branch, base string) error {
+				if err := stub.Runner.WorktreeAdd(ctx, path, branch, base); err != nil {
+					return err
+				}
+				return failing("post-add failure")
 			}
-			return out, err
-		}
-		manager, err := Open(testContext(t), root, Options{Runner: runner})
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, _, err = manager.NewEffort("Retained topology", "")
+		}))
+		_, _, err := manager.NewEffort(testContext(t), "Retained topology", "")
 		if err == nil || !strings.Contains(err.Error(), "retained: managed topology remains") || !strings.Contains(err.Error(), "git worktree list --porcelain") {
 			t.Fatalf("retained error = %v", err)
 		}
@@ -315,8 +287,8 @@ func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := initWorktreeRepo(t, "sha1")
-			manager := managerWithFaultingEfforts(t, root, runnerFailingPrefix(nativeRunner, "worktree add"), test.stage)
-			_, _, err := manager.NewEffort("Retained rollback", "")
+			manager := managerWithFaultingEfforts(t, root, test.stage)
+			_, _, err := manager.NewEffort(testContext(t), "Retained rollback", "")
 			if err == nil {
 				t.Fatal("faulted rollback reported success")
 			}
@@ -335,53 +307,54 @@ func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 
 func TestNewEffortReturnsResidentFailuresBeforeAnyTopology(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
-	var log []string
-	manager, err := Open(testContext(t), root, Options{Runner: recordingWorktreeRunner(nativeRunner, &log)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	record, result, err := manager.NewEffort("   ", "")
+	added := false
+	manager := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+		stub.worktreeAdd = func(ctx context.Context, path, branch, base string) error {
+			added = true
+			return stub.Runner.WorktreeAdd(ctx, path, branch, base)
+		}
+	}))
+	record, result, err := manager.NewEffort(testContext(t), "   ", "")
 	if err == nil || !strings.Contains(err.Error(), "invalid outcome title") {
 		t.Fatalf("blank title error = %v", err)
 	}
 	if record != (effort.Record{}) || result != (Result{}) {
 		t.Fatalf("record=%#v result=%#v, want zero values", record, result)
 	}
-	for _, entry := range log {
-		if strings.HasPrefix(entry, "worktree add") {
-			t.Fatalf("add was attempted after a resident failure: %v", log)
-		}
+	if added {
+		t.Fatal("add was attempted after a resident failure")
 	}
 }
 
-func managerWithFaultingEfforts(t *testing.T, root string, runner Runner, stage string) *Manager {
+func managerWithFaultingEfforts(t *testing.T, root, stage string) *Manager {
 	t.Helper()
-	manager, err := Open(testContext(t), root, Options{Runner: runner})
-	if err != nil {
-		t.Fatal(err)
-	}
-	service, err := effort.Open(testContext(t), root, effort.Options{Fault: func(got string) error {
+	roots := worktreeControlRoots(t, root)
+	service := newEffortService(t, roots, nil, func(got string) error {
 		if got == stage {
-			return errors.New("injected " + stage)
+			return failing(stage)
 		}
 		return nil
-	}})
+	})
+	open := invokingStub(root, func(stub *checkoutStub) {
+		stub.worktreeAdd = func(context.Context, string, string, string) error { return failing("worktree add") }
+	})
+	manager, err := Open(roots, open, service)
 	if err != nil {
 		t.Fatal(err)
 	}
-	manager.efforts = service
 	return manager
 }
 
-func TestResolveAcceptsSHA1AndSHA256ObjectIDs(t *testing.T) {
+func TestResolveCommitAcceptsSHA1AndSHA256ObjectIDs(t *testing.T) {
 	for _, format := range []string{"sha1", "sha256"} {
 		t.Run(format, func(t *testing.T) {
 			root := initWorktreeRepo(t, format)
-			id, err := resolve(testContext(t), nativeRunner, root, "HEAD")
+			repo, err := awfgit.Open(root)
 			if err != nil {
-				if format == "sha256" && strings.Contains(err.Error(), "unknown value") {
-					t.Skip("installed Git lacks SHA-256 repositories")
-				}
+				t.Fatal(err)
+			}
+			id, err := repo.ResolveCommit(testContext(t), "HEAD")
+			if err != nil {
 				t.Fatal(err)
 			}
 			want := 40
@@ -395,63 +368,50 @@ func TestResolveAcceptsSHA1AndSHA256ObjectIDs(t *testing.T) {
 	}
 }
 
-func TestGitHelperErrorAndCleanlinessBranches(t *testing.T) {
+func TestManagerRefusesAMissingDependency(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
-	ctx, cancel := context.WithCancel(testContext(t))
-	cancel()
-	if _, err := nativeRunner(ctx, root, "status"); err == nil {
-		t.Fatal("cancelled native runner succeeded")
+	roots := worktreeControlRoots(t, root)
+	service := newEffortService(t, roots, nil, nil)
+	for name, open := range map[string]OpenCheckout{"checkout opener": nil, "effort service": openCheckout} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				message, ok := recover().(string)
+				if !ok || !strings.Contains(message, name) {
+					t.Fatalf("panic = %v, want one naming the %s dependency", message, name)
+				}
+			}()
+			if open == nil {
+				_, _ = Open(roots, nil, service)
+			} else {
+				_, _ = Open(roots, open, nil)
+			}
+			t.Fatal("missing dependency accepted")
+		})
 	}
-	failed := func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("runner") }
-	if _, err := resolve(testContext(t), failed, ".", "HEAD"); err == nil {
-		t.Fatal("resolve runner error hidden")
-	}
-	invalidID := func(context.Context, string, ...string) ([]byte, error) { return []byte("short\n"), nil }
-	if _, err := resolve(testContext(t), invalidID, ".", "HEAD"); err == nil {
-		t.Fatal("invalid object ID accepted")
-	}
-	if err := status(testContext(t), failed, "."); err == nil {
-		t.Fatal("status runner error hidden")
-	}
-	cleanResident := func(context.Context, string, ...string) ([]byte, error) {
-		return []byte("?? .awf/efforts/x/state.json\x00"), nil
-	}
-	if err := status(testContext(t), cleanResident, "."); err != nil {
-		t.Fatalf("owned resident treated as dirt: %v", err)
-	}
-	dirty := func(context.Context, string, ...string) ([]byte, error) { return []byte("?? foreign\x00"), nil }
-	if err := status(testContext(t), dirty, "."); err == nil {
-		t.Fatal("foreign dirt accepted")
-	}
-	if exists, err := branchExists(testContext(t), failed, ".", "x"); err == nil || exists {
-		t.Fatalf("branch runner result exists=%v err=%v", exists, err)
-	}
-	if related, err := ancestor(testContext(t), failed, ".", "a", "b"); err == nil || related {
-		t.Fatalf("ancestor runner result related=%v err=%v", related, err)
+	if _, err := Open(roots, func(string) (Runner, error) { return nil, failing("open") }, service); err == nil {
+		t.Fatal("unopenable invoking checkout accepted")
 	}
 }
 
 func TestManagerValidationAndOperationRefusals(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Validation result")
-	manager, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	manager := freshWorktreeManager(t, root)
 	foreign := initWorktreeRepo(t, "sha1")
-	if err := manager.validateManagedTarget(foreign); err == nil {
+	if err := manager.validateManagedTarget(testContext(t), foreign); err == nil {
 		t.Fatal("foreign managed target accepted")
 	}
-	original := manager.roots.InvokingRoot
-	manager.roots.InvokingRoot = filepath.Join(root, "missing")
-	if err := manager.validateLiveInvokingCheckout(); err == nil {
-		t.Fatal("missing invoking checkout accepted")
+	for name, invoking := range map[string]string{
+		"missing": filepath.Join(root, "missing"),
+		"foreign": foreign,
+	} {
+		t.Run(name, func(t *testing.T) {
+			drifted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.InvokingRoot = invoking }, nil)
+			if err := drifted.validateLiveInvokingCheckout(testContext(t)); err == nil {
+				t.Fatalf("%s invoking checkout accepted", name)
+			}
+		})
 	}
-	manager.roots.InvokingRoot = foreign
-	if err := manager.validateLiveInvokingCheckout(); err == nil {
-		t.Fatal("foreign invoking checkout accepted")
-	}
-	manager.roots.InvokingRoot = original
 
 	for _, operation := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"} {
 		t.Run(operation, func(t *testing.T) {
@@ -459,47 +419,42 @@ func TestManagerValidationAndOperationRefusals(t *testing.T) {
 			if err := os.WriteFile(candidate, nil, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			manager.run = func(_ context.Context, _ string, args ...string) ([]byte, error) {
-				if args[len(args)-1] == operation {
-					return []byte(candidate + "\n"), nil
+			present := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+				stub.gitPath = func(_ context.Context, name string) (string, error) {
+					if name == operation {
+						return candidate, nil
+					}
+					return filepath.Join(t.TempDir(), name), nil
 				}
-				return []byte(filepath.Join(t.TempDir(), args[len(args)-1]) + "\n"), nil
-			}
-			if err := manager.operationFree(root); err == nil || !strings.Contains(err.Error(), "in-progress") {
+			}))
+			if err := operationFree(testContext(t), present.git); err == nil || !strings.Contains(err.Error(), "in-progress") {
 				t.Fatalf("operation error = %v", err)
 			}
 		})
 	}
-	manager.run = failedRunner
-	if err := manager.operationFree(root); err == nil {
+	faulted := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+		stub.gitPath = func(context.Context, string) (string, error) { return "", failing("git path") }
+	}))
+	if err := operationFree(testContext(t), faulted.git); err == nil {
 		t.Fatal("operation probe error hidden")
 	}
 }
 
-func failedRunner(context.Context, string, ...string) ([]byte, error) {
-	return nil, errors.New("runner")
-}
-
 func TestManagerAuthorityErrorBranches(t *testing.T) {
-	if _, err := Open(testContext(t), filepath.Join(t.TempDir(), "missing"), Options{}); err == nil {
-		t.Fatal("missing repository accepted")
-	}
-	m, _ := newManagerWithEffort(t, "Authority errors")
-	original := m.roots
-	m.roots.PrimaryRoot = "relative"
-	if _, err := m.managed("authority-errors"); err == nil {
+	m, root := newManagerWithEffort(t, "Authority errors")
+	unrooted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.PrimaryRoot = "relative" }, nil)
+	if _, err := unrooted.managed("authority-errors"); err == nil {
 		t.Fatal("invalid managed root accepted")
 	}
-	if err := m.validateManagedTarget(t.TempDir()); err == nil {
+	if err := unrooted.validateManagedTarget(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("invalid resident authority accepted")
 	}
-	m.roots = original
 	plain := t.TempDir()
-	if err := m.validateManagedTarget(plain); err == nil || !strings.Contains(err.Error(), "repository-identity") {
+	if err := m.validateManagedTarget(testContext(t), plain); err == nil || !strings.Contains(err.Error(), "repository-identity") {
 		t.Fatalf("plain managed target error = %v", err)
 	}
-	m.roots.InvokingRoot = plain
-	if err := m.validateLiveInvokingCheckout(); err == nil || !strings.Contains(err.Error(), "repository-identity") {
+	plainInvoking := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.InvokingRoot = plain }, nil)
+	if err := plainInvoking.validateLiveInvokingCheckout(testContext(t)); err == nil || !strings.Contains(err.Error(), "repository-identity") {
 		t.Fatalf("plain invoking error = %v", err)
 	}
 }
@@ -511,91 +466,112 @@ func TestAddPreconditionAndRunnerFailureBranches(t *testing.T) {
 		if err := os.MkdirAll(path, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.Add("add-path", "HEAD"); err == nil || !strings.Contains(err.Error(), "already exists") {
+		if _, err := m.Add(testContext(t), "add-path", "HEAD"); err == nil || !strings.Contains(err.Error(), "already exists") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	t.Run("existing branch", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Add branch")
 		runWorktreeGit(t, root, "branch", "awf/add-branch")
-		if _, err := m.Add("add-branch", "HEAD"); err == nil || !strings.Contains(err.Error(), "branch already exists") {
+		if _, err := m.Add(testContext(t), "add-branch", "HEAD"); err == nil || !strings.Contains(err.Error(), "branch already exists") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	t.Run("registered branch", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Add registered")
-		base := m.run
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if strings.Join(args, " ") == "worktree list --porcelain -z" {
-				return []byte("worktree " + root + "\x00HEAD abc\x00branch refs/heads/main\x00\x00worktree /foreign\x00HEAD def\x00branch refs/heads/awf/add-registered\x00\x00"), nil
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Add registered")
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+				return []awfgit.WorktreeRegistration{
+					{Path: root, HEAD: "abc", Branch: "refs/heads/main"},
+					{Path: "/foreign", HEAD: "def", Branch: "refs/heads/awf/add-registered"},
+				}, nil
 			}
-			return base(ctx, dir, args...)
-		}
-		if _, err := m.Add("add-registered", "HEAD"); err == nil || !strings.Contains(err.Error(), "registration") {
+		}))
+		if _, err := m.Add(testContext(t), "add-registered", "HEAD"); err == nil || !strings.Contains(err.Error(), "registration") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	for _, tc := range []struct {
-		name, prefix string
+		name      string
+		breakStub func(*checkoutStub)
 	}{
-		{"registrations", "worktree list"},
-		{"branch probe", "show-ref"},
-		{"operation", "rev-parse --git-path"},
-		{"base", "rev-parse --verify"},
-		{"add", "worktree add"},
+		{"registrations", func(s *checkoutStub) {
+			s.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, failing("worktree list") }
+		}},
+		{"branch probe", func(s *checkoutStub) {
+			s.branchProbe = func(context.Context, string) (bool, error) { return false, failing("show-ref") }
+		}},
+		{"operation", func(s *checkoutStub) {
+			s.gitPath = func(context.Context, string) (string, error) { return "", failing("git path") }
+		}},
+		{"base", func(s *checkoutStub) {
+			s.resolveCommit = func(context.Context, string) (string, error) { return "", failing("rev-parse") }
+		}},
+		{"add", func(s *checkoutStub) {
+			s.worktreeAdd = func(context.Context, string, string, string) error { return failing("worktree add") }
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m, _ := newManagerWithEffort(t, "Add "+tc.name)
-			base := m.run
-			m.run = runnerFailingPrefix(base, tc.prefix)
-			if _, err := m.Add("add-"+strings.ReplaceAll(tc.name, " ", "-"), "HEAD"); err == nil {
+			root := initWorktreeRepo(t, "sha1")
+			createEffort(t, root, "Add "+tc.name)
+			m := managerWith(t, root, invokingStub(root, tc.breakStub))
+			if _, err := m.Add(testContext(t), "add-"+strings.ReplaceAll(tc.name, " ", "-"), "HEAD"); err == nil {
 				t.Fatal("runner fault hidden")
 			}
 		})
 	}
 	t.Run("invalid effort and stat fault", func(t *testing.T) {
 		m, _ := newManagerWithEffort(t, "Add stat fault")
-		if _, err := m.Add("missing-effort", "HEAD"); err == nil {
+		if _, err := m.Add(testContext(t), "missing-effort", "HEAD"); err == nil {
 			t.Fatal("missing effort accepted")
 		}
 		old := managedLstat
 		managedLstat = func(string) (os.FileInfo, error) { return nil, errors.New("stat fault") }
 		defer func() { managedLstat = old }()
-		if _, err := m.Add("add-stat-fault", "HEAD"); err == nil || !strings.Contains(err.Error(), "stat fault") {
+		if _, err := m.Add(testContext(t), "add-stat-fault", "HEAD"); err == nil || !strings.Contains(err.Error(), "stat fault") {
 			t.Fatalf("stat error = %v", err)
 		}
 	})
 	t.Run("topology registration probe", func(t *testing.T) {
-		m, _ := newManagerWithEffort(t, "Topology probe")
-		path, err := m.managed("topology-probe")
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Topology probe")
+		var path string
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+				return []awfgit.WorktreeRegistration{{Path: path, HEAD: "abc", Branch: "refs/heads/awf/topology-probe"}}, nil
+			}
+		}))
+		resolved, err := m.managed("topology-probe")
 		if err != nil {
 			t.Fatal(err)
 		}
+		path = resolved
 		old := managedLstat
 		managedLstat = func(string) (os.FileInfo, error) { return nil, os.ErrNotExist }
 		defer func() { managedLstat = old }()
-		m.run = func(context.Context, string, ...string) ([]byte, error) {
-			return []byte("worktree " + path + "\x00HEAD abc\x00branch refs/heads/awf/topology-probe\x00\x00"), nil
-		}
-		if !m.topologyPresent("topology-probe", path) {
+		if !m.topologyPresent(testContext(t), "topology-probe", path) {
 			t.Fatal("registration topology was not observed")
 		}
 	})
 	t.Run("post-add registration", func(t *testing.T) {
-		m, _ := newManagerWithEffort(t, "Add post registration")
-		base := m.run
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Add post registration")
 		added := false
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			out, err := base(ctx, dir, args...)
-			if len(args) >= 2 && args[0] == "worktree" && args[1] == "add" && err == nil {
-				added = true
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeAdd = func(ctx context.Context, path, branch, base string) error {
+				err := stub.Runner.WorktreeAdd(ctx, path, branch, base)
+				added = err == nil
+				return err
 			}
-			if added && strings.Join(args, " ") == "worktree list --porcelain -z" {
-				return []byte("worktree " + m.roots.InvokingRoot + "\x00HEAD abc\x00branch refs/heads/main\x00\x00"), nil
+			stub.worktreeList = func(ctx context.Context) ([]awfgit.WorktreeRegistration, error) {
+				if added {
+					return []awfgit.WorktreeRegistration{{Path: root, HEAD: "abc", Branch: "refs/heads/main"}}, nil
+				}
+				return stub.Runner.WorktreeList(ctx)
 			}
-			return out, err
-		}
-		if _, err := m.Add("add-post-registration", "HEAD"); err == nil || !strings.Contains(err.Error(), "exact managed registration") {
+		}))
+		if _, err := m.Add(testContext(t), "add-post-registration", "HEAD"); err == nil || !strings.Contains(err.Error(), "exact managed registration") {
 			t.Fatalf("error = %v", err)
 		}
 	})
@@ -604,76 +580,113 @@ func TestAddPreconditionAndRunnerFailureBranches(t *testing.T) {
 func TestIntegratePreconditionAndMutationFailureBranches(t *testing.T) {
 	t.Run("managed caller", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Managed caller")
-		if _, err := m.Add("managed-caller", "HEAD"); err != nil {
+		if _, err := m.Add(testContext(t), "managed-caller", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "managed-caller")
-		m.roots.InvokingRoot = path
-		if _, err := m.Integrate("managed-caller", ""); err == nil || !strings.Contains(err.Error(), "receiving checkout") {
+		fromManaged := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.InvokingRoot = path }, nil)
+		if _, err := fromManaged.Integrate(testContext(t), "managed-caller", ""); err == nil || !strings.Contains(err.Error(), "receiving checkout") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	for _, tc := range []struct {
-		name, prefix string
+		name      string
+		breakStub func(*checkoutStub)
 	}{
-		{"registration", "worktree list"},
-		{"operation", "rev-parse --git-path"},
-		{"status", "status --porcelain"},
-		{"detached", "symbolic-ref"},
-		{"tip", "rev-parse --verify awf/integrate-tip"},
-		{"target", "rev-parse --verify HEAD"},
-		{"ancestor", "merge-base --is-ancestor"},
+		{"registration", func(s *checkoutStub) {
+			s.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, failing("worktree list") }
+		}},
+		{"operation", func(s *checkoutStub) {
+			s.gitPath = func(context.Context, string) (string, error) { return "", failing("git path") }
+		}},
+		{"cleanliness", func(s *checkoutStub) {
+			s.changeCounts = func(context.Context) (int, int, error) { return 0, 0, failing("status") }
+		}},
+		{"detached", func(s *checkoutStub) {
+			s.currentBranch = func(context.Context) (string, error) { return "", failing("symbolic-ref") }
+		}},
+		{"tip", func(s *checkoutStub) {
+			s.resolveCommit = func(ctx context.Context, revision string) (string, error) {
+				if strings.HasPrefix(revision, "awf/") {
+					return "", failing("rev-parse tip")
+				}
+				return s.Runner.ResolveCommit(ctx, revision)
+			}
+		}},
+		{"target", func(s *checkoutStub) {
+			s.resolveCommit = func(ctx context.Context, revision string) (string, error) {
+				if revision == "HEAD" {
+					return "", failing("rev-parse HEAD")
+				}
+				return s.Runner.ResolveCommit(ctx, revision)
+			}
+		}},
+		{"ancestor", func(s *checkoutStub) {
+			s.ancestor = func(context.Context, string, string) (bool, error) { return false, failing("merge-base") }
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m, root := newManagerWithEffort(t, "Integrate "+tc.name)
-			slug := "integrate-" + tc.name
-			if _, err := m.Add(slug, "HEAD"); err != nil {
+			root := initWorktreeRepo(t, "sha1")
+			slug := "integrate-" + strings.ReplaceAll(tc.name, " ", "-")
+			createEffort(t, root, "Integrate "+tc.name)
+			if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
 				t.Fatal(err)
 			}
 			managed := filepath.Join(root, ".awf", "worktrees", slug)
 			writeWorktreeFile(t, filepath.Join(managed, "change"), "x")
 			commitWorktree(t, managed, "change")
-			base := m.run
-			m.run = runnerFailingPrefix(base, tc.prefix)
-			if _, err := m.Integrate(slug, ""); err == nil {
+			m := managerWith(t, root, invokingStub(root, tc.breakStub))
+			if _, err := m.Integrate(testContext(t), slug, ""); err == nil {
 				t.Fatal("runner fault hidden")
 			}
 		})
 	}
-	t.Run("effort target branch", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Integrate own")
-		if _, err := m.Add("integrate-own", "HEAD"); err != nil {
+	t.Run("detached target", func(t *testing.T) {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Integrate detached")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), "integrate-detached", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
-		base := m.run
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if strings.Join(args, " ") == "symbolic-ref -q --short HEAD" {
-				return []byte("awf/integrate-own\n"), nil
-			}
-			return base(ctx, dir, args...)
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.currentBranch = func(context.Context) (string, error) { return "", nil }
+		}))
+		if _, err := m.Integrate(testContext(t), "integrate-detached", ""); err == nil || !strings.Contains(err.Error(), "detached") {
+			t.Fatalf("error = %v", err)
 		}
-		if _, err := m.Integrate("integrate-own", ""); err == nil || !strings.Contains(err.Error(), "effort branch") {
+	})
+	t.Run("effort target branch", func(t *testing.T) {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Integrate own")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), "integrate-own", "HEAD"); err != nil {
+			t.Fatal(err)
+		}
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.currentBranch = func(context.Context) (string, error) { return "awf/integrate-own", nil }
+		}))
+		if _, err := m.Integrate(testContext(t), "integrate-own", ""); err == nil || !strings.Contains(err.Error(), "effort branch") {
 			t.Fatalf("error = %v root=%s", err, root)
 		}
 	})
 	t.Run("fast-forward failure", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Integrate ff failure")
-		if _, err := m.Add("integrate-ff-failure", "HEAD"); err != nil {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Integrate ff failure")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), "integrate-ff-failure", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", "integrate-ff-failure")
 		writeWorktreeFile(t, filepath.Join(managed, "change"), "x")
 		commitWorktree(t, managed, "change")
-		base := m.run
-		m.run = runnerFailingPrefix(base, "merge --ff-only")
-		if _, err := m.Integrate("integrate-ff-failure", ""); err == nil || !strings.Contains(err.Error(), "fast-forward failed") {
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.mergeFastForward = func(context.Context, string) error { return failing("merge --ff-only") }
+		}))
+		if _, err := m.Integrate(testContext(t), "integrate-ff-failure", ""); err == nil || !strings.Contains(err.Error(), "fast-forward failed") {
 			t.Fatalf("error = %v", err)
 		}
 		before := runWorktreeGit(t, root, "rev-parse", "HEAD")
-		if m.targetChanged(before) {
+		if m.targetChanged(testContext(t), before) {
 			t.Fatal("unchanged target reported changed")
 		}
-		if !m.targetChanged("0000000000000000000000000000000000000000") {
+		if !m.targetChanged(testContext(t), "0000000000000000000000000000000000000000") {
 			t.Fatal("changed target reported unchanged")
 		}
 	})
@@ -681,98 +694,93 @@ func TestIntegratePreconditionAndMutationFailureBranches(t *testing.T) {
 
 func TestManagerMutationPropagationBranches(t *testing.T) {
 	t.Run("add authority", func(t *testing.T) {
-		m, _ := newManagerWithEffort(t, "Add authority")
-		m.roots.PrimaryRoot = "relative"
-		if _, err := m.Add("add-authority", "HEAD"); err == nil {
+		_, root := newManagerWithEffort(t, "Add authority")
+		unrooted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.PrimaryRoot = "relative" }, nil)
+		if _, err := unrooted.Add(testContext(t), "add-authority", "HEAD"); err == nil {
 			t.Fatal("invalid add authority accepted")
 		}
 	})
 	t.Run("add live identity", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Add live identity")
+		_, root := newManagerWithEffort(t, "Add live identity")
 		plain := t.TempDir()
-		m.roots.InvokingRoot = plain
-		base := m.run
-		m.run = func(ctx context.Context, _ string, args ...string) ([]byte, error) {
-			switch {
-			case strings.Join(args, " ") == "worktree list --porcelain -z":
-				return []byte("worktree " + root + "\x00HEAD abc\x00branch refs/heads/main\x00\x00"), nil
-			case args[0] == "show-ref":
-				return base(ctx, root, args...)
-			case args[0] == "rev-parse" && args[1] == "--git-path":
-				return []byte(filepath.Join(plain, args[2]) + "\n"), nil
-			case args[0] == "rev-parse" && args[1] == "--verify":
-				return []byte("0000000000000000000000000000000000000000\n"), nil
-			default:
-				return nil, errors.New("unexpected runner call")
-			}
-		}
-		if _, err := m.Add("add-live-identity", "HEAD"); err == nil || !strings.Contains(err.Error(), "repository-identity") {
+		m := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.InvokingRoot = plain },
+			func(stub *checkoutStub) {
+				stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+					return []awfgit.WorktreeRegistration{{Path: root, HEAD: "abc", Branch: "refs/heads/main"}}, nil
+				}
+				stub.gitPath = func(_ context.Context, name string) (string, error) { return filepath.Join(plain, name), nil }
+				stub.resolveCommit = func(context.Context, string) (string, error) {
+					return "0000000000000000000000000000000000000000", nil
+				}
+			})
+		if _, err := m.Add(testContext(t), "add-live-identity", "HEAD"); err == nil || !strings.Contains(err.Error(), "repository-identity") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	t.Run("integrate authority and fact propagation", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Integrate propagation")
-		if _, err := m.Add("integrate-propagation", "HEAD"); err != nil {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Integrate propagation")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), "integrate-propagation", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", "integrate-propagation")
 		writeWorktreeFile(t, filepath.Join(managed, "change"), "x")
 		commitWorktree(t, managed, "change")
-		originalRoots := m.roots
-		m.roots.PrimaryRoot = "relative"
-		if _, err := m.Integrate("integrate-propagation", ""); err == nil {
+		unrooted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.PrimaryRoot = "relative" }, nil)
+		if _, err := unrooted.Integrate(testContext(t), "integrate-propagation", ""); err == nil {
 			t.Fatal("invalid integrate authority accepted")
 		}
-		m.roots = originalRoots
-		base := m.run
 		calls := 0
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if strings.HasPrefix(strings.Join(args, " "), "rev-parse --verify HEAD") {
-				calls++
-				if calls == 2 {
-					return []byte("0000000000000000000000000000000000000000\n"), nil
+		drifting := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.resolveCommit = func(ctx context.Context, revision string) (string, error) {
+				if revision == "HEAD" {
+					calls++
+					if calls == 2 {
+						return "0000000000000000000000000000000000000000", nil
+					}
 				}
+				return stub.Runner.ResolveCommit(ctx, revision)
 			}
-			return base(ctx, dir, args...)
-		}
-		if _, err := m.Integrate("integrate-propagation", ""); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
+		}))
+		if _, err := drifting.Integrate(testContext(t), "integrate-propagation", ""); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	t.Run("validate fact prerequisites", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Validate prerequisites")
-		if _, err := m.Add("validate-prerequisites", "HEAD"); err != nil {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Validate prerequisites")
+		m := freshWorktreeManager(t, root)
+		if _, err := m.Add(testContext(t), "validate-prerequisites", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "validate-prerequisites")
 		target := runWorktreeGit(t, root, "rev-parse", "HEAD")
 		tip := runWorktreeGit(t, root, "rev-parse", "awf/validate-prerequisites")
-		original := m.roots
-		m.roots.InvokingRoot = t.TempDir()
-		if err := m.validateIntegrationFacts(path, "validate-prerequisites", target, tip); err == nil {
+		drifted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.InvokingRoot = t.TempDir() }, nil)
+		if err := drifted.validateIntegrationFacts(testContext(t), path, "validate-prerequisites", target, tip); err == nil {
 			t.Fatal("invalid invoking checkout accepted")
 		}
-		m.roots = original
-		if err := m.validateIntegrationFacts(filepath.Join(root, "missing"), "validate-prerequisites", target, tip); err == nil {
+		if err := m.validateIntegrationFacts(testContext(t), filepath.Join(root, "missing"), "validate-prerequisites", target, tip); err == nil {
 			t.Fatal("missing managed target accepted")
 		}
-		base := m.run
-		m.run = runnerFailingPrefix(base, "worktree list")
-		if err := m.validateIntegrationFacts(path, "validate-prerequisites", target, tip); err == nil {
+		probeFault := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, failing("worktree list") }
+		}))
+		if err := probeFault.validateIntegrationFacts(testContext(t), path, "validate-prerequisites", target, tip); err == nil {
 			t.Fatal("registration probe fault hidden")
 		}
 	})
 	t.Run("remove authority and target", func(t *testing.T) {
-		m, _ := newManagerWithEffort(t, "Remove propagation")
-		if _, err := m.Remove("missing-effort"); err == nil {
+		_, root := newManagerWithEffort(t, "Remove propagation")
+		if _, err := freshWorktreeManager(t, root).Remove(testContext(t), "missing-effort"); err == nil {
 			t.Fatal("missing effort accepted")
 		}
-		m.roots.PrimaryRoot = "relative"
-		if _, err := m.Remove("remove-propagation"); err == nil {
+		unrooted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.PrimaryRoot = "relative" }, nil)
+		if _, err := unrooted.Remove(testContext(t), "remove-propagation"); err == nil {
 			t.Fatal("invalid remove authority accepted")
 		}
 		m, root := newManagerWithEffort(t, "Remove target error")
-		if _, err := m.Add("remove-target-error", "HEAD"); err != nil {
+		if _, err := m.Add(testContext(t), "remove-target-error", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "remove-target-error")
@@ -782,7 +790,7 @@ func TestManagerMutationPropagationBranches(t *testing.T) {
 		if err := os.MkdirAll(path, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.Remove("remove-target-error"); err == nil || !strings.Contains(err.Error(), "repository-identity") {
+		if _, err := m.Remove(testContext(t), "remove-target-error"); err == nil || !strings.Contains(err.Error(), "repository-identity") {
 			t.Fatalf("error = %v", err)
 		}
 	})
@@ -791,71 +799,81 @@ func TestManagerMutationPropagationBranches(t *testing.T) {
 func TestIntegrationAdditionalRefusalBranches(t *testing.T) {
 	t.Run("missing effort and target", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Integration missing target")
-		if _, err := m.Integrate("missing-effort", ""); err == nil {
+		if _, err := m.Integrate(testContext(t), "missing-effort", ""); err == nil {
 			t.Fatal("missing effort accepted")
 		}
-		if _, err := m.Add("integration-missing-target", "HEAD"); err != nil {
+		if _, err := m.Add(testContext(t), "integration-missing-target", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "integration-missing-target")
 		if err := os.RemoveAll(path); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.Integrate("integration-missing-target", ""); err == nil {
+		if _, err := m.Integrate(testContext(t), "integration-missing-target", ""); err == nil {
 			t.Fatal("missing target accepted")
 		}
 	})
 	t.Run("second ancestry probe", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Integration second ancestry")
-		if _, err := m.Add("integration-second-ancestry", "HEAD"); err != nil {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Integration second ancestry")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), "integration-second-ancestry", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", "integration-second-ancestry")
 		writeWorktreeFile(t, filepath.Join(managed, "change"), "x")
 		commitWorktree(t, managed, "change")
-		base := m.run
 		calls := 0
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if strings.HasPrefix(strings.Join(args, " "), "merge-base --is-ancestor") {
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.ancestor = func(ctx context.Context, older, newer string) (bool, error) {
 				calls++
 				if calls == 2 {
-					return nil, errors.New("second ancestry")
+					return false, errors.New("second ancestry")
 				}
+				return stub.Runner.Ancestor(ctx, older, newer)
 			}
-			return base(ctx, dir, args...)
-		}
-		if _, err := m.Integrate("integration-second-ancestry", ""); err == nil || !strings.Contains(err.Error(), "second ancestry") {
+		}))
+		if _, err := m.Integrate(testContext(t), "integration-second-ancestry", ""); err == nil || !strings.Contains(err.Error(), "second ancestry") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 }
 
 func TestIntegrationFactDriftBranches(t *testing.T) {
-	m, root := newManagerWithEffort(t, "Fact drift")
-	if _, err := m.Add("fact-drift", "HEAD"); err != nil {
+	root := initWorktreeRepo(t, "sha1")
+	createEffort(t, root, "Fact drift")
+	m := freshWorktreeManager(t, root)
+	if _, err := m.Add(testContext(t), "fact-drift", "HEAD"); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".awf", "worktrees", "fact-drift")
 	target := runWorktreeGit(t, root, "rev-parse", "HEAD")
 	tip := runWorktreeGit(t, root, "rev-parse", "awf/fact-drift")
-	if err := m.validateIntegrationFacts(path, "fact-drift", "0000000000000000000000000000000000000000", tip); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
+	if err := m.validateIntegrationFacts(testContext(t), path, "fact-drift", "0000000000000000000000000000000000000000", tip); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
 		t.Fatalf("target drift error = %v", err)
 	}
-	if err := m.validateIntegrationFacts(path, "fact-drift", target, "0000000000000000000000000000000000000000"); err == nil || !strings.Contains(err.Error(), "effort branch changed") {
+	if err := m.validateIntegrationFacts(testContext(t), path, "fact-drift", target, "0000000000000000000000000000000000000000"); err == nil || !strings.Contains(err.Error(), "effort branch changed") {
 		t.Fatalf("tip drift error = %v", err)
 	}
-	base := m.run
-	m.run = runnerFailingPrefix(base, "rev-parse --verify HEAD")
-	if err := m.validateIntegrationFacts(path, "fact-drift", target, tip); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
+	targetFault := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+		stub.resolveCommit = func(ctx context.Context, revision string) (string, error) {
+			if revision == "HEAD" {
+				return "", failing("target resolve")
+			}
+			return stub.Runner.ResolveCommit(ctx, revision)
+		}
+	}))
+	if err := targetFault.validateIntegrationFacts(testContext(t), path, "fact-drift", target, tip); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
 		t.Fatalf("target resolve error = %v", err)
 	}
-	m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-		if strings.HasPrefix(strings.Join(args, " "), "rev-parse --verify awf/fact-drift") {
-			return nil, errors.New("tip resolve")
+	tipFault := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+		stub.resolveCommit = func(ctx context.Context, revision string) (string, error) {
+			if revision == "awf/fact-drift" {
+				return "", failing("tip resolve")
+			}
+			return stub.Runner.ResolveCommit(ctx, revision)
 		}
-		return base(ctx, dir, args...)
-	}
-	if err := m.validateIntegrationFacts(path, "fact-drift", target, tip); err == nil || !strings.Contains(err.Error(), "effort branch changed") {
+	}))
+	if err := tipFault.validateIntegrationFacts(testContext(t), path, "fact-drift", target, tip); err == nil || !strings.Contains(err.Error(), "effort branch changed") {
 		t.Fatalf("tip resolve error = %v", err)
 	}
 }
@@ -863,7 +881,7 @@ func TestIntegrationFactDriftBranches(t *testing.T) {
 func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 	t.Run("target operation", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Remove operation")
-		if _, err := m.Add("remove-operation", "HEAD"); err != nil {
+		if _, err := m.Add(testContext(t), "remove-operation", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		mergeHead := strings.TrimSpace(runWorktreeGit(t, root, "rev-parse", "--git-path", "MERGE_HEAD"))
@@ -873,128 +891,154 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 		if err := os.WriteFile(mergeHead, nil, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.Remove("remove-operation"); err == nil || !strings.Contains(err.Error(), "in-progress") {
+		if _, err := m.Remove(testContext(t), "remove-operation"); err == nil || !strings.Contains(err.Error(), "in-progress") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	t.Run("remove and branch failures", func(t *testing.T) {
-		for _, prefix := range []string{"worktree remove", "branch -d"} {
-			t.Run(prefix, func(t *testing.T) {
-				m, root := newManagerWithEffort(t, "Remove "+prefix)
-				slug := "remove-" + strings.Trim(strings.ReplaceAll(strings.ReplaceAll(prefix, " ", "-"), "--", "-"), "-")
-				if _, err := m.Add(slug, "HEAD"); err != nil {
+		for name, broken := range map[string]func(*checkoutStub){
+			"worktree remove": func(s *checkoutStub) {
+				s.worktreeRemove = func(context.Context, string) error { return failing("worktree remove") }
+			},
+			"branch delete": func(s *checkoutStub) {
+				s.branchDelete = func(context.Context, string) error { return failing("branch -d") }
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				root := initWorktreeRepo(t, "sha1")
+				slug := "remove-" + strings.ReplaceAll(name, " ", "-")
+				createEffort(t, root, "Remove "+name)
+				if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
 					t.Fatal(err)
 				}
-				base := m.run
-				if prefix == "branch -d" {
-					path := filepath.Join(root, ".awf", "worktrees", slug)
-					runWorktreeGit(t, root, "worktree", "remove", path)
+				if name == "branch delete" {
+					runWorktreeGit(t, root, "worktree", "remove", filepath.Join(root, ".awf", "worktrees", slug))
 				}
-				m.run = runnerFailingPrefix(base, prefix)
-				if _, err := m.Remove(slug); err == nil {
+				m := managerWith(t, root, invokingStub(root, broken))
+				if _, err := m.Remove(testContext(t), slug); err == nil {
 					t.Fatal("mutation fault hidden")
 				}
 			})
 		}
 	})
 	t.Run("runner probes", func(t *testing.T) {
-		for _, prefix := range []string{"status --porcelain", "worktree list", "show-ref", "merge-base --is-ancestor"} {
-			t.Run(prefix, func(t *testing.T) {
-				m, root := newManagerWithEffort(t, "Remove probe "+prefix)
-				slug := map[string]string{
-					"status --porcelain":       "remove-probe-status-porcelain",
-					"worktree list":            "remove-probe-worktree-list",
-					"show-ref":                 "remove-probe-show-ref",
-					"merge-base --is-ancestor": "remove-probe-merge-base-is-ancestor",
-				}[prefix]
-				if _, err := m.Add(slug, "HEAD"); err != nil {
+		for name, broken := range map[string]func(*checkoutStub){
+			"cleanliness": func(s *checkoutStub) {
+				s.changeCounts = func(context.Context) (int, int, error) { return 0, 0, failing("status") }
+			},
+			"worktree list": func(s *checkoutStub) {
+				s.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, failing("worktree list") }
+			},
+			"branch probe": func(s *checkoutStub) {
+				s.branchProbe = func(context.Context, string) (bool, error) { return false, failing("show-ref") }
+			},
+			"ancestry": func(s *checkoutStub) {
+				s.ancestor = func(context.Context, string, string) (bool, error) { return false, failing("merge-base") }
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				root := initWorktreeRepo(t, "sha1")
+				slug := "remove-probe-" + strings.ReplaceAll(name, " ", "-")
+				createEffort(t, root, "Remove probe "+name)
+				if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
 					t.Fatal(err)
 				}
-				if prefix == "merge-base --is-ancestor" {
+				if name == "ancestry" {
 					managed := filepath.Join(root, ".awf", "worktrees", slug)
 					writeWorktreeFile(t, filepath.Join(managed, "change"), "x")
 					commitWorktree(t, managed, "change")
 				}
-				m.run = runnerFailingPrefix(m.run, prefix)
-				if _, err := m.Remove(slug); err == nil {
+				m := managerWith(t, root, invokingStub(root, broken))
+				if _, err := m.Remove(testContext(t), slug); err == nil {
 					t.Fatal("probe fault hidden")
 				}
 			})
 		}
 	})
 	t.Run("managed operation and dirt", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Remove managed checks")
-		if _, err := m.Add("remove-managed-checks", "HEAD"); err != nil {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Remove managed checks")
+		m := freshWorktreeManager(t, root)
+		if _, err := m.Add(testContext(t), "remove-managed-checks", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", "remove-managed-checks")
-		base := m.run
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if filepath.Clean(dir) == filepath.Clean(managed) && strings.HasPrefix(strings.Join(args, " "), "rev-parse --git-path") {
-				return nil, errors.New("managed operation probe")
+		probeFault := managerWith(t, root, stubOpener(func(opened string, stub *checkoutStub) {
+			if sameWorktreePath(opened, managed) {
+				stub.gitPath = func(context.Context, string) (string, error) { return "", failing("managed operation probe") }
 			}
-			return base(ctx, dir, args...)
-		}
-		if _, err := m.Remove("remove-managed-checks"); err == nil {
+		}))
+		if _, err := probeFault.Remove(testContext(t), "remove-managed-checks"); err == nil {
 			t.Fatal("managed operation probe hidden")
 		}
-		m.run = base
+		unopenable := managerWith(t, root, func(opened string) (Runner, error) {
+			if sameWorktreePath(opened, managed) {
+				return nil, failing("managed checkout open")
+			}
+			return awfgit.Open(opened)
+		})
+		if _, err := unopenable.Remove(testContext(t), "remove-managed-checks"); err == nil || !strings.Contains(err.Error(), "managed checkout open") {
+			t.Fatalf("managed open error = %v", err)
+		}
 		writeWorktreeFile(t, filepath.Join(managed, "dirty"), "x")
-		if _, err := m.Remove("remove-managed-checks"); err == nil || !strings.Contains(err.Error(), "dirty") {
+		if _, err := m.Remove(testContext(t), "remove-managed-checks"); err == nil || !strings.Contains(err.Error(), "dirty") {
 			t.Fatalf("dirty error = %v", err)
 		}
 	})
 	t.Run("foreign registration", func(t *testing.T) {
-		m, _ := newManagerWithEffort(t, "Remove foreign registration")
-		base := m.run
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if strings.Join(args, " ") == "worktree list --porcelain -z" {
-				return []byte("worktree " + m.roots.InvokingRoot + "\x00HEAD abc\x00branch refs/heads/main\x00\x00worktree /foreign\x00HEAD def\x00branch refs/heads/awf/remove-foreign-registration\x00\x00"), nil
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Remove foreign registration")
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+				return []awfgit.WorktreeRegistration{
+					{Path: root, HEAD: "abc", Branch: "refs/heads/main"},
+					{Path: "/foreign", HEAD: "def", Branch: "refs/heads/awf/remove-foreign-registration"},
+				}, nil
 			}
-			return base(ctx, dir, args...)
-		}
-		if _, err := m.Remove("remove-foreign-registration"); err == nil || !strings.Contains(err.Error(), "foreign path") {
+		}))
+		if _, err := m.Remove(testContext(t), "remove-foreign-registration"); err == nil || !strings.Contains(err.Error(), "foreign path") {
 			t.Fatalf("error = %v", err)
 		}
 	})
 	t.Run("managed caller and malformed registration", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Remove caller")
-		if _, err := m.Add("remove-caller", "HEAD"); err != nil {
+		if _, err := m.Add(testContext(t), "remove-caller", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "remove-caller")
-		m.roots.InvokingRoot = path
-		if _, err := m.Remove("remove-caller"); err == nil || !strings.Contains(err.Error(), "target checkout") {
+		fromManaged := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.InvokingRoot = path }, nil)
+		if _, err := fromManaged.Remove(testContext(t), "remove-caller"); err == nil || !strings.Contains(err.Error(), "target checkout") {
 			t.Fatalf("caller error = %v", err)
 		}
 
-		m, root = newManagerWithEffort(t, "Remove malformed")
-		base := m.run
-		path = filepath.Join(root, ".awf", "worktrees", "remove-malformed")
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if strings.Join(args, " ") == "worktree list --porcelain -z" {
-				return []byte("worktree " + root + "\x00HEAD abc\x00branch refs/heads/main\x00\x00worktree " + path + "\x00HEAD def\x00detached\x00\x00"), nil
+		root = initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Remove malformed")
+		malformedPath := filepath.Join(root, ".awf", "worktrees", "remove-malformed")
+		malformed := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+				return []awfgit.WorktreeRegistration{
+					{Path: root, HEAD: "abc", Branch: "refs/heads/main"},
+					{Path: malformedPath, HEAD: "def", Detached: true},
+				}, nil
 			}
-			return base(ctx, dir, args...)
-		}
-		if _, err := m.Remove("remove-malformed"); err == nil || !strings.Contains(err.Error(), "not exact") {
+		}))
+		if _, err := malformed.Remove(testContext(t), "remove-malformed"); err == nil || !strings.Contains(err.Error(), "not exact") {
 			t.Fatalf("registration error = %v", err)
 		}
 	})
 	t.Run("unregistered path cleanup", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Remove unregistered")
-		if _, err := m.Add("remove-unregistered", "HEAD"); err != nil {
+		root := initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Remove unregistered")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), "remove-unregistered", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "remove-unregistered")
-		base := m.run
-		m.run = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-			if strings.Join(args, " ") == "worktree list --porcelain -z" {
-				return []byte("worktree " + root + "\x00HEAD abc\x00branch refs/heads/main\x00\x00"), nil
+		m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+				return []awfgit.WorktreeRegistration{{Path: root, HEAD: "abc", Branch: "refs/heads/main"}}, nil
 			}
-			return base(ctx, dir, args...)
-		}
-		if _, err := m.Remove("remove-unregistered"); err == nil || !strings.Contains(err.Error(), "branch deletion failed") {
+		}))
+		if _, err := m.Remove(testContext(t), "remove-unregistered"); err == nil || !strings.Contains(err.Error(), "branch deletion failed") {
 			t.Fatalf("error=%v", err)
 		}
 		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
@@ -1003,28 +1047,29 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 	})
 	t.Run("prune success and failure", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Remove prune success")
-		if _, err := m.Add("remove-prune-success", "HEAD"); err != nil {
+		if _, err := m.Add(testContext(t), "remove-prune-success", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "remove-prune-success")
 		if err := os.RemoveAll(path); err != nil {
 			t.Fatal(err)
 		}
-		if result, err := m.Remove("remove-prune-success"); err != nil || !result.ChangedTopology {
+		if result, err := m.Remove(testContext(t), "remove-prune-success"); err != nil || !result.ChangedTopology {
 			t.Fatalf("prune result=%#v err=%v", result, err)
 		}
 
-		m, root = newManagerWithEffort(t, "Remove prune")
-		if _, err := m.Add("remove-prune", "HEAD"); err != nil {
+		root = initWorktreeRepo(t, "sha1")
+		createEffort(t, root, "Remove prune")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), "remove-prune", "HEAD"); err != nil {
 			t.Fatal(err)
 		}
-		path = filepath.Join(root, ".awf", "worktrees", "remove-prune")
-		if err := os.RemoveAll(path); err != nil {
+		if err := os.RemoveAll(filepath.Join(root, ".awf", "worktrees", "remove-prune")); err != nil {
 			t.Fatal(err)
 		}
-		base := m.run
-		m.run = runnerFailingPrefix(base, "worktree prune")
-		if _, err := m.Remove("remove-prune"); err == nil || !strings.Contains(err.Error(), "prunable") {
+		pruneFault := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreePrune = func(context.Context) error { return failing("worktree prune") }
+		}))
+		if _, err := pruneFault.Remove(testContext(t), "remove-prune"); err == nil || !strings.Contains(err.Error(), "prunable") {
 			t.Fatalf("error = %v", err)
 		}
 	})
@@ -1037,13 +1082,16 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 func TestRestartCompletesFromPartialTopology(t *testing.T) {
 	// invariant: tooling/effort-management:managed-worktree-lifecycle
 	t.Run("branch delete faulted", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Restart branch delete")
+		root := initWorktreeRepo(t, "sha1")
 		slug := "restart-branch-delete"
-		if _, err := m.Add(slug, "HEAD"); err != nil {
+		createEffort(t, root, "Restart branch delete")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
 			t.Fatal(err)
 		}
-		m.run = runnerFailingPrefix(m.run, "branch -d")
-		if _, err := m.Remove(slug); err == nil {
+		faulted := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.branchDelete = func(context.Context, string) error { return failing("branch -d") }
+		}))
+		if _, err := faulted.Remove(testContext(t), slug); err == nil {
 			t.Fatal("branch delete fault hidden")
 		}
 		// Genuinely partial: the checkout is gone, the branch is not.
@@ -1053,7 +1101,7 @@ func TestRestartCompletesFromPartialTopology(t *testing.T) {
 		if !worktreeBranchExists(t, root, slug) {
 			t.Fatal("branch already deleted, so the restart fixture proves nothing")
 		}
-		if _, err := freshWorktreeManager(t, root).Remove(slug); err != nil {
+		if _, err := freshWorktreeManager(t, root).Remove(testContext(t), slug); err != nil {
 			t.Fatalf("restart did not complete from partial topology: %v", err)
 		}
 		if worktreeBranchExists(t, root, slug) {
@@ -1061,20 +1109,23 @@ func TestRestartCompletesFromPartialTopology(t *testing.T) {
 		}
 	})
 	t.Run("worktree remove faulted", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Restart worktree remove")
+		root := initWorktreeRepo(t, "sha1")
 		slug := "restart-worktree-remove"
-		if _, err := m.Add(slug, "HEAD"); err != nil {
+		createEffort(t, root, "Restart worktree remove")
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
 			t.Fatal(err)
 		}
-		m.run = runnerFailingPrefix(m.run, "worktree remove")
-		if _, err := m.Remove(slug); err == nil {
+		faulted := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeRemove = func(context.Context, string) error { return failing("worktree remove") }
+		}))
+		if _, err := faulted.Remove(testContext(t), slug); err == nil {
 			t.Fatal("worktree remove fault hidden")
 		}
 		managed := filepath.Join(root, ".awf", "worktrees", slug)
 		if _, err := os.Stat(managed); err != nil {
 			t.Fatalf("faulted removal discarded the checkout anyway: %v", err)
 		}
-		if _, err := freshWorktreeManager(t, root).Remove(slug); err != nil {
+		if _, err := freshWorktreeManager(t, root).Remove(testContext(t), slug); err != nil {
 			t.Fatalf("restart did not complete after a failed first mutation: %v", err)
 		}
 		if _, err := os.Stat(managed); !os.IsNotExist(err) {
@@ -1085,16 +1136,19 @@ func TestRestartCompletesFromPartialTopology(t *testing.T) {
 		}
 	})
 	t.Run("add faulted before mutating", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Restart add")
+		root := initWorktreeRepo(t, "sha1")
 		slug := "restart-add"
-		m.run = runnerFailingPrefix(m.run, "worktree add")
-		if _, err := m.Add(slug, "HEAD"); err == nil {
+		createEffort(t, root, "Restart add")
+		faulted := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+			stub.worktreeAdd = func(context.Context, string, string, string) error { return failing("worktree add") }
+		}))
+		if _, err := faulted.Add(testContext(t), slug, "HEAD"); err == nil {
 			t.Fatal("add fault hidden")
 		}
 		if _, err := os.Stat(filepath.Join(root, ".awf", "worktrees", slug)); !os.IsNotExist(err) {
 			t.Fatalf("failed add left a path: %v", err)
 		}
-		if _, err := freshWorktreeManager(t, root).Add(slug, "HEAD"); err != nil {
+		if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
 			t.Fatalf("restart could not add after a failed attempt: %v", err)
 		}
 	})
@@ -1104,9 +1158,10 @@ func TestRestartCompletesFromPartialTopology(t *testing.T) {
 // the refusal contract: a refusal that reports no topology change must not have
 // run a destructive command at all.
 func TestPreMutationRefusalInvokesNoDestructiveCommand(t *testing.T) {
-	m, root := newManagerWithEffort(t, "Refusal invokes nothing")
+	root := initWorktreeRepo(t, "sha1")
 	slug := "refusal-invokes-nothing"
-	if _, err := m.Add(slug, "HEAD"); err != nil {
+	createEffort(t, root, "Refusal invokes nothing")
+	if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
 		t.Fatal(err)
 	}
 	managed := filepath.Join(root, ".awf", "worktrees", slug)
@@ -1114,8 +1169,25 @@ func TestPreMutationRefusalInvokesNoDestructiveCommand(t *testing.T) {
 	commitWorktree(t, managed, "unmerged")
 
 	var invoked []string
-	m.run = recordingWorktreeRunner(m.run, &invoked)
-	_, err := m.Remove(slug)
+	m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+		stub.worktreeRemove = func(ctx context.Context, path string) error {
+			invoked = append(invoked, "worktree remove")
+			return stub.Runner.WorktreeRemove(ctx, path)
+		}
+		stub.worktreePrune = func(ctx context.Context) error {
+			invoked = append(invoked, "worktree prune")
+			return stub.Runner.WorktreePrune(ctx)
+		}
+		stub.branchDelete = func(ctx context.Context, name string) error {
+			invoked = append(invoked, "branch delete")
+			return stub.Runner.BranchDelete(ctx, name)
+		}
+		stub.ancestor = func(ctx context.Context, older, newer string) (bool, error) {
+			invoked = append(invoked, "ancestor")
+			return stub.Runner.Ancestor(ctx, older, newer)
+		}
+	}))
+	_, err := m.Remove(testContext(t), slug)
 	if err == nil || !strings.Contains(err.Error(), "not merged") {
 		t.Fatalf("unmerged removal error = %v", err)
 	}
@@ -1124,12 +1196,12 @@ func TestPreMutationRefusalInvokesNoDestructiveCommand(t *testing.T) {
 	}
 	// Without this the negative loop below would pass on an empty log.
 	if len(invoked) == 0 {
-		t.Fatal("no git command was recorded, so the negative assertion proves nothing")
+		t.Fatal("no git operation was recorded, so the negative assertion proves nothing")
 	}
-	for _, args := range invoked {
-		for _, destructive := range []string{"worktree remove", "branch -d", "branch -D"} {
-			if strings.HasPrefix(args, destructive) {
-				t.Errorf("refusal invoked %q", args)
+	for _, operation := range invoked {
+		for _, destructive := range []string{"worktree remove", "worktree prune", "branch delete"} {
+			if operation == destructive {
+				t.Errorf("refusal invoked %q", operation)
 			}
 		}
 	}
@@ -1143,11 +1215,7 @@ func TestPreMutationRefusalInvokesNoDestructiveCommand(t *testing.T) {
 
 func freshWorktreeManager(t *testing.T, root string) *Manager {
 	t.Helper()
-	manager, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return manager
+	return managerWith(t, root, openCheckout)
 }
 
 func worktreeBranchExists(t *testing.T, root, slug string) bool {
@@ -1155,44 +1223,26 @@ func worktreeBranchExists(t *testing.T, root, slug string) bool {
 	return runWorktreeGit(t, root, "branch", "--list", "awf/"+slug) != ""
 }
 
-func recordingWorktreeRunner(base Runner, log *[]string) Runner {
-	return func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-		*log = append(*log, strings.Join(args, " "))
-		return base(ctx, dir, args...)
-	}
-}
-
 func newManagerWithEffort(t *testing.T, title string) (*Manager, string) {
 	t.Helper()
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, title)
-	manager, err := Open(testContext(t), root, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return manager, root
-}
-
-func runnerFailingPrefix(base Runner, prefix string) Runner {
-	return func(ctx context.Context, dir string, args ...string) ([]byte, error) {
-		if strings.HasPrefix(strings.Join(args, " "), prefix) {
-			return nil, errors.New("injected " + prefix)
-		}
-		return base(ctx, dir, args...)
-	}
+	return freshWorktreeManager(t, root), root
 }
 
 func createEffort(t *testing.T, root, title string) {
 	t.Helper()
-	service, err := effort.Open(testContext(t), root, effort.Options{UUID: func() (string, error) { return worktreeTestID, nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.New(title); err != nil {
+	roots := worktreeControlRoots(t, root)
+	service := newEffortService(t, roots, func() (string, error) { return worktreeTestID, nil }, nil)
+	if _, err := service.New(testContext(t), title); err != nil {
 		t.Fatal(err)
 	}
 }
 
+// initWorktreeRepo builds the checkout an adopted project has: a base commit
+// carrying the resident .gitignore files awf renders, so owned effort and
+// worktree state is invisible to the cleanliness oracle exactly as it is in a
+// real project.
 func initWorktreeRepo(t *testing.T, format string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -1211,6 +1261,11 @@ func initWorktreeRepo(t *testing.T, format string) string {
 	runWorktreeGit(t, root, "config", "user.name", "Test")
 	runWorktreeGit(t, root, "config", "user.email", "test@example.com")
 	writeWorktreeFile(t, filepath.Join(root, "tracked.txt"), "base\n")
+	for _, resident := range []string{"efforts", "worktrees"} {
+		ignore := filepath.Join(root, ".awf", resident, ".gitignore")
+		writeWorktreeFile(t, ignore, "*\n!.gitignore\n")
+		runWorktreeGit(t, root, "add", "--", filepath.ToSlash(filepath.Join(".awf", resident, ".gitignore")))
+	}
 	commitWorktree(t, root, "base")
 	return root
 }

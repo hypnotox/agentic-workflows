@@ -7,59 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-)
 
-// These closed porcelain bytes are the parity fixture for worktree parsing.
-func TestWorktreePorcelainParityFixtures(t *testing.T) {
-	cases := []struct {
-		name, raw string
-		accepted  bool
-	}{
-		{"branch", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00\x00", true},
-		{"detached", "worktree /x\x00HEAD abc\x00detached\x00\x00", true},
-		{"bare", "worktree /bare\x00bare\x00\x00", true},
-		{"prunable", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00prunable gone\x00\x00", true},
-		{"missing final delimiter", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00", false},
-		{"missing HEAD", "worktree /x\x00branch refs/heads/x\x00\x00", false},
-		{"valueless HEAD", "worktree /x\x00HEAD \x00branch refs/heads/x\x00\x00", false},
-		{"valueless branch", "worktree /x\x00HEAD abc\x00branch \x00\x00", false},
-		{"valueless prunable", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00prunable \x00\x00", false},
-		{"missing state", "worktree /x\x00HEAD abc\x00\x00", false},
-		{"branch detached", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00detached\x00\x00", false},
-		{"detached value", "worktree /x\x00HEAD abc\x00detached nope\x00\x00", false},
-		{"detached separator", "worktree /x\x00HEAD abc\x00detached \x00\x00", false},
-		{"locked", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00locked reason\x00\x00", false},
-		{"unknown", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00future x\x00\x00", false},
-		{"duplicate HEAD", "worktree /x\x00HEAD abc\x00HEAD def\x00branch refs/heads/x\x00\x00", false},
-		{"duplicate branch", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00branch refs/heads/y\x00\x00", false},
-		{"duplicate prunable", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00prunable x\x00prunable y\x00\x00", false},
-		{"duplicate bare", "worktree /x\x00bare\x00bare\x00\x00", false},
-		{"bare fields", "worktree /x\x00bare nope\x00\x00", false},
-		{"bare after HEAD", "worktree /x\x00HEAD abc\x00bare\x00\x00", false},
-		{"bare separator", "bare \x00\x00", false},
-		{"empty record", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00\x00\x00\x00", false},
-		{"duplicate worktree", "worktree /x\x00worktree /y\x00HEAD abc\x00branch refs/heads/x\x00\x00", false},
-		{"HEAD before worktree", "HEAD abc\x00worktree /x\x00branch refs/heads/x\x00\x00", false},
-		{"branch before worktree", "branch refs/heads/x\x00worktree /x\x00HEAD abc\x00\x00", false},
-		{"detached before worktree", "detached\x00worktree /x\x00HEAD abc\x00\x00", false},
-		{"bare before worktree", "bare\x00\x00", false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := registrations(testContext(t), func(context.Context, string, ...string) ([]byte, error) { return []byte(tc.raw), nil }, ".")
-			if tc.accepted && err != nil {
-				t.Fatal(err)
-			}
-			if !tc.accepted && err == nil {
-				t.Fatal("accepted malformed porcelain")
-			}
-		})
-	}
-	_, err := registrations(testContext(t), func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("runner") }, ".")
-	if err == nil {
-		t.Fatal("runner error was hidden")
-	}
-}
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+)
 
 func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
 	cause := errors.New("cause")
@@ -72,17 +22,23 @@ func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
 		t.Fatal("nil refusal unwrap was non-nil")
 	}
 
-	runner := func(raw string) Runner {
-		return func(context.Context, string, ...string) ([]byte, error) { return []byte(raw), nil }
+	registered := func(regs ...awfgit.WorktreeRegistration) Runner {
+		return &checkoutStub{worktreeList: func(context.Context) ([]awfgit.WorktreeRegistration, error) { return regs, nil }}
 	}
-	if err := exactRegistration(testContext(t), runner("worktree /other\x00HEAD abc\x00branch refs/heads/awf/wanted\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "elsewhere") {
+	if err := exactRegistration(testContext(t), registered(awfgit.WorktreeRegistration{Path: "/other", HEAD: "abc", Branch: "refs/heads/awf/wanted"}), "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "elsewhere") {
 		t.Fatalf("foreign branch error = %v", err)
 	}
-	if err := exactRegistration(testContext(t), runner("worktree /other\x00HEAD abc\x00branch refs/heads/main\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "uniquely") {
+	if err := exactRegistration(testContext(t), registered(awfgit.WorktreeRegistration{Path: "/other", HEAD: "abc", Branch: "refs/heads/main"}), "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "uniquely") {
 		t.Fatalf("missing registration error = %v", err)
 	}
-	if err := exactRegistration(testContext(t), runner("worktree /wanted\x00HEAD abc\x00detached\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "mismatch") {
+	if err := exactRegistration(testContext(t), registered(awfgit.WorktreeRegistration{Path: "/wanted", HEAD: "abc", Detached: true}), "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "mismatch") {
 		t.Fatalf("detached registration error = %v", err)
+	}
+	faulted := &checkoutStub{worktreeList: func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+		return nil, errors.New("registration probe")
+	}}
+	if err := exactRegistration(testContext(t), faulted, "/wanted", "refs/heads/awf/wanted"); err == nil {
+		t.Fatal("registration probe error was hidden")
 	}
 
 	root := t.TempDir()

@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
 func TestEffortGrammarIsClosedAndHasNoForceSurface(t *testing.T) {
@@ -93,7 +91,7 @@ func TestEffortNewBasesTheManagedBranchOnTheNamedRef(t *testing.T) {
 	commandGit(t, "-C", root, "commit", "-am", "second")
 	var out bytes.Buffer
 	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Based CLI"}, bools: map[string]bool{}, values: map[string]string{"--base": base}}, stdout: &out}
-	if err := runEffort(ctx); err != nil {
+	if err := runEffort(ctx, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
 	if tip := effortWorktreeGit(t, root, "rev-parse", "awf/based-cli"); tip != base {
@@ -105,7 +103,7 @@ func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
 	rolled := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Rolled back CLI"}, bools: map[string]bool{}, values: map[string]string{"--base": "no-such-ref"}}, stdout: &out}
-	err := runEffort(rolled)
+	err := runEffort(rolled, openEffortComposition)
 	if err == nil || !strings.Contains(err.Error(), "effort rolled-back-cli rolled back") || !strings.Contains(err.Error(), "retry `awf effort new`") {
 		t.Fatalf("unresolvable base error = %v", err)
 	}
@@ -116,7 +114,7 @@ func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 	commandGit(t, "-C", root, "branch", "awf/retained-cli", "HEAD")
 	out.Reset()
 	retained := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Retained CLI"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}
-	err = runEffort(retained)
+	err = runEffort(retained, openEffortComposition)
 	if err == nil || !strings.Contains(err.Error(), "effort retained-cli retained: managed topology remains") {
 		t.Fatalf("colliding branch error = %v", err)
 	}
@@ -133,7 +131,7 @@ func TestEffortNewRejectsBaseWithoutAWorktree(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
 	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Invalid CLI"}, bools: map[string]bool{"--no-worktree": true}, values: map[string]string{"--base": "HEAD"}}, stdout: &out}
-	err := runEffort(ctx)
+	err := runEffort(ctx, openEffortComposition)
 	if err == nil || !strings.Contains(err.Error(), "--base is invalid with --no-worktree") {
 		t.Fatalf("--no-worktree --base error = %v", err)
 	}
@@ -165,21 +163,21 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	runEffortCommand(t, root, "new", []string{"CLI worktree"}, map[string]bool{"--no-worktree": true})
 	var output bytes.Buffer
 	add := &cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"add", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}
-	if err := runEffort(add); err != nil {
+	if err := runEffort(add, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "changed topology: yes") {
 		t.Fatalf("add output = %q", output.String())
 	}
 	output.Reset()
-	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "integrate", inv: invocation{positionals: []string{"cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}); err != nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "integrate", inv: invocation{positionals: []string{"cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "already integrated") || !strings.Contains(output.String(), "changed topology: no") {
 		t.Fatalf("integrate output = %q", output.String())
 	}
 	output.Reset()
-	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"remove", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}); err != nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"remove", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "changed topology: yes") {
@@ -225,7 +223,7 @@ func TestIntegrationGateCommandUsesOnlyAConfiguredString(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(commandRoot, ".awf", "config.yaml"), []byte(test.configYAML), 0o644); err != nil {
 					t.Fatal(err)
 				}
-				err = runEffort(&cmdCtx{ctx: testContext(t), root: commandRoot, sub: "integrate", inv: invocation{positionals: []string{"any-effort"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: io.Discard})
+				err = runEffort(&cmdCtx{ctx: testContext(t), root: commandRoot, sub: "integrate", inv: invocation{positionals: []string{"any-effort"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: io.Discard}, openEffortComposition)
 				if err == nil || !strings.Contains(err.Error(), "unknown") {
 					t.Fatalf("integrate malformed config error = %v", err)
 				}
@@ -234,13 +232,40 @@ func TestIntegrationGateCommandUsesOnlyAConfiguredString(t *testing.T) {
 	}
 }
 
-func TestWorktreeManagerOpenFailuresRemainSilentOnStdout(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	old := openWorktreeManager
-	defer func() { openWorktreeManager = old }()
-	openWorktreeManager = func(context.Context, string, worktree.Options) (*worktree.Manager, error) {
-		return nil, errors.New("injected open")
+// TestEffortHandlerComposesTheProductionWiring pins the dispatch entry itself:
+// the registered handler is what binds the effort command to the composition
+// root, so it is exercised rather than bypassed by calling runEffort directly.
+func TestEffortHandlerComposesTheProductionWiring(t *testing.T) {
+	root := commandRepo(t)
+	var out bytes.Buffer
+	if err := handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); err != nil {
+		t.Fatal(err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("empty list wrote %q", out.String())
+	}
+}
+
+// TestEffortCompositionRefusesAnUnusableResidentRoot covers the composition's
+// own refusal path: the control roots resolve and the repository opens, but the
+// resident state the effort service owns is not usable.
+func TestEffortCompositionRefusesAnUnusableResidentRoot(t *testing.T) {
+	root := commandRepo(t)
+	worktrees := filepath.Join(root, ".awf", "worktrees")
+	if err := os.RemoveAll(worktrees); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), worktrees); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := openEffortComposition(testContext(t), root); err == nil {
+		t.Fatal("symlinked resident worktrees root accepted")
+	}
+}
+
+func TestWorktreeCompositionFailuresRemainSilentOnStdout(t *testing.T) {
+	unopenable := func(context.Context, string) (effortComposition, error) {
+		return effortComposition{}, errors.New("injected open")
 	}
 	root := commandRepo(t)
 	for _, test := range []struct {
@@ -252,7 +277,7 @@ func TestWorktreeManagerOpenFailuresRemainSilentOnStdout(t *testing.T) {
 		{sub: "integrate", pos: []string{"slug"}},
 	} {
 		var stdout bytes.Buffer
-		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{}, values: map[string]string{}}, stdout: &stdout})
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{}, values: map[string]string{}}, stdout: &stdout}, unopenable)
 		if err == nil || stdout.Len() != 0 {
 			t.Fatalf("%s err=%v stdout=%q", test.sub, err, stdout.String())
 		}

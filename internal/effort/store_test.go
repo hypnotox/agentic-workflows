@@ -24,26 +24,23 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	root := initEffortRepo(t)
 	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
 	ids := []string{testIDA, testIDB}
-	service, err := Open(testContext(t), root, Options{
-		Clock: func() time.Time { return now },
-		UUID: func() (string, error) {
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.Clock = func() time.Time { return now }
+		deps.UUID = func() (string, error) {
 			if len(ids) == 0 {
 				return testIDB, nil
 			}
 			id := ids[0]
 			ids = ids[1:]
 			return id, nil
-		},
+		}
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	zeta, err := service.New("Zeta result")
+	zeta, err := service.New(testContext(t), "Zeta result")
 	if err != nil {
 		t.Fatal(err)
 	}
-	alpha, err := service.New("Alpha result")
+	alpha, err := service.New(testContext(t), "Alpha result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +83,7 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 			t.Fatalf("memory skeleton missing %q:\n%s", phrase, memory)
 		}
 	}
-	if _, err := service.New("Zeta result"); err == nil || !strings.Contains(err.Error(), "collides") || !strings.Contains(err.Error(), "changed bytes: no") {
+	if _, err := service.New(testContext(t), "Zeta result"); err == nil || !strings.Contains(err.Error(), "collides") || !strings.Contains(err.Error(), "changed bytes: no") {
 		t.Fatalf("collision error = %v", err)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", ".lock")); !errors.Is(err, os.ErrNotExist) {
@@ -105,21 +102,18 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 		t.Run(failStage, func(t *testing.T) {
 			root := initEffortRepo(t)
 			var seen []string
-			service, err := Open(testContext(t), root, Options{
-				Clock: func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) },
-				UUID:  func() (string, error) { return testIDA, nil },
-				Fault: func(stage string) error {
+			service := openTestService(t, root, func(deps *Dependencies) {
+				deps.Clock = func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) }
+				deps.UUID = func() (string, error) { return testIDA, nil }
+				deps.Fault = func(stage string) error {
 					seen = append(seen, stage)
 					if stage == failStage {
 						return errors.New("stop")
 					}
 					return nil
-				},
+				}
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := service.New("Fault matrix"); err == nil {
+			if _, err := service.New(testContext(t), "Fault matrix"); err == nil {
 				t.Fatal("creation succeeded at injected failure")
 			}
 			wantPrefix := stages[:indexOfStage(t, stages, failStage)+1]
@@ -140,7 +134,7 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 			// Recreating the same slug must name which reservation blocks it: an
 			// incomplete one is a different condition, and a different repair,
 			// from an active effort.
-			_, retryErr := service.New("Fault matrix")
+			_, retryErr := service.New(testContext(t), "Fault matrix")
 			if retryErr == nil {
 				t.Fatal("recreation over an existing reservation succeeded")
 			}
@@ -163,9 +157,11 @@ func TestConcurrentSameSlugCreationHasOneWinner(t *testing.T) {
 		wg.Add(1)
 		go func(id string) {
 			defer wg.Done()
-			service, err := Open(testContext(t), root, Options{UUID: func() (string, error) { return id, nil }})
+			roots, deps := testWiring(t, root)
+			deps.UUID = func() (string, error) { return id, nil }
+			service, err := Open(roots, deps)
 			if err == nil {
-				_, err = service.New("One winner")
+				_, err = service.New(testContext(t), "One winner")
 			}
 			errs <- err
 		}(id)
@@ -218,14 +214,11 @@ func TestEnumerationPreservesAndDiagnosesForeignResidents(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root := initEffortRepo(t)
 			setup(t, root)
-			service, err := Open(testContext(t), root, Options{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			service := openTestService(t, root, nil)
 			// The message clauses are template text, so preservation is asserted
 			// against the real bytes rather than against the wording.
 			before := snapshotEffortsTree(t, root)
-			_, err = service.List()
+			_, err := service.List()
 			if err == nil || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "preserve") {
 				t.Fatalf("diagnostic = %v", err)
 			}
@@ -293,10 +286,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		if err := os.RemoveAll(filepath.Join(root, ".awf", "efforts")); err != nil {
 			t.Fatal(err)
 		}
-		service, err := Open(testContext(t), root, Options{})
-		if err != nil {
-			t.Fatal(err)
-		}
+		service := openTestService(t, root, nil)
 		listed, err := service.List()
 		if err != nil || len(listed) != 0 {
 			t.Fatalf("list=%v err=%v", listed, err)
@@ -306,14 +296,14 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 	for name, setup := range map[string]func(*testing.T, string){
 		"foreign leaf": func(t *testing.T, root string) {
 			service := openEffortService(t, root, time.Now().UTC())
-			if _, err := service.New("Foreign leaf"); err != nil {
+			if _, err := service.New(testContext(t), "Foreign leaf"); err != nil {
 				t.Fatal(err)
 			}
 			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "foreign-leaf", "extra"), "x")
 		},
 		"mismatched memory": func(t *testing.T, root string) {
 			service := openEffortService(t, root, time.Now().UTC())
-			if _, err := service.New("Wrong memory"); err != nil {
+			if _, err := service.New(testContext(t), "Wrong memory"); err != nil {
 				t.Fatal(err)
 			}
 			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "wrong-memory", "memory.md"), "Effort: other\n")
@@ -338,10 +328,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root := initEffortRepo(t)
 			setup(t, root)
-			service, err := Open(testContext(t), root, Options{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			service := openTestService(t, root, nil)
 			if _, err := service.List(); err == nil {
 				t.Fatal("corrupt resident accepted")
 			}
@@ -352,7 +339,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		root := initEffortRepo(t)
 		writeEffortFile(t, filepath.Join(root, ".awf", "efforts", ".gitignore"), "*")
 		service := openEffortService(t, root, time.Now().UTC())
-		if _, err := service.New("Listed tombstone"); err != nil {
+		if _, err := service.New(testContext(t), "Listed tombstone"); err != nil {
 			t.Fatal(err)
 		}
 		active := filepath.Join(root, ".awf", "efforts", "listed-tombstone")
@@ -372,13 +359,13 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o000); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := service.New("Unreadable reserve"); err == nil {
+		if _, err := service.New(testContext(t), "Unreadable reserve"); err == nil {
 			t.Fatal("unreadable reserve accepted")
 		}
 		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o777); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := service.New("Unsafe reserve"); err == nil {
+		if _, err := service.New(testContext(t), "Unsafe reserve"); err == nil {
 			t.Fatal("unsafe reserve accepted")
 		}
 		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o700); err != nil {
@@ -405,7 +392,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 	t.Run("mismatched finishing state", func(t *testing.T) {
 		root := initEffortRepo(t)
 		service := openEffortService(t, root, time.Now().UTC())
-		if _, err := service.New("Mismatched finish"); err != nil {
+		if _, err := service.New(testContext(t), "Mismatched finish"); err != nil {
 			t.Fatal(err)
 		}
 		active := filepath.Join(root, ".awf", "efforts", "mismatched-finish")
@@ -505,11 +492,10 @@ func assertNoEffortTemporaries(t *testing.T, dir string) {
 
 func openEffortService(t *testing.T, root string, now time.Time) *Service {
 	t.Helper()
-	service, err := Open(testContext(t), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return testIDA, nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return service
+	return openTestService(t, root, func(deps *Dependencies) {
+		deps.Clock = func() time.Time { return now }
+		deps.UUID = func() (string, error) { return testIDA, nil }
+	})
 }
 
 func initEffortRepo(t *testing.T) string {

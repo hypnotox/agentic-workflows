@@ -105,7 +105,7 @@ var handlers = map[string]handler{
 	"render": func(c *cmdCtx) error { return runSync(c.ctx, c.root, c.stdout) },
 	"check":  runCheckGroup,
 	"audit":  func(c *cmdCtx) error { return runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
-	"effort": runEffort,
+	"effort": func(c *cmdCtx) error { return runEffort(c, openEffortComposition) },
 	"list":   func(c *cmdCtx) error { return runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
 	"config": func(c *cmdCtx) error { return runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
 	"context": func(c *cmdCtx) error {

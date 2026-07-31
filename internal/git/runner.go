@@ -44,9 +44,9 @@ func (e *CommandError) Unwrap() error {
 // pinned to one repository root: every invocation selects that repository with
 // -C and runs under the isolated Git environment, so no inherited repository
 // selection, configuration, or credential control can redirect it. Validating
-// root is the caller's obligation, not the runner's: ResolveControlRoots
-// discharges it today, and the Phase 3 Open(root) handle closes the remaining
-// construction sites.
+// root is the caller's obligation, not the runner's: ResolveControlRoots and
+// the Open(root) handle are the two sites that construct one, and each
+// discharges that obligation before it does.
 type runner struct {
 	root string
 }
@@ -72,7 +72,7 @@ func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 		return nil, fmt.Errorf("git %s: refusing to run without a context deadline; the caller must bound this invocation", strings.Join(args, " "))
 	}
 	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Env = IsolatedGitEnvironment(os.Environ())
+	cmd.Env = isolatedGitEnvironment(os.Environ())
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	stdout, err := cmd.Output()
@@ -87,6 +87,25 @@ func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 		return nil, opaqueWrap("git "+strings.Join(args, " "), err)
 	}
 	return stdout, nil
+}
+
+// probe runs argv as a question rather than as work: Git answers a handful of
+// yes/no queries (does this ref exist, is this an ancestor, is this a valid ref
+// name) by exiting 0 for yes and 1 for no, reserving every other exit for an
+// actual fault. Reading exit 1 as an answer is therefore correct only for those
+// commands, and reading any nonzero exit as "no" would silently turn a broken
+// repository into a confident negative. This helper is the one place that
+// distinction lives, so no caller repeats it.
+func (r runner) probe(ctx context.Context, argv ...string) (bool, error) {
+	_, err := r.run(ctx, argv...)
+	if err == nil {
+		return true, nil
+	}
+	var command *CommandError
+	if errors.As(err, &command) && command.ExitCode == 1 {
+		return false, nil
+	}
+	return false, err
 }
 
 // hasDeadline reports whether ctx bounds how long a native Git invocation may

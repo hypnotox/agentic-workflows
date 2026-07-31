@@ -228,7 +228,15 @@ type WorktreeRegistration struct {
 // ListWorktreeRegistrations returns the repository's native-Git registrations
 // without consulting or scanning filesystem ancestors.
 func ListWorktreeRegistrations(ctx context.Context, invokingRoot string) ([]WorktreeRegistration, error) {
-	output, err := newRunner(invokingRoot).run(ctx, "worktree", "list", "--porcelain", "-z")
+	return listWorktreeRegistrations(ctx, newRunner(invokingRoot), invokingRoot)
+}
+
+// listWorktreeRegistrations is the one registration read. The free entrypoint
+// above serves callers inspecting topology before any single repository is the
+// subject; Repo.WorktreeList serves callers that already hold a handle. Both
+// arrive here so neither can drift in what it accepts.
+func listWorktreeRegistrations(ctx context.Context, native runner, invokingRoot string) ([]WorktreeRegistration, error) {
+	output, err := native.run(ctx, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return nil, fmt.Errorf("list Git worktrees from %s: %w", invokingRoot, err)
 	}
@@ -261,7 +269,10 @@ func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
 	seen := map[string]bool{}
 	finish := func() error {
 		if current == nil {
-			return nil
+			// Well-formed output terminates each record exactly once, and the
+			// trailing terminator is stripped before the scan, so a second
+			// terminator means an empty record git never emits.
+			return errors.New("empty worktree record")
 		}
 		if current.path == "" { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 			return errors.New("worktree record has no path")
@@ -347,9 +358,9 @@ func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
 	if current != nil {
 		return nil, errors.New("worktree record is not NUL-record delimited")
 	}
-	if len(records) == 0 {
-		return nil, errors.New("empty worktree topology")
-	}
+	// No separate empty-result check is owed: the terminator scan above rejects a
+	// record boundary with nothing before it, so reaching here means at least one
+	// record was completed.
 	return records, nil
 }
 
@@ -432,9 +443,9 @@ func stableIdentity(path string) (string, error) {
 	return resolveValidated(path, filepath.EvalSymlinks)
 }
 
-// IsolatedGitEnvironment removes inherited repository selection, config, and
+// isolatedGitEnvironment removes inherited repository selection, config, and
 // credential controls before a native Git command is run against a validated root.
-func IsolatedGitEnvironment(inherited []string) []string {
+func isolatedGitEnvironment(inherited []string) []string {
 	filtered := make([]string, 0, len(inherited)+7)
 	for _, entry := range inherited {
 		key, _, _ := strings.Cut(entry, "=")

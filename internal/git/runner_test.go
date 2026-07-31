@@ -131,7 +131,7 @@ func TestRunnerExcludesFileArgsTreatsUnavailableAndEmptyConfigAsNoOverride(t *te
 		root := t.TempDir()
 		initNativeRepoForRunner(t, root)
 		cmd := exec.CommandContext(testContext(t), "git", "-C", root, "config", "core.excludesFile", "")
-		cmd.Env = IsolatedGitEnvironment(os.Environ())
+		cmd.Env = isolatedGitEnvironment(os.Environ())
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("configure empty excludes file: %v: %s", err, out)
 		}
@@ -228,6 +228,32 @@ func TestRunnerMidRunContextExpiryKeepsItsContextCause(t *testing.T) {
 	}
 }
 
+// TestProbeSeparatesAnAnswerFromAFault pins the three outcomes the exit-code
+// convention carries. The middle case is the whole point: exit 1 is Git saying
+// "no", and reading it as a failure (or reading any other exit as "no") would
+// turn a broken repository into a confident answer a destructive operation then
+// acts on.
+func TestProbeSeparatesAnAnswerFromAFault(t *testing.T) {
+	root := t.TempDir()
+	initNativeRepoForRunner(t, root)
+	native := newRunner(root)
+
+	if answer, err := native.probe(testContext(t), "check-ref-format", "refs/heads/awf/valid"); err != nil || !answer {
+		t.Fatalf("exit-zero probe = %v, %v; want a true answer", answer, err)
+	}
+	if answer, err := native.probe(testContext(t), "check-ref-format", "refs/heads/awf/..invalid"); err != nil || answer {
+		t.Fatalf("exit-one probe = %v, %v; want a false answer without an error", answer, err)
+	}
+	answer, err := native.probe(testContext(t), "rev-parse", "--verify", "no-such-revision")
+	if answer {
+		t.Fatal("a faulted probe answered true")
+	}
+	var failure *CommandError
+	if !errors.As(err, &failure) || failure.ExitCode == 1 {
+		t.Fatalf("faulted probe error = %v, want a *CommandError carrying a non-answer exit code", err)
+	}
+}
+
 func initNativeRepoForRunner(t *testing.T, root string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
@@ -237,7 +263,7 @@ func initNativeRepoForRunner(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(testContext(t), "git", "-C", root, "init", "--quiet")
-	cmd.Env = IsolatedGitEnvironment(os.Environ())
+	cmd.Env = isolatedGitEnvironment(os.Environ())
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git init %s: %v: %s", root, err, out)
 	}

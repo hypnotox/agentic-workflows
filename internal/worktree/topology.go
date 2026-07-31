@@ -43,88 +43,20 @@ func refusalCause(category, condition string, changed bool, next string, err err
 	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: next, Err: err}
 }
 
-type registration struct {
-	path, head, branch       string
-	detached, bare, prunable bool
-}
-
-func registrations(ctx context.Context, run Runner, invoking string) ([]registration, error) {
-	out, err := run(ctx, invoking, "worktree", "list", "--porcelain", "-z")
-	if err != nil {
-		return nil, err
-	}
-	if len(out) < 2 || !strings.HasSuffix(string(out), "\x00\x00") {
-		return nil, errors.New("unterminated worktree registration porcelain")
-	}
-	var result []registration
-	for _, chunk := range strings.Split(string(out[:len(out)-2]), "\x00\x00") {
-		if chunk == "" {
-			return nil, errors.New("invalid worktree registration")
-		}
-		fields := strings.Split(chunk, "\x00")
-		current := registration{}
-		head, branch, detached := false, false, false
-		for index, field := range fields {
-			if index == 0 && !strings.HasPrefix(field, "worktree ") {
-				return nil, errors.New("invalid worktree registration")
-			}
-			key, val, has := strings.Cut(field, " ")
-			switch key {
-			case "worktree":
-				if !has || val == "" || current.path != "" || current.bare {
-					return nil, errors.New("invalid worktree registration")
-				}
-				current.path = filepath.Clean(val)
-			case "HEAD":
-				if !has || val == "" || head || current.bare {
-					return nil, errors.New("invalid worktree registration")
-				}
-				head = true
-				current.head = val
-			case "branch":
-				if !has || val == "" || branch || current.bare {
-					return nil, errors.New("invalid worktree registration")
-				}
-				branch = true
-				current.branch = val
-			case "detached":
-				if has || detached || current.bare {
-					return nil, errors.New("invalid worktree registration")
-				}
-				detached = true
-				current.detached = true
-			case "bare":
-				if has || current.bare || head || branch || detached || current.prunable {
-					return nil, errors.New("invalid worktree registration")
-				}
-				current.bare = true
-			case "prunable":
-				if !has || val == "" || current.prunable || current.bare {
-					return nil, errors.New("invalid worktree registration")
-				}
-				current.prunable = true
-			default:
-				return nil, fmt.Errorf("unknown worktree field %q", key)
-			}
-		}
-		if !current.bare && (current.path == "" || !head || branch == detached) {
-			return nil, errors.New("invalid worktree registration")
-		}
-		result = append(result, current)
-	}
-	return result, nil
-}
-func exactRegistration(ctx context.Context, run Runner, invoking, path, branch string) error {
-	regs, err := registrations(ctx, run, invoking)
+// exactRegistration proves that path is registered exactly once, on branch, and
+// as an ordinary attached checkout. Registration parsing itself belongs to the
+// Git seam, so this reads the seam's registrations rather than porcelain bytes.
+func exactRegistration(ctx context.Context, checkout Runner, path, branch string) error {
+	regs, err := checkout.WorktreeList(ctx)
 	if err != nil {
 		return err
 	}
-	var found []registration
+	var found []awfgit.WorktreeRegistration
 	for _, r := range regs {
-		if filepath.Clean(r.path) == filepath.Clean(path) {
+		if filepath.Clean(r.Path) == filepath.Clean(path) {
 			found = append(found, r)
 		}
-		if r.branch == branch && filepath.Clean(r.path) != filepath.Clean(path) {
+		if r.Branch == branch && filepath.Clean(r.Path) != filepath.Clean(path) {
 			return &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: errors.New("managed branch is registered elsewhere")}
 		}
 	}
@@ -132,7 +64,7 @@ func exactRegistration(ctx context.Context, run Runner, invoking, path, branch s
 		return &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: errors.New("managed path is not uniquely registered")}
 	}
 	r := found[0]
-	if r.branch != branch || r.detached || r.bare {
+	if r.Branch != branch || r.Detached || r.Bare {
 		return &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: errors.New("managed registration branch mismatch")}
 	}
 	return nil

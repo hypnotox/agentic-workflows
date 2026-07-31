@@ -1,44 +1,93 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
-var openWorktreeManager = worktree.Open
+// effortComposition is the wiring one effort command runs against: the resident
+// authority and the managed-topology manager, both bound to the same resolved
+// control roots and the same Git handle.
+type effortComposition struct {
+	service *effort.Service
+	manager *worktree.Manager
+}
 
-func runEffort(c *cmdCtx) error {
+// composeEffort is how runEffort obtains that wiring. It is a parameter rather
+// than a package fixture so a test names the composition it is exercising
+// instead of replacing one behind the handler's back.
+type composeEffort func(ctx context.Context, root string) (effortComposition, error)
+
+// openEffortComposition is the production composition root for the effort
+// command group. It resolves the control roots once, opens one Git handle on
+// the invoking checkout, and binds the seam's operations to the two consumers'
+// own contracts: the effort service asks three questions of the handle, and the
+// worktree manager opens a checkout's surface by root because it reasons about
+// the invoking and the managed checkout together.
+func openEffortComposition(ctx context.Context, root string) (effortComposition, error) {
+	roots, err := awfgit.ResolveControlRoots(ctx, root)
+	if err != nil {
+		return effortComposition{}, err
+	}
+	repo, err := awfgit.Open(roots.InvokingRoot)
+	if err != nil { // coverage-ignore: ResolveControlRoots just proved this path is a checkout; a failed open requires a concurrent repository-identity race
+		return effortComposition{}, err
+	}
+	service, err := effort.Open(roots, effort.Dependencies{
+		Clock:        time.Now,
+		UUID:         effort.RandomUUIDv4,
+		Worktrees:    repo.WorktreeList,
+		BranchExists: repo.BranchExists,
+		ValidateRef:  repo.ValidateRefName,
+		RemoveTree:   os.RemoveAll,
+	})
+	if err != nil {
+		return effortComposition{}, err
+	}
+	manager, err := worktree.Open(roots, openCheckout, service)
+	if err != nil { // coverage-ignore: openCheckout just opened this same root above; a second failure requires a concurrent repository-identity race
+		return effortComposition{}, err
+	}
+	return effortComposition{service: service, manager: manager}, nil
+}
+
+// openCheckout satisfies the worktree manager's checkout contract directly with
+// the Git seam's handle: no adapter stands between them, so the manager's
+// contract is exactly a subset of the handle's surface.
+func openCheckout(root string) (worktree.Runner, error) { return awfgit.Open(root) }
+
+func runEffort(c *cmdCtx, compose composeEffort) error {
 	if err := validateEffortGrammar(c); err != nil {
 		return err
 	}
-	service, err := effort.Open(c.ctx, c.root, effort.Options{})
+	composed, err := compose(c.ctx, c.root)
 	if err != nil {
 		return err
 	}
+	service, manager := composed.service, composed.manager
 	slug := firstPos(c.inv.positionals)
 	switch c.sub {
 	case "new":
 		if c.inv.bools["--no-worktree"] {
-			record, err := service.New(slug)
+			record, err := service.New(c.ctx, slug)
 			if err != nil {
 				return err
 			}
 			absent := worktree.Result{Condition: "no managed worktree", ChangedTopology: false, NextAction: "continue the effort in " + service.InvokingRoot()}
 			return writeEffortNew(c.stdout, record, absent, c.inv.bools["--json"])
 		}
-		manager, err := openWorktreeManager(c.ctx, c.root, worktree.Options{})
-		if err != nil {
-			return err
-		}
-		record, result, err := manager.NewEffort(slug, c.inv.values["--base"])
+		record, result, err := manager.NewEffort(c.ctx, slug, c.inv.values["--base"])
 		if err != nil {
 			return err
 		}
@@ -67,24 +116,21 @@ func runEffort(c *cmdCtx) error {
 		}
 		return writeEffort(c.stdout, record, c.inv.bools["--json"])
 	case "finish":
-		result, err := service.Finish(slug)
+		result, err := service.Finish(c.ctx, slug)
 		if err != nil {
 			return err
 		}
 		_, err = fmt.Fprintf(c.stdout, "effort %s finished; changed active rename: %s; changed cleanup: %s; next action: continue without this finished effort\n", slug, yesNo(result.Renamed), yesNo(result.Cleaned))
 		return err
 	case "worktree":
-		manager, err := openWorktreeManager(c.ctx, c.root, worktree.Options{})
-		if err != nil {
-			return err
-		}
 		action, selected := c.inv.positionals[0], c.inv.positionals[1]
 		var result worktree.Result
+		var err error
 		switch action {
 		case "add":
-			result, err = manager.Add(selected, c.inv.values["--base"])
+			result, err = manager.Add(c.ctx, selected, c.inv.values["--base"])
 		case "remove":
-			result, err = manager.Remove(selected)
+			result, err = manager.Remove(c.ctx, selected)
 		default: // coverage-ignore: validateEffortGrammar accepts only add or remove before this closed dispatch
 			return &usageErr{"usage: awf effort worktree <add|remove> <slug>"}
 		}
@@ -94,11 +140,7 @@ func runEffort(c *cmdCtx) error {
 		if err != nil {
 			return err
 		}
-		manager, err := openWorktreeManager(c.ctx, c.root, worktree.Options{})
-		if err != nil {
-			return err
-		}
-		result, err := manager.Integrate(slug, gateCommand)
+		result, err := manager.Integrate(c.ctx, slug, gateCommand)
 		return writeWorktreeResult(c.stdout, result, err)
 	default:
 		return &usageErr{"usage: awf effort <new|list|show|finish|worktree|integrate>"}
