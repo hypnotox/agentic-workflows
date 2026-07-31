@@ -404,6 +404,11 @@ func AdoptionBoundary(dir string) (cutoff int, gaps []int, err error) {
 		seen[n] = true
 		numbers = append(numbers, n)
 	}
+	if len(numbers) == 0 {
+		// Every record was pending, so the brownfield identity set is empty and
+		// the boundary is the same one an empty corpus yields.
+		return 1, []int{}, nil
+	}
 	slices.Sort(numbers)
 	cutoff = numbers[len(numbers)-1] + 1
 	gaps = []int{}

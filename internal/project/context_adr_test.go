@@ -89,6 +89,15 @@ None.
 	if got := pendingChanges(mustCorpus([]adr.ADR{{Number: "0002", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}}}), map[string]bool{"other/topic": true}); len(got) != 0 {
 		t.Fatal(got)
 	}
+	// A pending record answers to its slug, so it is projected under that
+	// identity and sorted after every numbered record rather than dropped by a
+	// number lookup that resolves nothing.
+	pending := adr.ADR{Slug: "keep-the-corpus", Title: "ADR-keep-the-corpus: Pending", Filename: "keep-the-corpus.md", Status: "Accepted", Format: adr.CurrentStateV3, Operations: []adr.Operation{add}}
+	numbered := adr.ADR{Number: "0002", Title: "ADR-0002: Numbered", Filename: "0002-numbered.md", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add2}}
+	mixed := pendingChanges(mustCorpus([]adr.ADR{pending, numbered}), map[string]bool{"alpha/one": true})
+	if len(mixed) != 2 || mixed[0].ADR != "0002" || mixed[1].ADR != "keep-the-corpus" || mixed[1].Title != "Pending" || mixed[1].Claim != "alpha/one:new-rule" {
+		t.Fatalf("pending identity projection=%#v", mixed)
+	}
 	malformed := adr.ADR{Number: "0006", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Operations: []adr.Operation{update}}}}
 	if got := pendingChanges(mustCorpus([]adr.ADR{malformed}), map[string]bool{"alpha/one": true}); len(got) != 0 {
 		t.Fatal(got)

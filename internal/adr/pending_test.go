@@ -167,6 +167,15 @@ func TestParseDirRefusesStraysAndCarriesPendingRecords(t *testing.T) {
 	if err != nil || cutoff != 2 || len(gaps) != 0 {
 		t.Fatalf("AdoptionBoundary = %d %v %v", cutoff, gaps, err)
 	}
+	// A corpus of nothing but pending records leaves that identity set empty,
+	// which yields the same boundary an empty corpus does rather than indexing
+	// past the end of it.
+	onlyPending := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(onlyPending, "pending-two.md"), pendingFixture("pending-two"))
+	cutoff, gaps, err = adr.AdoptionBoundary(onlyPending)
+	if err != nil || cutoff != 1 || len(gaps) != 0 {
+		t.Fatalf("pending-only AdoptionBoundary = %d %v %v", cutoff, gaps, err)
+	}
 
 	stray := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(stray, "notes.md"), "# Just notes\n")
