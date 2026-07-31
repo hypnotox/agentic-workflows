@@ -232,7 +232,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "hooks.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
-		Description:  "Renders the three inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push). awf never activates hooks or touches git config. Wiring the payloads into your hook setup is yours.",
+		Description:  "Renders the four inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push, pre-merge-commit). awf never activates hooks or touches git config. Wiring the payloads into your hook setup is yours.",
 		Availability: "Always.",
 	},
 	{

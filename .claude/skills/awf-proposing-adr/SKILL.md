@@ -29,10 +29,10 @@ When grounding is stale - the ADR will cite repository facts not verified in the
 ## Conventions enforced
 
 <!-- awf:edit conventions: default; create .awf/skills/parts/proposing-adr/conventions.md to override -->
-- **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
-- **Filename:** `NNNN-kebab-title.md`.
+- **Identity by branch:** `awf new adr` numbers the record on the integration branch and leaves it pending anywhere else, which is where authoring normally happens. Never reuse a number, and never hand-number a pending record: `awf adr number` does that at integration.
+- **Filename:** `NNNN-kebab-title.md` when numbered, `kebab-title.md` while pending.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `docs/decisions/template.md`; never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** exactly three keys, `format` (`current-state-v1`), `status` (`Proposed`, the initial state), and `date` (today, ISO-8601). There is no `tags`, `related`, or `domains` key: the affected topics and domains are derived from the `State changes` operations.
+- **Required frontmatter:** exactly four keys, `format` (`current-state-v3`), `slug` (derived from the title, retained forever, never edited by hand), `status` (`Proposed`, the initial state), and `date` (today, ISO-8601). There is no `tags`, `related`, or `domains` key: the affected topics and domains are derived from the `State changes` operations.
 - **Required sections:** Context, Decision, State changes, Consequences, Alternatives Considered, Status history, in that order. Delete the authoring checklist before committing.
 - **No predecessor flip:** ADRs are never active authority, so nothing is superseded. A decision that changes an earlier one declares the change as a `State changes` operation on the affected claim, not a status flip on the earlier ADR.
 
@@ -41,7 +41,7 @@ When grounding is stale - the ADR will cite repository facts not verified in the
 Carry the one verified effort slug and exact `.awf/efforts/<slug>/memory.md` path from brainstorming, creating the effort first if none exists. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible; reviewers never edit the shared file.
 
 <!-- awf:edit procedure-number: default; create .awf/skills/parts/proposing-adr/procedure-number.md to override -->
-1. **Scaffold the file.** Run `awf new adr "<Title>"` to create `docs/decisions/NNNN-kebab-title.md` with the next sequential number, the rendered template's marker comments stripped, and its date and title heading filled in.
+1. **Scaffold the file.** Run `awf new adr "<Title>"` with the rendered template's marker comments stripped and its date and title heading filled in. Off the integration branch this creates the pending `docs/decisions/kebab-title.md`, headed `# ADR-kebab-title:`; on the integration branch it creates `docs/decisions/NNNN-kebab-title.md` with the next sequential number. Cite a pending record as `ADR-<slug>` everywhere, including in this record's own body: the slug is retained after numbering, so the reference keeps resolving and nothing has to be rewritten.
 
 <!-- awf:edit procedure-write: default; create .awf/skills/parts/proposing-adr/procedure-write.md to override -->
 2. **Fill in every section** of the scaffolded file:

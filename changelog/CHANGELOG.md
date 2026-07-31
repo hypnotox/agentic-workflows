@@ -29,6 +29,15 @@ query a single version or a range.
   across pending and numbered records, is now a hard error from one place rather than a silent
   last-wins parse. Run `awf upgrade` to seal the cutoff; a fresh adoption seals V3 alongside V2.
 
+- Add the required `integrationBranch` config key, written visibly into `config.yaml` by schema
+  generation 29. It is the first key awf requires explicitly with no in-code default: it decides
+  whether `awf new adr` writes a numbered or a pending record, and a silently defaulted branch
+  name would silently change which. `awf upgrade` seeds `integrationBranch: main`; a config that
+  reaches validation without the key is refused. A pending ADR checked out on that branch now
+  fails `awf check` with `pending-adr-on-integration-branch`, which is what forces numbering to
+  happen at integration; a detached HEAD passes, since the block fires only on positive branch
+  identification.
+
 - Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
   every enabled skill, not only task skills). A local override of
   `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty
@@ -173,6 +182,28 @@ query a single version or a range.
   uncommitted work included.
 
 ### Features
+
+- Add `awf adr number [<slug>...]`, which assigns numbers to pending ADRs at integration.
+  `awf new adr` is now branch-aware: on the `integrationBranch` it writes `NNNN-<slug>.md` as
+  before, and on any other branch (so in every managed worktree) it writes a pending
+  `<slug>.md` headed `# ADR-<slug>: Title`. Run the command in the worktree after merging the
+  integration branch in and before merging back: it renames the file, rewrites the heading,
+  substitutes `ADR-<slug>` in authored `Origin:` and `Revised-by:` lines, canonicalizes each
+  touched list, re-renders, and prints one `<slug> -> NNNN` line for the integration commit
+  message. It touches no status-history event, no already-numbered record, and no plan. Bare
+  invocation numbers a single pending record; several require an explicit list naming every one
+  in an order that numbers a record before any record revising what it adds. A number once
+  assigned never changes: a numbering that raced another integration is unmade by
+  `git reset --hard HEAD~1`, re-merged, and remade, and the command refuses a duplicate-number
+  corpus with that recipe rather than guessing. It deliberately does not precondition on a green
+  check, so an unrelated finding cannot deadlock it.
+
+- Render a fourth git-hook payload, `.awf/hooks/pre-merge-commit.sh`, running the staged
+  current-state check. Git runs no `pre-commit` hook for a true merge commit, so a conflict-free
+  automerge could otherwise land two records on one ADR identity, or a transition neither branch
+  authored, on the integration branch unchecked. Like the other three the payload is inert: awf
+  never activates hooks, so wire it yourself with a `.git/hooks/pre-merge-commit` stub that execs
+  it. Adopters with the hooks singleton enabled will see the new file as drift until they render.
 - A plan's `adrs:` frontmatter entry may now name a decision record by slug as well as by number.
   A slug entry resolves against a pending record's file or a numbered record's retained `slug:`
   key, so a plan written beside a record that has no number yet keeps a valid link once

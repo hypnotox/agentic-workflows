@@ -321,7 +321,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		add(".awf/upgrade.sh", "bootstrap/awf-upgrade.sh.tmpl", "bootstrap/awf-upgrade.sh.tmpl", inputs("bootstrap/awf-upgrade.sh.tmpl"), false)
 	}
 	if cfg.Hooks != nil && cfg.Hooks.Enabled {
-		for _, n := range []string{"pre-commit", "commit-msg", "pre-push"} {
+		for _, n := range hookNames {
 			add(".awf/hooks/"+n+".sh", "hooks/"+n+".sh.tmpl", "hooks/"+n+".sh.tmpl", inputs("hooks/"+n+".sh.tmpl"), false)
 		}
 	}

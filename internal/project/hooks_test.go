@@ -27,18 +27,22 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 	return found
 }
 
-// With the singleton enabled, exactly the three payloads render under
-// .awf/hooks/; absent or disabled, none do.
+// With the singleton enabled, exactly the four payloads render under
+// .awf/hooks/; absent or disabled, none do. The expected set is spelled out
+// rather than derived from hookNames, which would make the assertion agree with
+// whatever that list happens to say: the claim names these paths, so the test
+// has to name them too for a wrong set to be able to fail.
 // invariant: rendering/singletons-and-payloads:hook-payloads-rendered
 func TestHookPayloadsRendered(t *testing.T) {
+	want := []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit"}
 	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n")
-	for _, name := range hookNames {
+	for _, name := range want {
 		if _, ok := got[name]; !ok {
 			t.Errorf("expected .awf/hooks/%s.sh to render when enabled", name)
 		}
 	}
-	if len(got) != len(hookNames) {
-		t.Errorf("rendered %d payloads, want exactly %d: %v", len(got), len(hookNames), got)
+	if len(got) != len(want) {
+		t.Errorf("rendered %d payloads, want exactly %d: %v", len(got), len(want), got)
 	}
 
 	for _, cfg := range []string{
@@ -66,9 +70,10 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
 			wantCmds := map[string][]string{
-				"pre-commit": {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " check prose\n", tc.awf + " check memory\n"},
-				"commit-msg": {tc.awf + ` check commit "$1"` + "\n"},
-				"pre-push":   {tc.awf + " check\n"},
+				"pre-commit":       {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " check prose\n", tc.awf + " check memory\n"},
+				"commit-msg":       {tc.awf + ` check commit "$1"` + "\n"},
+				"pre-push":         {tc.awf + " check\n"},
+				"pre-merge-commit": {tc.awf + " check --staged\n"},
 			}
 			for name, f := range got {
 				lines := strings.Split(f.Content, "\n")
@@ -110,9 +115,10 @@ hooks:
   enabled: true
 `)
 	want := map[string][]string{
-		"pre-commit": {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n./x memory-gate\n"},
-		"commit-msg": {"./x commit-gate \"$1\"\n"},
-		"pre-push":   {"./x gate full\n"},
+		"pre-commit":       {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n./x memory-gate\n"},
+		"commit-msg":       {"./x commit-gate \"$1\"\n"},
+		"pre-push":         {"./x gate full\n"},
+		"pre-merge-commit": {"./x check --staged\n"},
 	}
 	for name, f := range got {
 		for _, w := range want[name] {

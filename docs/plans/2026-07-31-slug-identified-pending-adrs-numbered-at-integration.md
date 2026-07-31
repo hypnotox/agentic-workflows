@@ -47,12 +47,14 @@ partition is 9/5/2/1/2/1 over the 20 operations, each batch a declaration-order
 subsequence. The third batch is the two operations the 2026-07-31 amendment appended
 at the end of the declaration list (`corpus-parsed-once` and `adr-new-no-overwrite`,
 Decision item 17); Phase 3's review found the defects they authorize, and appending
-them at the tail is what leaves batches 1 and 2 positionally untouched. Phase 6's batch is
-the remainder, and its closing commit appends the `Implemented` flip event directly
-after it (the V2 final pair; an `Implementing` record with nothing remaining is an
-illegal state per `internal/adr/application.go:102-105`, and the 0187/0189 precedent
-pairs the final batch with the flip in one commit). The plan's own
-`status: Implemented` freeze still lands in the deferred post-review transaction.
+them at the tail is what leaves batches 1 and 2 positionally untouched. The sixth batch is
+the remainder, and it does not land in Phase 6: it belongs to the deferred transaction
+after terminal review and integration, together with the `Implemented` flip event
+appended directly after it, that batch's claim mutations, and this plan's own
+`status: Implemented` freeze. The four move as one because none can move alone (an
+`Implementing` record with nothing remaining is an illegal state per
+`internal/adr/application.go:102-105`, and a claim's prose mutation needs the operation
+authorizing it). See the 2026-08-01 ruling in Notes.
 
 Code-design constraints that bind throughout: single-home (the numbering engine is the
 only writer of numbering effects; branch detection lives only in the git seam),
@@ -573,7 +575,7 @@ feat(adr-system): add awf adr number and its numbering transition
 
 **Execution mode: inline.** Baseline: clean tree, green gate, clean check.
 
-- [ ] **Task 6.1: Fourth hook payload.** Create
+- [x] **Task 6.1: Fourth hook payload.** Create
   `templates/hooks/pre-merge-commit.sh.tmpl` carrying the same staged-check invocation
   as `templates/hooks/pre-commit.sh.tmpl` (the `awf check --staged` line and its
   interpolated command var; omit the prose/memory gate blocks - this hook's single job
@@ -586,7 +588,7 @@ feat(adr-system): add awf adr number and its numbering transition
   `.githooks/commit-msg`). Update the rendered-payload tests for the four-payload set;
   `hook-payloads-rendered`'s existing proof marker stays on that test, which is what keeps
   the claim backed while its prose waits for Task 6.3's deferred transaction.
-- [ ] **Task 6.2: Documentation obligations.** Update the authored sources named by
+- [x] **Task 6.2: Documentation obligations.** Update the authored sources named by
   ADR-0194 item 16: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
   carries the `slug:` key and the pending shape (keep every interpolation
   publication-safe), AND the shipped default it overrides,
@@ -638,7 +640,7 @@ feat(adr-system): add awf adr number and its numbering transition
   transaction the claim's prose still reads "exactly three payloads" while four render -
   the window the deferred-flip contract explicitly sanctions, since it defers a final
   batch together with exactly its claim mutations. `./x render`.
-- [ ] **Phase-close: stage, check, gate, and commit.** Tasks 6.1 and 6.2 only; the record
+- [x] **Phase-close: stage, check, gate, and commit.** Tasks 6.1 and 6.2 only; the record
   stays `Implementing` with batch 6 remaining, which is the legal state for it.
 
 ```commit

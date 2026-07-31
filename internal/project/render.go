@@ -37,7 +37,7 @@ var runnerSections = []string{"runner-body"}
 
 // hookNames are the git-hook payload scripts the hooks singleton renders as a
 // unit under .awf/hooks/ (ADR-0048); template ids are hooks/<name>.sh.tmpl.
-var hookNames = []string{"pre-commit", "commit-msg", "pre-push"}
+var hookNames = []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit"}
 
 // HookNames returns the git-hook payload names the hooks singleton renders
 // (ADR-0048), for CLI surfaces that enumerate them (the KnownTargets pattern).

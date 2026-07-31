@@ -1627,7 +1627,7 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 // whose doc path must resolve. TestConditionalTemplatesHaveFallbackCases
 // requires an entry per conditional catalog template (ADR-0080).
 func TestV2ADRTemplateEmptyDataFallback(t *testing.T) {
-	assertV2ADRTemplatePublicationSafe(t)
+	assertV3ADRTemplatePublicationSafe(t)
 }
 
 type fallbackCase struct {

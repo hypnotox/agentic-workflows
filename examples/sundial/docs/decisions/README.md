@@ -22,28 +22,42 @@ later decision updates those claims directly through a new ADR rather than rewri
 <!-- awf:edit naming: default; create .awf/parts/adr-readme/naming.md to override -->
 ## Naming & location
 
-Files live in `docs/decisions/` and follow this pattern:
+Files live in `docs/decisions/` in one of two forms:
 
 ```
 NNNN-kebab-title.md
+kebab-title.md
 ```
 
-where `NNNN` is a zero-padded sequence number (next available). Example:
+`NNNN` is a zero-padded sequence number (next available). Example:
 `0003-drift-detection-strategy.md`.
+
+The numberless form is a pending record, written off the integration branch and
+identified by its slug as `ADR-kebab-title` until it is numbered. It is a full member of
+the corpus and can be reviewed and implemented while pending; it just cannot reach the
+integration branch that way. `awf adr number` assigns the number at integration, renaming
+the file and rewriting the heading, and the retained `slug` key keeps every reference
+written while it was pending resolvable afterwards.
 
 <!-- awf:edit frontmatter: default; create .awf/parts/adr-readme/frontmatter.md to override -->
 ## Frontmatter
 
-Every ADR starts with closed YAML frontmatter of exactly three keys:
+Every ADR starts with closed YAML frontmatter of exactly four keys:
 
 ```yaml
 ---
-format: current-state-v2
+format: current-state-v3
+slug: kebab-title
 status: Proposed
 date: YYYY-MM-DD
 ---
 # ADR-NNNN: Title
 ```
+
+`slug` is derived from the title at scaffold time, is unique across the whole corpus, and
+is retained forever: it does not track later title edits, and it survives numbering so a
+pending-form reference stays resolvable. A pending record heads itself `# ADR-kebab-title:
+Title` instead, and takes the `# ADR-NNNN:` form when it is numbered.
 
 The number and title come from the filename and the `# ` heading, never duplicated in
 frontmatter. There are no `tags`, `related`, or `domains` keys: the affected topics and
