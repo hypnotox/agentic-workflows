@@ -313,8 +313,10 @@ claim that does not yet exist.
   an error whose message contains `drop-max-claims-per-topic`.
 
   Also assert registration: `Current() == 28` and the last registry entry's `Name` is
-  `"drop-max-claims-per-topic"`. Run `go test ./internal/migrate/...`; expected terminal state
-  `ok`.
+  `"drop-max-claims-per-topic"`. Do not expect `go test ./internal/migrate/...` to pass at
+  this point: `internal/migrate/dropseveritysettings_test.go` stops compiling the moment Task
+  2.1 removes the field it dereferences, and Task 2.9 repairs it. The phase-close owns
+  verification, per this phase's preamble.
 
 - [ ] **Task 2.7: Map the generation and move the three generation pins.** In
   `internal/project/project.go`, add `28: "0.30.0",` to `minVersionBySchema` after the
@@ -330,7 +332,9 @@ claim that does not yet exist.
   - `internal/migrate/dropworkflowtelemetry_test.go`: change `if Current() != 27` to
     `if Current() != 28`.
 
-  Run `go test ./internal/project/... ./internal/migrate/...`; expected terminal state `ok`.
+  Neither package is expected to be green here: `internal/migrate` is still mid-repair from
+  Task 2.6's note, and `internal/project` keeps tests asserting the retired behaviour until
+  Task 2.9. The phase-close owns verification.
 
 - [ ] **Task 2.8: Remove the key from both config trees and upgrade both locks.** Delete the
   `  maxClaimsPerTopic: 20` line from `.awf/config.yaml` and from
@@ -355,12 +359,26 @@ claim that does not yet exist.
 
   Exact representative (marker deleted, test kept) in `internal/config/edit_test.go`: delete
   the line `// invariant: config/configuration:topic-claim-budget-configured` immediately above
-  `func TestSetMappingInteger`, and rewrite that test's fixture data so it no longer uses the
-  retired key as its sample nested key. In the case whose current expectation is
-  `"# top\nprefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n"`, and in every sibling case in
-  that table, substitute `maxTopicsPerPath` for `maxClaimsPerTopic` and keep the integer
-  values unchanged. The test itself must survive: ADR-0194 item 6 keeps the historical
-  migration that uses `SetMappingInteger`.
+  `func TestSetMappingInteger`, and re-point that test off the retired key. The child key is a
+  call argument, not only fixture text, so change the call to
+  `SetMappingInteger([]byte(tc.src), "currentState", "maxTopicsPerPath", 20)` and replace the
+  whole table with exactly this, which is the measured round-trip output, not a substitution:
+
+  ```go
+  		{"creates mapping", "# top\nprefix: x\n", "# top\nprefix: x\ncurrentState:\n  maxTopicsPerPath: 20\n", false},
+  		{"adds child preserving comment", "currentState:\n  sources: [] # keep\n", "currentState:\n  sources: [] # keep\n  maxTopicsPerPath: 20\n", false},
+  		{"preserves existing integer", "currentState:\n  maxTopicsPerPath: 7 # explicit\n", "currentState:\n  maxTopicsPerPath: 7 # explicit\n", false},
+  		{"rejects non-mapping", "currentState: nope\n", "", true},
+  		{"rejects wrong existing kind", "currentState:\n  maxTopicsPerPath: nope\n", "", true},
+  		{"rejects malformed", "currentState: [bad\n", "", true},
+  ```
+
+  A blanket key substitution is specifically wrong here and must not be used: the
+  comment-preserving case's source already carries `maxTopicsPerPath`, and
+  `internal/config/edit.go` returns `src` unchanged when the child already exists, so the
+  substituted expectation would be unreachable and that subtest would fail at the phase gate.
+  Its sibling is therefore changed to a different child key. The test itself must survive:
+  ADR-0194 item 6 keeps the historical migration that uses `SetMappingInteger`.
 
   Exact edge (test deleted outright) in `cmd/awf/check_test.go`: delete
   `func TestRunCheckClaimBudgetNote` together with its
@@ -376,12 +394,13 @@ claim that does not yet exist.
     `TestCurrentStateDefaultsAndPresence` and drop that test's assertions reading
     `MaxClaimsPerTopic` or `EffectiveMaxClaimsPerTopic`, keeping its `maxTopicsPerPath` twins.
     In `TestCurrentStateStrictValidation`, remove `maxClaimsPerTopic: 20` from the `valid`
-    fixture and delete the `zero claim maximum` and `negative claim maximum` cases. In
+    fixture, delete the `zero claim maximum` and `negative claim maximum` cases, and, in that
+    test's second table, rewrite the duplicate-key case
+    `"prefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n  maxClaimsPerTopic: 21\n"` to use
+    `maxTopicsPerPath` twice so the `already set` assertion survives. In
     `TestCurrentStateMaximumIntegerOverflow`, reduce the looped field list to
     `maxTopicsPerPath` alone. In `TestCurrentStateRejectsWrongValueTypes`, delete the five
-    `maxClaimsPerTopic` fixtures, and rewrite the duplicate-key case
-    `"prefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n  maxClaimsPerTopic: 21\n"` to use
-    `maxTopicsPerPath` twice so the `already set` assertion survives. Deleting rather than
+    `maxClaimsPerTopic` fixtures, which are all it holds. Deleting rather than
     re-pointing the other cases is coverage-safe because the surviving `maxTopicsPerPath`
     twins already exercise every `decodeIntegerScalar` branch; confirm with the gate, not by
     inspection.
@@ -415,8 +434,11 @@ claim that does not yet exist.
   - `grep -rn 'MaxClaimsPerTopic\|maxClaimsPerTopic\|ClaimBudgetNotes' --include='*.go' .`
     returns output only from `internal/migrate/maxclaimspertopic.go`,
     `internal/migrate/maxclaimspertopic_test.go`, `internal/migrate/dropmaxclaimspertopic.go`,
-    `internal/migrate/dropmaxclaimspertopic_test.go`, and `internal/migrate/migrate.go`. Every
-    other Go hit must be gone.
+    `internal/migrate/dropmaxclaimspertopic_test.go`, `internal/migrate/migrate.go`, and
+    `internal/migrate/dropseveritysettings_test.go`. That last file is permitted for the
+    reason its disposition above already gives: its remaining fixtures feed only the
+    byte-level `applyDropSeveritySettings` helpers, never the strict parser, and are retained
+    deliberately. Every other Go hit must be gone.
   - `grep -rn 'invariant: .*topic-claim-budget' --include='*.go' .` returns no output. The
     grep is scoped to the marker form deliberately: the plain string `topic-claim-budget`
     survives in `internal/migrate/maxclaimspertopic_test.go`, which asserts the retained
@@ -494,9 +516,13 @@ claim that does not yet exist.
   ```
 
 - [ ] **Task 2.14: Regenerate and verify the end state.** Run `./x render`, then `./x check`.
-  Expected terminal state: `awf check: clean` with **no** claim-count note in the output; the
-  `rendering/workflow-skill-templates` note that has appeared on every prior run must now be
-  absent. Confirm the retirement reached every surface:
+  This check runs twice, and the first run is expected to fail. Because Task 2.11 stamped a
+  placeholder digest, the first `./x check` after the render reports
+  `latest stamped content-sha256 ... does not match the computed digest`; that is the message
+  Task 2.11 reads the real digest from. Substitute it, then re-run `./x check`. The second run
+  is the one whose expected terminal state is `awf check: clean`, with **no** claim-count note
+  in the output: the `rendering/workflow-skill-templates` note that has appeared on every
+  prior run must now be absent. Then confirm the retirement reached every surface:
   - `grep -rn 'maxClaimsPerTopic' docs/ examples/sundial/docs/ AGENTS.md` returns hits only
     inside `docs/decisions/` and `docs/plans/`, which are frozen or in-flight records;
   - `go run ./cmd/awf check invariants` reports no unbacked or orphaned claim.
@@ -614,8 +640,6 @@ Beyond the per-phase gates, the effort is done when all of the following hold:
   `go run ./cmd/awf check`, confirm the error names
   `field maxClaimsPerTopic not found in type config.CurrentStateConfig`, then remove the line
   again and confirm the check returns to clean.
-- `go run ./cmd/awf upgrade` on a tree pinned at schema 27 advances it to 28 and prints the
-  removal announcement.
 - After Phase 3, `go run ./cmd/awf check` validates ADR-0194's terminal status: all three
   declared operations applied, none remaining.
 
