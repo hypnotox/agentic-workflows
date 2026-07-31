@@ -131,6 +131,9 @@ Apply all lenses to every implementation diff:
 **outcome-modeling-authority**: when the diff changes how an outcome is surfaced, matched, or asserted, consult code-design/outcome-modeling and flag a production branch on a message substring, a new shallow os.Is* predicate call, a new error identity without a branching consumer in the same transaction, a test asserting error text where identity is the contract, and a new repository-state refusal outside the actionable outcome protocol
 
 
+**package-composition-authority**: when the diff adds a package, file, or exported surface, consult code-design/package-composition and flag a package doc comment that cannot state its ownership in one sentence, a grab-bag package or production file name, a new export with no outside-package production consumer in the same commit, and a new exported declaration of a bound kind without a doc comment
+
+
 
 ## Doc-currency checklist
 
