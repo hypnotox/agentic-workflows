@@ -147,8 +147,14 @@ file, or a stack becomes self-satisfying.
     no answer for them: a marker below the final closing brace has neither an enclosing nor a
     following function, so there is no anchor to write.
 
-12. The checker change, the corpus migration, and the two replacement tests land in one commit.
-    Separated, the gate is red in between.
+12. Every commit in the implementation sequence leaves the gate green. The binding constraint is
+    that no commit may leave the corpus and the checker disagreeing, not that the work arrives in
+    one commit. Landing the name capture before anything requires it satisfies that: the payload
+    accepts a named marker while no check demands one, the corpus is migrated under the permissive
+    schema, and enforcement follows once every marker already carries a name. The two stranded
+    claims are repaired first, because item 11 leaves them nothing to migrate. Sequencing this way
+    is preferred over a single transaction, which would combine a subtle checker change, a
+    corpus-wide mechanical sweep, and a documentation rewrite in one unreviewable commit.
 
 13. The claim this decision adds is an invariant with `Backing: test`, proven by the new scan
     tests. It applies to itself: its own proof marker carries a name under the rule it
@@ -202,7 +208,8 @@ mechanical enough to script per language, and adoption of the marker corpus is c
 Within this repository the migration touches 538 markers across the test corpus, and the two
 stranded claims need tests written before the gate can pass.
 
-Documentation that specifies the payload grammar changes with the code, in the same commit,
+Documentation that specifies the payload grammar changes in the commit that makes the name
+required, which is the commit where the documented grammar actually changes,
 through the `.awf/` sources behind the agent guide, the invariants domain prose, the pitfalls and
 glossary entries, and the code-reviewer agent, along with the roadmap entry this decision
 resolves. It also changes `templates/skills/retrospective/SKILL.md.tmpl`, the shipped template
@@ -210,8 +217,8 @@ that teaches every adopter the marker grammar, which re-renders the retrospectiv
 repository and for every target in `examples/sundial`.
 
 Because this changes rendered template output and check behaviour for every adopter,
-`changelog/CHANGELOG.md` gains an entry under `## [Unreleased]` / `### Breaking changes` in the
-same commit, recording that existing proof markers become invalid, that no schema bump or
+`changelog/CHANGELOG.md` gains an entry under `## [Unreleased]` / `### Breaking changes` alongside
+that same enforcement commit, recording that existing proof markers become invalid, that no schema bump or
 `awf upgrade` step signals the break, and that adopters migrate their markers themselves.
 
 `invariants/topics-and-markers:invariant-marker-close-token` is unaffected and needs no operation.
