@@ -92,7 +92,13 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("enumerate %s: %w", prefix, err)
+		// The whole-tree call passes an empty prefix, which would render as
+		// "enumerate : ...".
+		subject := prefix
+		if subject == "" {
+			subject = "project tree"
+		}
+		return nil, fmt.Errorf("enumerate %s: %w", subject, err)
 	}
 	slices.Sort(out)
 	return out, nil

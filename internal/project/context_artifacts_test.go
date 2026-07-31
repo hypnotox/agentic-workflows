@@ -214,6 +214,14 @@ func TestProjectTreeReaders(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(denied, 0o755) })
 	if got, err := fr.Paths(""); err == nil {
 		t.Fatalf("unreadable directory erased: paths=%v", got)
+	} else if !strings.Contains(err.Error(), "enumerate project tree") {
+		t.Fatalf("whole-tree fault names an empty subject: %v", err)
+	}
+	// A named prefix keeps its own subject rather than the whole-tree wording.
+	if got, err := fr.Paths("denied"); err == nil {
+		t.Fatalf("unreadable prefix erased: paths=%v", got)
+	} else if !strings.Contains(err.Error(), "enumerate denied") {
+		t.Fatalf("prefixed fault lost its subject: %v", err)
 	}
 }
 
