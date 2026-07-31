@@ -110,7 +110,13 @@ func TestCurrentStateReportRouting(t *testing.T) {
 	}
 }
 
-const csYAML = `prefix: example
+// csNoPolicyYAML declares no currentState block. It is the base rather than a
+// subtraction from csYAML on purpose: since ADR-0192 the two shapes produce
+// identical coverage and fan-out findings, so a derivation that silently failed
+// to strip the block would leave the no-policy tests green while exercising the
+// wrong shape, and phase 2 puts a proof marker on exactly those tests. Deriving
+// in this direction has no pattern to fall out of sync.
+const csNoPolicyYAML = `prefix: example
 skills:
   - tdd
 agents:
@@ -119,14 +125,10 @@ domains:
   - alpha
 contextIgnore:
   - internal/skip.go
-currentState:
-  maxTopicsPerPath: 8
 `
 
-// csNoPolicyYAML is csYAML without its currentState block, the shape ADR-0192
-// makes indistinguishable from csYAML for coverage and fan-out evaluation. It is
-// derived rather than copied so the stated relationship stays enforced.
-var csNoPolicyYAML = strings.TrimSuffix(csYAML, "currentState:\n  maxTopicsPerPath: 8\n")
+// csYAML is csNoPolicyYAML plus the currentState block.
+const csYAML = csNoPolicyYAML + "currentState:\n  maxTopicsPerPath: 8\n"
 
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.
 const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n"
