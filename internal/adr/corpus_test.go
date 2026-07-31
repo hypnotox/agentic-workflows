@@ -648,22 +648,22 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	})
 
 	got, ok := corpus.ClaimOperationHistory(claimID)
-	if !ok || got.Origin == nil || got.Origin.Number != "0001" || got.Origin.Status != "Implemented" {
+	if !ok || got.Origin == nil || got.Origin.Identity != "0001" || got.Origin.Status != "Implemented" {
 		t.Fatalf("origin = %#v, found %v", got.Origin, ok)
 	}
-	if len(got.RevisedBy) != 2 || got.RevisedBy[0].Number != "0002" || got.RevisedBy[1].Number != "0003" {
+	if len(got.RevisedBy) != 2 || got.RevisedBy[0].Identity != "0002" || got.RevisedBy[1].Identity != "0003" {
 		t.Fatalf("revisions = %#v", got.RevisedBy)
 	}
-	if got.LegacyBaseline || got.RemovedBy == nil || got.RemovedBy.Number != "0005" {
+	if got.LegacyBaseline || got.RemovedBy == nil || got.RemovedBy.Identity != "0005" {
 		t.Fatalf("history = %#v", got)
 	}
 	legacy, ok := mustCorpusOf([]adr.ADR{record("0006", "Remove legacy claim", "Implemented", "remove")}).ClaimOperationHistory(claimID)
-	if !ok || !legacy.LegacyBaseline || legacy.Origin != nil || legacy.RemovedBy == nil || legacy.RemovedBy.Number != "0006" {
+	if !ok || !legacy.LegacyBaseline || legacy.Origin != nil || legacy.RemovedBy == nil || legacy.RemovedBy.Identity != "0006" {
 		t.Fatalf("legacy baseline history = %#v, found %v", legacy, ok)
 	}
-	got.RevisedBy[0].Number = "mutated"
+	got.RevisedBy[0].Identity = "mutated"
 	again, _ := corpus.ClaimOperationHistory(claimID)
-	if again.RevisedBy[0].Number != "0002" {
+	if again.RevisedBy[0].Identity != "0002" {
 		t.Fatalf("revision slice aliases a prior result: %#v", again.RevisedBy)
 	}
 	if _, ok := corpus.ClaimOperationHistory("tooling/query:unknown"); ok {
@@ -683,7 +683,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	pending := partial
 	pending.Number, pending.Status, pending.History = "0009", "Proposed", []adr.HistoryEvent{{Kind: adr.HistoryStatus, Status: "Proposed"}}
 	partialHistory, ok := mustCorpusOf([]adr.ADR{partial, pending}).ClaimOperationHistory(claimID)
-	if !ok || partialHistory.RemovedBy == nil || partialHistory.RemovedBy.Number != "0008" || partialHistory.RemovedBy.Status != "Abandoned" {
+	if !ok || partialHistory.RemovedBy == nil || partialHistory.RemovedBy.Identity != "0008" || partialHistory.RemovedBy.Status != "Abandoned" {
 		t.Fatalf("partial abandonment operation history = %#v, found=%v", partialHistory, ok)
 	}
 }

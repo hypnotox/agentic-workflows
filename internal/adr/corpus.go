@@ -46,12 +46,14 @@ func (e *DuplicateIdentityError) Error() string {
 // Status is an ADR lifecycle status as presented by semantic corpus queries.
 type Status = string
 
-// OperationRecord is the ADR identity for one claim operation. Ascending ADR
-// number is the per-claim provenance order (ADR-0191).
+// OperationRecord is the ADR identity for one claim operation: the number for a
+// numbered record and the slug for a pending one. Ascending ADR number is the
+// per-claim provenance order (ADR-0191), with pending records after every number
+// (ADR-0194 item 10).
 type OperationRecord struct {
-	Number string
-	Title  string
-	Status Status
+	Identity string
+	Title    string
+	Status   Status
 }
 
 // ClaimOperationHistory is the implemented add/update/remove history for one
@@ -218,7 +220,7 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 		for _, applied := range progress.Applied {
 			if applied.Operation.ID == claimID {
 				records = append(records, recordedOperation{verb: applied.Operation.Verb, record: OperationRecord{
-					Number: a.Identity(), Title: a.Title, Status: a.Status,
+					Identity: a.Identity(), Title: a.Title, Status: a.Status,
 				}})
 			}
 		}
@@ -227,7 +229,7 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 		return ClaimOperationHistory{}, false
 	}
 	sort.SliceStable(records, func(i, j int) bool {
-		return IdentityOrder(records[i].record.Number) < IdentityOrder(records[j].record.Number)
+		return IdentityOrder(records[i].record.Identity) < IdentityOrder(records[j].record.Identity)
 	})
 	history := ClaimOperationHistory{RevisedBy: []OperationRecord{}}
 	for _, operation := range records {

@@ -253,3 +253,34 @@ func withoutRecord(all []adr.ADR, number string) []adr.ADR {
 	}
 	return out
 }
+
+// A claim may name a pending record as its Origin, and the fallback provenance
+// path must resolve it by identity: a number-keyed lookup resolves nothing for a
+// slug and renders an empty ADR entry in its place.
+func TestQueryResolvesAPendingSlugOrigin(t *testing.T) {
+	root, cfg, _ := corpusFixture(t)
+	writeTopic(t, root, "alpha", "contracts", "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n",
+		rulePart("order", "keep-the-corpus", ""))
+	add := adr.Operation{Verb: adr.OpAdd, ID: "alpha/contracts:order"}
+	pending := adr.ADR{Slug: "keep-the-corpus", Title: "ADR-keep-the-corpus: Keep the corpus", Status: "Implementing",
+		Format: adr.CurrentStateV3, Operations: []adr.Operation{add, {Verb: adr.OpUpdate, ID: "alpha/contracts:order"}},
+		History: []adr.HistoryEvent{
+			{Kind: adr.HistoryStatus, Status: "Proposed"},
+			{Kind: adr.HistoryStatus, Status: "Implementing"},
+			{Kind: adr.HistoryApplied, Operations: []adr.Operation{add}},
+		}}
+	adrs := mustCorpus([]adr.ADR{pending})
+	corpus, err := LoadCorpus(root, cfg, adrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Query(corpus, adrs, "alpha/contracts:order", QueryOptions{History: true}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.History) != 1 || got.History[0].Origin == nil ||
+		got.History[0].Origin.Number != "keep-the-corpus" || got.History[0].Origin.Title != "Keep the corpus" ||
+		got.History[0].Origin.Status != "Implementing" {
+		t.Fatalf("pending origin provenance = %#v", got.History)
+	}
+}
