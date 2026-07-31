@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -23,8 +24,8 @@ func unknownKind(kind string) error {
 // kindDescriptors - no catalog pool / sections / plural enable array, so they stay
 // out of the single dispatch table that inv: kind-dispatch-single-table guards): a
 // nested <key>.enabled scalar, written via config.SetMappingScalar.
-func enableDisableSingleton(root, key string, add bool, stdout io.Writer) error {
-	p, err := project.Open(root)
+func enableDisableSingleton(ctx context.Context, root, key string, add bool, stdout io.Writer) error {
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -51,18 +52,18 @@ func enableDisableSingleton(root, key string, add bool, stdout io.Writer) error 
 	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault root bypasses
 		return err
 	}
-	return runSync(root, stdout)
+	return runSync(ctx, root, stdout)
 }
 
 // enableDisableTarget enables or disables an adapter in the config targets array. It
 // is the bespoke path (targets is not a kindDescriptor - ADR-0037): it validates
 // against the known-adapter set and writes the full resolved list, since the
 // targets array carries a Load default that an absent on-disk key would drop.
-func enableDisableTarget(root, name string, add bool, stdout io.Writer) error {
+func enableDisableTarget(ctx context.Context, root, name string, add bool, stdout io.Writer) error {
 	if !slices.Contains(project.KnownTargets(), name) {
 		return fmt.Errorf("%q is not a known target (known: %s)", name, strings.Join(project.KnownTargets(), ", "))
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -90,7 +91,7 @@ func enableDisableTarget(root, name string, add bool, stdout io.Writer) error {
 	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault root bypasses
 		return err
 	}
-	return runSync(root, stdout)
+	return runSync(ctx, root, stdout)
 }
 
 // enabledNames returns the config enable array for a singular CLI kind; the
@@ -164,26 +165,26 @@ type toggleFlags struct {
 // PluralKind lookup → Open → per-direction validation → per-direction graph plan
 // → rewrite → per-direction post-notes → sync. toggle holds the spine; the two
 // entry points select the direction.
-func runEnable(root, kind, name string, dryRun bool, stdout io.Writer) error {
-	return toggle(root, kind, name, enableDir, toggleFlags{dryRun: dryRun}, stdout)
+func runEnable(ctx context.Context, root, kind, name string, dryRun bool, stdout io.Writer) error {
+	return toggle(ctx, root, kind, name, enableDir, toggleFlags{dryRun: dryRun}, stdout)
 }
 
-func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io.Writer) error {
+func toggle(ctx context.Context, root, kind, name string, dir direction, flags toggleFlags, stdout io.Writer) error {
 	add := dir == enableDir
 	if err := checkGraphFlags(kind, flags.dryRun, flags.withDependents); err != nil {
 		return err
 	}
 	if kind == "target" {
-		return enableDisableTarget(root, name, add, stdout)
+		return enableDisableTarget(ctx, root, name, add, stdout)
 	}
 	if kind == "bootstrap" || kind == "hooks" || kind == "runner" {
-		return enableDisableSingleton(root, kind, add, stdout)
+		return enableDisableSingleton(ctx, root, kind, add, stdout)
 	}
 	key, ok := project.PluralKind(kind)
 	if !ok {
 		return unknownKind(kind)
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -237,7 +238,7 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 				return err
 			}
 		}
-		return runSync(root, stdout)
+		return runSync(ctx, root, stdout)
 	}
 	for _, op := range plan {
 		pl, _ := project.PluralKind(op.Node.Kind)
@@ -249,7 +250,7 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
 	}
 	noteUnrequiredAgents(p, plan, stdout)
-	return runSync(root, stdout)
+	return runSync(ctx, root, stdout)
 }
 
 // domainCurrentStateStub is the starter content for a new domain's current-state
@@ -275,8 +276,8 @@ func scaffoldDomainCurrentState(p *project.Project, name string) error {
 	return os.WriteFile(path, fmt.Appendf(nil, domainCurrentStateStub, name), 0o644)
 }
 
-func runDisable(root, kind, name string, withDependents, dryRun bool, stdout io.Writer) error {
-	return toggle(root, kind, name, disableDir, toggleFlags{dryRun: dryRun, withDependents: withDependents}, stdout)
+func runDisable(ctx context.Context, root, kind, name string, withDependents, dryRun bool, stdout io.Writer) error {
+	return toggle(ctx, root, kind, name, disableDir, toggleFlags{dryRun: dryRun, withDependents: withDependents}, stdout)
 }
 
 // noteUnrequiredAgents prints, after a cascade, a note for each still-enabled
@@ -406,8 +407,8 @@ func listRunner(p *project.Project, stdout io.Writer) {
 	fmt.Fprintf(stdout, "  %-28s %s\n", "awf", state)
 }
 
-func runList(root, kindFilter string, stdout io.Writer) error {
-	p, err := project.Open(root)
+func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) error {
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}

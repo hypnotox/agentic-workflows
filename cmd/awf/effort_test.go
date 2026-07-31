@@ -5,29 +5,29 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
 func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// invariant: tooling/cli:effort-command-contract
 	// invariant: tooling/effort-management:effort-record-authority
 	primary := filepath.Join(t.TempDir(), "primary with spaces")
-	commandGit(t, "init", primary)
-	commandGit(t, "-C", primary, "config", "user.name", "Test")
-	commandGit(t, "-C", primary, "config", "user.email", "test@example.com")
+	fixture := gitfixture.InitNativeAt(t, primary)
 	if err := os.WriteFile(filepath.Join(primary, "tracked.txt"), []byte("base\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	commandGit(t, "-C", primary, "add", "tracked.txt")
-	commandGit(t, "-C", primary, "commit", "-m", "base")
+	gitfixture.NativeAdd(t, fixture, "tracked.txt")
+	gitfixture.NativeCommit(t, fixture, "base")
 	linked := filepath.Join(filepath.Dir(primary), "linked with spaces")
-	commandGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+	gitfixture.NativeWorktreeAddDetached(t, fixture, linked, "HEAD")
 
 	createdJSON := runEffortCommand(t, primary, "new", []string{"CLI outcome"}, map[string]bool{"--json": true, "--no-worktree": true})
 	var created struct {
@@ -90,6 +90,8 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 }
 
 func TestEffortJSONFailuresWriteNoStdoutAndRejectProtocol1(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := commandRepo(t)
 	for _, test := range []struct {
 		sub string
@@ -99,7 +101,7 @@ func TestEffortJSONFailuresWriteNoStdoutAndRejectProtocol1(t *testing.T) {
 		{sub: "show", pos: []string{"missing-effort"}},
 	} {
 		var stdout bytes.Buffer
-		err := runEffort(&cmdCtx{root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout})
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout}, openEffortComposition)
 		if err == nil || stdout.Len() != 0 || !strings.Contains(err.Error(), "next action") {
 			t.Fatalf("%s error=%v stdout=%q", test.sub, err, stdout.String())
 		}
@@ -116,7 +118,7 @@ func TestEffortJSONFailuresWriteNoStdoutAndRejectProtocol1(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout bytes.Buffer
-	err := runEffort(&cmdCtx{root: root, sub: "show", inv: invocation{positionals: []string{"legacy-effort"}, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout})
+	err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "show", inv: invocation{positionals: []string{"legacy-effort"}, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout}, openEffortComposition)
 	if err == nil || stdout.Len() != 0 || !strings.Contains(err.Error(), "unsupported schemaVersion 1") {
 		t.Fatalf("protocol-1 error=%v stdout=%q", err, stdout.String())
 	}
@@ -127,12 +129,14 @@ type effortErrorWriter struct{}
 func (effortErrorWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
 
 func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := commandRepo(t)
-	if err := runEffort(&cmdCtx{root: filepath.Join(root, "missing"), sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: filepath.Join(root, "missing"), sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
 		t.Fatal("invalid repository accepted")
 	}
 	for _, bools := range []map[string]bool{{}, {"--no-worktree": true}} {
-		if err := runEffort(&cmdCtx{root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: bools, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+		if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: bools, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
 			t.Fatalf("blank title accepted with bools %v", bools)
 		}
 	}
@@ -152,12 +156,12 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 		if test.bools == nil {
 			test.bools = map[string]bool{}
 		}
-		err := runEffort(&cmdCtx{root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: test.bools, values: map[string]string{}}, stdout: effortErrorWriter{}})
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: test.bools, values: map[string]string{}}, stdout: effortErrorWriter{}}, openEffortComposition)
 		if err == nil {
 			t.Errorf("%s output error ignored", test.sub)
 		}
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "finish", inv: invocation{positionals: []string{"output-errors"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: effortErrorWriter{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "finish", inv: invocation{positionals: []string{"output-errors"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: effortErrorWriter{}}, openEffortComposition); err == nil {
 		t.Fatal("finish output error ignored")
 	}
 	if err := writeWorktreeResult(&bytes.Buffer{}, worktree.Result{}, os.ErrInvalid); !errors.Is(err, os.ErrInvalid) {
@@ -174,7 +178,7 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 		{root: root, sub: "worktree", inv: invocation{positionals: []string{"remove", "output-errors"}, bools: map[string]bool{}, values: map[string]string{"--base": "HEAD"}}, stdout: &bytes.Buffer{}},
 		{root: root, sub: "worktree", inv: invocation{positionals: []string{"other", "output-errors"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}},
 	} {
-		if err := runEffort(ctx); err == nil {
+		if err := runEffort(ctx, openEffortComposition); err == nil {
 			t.Fatal("invalid worktree grammar accepted")
 		}
 	}
@@ -185,17 +189,17 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(corruptRoot, ".awf", "efforts", "foreign"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runEffort(&cmdCtx{root: corruptRoot, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: corruptRoot, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
 		t.Fatal("corrupt list accepted")
 	}
 	emptyRoot := commandRepo(t)
 	if output := runEffortCommand(t, emptyRoot, "list", nil, nil); output != "" {
 		t.Fatalf("empty text list = %q", output)
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "finish", inv: invocation{positionals: []string{"missing-effort"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "finish", inv: invocation{positionals: []string{"missing-effort"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
 		t.Fatal("missing finish accepted")
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "unknown", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "unknown", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
 		t.Fatal("unknown effort child accepted")
 	}
 }
@@ -206,8 +210,8 @@ func runEffortCommand(t *testing.T, root, sub string, positionals []string, bool
 		bools = map[string]bool{}
 	}
 	var out bytes.Buffer
-	ctx := &cmdCtx{root: root, sub: sub, inv: invocation{positionals: positionals, bools: bools, values: map[string]string{}}, stdout: &out}
-	if err := runEffort(ctx); err != nil {
+	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: invocation{positionals: positionals, bools: bools, values: map[string]string{}}, stdout: &out}
+	if err := runEffort(ctx, openEffortComposition); err != nil {
 		t.Fatalf("awf effort %s: %v", sub, err)
 	}
 	return out.String()
@@ -216,22 +220,24 @@ func runEffortCommand(t *testing.T, root, sub string, positionals []string, bool
 func commandRepo(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "command repo")
-	commandGit(t, "init", root)
-	commandGit(t, "-C", root, "config", "user.name", "Test")
-	commandGit(t, "-C", root, "config", "user.email", "test@example.com")
+	fixture := gitfixture.InitNativeAt(t, root)
 	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("base\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	commandGit(t, "-C", root, "add", "tracked.txt")
-	commandGit(t, "-C", root, "commit", "-m", "base")
-	return root
-}
-
-func commandGit(t *testing.T, args ...string) {
-	t.Helper()
-	cmd := exec.CommandContext(t.Context(), "git", args...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
+	gitfixture.NativeAdd(t, fixture, "tracked.txt")
+	// An adopted project commits the resident .gitignore files awf renders, which
+	// is what keeps owned effort and worktree state out of the cleanliness
+	// oracle's view; the fixture carries them for the same reason.
+	for _, resident := range []string{"efforts", "worktrees"} {
+		ignore := filepath.Join(root, ".awf", resident, ".gitignore")
+		if err := os.MkdirAll(filepath.Dir(ignore), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(ignore, []byte("*\n!.gitignore\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitfixture.NativeAdd(t, fixture, ".awf/"+resident+"/.gitignore")
 	}
+	gitfixture.NativeCommit(t, fixture, "base")
+	return root
 }

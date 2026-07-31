@@ -16,7 +16,8 @@ import (
 // reach the command that needs it.
 // invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
 func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	files := stagedHeadFiles()
 	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}})
 
@@ -33,17 +34,17 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	files["docs/decisions/0002-filler.md"] = publicV2ADR(t, "0002", "Filler", "Proposed", "None.", "")
 	files["docs/decisions/0003-incremental.md"] = publicV2ADR(t, "0003", "Incremental", "Implementing", ops, oneBatch)
 	files[".awf/topics/parts/alpha/one/current-state.md"] = publicTopicClaims("a")
-	gitfixture.Stage(t, repo, dir, files)
-	gitfixture.Commit(t, repo, dir, "feat(invariants): apply the first batch", nil)
+	gitfixture.Stage(t, repo, files)
+	gitfixture.Commit(t, repo, "feat(invariants): apply the first batch", nil)
 
 	// The index carries the two further batches the branch applied.
-	gitfixture.Stage(t, repo, dir, map[string]string{
+	gitfixture.Stage(t, repo, map[string]string{
 		"docs/decisions/0003-incremental.md":           publicV2ADR(t, "0003", "Incremental", "Implementing", ops, threeBatches),
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("a", "b", "c"),
 	})
 
 	p := openStaged(t, dir)
-	authored, err := p.CheckStaged()
+	authored, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".git", "MERGE_HEAD"), []byte("deadbeef\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	merged, err := p.CheckStaged()
+	merged, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged during a merge: %v", err)
 	}
@@ -70,7 +71,8 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 // to refusing every legitimate merge.
 // invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
 func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	files := stagedHeadFiles()
 	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}})
 	ops := "- add `alpha/one:a`\n- add `alpha/one:b`\n- add `alpha/one:c`\n- add `alpha/one:d`"
@@ -83,19 +85,19 @@ func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 	files["docs/decisions/0002-filler.md"] = publicV2ADR(t, "0002", "Filler", "Proposed", "None.", "")
 	files["docs/decisions/0003-incremental.md"] = publicV2ADR(t, "0003", "Incremental", "Implementing", ops, oneBatch)
 	files[".awf/topics/parts/alpha/one/current-state.md"] = publicTopicClaims("a")
-	gitfixture.Stage(t, repo, dir, files)
-	b0 := gitfixture.Commit(t, repo, dir, "mainline", nil)
+	gitfixture.Stage(t, repo, files)
+	b0 := gitfixture.Commit(t, repo, "mainline", nil)
 
 	// Branch work: two further batches, which an authored commit would refuse.
-	gitfixture.Stage(t, repo, dir, map[string]string{
+	gitfixture.Stage(t, repo, map[string]string{
 		"docs/decisions/0003-incremental.md":           publicV2ADR(t, "0003", "Incremental", "Implementing", ops, threeBatches),
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("a", "b", "c"),
 	})
-	f1 := gitfixture.Commit(t, repo, dir, "apply two more batches", nil)
+	f1 := gitfixture.Commit(t, repo, "apply two more batches", nil)
 	merge := gitfixture.Merge(t, repo, "merge", b0, f1)
 
 	p := openStaged(t, dir)
-	findings, err := p.auditTransitions(b0.String(), merge.String())
+	findings, err := p.auditTransitions(testContext(t), b0, merge)
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -114,11 +116,12 @@ func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 // outside the claim's scope (ADR-0182 item 11), and a touches-state marker is
 // only legal inside the topic's own selectors, which internal/project is not in.
 func TestCheckStagedToleratesUnresolvableControlRoot(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Stage(t, repo, dir, stagedHeadFiles())
-	gitfixture.Commit(t, repo, dir, "head", nil)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err != nil {
+	if _, err := p.CheckStaged(testContext(t)); err != nil {
 		t.Fatalf("baseline CheckStaged: %v", err)
 	}
 
@@ -131,7 +134,7 @@ func TestCheckStagedToleratesUnresolvableControlRoot(t *testing.T) {
 	if err := os.Symlink(gitdir, filepath.Join(dir, ".git")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckStaged(); err != nil {
+	if _, err := p.CheckStaged(testContext(t)); err != nil {
 		t.Fatalf("a symlinked control root must not fail the staged check: %v", err)
 	}
 }

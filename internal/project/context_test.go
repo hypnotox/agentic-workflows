@@ -1,8 +1,8 @@
 package project
 
 import (
+	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -42,9 +42,10 @@ func ctxFiles() map[string]string {
 // invariant: tooling/context-and-topic:context-read-only
 // invariant: tooling/context-and-topic:context-path-attribution
 func TestContextRequestUniverse(t *testing.T) {
+	t.Parallel()
 	p := csRepo(t, ctxConfig, ctxFiles())
 	before := snapshotTreeForContext(t, p.Root)
-	res, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/x.go", "internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit})
+	res, err := p.ContextForOptions(testContext(t), []string{"internal/foo", "internal/foo/x.go", "internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +72,7 @@ func TestContextRequestUniverse(t *testing.T) {
 	if len(alpha.Direct) != 1 || alpha.Direct[0].ID != "alpha/one:order" || !reflect.DeepEqual(alpha.Direct[0].Sources, wantSources) || len(alpha.Invariants) != 0 {
 		t.Fatalf("mixed request authority=%#v", alpha)
 	}
-	glob, err := p.ContextForOptions([]string{"internal/foo/*.go"}, ContextOptions{})
+	glob, err := p.ContextForOptions(testContext(t), []string{"internal/foo/*.go"}, ContextOptions{})
 	if err != nil || len(glob.Requests) != 1 || len(glob.Requests[0].Exact.Context.Warnings) != 1 {
 		t.Fatalf("glob=%#v err=%v", glob, err)
 	}
@@ -81,41 +82,39 @@ func TestContextRequestUniverse(t *testing.T) {
 }
 
 func TestContextWorkingIndexDivergenceAndErrors(t *testing.T) {
+	t.Parallel()
 	p := csRepo(t, ctxConfig, ctxFiles())
 	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(p.Root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = p.Root
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git add: %v: %s", err, output)
-	}
+	gitfixture.AddAll(t, gitfixture.At(p.Root))
 	testsupport.WriteFile(t, filepath.Join(p.Root, "internal/foo/new.go"), "package foo\n")
-	working, err := p.ContextForOptions([]string{"internal/foo"}, ContextOptions{Selection: SelectionExplicit})
+	working, err := p.ContextForOptions(testContext(t), []string{"internal/foo"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
-	staged, err := StagedContextRootOptions(p.Root, []string{"internal/foo"}, ContextOptions{Selection: SelectionStaged})
+	staged, err := StagedContextRootOptions(testContext(t), p.Root, []string{"internal/foo"}, ContextOptions{Selection: SelectionStaged})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := StagedUncoveredRoot(p.Root, nil); err != nil {
+	if _, err := StagedUncoveredRoot(testContext(t), p.Root, nil); err != nil {
 		t.Fatal(err)
 	}
 	if working.Requests[0].Directory.Included != staged.Requests[0].Directory.Included+1 {
 		t.Fatalf("working=%d staged=%d", working.Requests[0].Directory.Included, staged.Requests[0].Directory.Included)
 	}
-	if _, err := (&Project{Root: t.TempDir()}).ContextForOptions([]string{"x"}, ContextOptions{}); err == nil {
+	if _, err := (&Project{Root: t.TempDir()}).ContextForOptions(testContext(t), []string{"x"}, ContextOptions{}); err == nil {
 		t.Fatal("outside repo accepted")
 	}
-	if _, err := StagedContextRootOptions(t.TempDir(), []string{"x"}, ContextOptions{}); err == nil {
+	if _, err := StagedContextRootOptions(testContext(t), t.TempDir(), []string{"x"}, ContextOptions{}); err == nil {
 		t.Fatal("staged outside repo accepted")
 	}
 }
 
 func TestStagedContextInputErrors(t *testing.T) {
-	_, root := gitfixture.InitRepo(t)
+	t.Parallel()
+	root := gitfixture.InitRepo(t).Root()
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -123,12 +122,8 @@ func TestStagedContextInputErrors(t *testing.T) {
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = root
-	if err := cmd.Run(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := StagedContextRootOptions(root, []string{"x"}, ContextOptions{}); err == nil || !strings.Contains(err.Error(), "no staged") {
+	gitfixture.AddAll(t, gitfixture.At(root))
+	if _, err := StagedContextRootOptions(testContext(t), root, []string{"x"}, ContextOptions{}); err == nil || !strings.Contains(err.Error(), "no staged") {
 		t.Fatalf("missing config err=%v", err)
 	}
 	for _, tc := range []struct {
@@ -147,45 +142,85 @@ func TestStagedContextInputErrors(t *testing.T) {
 			if err := lock.Save(filepath.Join(p.Root, ".awf", "awf.lock")); err != nil {
 				t.Fatal(err)
 			}
-			cmd := exec.Command("git", "add", ".")
-			cmd.Dir = p.Root
-			if out, err := cmd.CombinedOutput(); err != nil {
-				t.Fatalf("add: %v %s", err, out)
-			}
-			if _, err := StagedContextRootOptions(p.Root, []string{"x"}, ContextOptions{}); err == nil {
+			gitfixture.AddAll(t, gitfixture.At(p.Root))
+			if _, err := StagedContextRootOptions(testContext(t), p.Root, []string{"x"}, ContextOptions{}); err == nil {
 				t.Fatal("invalid staged state accepted")
 			}
 		})
 	}
 	p := csRepo(t, ctxConfig, ctxFiles())
 	testsupport.WriteFile(t, filepath.Join(p.Root, ".awf", "awf.lock"), "bad")
-	cmd = exec.Command("git", "add", ".")
-	cmd.Dir = p.Root
-	_ = cmd.Run()
-	if _, err := StagedContextRootOptions(p.Root, []string{"x"}, ContextOptions{}); err == nil {
+	gitfixture.AddAll(t, gitfixture.At(p.Root))
+	if _, err := StagedContextRootOptions(testContext(t), p.Root, []string{"x"}, ContextOptions{}); err == nil {
 		t.Fatal("corrupt staged lock accepted")
 	}
 }
 
+func TestIndexCurrentStatePropagatesInvalidStagedLock(t *testing.T) {
+	t.Parallel()
+	if _, err := (&Project{Root: t.TempDir()}).indexCurrentState(testContext(t)); err == nil {
+		t.Fatal("index current state accepted a non-repository")
+	}
+
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Stage(t, repo, map[string]string{
+		".awf/config.yaml": "prefix: example\n",
+		".awf/awf.lock":    "{",
+	})
+	if _, err := StagedContextRootOptions(testContext(t), root, []string{"x"}, ContextOptions{}); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
+		t.Fatalf("index current state error = %v", err)
+	}
+}
+
+func TestUncoveredPropagatesWorkingSnapshotFailure(t *testing.T) {
+	t.Parallel()
+	valid := csRepo(t, uncoveredConfig, uncoveredFiles())
+	if _, err := valid.Uncovered(testContext(t), nil); err != nil {
+		t.Fatalf("Uncovered valid project: %v", err)
+	}
+	var reporter interface {
+		Uncovered(context.Context, []string) (UncoveredResult, error)
+	} = &Project{Root: t.TempDir()}
+	if _, err := reporter.Uncovered(testContext(t), nil); err == nil {
+		t.Fatal("Uncovered accepted a non-repository")
+	}
+}
+
+func TestStagedUncoveredPropagatesIndexFailure(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Stage(t, repo, map[string]string{
+		".awf/config.yaml": "prefix: example\n",
+		".awf/awf.lock":    "{",
+	})
+	if _, err := StagedUncoveredRoot(testContext(t), root, nil); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
+		t.Fatalf("staged uncovered error = %v", err)
+	}
+}
+
 func TestContextUniverseSetupErrors(t *testing.T) {
+	t.Parallel()
 	bad := csRepo(t, ctxConfig, ctxFiles())
 	if err := os.WriteFile(filepath.Join(bad.Root, ".awf", "config.yaml"), []byte(strings.Replace(ctxConfig, "skills: [tdd]", "skills: [mine]", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(bad.Root, ".awf", "skills", "mine.yaml"), "local: [bad")
-	if _, err := bad.ContextForOptions([]string{"x"}, ContextOptions{}); err == nil {
+	if _, err := bad.ContextForOptions(testContext(t), []string{"x"}, ContextOptions{}); err == nil {
 		t.Fatal("malformed catalog accepted")
 	}
 	p := csRepo(t, ctxConfig, ctxFiles())
 	if err := os.WriteFile(filepath.Join(p.Root, ".awf/config.yaml"), []byte(ctxConfig+"targets: [unknown]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.ContextForOptions([]string{"x"}, ContextOptions{}); err == nil {
+	if _, err := p.ContextForOptions(testContext(t), []string{"x"}, ContextOptions{}); err == nil {
 		t.Fatal("invalid target accepted")
 	}
 }
 
 func TestNormalizeContextRequestPaths(t *testing.T) {
+	t.Parallel()
 	got := NormalizeContextPaths([]string{"", "b/../a", "a", "b"})
 	if !reflect.DeepEqual(got, []string{"a", "b"}) {
 		t.Fatal(got)
@@ -249,6 +284,7 @@ func uncoveredFiles() map[string]string {
 // only" actually fails if the policy gains Fanout (ADR-0184 item 5).
 // invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks
 func TestUncovered(t *testing.T) {
+	t.Parallel()
 	cfg := strings.Replace(uncoveredConfig, "contextIgnore:\n  - .awf/**", "contextIgnore:\n  - .awf/**\n  - gen/skipped.md", 1)
 	files := uncoveredFiles()
 	files["gen/real.md"] = "unowned eligible\n"
@@ -259,7 +295,7 @@ func TestUncovered(t *testing.T) {
 	if err := lock.Save(lockFile(p.Root)); err != nil {
 		t.Fatal(err)
 	}
-	res, err := p.Uncovered(nil)
+	res, err := p.Uncovered(testContext(t), nil)
 	if err != nil {
 		t.Fatalf("Uncovered: %v", err)
 	}
@@ -283,12 +319,13 @@ func TestUncovered(t *testing.T) {
 // owns nothing present, no path seeds the repository root as covered, so a
 // whole-repo scan folds every unowned path up to ".".
 func TestUncoveredCollapsesToRoot(t *testing.T) {
+	t.Parallel()
 	cfg := "prefix: example\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  maxTopicsPerPath: 8\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - nonexistent/**\n",
 		"top.txt":                 "x\n",
 	}
-	res, err := csRepo(t, cfg, files).Uncovered(nil)
+	res, err := csRepo(t, cfg, files).Uncovered(testContext(t), nil)
 	if err != nil {
 		t.Fatalf("Uncovered: %v", err)
 	}
@@ -302,8 +339,9 @@ func TestUncoveredCollapsesToRoot(t *testing.T) {
 
 // TestUncoveredScanRoot restricts the report to a scan root on segment boundaries.
 func TestUncoveredScanRoot(t *testing.T) {
+	t.Parallel()
 	p := csRepo(t, uncoveredConfig, uncoveredFiles())
-	res, err := p.Uncovered([]string{"internal"})
+	res, err := p.Uncovered(testContext(t), []string{"internal"})
 	if err != nil {
 		t.Fatalf("Uncovered: %v", err)
 	}
@@ -321,19 +359,21 @@ func TestUncoveredScanRoot(t *testing.T) {
 }
 
 func TestStagedUncoveredOutsideRepo(t *testing.T) {
-	if _, err := StagedUncoveredRoot(t.TempDir(), nil); err == nil {
+	t.Parallel()
+	if _, err := StagedUncoveredRoot(testContext(t), t.TempDir(), nil); err == nil {
 		t.Fatal("expected staged uncovered to reject a non-repository")
 	}
 }
 
 // TestUncoveredOutsideRepo covers the working-Tree failure in Uncovered.
 func TestUncoveredOutsideRepo(t *testing.T) {
+	t.Parallel()
 	root := scaffoldFiles(t, uncoveredConfig, map[string]string{".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Uncovered(nil); err == nil {
+	if _, err := p.Uncovered(testContext(t), nil); err == nil {
 		t.Fatal("expected a working-tree error outside a git repository")
 	}
 }

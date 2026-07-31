@@ -22,7 +22,7 @@ const debuggingVars = `vars:
 // (the target the convention-part tests drive).
 func syncAndReadDebugging(t *testing.T, root string) string {
 	t.Helper()
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -40,7 +40,7 @@ func syncAndReadDebugging(t *testing.T, root string) string {
 // syncAndReadAgents syncs the project and returns the rendered AGENTS.md.
 func syncAndReadAgents(t *testing.T, root string) string {
 	t.Helper()
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n", map[string]string{
 		"parts/maintainable-code-design/decision-posture.md": uniqueBody + "\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
 	out := ".claude/skills/example-my-local/SKILL.md"
 
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatalf("sync should succeed with valid local frontmatter: %v", err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 func TestLocalFrontmatterEveryTarget(t *testing.T) {
 	cfg := "prefix: example\nskills: [my-local]\nagents: []\ntargets:\n  - claude\n  - cursor\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 	// Only the claude copy present → the cursor path is flagged absent.
 	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-my-local/SKILL.md"), valid)
 	var fails []string
-	op, err := p.OutputPlan()
+	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 	// Both copies present → clean.
 	testsupport.WriteFile(t, filepath.Join(root, ".cursor/skills/example-my-local/SKILL.md"), valid)
 	fails = nil
-	op, err = p.OutputPlan()
+	op, err = p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package effort
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -54,7 +55,7 @@ func TestSlugDerivationAndValidation(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.title, func(t *testing.T) {
-			got, err := deriveSlug(test.title)
+			got, err := deriveSlug(testContext(t), acceptEveryRefName, test.title)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -73,7 +74,7 @@ func TestSlugDerivationAndValidation(t *testing.T) {
 		string([]byte{0xff}),
 	} {
 		t.Run("reject-title", func(t *testing.T) {
-			_, err := deriveSlug(title)
+			_, err := deriveSlug(testContext(t), acceptEveryRefName, title)
 			if err == nil || !strings.Contains(err.Error(), "shorter outcome title with ASCII words or digits") {
 				t.Fatalf("error = %v, want actionable ASCII-title repair", err)
 			}
@@ -149,3 +150,7 @@ func TestPersistedProtocol2Validation(t *testing.T) {
 		})
 	}
 }
+
+// acceptEveryRefName isolates slug derivation from the branch-name probe, whose
+// own refusals are proven where the probe is injected.
+func acceptEveryRefName(context.Context, string) (bool, error) { return true, nil }

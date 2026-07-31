@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -16,33 +14,29 @@ import (
 // domain with sidecar `paths` reaches the domain-code-staleness rule, and a
 // configured domain without `paths` stays inert.
 func TestAuditBuildsDomainPathsFromSidecars(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	if err := os.MkdirAll(filepath.Join(dir, ".awf", "domains"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{
+	base := gitfixture.Commit(t, repo, "base", map[string]string{
 		".awf/config.yaml":          "prefix: example\nskills: []\nagents: []\ndomains:\n  - tooling\n  - rendering\n",
 		".awf/domains/tooling.yaml": "paths:\n  - cmd/**\n",
 		"base.txt":                  "x\n",
 	})
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := wt.Checkout(&git.CheckoutOptions{Hash: base, Branch: plumbing.NewBranchReferenceName("feature"), Create: true}); err != nil {
-		t.Fatal(err)
-	}
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
 	if err := os.MkdirAll(filepath.Join(dir, "cmd"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Commit(t, repo, dir, "feat: churn tooling territory", map[string]string{
+	gitfixture.Commit(t, repo, "feat: churn tooling territory", map[string]string{
 		"cmd/x.go": "package main\n",
 	})
-	p, err := Open(dir)
+	p, err := Open(testContext(t), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, _, err := p.Audit(base.String(), "HEAD")
+	findings, _, err := p.Audit(testContext(t), base, "HEAD")
 	if err != nil {
 		t.Fatalf("Audit: %v", err)
 	}
@@ -58,20 +52,22 @@ func TestAuditBuildsDomainPathsFromSidecars(t *testing.T) {
 }
 
 func TestAuditRejectsMalformedDomainPaths(t *testing.T) {
+	t.Parallel()
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains:\n  - tooling\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "tooling.yaml"), "paths:\n  - '['\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := p.Audit("HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), `domain "tooling" paths`) {
+	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), `domain "tooling" paths`) {
 		t.Fatalf("want malformed-pattern error naming the domain, got %v", err)
 	}
 }
 
 func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
+	t.Parallel()
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains:\n  - tooling\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +77,7 @@ func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "tooling.yaml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := p.Audit("HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "sidecar") {
+	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "sidecar") {
 		t.Fatalf("want sidecar read error, got %v", err)
 	}
 }

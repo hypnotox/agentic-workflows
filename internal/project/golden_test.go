@@ -14,7 +14,7 @@ import (
 func TestEndToEndGolden(t *testing.T) {
 	assertV2ADRTemplatePublicationSafe(t)
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestEndToEndGolden(t *testing.T) {
 	}
 
 	// A fresh check on the synced tree is clean.
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
 	}
@@ -108,7 +108,7 @@ func assertV2ADRTemplatePublicationSafe(t *testing.T) {
 
 func TestTemplateHashCoversExpandedSource(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

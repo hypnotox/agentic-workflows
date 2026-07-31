@@ -11,15 +11,15 @@ import (
 func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error) {
 	t.Helper()
 	root := scaffold(t, configYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatalf("init must stay exempt from command-wiring validation, got: %v", err)
 	}
-	_, _, _, syncErr = p.SyncReport()
-	_, checkErr = p.Check()
+	_, _, _, syncErr = p.SyncReport(testContext(t))
+	_, checkErr = p.Check(testContext(t))
 	return syncErr, checkErr
 }
 

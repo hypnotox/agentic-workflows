@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -28,7 +29,7 @@ func topicProject(t *testing.T) string {
 	return root
 }
 func TestRepositoryEffortManagementCoverage(t *testing.T) {
-	p, err := Open("../..")
+	p, err := Open(testContext(t), "../..")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +95,7 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	root := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/bad.yaml"), "title: [bad\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +105,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 
 	adrRoot := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(adrRoot, "docs/decisions/0001-topic.md"), "---\nstatus: [bad\n---\n")
-	withBadADR, err := Open(adrRoot)
+	withBadADR, err := Open(testContext(t), adrRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +116,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 
 func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	root := topicProject(t)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +139,7 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if !ok || len(shell.Claims) != 0 {
 		t.Fatalf("scaffold shell = %#v, found %v", shell, ok)
 	}
-	op, err := p.OutputPlan()
+	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatalf("output plan: %v", err)
 	}
@@ -187,11 +188,11 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "zeta", "Zeta", "paths: [\"internal/**\"]\n")
 	writeProjectTopic(t, root, "alpha", "Alpha", "applies: global\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := p.OutputPlan()
+	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +237,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	}
 	// Metadata and part changes are both stale until sync.
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/zeta.yaml"), "title: Zeta changed\nsummary: Current Zeta contracts.\npaths: [\"internal/**\"]\n")
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +248,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/zeta/current-state.md"), "Changed.\n\n## Claims\n")
-	drift, err = p.Check()
+	drift, err = p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,8 +260,8 @@ func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/topics/rendering/contracts.md"), "foreign\n")
-	p, _ := Open(root)
-	backups, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version})
+	p, _ := Open(testContext(t), root)
+	backups, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +276,7 @@ func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
 func TestTopicPruneRemoveAndRename(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "old", "Old", "paths: [\"internal/**\"]\n")
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
@@ -286,8 +287,8 @@ func TestTopicPruneRemoveAndRename(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeProjectTopic(t, root, "new", "New", "paths: [\"internal/**\"]\n")
-	p2, _ := Open(root)
-	_, _, pruned, err := p2.SyncReport()
+	p2, _ := Open(testContext(t), root)
+	_, _, pruned, err := p2.SyncReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,8 +303,8 @@ func TestTopicOutputCollisions(t *testing.T) {
 	t.Run("topic index", func(t *testing.T) {
 		root := topicProject(t)
 		writeProjectTopic(t, root, "index", "Index", "paths: [\"internal/**\"]\n")
-		p, _ := Open(root)
-		if _, err := p.OutputPlan(); err == nil || !strings.Contains(err.Error(), "same output path") {
+		p, _ := Open(testContext(t), root)
+		if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "same output path") {
 			t.Fatalf("collision %v", err)
 		}
 	})
@@ -312,11 +313,11 @@ func TestTopicOutputCollisions(t *testing.T) {
 		testsupport.WriteFile(t, configPath(root), topicProjectConfig+"docs: [topics/rendering/index]\n")
 		testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/topics/rendering/index.yaml"), "local: true\n")
 		writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
-		p, err := Open(root)
+		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := p.OutputPlan(); err == nil || !strings.Contains(err.Error(), "local document") {
+		if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "local document") {
 			t.Fatalf("collision %v", err)
 		}
 	})
@@ -325,8 +326,8 @@ func TestTopicRenderRejectsMalformedAuthoringComment(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/x/current-state.md"), "<!-- awf:comment no close\n\n## Claims\n")
-	p, _ := Open(root)
-	if _, err := p.OutputPlan(); err == nil {
+	p, _ := Open(testContext(t), root)
+	if _, err := p.OutputPlan(testContext(t)); err == nil {
 		t.Fatal("malformed authoring comment accepted")
 	}
 }
@@ -334,8 +335,8 @@ func TestTopicRenderRejectsMalformedAuthoringComment(t *testing.T) {
 func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	root := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/orphan.yaml"), "title: X\nsummary: X.\npaths: [x]\n")
-	p, _ := Open(root)
-	if _, err := p.OutputPlan(); err == nil {
+	p, _ := Open(testContext(t), root)
+	if _, err := p.OutputPlan(testContext(t)); err == nil {
 		t.Fatal("orphan corpus accepted")
 	}
 	if err := os.Remove(filepath.Join(root, ".awf/topics/metadata/rendering/orphan.yaml")); err != nil {
@@ -343,11 +344,11 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	}
 	writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/x/extra.md"), "stray\n")
-	p, _ = Open(root)
+	p, _ = Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,10 +386,10 @@ func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := p.QueryTopic(claimID, topic.QueryOptions{}); err == nil || !strings.Contains(err.Error(), "not found") {
+	if _, err := p.QueryTopic(testContext(t), claimID, topic.QueryOptions{}); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("default removed-claim query = %v", err)
 	}
-	got, err := p.QueryTopic(claimID, topic.QueryOptions{History: true, References: true, Coverage: true})
+	got, err := p.QueryTopic(testContext(t), claimID, topic.QueryOptions{History: true, References: true, Coverage: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +437,7 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 			if err := lock.Save(lockFile(p.Root)); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := p.QueryTopic(claimID, topic.QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := p.QueryTopic(testContext(t), claimID, topic.QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("QueryTopic error = %v; want %q", err, tc.want)
 			}
 		})
@@ -446,22 +447,22 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 func TestQueryTopicLoadErrors(t *testing.T) {
 	badADRRoot := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: []\n", nil)
 	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
-	p, err := Open(badADRRoot)
+	p, err := Open(testContext(t), badADRRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.QueryTopic("schedule/contracts", topic.QueryOptions{}); err == nil {
+	if _, err := p.QueryTopic(testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
 		t.Fatal("QueryTopic accepted malformed ADR corpus")
 	}
 
 	badTopicRoot := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
 	writeADR(t, badTopicRoot, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule")))
 	testsupport.WriteFile(t, filepath.Join(badTopicRoot, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Contracts\n")
-	p, err = Open(badTopicRoot)
+	p, err = Open(testContext(t), badTopicRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.QueryTopic("schedule/contracts", topic.QueryOptions{}); err == nil {
+	if _, err := p.QueryTopic(testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
 		t.Fatal("QueryTopic accepted malformed topic corpus")
 	}
 }
@@ -477,14 +478,10 @@ currentState:
       marker: "//"
   testGlobs: ["internal/**/*_test.go"]
 `, map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
-	initRepo := exec.Command("git", "init")
-	initRepo.Dir = root
-	if output, err := initRepo.CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, output)
-	}
+	gitfixture.InitRepoAt(t, root)
 	writeADR(t, root, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule"), testsupport.WithTitle("0001: Scheduling contracts"), testsupport.WithBody("## Decision\n\n1. Define scheduling.\n\n## Invariants\n\n- `invariant: legacy-scheduling` - legacy authority remains stable.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "internal/legacy_test.go"), "package internal\n// invariant: legacy-scheduling\n// invariant: schedule\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -517,7 +514,7 @@ Backing: test
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// state: schedule/contracts:deterministic-order\n")
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule_test.go"), "package schedule\n// invariant: schedule/contracts:stable-output\n")
 
-	p, err = Open(root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,11 +584,11 @@ Backing: test
 			t.Fatal(err)
 		}
 	}
-	p, err = Open(root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := p.SyncReport()
+	_, _, pruned, err := p.SyncReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

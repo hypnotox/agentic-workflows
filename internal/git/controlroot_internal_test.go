@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -33,6 +31,22 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00bare value\x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00unknown\x00\x00"),
 		[]byte("worktree /a\x00HEAD x\x00branch b\x00"),
+		// Shapes the worktree manager's own parser used to reject before the seam
+		// became the single home for registration parsing.
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00prunable \x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00detached\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00detached \x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00locked reason\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00branch c\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00prunable one\x00prunable two\x00\x00"),
+		[]byte("worktree /a\x00bare\x00bare\x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00bare\x00\x00"),
+		[]byte("bare \x00\x00"),
+		[]byte("worktree /a\x00HEAD x\x00branch b\x00\x00\x00\x00"),
+		[]byte("branch b\x00worktree /a\x00HEAD x\x00\x00"),
+		[]byte("detached\x00worktree /a\x00HEAD x\x00\x00"),
+		[]byte("bare\x00\x00"),
 	}
 	for i, raw := range cases {
 		if _, err := parseWorktreePorcelain(raw); err == nil {
@@ -47,46 +61,56 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 	}
 }
 
-func TestNativeGitFailuresRetainWrappedCauseAndContext(t *testing.T) {
+func TestNativeGitFailuresRetainSeamIdentityAndContext(t *testing.T) {
 	nonRepository := filepath.Join(t.TempDir(), "not-a-repository")
 	if err := os.Mkdir(nonRepository, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	_, err := ResolveControlRoots(t.Context(), nonRepository)
-	var exit *exec.ExitError
-	if !errors.As(err, &exit) || !strings.Contains(err.Error(), "inspect bare-repository state") || !strings.Contains(err.Error(), nonRepository) {
-		t.Fatalf("non-repository error lost exit cause or context: %T %v", err, err)
+	_, err := ResolveControlRoots(testContext(t), nonRepository)
+	var command *CommandError
+	if !errors.As(err, &command) || !strings.Contains(err.Error(), "inspect bare-repository state") || !strings.Contains(err.Error(), nonRepository) {
+		t.Fatalf("non-repository error lost command identity or context: %T %v", err, err)
 	}
 
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
-	_, err = runGitBytes(ctx, t.TempDir(), "version")
-	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "git -C") {
-		t.Fatalf("canceled Git error lost cause or context: %T %v", err, err)
+	_, err = newRunner(t.TempDir()).run(ctx, "version")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled Git error lost context identity: %T %v", err, err)
 	}
 
 	t.Setenv("PATH", t.TempDir())
-	_, err = runGitBytes(t.Context(), t.TempDir(), "version")
-	if !errors.Is(err, exec.ErrNotFound) || !strings.Contains(err.Error(), "git -C") {
-		t.Fatalf("failed Git execution lost cause or context: %T %v", err, err)
+	_, err = newRunner(t.TempDir()).run(testContext(t), "version")
+	if err == nil || !strings.Contains(err.Error(), "git -C") || !strings.Contains(err.Error(), "executable file not found") {
+		t.Fatalf("failed Git execution lost diagnostic context: %T %v", err, err)
 	}
 }
 
-func TestControlRootRejectsUnexpectedBareScalarThroughFixedArgumentRunner(t *testing.T) {
-	root := t.TempDir()
-	var calls [][]string
-	runner := func(_ context.Context, gotRoot string, args ...string) ([]byte, error) {
-		calls = append(calls, append([]string{gotRoot}, args...))
-		return []byte("not-boolean\n"), nil
+func TestControlRootRejectsUnexpectedBareScalarFromFixedArguments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake native Git fixture requires a POSIX script")
 	}
-	_, err := resolveControlRoots(t.Context(), root, runner)
+	root := t.TempDir()
+	bin := t.TempDir()
+	calls := filepath.Join(t.TempDir(), "calls")
+	body := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '" + calls + "'\nprintf 'not-boolean\\n'\n"
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	_, err := ResolveControlRoots(testContext(t), root)
 	var hard *HardSafetyError
 	if !errors.As(err, &hard) || hard.Category != "repository-identity" || hard.Forceable() {
 		t.Fatalf("unexpected scalar error = %T %v", err, err)
 	}
-	want := [][]string{{root, "rev-parse", "--is-bare-repository"}}
-	if !reflect.DeepEqual(calls, want) {
-		t.Fatalf("native Git calls = %#v, want fixed arguments %#v", calls, want)
+	recorded, err := os.ReadFile(calls)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "-C " + root + " rev-parse --is-bare-repository\n"
+	if string(recorded) != want {
+		t.Fatalf("native Git calls = %q, want the single fixed invocation %q", recorded, want)
 	}
 }
 
@@ -111,10 +135,10 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-			_, err := ResolveControlRoots(t.Context(), root)
-			var exit *exec.ExitError
-			if !errors.As(err, &exit) || !strings.Contains(err.Error(), root) {
-				t.Fatalf("%s-stage error lost exit cause or path context: %T %v", stage, err, err)
+			_, err := ResolveControlRoots(testContext(t), root)
+			var command *CommandError
+			if !errors.As(err, &command) || !strings.Contains(err.Error(), root) {
+				t.Fatalf("%s-stage error lost command identity or path context: %T %v", stage, err, err)
 			}
 		})
 	}
@@ -126,7 +150,7 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		if _, err := runGitPathWith(runGitBytes, t.Context(), t.TempDir(), "path"); err == nil || !strings.Contains(err.Error(), "invalid path response") {
+		if _, err := runGitPathWith(testContext(t), newRunner(t.TempDir()), "path"); err == nil || !strings.Contains(err.Error(), "invalid path response") {
 			t.Fatalf("multiline Git path accepted: %v", err)
 		}
 	})
@@ -138,14 +162,14 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		if _, err := runGitTextWith(runGitBytes, t.Context(), t.TempDir(), "scalar"); err == nil || !strings.Contains(err.Error(), "invalid scalar response") {
+		if _, err := runGitTextWith(testContext(t), newRunner(t.TempDir()), "scalar"); err == nil || !strings.Contains(err.Error(), "invalid scalar response") {
 			t.Fatalf("space-padded Git scalar accepted: %v", err)
 		}
 	})
 
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
-	if _, err := runGitPathWith(runGitBytes, ctx, t.TempDir(), "path"); !errors.Is(err, context.Canceled) {
+	if _, err := runGitPathWith(ctx, newRunner(t.TempDir()), "path"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("path command error lost cancellation cause: %v", err)
 	}
 }
@@ -158,7 +182,7 @@ func shellStageResult(current, target, success string) string {
 }
 
 func TestListWorktreeRegistrationsErrors(t *testing.T) {
-	if _, err := ListWorktreeRegistrations(t.Context(), filepath.Join(t.TempDir(), "not-a-repository")); err == nil {
+	if _, err := ListWorktreeRegistrations(testContext(t), filepath.Join(t.TempDir(), "not-a-repository")); err == nil {
 		t.Fatal("non-repository registration list succeeded")
 	}
 	bin := t.TempDir()
@@ -167,13 +191,13 @@ func TestListWorktreeRegistrationsErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	if _, err := ListWorktreeRegistrations(t.Context(), t.TempDir()); err == nil {
+	if _, err := ListWorktreeRegistrations(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("malformed registration topology accepted")
 	}
 	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'worktree relative\\000HEAD abc\\000branch refs/heads/main\\000\\000'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ListWorktreeRegistrations(t.Context(), t.TempDir()); err == nil {
+	if _, err := ListWorktreeRegistrations(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("relative registration path accepted")
 	}
 }

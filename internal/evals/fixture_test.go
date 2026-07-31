@@ -71,11 +71,11 @@ func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	t.Helper()
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fullCatalogConfigForTarget(cat, target))
-	p, err := project.Open(root)
+	p, err := project.Open(testsupport.Context(t), root)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	if _, _, _, err := p.InitializeReport(project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	if _, _, _, err := p.InitializeReport(testsupport.Context(t), project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	return root

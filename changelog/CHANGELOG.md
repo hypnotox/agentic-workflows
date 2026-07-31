@@ -123,6 +123,36 @@ query a single version or a range.
   `(configured or inherited)`, which the shared form check rejects, so a displayed value can no
   longer be copied back as an argument that fails later as an unregistered model.
 
+- Every Git operation awf performs now runs isolated and under a two-minute deadline, which
+  changes three observable behaviours. A Git invocation that previously hung indefinitely on a
+  stale `index.lock`, a credential prompt, or an unreachable remote now fails with the command,
+  its exit status, and Git's own stderr, including inside the pre-commit hook; the deadline is a
+  ceiling for a pathological case, not a budget any normal operation approaches. Effort
+  operations, which previously inherited the ambient Git environment, no longer see an
+  inherited `GIT_DIR`, `GIT_WORK_TREE`, or credential helper, so they act on the repository
+  named on the command line rather than on whatever the environment selected; managed-worktree
+  operations were already isolated and are unchanged in that respect. And a failure that used
+  to surface as a bare exit status now carries the invocation and stderr.
+
+- The worktree cleanliness refusal now honours your global gitignore. `awf effort integrate`
+  and `awf effort worktree remove` previously ran their cleanliness read under a fully
+  isolated environment, which also hid `core.excludesFile`, so a checkout dirty only with
+  globally-ignored files (editor scratch files, OS metadata) was refused as dirty; it now
+  passes. `awf audit`'s uncommitted-changes rule already honoured the global ignore and is
+  unchanged in that respect, though its read is now isolated in every other way, so global
+  or system configuration other than the ignore file no longer reaches it. Both directions
+  are deliberate: the oracle answers what Git answers about ignoring, and nothing else the
+  environment happens to say.
+
+- `awf effort integrate` and `awf effort worktree remove` no longer tolerate untracked files
+  under `.awf/efforts/` and `.awf/worktrees/` when judging whether the invoking checkout is
+  clean. In an adopted project this changes nothing, because awf renders the `.gitignore` files
+  that keep owned resident state out of Git's view entirely. It does change the answer in a
+  checkout where those rendered files exist but have never been committed: the operation now
+  refuses as dirty, and committing them resolves it. The previous allowance was broader than
+  intended, tolerating any untracked file under those two directories, a developer's own
+  uncommitted work included.
+
 ### Features
 - Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
   the writing-plans scaffold command resolves the awf binary instead of the skill prefix,

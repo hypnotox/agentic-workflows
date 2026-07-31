@@ -20,8 +20,10 @@ import (
 // invariant: rendering/templates:empty-init-coherent-render
 // invariant: tooling/init-and-enablement:init-unborn-head-supported
 func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	forceNonInteractive(t)
-	_, root := gitfixture.InitRepo(t)
+	root := gitfixture.InitRepo(t).Root()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 
 	var initOut, initErr bytes.Buffer
@@ -68,13 +70,18 @@ func setScaffoldGateCmd(t *testing.T, root string) {
 
 // invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff
 func TestInitFirstADRChecksClean(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	testInitFirstADRChecksClean(t)
 }
 
 func TestEmptyInitRendersCoherently(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	forceNonInteractive(t)
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
@@ -129,11 +136,11 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	// the curated default.
 	// invariant: rendering/project-output-plan:curated-init-skill-refs-clean
 	setScaffoldGateCmd(t, root)
-	if err := runSync(root, io.Discard); err != nil {
+	if err := runSync(ctx, root, io.Discard); err != nil {
 		t.Fatalf("sync after wiring gateCmd: %v", err)
 	}
 	var checkOut bytes.Buffer
-	if err := runCheck(root, false, &checkOut); err != nil {
+	if err := runCheck(ctx, root, false, &checkOut); err != nil {
 		t.Fatalf("check on fresh init: %v\n%s", err, checkOut.String())
 	}
 	if strings.Contains(checkOut.String(), "dead-skill-reference") {
@@ -187,14 +194,17 @@ func isTableSeparator(line string) bool {
 // Unset-var notes are advisory: they print and never affect the exit code.
 // invariant: tooling/cli:completeness-advisory-nonfailing
 func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	ctx := testContext(t)
+	_ = ctx
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n")
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	var out bytes.Buffer
-	if err := runCheck(root, false, &out); err != nil {
+	if err := runCheck(ctx, root, false, &out); err != nil {
 		t.Fatalf("check must stay clean with unset vars, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: skill tdd references unset vars: gateCmd") {
@@ -205,16 +215,19 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 // Stub notes are advisory: they print and never affect the exit code.
 // invariant: tooling/cli:stub-advisory-nonfailing
 func TestCheckStubNotesAreNonFailing(t *testing.T) {
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	ctx := testContext(t)
+	_ = ctx
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
 		"<!-- awf:stub -->\nstarter notes\n")
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	var out bytes.Buffer
-	if err := runCheck(root, false, &out); err != nil {
+	if err := runCheck(ctx, root, false, &out); err != nil {
 		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") ||
@@ -224,19 +237,23 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 }
 
 func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 		"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
-	if err := runCheck(root, false, io.Discard); err == nil {
+	if err := runCheck(ctx, root, false, io.Discard); err == nil {
 		t.Fatal("expected check to surface the render error from the notes pass")
 	}
 }
 
 func TestCheckFullySetArtifactEmitsNoUnsetVarNote(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runCheck(root, false, &out); err != nil {
+	if err := runCheck(ctx, root, false, &out); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	// The fixture sets every var the tdd skill references; other artifacts

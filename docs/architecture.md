@@ -7,7 +7,8 @@ awf renders tracked workflow guidance from `.awf/`, while its binary owns immuta
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 - `internal/effort` owns schema-2 immutable `.awf/efforts/<slug>/state.json` and always-owned `memory.md`, durable publication, and restartable finish tombstones.
-- `internal/worktree` owns stateless native-Git add, integrate, and restartable safe removal over `.awf/worktrees/<slug>/` and `awf/<slug>`.
+- `internal/worktree` owns stateless add, integrate, and restartable safe removal over `.awf/worktrees/<slug>/` and `awf/<slug>`. It reaches Git only through a narrow consumer-owned contract the composition root binds to the seam, so it holds worktree policy and no Git mechanism.
+- `internal/git` is the one semantic Git seam: every capability the rest of awf needs is an entrypoint on its handle or one of its free functions, and whether an entrypoint uses go-git or the git binary is an internal detail with no consumer-visible trace. It owns the isolated, deadline-refusing runner, the seam error vocabulary, and the tolerant open path. Two repo-walking tests fail on any Git library import or git subprocess constructed outside it.
 - `internal/migrate` applies schema upgrades, including the read-only preflight and journaled reset that retire obsolete disposable residents.
 - `internal/upgrade` owns the recoverable upgrade journal: tracked file images, proven resident-tree quarantine, and the lock replacement that commits every schema advance.
 - Generated Pi extensions provide governed subagent dispatch and effort-state-independent session handoff confined to one owned memory path.
@@ -28,9 +29,12 @@ The invoking checkout supplies tracked configuration and native workflow skills.
   fingerprint, and validate tracked configuration and local effort state without a database or background daemon.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
-- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation for
-  `awf audit` history and working-tree reads. Native `git` is a runtime and test prerequisite for
-  repository control-root resolution, efforts, and managed-worktree operations.
+- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation behind the
+  seam's in-process object reads. Native `git` is a runtime and test prerequisite for repository
+  control-root resolution, refs and worktree topology, and working-tree truth. Both are backends
+  of `internal/git` and nothing else: no other production package may import the library or
+  construct a git subprocess, and `internal/testsupport/gitfixture` is the single exception on
+  the test side, which the zero-internal-deps rule forces rather than permits.
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`

@@ -1938,7 +1938,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	if err := os.WriteFile(localSkill, []byte("---\nname: example-brainstorming\ndescription: local chain skill\n---\nbody\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

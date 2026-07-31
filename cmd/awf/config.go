@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 // runConfig prints the configuration reference: full or single-entry, with
 // live state inside an adopted tree and a static catalog-wide fallback
 // outside one (pre-adoption discovery is a supported audience).
-func runConfig(cwd, key string, stdout io.Writer) error {
+func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
 		// Only a genuinely absent config means pre-adoption; any other stat
 		// fault (permissions, a file where .awf should be) is an error state,
@@ -26,14 +27,14 @@ func runConfig(cwd, key string, stdout io.Writer) error {
 		}
 		return printConfigReference(stdout, key, nil, "config reference (static: not inside an awf project; live state appears inside one)")
 	}
-	if err := gate(cwd); err != nil {
+	if err := gate(ctx, cwd); err != nil {
 		return err
 	}
-	p, err := project.Open(cwd)
+	p, err := project.Open(ctx, cwd)
 	if err != nil {
 		return err
 	}
-	model, err := p.ConfigReferenceModel()
+	model, err := p.ConfigReferenceModel(ctx)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,17 +13,18 @@ import (
 // every tracked-and-present or nonignored-untracked file, with executable and
 // symlink modes preserved. Symlinks are not followed; their target is retained
 // as inert bytes. Deleted, ignored, and nested-repository paths are excluded
-// by git.WorkingPaths. It is the complete selected filesystem universe;
-// generated, contextIgnore, and other eligibility filters are applied by
-// downstream consumers, not here.
-func WorkingTree(repoRoot string) (*Tree, error) {
-	paths, err := git.WorkingPaths(repoRoot)
+// by the handle's WorkingPaths. It is the complete selected filesystem
+// universe; generated, contextIgnore, and other eligibility filters are applied
+// by downstream consumers, not here.
+func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
+	paths, err := repo.WorkingPaths(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("snapshot working: %w", err)
 	}
+	root := repo.Root()
 	var files []File
 	for _, p := range paths {
-		full := filepath.Join(repoRoot, filepath.FromSlash(p))
+		full := filepath.Join(root, filepath.FromSlash(p))
 		info, statErr := os.Lstat(full)
 		if statErr != nil { // coverage-ignore: git just enumerated this path; only a concurrent filesystem mutation can make Lstat fail
 			return nil, fmt.Errorf("snapshot working stat %s: %w", p, statErr)
@@ -36,7 +38,7 @@ func WorkingTree(repoRoot string) (*Tree, error) {
 			}
 			mode, data = Symlink, []byte(target)
 		} else {
-			if !info.Mode().IsRegular() { // coverage-ignore: git.WorkingPaths returns file entries; symlinks were handled above
+			if !info.Mode().IsRegular() { // coverage-ignore: WorkingPaths returns file entries; symlinks were handled above
 				continue
 			}
 			var readErr error

@@ -35,11 +35,11 @@ func TestControlRootPrimaryAndLinkedWorktreeShareAuthority(t *testing.T) {
 				}
 			}
 
-			primaryRoots, err := awfgit.ResolveControlRoots(t.Context(), primary)
+			primaryRoots, err := awfgit.ResolveControlRoots(testContext(t), primary)
 			if err != nil {
 				t.Fatalf("resolve primary checkout: %v", err)
 			}
-			linkedRoots, err := awfgit.ResolveControlRoots(t.Context(), linked)
+			linkedRoots, err := awfgit.ResolveControlRoots(testContext(t), linked)
 			if err != nil {
 				t.Fatalf("resolve linked checkout: %v", err)
 			}
@@ -77,12 +77,12 @@ func TestControlRootSeparateGitDirRepository(t *testing.T) {
 	linked := filepath.Join(base, " linked checkout with spaces ")
 	runGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
 
-	roots, err := awfgit.ResolveControlRoots(t.Context(), primary)
+	roots, err := awfgit.ResolveControlRoots(testContext(t), primary)
 	if err != nil {
 		t.Fatalf("resolve separate-git-dir checkout: %v", err)
 	}
 	assertRoots(t, roots, primary, common, primary)
-	_, err = awfgit.ResolveControlRoots(t.Context(), linked)
+	_, err = awfgit.ResolveControlRoots(testContext(t), linked)
 	requireNonForceableHardSafety(t, err, "missing-primary", common)
 	resident, err := roots.ResidentRoot(awfgit.ResidentEfforts)
 	if err != nil {
@@ -116,7 +116,7 @@ func TestRunGitIsolatesHostileConfigurationEnvironment(t *testing.T) {
 	if got := strings.TrimSpace(runGit(t, "-C", primary, "symbolic-ref", "--short", "HEAD")); got == "hostile-inherited-branch" {
 		t.Fatalf("inherited command-scope Git configuration selected branch %q", got)
 	}
-	roots, err := awfgit.ResolveControlRoots(t.Context(), primary)
+	roots, err := awfgit.ResolveControlRoots(testContext(t), primary)
 	if err != nil {
 		t.Fatalf("resolve with hostile Git environment: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestControlRootRejectsMalformedWorktreeRecords(t *testing.T) {
 			}
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-			_, err := awfgit.ResolveControlRoots(t.Context(), root)
+			_, err := awfgit.ResolveControlRoots(testContext(t), root)
 			requireNonForceableHardSafety(t, err, "unconfined", filepath.Join(root, ".git"))
 		})
 	}
@@ -174,7 +174,7 @@ func TestControlRootRejectsMalformedWorktreeRecords(t *testing.T) {
 func TestControlRootRejectsBareRepositoryAsNonForceable(t *testing.T) {
 	bare := filepath.Join(t.TempDir(), "bare repository with spaces.git")
 	runGit(t, "init", "--bare", bare)
-	_, err := awfgit.ResolveControlRoots(t.Context(), bare)
+	_, err := awfgit.ResolveControlRoots(testContext(t), bare)
 	requireNonForceableHardSafety(t, err, "bare-repository", bare)
 }
 
@@ -188,7 +188,7 @@ func TestControlRootRejectsAmbiguousOrMissingPrimaryEntry(t *testing.T) {
 		common := strings.TrimSpace(runGit(t, "-C", primary, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 		writeFile(t, filepath.Join(linked, ".git"), "gitdir: "+common+"\n")
 
-		_, err := awfgit.ResolveControlRoots(t.Context(), primary)
+		_, err := awfgit.ResolveControlRoots(testContext(t), primary)
 		requireNonForceableHardSafety(t, err, "ambiguous-primary", common)
 	})
 
@@ -203,7 +203,7 @@ func TestControlRootRejectsAmbiguousOrMissingPrimaryEntry(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_, err := awfgit.ResolveControlRoots(t.Context(), linked)
+		_, err := awfgit.ResolveControlRoots(testContext(t), linked)
 		requireNonForceableHardSafety(t, err, "missing-primary", common)
 	})
 }
@@ -237,8 +237,56 @@ func TestControlRootRejectsMissingNonPrunableWorktreeGitFile(t *testing.T) {
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	_, err := awfgit.ResolveControlRoots(t.Context(), primary)
+	_, err := awfgit.ResolveControlRoots(testContext(t), primary)
 	requireNonForceableHardSafety(t, err, "repository-identity", linked)
+}
+
+// A registered worktree whose directory is swapped for a symlink is still
+// listed by native Git with no prunable marker, so the identity ladder is the
+// only thing standing between the swap and a resolution through it.
+func TestControlRootRejectsSymlinkedRegisteredWorktree(t *testing.T) {
+	base := t.TempDir()
+	primary := filepath.Join(base, "primary")
+	initNativeRepo(t, primary)
+	linked := filepath.Join(base, "linked")
+	runGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+	moved := filepath.Join(base, "linked.moved")
+	if err := os.Rename(linked, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(moved, linked); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if strings.Contains(runGit(t, "-C", primary, "worktree", "list", "--porcelain"), "prunable") {
+		t.Fatal("fixture no longer reaches the non-prunable identity refusal: Git now prunes the symlinked registration")
+	}
+
+	_, err := awfgit.ResolveControlRoots(testContext(t), primary)
+	requireNonForceableHardSafety(t, err, "symlink", linked)
+}
+
+// A bare primary emits a bare worktree record even when the invoking checkout
+// is a non-bare linked worktree, so the bare record must be skipped and the
+// call must end in the missing-primary refusal rather than adopting it.
+func TestControlRootSkipsBareRecordFromLinkedCheckout(t *testing.T) {
+	base := t.TempDir()
+	source := filepath.Join(base, "source")
+	initNativeRepo(t, source)
+	bare := filepath.Join(base, "bare repository with spaces.git")
+	runGit(t, "clone", "--bare", source, bare)
+	linked := filepath.Join(base, "linked checkout with spaces")
+	runGit(t, "-C", bare, "worktree", "add", "--detach", linked, "HEAD")
+
+	if got := trimGitOutputLine(runGit(t, "-C", linked, "rev-parse", "--is-bare-repository")); got != "false" {
+		t.Fatalf("linked checkout of a bare primary reports is-bare-repository = %q, want false", got)
+	}
+	if !strings.Contains(runGit(t, "-C", linked, "worktree", "list", "--porcelain"), "\nbare\n") {
+		t.Fatal("fixture no longer lists the bare primary record from the linked checkout")
+	}
+
+	common := trimGitOutputLine(runGit(t, "-C", linked, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+	_, err := awfgit.ResolveControlRoots(testContext(t), linked)
+	requireNonForceableHardSafety(t, err, "missing-primary", common)
 }
 
 func TestControlRootRejectsMissingListedGitdirPointerTarget(t *testing.T) {
@@ -250,7 +298,7 @@ func TestControlRootRejectsMissingListedGitdirPointerTarget(t *testing.T) {
 	missing := filepath.Join(base, "missing-gitdir-target")
 	writeFile(t, filepath.Join(linked, ".git"), "gitdir: "+missing+"\n")
 
-	_, err := awfgit.ResolveControlRoots(t.Context(), primary)
+	_, err := awfgit.ResolveControlRoots(testContext(t), primary)
 	requireNonForceableHardSafety(t, err, "repository-identity", linked)
 }
 
@@ -266,7 +314,7 @@ func TestControlRootRejectsRepositoryIdentityMismatch(t *testing.T) {
 	foreignCommon := strings.TrimSpace(runGit(t, "-C", foreign, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 	writeFile(t, filepath.Join(linked, ".git"), "gitdir: "+foreignCommon+"\n")
 
-	_, err := awfgit.ResolveControlRoots(t.Context(), linked)
+	_, err := awfgit.ResolveControlRoots(testContext(t), linked)
 	requireNonForceableHardSafety(t, err, "repository-identity", linked)
 }
 
@@ -333,7 +381,7 @@ func TestControlRootRejectsSymlinkedOrUnconfinedResidentRoots(t *testing.T) {
 		if err := os.Symlink(filepath.Join(base, "real"), alias); err != nil {
 			t.Skipf("symlinks unavailable: %v", err)
 		}
-		_, err := awfgit.ResolveControlRoots(t.Context(), filepath.Join(alias, "primary"))
+		_, err := awfgit.ResolveControlRoots(testContext(t), filepath.Join(alias, "primary"))
 		requireNonForceableHardSafety(t, err, "symlink", alias)
 	})
 }
@@ -367,7 +415,7 @@ func resolvedNativeRepo(t *testing.T) awfgit.ControlRoots {
 	t.Helper()
 	primary := filepath.Join(t.TempDir(), "primary")
 	initNativeRepo(t, primary)
-	roots, err := awfgit.ResolveControlRoots(t.Context(), primary)
+	roots, err := awfgit.ResolveControlRoots(testContext(t), primary)
 	if err != nil {
 		t.Fatalf("resolve fixture roots: %v", err)
 	}
@@ -407,7 +455,7 @@ func runGit(t *testing.T, args ...string) string {
 		"-c", "tag.gpgSign=false",
 		"-c", "core.askPass=",
 	}, args...)
-	cmd := exec.CommandContext(t.Context(), "git", commandArgs...)
+	cmd := exec.CommandContext(testContext(t), "git", commandArgs...)
 	cmd.Env = isolatedGitEnvironment(os.Environ(), []string{
 		"GIT_CONFIG_GLOBAL=" + globalConfig,
 		"GIT_CONFIG_NOSYSTEM=1",

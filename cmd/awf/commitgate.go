@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -22,7 +24,7 @@ import (
 // recorded message. The message comes from msgPath (the file a commit-msg hook
 // passes as $1) or stdin when msgPath is empty; citation line numbers are
 // relative to the git-cleaned message, not to the raw file.
-func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) error {
+func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, stdout io.Writer) error {
 	var raw []byte
 	var err error
 	if msgPath != "" {
@@ -39,7 +41,7 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 	if subject == "" {
 		return nil
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check commit: %w", err)
 	}
@@ -61,7 +63,7 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 		return nil
 	}
 	findings := audit.CheckConventionalCommit(
-		audit.Commit{Subject: subject}, audit.Resolve(p.Cfg.Audit))
+		git.Commit{Subject: subject}, audit.Resolve(p.Cfg.Audit))
 	if len(findings) == 0 {
 		return nil
 	}

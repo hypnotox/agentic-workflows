@@ -73,7 +73,7 @@ func TestWithDefaultData(t *testing.T) {
 // invariant: rendering/sync-and-drift:catalog-data-in-confighash
 func TestCatalogDataChangesConfigHash(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

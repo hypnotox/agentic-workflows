@@ -13,7 +13,7 @@ import (
 // invariant: rendering/singletons-and-payloads:memory-gitignore-always-on
 func TestResidentGitignoresAlwaysOn(t *testing.T) {
 	root := scaffold(t, "prefix: example\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

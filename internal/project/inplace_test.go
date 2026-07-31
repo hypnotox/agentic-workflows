@@ -81,7 +81,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 	// invariant: rendering/inplace-and-placeholders:section-source-exclusive
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 // silently treating the part as absent.
 func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 // up in the output declaration parity.
 func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 // falls back to the default when the output is absent (first render).
 func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestAnyInPlace(t *testing.T) {
 func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 // invariant: rendering/inplace-and-placeholders:in-place-spacing-owned
 func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,7 +362,7 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 // invariant: rendering/inplace-and-placeholders:authoring-comment-inplace-inert
 func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

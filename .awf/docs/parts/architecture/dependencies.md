@@ -6,9 +6,12 @@
   fingerprint, and validate tracked configuration and local effort state without a database or background daemon.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
-- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation for
-  `awf audit` history and working-tree reads. Native `git` is a runtime and test prerequisite for
-  repository control-root resolution, efforts, and managed-worktree operations.
+- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation behind the
+  seam's in-process object reads. Native `git` is a runtime and test prerequisite for repository
+  control-root resolution, refs and worktree topology, and working-tree truth. Both are backends
+  of `internal/git` and nothing else: no other production package may import the library or
+  construct a git subprocess, and `internal/testsupport/gitfixture` is the single exception on
+  the test side, which the zero-internal-deps rule forces rather than permits.
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`

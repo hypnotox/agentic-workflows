@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -17,11 +18,11 @@ import (
 // recovery table. Attestation, readiness, and their reporting live only in the
 // preceding bridge release; the current-state binary consumes seals, it never
 // produces them.
-func runUpgradeFlags(root string, recoverMode bool, stdout io.Writer) error {
+func runUpgradeFlags(ctx context.Context, root string, recoverMode bool, stdout io.Writer) error {
 	if recoverMode {
 		return runRecover(root, stdout)
 	}
-	return runUpgrade(root, stdout)
+	return runUpgrade(ctx, root, stdout)
 }
 
 // runRecover replays the current-state upgrade journal recovery table. It never
@@ -42,7 +43,7 @@ func runRecover(root string, stdout io.Writer) error {
 // re-pins the bootstrap (ADR-0085 Decision 4). Truthful edge states
 // (ADR-0076 Decision 4): no config layout at all → the awf init hint; a tree
 // whose schema is ahead of this binary → the version-gate guidance.
-func runUpgrade(root string, stdout io.Writer) error {
+func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	if !migrate.ProjectPresent(root) {
 		return errors.New("not an awf project (run `awf init`)")
 	}
@@ -60,7 +61,7 @@ func runUpgrade(root string, stdout io.Writer) error {
 	}
 	switch authority {
 	case manifest.AuthorityBridge:
-		return upgrade.FinalUpgrade(root, lock, stdout)
+		return upgrade.FinalUpgrade(ctx, root, lock, stdout)
 	case manifest.AuthorityPermanent:
 		// Continue with ordinary schema migration and sync.
 	case manifest.AuthorityPreTracking:
@@ -75,7 +76,7 @@ func runUpgrade(root string, stdout io.Writer) error {
 	if state == "ahead" {
 		return schemaAheadError(gen)
 	}
-	applied, err := migrate.Upgrade(root, stdout)
+	applied, err := migrate.Upgrade(ctx, root, stdout)
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func runUpgrade(root string, stdout io.Writer) error {
 			if err := lock.Save(config.LockPath(root)); err != nil { // coverage-ignore: migration just created the writable current config directory
 				return err
 			}
-			if _, err := migrate.Upgrade(root, stdout); err != nil { // coverage-ignore: the first migration pass validated the same migrated config and ADR corpus before this relocated-lock completion pass
+			if _, err := migrate.Upgrade(ctx, root, stdout); err != nil { // coverage-ignore: the first migration pass validated the same migrated config and ADR corpus before this relocated-lock completion pass
 				return err
 			}
 		}
@@ -102,8 +103,8 @@ func runUpgrade(root string, stdout io.Writer) error {
 	// binary behind the lock's awfVersion (version axis, schema equal) must still
 	// refuse rather than re-stamp a downgraded version. runSync no longer self-gates,
 	// so upgrade re-asserts it here (schema-ahead is already refused above).
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	return runSync(root, stdout)
+	return runSync(ctx, root, stdout)
 }

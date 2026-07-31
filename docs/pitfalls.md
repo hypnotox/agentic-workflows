@@ -117,9 +117,12 @@ entry with filemode.Submodule and a synthetic hash, and that works only because 
 snapshot never reads a gitlink's blob. Copying the trick with filemode.Symlink fails:
 snapshot.IndexTree does read a symlink's bytes (its target path), so a synthetic hash
 produces "read index blob: object not found" before Scannable is ever consulted, and the
-test fails for a reason unrelated to what it asserts. Stage a real symlink with os.Symlink
-plus worktree Add instead. The target string becomes the blob, which also lets the fixture
-carry the exact shape under test, making the assertion stronger than the fabricated form.
+test fails for a reason unrelated to what it asserts. Stage a real symlink instead: write it
+with os.Symlink and stage it through `gitfixture`, which is now the only place a test may
+construct Git state (the fixture walker fails a test file that reaches Git directly, so
+the older advice to call go-git's worktree Add from the test itself no longer applies).
+The target string becomes the blob, which also lets the fixture carry the exact shape
+under test, making the assertion stronger than the fabricated form.
 
 ## An ordered-phrase assertion cannot reach a site ahead of its first anchor
 
@@ -280,7 +283,7 @@ root. Bit the ADR-0127 plan, whose Task 2.5 named the wrong command for both tre
 
 _Domains: tooling_
 
-`git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
+`git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git.Open` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. This is no longer a rule anyone has to remember: `internal/git` is the only package that may reach a Git library or the git binary at all, `Open` and `OpenContaining` are the only ways in, and `TestNoProductionGitAccessOutsideTheSeam` fails on any bypass. The incident is retained because it is one of the named regression cases the open path's contract suite pins, and because it is evidence for why the backend stays an internal detail of the seam.
 
 ## go-git status ignores the global and system gitignore
 
@@ -289,16 +292,21 @@ _Domains: tooling_
 go-git's `Worktree().Status()` consults only the repository's own `.gitignore` chain and
 `.git/info/exclude`; it never reads `core.excludesfile` from `~/.gitconfig` or
 `/etc/gitconfig`, so untracked files real git treats as ignored show up in the status. Any
-status-derived path universe that consumes untracked entries must inject
-`internal/git.GlobalExcludePatterns()` into `Worktree.Excludes` before calling `Status()`,
-or route through `git.WorkingPaths`, which already does (`ChangedPaths`' staged branch is
-exempt: staged-only filtering never sees untracked or ignored files). This bit twice:
-`awf audit`'s uncommitted-changes rule fixed it locally, but `WorkingPaths` (the
-eligible-path universe behind `awf context --uncovered` and the working-tree snapshot)
-kept the raw semantics and reported globally-ignored files as eligible-unowned. The
-injection is close to but not exactly `git status`: go-git composes `Excludes` after the
-repo's `.gitignore` chain, so a repo-level negation cannot re-include a globally-ignored
-file - an accepted narrow divergence. Tests that exercise status-based code run under
+status-derived path universe that consumes untracked entries has to reconcile the two
+ignore universes. The seam now owns that in one place rather than at each call site:
+`Repo.WorkingPaths` composes the global excludes into the go-git status it reads, and
+`Repo.ChangeCounts` replays the effective `core.excludesFile` into its native
+invocation, so both cleanliness answers see the ignore universe real git sees
+(`ChangedPaths`' staged branch is exempt: staged-only filtering never sees untracked or
+ignored files). This bit twice before the seam existed: `awf audit`'s
+uncommitted-changes rule fixed it locally, but `WorkingPaths` kept the raw semantics and
+reported globally-ignored files as eligible-unowned - the same defect fixed once and
+missed once, which is the shape single-home ownership exists to prevent. The
+composition is close to but not exactly `git status`: go-git composes `Excludes` after
+the repo's `.gitignore` chain, so a repo-level negation cannot re-include a
+globally-ignored file - an accepted narrow divergence. Note the deliberate asymmetry
+with fixtures: `internal/testsupport/gitfixture` does NOT replay the excludes file,
+because it builds state rather than rendering an oracle. Tests that exercise status-based code run under
 `testsupport.RunIsolated`, which points HOME at a temp dir, so fixtures never inherit the
 developer's real global gitignore.
 
@@ -941,7 +949,7 @@ number (`ADR-0092 ... ADR-0092: Title`); plan review caught it. Strip the prefix
 `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
 so the gotcha only surfaces as awf grows ADR-aware tooling.
 
-## Repo opens must resolve the `.git` gitfile (use `internal/git.OpenRepo`)
+## Repo opens must resolve the `.git` gitfile (use `internal/git.Open`)
 
 _Domains: tooling_
 
@@ -949,13 +957,15 @@ In a linked worktree (`git worktree add`), and the submodule layout, `.git` is a
 `gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
 `open repo: ... .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
 ADR-0090 impl review in a session worktree; every parallel session uses one). Fixed the
-same day: `OpenRepo`'s `dotGitFs` resolves the pointer and routes shared state through the
-`commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
-`EnableDotGitCommonDir`; regression tests hand-craft the worktree layout (go-git cannot
-create one). The standing rule from the first entry above still governs: any future
-awf code opening a repo goes through `internal/git.OpenRepo`; `git.PlainOpen` gets neither
-the extensions workaround nor the gitfile resolution. (The helper lived in `internal/audit`
-until ADR-0092's stage-a extracted it into the shared `internal/git` package.)
+same day: the open path's `dotGitFs` resolves the pointer and routes shared state through
+the `commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
+`EnableDotGitCommonDir`; regression tests build the worktree layout through the fixture's
+native lane, since go-git cannot create one. The standing rule from the first entry above
+still governs and is now mechanical: awf code opens a repository through
+`internal/git.Open` or `OpenContaining`, never `git.PlainOpen`, which gets neither the
+extensions workaround nor the gitfile resolution. (The helper lived in `internal/audit`
+until ADR-0092's stage-a extracted it into `internal/git`, which ADR-0193 then made the
+single home for every form of Git access.)
 
 ## Section parts carry their own heading
 
@@ -1730,6 +1740,27 @@ primary checkout, not only the worktree. Relatedly for planners: a shared-prose
 extraction into `templates/partials/` may not reference `.vars` (the config-reference
 dormancy scan reads raw template bytes; `TestConfigReferenceNoBareVars` enforces it),
 so a sentence carrying a command interpolation cannot move into a partial.
+
+## A hanging test is often the fixture lane, which has no deadline
+
+_Domains: tooling_
+
+_Related: ADR-0191_
+
+`internal/git`'s runner refuses a context carrying no deadline, so a production Git
+invocation blocked on a stale `index.lock`, a credential prompt, or a slow filesystem
+fails fast with an explicit message. The `internal/testsupport/gitfixture` native lane
+deliberately does NOT match that: it runs `exec.Command` with no context and no
+deadline, because a fixture builds state rather than serving a caller who could bound
+it. The asymmetry is intentional and was accepted knowingly, but it has a debugging
+cost worth knowing in advance. When a package test hangs until the Go test timeout and
+the panic dump points into `gitfixture.runGit`, the fixture is blocked on Git, not
+deadlocked in awf: look for a stale `index.lock` under the fixture's temporary root, a
+Git that is prompting despite `nativeEnvironment` (which pins `GIT_TERMINAL_PROMPT=0`,
+`GIT_ASKPASS`, and `SSH_ASKPASS`), or a filesystem stall under `TMPDIR`. Nothing in the
+gate catches this shape, because a hang is not a failure until the timeout fires. If it
+recurs, the fix is to bound the fixture lane's invocations rather than to chase the
+individual test.
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

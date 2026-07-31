@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 	"gopkg.in/yaml.v3"
@@ -22,8 +22,8 @@ import (
 // QueryTopic assembles one read-only topic or claim projection from one
 // cutoff-aware working snapshot. Active state and v1 operation history therefore
 // cannot come from different worktree universes.
-func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
-	ws, err := p.workingCurrentState()
+func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
+	ws, err := p.workingCurrentState(ctx)
 	if err != nil {
 		return topic.QueryResult{}, err
 	}
@@ -38,7 +38,7 @@ func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.Qu
 	return topic.Query(ws.Loaded.Topics, adr.NewCorpus(ws.Loaded.ADRs), selector, opts, safelyMatchablePaths(ws.Tree))
 }
 
-func (p *Project) generateTopicDocs(corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
+func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
 	deps = map[string][]string{}
 	topicTemplate, err := fs.ReadFile(templates.FS, "topics/topic.md.tmpl")
 	if err != nil { // coverage-ignore: the topic template is compile-time embedded
@@ -49,7 +49,7 @@ func (p *Project) generateTopicDocs(corpus topic.Corpus) (files []RenderedFile, 
 		return nil, nil, err
 	}
 	var currentPaths []string
-	if workingTree, snapErr := snapshot.WorkingTree(p.Root); snapErr == nil {
+	if workingTree, snapErr := p.workingTree(ctx); snapErr == nil {
 		currentPaths = safelyMatchablePaths(workingTree)
 	} else {
 		// Init and isolated renderer tests can render before a Git repository

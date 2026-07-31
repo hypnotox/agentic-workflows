@@ -7,79 +7,82 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
-// Options supplies deterministic dependencies to focused tests.
-type Options struct {
+// Dependencies is everything the service reaches the outside world through:
+// the clock, the identity allocator, the three Git questions it asks, and tree
+// removal. Every one is supplied by the composition root, because a service
+// that quietly substituted its own would make what a caller composed
+// unverifiable from the call site.
+//
+// The Git dependencies are stated as this package's own questions rather than
+// as a repository object, so the service depends on what it asks and not on who
+// answers. Each is bound to the checkout the service was opened against, so
+// none of them names a root.
+type Dependencies struct {
 	Clock        func() time.Time
 	UUID         func() (string, error)
-	Fault        func(string) error
-	Worktrees    func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
-	Git          func(context.Context, string, ...string) ([]byte, error)
-	BranchExists func(context.Context, string, string) (bool, error)
+	Worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	BranchExists func(context.Context, string) (bool, error)
+	ValidateRef  func(context.Context, string) (bool, error)
 	RemoveTree   func(string) error
+	// Fault is the durability-boundary hook the restartable-finish tests
+	// interrupt the service at. It is the one optional member: a nil Fault
+	// injects nothing, which is what production wants and what "no fault
+	// injection configured" means.
+	Fault func(stage string) error
 }
 
 // Service owns immutable effort residents and restartable finish.
 type Service struct {
-	ctx          context.Context
 	paths        paths
 	store        store
 	clock        func() time.Time
 	uuid         func() (string, error)
-	worktrees    func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
-	git          func(context.Context, string, ...string) ([]byte, error)
-	branchExists func(context.Context, string, string) (bool, error)
+	worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	branchExists func(context.Context, string) (bool, error)
+	validateRef  func(context.Context, string) (bool, error)
 	removeTree   func(string) error
 }
 
-func Open(ctx context.Context, invokingRoot string, options Options) (*Service, error) {
-	roots, err := awfgit.ResolveControlRoots(ctx, invokingRoot)
-	if err != nil {
-		return nil, fmt.Errorf("resolve effort control roots from %s: %w", invokingRoot, err)
+// Open resolves the resident paths owned by roots and composes the service over
+// the dependencies it is given. The control roots arrive already resolved so
+// one command resolves them once, and so the service and the worktree manager
+// provably reason about the same repository identity.
+func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
+	switch {
+	case deps.Clock == nil:
+		panic("effort Service: missing clock dependency")
+	case deps.UUID == nil:
+		panic("effort Service: missing UUID allocator dependency")
+	case deps.Worktrees == nil:
+		panic("effort Service: missing worktree registration dependency")
+	case deps.BranchExists == nil:
+		panic("effort Service: missing branch probe dependency")
+	case deps.ValidateRef == nil:
+		panic("effort Service: missing reference validation dependency")
+	case deps.RemoveTree == nil:
+		panic("effort Service: missing tree removal dependency")
 	}
 	resolved, err := resolvePaths(roots)
 	if err != nil {
 		return nil, fmt.Errorf("resolve effort resident paths from %s: %w", roots.PrimaryRoot, err)
 	}
-	clock := options.Clock
-	if clock == nil {
-		clock = time.Now
-	}
-	allocator := options.UUID
-	if allocator == nil {
-		allocator = randomUUIDv4
-	}
-	worktrees := options.Worktrees
-	if worktrees == nil {
-		worktrees = awfgit.ListWorktreeRegistrations
-	}
-	gitRunner := options.Git
-	if gitRunner == nil {
-		gitRunner = nativeGit
-	}
-	branchExists := options.BranchExists
-	if branchExists == nil {
-		branchExists = nativeBranchExists
-	}
-	removeTree := options.RemoveTree
-	if removeTree == nil {
-		removeTree = os.RemoveAll
-	}
 	return &Service{
-		ctx: ctx, paths: resolved, store: store{paths: resolved, fault: options.Fault},
-		clock: clock, uuid: allocator, worktrees: worktrees, git: gitRunner,
-		branchExists: branchExists, removeTree: removeTree,
+		paths: resolved, store: store{paths: resolved, fault: deps.Fault},
+		clock: deps.Clock, uuid: deps.UUID, worktrees: deps.Worktrees,
+		branchExists: deps.BranchExists, validateRef: deps.ValidateRef, removeTree: deps.RemoveTree,
 	}, nil
 }
 
-func randomUUIDv4() (string, error) {
+// RandomUUIDv4 is the production identity allocator. It is exported because the
+// composition root, not this package, decides what allocates an effort's
+// internal identity.
+func RandomUUIDv4() (string, error) {
 	var raw [16]byte
 	_, _ = rand.Read(raw[:]) // crypto/rand.Read fills the slice or terminates the process.
 	raw[6] = raw[6]&0x0f | 0x40
@@ -88,38 +91,14 @@ func randomUUIDv4() (string, error) {
 	return encoded[0:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" + encoded[16:20] + "-" + encoded[20:32], nil
 }
 
-func nativeGit(ctx context.Context, root string, args ...string) ([]byte, error) {
-	command := exec.CommandContext(ctx, "git", args...)
-	command.Dir = root
-	output, err := command.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("git %s: %s: %w", strings.Join(args, " "), strings.TrimSpace(string(output)), err)
-	}
-	return output, nil
-}
-
-func nativeBranchExists(ctx context.Context, root, branch string) (bool, error) {
-	command := exec.CommandContext(ctx, "git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
-	command.Dir = root
-	err := command.Run()
-	if err == nil {
-		return true, nil
-	}
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
-		return false, nil
-	}
-	return false, fmt.Errorf("inspect branch %s: %w", branch, err)
-}
-
 func (s *Service) now() time.Time { return s.clock().UTC() }
 
-func (s *Service) New(title string) (Record, error) {
+func (s *Service) New(ctx context.Context, title string) (Record, error) {
 	normalized, err := normalizeTitle(title)
 	if err != nil {
 		return Record{}, fmt.Errorf("invalid outcome title: %w; changed bytes: no; next action: provide a nonblank valid UTF-8 outcome title", err)
 	}
-	slug, err := deriveSlug(normalized)
+	slug, err := deriveSlug(ctx, s.validateRef, normalized)
 	if err != nil {
 		return Record{}, err
 	}
@@ -145,7 +124,7 @@ func (s *Service) List() ([]Record, error) { return s.store.list() }
 
 func (s *Service) Show(slug string) (Record, error) { return s.store.load(slug) }
 
-func (s *Service) Finish(slug string) (FinishResult, error) {
+func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error) {
 	if err := validateSlug(slug); err != nil {
 		return FinishResult{}, fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
 	}
@@ -156,7 +135,7 @@ func (s *Service) Finish(slug string) (FinishResult, error) {
 		if loadErr != nil {
 			return FinishResult{}, loadErr
 		}
-		if topologyErr := s.requireNoManagedTopology(slug); topologyErr != nil {
+		if topologyErr := s.requireNoManagedTopology(ctx, slug); topologyErr != nil {
 			return FinishResult{}, topologyErr
 		}
 		tombstone := filepath.Join(s.paths.efforts, tombstoneName(record))
@@ -190,14 +169,14 @@ func (s *Service) Finish(slug string) (FinishResult, error) {
 	return s.cleanTombstone(slug, tombstones[0], false)
 }
 
-func (s *Service) requireNoManagedTopology(slug string) error {
+func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) error {
 	managed := filepath.Clean(s.paths.managedWorktree(slug))
 	if _, err := os.Lstat(managed); err == nil {
 		return managedTopologyRefusal("managed worktree path %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", managed, slug)
 	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat returns an inode or os.ErrNotExist absent a kernel fault
 		return fmt.Errorf("inspect managed worktree path %s: %w", managed, err)
 	}
-	registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
+	registrations, err := s.worktrees(ctx)
 	if err != nil {
 		return fmt.Errorf("inspect managed worktree registrations: %w", err)
 	}
@@ -207,7 +186,7 @@ func (s *Service) requireNoManagedTopology(slug string) error {
 			return managedTopologyRefusal("managed Git registration for %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 		}
 	}
-	exists, err := s.branchExists(s.ctx, s.paths.roots.InvokingRoot, "awf/"+slug)
+	exists, err := s.branchExists(ctx, "awf/"+slug)
 	if err != nil {
 		return fmt.Errorf("inspect managed branch for %s: %w", slug, err)
 	}

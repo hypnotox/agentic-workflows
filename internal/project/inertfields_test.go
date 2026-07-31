@@ -61,7 +61,7 @@ func TestOpenRejectsInertSidecarFields(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldFiles(t, tc.cfg, tc.files)
-			_, err := Open(root)
+			_, err := Open(testContext(t), root)
 			if err == nil {
 				t.Fatalf("Open should reject the inert field")
 			}
@@ -77,7 +77,7 @@ func TestOpenPropagatesDomainSidecarReadError(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "config.yaml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(root); err == nil || !strings.Contains(err.Error(), "sidecar") {
+	if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), "sidecar") {
 		t.Fatalf("want sidecar read error from Open, got %v", err)
 	}
 }
@@ -85,7 +85,7 @@ func TestOpenPropagatesDomainSidecarReadError(t *testing.T) {
 func TestOpenAcceptsPathsOnlyDomainSidecar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains:\n  - config\n",
 		map[string]string{"domains/config.yaml": "paths:\n  - internal/config/**\n"})
-	if _, err := Open(root); err != nil {
+	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatalf("Open should accept a paths-only domain sidecar: %v", err)
 	}
 }

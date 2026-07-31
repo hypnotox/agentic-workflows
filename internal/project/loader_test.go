@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"os"
@@ -17,7 +18,7 @@ import (
 
 func TestNewLoaderRejectsMissingDependencies(t *testing.T) {
 	load := LoadConfigTree(config.Load)
-	resolve := ResolveResidentRoot(func(root string) string { return root })
+	resolve := ResolveResidentRoot(func(_ context.Context, root string) string { return root })
 	for _, tc := range []struct {
 		name     string
 		load     LoadConfigTree
@@ -27,6 +28,7 @@ func TestNewLoaderRejectsMissingDependencies(t *testing.T) {
 		{name: "load config tree", standard: catalog.Standard, resolve: resolve},
 		{name: "standard catalog", load: load, resolve: resolve},
 		{name: "resolve resident root", load: load, standard: catalog.Standard},
+		{name: "git repository", load: load, standard: catalog.Standard, resolve: resolve},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
@@ -35,7 +37,7 @@ func TestNewLoaderRejectsMissingDependencies(t *testing.T) {
 					t.Fatalf("panic = %v, want text containing %q", got, tc.name)
 				}
 			}()
-			NewLoader(tc.load, tc.standard, tc.resolve)
+			NewLoader(tc.load, tc.standard, tc.resolve, nil)
 		})
 	}
 }
@@ -44,14 +46,14 @@ func TestLoaderOpenReturnsLoadError(t *testing.T) {
 	root := t.TempDir()
 	sentinel := errors.New("load sentinel")
 	var gotPath string
-	loader := NewLoader(func(path string) (*config.Config, error) {
+	loader := NewLoaderWithoutRepository(func(path string) (*config.Config, error) {
 		gotPath = path
 		return nil, sentinel
-	}, catalog.Standard, func(string) string {
+	}, catalog.Standard, func(context.Context, string) string {
 		t.Fatal("resident resolver called after load failure")
 		return ""
 	})
-	_, err := loader.Open(root)
+	_, err := loader.Open(testContext(t), root)
 	if gotPath != config.RootDir(root) {
 		t.Fatalf("load path = %q, want %q", gotPath, config.RootDir(root))
 	}
@@ -61,27 +63,27 @@ func TestLoaderOpenReturnsLoadError(t *testing.T) {
 }
 
 func TestLoaderOpenRejectsNilLoadedConfig(t *testing.T) {
-	loader := NewLoader(func(string) (*config.Config, error) {
+	loader := NewLoaderWithoutRepository(func(string) (*config.Config, error) {
 		var cfg *config.Config
 		return cfg, nil
-	}, catalog.Standard, func(string) string {
+	}, catalog.Standard, func(context.Context, string) string {
 		t.Fatal("resident resolver called after nil config")
 		return ""
 	})
-	_, err := loader.Open(t.TempDir())
+	_, err := loader.Open(testContext(t), t.TempDir())
 	if err == nil || err.Error() != "project Loader: load config tree returned nil config" {
 		t.Fatalf("error = %v", err)
 	}
 }
 
 func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
-	loader := NewLoader(func(string) (*config.Config, error) {
+	loader := NewLoaderWithoutRepository(func(string) (*config.Config, error) {
 		return &config.Config{}, nil
-	}, catalog.Standard, func(string) string {
+	}, catalog.Standard, func(context.Context, string) string {
 		t.Fatal("resident resolver called before config validation")
 		return ""
 	})
-	_, err := loader.Open(t.TempDir())
+	_, err := loader.Open(testContext(t), t.TempDir())
 	if err == nil || err.Error() != "prefix must not be empty" {
 		t.Fatalf("error = %v", err)
 	}
@@ -90,11 +92,11 @@ func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 func TestLoaderOpenResolvesTargetsBeforeResidentRoot(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\ntargets: [unknown]\n")
-	loader := NewLoader(config.Load, catalog.Standard, func(string) string {
+	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(context.Context, string) string {
 		t.Fatal("resident resolver called before target resolution")
 		return ""
 	})
-	_, err := loader.Open(root)
+	_, err := loader.Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("error = %v, want unknown target", err)
 	}
@@ -107,11 +109,11 @@ func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
 	resident := filepath.Join(root, "resident")
 	var resolved string
 	injectedStandard := catalog.Standard
-	loader := NewLoader(config.Load, injectedStandard, func(got string) string {
+	loader := NewLoaderWithoutRepository(config.Load, injectedStandard, func(_ context.Context, got string) string {
 		resolved = got
 		return resident
 	})
-	p, err := loader.Open(root)
+	p, err := loader.Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,8 +135,8 @@ func TestLoaderOpenReturnsEffectiveCatalogError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [local]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "local.yaml"), "local: [bad\n")
-	loader := NewLoader(config.Load, catalog.Standard, func(root string) string { return root })
-	_, err := loader.Open(root)
+	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
+	_, err := loader.Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "skills/local.yaml") {
 		t.Fatalf("error = %v, want skills/local.yaml", err)
 	}
@@ -146,8 +148,8 @@ func TestLoaderOpenUsesInjectedStandardCatalog(t *testing.T) {
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	delete(injectedValue.Skills, "tdd")
-	loader := NewLoader(config.Load, &injectedValue, func(root string) string { return root })
-	_, err := loader.Open(root)
+	loader := NewLoaderWithoutRepository(config.Load, &injectedValue, func(_ context.Context, root string) string { return root })
+	_, err := loader.Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "tdd") {
 		t.Fatalf("error = %v, want injected catalog to reject tdd", err)
 	}
@@ -166,8 +168,8 @@ func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 	broken := injectedValue.Skills["tdd"]
 	broken.Profile.Purpose = ""
 	injectedValue.Skills["tdd"] = broken
-	loader := NewLoader(config.Load, &injectedValue, func(root string) string { return root })
-	_, err := loader.Open(root)
+	loader := NewLoaderWithoutRepository(config.Load, &injectedValue, ResolveResidentRoot(func(_ context.Context, root string) string { return root }))
+	_, err := loader.Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "incomplete workflow profile") {
 		t.Fatalf("error = %v, want the injected catalog's incomplete workflow profile", err)
 	}
@@ -176,21 +178,21 @@ func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 func TestLoaderOpenReturnsConformanceError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [unknown]\nagents: []\n")
-	loader := NewLoader(config.Load, catalog.Standard, func(root string) string { return root })
-	_, err := loader.Open(root)
+	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
+	_, err := loader.Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("error = %v, want unknown skill", err)
 	}
 }
 
 func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
-	_, root := gitfixture.InitRepo(t)
+	root := gitfixture.InitRepo(t).Root()
 	external := t.TempDir()
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nskills: []\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,8 +215,8 @@ func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	snapshotValue.Docs = maps.Clone(injected.Docs)
 	snapshot := &snapshotValue
 
-	loader := NewLoader(config.Load, injected, func(root string) string { return root })
-	if _, err := loader.Open(root); err != nil {
+	loader := NewLoaderWithoutRepository(config.Load, injected, func(_ context.Context, root string) string { return root })
+	if _, err := loader.Open(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(injected, snapshot) {

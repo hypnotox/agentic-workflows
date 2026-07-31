@@ -19,7 +19,7 @@ import (
 // the plan, and the drift oracle computed from it, silently narrowed.
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(denied, 0o755) })
-	if _, err := p.OutputPlan(); err == nil {
+	if _, err := p.OutputPlan(testContext(t)); err == nil {
 		t.Fatal("output plan built from a truncated enumeration")
 	}
 }
@@ -40,11 +40,11 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-native-workflow-skills
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := p.OutputPlan()
+	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,12 +133,12 @@ func TestTargetDescriptorValidation(t *testing.T) {
 			t.Fatalf("invalid target %#v was accepted", target)
 		}
 		root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-		p, err := Open(root)
+		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
 		p.Targets = []Target{target}
-		if _, err := p.OutputPlan(); err == nil {
+		if _, err := p.OutputPlan(testContext(t)); err == nil {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
 	}
@@ -157,7 +157,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 // invariant: rendering/project-output-plan:shared-output-coalesced
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	shared.Name = "second-pi"
 	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	p.Targets = append(p.Targets, shared)
-	op, err := p.OutputPlan()
+	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 		}
 	}
 	p.Targets[1].Name = "renamed-pi"
-	op, err = p.OutputPlan()
+	op, err = p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 		}
 	}
 	p.Targets[1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
-	if _, err := p.OutputPlan(); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
+	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}
 }
@@ -226,12 +226,12 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/pi-runtime:pi-minimum-runtime
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract
 func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.T) {
-	p, err := Open(filepath.Clean(filepath.Join("..", "..")))
+	p, err := Open(testContext(t), filepath.Clean(filepath.Join("..", "..")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	const extension = ".pi/extensions/awf-subagents/index.ts"
-	result, err := p.ContextForOptions([]string{extension}, ContextOptions{Selection: SelectionExplicit})
+	result, err := p.ContextForOptions(testContext(t), []string{extension}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 	if !slices.ContainsFunc(path.Domains, func(domain DomainRef) bool { return domain.Name == "rendering" }) || !slices.ContainsFunc(path.Topics, func(topic ContextPathTopic) bool { return topic.ID == "rendering/adapter-outputs" }) {
 		t.Fatalf("extension ownership = domains %#v topics %#v", path.Domains, path.Topics)
 	}
-	expanded, err := p.ContextForOptions([]string{".pi/extensions"}, ContextOptions{Selection: SelectionExplicit})
+	expanded, err := p.ContextForOptions(testContext(t), []string{".pi/extensions"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,11 +267,11 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := p.OutputPlan()
+	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,8 +330,8 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	p, _ := Open(root)
-	op, err := p.OutputPlan()
+	p, _ := Open(testContext(t), root)
+	op, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

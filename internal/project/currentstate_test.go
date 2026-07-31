@@ -11,12 +11,24 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+func TestLoadTreeCurrentStateRejectsFutureSchema(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{SchemaVersion: migrate.Current() + 1}
+	if _, _, err := loadTreeCurrentState(".", tree, lock, adr.FormatBoundaries{}, nil); err == nil || !strings.Contains(err.Error(), "ahead of current") {
+		t.Fatalf("future schema current-state load error = %v", err)
+	}
+}
 
 func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	lockTree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/awf.lock", Mode: snapshot.Symlink, Bytes: []byte("target")}})
@@ -139,10 +151,11 @@ const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: 
 // supplies its own decisions file.
 func csRepo(t *testing.T, cfg string, files map[string]string) *Project {
 	t.Helper()
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	// A base commit so the working Tree can resolve HEAD; the fixture files below
 	// stay untracked-nonignored and are still part of the working universe.
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, cfg)
 	if _, ok := files["docs/decisions/0001-first.md"]; !ok {
 		files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented",
@@ -152,7 +165,7 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *Project {
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(dir, rel), body)
 	}
-	p, err := Open(dir)
+	p, err := Open(testContext(t), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +197,7 @@ func TestCheckCurrentState(t *testing.T) {
 	}
 	testsupport.WriteFile(t, lockFile(p.Root), string(b))
 
-	report, err := p.CheckCurrentState()
+	report, err := p.CheckCurrentState(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
@@ -212,7 +225,7 @@ func TestCheckCurrentStateClaimBudgetAdvisory(t *testing.T) {
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
 		".awf/topics/parts/alpha/one/current-state.md": part,
 	})
-	report, err := p.CheckCurrentState()
+	report, err := p.CheckCurrentState(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +269,7 @@ func TestCheckCurrentStateNoPolicy(t *testing.T) {
 		files[".awf/topics/parts/alpha/"+name+"/current-state.md"] = part
 	}
 	p := csRepo(t, cfg, files)
-	report, err := p.CheckCurrentState()
+	report, err := p.CheckCurrentState(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
@@ -274,13 +287,19 @@ func TestCheckCurrentStateNoPolicy(t *testing.T) {
 
 // TestCheckCurrentStateOutsideRepo covers the working-Tree open failure: a
 // scaffolded project that is not a git repository.
+func TestCheckStagedRootOutsideRepo(t *testing.T) {
+	if _, err := CheckStagedRoot(testContext(t), t.TempDir()); err == nil {
+		t.Fatal("CheckStagedRoot accepted a non-repository")
+	}
+}
+
 func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckCurrentState(); err == nil {
+	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
 		t.Fatal("expected a working-tree error outside a git repository")
 	}
 }
@@ -290,7 +309,7 @@ func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 func TestCheckCurrentStateCorruptLock(t *testing.T) {
 	p := csRepo(t, csYAML, map[string]string{".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"})
 	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
-	if _, err := p.CheckCurrentState(); err == nil {
+	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
 		t.Fatal("expected a lock parse error")
 	}
 }
@@ -302,7 +321,7 @@ func TestCheckCurrentStateLoadError(t *testing.T) {
 		".awf/domains/alpha.yaml":      "paths:\n  - internal/**\n",
 		"docs/decisions/0001-first.md": "---\nstatus: [unterminated\n---\n# X\n",
 	})
-	if _, err := p.CheckCurrentState(); err == nil {
+	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
 		t.Fatal("expected a corpus load error from the malformed ADR")
 	}
 }
@@ -337,7 +356,7 @@ func TestCurrentStateInvariants(t *testing.T) {
 		"internal/foo.go":      "package foo\n",
 		"internal/foo_test.go": "package foo\n// invariant: alpha/one:backed\n",
 	})
-	invs, err := p.CurrentStateInvariants()
+	invs, err := p.CurrentStateInvariants(testContext(t))
 	if err != nil {
 		t.Fatalf("CurrentStateInvariants: %v", err)
 	}
@@ -359,7 +378,7 @@ func TestCurrentStateInvariants(t *testing.T) {
 // invariant: invariants/current-state-authority:invariants-zero-slugs-clean
 func TestCurrentStateInvariantsEmpty(t *testing.T) {
 	p := csRepo(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
-	invs, err := p.CurrentStateInvariants()
+	invs, err := p.CurrentStateInvariants(testContext(t))
 	if err != nil {
 		t.Fatalf("CurrentStateInvariants: %v", err)
 	}
@@ -379,7 +398,7 @@ func TestCurrentStateInvariantsError(t *testing.T) {
 			"### `invariant: backed`\nBacked one.\nOrigin: ADR-0001\nBacking: test\n",
 		"internal/foo.go": "package foo\n",
 	})
-	if _, err := p.CurrentStateInvariants(); err == nil {
+	if _, err := p.CurrentStateInvariants(testContext(t)); err == nil {
 		t.Fatal("expected a load error for the test-backed invariant with no proof marker")
 	}
 }

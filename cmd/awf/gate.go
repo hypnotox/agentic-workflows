@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -27,7 +29,7 @@ func normalizeSemver(s string) (string, bool) { return manifest.NormalizeSemver(
 // unparseable, empty, or non-normalizable version, mirroring Generation's no-lock
 // tolerance.
 // touches-state: tooling/cli:version-compat-gate - binary-vs-config version gate; proof in gate_test.go
-func gate(root string) error {
+func gate(ctx context.Context, root string) error {
 	state, gen, err := migrate.GateState(root)
 	if err != nil {
 		return err
@@ -50,8 +52,8 @@ func gate(root string) error {
 
 // gateStaged applies the normal schema and release-version classifications to
 // the index lock. It never consults a divergent working lock.
-func gateStaged(root string) error {
-	lock, err := stagedLock(root)
+func gateStaged(ctx context.Context, root string) error {
+	lock, err := stagedLock(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -87,8 +89,19 @@ func gateLockVersion(lockV, binV string, ok bool) error {
 	return nil
 }
 
-func stagedLock(root string) (*manifest.Lock, error) {
-	tree, err := snapshot.IndexTree(root)
+// stagedTree snapshots the staged index at root through a handle composed here,
+// at the command boundary. It is the one place the staged readers open a
+// repository, so the four of them cannot drift on how they reach git.
+func stagedTree(ctx context.Context, root string) (*snapshot.Tree, error) {
+	repo, _, err := awfgit.OpenContaining(root)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot.IndexTree(ctx, repo)
+}
+
+func stagedLock(ctx context.Context, root string) (*manifest.Lock, error) {
+	tree, err := stagedTree(ctx, root)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +117,7 @@ func stagedLock(root string) (*manifest.Lock, error) {
 }
 
 // schemaAheadError is the single "config schema ahead of this binary" message,
-// shared by gate() and runUpgrade so the guidance cannot drift between the two
+// shared by gate(ctx, ) and runUpgrade so the guidance cannot drift between the two
 // entry points that classify the ahead state.
 func schemaAheadError(gen int) error {
 	return fmt.Errorf("awf %s is behind this project's config (schema generation %d > %d); update your pinned awf",

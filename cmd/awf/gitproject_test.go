@@ -16,8 +16,9 @@ import (
 // a working Tree (check, context, invariants) require this over a plain temp dir.
 func gitProjectFiles(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, configYAML)
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(dir, filepath.FromSlash(rel)), body)
@@ -36,7 +37,7 @@ func syncedGitProject(t *testing.T, configYAML string) string {
 func syncedGitProjectFiles(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
 	dir := gitProjectFiles(t, configYAML, files)
-	if err := initializeProject(dir, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), dir, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
 	return dir

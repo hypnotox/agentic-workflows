@@ -11,11 +11,13 @@ import (
 )
 
 func TestUninstallRemovesGeneratedFilesAndLock(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
 		t.Fatalf("expected AGENTS.md before uninstall: %v", err)
 	}
-	if err := runUninstall(root, io.Discard); err != nil {
+	if err := runUninstall(ctx, root, io.Discard); err != nil {
 		t.Fatalf("runUninstall: %v", err)
 	}
 	for _, rel := range []string{"AGENTS.md", "CLAUDE.md", ".claude", "docs", filepath.Join(".awf", "awf.lock")} {
@@ -30,6 +32,8 @@ func TestUninstallRemovesGeneratedFilesAndLock(t *testing.T) {
 }
 
 func TestRunUninstallDispatch(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -42,8 +46,10 @@ func TestRunUninstallDispatch(t *testing.T) {
 }
 
 func TestUninstallNoLockErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
-	if err := runUninstall(root, io.Discard); err == nil {
+	if err := runUninstall(ctx, root, io.Discard); err == nil {
 		t.Error("expected error when no lock is present")
 	}
 }

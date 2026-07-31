@@ -1,6 +1,7 @@
 package upgrade
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -20,11 +21,15 @@ const attestationVersion = 1
 // sealed TreeDigest. It reads the tree read-only. The sealed legacy adjudication
 // is trusted through this unchanged seal alone, because the current-state binary
 // ships no inventory, approval parser, or cross-schema adapter to recompute it.
-func Verify(root string, att *manifest.BridgeAttestation) error {
+func Verify(ctx context.Context, root string, att *manifest.BridgeAttestation) error {
 	if att.Version != attestationVersion {
 		return fmt.Errorf("unsupported current-state attestation version %d", att.Version)
 	}
-	head, err := git.HeadHash(root)
+	repo, _, err := git.OpenContaining(root)
+	if err != nil {
+		return err
+	}
+	head, err := repo.HeadHash(ctx)
 	if err != nil {
 		return err
 	}
@@ -47,7 +52,7 @@ func Verify(root string, att *manifest.BridgeAttestation) error {
 // consumed attestation and promotes the sealed cutoff/gaps into permanent lock
 // fields. The lock replacement is the transaction commit point; a pre-commit
 // failure rolls back, a post-commit failure leaves a recoverable journal.
-func FinalUpgrade(root string, lock *manifest.Lock, log io.Writer) error {
+func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock, log io.Writer) error {
 	state, err := lock.AuthorityState()
 	if err != nil {
 		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; run `awf upgrade --recover` if a journal exists: %w", err)
@@ -56,7 +61,7 @@ func FinalUpgrade(root string, lock *manifest.Lock, log io.Writer) error {
 		return errors.New("no current-state attestation to consume")
 	}
 	att := lock.BridgeAttestation
-	if err := Verify(root, att); err != nil {
+	if err := Verify(ctx, root, att); err != nil {
 		return err
 	}
 	ops, err := cutoverOperations(root, lock, att)

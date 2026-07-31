@@ -13,8 +13,6 @@ import (
 	"sort"
 	"strings"
 
-	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
@@ -102,8 +100,8 @@ func legacyWorktreeNextAction(id string) string {
 // breaking change: protocol-1 records and standalone memory are discarded, not
 // ported. Nothing here invents a slug for the efforts that are lost; protocol 2
 // derives a slug from an outcome title a person supplies.
-func applyUnifiedEffortResidents(root string, out io.Writer) error {
-	classified, err := ClassifyLegacyResidents(root)
+func applyUnifiedEffortResidents(ctx context.Context, root string, out io.Writer) error {
+	classified, err := ClassifyLegacyResidents(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -126,8 +124,8 @@ func applyUnifiedEffortResidents(root string, out io.Writer) error {
 // resident paths the journal may quarantine, or refuses. A refusal always
 // leaves the tree exactly as it found it, so the caller may report it before a
 // journal exists.
-func ClassifyLegacyResidents(root string) (LegacyResidents, error) {
-	primary, facts, err := legacyTopology(root)
+func ClassifyLegacyResidents(ctx context.Context, root string) (LegacyResidents, error) {
+	primary, facts, err := legacyTopology(ctx, root)
 	if err != nil {
 		return LegacyResidents{}, err
 	}
@@ -156,46 +154,31 @@ type legacyFacts struct {
 }
 
 // legacyTopology resolves the resident-owning checkout and reads the Git facts
-// the preflight needs. Only go-git's canonical not-a-repository error permits
-// the plain-directory fallback: a malformed .git or unsafe topology is a
-// present checkout whose facts cannot be read, and guessing there would let a
+// the preflight needs. Only the seam's canonical not-a-repository identity
+// permits the plain-directory fallback: a malformed .git or unsafe topology is
+// a present checkout whose facts cannot be read, and guessing there would let a
 // live managed worktree slip past the refusal below.
-func legacyTopology(root string) (string, legacyFacts, error) {
-	repo, err := awfgit.OpenRepo(root)
+func legacyTopology(ctx context.Context, root string) (string, legacyFacts, error) {
+	repo, err := awfgit.Open(root)
 	if err != nil {
-		if errors.Is(err, gogit.ErrRepositoryNotExists) {
+		if errors.Is(err, awfgit.ErrNotARepository) {
 			return filepath.Clean(root), legacyFacts{}, nil
 		}
 		return "", legacyFacts{}, fmt.Errorf("inspect Git checkout at %s: %w", root, err)
 	}
-	roots, err := awfgit.ResolveControlRoots(context.Background(), root)
+	roots, err := awfgit.ResolveControlRoots(ctx, root)
 	if err != nil {
 		return "", legacyFacts{}, fmt.Errorf("resolve Git control roots at %s: %w", root, err)
 	}
-	registrations, err := awfgit.ListWorktreeRegistrations(context.Background(), roots.InvokingRoot)
+	registrations, err := awfgit.ListWorktreeRegistrations(ctx, roots.InvokingRoot)
 	if err != nil { // coverage-ignore: ResolveControlRoots parsed the same porcelain from the same checkout moments earlier
 		return "", legacyFacts{}, err
 	}
-	branches, err := legacyBranches(repo)
-	if err != nil { // coverage-ignore: OpenRepo validated this repository; enumerating its refs fails only on a concurrent storage fault
+	branches, err := repo.Branches(ctx)
+	if err != nil { // coverage-ignore: the handle validated this repository; enumerating its refs fails only on a concurrent storage fault
 		return "", legacyFacts{}, err
 	}
 	return roots.PrimaryRoot, legacyFacts{registrations: registrations, branches: branches}, nil
-}
-
-// legacyBranches collects the repository's local branch short names.
-func legacyBranches(repo *gogit.Repository) (map[string]bool, error) {
-	iter, err := repo.Branches()
-	if err != nil { // coverage-ignore: go-git returns an iterator over the validated reference storer without a reachable failure
-		return nil, err
-	}
-	defer iter.Close()
-	branches := map[string]bool{}
-	err = iter.ForEach(func(ref *plumbing.Reference) error {
-		branches[ref.Name().Short()] = true
-		return nil
-	})
-	return branches, err
 }
 
 // refuseLegacyWorktrees refuses while any legacy UUID worktree fact remains:
@@ -249,7 +232,7 @@ func (f legacyFacts) legacyWorktreeFact(worktrees, id string) (string, bool) {
 		if registration.Path == managed {
 			return fmt.Sprintf("legacy managed worktree %s is still registered with Git", managed), true
 		}
-		if registration.Branch == plumbing.NewBranchReferenceName(legacyBranchPrefix+id).String() {
+		if registration.Branch == "refs/heads/"+legacyBranchPrefix+id {
 			return fmt.Sprintf("legacy managed branch %s%s is checked out at %s", legacyBranchPrefix, id, registration.Path), true
 		}
 	}

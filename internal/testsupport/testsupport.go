@@ -3,18 +3,40 @@
 // frontmatter fixtures, file-writing primitives, and the seam-swap idiom. It
 // is a leaf package -
 // only the Go standard library may be imported here (see the gitfixture
-// subpackage for the go-git-dependent helpers) - so it is safe to import from
+// subpackage, the single home for Git fixtures and the only place permitted to
+// reach Git directly) - so it is safe to import from
 // any package's tests without risking an import cycle (ADR-0044). deps_test.go
 // enforces the zero-internal-deps constraint mechanically.
 package testsupport
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
+
+// gitTestDeadline bounds a test's native Git work. It is a hang-prevention
+// ceiling, generous enough that no healthy fixture operation approaches it, so a
+// test that reaches it has stalled. It deliberately duplicates the value of
+// internal/git.CommandTimeout, which this package may not import: the
+// zero-internal-deps rule forces the copy, so the two are kept equal by hand.
+const gitTestDeadline = 2 * time.Minute
+
+// Context returns the test's context with a deadline attached, cancelled when
+// the test ends. The seam's native Git runner refuses a context that carries no
+// deadline, so every test whose subject reaches Git takes its context from here
+// rather than from t.Context() or a bare background context; one helper means
+// the refusal cannot be satisfied differently in different suites.
+func Context(t *testing.T) context.Context {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), gitTestDeadline)
+	t.Cleanup(cancel)
+	return ctx
+}
 
 // WriteFile creates path's parent directories and writes content to it,
 // failing the test on either error. The primitive every other file-writing
@@ -135,7 +157,7 @@ func ADR(status string, opts ...ADROption) string {
 }
 
 // RunIsolated gives m a throwaway HOME (os.MkdirTemp(prefix)) for the
-// duration of its run, so go-git's global-gitignore read finds nothing
+// duration of its run, so a global-gitignore read finds nothing
 // belonging to the developer's real machine, then removes the temp HOME and
 // returns the run's exit code for the caller to pass to os.Exit:
 //

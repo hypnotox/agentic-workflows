@@ -86,7 +86,7 @@ func TestInjectBannerResidentGitignore(t *testing.T) {
 // rendered artifact's canonical bannerText.
 func TestIndexMdCarriesCanonicalBanner(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: []\n", nil)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

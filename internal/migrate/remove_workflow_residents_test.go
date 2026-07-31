@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	gogit "github.com/go-git/go-git/v5"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // invariant: config/migrations-and-locks:workflow-telemetry-config-migration
@@ -53,7 +52,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	t.Run("non-Git fixture falls back to supplied root", func(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
-		if err := applyRemoveWorkflowResidents(root, &bytes.Buffer{}); err != nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &bytes.Buffer{}); err != nil {
 			t.Fatal(err)
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -68,10 +67,10 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := awfgit.OpenRepo(root); err == nil || errors.Is(err, gogit.ErrRepositoryNotExists) {
+		if _, err := awfgit.Open(root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
 			t.Fatalf("fixture did not produce a present broken Git error: %v", err)
 		}
-		if err := applyRemoveWorkflowResidents(root, &bytes.Buffer{}); err == nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &bytes.Buffer{}); err == nil {
 			t.Fatal("broken Git checkout fell back to fixture root")
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -82,13 +81,13 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	})
 	t.Run("Git safety error propagates without deletion", func(t *testing.T) {
 		primary := filepath.Join(t.TempDir(), "primary")
-		git(t, "init", primary)
+		gitfixture.InitNativeAt(t, primary)
 		makeResidents(t, primary)
 		alias := filepath.Join(filepath.Dir(primary), "alias")
 		if err := os.Symlink(primary, alias); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		if err := applyRemoveWorkflowResidents(alias, &bytes.Buffer{}); err == nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), alias, &bytes.Buffer{}); err == nil {
 			t.Fatal("unsafe Git checkout fell back to fixture root")
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -100,7 +99,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	t.Run("absent", func(t *testing.T) {
 		root := newRoot(t)
 		var out bytes.Buffer
-		if err := applyRemoveWorkflowResidents(root, &out); err != nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
 		if got, want := out.String(), "remove-workflow-residents: metrics already absent\nremove-workflow-residents: assignments already absent\n"; got != want {
@@ -111,7 +110,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
 		var out bytes.Buffer
-		if err := applyRemoveWorkflowResidents(root, &out); err != nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -125,7 +124,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
 		var out bytes.Buffer
-		if err := applyRemoveWorkflowResidents(root, &out); err != nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
 		if got, want := out.String(), "remove-workflow-residents: metrics removed\nremove-workflow-residents: assignments removed\n"; got != want {
@@ -146,7 +145,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 			} else if err := os.WriteFile(path, []byte("unsafe"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := applyRemoveWorkflowResidents(root, &bytes.Buffer{}); err == nil {
+			if err := applyRemoveWorkflowResidents(testContext(t), root, &bytes.Buffer{}); err == nil {
 				t.Fatal("unsafe root accepted")
 			}
 			if _, err := os.Lstat(path); err != nil {
@@ -175,7 +174,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(root, ".awf", "assignments", "nested", "resident")); err != nil {
 			t.Fatalf("assignments changed before retry: %v", err)
 		}
-		if err := applyRemoveWorkflowResidents(root, &out); err != nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), "metrics already absent\nremove-workflow-residents: assignments removed\n") {
@@ -185,17 +184,17 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	})
 	t.Run("linked-worktree-primary-root", func(t *testing.T) {
 		primary := filepath.Join(t.TempDir(), "primary")
-		git(t, "init", primary)
+		repo := gitfixture.InitNativeAt(t, primary)
 		if err := os.WriteFile(filepath.Join(primary, "tracked"), []byte("x"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		git(t, "-C", primary, "add", "tracked")
-		git(t, "-C", primary, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-m", "base")
+		gitfixture.NativeAdd(t, repo, "tracked")
+		gitfixture.NativeCommit(t, repo, "base")
 		linked := filepath.Join(filepath.Dir(primary), "linked")
-		git(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+		gitfixture.NativeWorktreeAddDetached(t, repo, linked, "HEAD")
 		makeResidents(t, primary)
 		var out bytes.Buffer
-		if err := applyRemoveWorkflowResidents(linked, &out); err != nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), linked, &out); err != nil {
 			t.Fatal(err)
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -208,12 +207,4 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		}
 		assertRetained(t, primary)
 	})
-}
-
-func git(t *testing.T, args ...string) {
-	t.Helper()
-	cmd := exec.Command("git", args...)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
-	}
 }

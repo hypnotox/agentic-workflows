@@ -29,7 +29,7 @@ func closureNodes(nodes []catalog.Node) map[catalog.Node]bool {
 // its three agents enabled (the drift-test fixture builder).
 func openChainProject(t *testing.T) *Project {
 	t.Helper()
-	p, err := Open(scaffold(t, chainClosureConfig("awf")))
+	p, err := Open(testContext(t), scaffold(t, chainClosureConfig("awf")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestResolveDisableCascadeSizes(t *testing.T) {
 // The add plan on an empty config is the seed's full forward closure.
 // invariant: tooling/init-and-enablement:add-applies-closure-plan
 func TestResolveEnableClosurePlan(t *testing.T) {
-	p, err := Open(scaffold(t, "prefix: example\nskills: []\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nskills: []\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestResolveEnableClosurePlan(t *testing.T) {
 		t.Errorf("adding a leaf to a closed config plans %d ops, want 1: %v", len(leafPlan), leafPlan)
 	}
 	// Enabled-subtree skip mid-walk never re-adds an enabled member.
-	p3, err := Open(scaffold(t, "prefix: example\nskills: [executing-plans, retrospective, reviewing-impl, subagent-driven-development]\nagents: [code-reviewer, implementer]\n"))
+	p3, err := Open(testContext(t), scaffold(t, "prefix: example\nskills: [executing-plans, retrospective, reviewing-impl, subagent-driven-development]\nagents: [code-reviewer, implementer]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestResolveEnableClosurePlan(t *testing.T) {
 // A local-sidecar artifact carries no catalog edges and is never pulled into
 // a remove plan, mirroring the validator's skip.
 func TestResolveDisableSkipsLocalDependents(t *testing.T) {
-	p, err := Open(scaffoldFiles(t,
+	p, err := Open(testContext(t), scaffoldFiles(t,
 		"prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer, implementer]\n",
 		map[string]string{"skills/reviewing-impl.yaml": "local: true\n"}))
 	if err != nil {
