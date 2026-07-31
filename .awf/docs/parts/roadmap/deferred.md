@@ -141,7 +141,7 @@ their own decision; the pitfalls entry recording the occurrence is the interim m
 
 ## Decomposing the `internal/project` god object
 
-Decided and executed by ADR-0198: `internal/contextq` (the context query behind
+Decided and executed by ADR-0195: `internal/contextq` (the context query behind
 the `ContextState` seam) and `internal/resident` (resident-root policy and
 anchoring) are carved out, the core keeps the cycle-bound sync engine, and the
 export surface shrank with each carve. The ADR's Context records why the
@@ -155,7 +155,7 @@ What stays open is the generalization, not the split: the deferred
 `receiver-reads-owned-state` rule (a method reads at least one receiver field;
 behaviour that reads none takes parameters instead) remains unowned by any
 topic and belongs to a future package-cohesion pattern that generalizes from
-ADR-0198's evidence rather than gating it. Further decomposition of the
+ADR-0195's evidence rather than gating it. Further decomposition of the
 remaining core is likewise accepted at decision time as future-effort
 territory rather than silent scope; this entry is that record.
 
