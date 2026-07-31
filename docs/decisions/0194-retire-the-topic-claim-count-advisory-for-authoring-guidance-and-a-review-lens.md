@@ -80,13 +80,22 @@ the table at review time.
 4. Add a schema migration at generation 28 that removes `currentState.maxClaimsPerTopic` and
    announces the removal on the command's output, modelled on the severity-key removal but
    without its block-preservation seed, which ADR-0192 made unnecessary. Advance the schema
-   generation to 28, add the matching `minVersionBySchema` entry, and bump `project.Version`
-   to the version that entry names. Both `.awf/awf.lock` and `examples/sundial/.awf/awf.lock`
-   sit at schema 27 and take the new `schemaVersion` and `awfVersion`, and the sundial tree
-   is migrated in the same commit as the rest of the transaction. The render-hash and
-   lock-input consumers the retired claim names need no code change: they hash config content
-   rather than reading this key by name, so removing it changes the recorded hashes and
-   nothing else.
+   generation to 28 and map it onto the existing `project.Version` of `0.30.0` in
+   `minVersionBySchema`. `project.Version` does not change: 0.30.0 is unreleased, and
+   generations 26 and 27 already share it for that reason, so a new generation on an
+   unreleased version raises no adopter's minimum. Both `.awf/awf.lock` and
+   `examples/sundial/.awf/awf.lock` sit at schema 27 and take the new `schemaVersion` while
+   their `awfVersion` stays `0.30.0`, and the sundial tree is migrated in the same commit as
+   the rest of the transaction. The render-hash and lock-input consumers the retired claim
+   names need no code change: they hash config content rather than reading this key by name,
+   so removing it changes the recorded hashes and nothing else.
+
+   Registering the generation also breaks three assertions that pin the current one, which
+   land in the same transaction: `internal/project/version_test.go` asserts both that
+   `minVersionBySchema[27]` equals `Version` and that `ValidateSchemaMinimumVersion(28, ...)`
+   reports "no minimum", and `internal/migrate/dropworkflowtelemetry_test.go` pins
+   `Current()` at 27. The first survives unchanged because 28 maps onto the same version; the
+   unmapped-schema probe moves to 29 and the registry pin moves to 28.
 
 5. Reject a surviving key rather than tolerating it. `config.yaml` is strict-parsed, so an
    unmigrated tree hard-fails on the new binary with an actionable error naming the key.
@@ -100,10 +109,15 @@ the table at review time.
    naming a removed claim id hard-fails `awf check` in the same commit. They are
    `cmd/awf/check_test.go` for the advisory claim, and `internal/config/config_test.go`,
    `internal/config/edit_test.go`, and `internal/configspec/spec_test.go` for the configured
-   claim. One is asymmetric: the `internal/config/edit_test.go` marker sits on the
-   `SetMappingInteger` test, which must survive because item 6 keeps the historical migration
-   that uses that setter. Its marker is deleted without deleting the test, and its fixture
-   data stops using the retired key name.
+   claim. Only one test is deleted outright: `cmd/awf/check_test.go`'s claim-budget-note test,
+   together with its unmarked sibling asserting that the staged check suppresses the note,
+   which tests behaviour that no longer exists. The other three keep the test and lose only
+   the marker, because each also asserts something that survives: `internal/config/edit_test.go`
+   marks the `SetMappingInteger` test, which item 6's retained migration still uses;
+   `internal/config/config_test.go` also asserts `currentState` presence and absence and the
+   `maxTopicsPerPath` default; and `internal/configspec/spec_test.go` also asserts the
+   surviving `currentState` configspec key set. Fixture data that uses the retired key merely
+   as a sample nested key is rewritten to a surviving one.
 
 8. Add a topic-cohesion authoring rule to the `rules` section of the shipped
    `templates/docs/doc-standard.md.tmpl`. It directs the author to judge whether a topic's
@@ -124,11 +138,13 @@ the table at review time.
     shipped templates and therefore adopter-facing: `templates/docs/working-with-awf.md.tmpl`
     carries a paragraph describing the advisory and its explicit default, and
     `templates/docs/agents-md-standard.md.tmpl` carries a sentence on the note never
-    truncating a projection. The authored project sources are `.awf/docs/parts/testing/gate.md`
-    and its rendered `docs/testing.md`. The `./x render` sweep then regenerates the derived
-    surfaces, including `docs/agents-md-standard.md`, `docs/config-reference.md`, the two
-    topic docs, `docs/decisions/INDEX.md`, the `examples/sundial` renders of the same
-    templates, and both locks.
+    truncating a projection. The authored project sources include
+    `.awf/docs/parts/testing/gate.md` and the roadmap part item 12 withdraws; every edit is
+    made in the authored source, never in a generated file. The `./x render` sweep then
+    regenerates the derived surfaces, including `docs/testing.md`, `docs/roadmap.md`,
+    `docs/agents-md-standard.md`, `docs/config-reference.md`, the two topic docs,
+    `docs/decisions/INDEX.md`, the `examples/sundial` renders of the same templates, and both
+    locks.
 
 11. Add a `[Unreleased]` breaking-change entry to `changelog/CHANGELOG.md` naming the removed
     key, the withdrawn note, the new schema generation, and `awf upgrade` as the remedy for an
@@ -136,8 +152,9 @@ the table at review time.
     reasoning the severity-key removal applied.
 
 12. Withdraw the roadmap idea proposing to promote this advisory from a non-failing note to a
-    fixed blocking rank. Retiring the check makes the idea incoherent rather than merely
-    stale, so it is removed rather than rewritten.
+    fixed blocking rank, by deleting it from the authored part `.awf/docs/parts/roadmap/ideas.md`
+    rather than from its `docs/roadmap.md` render. Retiring the check makes the idea incoherent
+    rather than merely stale, so it is removed rather than rewritten.
 
 13. Mint no claim for the authoring rule or the review lens. Neither is mechanically
     enforceable, and minting a claim to describe advice is what inflates a claim population
