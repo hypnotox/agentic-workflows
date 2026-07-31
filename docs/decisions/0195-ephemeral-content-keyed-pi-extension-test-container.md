@@ -155,8 +155,9 @@ legacy container at a path that still exists, and with `stop` removed no command
 can. That remainder is the primary checkout's own container plus any long-lived checkout
 predating this decision, a handful at most, and each is cleared once by hand with
 `docker rm -f`. Buying that remainder is the price of never touching a container that might be
-backing a live gate, which is the right trade for a migration that happens once. Removing the unreachable
-`contract` subcommand is a deliberate capability removal recorded here rather than a silent one.
+backing a live gate, which is the right trade for a migration that happens once. Removing the
+unreachable `contract` subcommand is a deliberate capability removal recorded here rather than
+a silent one.
 
 This decision changes the claim that ADR-0123 established, which is what brings it here rather
 than into a routine refactor.

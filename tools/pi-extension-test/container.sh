@@ -47,6 +47,11 @@ reap_legacy_containers() {
     # an unknown path and is left alone. Guarding the assignments also matters
     # under set -e: an unguarded command substitution that exits non-zero aborts
     # the whole sweep silently, leaving every later object unreaped.
+    #
+    # The one asymmetry: `-d` cannot tell a missing path from an unsearchable one,
+    # so a recorded path under a parent the caller cannot traverse reads as gone.
+    # Every legacy path is under the caller's own tree or a world-searchable
+    # temporary directory, so this is assumed rather than handled.
     running="$("$docker_cmd" inspect -f '{{.State.Running}}' "$id" 2>/dev/null || echo true)"
     source="$(legacy_source_path "$id" || true)"
     if [ "$running" != true ] || { [ -n "$source" ] && [ ! -d "$source" ]; }; then

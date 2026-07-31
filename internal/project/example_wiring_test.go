@@ -1,10 +1,75 @@
 package project
 
 import (
+	"io/fs"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// The legacy sweep in container.sh is the one piece of ADR-0195 that can destroy
+// something: it removes containers, and a wrong predicate kills a gate running in
+// another checkout. Review found two defects in it that source-substring matching
+// could not have caught, so it is exercised behaviourally through the script's own
+// AWF_PI_TEST_DOCKER seam. The stub records every removal instead of performing one.
+func TestPiExtensionLegacySweepPredicate(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skipf("bash unavailable: %v", err)
+	}
+	dir := t.TempDir()
+	live := filepath.Join(dir, "live")
+	if err := os.MkdirAll(live, 0o755); err != nil {
+		t.Fatalf("make live source path: %v", err)
+	}
+	removed := filepath.Join(dir, "removed.log")
+	stub := filepath.Join(dir, "docker")
+	script := `#!/usr/bin/env bash
+[ "$1" = info ] && exit 0
+if [ "$1" = ps ]; then printf 'runlive\nrundead\nstopped\nvanished\n'; exit 0; fi
+if [ "$1" = inspect ]; then
+  id="${!#}"
+  [ "$id" = vanished ] && exit 1
+  case "$3" in
+    *State.Running*) if [ "$id" = stopped ]; then echo false; else echo true; fi ;;
+    *) if [ "$id" = rundead ]; then echo ` + filepath.Join(dir, "gone") + `; else echo ` + live + `; fi ;;
+  esac
+  exit 0
+fi
+if [ "$1" = rm ]; then echo "${!#}" >>` + removed + `; exit 0; fi
+exit 0
+`
+	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
+		t.Fatalf("write docker stub: %v", err)
+	}
+	cmd := exec.Command("bash", "../../tools/pi-extension-test/container.sh", "reset")
+	cmd.Env = append(os.Environ(), "AWF_PI_TEST_DOCKER="+stub)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		// A sweep that aborts leaves every later object unreaped, and an earlier
+		// defect made it abort silently on exactly the "vanished" case below.
+		t.Fatalf("reset must survive a container that vanishes mid-sweep: %v\n%s", err, out)
+	}
+	raw, err := os.ReadFile(removed)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("read removal log: %v", err)
+	}
+	got := map[string]bool{}
+	for _, id := range strings.Fields(string(raw)) {
+		got[id] = true
+	}
+	// ADR-0195 item 9: remove only when provably unused, and fail closed otherwise.
+	for id, want := range map[string]bool{
+		"runlive":  false, // running at a live path: could be backing another checkout's gate
+		"rundead":  true,  // recorded path is gone, so no new gate can start against it
+		"stopped":  true,  // not running
+		"vanished": false, // undescribable, so assumed live
+	} {
+		if got[id] != want {
+			t.Errorf("legacy sweep removed=%v for %q, want removed=%v", got[id], id, want)
+		}
+	}
+}
 
 // TestSundialCurrentStateMigrated pins the committed sundial fixture as a
 // current-state adopter after the Plan 4 cutover: it carries a currentState
@@ -193,27 +258,27 @@ func TestExampleAdoptsRunner(t *testing.T) {
 //
 // invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
-	extensions, err := os.ReadDir("../../.pi/extensions")
-	if err != nil {
-		t.Fatalf("read .pi/extensions: %v", err)
+	// Enumerate from the target descriptor, not from a directory walk, and check
+	// BOTH rendered roots. A walk cannot notice a governed file that stopped
+	// being rendered, and reading only this repository's root would miss the
+	// example adopter entirely, so the claim's "every governed file" would hold
+	// vacuously over whatever happened to be on disk.
+	governed := map[string]bool{}
+	for _, out := range piTarget.Outputs {
+		if strings.HasSuffix(out.Path, ".ts") {
+			governed[out.Path] = true
+		}
 	}
-	seen := 0
-	for _, dir := range extensions {
-		if !dir.IsDir() {
-			continue
-		}
-		files, err := os.ReadDir("../../.pi/extensions/" + dir.Name())
-		if err != nil {
-			t.Fatalf("read extension dir %s: %v", dir.Name(), err)
-		}
-		for _, file := range files {
-			if !strings.HasSuffix(file.Name(), ".ts") {
-				continue
-			}
-			path := "../../.pi/extensions/" + dir.Name() + "/" + file.Name()
+	if len(governed) == 0 {
+		t.Fatal("the Pi target declares no governed TypeScript extension output")
+	}
+	roots := []string{"../..", "../../examples/sundial"}
+	for _, root := range roots {
+		for rel := range governed {
+			path := root + "/" + rel
 			raw, err := os.ReadFile(path)
 			if err != nil {
-				t.Fatalf("read %s: %v", path, err)
+				t.Fatalf("read governed extension %s: %v", path, err)
 			}
 			lines := strings.Split(string(raw), "\n")
 			if len(lines) < 2 {
@@ -225,11 +290,30 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 			if lines[1] != "// @ts-nocheck" {
 				t.Errorf("%s must carry the ts-nocheck directive on the line immediately after the banner, got %q", path, lines[1])
 			}
-			seen++
 		}
-	}
-	if seen == 0 {
-		t.Fatal("found no governed Pi extension TypeScript file to check")
+		// The other direction: the recursive strip covers every .ts under the
+		// extensions root, so a file there that the descriptor does not declare
+		// would be stripped without this test ever checking its directive.
+		extRoot := root + "/.pi/extensions"
+		err := filepath.WalkDir(extRoot, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() || !strings.HasSuffix(path, ".ts") {
+				return nil
+			}
+			rel, relErr := filepath.Rel(root, path)
+			if relErr != nil {
+				return relErr
+			}
+			if !governed[filepath.ToSlash(rel)] {
+				t.Errorf("%s is stripped by the harness but is not a declared Pi target output", path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk %s: %v", extRoot, err)
+		}
 	}
 
 	// The harness must strip that exact directive in its ephemeral copy, after
