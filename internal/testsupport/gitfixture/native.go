@@ -194,6 +194,18 @@ func runNative(f Fixture, args ...string) (string, error) {
 
 // runGit runs git under the isolated environment, pinned to root when one is
 // given, and returns trimmed combined output.
+//
+// NO DEADLINE, DELIBERATELY, AND THIS IS WHERE A HANGING TEST LIVES. The seam's
+// runner (internal/git) refuses a context carrying no deadline, so a production
+// invocation blocked on a stale index.lock or a credential prompt fails fast.
+// This lane does not match that: a fixture builds state rather than serving a
+// caller who could bound it, and threading a context through every helper would
+// buy nothing a test binary's own timeout does not already provide. The cost is
+// diagnostic, not correctness: a fixture blocked on Git hangs until the Go test
+// timeout, and the panic dump points here rather than at a cause. If that
+// happens, suspect a stale index.lock under the fixture's temporary root, a Git
+// prompting despite the pins in nativeEnvironment, or a stalled TMPDIR - not a
+// deadlock in awf. See the pitfalls doc entry on the fixture lane's deadline.
 func runGit(root string, args ...string) (string, error) {
 	if root != "" {
 		args = append([]string{"-C", root}, args...)

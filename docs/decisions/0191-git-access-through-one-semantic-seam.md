@@ -128,8 +128,8 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    move the two ADR-0127 range-parser claims into the new topic as remove-plus-add
    operations whose re-added prose preserves ADR-0127's provenance by reference. The two
    proof markers at `internal/git/parserange_test.go:11,69` are rewritten to the new
-   qualified ids in the same commit. All ten operations apply in exactly one batch on a
-   direct Proposed-to-Implemented transition: because item 11 authors every claim as
+   qualified ids in the same commit. All eleven operations apply in exactly one batch on a
+   direct Proposed-to-Implemented transition: because item 12 authors every claim as
    completed reality, no partition into Applied and Remaining subsets is coherent, and
    the remove-plus-add pairs in particular are indivisible.
 
@@ -257,19 +257,41 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     alike are outside-internal dependencies). The false "purely through go-git"
     assertion at `cmd/awf/testmain_test.go:12` is corrected in the same pass.
 
-11. Claim backing: `all-access-via-seam` (production repo-walker; its allowlist is
+11. The fixture lane's environment isolation is a knowing duplicate, so it carries its own
+    obligation rather than resting on a reader noticing. `testsupport-zero-internal-deps`
+    forbids gitfixture from importing `internal/git`, so the native lane reimplements the
+    seam's isolation policy: strip every inherited `GIT_*` variable plus the credential and
+    prompt helpers, then pin the same set that makes an invocation independent of the host.
+    Under a decision whose subject is single-home ownership, an unguarded copy is the exact
+    failure the decision exists to prevent, and no existing mechanism can see it: the import
+    ban means no compiler edge, `awf check` reads no Go symbols, and `deadcode` skips test
+    packages. A `fixture-isolation-parity` claim therefore names the duplication and its
+    faithfulness obligation, backed by a test asserting the lane's full pinned set and its
+    stripping behaviour, so a divergence in either copy surfaces as a failure. One
+    divergence is deliberate and stays: the seam replays the developer's
+    `core.excludesFile` because it renders a working-tree oracle whose ignore universe must
+    match reality, while a fixture only builds state and is correct to be stricter. The
+    lanes also diverge on deadlines, and that one is accepted without a guard: the seam
+    refuses a deadline-less context structurally, while the fixture lane runs unbounded
+    because it serves no caller who could bound it. The cost is diagnostic rather than
+    correctness (a blocked fixture hangs to the test binary's timeout instead of failing
+    fast), and it is recorded in docs/pitfalls.md and at the call site so a future
+    investigation starts from the right place.
+
+12. Claim backing: `all-access-via-seam` (production repo-walker; its allowlist is
     `internal/git/**` plus the gitfixture carve-out), `fixture-single-home` (test-file
     repo-walker), `pinned-entrypoint-semantics` (the entrypoint inventory is pinned in
     one table-driven test that fails when a named entrypoint lacks a passing suite, so
     the claim asserts exactly what that table proves), and `isolated-deadlined-native`
     (direct runner tests: polluted-environment isolation, deadline refusal,
-    stderr-carrying errors) are `Backing: test`.
+    stderr-carrying errors), and `fixture-isolation-parity` (a table over the native lane's
+    pinned set and its stripping behaviour) are `Backing: test`.
     `one-implementation-per-entrypoint` and `single-cleanliness-oracle` are reasoned
     contracts with `Verify:` instructions. The moved range-parser claims keep their
     existing test backing. Because the conversion is whole, every claim is authored as a
     statement of completed reality with no new-or-converted qualifier.
 
-12. Application sequences after the two in-flight transactions that touch adjacent
+13. Application sequences after the two in-flight transactions that touch adjacent
     surfaces integrate: the severity-unification chain (branch
     `awf/drop-severity-settings-and-unify-the-rank`; its ADR numbers pin at integration)
     also edits `tooling/audit-and-snapshots`, and ADR-0180's plan owns
@@ -277,7 +299,7 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     also touches. ADR-0181's application (which this decision cites as authority) is part
     of the same ordering.
 
-13. Documentation travels with the conversion, in the same commits: the three
+14. Documentation travels with the conversion, in the same commits: the three
     docs/pitfalls.md entries that mandate the current API route (`OpenRepo` at the repo
     opens entry, the `GlobalExcludePatterns` injection instruction, and the gitfile
     resolution heading) are rewritten to name the seam entrypoints while their underlying
@@ -295,6 +317,7 @@ exists under `internal/git/`, so the path transfer is marker-safe.
 - add `tooling/git-access:isolated-deadlined-native`
 - add `tooling/git-access:single-cleanliness-oracle`
 - add `tooling/git-access:fixture-single-home`
+- add `tooling/git-access:fixture-isolation-parity`
 - remove `tooling/audit-and-snapshots:git-range-parser-single-definition`
 - remove `tooling/audit-and-snapshots:git-range-rejects-malformed`
 - add `tooling/git-access:git-range-parser-single-definition`
@@ -339,7 +362,7 @@ unexported or deleted in the same transaction, which the plan sequences.
 The claim moves reattribute `Origin` for the two range-parser claims to this ADR, with
 ADR-0127 preserved by reference; readers of ADR-0127 need this ADR for where its claims
 now live. Narrowing `tooling/audit-and-snapshots` while the severity chain edits the same
-topic makes integration ordering load-bearing; item 12 records it, and the worktree
+topic makes integration ordering load-bearing; item 13 records it, and the worktree
 integration step resolves it mechanically rather than by merge improvisation.
 
 This decision widens `internal/git`'s content while the designated decomposition decision

@@ -22,7 +22,7 @@ together with its consumers so every phase is reachable, covered, and green: run
 control-root internals; the handle with object reads and the open/deadline path; the
 commit-range walk with the audit tools; the effort/worktree composition with lifecycle and
 cleanliness. Phase 6 reshapes the fixture lane. Phase 7 lands the repo-walking proofs,
-applies all twelve claim operations in the two ADRs' declared transactions, updates the
+applies all thirteen claim operations in the two ADRs' declared transactions, updates the
 obligated docs, and flips both ADRs and this plan.
 
 ## File structure
@@ -446,7 +446,15 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   `internal/git/entrypoints_test.go`: enumerates every exported `Repo` method plus the
   free entrypoints (the Notes' exhaustive list) and fails when one lacks a registered
   contract-suite function (a map from entrypoint name to suite function, complete by
-  construction).
+  construction). In `internal/testsupport/gitfixture`, replace the single-clause
+  `TestNativeLaneIsolation` with a table over the native lane's whole isolation policy:
+  every inherited `GIT_*` variable plus the credential and prompt helpers is stripped from
+  a deliberately hostile environment, and each pinned value is present with the expected
+  setting. This is the proof carrier for `fixture-isolation-parity` (ADR-0191 item 11), so
+  it must fail if any single pin or the strip is removed; verify that by mutation, one pin
+  at a time, before placing the marker. Do NOT bound the lane's invocations with a
+  deadline: the asymmetry with the seam's runner is deliberate and is instead recorded at
+  `runGit` and in the pitfalls doc.
 - [ ] **Task 7.2: Apply ADR-0181's operations and anchors.** Author the two claims in
   `.awf/topics/parts/code-design/single-home/current-state.md` per ADR-0181 items 2-5
   (`single-implementation` encoding items 2 and 3, including the reasoned-divergence and
@@ -456,10 +464,11 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   backfilling the current catalog defaults each list replaces; extend
   `.awf/parts/workflow/chain.md` to name the topic beside its siblings; add a
   `single home` entry to `.awf/docs/glossary.yaml`.
-- [ ] **Task 7.3: Apply ADR-0191's ten operations in one batch.** In
-  `.awf/topics/parts/tooling/git-access/current-state.md`: author the six new claims per
-  ADR-0191 item 11 (four `Backing: test` with proof markers placed on the seam walker,
-  the fixture walker, the entrypoint-table test, and the runner suite; two
+- [ ] **Task 7.3: Apply ADR-0191's eleven operations in one batch.** In
+  `.awf/topics/parts/tooling/git-access/current-state.md`: author the seven new claims per
+  ADR-0191 item 12 (five `Backing: test` with proof markers placed on the seam walker,
+  the fixture walker, the entrypoint-table test, the runner suite, and the native-lane
+  isolation table that proves `fixture-isolation-parity`; two
   `Backing: unbacked` with `Verify:` lines), and re-add the two range-parser claims
   (`Origin: ADR-0191`, prose preserving ADR-0127 by reference, existing test backing).
   Remove the two range-parser claims from
@@ -478,7 +487,7 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   failure mode, and the `CommandError` error-shape change.
 - [ ] **Task 7.5: Flip and freeze.** Apply the direct Proposed-to-Implemented transition
   to both ADRs per the `awf-adr-lifecycle` skill: each ADR appends one batch (ADR-0181's
-  two adds; the git-seam ADR's ten operations), the two batches taking the next two
+  two adds; the git-seam ADR's eleven operations), the two batches taking the next two
   consecutive global state-sequence values awf reports at execution time (never a
   literal number - the counter is repo-global and concurrent efforts advance it), with
   frozen content digests on both status events. ADR-0181's claims from Task 7.2 land in
@@ -496,7 +505,7 @@ refactor(code-design): apply single-home and git-access authority
 
 - `./awf check` and `./x gate` clean at every phase close; at Phase 7 close both
   walkers and the entrypoint table are green, `./awf topic tooling/git-access` lists
-  the eight claims with their backing, and `./awf topic tooling/audit-and-snapshots` no
+  the nine claims with their backing, and `./awf topic tooling/audit-and-snapshots` no
   longer lists the range-parser claims.
 - `grep -rn "context.Background()" cmd internal --include=*.go | grep -v _test` returns
   no output.
@@ -599,3 +608,12 @@ refactor(code-design): apply single-home and git-access authority
   other nonzero exit, because a fault previously satisfied a must-be-absent assertion
   for the wrong reason and this settlement made it load-bearing in the positive
   direction too; and a duplicated `initWorktreeRepo` doc comment collapsed to one.
+- User decisions (2026-07-31, after the Phase 6 review): the fixture lane's duplicate of
+  the seam's environment isolation gains a backed claim rather than resting on a reader
+  noticing it, so ADR-0191 is amended with a `fixture-isolation-parity` operation (its
+  eleventh) and item 11, and Task 7.1 gains the proving table. The lanes' OTHER divergence,
+  the fixture running without a deadline where the seam structurally refuses one, is
+  accepted as-is and deliberately NOT guarded; it is recorded instead at `runGit` and as a
+  docs/pitfalls.md entry, because its cost is diagnostic (a blocked fixture hangs to the
+  test binary's timeout rather than failing fast) and the note is what a future
+  investigation needs to start in the right place.
