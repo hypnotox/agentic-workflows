@@ -264,8 +264,8 @@ func LoadOptional(path string) (*Lock, bool, error) {
 // 0o644 (CreateTemp's 0o600 is widened before the rename). On error the temp
 // file is best-effort removed. Rename-only durability - no fsync - per
 // ADR-0076 Decision 1; Go's os.Rename replaces an existing destination on
-// every supported OS including Windows.
-// touches-state: config/migrations-and-locks:lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
+// every supported OS including Windows. It delegates to WriteFileAtomicMode,
+// which performs the write.
 func WriteFileAtomic(path string, data []byte) error {
 	return WriteFileAtomicMode(path, data, 0o644)
 }
@@ -274,6 +274,7 @@ func WriteFileAtomic(path string, data []byte) error {
 // caller restoring a file whose recorded permissions must survive the write.
 // The mode is applied to the temp file before the rename, so the replacement is
 // never briefly observable with the wrong permissions.
+// touches-state: config/migrations-and-locks:lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
 func WriteFileAtomicMode(path string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".awf-atomic-*")

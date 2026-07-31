@@ -66,9 +66,6 @@ func TestRunUpgradeGateStateError(t *testing.T) {
 	}
 }
 
-// writeValidJournal writes a minimal valid single-op (lock) journal in the given
-// phase. When finalMatchesLock, its final hash matches the on-disk lock so
-// recovery treats it as committed and cleans it up.
 // journalPresence answers upgrade.JournalPresent for the tests that assert
 // presence or absence and expect no fault reading it.
 func journalPresence(t *testing.T, root string) bool {
@@ -80,6 +77,9 @@ func journalPresence(t *testing.T, root string) bool {
 	return found
 }
 
+// writeValidJournal writes a minimal valid single-op (lock) journal in the given
+// phase. When finalMatchesLock, its final hash matches the on-disk lock so
+// recovery treats it as committed and cleans it up.
 func writeValidJournal(t *testing.T, root, phase string, finalMatchesLock bool) {
 	t.Helper()
 	lockPath := config.LockPath(root)
