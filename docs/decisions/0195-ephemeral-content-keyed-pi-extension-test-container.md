@@ -36,7 +36,7 @@ path beside its digest, so the resulting `dep_hash` varies with the absolute pat
 checkout. The primary checkout fingerprints to `5d3629f6f19e` and a managed worktree of the
 same commit to `341fafc8a239`. No two paths ever share an image or a dependency volume, and
 each one runs its own full `npm ci` build. That is why 51 images exist: by image size they
-collapse to only four genuine dependency states.
+collapse to only four genuine dependency states, at roughly 570 MB, 550 MB, 548 MB, and 707 MB.
 
 The per-run source copy races concurrent git activity. The prepare step runs
 `cp -a /source/. /workspace/repo/` where `/source` is a read-only bind mount of the whole
@@ -53,6 +53,9 @@ tree. What the suite compiles and runs is about 470 KB, because
 Copying the host `node_modules` additionally breaks the isolation the lane exists to provide:
 it lands nearer the test files than the repository-root symlink, so Node resolves the host
 tree first and the suite does not necessarily run against the dependencies the image pinned.
+This also explains a failure class the pitfalls entry currently attributes to the git race:
+a module-resolution failure out of a nested `node_modules` is what a copied host tree
+produces, and it has a different cause and a different fix from a partially copied checkout.
 
 The constraint that shaped the choice is concurrency. Any cleanup that widens beyond the
 current path can delete an object belonging to a gate running concurrently in another
@@ -94,7 +97,10 @@ container startup it adds.
    leaves nothing to stop. `reset` prunes the lane's images, and additionally removes
    containers and volumes left behind by the superseded path-keyed design.
 10. The `contract` subcommand is removed. `./x` routes only `run`, `stop`, and `reset`, and
-    nothing in the repository invokes `contract`, so it is unreachable today.
+    nothing in the repository invokes `contract`, so it is unreachable today. This removal is
+    incidental to rewriting the script rather than motivated by the defects above, and is
+    recorded as a numbered commitment so that a deliberate capability removal is not mistaken
+    for an accidental one.
 11. The Dockerfile no longer installs git. No dependency resolves through a git protocol URL
     and nothing in the suite shells out to git.
 
@@ -122,6 +128,16 @@ would not recover this component. Two concurrent cold gates can both build the s
 tolerates this, both succeed, and the layer cache makes the second cheap, so no lock is
 introduced. `reset` during a concurrent gate untags an image the running container still holds
 layers for, so the in-flight run completes and the next one rebuilds.
+
+Implementing this decision falsifies documentation that must travel in the same commit. The
+command-runner reference at `.awf/docs/parts/development/command-runner.md` describes the
+persistent container, the `stop` subcommand, and the repo-keyed container, volume, and image,
+and must be rewritten for the ephemeral content-keyed lane and re-rendered. The pitfalls entry
+covering the copy race records three failure classes that this decision removes: the partial
+checkout produced by copying `.git` under concurrent git activity, the nested `node_modules`
+module-resolution failure that the copied host tree actually caused, and the contention between
+a concurrent gate and `TestPiRealRuntimeSmoke` over one shared persistent container. That entry
+is retired or rewritten to whatever remains true, such as concurrent image builds.
 
 Operationally, this decision creates a one-time cleanup of the objects the superseded design
 left behind, and the `reset` command is extended to perform it. Removing the unreachable
