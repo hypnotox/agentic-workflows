@@ -400,8 +400,12 @@ feat(rendering): model glossary terms as records
 
   `glossary-standard-vocabulary` (`Origin: ADR-0198`, `Backing: test`): the rendered glossary merges
   the catalog's shipped standard vocabulary with the project's authored terms into one sorted table,
-  a project term overriding a shipped term of the same case-insensitive name, while a duplicate term
-  within either layer fails the render.
+  a project term overriding a shipped term of the same case-insensitive name.
+
+  Deliberately stop there. The within-layer duplicate failure belongs to
+  `glossary-terms-validated`, which task 2.8 already words layer-aware; restating it here would put
+  the same property in two claims of one topic, and task 3.5 specifies no test asserting a duplicate
+  inside the shipped layer, so the restatement would be the unbacked half.
 
   `glossary-standard-terms-portable` (`Origin: ADR-0198`, `Backing: test`): every shipped standard
   term carries exactly a string term and a string meaning, with no domains key, no ADR reference,
@@ -438,6 +442,11 @@ feat(rendering): model glossary terms as records
   Add a clause stating that a term here overrides a shipped standard term of the same
   case-insensitive name. Per ADR-0198 decisions 2 and 3 that override is the *only* way to remove
   an unwanted shipped term, so an adopter who does not read it has no mechanism at all.
+
+  Name the shipped layer descriptively ("the standard vocabulary awf ships"), never as the
+  `standardTerms` key. The residue check bans only ADR citations and repo identity, so naming the
+  key would pass the gate and still publish, in the adopter's config reference, a key that
+  ADR-0198 decisions 3 and 4 make `unused-data` drift the moment an adopter authors it.
 
   Keep both free of ADR citations and repo identity (`configspec-description-residue`). Docs travel
   with the change: this belongs in the phase that ships the layer, not phase 4.
