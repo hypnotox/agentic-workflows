@@ -164,3 +164,35 @@ func TestMarkerPayloadClosingToken(t *testing.T) {
 		t.Fatal("missing close")
 	}
 }
+
+// A proof marker may carry a trailing name; a state marker may not. Nothing reads
+// the name yet, so this pins the grammar the corpus migration depends on.
+func TestBuildMarkerIndexAcceptsAnOptionalProofName(t *testing.T) {
+	for _, payload := range []string{
+		"// invariant: alpha/contracts:stable (TestStable)\n",
+		"// invariant: alpha/contracts:stable (it('strips the header'))\n",
+		"// invariant: alpha/contracts:stable (T)\n",
+		"// invariant: alpha/contracts:stable\n",
+	} {
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), payload)
+		idx, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+		if err != nil {
+			t.Fatalf("payload %q rejected: %v", payload, err)
+		}
+		sites := idx.ForClaim("alpha/contracts:stable")
+		if len(sites) != 1 || sites[0].Kind != ProofMarker {
+			t.Errorf("payload %q resolved to %+v, want one proof site", payload, sites)
+		}
+	}
+
+	// A named state marker is not a state marker with a note: the name group belongs
+	// to the proof expression alone, so this falls through to malformed.
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// state: alpha/contracts:rule (TestThing)\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable\n")
+	_, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+	if err == nil || !strings.Contains(err.Error(), "malformed current-state marker") {
+		t.Fatalf("named state marker: err = %v, want malformed current-state marker", err)
+	}
+}
