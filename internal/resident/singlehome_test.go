@@ -19,7 +19,7 @@ import (
 // deliberately absent - its ResidentName constants are the git seam's own
 // spelling, decided untouched by ADR-0194 item 7 and recorded there as a
 // tolerated parallel.
-var consumerPatterns = []string{"./internal/project", "./cmd/..."}
+var consumerPatterns = []string{"./internal/project/...", "./cmd/..."}
 
 // loadConsumerPackages loads the production sources of every package that
 // consumes resident policy (tests excluded), optionally overlaying one file so
@@ -47,6 +47,21 @@ func loadConsumerPackages(t *testing.T, overlay map[string][]byte) []*packages.P
 		if len(pkg.Errors) != 0 {
 			t.Fatal(pkg.Errors[0])
 		}
+	}
+	// Each pattern half must resolve to real packages: a pattern that silently
+	// matches nothing would leave half the claimed scope unscanned while the
+	// aggregate check above stays green.
+	var hasProject, hasCmd bool
+	for _, pkg := range pkgs {
+		if strings.Contains(pkg.PkgPath, "/internal/project") {
+			hasProject = true
+		}
+		if strings.Contains(pkg.PkgPath, "/cmd/") {
+			hasCmd = true
+		}
+	}
+	if !hasProject || !hasCmd {
+		t.Fatalf("a consumer pattern matched no packages (project=%v cmd=%v)", hasProject, hasCmd)
 	}
 	return pkgs
 }
@@ -140,8 +155,13 @@ func residentSingleHomeFindings(pkgs []*packages.Package, names map[string]bool)
 // package's exported accessors. internal/git is out of scope by decision.
 //
 // The detector matches string literals and struct-type declarations only - a
-// root name assembled at runtime from fragments, or read out of configuration,
-// stays invisible to it; extend the shapes if one ever appears.
+// root name assembled at runtime from fragments, read out of configuration, or
+// buried inside a longer below-root path literal (".awf/efforts/sub") stays
+// invisible to it; extend the shapes if one ever appears. The claim's middle
+// clause (core consumes the set through the Roots value constructed once at
+// project open) is carried by internal/project's state-ownership scanner,
+// which pins every Project field, roots included, to construction; this test
+// proves the spelling and shape halves.
 // invariant: rendering/project-output-plan:resident-policy-single-home
 func TestResidentPolicyHasOneHome(t *testing.T) {
 	names := map[string]bool{}

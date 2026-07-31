@@ -123,9 +123,8 @@ func CollisionsAt(root string, planned []string) ([]string, error) {
 }
 
 type UninstallReport struct {
-	Removed           int
-	PreservedRoots    []string
-	ResidentPreserved bool // compatibility summary for callers; roots are authoritative.
+	Removed        int
+	PreservedRoots []string
 }
 
 // InspectRoots examines direct children only. It never traverses a
