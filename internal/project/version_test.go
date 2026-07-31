@@ -3,6 +3,8 @@ package project
 import (
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
 
 // invariant: config/migrations-and-locks:schema-min-version
@@ -12,8 +14,13 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 			t.Errorf("schema %d at minimum %s: %v", schema, minimum, err)
 		}
 	}
-	if got := minVersionBySchema[27]; got != Version {
-		t.Fatalf("generation-27 minimum version = %q, want %s", got, Version)
+	// Derived from the registry rather than a literal generation: the loop above
+	// compares each minimum against itself and so can never fail, and a
+	// hard-coded generation stops naming the current one the moment a migration
+	// registers. Pinning migrate.Current() keeps this assertion pointed at the
+	// generation the claim is about, on every future bump.
+	if got := minVersionBySchema[migrate.Current()]; got != Version {
+		t.Fatalf("generation-%d minimum version = %q, want %s", migrate.Current(), got, Version)
 	}
 	if got := minVersionBySchema[20]; got != "0.24.0" {
 		t.Fatalf("generation-20 minimum version = %q, want 0.24.0", got)
@@ -26,7 +33,7 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	if err := ValidateSchemaMinimumVersion(22, "0.25.0"); err == nil || !strings.Contains(err.Error(), "requires awf 0.26.0") {
 		t.Fatalf("generation-22 older binary error = %v", err)
 	}
-	if err := ValidateSchemaMinimumVersion(29, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
+	if err := ValidateSchemaMinimumVersion(migrate.Current()+1, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
 		t.Fatalf("unmapped schema error = %v", err)
 	}
 }
