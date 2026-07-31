@@ -196,6 +196,15 @@ floor, and false-positive risk on citations that do not amend. Worth its own
 focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
 the natural shape of the fix.
 
+## The test suite leaks temp homes on interrupted runs
+
+An interrupted `go test` run orphans `awf-project-test-home*` directories in the system temp
+dir (13 stale ones found on 2026-07-31 while diagnosing a full 16G tmpfs; the sibling leak,
+the gate's mktemp coverage profile at ~45MB per interrupted run, was fixed structurally by
+ADR-0196's durable `coverage.out`). `t.TempDir` cannot clean up across a kill. Low priority:
+either a periodic cleanup note or naming the fixture dirs under one parent so a stale sweep
+is one `rm`.
+
 ## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
 
 Neither subcommand is invoked by any hook payload, runner step, or CI job in this

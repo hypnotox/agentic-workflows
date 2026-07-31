@@ -26,7 +26,11 @@ fold it into the first replayed commit's conflict resolution (git rename detecti
 the later commits' edits onto the new path); during a merge, rename and update references
 before the merge commit. The decompose effort hit this twice in one day (0191 to 0194 at
 rebase, 0194 to 0195 at integration); the first attempt as a post-rebase commit was
-structurally refused and forced a redo of the whole rebase.
+structurally refused and forced a redo of the whole rebase. The workflow-friction effort
+hit the same double renumber the same day (0194/0195 to 0195/0196 at rebase, then to
+0196/0197 at integration when main took 0195 in between). One fact makes the fold cheap:
+the content digest excludes frontmatter and the H1 title, so a renumber that edits only
+the heading leaves every Implementing/Implemented stamp valid with no Amended event owed.
 
 ## An applied claim's prose only changes beside an update operation, so prose findings rewrite the phase commit
 
@@ -1002,6 +1006,14 @@ non-effort work in the primary checkout, two sessions inside one checkout or wor
 and the effort-owned memory files that always live under the primary `.awf/efforts/`.
 The live hazard shape under the worktree-default topology is different - a
 primary-checkout path silently splitting a worktree transaction - and has its own entry.
+
+**Sixth occurrence, 2026-07-31, hours after the scope note above was written, inside one
+of its named residual cases.** Integration runs in the primary checkout, and resolving the
+divergent merge with `git add -A` swept a concurrent session's uncommitted prose-exemption
+edit into the merge commit undisclosed; the renewed terminal review caught it. Merge
+resolution is not exempt from the pathspec rule: stage the resolved conflict paths and
+your own renumber edits by name, and run a fresh `git status` first, because integration
+is precisely the moment two sessions' work meets in one index.
 
 ## Link ADRs by their on-disk filename, never by constructing one from the title
 
