@@ -97,8 +97,9 @@ container startup it adds.
    leaves nothing to stop. `reset` prunes the lane's images, and additionally removes
    containers and volumes left behind by the superseded path-keyed design. That legacy sweep
    removes a container only when it is provably unused: either the container is not running,
-   or the source path recorded in its bind mount no longer exists, which proves no gate can be
-   running against it. A running container whose source path still exists belongs to a checkout
+   or the source path recorded in its bind mount no longer exists, which proves no new gate can
+   be started against it and leaves at most an execution already failing on its vanished
+   source. A running container whose source path still exists belongs to a checkout
    that has not yet adopted this decision, and is left for that checkout to remove. Without
    this restriction the sweep would reintroduce, for the duration of the migration, exactly the
    cross-worktree deletion that item 8 rules out.
@@ -162,7 +163,8 @@ for both. Only the first is a `State changes` operation, because only its prose 
 the strip claim describes the strip as happening after the source copy and before the
 TypeScript compiler, which the narrow copy preserves, so its text stays true and only its
 backing is repaired. The general problem, that a proof marker can outlive the test it was
-proving without the drift check noticing, is out of scope here and is tracked on its own.
+proving without the drift check noticing, is out of scope here; the deferred section of
+`docs/roadmap.md` carries it as the durable record, alongside the related nominal-proof case.
 
 ## Alternatives Considered
 
