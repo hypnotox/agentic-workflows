@@ -452,12 +452,16 @@ final batch and lands with the terminal-review flip transaction, not here.
      `^gitdir: (.+)$` on its first line, else throw
      `new Error("handoff root has an unreadable worktree .git file")`. Resolve the
      captured path against `rendered` when relative.
-  4. The resolved gitdir must have `worktrees` as its second-to-last path segment and a
-     segment named `.git` as its third-to-last; otherwise throw the same error. The
-     primary root is the parent directory of that `.git` segment (three segments up
-     from the gitdir leaf).
-  5. Any other `.git` shape (a symlink, or an lstat that rejects) falls through and
-     returns `rendered`; the existing
+  4. A resolved gitdir with `worktrees` as its second-to-last path segment and a
+     segment named `.git` as its third-to-last is a linked worktree: the primary root
+     is the parent directory of that `.git` segment (three segments up from the gitdir
+     leaf). Any other well-formed gitdir shape (a submodule's `.git/modules/<name>`, a
+     `--separate-git-dir` clone) falls through and returns `rendered`, which is the
+     correct repository root in those layouts (settled during terminal review; the
+     throw is reserved for a `.git` file whose first line carries no `gitdir:`
+     pointer).
+  5. Any other `.git` shape (a symlink, a foreign-owned marker, or an lstat that
+     rejects) falls through and returns `rendered`; the existing
      `const git = await deps.lstat(deps.path.resolve(repositoryRoot, ".git"))`
      identity check in `validateMemoryPath` then rejects it with
      "memoryPath repository identity is unsafe" exactly as today.
@@ -468,9 +472,10 @@ final batch and lands with the terminal-review flip transaction, not here.
   existing validateMemoryPath fixtures: (a) with `extensionFile` under a simulated
   linked worktree whose `.git` file points at `<primary>/.git/worktrees/<name>`, a
   memory file under the primary root validates and returns the canonical
-  repository-relative path; (b) a `.git` file with no `gitdir:` line, and one whose
-  gitdir does not end in `.git/worktrees/<name>`, both reject with the
-  unreadable-root error; (c) the existing primary-root cases pass unchanged.
+  repository-relative path; (b) a `.git` file with no `gitdir:` line rejects with the
+  unreadable-root error, while a well-formed non-worktree gitdir (submodule
+  `.git/modules/<name>`) falls through to the rendered root (settled during terminal
+  review); (c) the existing primary-root cases pass unchanged.
 - [ ] Task 4.3: Run `./x render` so `.pi/extensions/awf-handoff/` and
   `examples/sundial/.pi/extensions/awf-handoff/` regenerate, then `./x gate`;
   expected: green, including the pi-extension-test tier.
