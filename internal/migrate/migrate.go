@@ -143,16 +143,17 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 		// historical config without it does not merely lack a value: it fails
 		// Validate, and the whole before-side load a transition check depends
 		// on aborts. Seeding exactly what the migration writes is the faithful
-		// port-forward. A config that somehow already carries the key keeps its
-		// own value.
+		// port-forward, which is why the question asked here is the migration's
+		// own: a key carrying a value keeps it, and a key that is absent, null,
+		// or empty is seeded, because the migration would have written all three.
 		if migration.To == integrationBranchGeneration {
-			present, err := config.HasKey(out, "integrationBranch")
+			valued, err := config.HasValue(out, "integrationBranch")
 			if err != nil {
 				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 			}
-			if !present {
+			if !valued {
 				out, err = config.SetString(out, "integrationBranch", "main")
-				if err != nil { // coverage-ignore: HasKey parsed these same bytes as a mapping one statement above, so SetString cannot fail here
+				if err != nil { // coverage-ignore: HasValue parsed these same bytes as a mapping one statement above, so SetString cannot fail here
 					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 				}
 			}

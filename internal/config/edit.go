@@ -312,18 +312,23 @@ func HasMapping(src []byte, key string) (bool, error) {
 	return val != nil && val.Kind == yaml.MappingNode, nil
 }
 
-// HasKey reports whether src carries a top-level key at all, whatever its
-// value, so a caller can distinguish an absent key from a present-but-empty
-// one without parsing config.yaml itself (ADR-0026 keeps that knowledge here).
-// It is the flat-scalar sibling of HasMapping, which answers the narrower
-// question of whether a present key holds a mapping.
-func HasKey(src []byte, key string) (bool, error) {
+// HasValue reports whether src carries a top-level key holding a non-empty
+// scalar, without parsing config.yaml itself (ADR-0026 keeps that knowledge
+// here). It is the flat-scalar sibling of HasMapping, which answers the
+// narrower question of whether a present key holds a mapping.
+//
+// Emptiness rather than presence is deliberate: the callers are the schema
+// migration that seeds a required key and the port-forward that must reproduce
+// it, and both must treat `key:` with a null or empty value the same way they
+// treat an absent key. A present-but-empty key is not a value to preserve; it
+// is the same failed validation an absent one produces.
+func HasValue(src []byte, key string) (bool, error) {
 	_, root, err := parseMapping(src)
 	if err != nil {
 		return false, err
 	}
-	_, vi := mapValue(root, key)
-	return vi >= 0, nil
+	val, _ := mapValue(root, key)
+	return val != nil && val.Value != "", nil
 }
 
 func boolScalar(v string) *yaml.Node {

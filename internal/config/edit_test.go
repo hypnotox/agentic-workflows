@@ -116,22 +116,25 @@ func TestSetString(t *testing.T) {
 	}
 }
 
-// HasKey answers presence, not emptiness: a key with an empty or null value is
-// present, an absent key is not, and a malformed document errors.
-func TestHasKey(t *testing.T) {
+// HasValue answers emptiness, not presence: only a key carrying a non-empty
+// scalar counts, so a null or empty value reads the same as an absent key -
+// which is what makes the port-forward seed exactly what the migration writes.
+// A malformed document errors.
+func TestHasValue(t *testing.T) {
 	for _, tc := range []struct {
 		name, src, key string
 		want, wantErr  bool
 	}{
 		{name: "present with value", src: "integrationBranch: main\n", key: "integrationBranch", want: true},
-		{name: "present but empty", src: "integrationBranch: \"\"\n", key: "integrationBranch", want: true},
-		{name: "present but null", src: "integrationBranch:\n", key: "integrationBranch", want: true},
+		{name: "present but empty", src: "integrationBranch: \"\"\n", key: "integrationBranch"},
+		{name: "present but null", src: "integrationBranch:\n", key: "integrationBranch"},
 		{name: "absent", src: "prefix: x\n", key: "integrationBranch"},
 		{name: "nested key does not count", src: "currentState:\n  integrationBranch: main\n", key: "integrationBranch"},
+		{name: "mapping value is not a scalar value", src: "integrationBranch:\n  nested: main\n", key: "integrationBranch"},
 		{name: "malformed", src: "prefix: [\n", key: "integrationBranch", wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := HasKey([]byte(tc.src), tc.key)
+			got, err := HasValue([]byte(tc.src), tc.key)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("expected a parse error")
@@ -142,7 +145,7 @@ func TestHasKey(t *testing.T) {
 				t.Fatal(err)
 			}
 			if got != tc.want {
-				t.Errorf("HasKey = %v, want %v", got, tc.want)
+				t.Errorf("HasValue = %v, want %v", got, tc.want)
 			}
 		})
 	}
