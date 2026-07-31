@@ -195,6 +195,11 @@ query a single version or a range.
 - Divergent effort-integration guidance now derives the project gate command from `vars.gateCmd` and uses generic project-gate prose when that value is unavailable.
 - Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.
 - Managed effort worktrees now support current-user-owned checkouts beneath system-owned filesystem ancestors while retaining ancestor symlink, resident ownership, and repository-identity protections.
+- `awf context` no longer reports an in-flight decision record as frozen. It derived mutability from
+  whether the record was still Proposed, which stopped being the amendability rule once a
+  current-state-v2 body became amendable through Accepted and Implementing, freezing only at a
+  terminal status. Those two statuses now report `mutable`; terminal records, and every
+  current-state-v1 record outside Proposed, are unchanged.
 
 ## [0.22.0] - 2026-07-24
 
