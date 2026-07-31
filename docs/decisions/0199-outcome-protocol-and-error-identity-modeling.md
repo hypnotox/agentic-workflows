@@ -7,15 +7,18 @@ date: 2026-07-31
 
 ## Context
 
-awf carries outcome identity in message text. The 2026-07-30 code-design audit
-(docs/research/code-design-audit-2026-07-30.md) measured zero exported error types or
-sentinels in the five largest packages, compensated by more than three hundred
-`strings.Contains` assertions on error text across fifteen test packages. The typed errors
-that do exist are mostly never matched: `worktree.RefusalError`, `effort.CorruptError`
-(internal/effort/service.go), and the context-facet error now living in
-`internal/contextq/context_paths.go` have no `errors.As` consumer between them.
+awf carries outcome identity in message text at nearly every error construction site,
+compensated by more than three hundred `strings.Contains` assertions on error text across
+fifteen test packages (2026-07-30 code-design audit,
+docs/research/code-design-audit-2026-07-30.md; its five-largest-package framing predates the
+ADR-0195 decomposition of `internal/project`). Outside `internal/git` the corpus holds three
+exported error types, `worktree.RefusalError`, `effort.CorruptError` (declared at
+internal/effort/store.go:31), and the context-facet error now living in
+`internal/contextq/context_paths.go`, and no `errors.As` consumer matches any of them: the
+only production `errors.As` sites in the current tree are cmd/awf/main.go:272 and four sites
+inside `internal/git` (lifecycle.go:104, controlroot.go:542, runner.go:95 and :133).
 `git.CommandError` and `git.HardSafetyError` are the counter-examples done right: both carry
-`Unwrap`, and `internal/git/lifecycle.go:103` branches on `CommandError` through `errors.As`.
+`Unwrap`, and `internal/git/lifecycle.go:104` branches on `CommandError` through `errors.As`.
 
 Stdlib condition matching is split. Production code holds 34 call sites of the shallow
 `os.IsNotExist`/`os.IsExist`/`os.IsPermission` predicates alongside roughly as many
@@ -27,12 +30,13 @@ see through them, and feeds five call sites.
 
 The strongest existing outcome model is `internal/worktree`.
 `RefusalError{Category, Condition, ChangedTopology, NextAction, Err}`
-(internal/worktree/topology.go:15) with its `refusal` and `refusalCause` constructors has 27
-production construction calls, and `Result{Condition, ChangedTopology, NextAction}`
-(internal/worktree/manager.go:45) is its deliberate success-side counterpart: the `next
-action:` vocabulary is not failure-only, since `cmd/awf/effort.go` prints it on a
-partial-finish success path with two changed axes (`changed active rename`, `changed
-cleanup`). The corpus also honours a latent rule nobody wrote down: when no axis moved, the
+(internal/worktree/topology.go:15) with its `refusal` and `refusalCause` constructors has 25
+production call sites in the current tree (the effort's derivation measured 24 constructor
+calls plus 5 success-side constructions), and `Result` (internal/worktree/manager.go:45) is
+its deliberate success-side counterpart, carrying the same `Condition`, `ChangedTopology`,
+and `NextAction` trio alongside its `Path` and `Branch` payload: the `next action:`
+vocabulary is not failure-only, since `cmd/awf/effort.go` prints it on a partial-finish
+success path with two changed axes (`changed active rename`, `changed cleanup`). The corpus also honours a latent rule nobody wrote down: when no axis moved, the
 remedy addresses only the observed condition; when any axis moved, the remedy addresses the
 residue before retrying. Every existing site obeys it.
 
@@ -55,55 +59,72 @@ than sweep debt.
    every claim sentence carries its "new or deliberately converted" qualifier inline, not
    only in the topic's applicability paragraph.
 
-2. Surface refusals and partial progress through the actionable outcome protocol, derived
-   from all existing `internal/worktree` sites rather than designed fresh. A conforming
-   outcome carries: `Category`, a closed vocabulary of state kinds; `Condition`, a
-   present-tense statement of the observed state, never a restatement of what the command
-   attempted, where a failed mechanism call is itself an observed state whose detail rides
-   along as the cause; `Changed`, one boolean observation per axis whose movement would make
-   a naive retry unsafe, an observation of reality rather than an assertion of intent;
-   `Steps`, an ordered remedy list whose entries are each independently executable; and
-   `Cause`, present exactly when the condition observes a failed call.
+2. Surface new or deliberately converted refusals and partial progress through the
+   actionable outcome protocol, derived from all existing `internal/worktree` sites rather
+   than designed fresh. A conforming outcome carries: `Category`, a closed vocabulary of
+   state kinds; `Condition`, a present-tense statement of the observed state, never a
+   restatement of what the command attempted, where a failed mechanism call is itself an
+   observed state whose detail rides along as the cause; `Changed`, one boolean observation
+   per axis whose movement would make a naive retry unsafe, an observation of reality
+   rather than an assertion of intent; `Steps`, an ordered remedy list whose entries are
+   each independently executable; and `Cause`, present exactly when the condition observes
+   a failed call.
 
-3. Bind the remedy to the observations: when no axis moved, the steps address only the
-   condition; when any axis moved, the steps address the residue before retrying. This is
-   the latent rule the whole existing corpus already obeys and the strongest reviewable
-   commitment in the protocol.
+3. Bind the remedy to the observations: in a new or deliberately converted outcome, when no
+   axis moved, the steps address only the condition; when any axis moved, the steps address
+   the residue before retrying. This is the latent rule the whole existing corpus already
+   obeys and the strongest reviewable commitment in the protocol.
 
 4. Keep rendering one line, numbering multi-step remedies (`next action: 1) ... 2) ...`);
-   a single-step remedy renders exactly as today so no existing site regresses. `Category`
-   keeps the state kind and drops the operation taxonomy, since the operation is already
-   implied by the invoked command; the derived vocabulary (`cleanliness`, `operation`,
-   `topology`, `ancestry`, `repository-identity`, `merge-conflict`) is confirmed during
-   implementation. No `Constraints` field: the few prohibitions currently embedded in step
-   prose stay there until enough sites earn a field.
+   a single-step remedy renders exactly as today so no existing site regresses. The
+   numbered format is claim authority; the rendering implementation follows
+   `code-design/presentation-ownership` (the package owning the outcome model renders it),
+   and the moment a second package implements the numbering,
+   `code-design/single-home` requires the shared helper, so this decision forks neither
+   topic.
 
-5. Export identity a caller must branch on. In new or deliberately converted code, a cause
-   a caller distinguishes is an exported sentinel or error type with `Unwrap`, matched with
-   `errors.Is`/`errors.As`; production control flow never branches on message substrings.
-   `git.CommandError` with its `errors.As` consumer, `git.HardSafetyError`, and
-   `cmd/awf`'s `usageErr`/`dispatchErr` pair are the in-repo exemplars.
+5. `Category` keeps the state kind and drops the operation taxonomy, since the operation is
+   already implied by the invoked command. The derived vocabulary (`cleanliness`,
+   `operation`, `topology`, `ancestry`, `repository-identity`, `merge-conflict`) is
+   confirmed during implementation and lands enumerated in the claim text, so the claim's
+   `Verify:` line has a membership list to check against.
 
-6. Retire the shallow predicates in new or deliberately converted code: stdlib conditions
+6. No `Constraints` field: the few prohibitions currently embedded in step prose stay
+   there until enough sites earn a field.
+
+7. Type identity a caller must branch on. In new or deliberately converted code, a cause a
+   caller distinguishes is a distinct error type or sentinel, exported when the branching
+   caller sits outside the defining package, carrying `Unwrap` when it wraps a cause, and
+   matched with `errors.Is`/`errors.As`; production control flow never branches on message
+   substrings. `git.CommandError` and `git.HardSafetyError` are the exported exemplars with
+   `Unwrap` (consumers at internal/git/lifecycle.go:104 and controlroot.go:542), and
+   `cmd/awf`'s unexported `usageErr` with `dispatchErr` as its `errors.As` consumer
+   (cmd/awf/main.go:272) is the in-package exemplar.
+
+8. Retire the shallow predicates in new or deliberately converted code: stdlib conditions
    are matched with `errors.Is(err, fs.ErrNotExist)`-family identity checks, never the
    `os.IsNotExist`/`os.IsExist`/`os.IsPermission` family, which does not unwrap and forces
    wrapper-stripping helpers like `unwrappedError` into existence.
 
-7. Assert identity in tests: a new or deliberately converted test asserts a produced
+9. Assert identity in tests: a new or deliberately converted test asserts a produced
    error's identity through `errors.Is`/`errors.As` or the exported type, and asserts
    message text only where the message is itself the contract, such as rendered CLI or
    report output.
 
-8. Ship identity with its consumer: a new exported error identity arrives in the same green
-   transaction as at least one consumer that branches on it. This specializes
-   `code-design/dependency-composition:concrete-first-consumer` to error identity and
-   prevents the current accumulation of exported types no caller matches.
+10. Ship identity with its consumer: a new exported error identity arrives in the same
+    green transaction as at least one consumer that branches on it. This specializes
+    `code-design/dependency-composition:concrete-first-consumer` to error identity and
+    prevents the current accumulation of exported types no caller matches.
 
-9. Declare authority only. No production conversion rides this ADR; the 34 shallow
-   predicate sites, the message-text assertions, and the unmatched exported types become
-   bounded future conversion candidates, each future conversion naming its concrete
-   consumer. The roadmap's static-state inventory command is the intended mechanism for
-   enumerating the remaining violations.
+11. Record the durable vocabulary: add a docs/glossary.md entry for the actionable outcome
+    protocol, naming ADR-0199 and `code-design/outcome-modeling`, in the same Implemented
+    transaction.
+
+12. Declare authority only. No production conversion rides this ADR; the 34 shallow
+    predicate sites, the message-text assertions, and the unmatched exported types become
+    bounded future conversion candidates, each future conversion naming its concrete
+    consumer. The roadmap records a static-state inventory command (added with this
+    decision) as the intended mechanism for enumerating the remaining violations.
 
 ## State changes
 
@@ -139,7 +160,7 @@ this decision.
 |---|---|
 | Keep the severity-vocabulary and finding-rank claims in this topic | They retired with ADR-0183 through ADR-0185; restating them would create dual authority. |
 | A consumer-owned-finding-payloads claim | It specializes `code-design/dependency-composition:consumer-owned-contracts` and would create dual authority over one subject. |
-| A failure-modelling section in docs/maintainable-code-design.md | It would collide with the existing "Failure modes" section name, and the topic's value is being specific and verifiable where the guide cannot. |
+| A failure-modelling section in docs/maintainable-code-design.md | The guide's sections are a fixed catalog list (internal/catalog/standard.go), so adding one is not available without changing the standard; it would also collide with the existing "Failure modes" section name, and the topic's value is being specific where the guide cannot. |
 | A generic "test constructs live in _test.go" claim | Broader than this topic's subject and broader than any first consumer proves. |
 | Lint-ban the `os.Is*` family now | 34 existing production sites would need immediate conversion or nolint noise; the ratchet governs new code first and the inventory command follows. |
 | A `Constraints` field on the outcome shape | Only about four sites embed a prohibition in step prose; a field for four sites is the speculative abstraction dependency-composition refuses. |
