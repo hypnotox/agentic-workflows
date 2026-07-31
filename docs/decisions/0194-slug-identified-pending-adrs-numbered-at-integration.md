@@ -11,31 +11,32 @@ date: 2026-07-31
 Managed worktrees are the default effort execution location (ADR-0189), so parallel
 efforts routinely author ADRs concurrently. `awf new adr` allocates highest-plus-one, so
 two in-flight efforts allocate the same number; whichever merges second collides and must
-renumber by hand at merge time. The 0151 -> 0153 renumber (state sequence 34) was done
-manually, and a live collision exists today: the in-flight git-seam decision ("git access
-through one semantic seam") is numbered 0186 in its worktree while main's 0186 is a
-different record.
+renumber by hand at merge time. The 0151 -> 0153 renumber was done manually, the git-seam
+decision ("git access through one semantic seam") carried the number 0186 in its worktree
+and landed as 0193 only after one more manual renumber, and this record itself was
+proposed as 0190 and renumbered by hand to 0194 when main claimed that number first.
 
 Hand renumbering is a multi-surface rewrite: filename, heading, topic `Origin:` and
-`Revised-by:` lines, the generated INDEX, applied state-sequence values, and any prose
-references. Two enforced rules bound the solution space. ADR numbers must be contiguous
-from 1 with only lock-pinned legacy gaps (`checkADRContiguity`,
-internal/currentstate/load.go), so pre-allocation and reservation schemes are out. State
-sequences must be contiguous from 1 with no gaps ever (internal/currentstate/check.go),
-so merge-time resequencing of Applied batches is unavoidable no matter what happens to
-ADR numbers.
+`Revised-by:` lines, the generated INDEX, and any prose references. One enforced rule
+bounds the solution space: ADR numbers must be contiguous from 1 with only lock-pinned
+legacy gaps (`checkADRContiguity`, internal/currentstate/load.go), so pre-allocation and
+reservation schemes are out. The repository-global state-sequence namespace, whose
+merge-time resequencing this design originally had to plan around, no longer exists:
+ADR-0191 removed it and made ascending final ADR number the per-claim provenance order,
+explicitly anticipating this merge-time numbering contract as what makes that order
+integration chronology.
 
 The content digest covers only the five body sections (internal/adr/digest.go):
-frontmatter, the `# ADR-NNNN` heading, and Status history are excluded. Renaming a file,
-rewriting its heading, and shifting state-sequence values are therefore digest-safe. A
-record's own body stays amendable until a terminal status (ADR-0188), but bodies of
-already-Implemented ADRs that reference a number are frozen: a number that turns out
-wrong at merge time cannot be corrected there and silently resolves to the wrong ADR.
+frontmatter, the `# ADR-NNNN` heading, and Status history are excluded. Renaming a file
+and rewriting its heading are therefore digest-safe. A record's own body stays amendable
+until a terminal status (ADR-0188), but bodies of already-Implemented ADRs that reference
+a number are frozen: a number that turns out wrong at merge time cannot be corrected
+there and silently resolves to the wrong ADR.
 
-Today's staged transition checks refuse a numbering commit on two independent grounds:
-a claim's `Origin:` may not change without a declared operation (and even a declared
-update must preserve it), and prior Applied events may not be mutated (the history-prefix
-rule). A sanctioned transition shape is required; ADR-0182's aggregate merge mode is the
+Today's staged transition checks refuse a numbering commit: a claim's `Origin:` may not
+change without a declared operation (and even a declared update must preserve it), and
+transition pairing keys on the ADR number, so the rename reads as a delete plus an add.
+A sanctioned transition shape is required; ADR-0182's aggregate merge mode is the
 precedent for a validated special-purpose transition.
 
 Merge commits run no rendered hook (verified empirically: awf renders only pre-commit,
@@ -80,9 +81,9 @@ reference surface is accepted.
    pending record is a corpus error. Previously such files were silently ignored; this
    is an accepted behavior change.
 5. `awf new adr` becomes branch-aware: it scaffolds a numbered record when run on the
-   integration branch and a pending record elsewhere. Branch detection lands as an
-   entrypoint of the git seam decided by the in-flight git-seam ADR, never as an ad-hoc
-   git call.
+   integration branch and a pending record elsewhere. Branch detection uses the git
+   seam's current-branch entrypoint (ADR-0193; the seam already ships it), never an
+   ad-hoc git call.
 6. A new flat config key `integrationBranch` names the integration branch. It is
    required-explicit: the schema migration writes `integrationBranch: main` visibly into
    config.yaml and there is no in-code default (the silent-default shape ADR-0127
@@ -104,42 +105,52 @@ reference surface is accepted.
 9. Numbering performs exactly these effects and nothing else: rename `<slug>.md` to
    `NNNN-<slug>.md`; rewrite the heading to `# ADR-NNNN: <Title>`; substitute the slug
    with the number in `Origin:` and `Revised-by:` lines of the authored claim sources
-   under the topic parts tree (never in a generated file); shift applied state-sequence
-   values preserving relative order, slotting pending batches after the highest
-   numbered sequence; re-render so the generated topic docs and the INDEX match and the
-   numbering commit lands drift-clean. It prints the `<slug> -> NNNN` mapping and any
-   sequence shifts for use in the integration commit message. Frozen bodies, plans, and
-   commit messages keep their slug references.
-10. Staged validation recognizes the numbering commit as a sanctioned numbering
+   under the topic parts tree (never in a generated file), canonicalizing each touched
+   `Revised-by:` list to the duplicate-free ascending order ADR-0191 requires;
+   re-render so the generated topic docs and the INDEX match and the numbering commit
+   lands drift-clean. Numbering touches no status-history event: with the global state
+   sequence removed by ADR-0191, a pending record's Applied history is already in its
+   final form. It prints the `<slug> -> NNNN` mapping for use in the integration commit
+   message. Frozen bodies, plans, and commit messages keep their slug references.
+10. While a record is pending, an authored `Origin:` or `Revised-by:` entry may carry
+    its `ADR-<slug>` form. Provenance-order validation places slug entries after every
+    numeric entry (they take the corpus's next numbers at integration) and, among
+    themselves, in list order; numbering's substitution plus item-9 canonicalization
+    turns each touched list back into the purely numeric ascending form.
+11. Staged validation recognizes the numbering commit as a sanctioned numbering
     transition permitting exactly the item-9 effects; V3 transition pairing keys on the
-    slug, so the rename is not misread as a delete plus an add. The red-gate window
-    between merge-in and numbering is expected, so the command must not precondition on
-    a full green check.
-11. A number once assigned never changes. If the integration branch moves after
+    slug, so the rename is not misread as a delete plus an add. The expected red-gate
+    window between merge-in and numbering died with the state sequence (the sequence
+    collisions that made it red are impossible), but the command still must not
+    precondition on a full green check: an unrelated merge finding must not deadlock
+    numbering.
+12. A number once assigned never changes. If the integration branch moves after
     numbering but before merge-back, the stale numbering is unmade, not corrected: the
     numbering commit is terminal and self-contained, so the retry recipe is reset the
     numbering commit, merge the integration branch again, re-run `awf adr number`, gate,
     and merge back. On a corpus with duplicate numbers and no pending record the command
     refuses and offers that recipe as a hint; it uses no git-provenance or merge-base
     logic. Duplicate identity on the integration branch's gate is the final backstop.
-12. A pre-merge-commit hook payload is rendered alongside the existing three payloads so
+13. A pre-merge-commit hook payload is rendered alongside the existing three payloads so
     the duplicate-identity backstop also fires on a conflict-free true merge commit to
     the integration branch (a fast-forward creates no commit, and a conflicted merge
     already runs pre-commit). awf renders the payload only and never activates hooks:
     this repo and every adopter wire an executable `.githooks/pre-merge-commit` stub by
     hand, like the existing three stubs.
-13. A plan's `adrs:` frontmatter entry may be a number or a slug. A slug entry resolves
+14. A plan's `adrs:` frontmatter entry may be a number or a slug. A slug entry resolves
     against a pending `<slug>.md` or the retained `slug:` key of a numbered record, so
     it stays valid after numbering without rewriting; an entry that resolves to neither
     fails link validation. Numbering never rewrites plan files.
-14. All six added claims are invariants with `Backing: test`; proof markers land when
+15. All six added claims are invariants with `Backing: test`; proof markers land when
     the operations are Applied: `pending-adr-slug-identity` and
     `adr-slug-frontmatter-mandatory` on internal/adr tests;
     `pending-blocked-from-integration-branch`, `numbering-transition-mode`, and
     `adr-number-immutable` on internal/currentstate tests; `integration-branch-explicit`
     on the config schema-migration tests. Operation motivation: items 1 and 4 drive the
     `fresh-adoption-v1-cutoff`, `adr-status-enum-and-matrix`,
-    `adr-v2-cutoff-atomic-immutable`, and `adr-amendable-until-terminal` updates; items
+    `adr-v2-cutoff-atomic-immutable`, and `adr-amendable-until-terminal` updates, and
+    item 1's restatement of the Applied-immutability contract over both governed digest
+    formats drives the `applied-history-events-append-only` update; items
     2, 3, and 4 drive the `pending-adr-slug-identity` and
     `adr-slug-frontmatter-mandatory` adds and the `adr-new-heading-matches-file` and
     `corpus-single-identity-key` updates; item 5 drives the
@@ -147,12 +158,13 @@ reference surface is accepted.
     `integration-branch-explicit` add and the `config-serialization-owned` update
     (writing the key visibly requires a new top-level scalar config editor joining the
     owned serialization enumeration); item 7 drives the
-    `pending-blocked-from-integration-branch` add; items 8 through 11 drive the
-    `numbering-transition-mode` and `adr-number-immutable` adds and the
-    `applied-history-events-append-only` and `application-batch-sequence-order`
-    updates; item 12 drives the `hook-payloads-rendered` update; item 13 drives the
+    `pending-blocked-from-integration-branch` add; items 8 through 12 drive the
+    `numbering-transition-mode` and `adr-number-immutable` adds, and item 10 drives the
+    `provenance-ordered-by-adr-number` update (pending slug entries gain a defined
+    place in the ascending order, and numbering canonicalizes them away); item 13
+    drives the `hook-payloads-rendered` update; item 14 drives the
     `plan-adr-link-resolved` update.
-15. The documentation travels with the implementation commits: the ADR-template
+16. The documentation travels with the implementation commits: the ADR-template
     singleton source (the adr-template frontmatter part, which every adopter's scaffold
     copies) gains the V3 pending shape with the `slug:` key; the working-with-awf
     commands part documents `awf adr number` and the merge-in, number, merge-back
@@ -180,26 +192,32 @@ reference surface is accepted.
 - update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`
 - add `config/configuration:integration-branch-explicit`
 - update `config/configuration:config-serialization-owned`
+- update `invariants/current-state-authority:provenance-ordered-by-adr-number`
 - update `rendering/singletons-and-payloads:hook-payloads-rendered`
 
 ## Consequences
 
 - Merge-time reconciliation becomes one mechanical gated command; hand renumbering ends.
-  The live 0186 collision in the git-seam worktree renumbers by hand one last time
-  before this lands, and this record itself is numbered optimistically in a worktree, so
-  it may be the final beneficiary of that manual recipe.
+  Both anticipated manual renumbers have since happened: the git-seam record landed as
+  0193, and this record itself renumbered 0190 -> 0194 at merge-in - the last manual
+  renumbers this repository should need.
 - Integration gains a mandatory numbering step even when no collision exists. Uniformity
   is chosen deliberately: a step that always runs is more reliable for agents than a
   conditional fix that runs only on collision.
 - Every future ADR carries two identity spellings over its life. Readers must accept
   `ADR-<slug>` references in frozen bodies, plans, and commit messages; resolution is a
   grep for the retained `slug:` key.
-- The corpus now carries two validated exemptions from Applied-event immutability and
-  Origin preservation: ADR-0182's aggregate merge and this numbering transition. Each
-  further exemption widens the surface a corrupt or hand-crafted transition commit
-  could exploit, which is why item 9's effect list is exhaustive.
-- A red gate between merge-in and numbering is a normal, expected state; procedures and
-  the numbering command must tolerate it.
+- The corpus now carries two validated special transition shapes: ADR-0182's aggregate
+  merge and this numbering transition. The numbering transition touches no
+  status-history event - its whole effect surface is the rename, the heading, the
+  authored provenance lines, and the regenerated outputs - which is why item 9's effect
+  list is exhaustive. Each further sanctioned shape widens the surface a corrupt or
+  hand-crafted transition commit could exploit.
+- ADR-0191 landed while this record was Proposed and deleted the sequence-shift half of
+  the original design; the record was re-grounded in place. A green check between
+  merge-in and numbering is now the norm (the sequence collisions that made that window
+  red are impossible), and the numbering command still refuses to precondition on a
+  full green check so an unrelated merge finding cannot deadlock numbering.
 - Adopters carry a visible `integrationBranch` key after migration; there is no silent
   default to misconfigure.
 - The adr-lifecycle topic grows from 19 to 24 claims, past the maxClaimsPerTopic
@@ -216,8 +234,9 @@ reference surface is accepted.
   reasons a slug-identified record falsifies, INDEX ordering (numbered records first by
   number, pending records after, alphabetically), and the `adr` command group's
   engagement of the existing help-listing and group-gating claims.
-- Plan sequencing: branch detection depends on the in-flight git-seam decision, so the
-  implementation plan for this record sequences after that ADR.
+- Plan sequencing: branch detection depends on the git-seam decision, so the
+  implementation plan for this record sequenced after it; that ADR has since landed as
+  0193 and its seam already ships the current-branch entrypoint.
 
 ## Alternatives Considered
 
@@ -225,7 +244,7 @@ reference surface is accepted.
 |---|---|
 | Renumber-on-collision command (optimistic numbers, fix the second lander) | A wrong number referenced from an already-terminal frozen body cannot be corrected and silently resolves to the wrong ADR; a conditional fix is also less reliable for agents than one uniform mandatory step |
 | Number pre-allocation or central reservation | Number contiguity from 1 makes gaps illegal, and an abandoned effort would leak its reserved number forever |
-| Placeholder state-sequence grammar in worktrees | Sequences must be contiguous from 1 at every commit; shifts are mechanical anyway, so a second grammar buys nothing |
+| Placeholder state-sequence grammar in worktrees | Considered before ADR-0191 removed the global sequence: contiguity at every commit forbade placeholders and shifts were mechanical anyway; the removal makes the category moot |
 | Content-hash or UUID identity replacing numbers | Destroys the human-readable ordered corpus and every existing reference surface for marginal gain |
 | Keep renumbering by hand | Proven error-prone multi-surface rewrite (0151 -> 0153 precedent, live 0186 collision), and it recurs with every parallel effort now that worktrees are the default |
 
