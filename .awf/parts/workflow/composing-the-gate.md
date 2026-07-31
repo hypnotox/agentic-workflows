@@ -1,12 +1,15 @@
 ## Composing the gate
 
 The gate is one command (`./x gate`) that must be green before every commit. Here it runs the
-profiled test suite (`go test ./... -coverpkg=./...`), the 100%-coverage check
-(`cmd/covercheck`, ADR-0012), the containerized Pi-extension strict type check and its 100%
-line/function/branch coverage floor (ADR-0123, ADR-0126), `go vet`, `golangci-lint`, the dead-code gate (`cmd/deadcodecheck`, ADR-0063), the
-workflow-pin check (`cmd/pincheck`, ADR-0079), the plain-punctuation scan (`awf check prose`, ADR-0119, opt-in
-for adopters and enabled here), and the working-memory citation scan (`awf check memory`, ADR-0158,
-opt-in for adopters and enabled here). Every step is deterministic: same tree in, same verdict out.
+profiled test suite (`go test ./... -coverpkg=./...`, writing the durable `coverage.out` CI
+uploads), the 100%-coverage check (`cmd/covercheck`, ADR-0012), the containerized Pi-extension
+strict type check and its 100% line/function/branch coverage floor (ADR-0123, ADR-0126),
+`go vet`, `golangci-lint`, the dead-code gate (`cmd/deadcodecheck`, ADR-0063), and the
+workflow-pin check (`cmd/pincheck`, ADR-0079). Every step is deterministic: same tree in, same
+verdict out. The plain-punctuation scan (`awf check prose`, ADR-0119) and the working-memory
+citation scan (`awf check memory`, ADR-0158), both opt-in for adopters and enabled here, are
+not gate steps: the pre-commit hook payload runs them locally and CI is their enforcement
+backstop (ADR-0195).
 
 Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
 hook payload (see the local-hooks section below). And there is no slower tier; `./x gate full`

@@ -23,8 +23,13 @@ jobs:
         run: ./x gate
       - name: Drift check (rendered output matches config)
         run: ./x check
-      - name: Coverage profile (for Codecov)
-        run: go test ./... -coverpkg=./... -coverprofile=coverage.out
+      # The scans run in the pre-commit hook payload locally; hooks are
+      # per-clone and optional, so CI is their enforcement backstop (ADR-0195).
+      - name: Prose and memory scans
+        run: |
+          ./awf check prose
+          ./awf check memory
+      # coverage.out is written by ./x gate above (ADR-0195); no second suite run.
       - name: Filtered coverage profile (coverage-ignore blocks dropped)
         run: go run ./cmd/covercheck --emit-filtered coverage.out > coverage.covered.out
       # disable_search so each flag uploads ONLY its named file - otherwise the CLI
