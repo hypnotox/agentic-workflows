@@ -46,9 +46,9 @@ sidecar alone, never from catalog defaults. Any key an adopter writes must be te
 referenced by the assembled template or it is drift.
 
 The catalog residue scan walks `cat.Docs[*].Data` and bans the string form `ADR-` followed by
-four digits, but it collects strings only, so a non-string scalar passes unread. Shipped
-content carrying an ADR reference in any non-string form would pass every gate here and then
-fail link validation in an adopter tree that has no such ADR.
+four digits, but it treats a numeric or boolean scalar as non-prose and skips it, reporting
+only types it does not recognise. Shipped content carrying an ADR reference as a number would
+pass unread here and then fail link validation in an adopter tree that has no such ADR.
 
 No catalog `Docs` entry ships `Data` today; every existing `Data` block in
 `internal/catalog/standard.go` belongs to a skill or an agent. `TestConfigspecDataParity`
@@ -99,10 +99,12 @@ computed over content awf itself ships therefore bounds what awf may ship.
 
 7. A shipped standard term is portable by construction, asserted by a test over the shipped
    set rather than left to authoring discipline: every record carries exactly `term` and
-   `meaning`, both strings, with no `domains` key and no value matching `ADR-` followed by four
-   digits. Adopter domain names are unknowable at ship time, and any ADR reference would break
-   an adopter tree that has no such ADR. Pinning the field set is what closes the non-string
-   hole, since a scalar the residue scan never reads cannot exist in the first place.
+   `meaning`, both strings, with no `domains` key, no value matching `ADR-` followed by four
+   digits, and no meaning longer than the decision 9 threshold. Adopter domain names are
+   unknowable at ship time, any ADR reference would break an adopter tree that has no such ADR,
+   and the length bound is what decision 10 requires. Pinning the field set is what closes the
+   numeric-scalar hole, since a value the residue scan never reads cannot exist in the first
+   place.
 
 8. The rendered table stays two columns, `Term` and `Meaning`, ordered case-insensitively by
    term across both layers. `domains` is machinery metadata and is never a column.
@@ -135,7 +137,9 @@ computed over content awf itself ships therefore bounds what awf may ship.
 12. The corpus is cleaned in the same work: stale entries removed, every surviving meaning
     brought under the advisory threshold, and `memory-backed effort` deleted outright rather
     than retained as a retired-term redirect. A glossary states current meaning; the ADR that
-    retired a term is where its history belongs.
+    retired a term is where its history belongs. This is the largest work item in the decision:
+    47 of the 58 current meanings exceed 280 characters, so the cleanup is a near-total rewrite
+    of the corpus rather than a trim.
 
 13. Four surfaces that misstate current reality are corrected. The glossary entry for
     `pitfall entry` and the `pitfalls` data-key description in `internal/configspec/spec.go`
