@@ -232,6 +232,21 @@ the TARGET side's generation so `awf upgrade` re-runs the moved migration over t
 corpus; taking the branch lock skips it silently. Grep for the old number afterwards and
 sort surviving hits into the other effort's legitimate references versus your leftovers.
 
+Resolving inside the merge stops working once your ADR has an Applied batch. On
+2026-07-31 the 0192 integration tried it and `awf check --staged` refused with "ADR-0190
+violates the history-prefix rule", plus both claim updates reading as provenance-only
+mutations with no operation behind them: the number is occupied by the other side's ADR
+with different applied history, so renaming yours inside the merge rewrites committed
+provenance. Renumbering on the branch and then merging fails differently, on contiguity,
+because the before-side corpus then holds your new number with the target's numbers
+absent. For an unpublished branch the remedy is to rewrite its history so the ADR carries
+the free number from its first commit, then REBASE onto the target rather than merge, so
+your ADR is created above theirs and both the prefix and contiguity rules hold. Two traps
+in that rewrite: pick the number only after the target is quiet, since a second effort
+took the next one mid-diagnosis, and note that `git filter-branch --tree-filter` has no
+usable index, so a filter built on `git ls-files` silently does nothing while the renames
+it also performs appear to succeed; drive the sweep with `find` and verify afterwards.
+
 ## Retiring a concept needs paraphrase sweeps, not just identifier greps
 
 _Domains: rendering, adr-system_
