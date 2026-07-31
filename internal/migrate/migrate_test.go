@@ -837,6 +837,64 @@ func TestDropReplaceWithMissingPart(t *testing.T) {
 	}
 }
 
+// migration-ordering is what makes `awf upgrade` a function of the project's
+// detected generation rather than of how many times anyone has run it: exactly
+// the registered migrations whose target exceeds that generation run, in
+// ascending target order, and a tree already at the current schema is left
+// alone. Recording migrations make both halves observable - which ones ran, and
+// in what order - and the real registry's ascending declaration is asserted
+// here too, because Upgrade iterates it in declaration order and would silently
+// apply a misdeclared registry out of target order.
+// invariant: config/migrations-and-locks:migration-ordering
+func TestUpgradeAppliesExactlyTheMigrationsAboveTheDetectedGeneration(t *testing.T) {
+	original := registry
+	t.Cleanup(func() { registry = original })
+	for i := 1; i < len(original); i++ {
+		if original[i].To <= original[i-1].To {
+			t.Fatalf("registry is not ascending by To: %q (to %d) follows %q (to %d)",
+				original[i].Name, original[i].To, original[i-1].Name, original[i-1].To)
+		}
+	}
+
+	var ran []string
+	record := func(name string) func(context.Context, string, io.Writer) error {
+		return func(context.Context, string, io.Writer) error {
+			ran = append(ran, name)
+			return nil
+		}
+	}
+	registry = []Migration{
+		{To: 1, Name: "first", Apply: record("first")},
+		{To: 2, Name: "second", Apply: record("second")},
+		{To: 3, Name: "third", Apply: record("third")},
+		{To: 4, Name: "fourth", Apply: record("fourth")},
+	}
+
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 2)
+
+	applied, err := Upgrade(testContext(t), root, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "third,fourth"
+	if strings.Join(applied, ",") != want || strings.Join(ran, ",") != want {
+		t.Fatalf("applied=%v ran=%v, want exactly [%s] and nothing at or below generation 2", applied, ran, want)
+	}
+
+	// Upgrade stamped the lock at the current generation, so the re-run has
+	// nothing above it left to apply and still exits zero.
+	ran = nil
+	applied, err = Upgrade(testContext(t), root, io.Discard)
+	if err != nil {
+		t.Fatalf("re-run at the current schema errored: %v", err)
+	}
+	if len(applied) != 0 || len(ran) != 0 {
+		t.Fatalf("re-run at the current schema applied %v (ran %v), want nothing", applied, ran)
+	}
+}
+
 // A tree→tree upgrade keeps its lock; Upgrade must restamp it to Current() so the
 // terminal sync's schema gate passes.
 func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) {

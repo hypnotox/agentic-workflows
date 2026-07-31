@@ -785,7 +785,3 @@ func TestHasSidecar(t *testing.T) {
 		t.Fatalf("snapshot sidecar behavior changed: has=%v err=%v", has, err)
 	}
 }
-
-// invariant: config/configuration:config-serialization-owned
-
-// invariant: config/migrations-and-locks:migration-ordering

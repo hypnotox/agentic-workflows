@@ -424,19 +424,24 @@ func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
 	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
+	// Two records, because the claim quantifies over EVERY pending record: a
+	// worktree that authored several is the case ADR-0194 item 8 orders by
+	// argument, and reporting only the first would leave the rest to be
+	// discovered one integration attempt at a time.
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/also-pending.md"), pendingADRFixture("also-pending"))
 	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
-	found := false
+	reported := map[string]bool{}
 	for _, d := range drift {
-		if d.Kind == "pending-adr-on-integration-branch" && d.Detail == "still-pending" {
-			found = true
+		if d.Kind == "pending-adr-on-integration-branch" {
+			reported[d.Detail] = true
 		}
 	}
-	if !found {
-		t.Fatalf("awf check did not report the pending record: %#v", drift)
+	if !reported["still-pending"] || !reported["also-pending"] {
+		t.Fatalf("awf check did not report every pending record, got %v in %#v", reported, drift)
 	}
 }
 
