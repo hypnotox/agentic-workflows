@@ -204,8 +204,12 @@ const opNetNoop adr.OpVerb = "net-noop"
 type appendedBatch struct {
 	adr string
 	// order is the owning record's provenance rank: its number when numbered,
-	// and a rank above every number while pending, matching the order numbering
-	// will in fact assign it (ADR-0194 item 10).
+	// and one rank shared by every pending record, above every number. That
+	// places a pending batch after every numbered one, which is the order
+	// numbering will in fact assign it (ADR-0194 item 10). Pending records tie
+	// with each other and the stable sort falls back to corpus order, which is
+	// the authored order the provenance claim gives slug entries among
+	// themselves; docs/roadmap.md records what that tie costs.
 	order    int
 	batchIdx int
 	ops      []adr.Operation

@@ -157,6 +157,30 @@ duplicate-key error rather than as a separate rule. Surfaced by the Phase 4 revi
 ADR-0194 on 2026-07-31; the scaffold half landed the same day.
 
 
+## Two pending records tie in the appended-batch rank
+
+`adr.IdentityOrder` gives every slug the same rank, above every number, so a pending
+record's newly applied batch sorts after every numbered one. That is the guarantee the
+provenance order needs and it is proven. Two pending records, though, tie with each other
+and the stable sort falls back to corpus order, which is directory order.
+
+The consequence is a narrow false finding. Two pending records in one worktree, whose
+batches are applied in the same commit, where the alphabetically earlier slug revises a
+claim the later one adds, report `an add must be the first operation` even though the
+numbering command's add-before-revise refusal guarantees the adder takes the lower number.
+Verified 2026-08-01: corpus order `[alpha zebra]` reports it, `[zebra alpha]` is clean. The
+author's workaround is to apply the two batches in separate commits.
+
+Imposing a topological order instead would contradict
+`invariants/current-state-authority:provenance-ordered-by-adr-number`, which says slug
+entries compare in authored list order among themselves - and ADR-0194 spent its one
+operation on that claim, so restating it needs a later decision record. Worth folding into
+whatever decision next touches pending provenance order, and worth deciding there whether
+the authored order should instead be something the tree records explicitly, since nothing
+today declares the intended numbering order until the command is invoked. Surfaced by the
+Phase 5 review of ADR-0194 on 2026-08-01.
+
+
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
 ## Pi and shared Agent Skills discovery
 
