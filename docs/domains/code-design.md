@@ -15,5 +15,5 @@ The code-design domain owns cross-package structure guidance that does not belon
 - [Presentation ownership](../topics/code-design/presentation-ownership.md): Which package renders a result model for humans, and what a command binary keeps.
 - [Single home](../topics/code-design/single-home.md): One implementation per shared concern, and the coverage-gate posture that protects it.
 - [State ownership](../topics/code-design/state-ownership.md): What a value owns, and where state derived during one operation lives.
-- [Test design](../topics/code-design/test-design.md): How Go tests assert and how they obtain controlled dependencies without global seams.
+- [Test design](../topics/code-design/test-design.md): How Go tests assert (error identity aside) and how they obtain controlled dependencies without new global seams.
 

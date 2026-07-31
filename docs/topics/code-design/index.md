@@ -7,4 +7,4 @@
 - [Presentation ownership](presentation-ownership.md): Which package renders a result model for humans, and what a command binary keeps.
 - [Single home](single-home.md): One implementation per shared concern, and the coverage-gate posture that protects it.
 - [State ownership](state-ownership.md): What a value owns, and where state derived during one operation lives.
-- [Test design](test-design.md): How Go tests assert and how they obtain controlled dependencies without global seams.
+- [Test design](test-design.md): How Go tests assert (error identity aside) and how they obtain controlled dependencies without new global seams.

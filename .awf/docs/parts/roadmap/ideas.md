@@ -86,7 +86,8 @@
   exemption count).
 - A static-state inventory command enumerating the outstanding bounded candidates of
   ratchet-scoped code-design claims (today: the shallow `os.Is*` predicate sites,
-  message-text identity assertions, and exported error identities no caller matches),
+  message-text identity assertions, exported error identities no caller matches,
+  undocumented exported declarations, and the global test-seam census),
   so each ratchet topic can point its existing-violation backlog at a mechanical census
   instead of prose. The name must not be "awf doctor" without a disambiguating note:
   ADR-0162 retired that name with a different meaning. Needs its own ADR: it adds a

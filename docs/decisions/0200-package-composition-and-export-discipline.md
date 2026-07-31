@@ -120,9 +120,10 @@ decision-framework material with no topic-shaped home.
    chain part's per-topic consult sentences beside its code-design siblings, likewise
    preserving ADR-0199's sentence when present, all in the same Implemented transaction.
 
-9. Record the durable vocabulary: add a docs/glossary.md entry for the grab-bag home and
-   the export-earns-consumer discipline, naming ADR-0200 and
-   `code-design/package-composition`, in the same Implemented transaction.
+9. Record the durable vocabulary: add grab-bag-home and export-earns-consumer entries to
+   the glossary source under .awf/docs/ and regenerate docs/glossary.md via `./x render`,
+   naming ADR-0200 and `code-design/package-composition`, in the same Implemented
+   transaction.
 
 10. Declare authority only. Beyond the Readability rider, no production conversion rides
     this ADR; the 141 undocumented exported declarations and any latent grab-bag files

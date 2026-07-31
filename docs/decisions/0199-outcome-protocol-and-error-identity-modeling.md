@@ -121,8 +121,9 @@ than sweep debt.
     hatch: an identity may land without an in-repo branching consumer when its consuming
     caller is named and documented in the same transaction.
 
-11. Record the durable vocabulary: add a docs/glossary.md entry for the actionable outcome
-    protocol, naming ADR-0199 and `code-design/outcome-modeling`, in the same Implemented
+11. Record the durable vocabulary: add an actionable-outcome-protocol entry to the
+    glossary source under .awf/docs/ and regenerate docs/glossary.md via `./x render`,
+    naming ADR-0199 and `code-design/outcome-modeling`, in the same Implemented
     transaction.
 
 12. Make the authority visible without copying its normative prose into prompts: add an
