@@ -40,9 +40,12 @@ ADR-0190's operations apply as five Implementing batches, one per implementation
 (Phase 2 appends the Implementing status event first). Each batch's Applied event uses
 the next unclaimed contiguous state sequence at commit time and lists its operations in
 State-changes declaration order; each travels in the same commit as exactly its claim
-mutations in `.awf/topics/parts/**` plus the re-rendered topic docs. The `Implemented`
-flip is a bare status event owned by the deferred terminal-review transaction, not by
-this plan.
+mutations in `.awf/topics/parts/**` plus the re-rendered topic docs. Phase 6's batch is
+the remainder, and its closing commit appends the `Implemented` flip event directly
+after it (the V2 final pair; an `Implementing` record with nothing remaining is an
+illegal state per `internal/adr/application.go:113-116`, and the 0187/0189 precedent
+pairs the final batch with the flip in one commit). The plan's own
+`status: Implemented` freeze still lands in the deferred post-review transaction.
 
 Code-design constraints that bind throughout: single-home (the numbering engine is the
 only writer of numbering effects; branch detection lives only in the git seam),
@@ -82,6 +85,12 @@ suite, no backend types across the surface).
     `.awf/topics/parts/rendering/singletons-and-payloads/current-state.md`
   - `.awf/parts/adr-template/frontmatter.md`, `.awf/parts/workflow/local-hooks.md`,
     the working-with-awf commands part, `.awf/domains/parts/adr-system/current-state.md`
+  - `internal/project/scaffold.go` (+ test)
+  - `templates/adr-readme/README.md.tmpl`,
+    `templates/skills/proposing-adr/SKILL.md.tmpl`,
+    `templates/skills/reviewing-adr/SKILL.md.tmpl`
+  - `.awf/awf.lock`, `.awf/config.yaml`, `examples/sundial/.awf/awf.lock`,
+    `examples/sundial/.awf/config.yaml` (self-migration via `awf upgrade`)
   - `docs/decisions/0190-slug-identified-pending-adrs-numbered-at-integration.md`
     (status history events), `changelog/`, rendered docs via `./x render`
 - **Deleted:** none.
@@ -130,8 +139,10 @@ entering `Implementing` and Applied batch 1.
 - [ ] **Task 2.1: Lock field `ADRFormatV3From`.** In `internal/manifest/manifest.go`,
   mirror the `ADRFormatV2From` triple exactly (field at :46, presence bit at :57, raw
   presence wiring in `Parse` near :200, canonical `Marshal` struct near :230): add
-  `ADRFormatV3From int` (`yaml:"adrFormatV3From,omitempty"`), `adrFormatV3FromPresent
-  bool`, and `_, l.adrFormatV3FromPresent = raw["adrFormatV3From"]`. In
+  `ADRFormatV3From int` (`json:"adrFormatV3From,omitempty"` - the lock manifest is
+  JSON, matching the V2 field's tag), `adrFormatV3FromPresent bool`, and
+  `_, l.adrFormatV3FromPresent = raw["adrFormatV3From"]`, mirrored in the canonical
+  `Marshal` struct literal. In
   `AuthorityState()` (:70-132) add: when present, `ADRFormatV3From` must be positive and
   `>= ADRFormatV2From`; when `SchemaVersion >=` the Task 2.2 migration's `To`, absence
   is an error (mirror the schema-15-requires-V2From check at :107-117). Tests mirror the
@@ -146,7 +157,11 @@ entering `Implementing` and Applied batch 1.
   `{To: <next generation>, Name: "adr-format-v3-cutoff", Apply: ..., OwnsSchemaStamp:
   true}`. Note: another in-flight effort may also append migrations; take the next free
   `To` at execution time and use that same value in Task 2.1's schema floor. Tests
-  mirror `adrformatv2` coverage including the injected-save failure branch.
+  mirror `adrformatv2` coverage including the injected-save failure branch. Then
+  self-migrate both bundled trees: run `./awf upgrade` in the repo root and in
+  `examples/sundial`, and stage `.awf/awf.lock` and `examples/sundial/.awf/awf.lock`
+  with the phase (the binary-version gate reds every gated command on a
+  behind-generation tree, and `runner-example-adopted` reds on a stale sundial).
 - [ ] **Task 2.3: V3 parse path and slug identity in `internal/adr`.** In `format.go`:
   add `V3FormatMarker = "current-state-v3"` beside :17-20; add a `v3Frontmatter` struct
   `{Format, Status, Date, Slug string}` decoded with `KnownFields(true)` (V1/V2 parsing
@@ -163,7 +178,9 @@ entering `Implementing` and Applied batch 1.
   `frontmatter`-package split plus the lenient struct) and route `current-state-v3` to
   `ParseV3`; any other numberless file returns the error
   `"<name>: not an ADR record (expected NNNN-*.md or a pending current-state-v3 file)"`.
-  V2 behavior below the V3 cutoff is unchanged.
+  V2 behavior below the V3 cutoff is unchanged. internal/adr's own `FilenameRe` uses
+  (adr.go:94 and :157, format.go:68 and :197) are in this task's scope: :157 and
+  format.go:68 legitimately leave `Number` empty for a pending record.
 - [ ] **Task 2.4: Callers stop silently skipping strays; reserved basenames stay
   excluded.** Batch task over the `FilenameRe` gate sites. Representative -
   `internal/adr/adr.go:94-97` (`ParseDir`): replace the match-or-`continue` with:
@@ -180,16 +197,21 @@ entering `Implementing` and Applied batch 1.
   digest.go:126` (include pending files in the digest walk),
   `internal/project/currentstate.go:338-349` (`nextADRIdentityFromTree` skips
   `Number == ""` records before `Atoi`). Post-check:
-  `grep -rn "FilenameRe" internal/ cmd/ --include="*.go" | grep -v _test` - every
-  remaining production match site is one of the enumerated ones and each handles the
-  pending case per this task.
+  `grep -rn "adr\.FilenameRe" internal/ cmd/ --include="*.go" | grep -v _test` -
+  every match site is one of the sites this task enumerates outside internal/adr
+  (internal/plan's own unrelated `FilenameRe` symbol and internal/adr's in-package
+  uses, owned by Task 2.3, are out of scope), and each handles the pending case per
+  this task.
 - [ ] **Task 2.5: Corpus slug index and hard duplicate errors.** In
   `internal/adr/corpus.go`: `NewCorpus` (:45-51) gains a `bySlug map[string]ADR` and
-  now returns `(Corpus, error)`: a duplicate non-empty `Number` is the error
-  `"ADR number %s is declared by more than one file"` (closing the silent last-wins
-  blindness ADR-0190's Consequences name), and a duplicate non-empty `Slug` across
-  pending plus retained records is the error `"ADR slug %q is declared by more than one
-  file"`. Add `HasSlug(slug string) bool` and `BySlug(slug string) (ADR, bool)`. Update
+  now returns `(Corpus, error)`: a duplicate non-empty `Number` or a duplicate
+  non-empty `Slug` (across pending plus retained records) yields the typed error
+  `*DuplicateIdentityError{Numbers, Slugs []string}` whose message reads
+  `"ADR number %s is declared by more than one file"` /
+  `"ADR slug %q is declared by more than one file"` (closing the silent last-wins
+  blindness ADR-0190's Consequences name). The returned `Corpus` is still populated
+  (last-wins) alongside the typed error, documented as being for the numbering
+  command's refusal path only; every other caller treats the error as fatal. Add `HasSlug(slug string) bool` and `BySlug(slug string) (ADR, bool)`. Update
   every `NewCorpus`/`LoadCorpus` caller (enumerate via `grep -rn "NewCorpus\|LoadCorpus"
   internal/ cmd/ --include="*.go" | grep -v _test`) to propagate the error. In
   `NextNumber` (`adr.go:307-326`), `NextIdentity` (`corpus.go:94-108`), and
@@ -263,7 +285,9 @@ exits 0; `./awf check` clean.
   `SetString(src []byte, key, value string) ([]byte, error)`: create-or-replace a
   top-level scalar mapping entry, mirroring `SetArray`'s node handling (:107-122) with a
   scalar value node. Test: create-new, replace-existing, preserved comments/order,
-  invalid-yaml error.
+  invalid-yaml error. The `config-serialization-owned` claim's closed editor
+  enumeration gains `SetString` (the claim update is declared by ADR-0190 and applies
+  in this phase's batch, Task 3.7).
 - [ ] **Task 3.2: `integrationBranch` config key.** In `internal/config/config.go`: add
   `IntegrationBranch string` (`yaml:"integrationBranch"`) beside `Prefix` (:44); NO
   default in `ParseTree` (the `Prefix` precedent, not `DocsDir`). Validation: required
@@ -274,7 +298,12 @@ exits 0; `./awf check` clean.
   call chain; pick the variant that keeps `awf upgrade` runnable on a schema-26 tree
   and write a test proving it). In `internal/configspec/spec.go` add the entry beside
   `prefix` (:78-82) with `Default: "none: required; the schema migration writes
-  integrationBranch: main"`; the reflection parity test must pass unmodified.
+  integrationBranch: main"`; the reflection parity test must pass unmodified. The
+  scaffold path must also write the key or `awf init` emits a config that fails its
+  own validation: add `IntegrationBranch string` to `config.Skeleton`
+  (`internal/config/edit.go:19-30`) and set it to `"main"` in `ScaffoldConfig`
+  (`internal/project/scaffold.go:73-88`), with a test asserting a freshly scaffolded
+  config validates.
 - [ ] **Task 3.3: Migration writing the key.** New
   `internal/migrate/integrationbranch.go` on the `applyOrientingSkillBackfill` shape
   (`orientingbackfill.go:19-38`): inside `editConfig`, call
@@ -282,7 +311,11 @@ exits 0; `./awf check` clean.
   print `integration-branch-explicit: set integrationBranch: main`. Register
   `{To: <next free>, Name: "integration-branch-explicit", Apply: ...}` (no
   `OwnsSchemaStamp`). Tests: key written visibly, idempotent when present, output line
-  exact.
+  exact. Then self-migrate both bundled trees again: `./awf upgrade` in the repo root
+  and in `examples/sundial`, staging `.awf/awf.lock`, `.awf/config.yaml`,
+  `examples/sundial/.awf/awf.lock`, and `examples/sundial/.awf/config.yaml` (both
+  configs gain the visible `integrationBranch: main` line; without it Task 3.2's
+  required-key validation reds both trees).
 - [ ] **Task 3.4: Seam branch-detection entrypoint.** In `internal/git`, following the
   landed seam ADR's entrypoint pattern (Phase 1 Task 1.3 verified it): add a
   current-branch entrypoint implementing `git symbolic-ref -q --short HEAD` semantics -
@@ -330,10 +363,16 @@ exits 0; `./awf check` clean.
   record only under positive integration-branch identification). In the
   config/configuration part: add `integration-branch-explicit` (required-explicit key,
   migration writes `integrationBranch: main` visibly, no in-code default, audit range
-  resolution never reads it). Proof markers on the Task 3.2/3.3/3.5/3.6 tests. Append
-  Applied batch 2, declaration-ordered: update `adr-new-sequential-numbering`, update
-  `adr-new-heading-matches-file`, add `pending-blocked-from-integration-branch`, add
-  `integration-branch-explicit`; next unclaimed sequence. `./x render`.
+  resolution never reads it); update `config-serialization-owned` (the closed editor
+  enumeration gains the top-level `SetString`). Proof markers on the Task
+  3.1/3.2/3.3/3.5/3.6 tests. Placement note: ADR-0190 item 14 names
+  internal/currentstate as `pending-blocked-from-integration-branch`'s proof home, but
+  the block is a corpus-level drift check implemented in internal/project (Task 3.6),
+  so its marker lands on the internal/project test - a deliberate, stated deviation
+  (`currentState.testGlobs` admits it). Append Applied batch 2, declaration-ordered:
+  update `adr-new-sequential-numbering`, update `adr-new-heading-matches-file`, add
+  `pending-blocked-from-integration-branch`, add `integration-branch-explicit`, update
+  `config-serialization-owned`; next unclaimed sequence. `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -379,15 +418,23 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   intended order.\n"}}}`. Wire `"adr": runADR` in `cmd/awf/dispatch.go`'s handlers map
   and add `cmd/awf/adr.go` with `runADR` switching on `c.sub == "number"` (the
   `TestHandlerRegistryParity` test in `cmd/awf/main_test.go:44-58` enforces the
-  bijection). `runADR` calls `gate(root)`, opens the project, and calls Task 5.2's
-  engine, printing its report to stdout. The gated-command enumeration regenerates on
+  bijection). `runADR` calls `gate(root)` and reaches Task 5.2's engine WITHOUT the
+  eager corpus load: verify the project-open path used (internal/project/project.go
+  near :474 calls `adr.LoadCorpus`, which Task 2.5 makes fatal on duplicates); if open
+  loads the corpus eagerly, add a narrow open variant for this command so the typed
+  duplicate error reaches the engine's refusal logic instead of aborting the open.
+  `runADR` prints the engine's report to stdout. The gated-command enumeration regenerates on
   render with no manual doc edit.
 - [ ] **Task 5.2: Numbering engine.** New `internal/project/adrnumber.go`:
   `func (p *Project) NumberPendingADRs(slugs []string) (NumberingReport, error)`.
   Behavior, in order:
-  1. Load the corpus leniently (parse ADRs and topic parts only; MUST NOT precondition
-     on a green full check - the red-gate window is the expected operating state).
-  2. Refusals: no pending records and duplicate numbers present - error embedding the
+  1. Load the corpus through the corpus seam (`corpus-parsed-once` binds), catching
+     Task 2.5's `*DuplicateIdentityError` and keeping its populated corpus: duplicates
+     are data for step 2, not an abort. MUST NOT precondition on a green full check -
+     the red-gate window is the expected operating state.
+  2. Refusals: duplicate numbers present and at least one pending record - error
+     `"duplicate ADR numbers present; resolve the corpus before numbering"`; no
+     pending records and duplicate numbers present - error embedding the
      recipe hint verbatim: `"duplicate ADR numbers with no pending record: if a stale
      numbering commit collided, run: git reset --hard HEAD~1 && git merge <integration
      branch> && awf adr number, then gate and merge back"`; no pending records and no
@@ -479,14 +526,25 @@ feat(adr-system): add awf adr number and its numbering transition
   `.awf/parts/workflow/local-hooks.md` (four payloads and the merge-commit backstop);
   `.awf/domains/parts/adr-system/current-state.md` (the two-cutoff opening becomes the
   ordered three-cutoff set; pending identity and numbering-at-integration described).
+  Update the three shipped templates that still teach the numbered-only convention:
+  `templates/adr-readme/README.md.tmpl` (:30, :33, :48 - `NNNN-kebab-title.md`,
+  next-available-number, `# ADR-NNNN:`), `templates/skills/proposing-adr/SKILL.md.tmpl`
+  (:29, :42 - "next sequential number"), and the matching mention in
+  `templates/skills/reviewing-adr/SKILL.md.tmpl`, describing the branch-conditional
+  scaffold output and the merge-in, number, merge-back step; keep interpolations
+  publication-safe and golden-update the residue tests.
   Add the `[Unreleased]` changelog entry naming: pending slug ADRs, `awf adr number`,
   the required `integrationBranch` key written by migration, the fourth hook payload
   and its manual stub wiring, and the stray-file corpus error behavior change.
 - [ ] **Task 6.3: Claim mutation and batch 5.** In the
   rendering/singletons-and-payloads part: update `hook-payloads-rendered` (exactly four
   payloads including pre-merge-commit; absence when disabled unchanged). Proof marker on
-  the Task 6.1 test. Append Applied batch 5: update `hook-payloads-rendered`; next
-  unclaimed sequence. `./x render`.
+  the Task 6.1 test. Append Applied batch 5 (the remainder): update
+  `hook-payloads-rendered`; next unclaimed sequence. Directly after it, append the
+  `Implemented` status event repeating the latest content digest (the V2 final pair;
+  0187/0189 precedent pairs the final batch and the flip in one commit, and an
+  `Implementing` record with nothing remaining is refused by
+  `internal/adr/application.go:113-116`). `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -509,9 +567,9 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - `awf upgrade` on a pre-change tree prints the `integration-branch-explicit` and
   `adr-format-v3-cutoff` lines and leaves `integrationBranch: main` visible in
   config.yaml.
-- ADR-0190's Status history shows Implementing plus five Applied batches covering all
-  seventeen operations exactly once; the Implemented flip is absent (owned by terminal
-  review).
+- ADR-0190's Status history shows Implementing, five Applied batches covering every
+  declared operation exactly once, and the closing Implemented flip event; `awf check`
+  accepts the final state.
 
 ## Notes
 
@@ -527,5 +585,6 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - Migration `To` values and state sequences are taken fresh at execution time (parallel
   efforts may consume generations and sequences first); the plan asserts methods, never
   counts.
-- The Implemented flip and the plan's own `status: Implemented` freeze land in the
-  deferred post-review transaction per the workflow, not in any phase above.
+- The ADR's Implemented flip lands with the final batch in Phase 6's close (an
+  `Implementing` record with nothing remaining is an illegal state); the plan's own
+  `status: Implemented` freeze still lands in the deferred post-review transaction.
