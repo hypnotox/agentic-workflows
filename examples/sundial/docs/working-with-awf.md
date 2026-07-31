@@ -41,6 +41,18 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 
 When the runner singleton is enabled, the rendered `./awf` wrapper forwards every CLI verb verbatim: it resolves one awf invocation (the `awfInvokeCmd` var when set, otherwise the bootstrap-pinned binary, otherwise the PATH `awf`) and execs it with all arguments, so there is no rendered verb list to fall behind the CLI. Project verbs live in the project's own runner, outside awf's render set.
 
+### Context spill notices
+
+When `awf context` output would exceed 8,192 bytes, the report securely spills outside the
+repository and the command returns exactly a two-line `AWF_CONTEXT_SPILL_V1` notice. On that
+exact notice, read the file named on its second line and verify that its byte length equals
+the `bytes=<decimal>` descriptor before treating its contents as the context packet.
+Best-effort delete the named file after packet use, whether packet use succeeds or fails.
+Treat any other output as the context packet itself; do not interpret a near-match as a
+spill notice. This subsection is the contract's single rendered home; skills and agent
+bodies point here.
+
+
 <!-- awf:edit config-and-overrides: default; create .awf/parts/working-with-awf/config-and-overrides.md to override -->
 ## Config and overrides
 
@@ -213,12 +225,9 @@ they are not OS-sandboxed. Implementation shares the parent checkout, must run a
 tool batch and sequentially, and may commit only when the orchestrator sets `allowCommits: true`.
 Pi's current-leaf, tool-call-id-correlated preflight blocks every member of a reconstructable mixed
 implementation batch. When trustworthy batch context is unavailable, only implementation fails
-closed with an actionable retry-alone error. Every governed subagent dispatch chooses the smallest
-model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work;
-`standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting,
-or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration
-and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime
-uses its harness default and notes that explicit selection is unavailable. In Pi, omission uses the
+closed with an actionable retry-alone error.
+Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
+In Pi, omission uses the
 configured role default and an exact tier reference is supplied only for a deliberate override.
 
 All four tools render bounded recent activity inline. The expanded tool view shows the retained

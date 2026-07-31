@@ -41,7 +41,7 @@ A support skill for mechanical ADR lifecycle transitions: status transitions, th
 An ADR's `## State changes` section is the authoritative link to the topics it governs: either `None.` or a list of `- add`, `- update`, and `- remove` entries, each naming one claim by its qualified `<domain>/<topic>:<slug>` id.
 
 - **At `Accepted`** the operations are settled instruction, amendable under the amendment-until-terminal rules until an Applied event references them. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; inspect lifecycle detail where needed with `awf context --show pending <affected paths>`.
-If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 - **At `Implementing`** each Applied event and exactly its matching claim mutations form one checked Git pair. An `add` appears with this ADR as Origin; an `update` preserves Origin and the prior Revised-by prefix, then appends this ADR; a `remove` disappears. Remaining operations continue to appear as pending progress.
 - **At `Implemented`** all declarations are Applied. A direct transition uses one implicit batch; an incremental transition appends its final batch before the status event.
 - **At `Abandoned`** Applied operations and their provenance remain historical facts, while Remaining operations become Canceled and authorize nothing.
@@ -63,7 +63,7 @@ Pick the status transition, then carry the same verified effort slug and exact `
 4. **Regenerate INDEX.md.** Run `./x render` to regenerate `docs/decisions/INDEX.md`. Stage the result. Do not hand-edit `INDEX.md`; always regenerate and commit it alongside any ADR status change.
 
 <!-- awf:edit procedure-gate: default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
-5. **Validate the staged transaction.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth. If either command fails, fix the cause and re-stage before retrying.
+5. **Validate the staged transaction.** Stage the complete transaction; the commit requires `awf check --staged` and `./x gate` to pass. A wired pre-commit hook enforces both at commit time; run them manually first only in a clone without wired hooks (checkable with `git config core.hooksPath`; when in doubt, run both manually). If either command fails, fix the cause and re-stage before retrying.
 
 <!-- awf:edit commit-templates: default; create .awf/skills/parts/adr-lifecycle/commit-templates.md to override -->
 ## Commit subject templates

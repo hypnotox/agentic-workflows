@@ -16,6 +16,30 @@ query a single version or a range.
   this binary until `awf upgrade` runs. Topic cohesion is now an authoring and review concern:
   see the `One subject per topic` rule in the documentation standard.
 
+- Compress the rendered checkpoint blocks to a four-step digest and replace the inlined
+  context-spill recovery paragraph with a one-line pointer at every context-calling skill and
+  the grounding-checker agent body; the full spill contract moves to a new `Context spill
+  notices` subsection of `docs/working-with-awf.md`, its single rendered home (ADR-0197).
+  Authority precedence and the one-writer contract leave the checkpoint blocks for the
+  workflow doc's working-memory section. An adopter overriding the working-with-awf doc's
+  `commands` part must carry the spill contract in the override.
+
+- The four reviewing skills dispatch their verify pass conditionally (ADR-0197): a fix round
+  whose applied fixes are all mechanical skips it and records the skip; any reasoned or
+  user-decision fix keeps it. The `Record:` evidence block narrows to material decisions
+  (scope, design, authority, or previously-approved output); reviewer briefs paste whatever
+  blocks exist. The reviewing skills' restated commit-scope list and the coverage-regression
+  reminder are deleted where deterministic gates already enforce them; an adopter without
+  such gates loses a reminder, not a control.
+
+- Reword the staged-authority instruction across the agent guide, the adr-lifecycle,
+  executing-plans, subagent-driven-development, and writing-plans skills, the implementer
+  contract, and the plans README and template: every commit still requires the staged check and
+  the gate to pass, but a wired pre-commit hook is named as the enforcing layer and a manual run
+  before committing is instructed only for a clone without wired hooks. The unconditional
+  "run both commands manually, the hook repeats the staged check as defense in depth" model no
+  longer renders (ADR-0196).
+
 - Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
   every enabled skill, not only task skills). A local override of
   `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty

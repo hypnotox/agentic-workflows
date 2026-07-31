@@ -5,14 +5,16 @@
 ## The gate
 
 `./x gate` runs the project's checks and must be green before every commit: the test suite
-with a coverage profile, a 100% **statement**-coverage floor over non-`// coverage-ignore`
+with a coverage profile (written durably to `coverage.out` for CI's Codecov upload, ADR-0196),
+a 100% **statement**-coverage floor over non-`// coverage-ignore`
 blocks (ADR-0012), containerized Pi-extension strict type checks and 100% line/function/branch
 coverage across all five generated Pi TypeScript files, descriptor cross-runtime parity, `go vet`,
 a cross-compile of `./...` for every released non-host platform,
-`golangci-lint`, a whole-program dead-code check (ADR-0063),
-the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), the plain-punctuation scan
-(`awf check prose`, ADR-0119, opt-in for adopters and enabled in this repo), and the effort-owned-memory
-citation scan (`awf check memory`, ADR-0158 updated by ADR-0175, opt-in for adopters and enabled in this repo). A red gate blocks the commit: fix the cause or revert.
+`golangci-lint`, a whole-program dead-code check (ADR-0063), and
+the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079). The plain-punctuation scan
+(`awf check prose`, ADR-0119, opt-in for adopters and enabled in this repo) and the effort-owned-memory
+citation scan (`awf check memory`, ADR-0158 updated by ADR-0175, opt-in for adopters and enabled in this repo)
+are not gate steps: the pre-commit hook payload runs them locally and CI backstops them (ADR-0196). A red gate blocks the commit: fix the cause or revert.
 
 The example adopter is required to produce no notes. Repository regression tests keep bare `awf context internal/project cmd/awf` and bare `awf context cmd/awf/context.go` within direct delivery, while explicitly requested detail remains complete and spill-capable. Catalog and render tests require native skill discovery, advisory workflow relationships, pruning of disabled outputs, and non-Pi parity. Container tests cover handoff runtime guards; exact effort-owned path, slug, ownership, hard-link, bounded UTF-8, stable identity, and repository confinement; cancellation; and editor fallback. Go suites cover schema-2 resident ordering and crash states, one-winner slug reservation, finish tombstones, real-Git add/integrate/remove topology, protocol output, and generated lifecycle coverage. The TypeScript floor is 100% in statements, branches, functions, and lines; reachable paths are tested through injected dependencies, and exclusions remain only for reasoned unreachable runtime guards.
 

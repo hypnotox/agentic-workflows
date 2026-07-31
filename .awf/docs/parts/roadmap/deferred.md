@@ -205,3 +205,14 @@ rung is expensive: a detection heuristic over citation prose, tests at the 100%
 floor, and false-positive risk on citations that do not amend. Worth its own
 focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
 the natural shape of the fix.
+
+## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
+
+Neither subcommand is invoked by any hook payload, runner step, or CI job in this
+repository - every enforcement path calls bare `awf check`, which runs both halves
+together. Surveyed 2026-07-31 during the workflow-friction effort and deliberately
+kept: they are cheap, tested, and harmless single-half conveniences for focused
+debugging, and removing shipped CLI surface is more churn than a dormant tested
+branch. Tripwire, mirroring the removed `--json` precedent: if either subcommand
+starts misleading users about what bare `awf check` covers, cut it then. Do not
+keep re-asking why they are uninvoked.

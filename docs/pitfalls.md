@@ -662,12 +662,12 @@ for the milestone gate alone.
 _Domains: tooling_
 
 Go's doc-comment normalization (gofmt since Go 1.19) treats a literal double-backtick pair in
-a doc comment as the old quoting convention and rewrites it to a curly quote (`“`); so a
-comment trying to *depict* markdown double-backtick spans gets silently mangled into wrong
-typography, and restoring the backticks verbatim just re-triggers the rewrite (hit twice on
-2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the construct out
-in words ("a double-backtick quoting span"); literal backtick pairs are only safe inside
-non-doc comments or raw strings.
+a doc comment as the old quoting convention and rewrites it to a left curly quote (U+201C);
+so a comment trying to *depict* markdown double-backtick spans gets silently mangled into
+wrong typography, and restoring the backticks verbatim just re-triggers the rewrite (hit
+twice on 2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the
+construct out in words ("a double-backtick quoting span"); literal backtick pairs are only
+safe inside non-doc comments or raw strings.
 
 ## Topic and decision edits regenerate navigation outside the authored file
 
@@ -993,6 +993,15 @@ victim seat: when a staged file vanishes, `git log --oneline -- <file>` names th
 that captured it. The rule gains its converse: **every commit in a shared checkout is a
 pathspec commit, including your effort's final one** - and the audit-rule follow-up on
 the roadmap now has five occurrences behind it.
+
+**Scope after ADR-0189 (recorded 2026-07-31).** Managed worktrees are now the default
+execution location: `awf effort new` creates one and directs execution there, so
+cross-effort work is separated by default and every occurrence above predates that
+cutover. The discipline in this entry still binds the residual shared-tree cases:
+non-effort work in the primary checkout, two sessions inside one checkout or worktree,
+and the effort-owned memory files that always live under the primary `.awf/efforts/`.
+The live hazard shape under the worktree-default topology is different - a
+primary-checkout path silently splitting a worktree transaction - and has its own entry.
 
 ## Link ADRs by their on-disk filename, never by constructing one from the title
 
@@ -1784,9 +1793,9 @@ needed exactly that: its tip was rewritten back to the pre-flip phase, and Phase
 after integration as two batches, five operations moving it to `Implementing` and the sixth
 landing with the flip once terminal review settled. Treat the flip as the last thing that
 happens, after terminal review, and prefer an incremental batch whenever any question about
-the decision's content is still open. Note also that a terminal event carrying explicit
-`Applied` events must NOT repeat a `state-sequence`; mixing explicit batches with implicit
-terminal sequencing is rejected outright.
+the decision's content is still open. (The original note about a terminal event not
+repeating a `state-sequence` retired with the global sequence itself in ADR-0191; Applied
+events carry operations only.)
 
 ## In a managed worktree, a primary-checkout path silently splits the transaction
 

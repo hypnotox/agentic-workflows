@@ -27,8 +27,10 @@ case "$cmd" in
     # passes it, and awf has no slower tier. The coverage step (ADR-0012) fails
     # below 100% of non-ignored statements; -coverpkg=./... so every package
     # contributes.
-    prof="$(mktemp)"
-    cleanup_paths+=("$prof")
+    # The profile is durable (gitignored via *.out) so CI can upload it to
+    # Codecov without rerunning the suite, and an interrupted run leaks no
+    # tmpfs file (ADR-0196).
+    prof="coverage.out"
     go test ./... -coverpkg=./... -coverprofile="$prof"
     go run ./cmd/covercheck "$prof"
     tools/pi-extension-test/container.sh run
@@ -49,8 +51,6 @@ case "$cmd" in
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     go run ./cmd/pincheck
-    ./awf check prose
-    ./awf check memory
     ;;
   lint)
     go tool golangci-lint run "$@"

@@ -16,7 +16,7 @@ func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
 		"## Brief\n\n" +
 		"Describe the intended outcome and link the effort's durable artifacts (ADR, plan, worktree, branch) as they come to exist; a resuming session reads this first.\n\n" +
 		"## Decision log\n\n" +
-		"Append one entry per settled decision: \"- D<n> <date> <phase> (user|autonomous) <decision>. Why: <one line>.\" A user entry adds an indented \"Record:\" block quoting the user's load-bearing wording verbatim; reviewers check artifacts against user entries. Full rules: the workflow doc's working-memory section.\n\n" +
+		"Append one entry per settled decision: \"- D<n> <date> <phase> (user|autonomous) <decision>. Why: <one line>.\" A user entry whose decision changes scope, design, authority, or previously-approved output adds an indented \"Record:\" block quoting the user's load-bearing wording verbatim; other user entries need none. Reviewers check artifacts against user entries. Full rules: the workflow doc's working-memory section.\n\n" +
 		"## Observations\n\n" +
 		"Append friction, surprises, near-misses, and recurrences when they happen: \"- <date> <phase> <observation>.\" The retrospective reads this log as its primary input.\n\n" +
 		"## Handoff log\n\n" +
