@@ -29,14 +29,20 @@ The merge is owned by one helper, `mergedGlossaryRecords`, introduced in phase 3
 both `glossaryTransform` and phase 4's advisory producer, so the two-layer merge has a single
 home (`code-design/single-home`).
 
-ADR-0198 applies in four batches, one per phase. Declaration order is enforced within a batch
-and not across batches (`internal/adr/history.go`, `parseAppliedOperations` declares its position
-cursor as a per-call local and runs once per Applied event), so each batch lists its own
-operations in ascending declaration index and no reordering of the ADR's State changes is
-required. Phase 4 is the final batch and therefore carries the `Implemented` flip in its own
-commit: `internal/adr/format.go` rejects an `Implementing` status once every declared operation
-is applied, and requires the final Applied event immediately before an explicit `Implemented`
-transition.
+ADR-0198 applies in four batches. Declaration order is enforced within a batch and not across
+batches (`internal/adr/history.go`, `parseAppliedOperations` declares its position cursor as a
+per-call local and runs once per Applied event), so each batch lists its own operations in
+ascending declaration index and no reordering of the ADR's State changes is required.
+
+Phases 1 to 3 each apply their own batch. **Phase 4 applies no batch and authors no claim.** The
+fourth batch, the two claims it carries, and the `Implemented` flip are one transaction owned by
+the terminal-review flow, per the agent guide: `awf-reviewing-impl` lands the final Applied batch
+and the status flip after terminal review settles. Two mechanics force them together rather than
+into phase 4: `internal/adr/format.go` rejects an `Implementing` status once every declared
+operation is applied and requires the final Applied event immediately before an explicit
+`Implemented` transition, while `checkMutations` reports a claim mutation that arrives without its
+operation. Phase 4 therefore lands its code, tests, and proof markers only; the ADR rests at
+`Implementing` with seven of nine operations applied, which is legal.
 
 ## File structure
 
@@ -471,7 +477,8 @@ feat(rendering): ship a standard glossary vocabulary to adopters
 ## Phase 4: Add the terseness advisory and rewrite the corpus
 
 **Execution mode: inline.** One independently green transaction. Depends on phase 3's threshold
-constant and merge helper. This is the final batch, so it also carries the ADR's `Implemented` flip.
+constant and merge helper. It applies no ADR batch and authors no claim: those belong to the
+terminal transaction described in Notes.
 
 - [ ] **Task 4.1: Add the terseness advisory family.** In `internal/project/check.go`, add a
   glossary terseness note producer to `AdvisoryNotes`, alongside the unset-var, stub, part-marker,
@@ -506,17 +513,16 @@ constant and merge helper. This is the final batch, so it also carries the ADR's
   markers in that file. A marker on the `notes_test.go` producer test would satisfy the textual
   ledger while proving nothing about the exit code.
 
-- [ ] **Task 4.3: Add the two advisory claims.** In
-  `.awf/topics/parts/rendering/doc-outputs/current-state.md`, add `glossary-terseness-advisory`
-  (`Origin: ADR-0198`, `Backing: test`): the advisory reports one note per glossary term whose
-  meaning exceeds the threshold, over the merged shipped-and-authored set. Its proof marker goes on
-  the task 4.1 producer test.
+- [ ] **Task 4.3: Leave both advisory claims unauthored.** This is a deliberate non-action, recorded
+  so an executor does not helpfully add them. `glossary-terseness-advisory` and
+  `terseness-advisory-nonfailing` are the fourth batch's claims and must arrive in the same
+  transaction as their Applied event, which the terminal-review flow owns (see Notes). Authoring
+  them here would make `checkMutations` report a claim mutation with no operation and phase 4 could
+  not close green.
 
-  In `.awf/topics/parts/tooling/cli/current-state.md`, add `terseness-advisory-nonfailing`
-  (`Origin: ADR-0198`, `Backing: test`), worded to match its siblings
-  `completeness-advisory-nonfailing` and `stub-advisory-nonfailing`: the glossary terseness notes
-  `awf check` prints are informational only and never change the command's exit code. Its proof
-  marker goes on the task 4.2 test.
+  The proof markers placed in tasks 4.1 and 4.2 do land in this phase and are momentarily orphaned.
+  That is safe: backing validation runs claim to marker, never marker to claim, so a marker whose
+  claim does not yet exist is inert.
 
 - [ ] **Task 4.4: Add the glossary rule to the documentation standard.** In
   `templates/docs/doc-standard.md.tmpl`, add a rule to the `rules` section, immediately after the
@@ -563,18 +569,11 @@ constant and merge helper. This is the final batch, so it also carries the ADR's
   task 4.9 so a failing check cannot masquerade as a clean corpus: `./x check` exits zero AND its
   output contains no glossary terseness note.
 
-- [ ] **Task 4.7: Record the final Applied batch and flip to Implemented.** Append to ADR-0198's
-  `## Status history`, in this order, and set `status: Implemented` in the frontmatter:
-
-  ```
-  - 2026-07-31: Applied; operations: add `rendering/doc-outputs:glossary-terseness-advisory`, add `tooling/cli:terseness-advisory-nonfailing`
-  - 2026-07-31: Implemented; content-sha256: <digest>
-  ```
-
-  The flip belongs in this commit and cannot be deferred: `internal/adr/format.go` rejects an
-  `Implementing` status once every declared operation is applied, and requires the final Applied
-  event immediately before an explicit `Implemented` transition. Terminal review therefore reviews
-  an already-Implemented ADR. Stamp `<digest>` as in task 1.3.
+- [ ] **Task 4.7: Leave ADR-0198 at Implementing.** Another deliberate non-action. Do not append an
+  Applied event and do not touch the frontmatter status. After phase 3 the ADR carries seven of its
+  nine operations applied, which keeps `Implementing` legal (that status requires at least one
+  applied and at least one remaining). The final batch and the flip land in the terminal
+  transaction described in Notes.
 
 - [ ] **Task 4.8: Add the advisory changelog entry.** Under `## [Unreleased]` then `### Features` in
   `changelog/CHANGELOG.md`, add an entry stating that `awf check` now reports a non-failing advisory
@@ -606,8 +605,9 @@ feat(rendering): add the terseness advisory and clean the glossary
 - `docs/config-reference.md` documents `terms` in its record shape and does not list
   `standardTerms` as an adopter-settable key.
 - `docs/glossary.md` defines no term twice: the prepend part and the merged table do not overlap.
-- ADR-0198 ends at `status: Implemented` carrying four Applied events whose operations union to
-  exactly its nine declared operations, with no operation applied twice.
+- At the end of phase 4, ADR-0198 is at `status: Implementing` with three Applied events covering
+  seven of its nine operations. After the terminal transaction it is at `status: Implemented` with
+  four Applied events whose operations union to exactly its nine, no operation applied twice.
 
 ## Notes
 
@@ -620,6 +620,22 @@ feat(rendering): add the terseness advisory and clean the glossary
 - The corpus rewrite in task 4.6 is the largest single work item in this plan and is judgement work,
   not mechanical: it is deliberately separated from the phase 2 encoding change so each is
   reviewable on its own terms.
-- ADR-0198 reaches `Implemented` at the end of phase 4 rather than at terminal review, because the
-  final Applied batch and the status flip are one validated transaction. Terminal review still runs;
-  it reviews the completed implementation.
+- **Terminal transaction, owned by `awf-reviewing-impl` after terminal review settles.** It is one
+  commit carrying four things that cannot be separated:
+
+  1. `glossary-terseness-advisory` in `.awf/topics/parts/rendering/doc-outputs/current-state.md`
+     (`Origin: ADR-0198`, `Backing: test`): the advisory reports one note per glossary term whose
+     meaning exceeds the threshold, over the merged shipped-and-authored set. Its proof marker is
+     already on the task 4.1 producer test.
+  2. `terseness-advisory-nonfailing` in `.awf/topics/parts/tooling/cli/current-state.md`
+     (`Origin: ADR-0198`, `Backing: test`), worded to match `completeness-advisory-nonfailing` and
+     `stub-advisory-nonfailing`: the glossary terseness notes `awf check` prints are informational
+     only and never change the command's exit code. Its proof marker is already on the task 4.2
+     test.
+  3. The fourth Applied event:
+     `- <date>: Applied; operations: add `rendering/doc-outputs:glossary-terseness-advisory`, add `tooling/cli:terseness-advisory-nonfailing``
+  4. `status: Implemented` in the frontmatter plus the matching Implemented history event, stamped
+     as in task 1.3 and placed immediately after the Applied event.
+
+  They are one transaction because a claim mutation without its operation is a finding, and because
+  an `Implementing` status is rejected once every declared operation is applied.
