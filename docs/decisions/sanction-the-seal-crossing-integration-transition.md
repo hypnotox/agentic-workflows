@@ -124,16 +124,22 @@ falsified nothing, because nothing declared it.
 
 2. The inherited-cutoff edge is written over the generation-sealed cutoffs rather than
    pinned to one generation and one cutoff. The edge admits a transition in which the schema
-   generation advances across the seal of some cutoff the before authority did not carry,
-   that cutoff takes the value published by the arriving authority, and every other
-   permanent value stays byte-identical. It covers `adrFormatV2From`, sealed at generation
-   15, and `adrFormatV3From`, sealed at generation 29, and every cutoff a later generation
-   seals. It does not cover `adrFormatV1From`, which no generation seals: that cutoff is
-   written at first adoption or by consuming a bridge attestation, its existing edge carries
-   no generation clause, and it keeps that edge unchanged. The published value cannot be
-   re-derived and must not be: the before tree yields the branch's own pre-merge next
-   identity, and the after tree yields one the merge has already moved past, so re-deriving
-   would lower the cutoff under records already sealed above it.
+   generation advances across the seal of every generation-sealed cutoff the before authority
+   did not carry, each such cutoff takes the value published by the arriving authority, and
+   every permanent value that is not one of them stays byte-identical. Admitting all of them
+   at once rather than one is what makes the edge answer the case it exists for: a branch
+   forked before generation 15 carries neither `adrFormatV2From` nor `adrFormatV3From`, so a
+   one-cutoff edge would still refuse it, and cutoffs seal in ascending generation order, so
+   a single-cutoff `adrFormatV2From` inheritance could only ever fire against an arriving
+   authority between generations 15 and 28, which the binary-version gate puts out of reach
+   of a current binary. Item 3's bound and the staged reparse both apply per cutoff, so the
+   soundness argument generalises across them unchanged. The edge does not cover
+   `adrFormatV1From`, which no generation seals: that cutoff is written at first adoption or
+   by consuming a bridge attestation, its existing edge carries no generation clause, and it
+   keeps that edge unchanged. A published value cannot be re-derived and must not be: the
+   before tree yields the branch's own pre-merge next identity, and the after tree yields one
+   the merge has already moved past, so re-deriving would lower a cutoff under records
+   already sealed above it.
 
    The edge admits the case where the after generation equals the sealing generation as well
    as the case where it exceeds it, and closing the equal case requires more than widening
@@ -189,8 +195,8 @@ falsified nothing, because nothing declared it.
    launder a deletion into a rename nor make a legitimate rename's digest ambiguous. No
    predicate changes; this item supplies the authority the rule has been running without.
 
-6. The config port-forward strips every retired key, not the subset a maintainer
-   remembered. The top-level `invariants` block and `audit.baseBranch` join
+6. The config port-forward strips the retired keys a maintainer missed. The top-level
+   `invariants` block and `audit.baseBranch` join
    `retiredKeyRemovals` and the `retiredConfigKeys` backstop. The maintenance obligation is
    restated as covering every key the current schema no longer declares, whether or not its
    removing migration carries a config-bytes action, in both places that record it: the
@@ -198,9 +204,18 @@ falsified nothing, because nothing declared it.
    `docs/pitfalls.md`, whose source is the `data.pitfalls` entry in `.awf/docs/pitfalls.yaml`
    rather than a part under `.awf/docs/parts/pitfalls/`, and which is re-rendered rather than
    hand-edited. The rule becomes a governed claim rather than an obligation recorded only
-   in a comment: `Backing: test`, proven by `TestConfigForCurrentSchemaParsesEveryRetiredKey`.
-   Leaving it ungoverned would ship a fourth instance of exactly the defect item 4 exists to
-   close, in the record that diagnoses it.
+   in a comment, because leaving it ungoverned would ship a fourth instance of exactly the
+   defect item 4 exists to close, in the record that diagnoses it.
+
+   The claim asserts what its proof establishes and no more: every key the retired set names
+   is stripped from a historical config, whether or not its removing migration carries a
+   config-bytes action. `Backing: test`, proven by
+   `TestConfigForCurrentSchemaParsesEveryRetiredKey`. Completeness of that set is
+   deliberately not claimed. The test iterates the set, so it cannot fail on a key missing
+   from it, which is exactly how the two keys above were missed; asserting completeness on
+   that backing would be the nominal proof this record indicts. Completeness stays a
+   maintenance obligation in the two prose sites, and making it mechanical is an open problem
+   the roadmap already tracks.
 
 7. The corrections this work owes travel with it. Three doc comments are rewritten, each
    carrying a statement its own code has outgrown: `validatePermanentLockTransition`'s,
@@ -249,16 +264,18 @@ falsified nothing, because nothing declared it.
 ## State changes
 
 - update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`
-- add `config/migrations-and-locks:port-forward-strips-every-retired-key`
+- add `config/migrations-and-locks:port-forward-strips-listed-retired-keys`
 - update `adr-system/adr-lifecycle:renumber-digest-paired`
 - add `adr-system/adr-lifecycle:governed-format-change-bounded`
 
 ## Consequences
 
 Integration by a stale branch stops being a bespoke event. The generalisation over the
-cutoff set means the next seal does not reproduce this record: a branch forked before it
-integrates on the edge already written, and the untested equal-generation case is closed
-rather than left to the accident that main had moved one generation further.
+cutoff set means the next seal does not reproduce this record, and it holds for a branch
+older than one seal as well as for one forked since the last: because the edge admits every
+generation-sealed cutoff the before authority lacks rather than one, a fork predating two
+seals inherits both in the same transition. The untested equal-generation case is closed
+too, rather than left to the accident that main had moved one generation further.
 
 The record supersedes a current-state claim ADR-0204 item 10 established. That item says a
 renumber target must stay below the V3 cutoff, and that a target at or above it fails for
@@ -292,6 +309,13 @@ obligation lived in a test comment and a pitfalls paragraph, neither of which an
 reads as authority. Two ungoverned rules surfacing in one record is the argument for asking,
 separately, whether an enforcement rule should be mechanically prevented from shipping
 without a governing claim.
+
+Governing the port-forward rule does not make it complete, and the record is explicit about
+that rather than trading one nominal assertion for another. The claim covers the retired set
+as listed; whether that set is the whole set remains held by a maintenance obligation, for
+the plain reason that a test iterating a list cannot fail on what the list omits. A claim
+sized to its proof is the honest option available here, and the gap it leaves is the same
+one the roadmap's nominal-proof entry already owns.
 
 The cost of the generalisation is that two refusal predicates now accept strictly more, at
 every generation-sealed cutoff rather than one. That is the same shape of risk as the rule
