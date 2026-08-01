@@ -103,7 +103,10 @@ commit `fb1f392d`, so the claim has contradicted its proof since migration.
    declares itself with `Kind: batch`, `Paths:` IS the exhaustive affected-site set the
    batch convention already requires, now carrying a field name and available to non-batch
    tasks; the convention's separate affected-site-set wording is retired into it across the
-   four surfaces. `Paths:` is required on a batch task and optional elsewhere.
+   four surfaces. `Paths:` is required wherever the affected set is not unambiguous from
+   the task's title and content, which is always true of a batch task. Outside that
+   always-true case the judgment is the author's and the reviewer's, in keeping with the
+   rest of this decision.
 
 7. A `Paths:` field may hold a pathspec or glob in place of an enumeration. `Post-check:`
    names the deterministic post-check the batch convention already requires, and this
