@@ -89,10 +89,14 @@ several of these outcomes at once and must be stated rather than assumed.
 
 5. A `Reapplied` event's operations enter the batch projection that mutation reconciliation
    consumes, so the corrective commit has a matching operation and is not rejected as an
-   unmatched mutation. The same operations are deduplicated by operation identity in
-   `OperationProgress`'s applied partition and in the V2 history validator's
-   applied-cardinality map, so a re-application is neither a second Applied entry nor a
-   duplicate-application error. This split is the mechanism the rest of these items assume.
+   unmatched mutation. In `OperationProgress`'s applied partition and in the V2 history
+   validator's applied-cardinality map, the deduplication key is the operation identity
+   together with the kind of event that contributed it: a second occurrence sourced from an
+   Applied event remains an error exactly as today, because that is a genuine
+   duplicate-application bug, while an occurrence sourced from a `Reapplied` event is
+   absorbed without error and without double-counting. Operation value identity alone
+   cannot separate those two cases, so the event kind is part of the key. This split is the
+   mechanism the rest of these items assume.
 
 6. A re-applied `update` is validated by the existing update path unchanged: the claim is
    present on both sides, Origin is preserved, `revisedByExtension` passes because the ADR
@@ -128,13 +132,17 @@ several of these outcomes at once and must be stated rather than assumed.
     validator enforces. This mirrors the constraint ADR-0188 item 2 placed on the Amended
     kind for the same reason.
 
-11. Merge validation admits the re-application into the chain. Within one aggregate a
-    claim's chain may carry a second entry from the same ADR when that entry is a
-    re-application, and the fold contributes that ADR to the updaters list once, which is
-    consistent with the presence-based once rule item 8 writes into
-    `update-requires-substance`. This narrows ADR-0182 item 6 rather than leaving it
-    standing: that rule is about the execution chain, so it is the rule this decision must
-    change.
+11. Merge validation admits the re-application into the chain, for both re-applicable
+    verbs. ADR-0182 item 6 carries two separate prohibitions and this decision narrows
+    both. Where a claim's chain within one aggregate carries a second update entry from the
+    same ADR and that entry is a re-application, the fold contributes that ADR to the
+    updaters list once, consistent with the presence-based once rule item 8 writes into
+    `update-requires-substance`. Where the chain carries a second add entry from the same
+    ADR and that entry is a re-application, the two entries collapse to one net add
+    attributed to the chain's first step, so the requirement that an add be the chain's
+    first operation is satisfied by that fold rather than violated by the correction. Both
+    prohibitions are about the execution chain, which is why this decision must change them
+    rather than leave them standing.
 
 12. A refusal names the route. When an author declares a second operation on a claim the
     ADR has already applied, the error states that the operation is already applied and
