@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // gatedCommandsDisplay is the backticked, comma-joined clispec gated set - the
@@ -20,9 +21,26 @@ func TestGatedCommandsDisplay(t *testing.T) {
 		}
 		return out
 	}
-	gated := quote(clispec.GatedCommandNames())
-	want := strings.Join(gated, ", ")
+	var names []string
+	for _, cmd := range clispec.Commands {
+		if cmd.Gating != clispec.Ungated {
+			names = append(names, cmd.Name)
+		}
+	}
+	want := strings.Join(quote(names), ", ")
 	if got := gatedCommandsDisplay(); got != want {
 		t.Errorf("gatedCommandsDisplay() = %q, want %q", got, want)
+	}
+
+	p := &Project{Cfg: &config.Config{}}
+	registry, err := p.placeholderRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := registry["gatedCommands"]; got != want {
+		t.Errorf("placeholder gatedCommands = %q, want %q", got, want)
+	}
+	if got := p.data(config.Sidecar{}, map[string]bool{})["gatedCommands"]; got != want {
+		t.Errorf("agent-guide gatedCommands = %q, want %q", got, want)
 	}
 }
