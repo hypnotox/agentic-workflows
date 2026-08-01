@@ -139,8 +139,9 @@ decision does not add one.
    a refusal rather than ignored prose.
 
    `AWF-Allow-Version` uses the exact intrinsic format marker, or the literal `legacy` for a
-   markerless record. Its value must name a format known to the activation registry. The
-   immediately following `AWF-Allow-Reason` belongs to that version and must remain nonempty
+   markerless record. Its value must be either `legacy` or a governed format known to the
+   activation registry. The immediately following `AWF-Allow-Reason` belongs to that version
+   and must remain nonempty
    after ASCII whitespace is trimmed. A complete pair authorizes every qualifying
    incoming-parent ADR of that version in this merge. Pairs may repeat; duplicate pairs and
    complete pairs for a version that needs no exception are harmless and auditable. An
