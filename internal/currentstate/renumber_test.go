@@ -31,8 +31,13 @@ func renumberOurs(number string) adr.ADR {
 		adr.HistoryEvent{Kind: adr.HistoryAmended, Date: "2026-01-03", Digest: strings.Repeat("a", 64)},
 		v2batch(op(adr.OpAdd, "d/t:x"), op(adr.OpUpdate, "d/t:y")),
 		v2status("Implemented"),
-	), "1. The record integration renames.")
+	), renumberedBody)
 }
+
+// renumberedBody is the canonical body the digest pair forms on. A fixture that
+// means to test a bound on the digest step gives another record this exact body,
+// because sharing it is the only way to make the digest ambiguous.
+const renumberedBody = "1. The record integration renames."
 
 // renumberOrigin owns the claim our record revises, so a substitution has a
 // Revised-by list to move as well as an Origin.
@@ -130,7 +135,7 @@ func TestRenumberRequiresByteIdenticalHistory(t *testing.T) {
 // Ordering the twin identically on both sides hides that, because the sides
 // agree by accident.
 func TestRenumberRefusedWhenDigestAmbiguous(t *testing.T) {
-	twin := bodied(v2rec("0060", "Implemented", nil, v2status("Proposed")), "1. The record integration renames.")
+	twin := bodied(v2rec("0060", "Implemented", nil, v2status("Proposed")), renumberedBody)
 	before := currentstate.Universe{
 		ADRs:   append(append([]adr.ADR(nil), renumberBefore().ADRs...), twin),
 		Topics: renumberBefore().Topics,
@@ -199,5 +204,42 @@ func TestUnchangedSluglessRecordsPairOnTheirNumbers(t *testing.T) {
 		claim("d/t:y", "0050"), claim("d/t:w", "0070"))
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("expected an ordinary status advance to be accepted, got:\n%s", messages(f))
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:renumber-digest-paired
+//
+// TestRenumberIgnoresASlugCarryingTwin bounds the digest step to records
+// carrying no slug. A slug-carrying record always pairs on that slug and never
+// reaches the digest step, so it must not enter the digest index either: if it
+// did, a pending record that happens to share the renamed record's canonical
+// body would make the digest ambiguous on both sides, the guard would withhold
+// the alias, and the rename would be refused. That is the integration deadlock
+// this rule exists to remove, reintroduced by an unrelated record's body.
+func TestRenumberIgnoresASlugCarryingTwin(t *testing.T) {
+	twin := bodied(v2rec("", "Proposed", nil, v2status("Proposed")), renumberedBody)
+	twin.Slug = "an-unrelated-pending-record"
+	twin.Format = adr.CurrentStateV3
+	before, after := renumberBefore(), renumberAfter()
+	before.ADRs = append(before.ADRs, twin)
+	after.ADRs = append(after.ADRs, twin)
+	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("a slug-carrying twin must not make the digest ambiguous, got:\n%s", messages(f))
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:renumber-digest-paired
+//
+// TestRenumberIgnoresAnUngovernedTwin is the same bound on the other half of
+// the condition. A legacy record predates the governed grammar entirely and
+// declares no operations, so it takes part in no pairing; a body it happens to
+// share with the renamed record must not withhold the alias either.
+func TestRenumberIgnoresAnUngovernedTwin(t *testing.T) {
+	twin := bodied(adr.ADR{Number: "0003", Format: adr.Legacy, Status: "Accepted"}, renumberedBody)
+	before, after := renumberBefore(), renumberAfter()
+	before.ADRs = append(before.ADRs, twin)
+	after.ADRs = append(after.ADRs, twin)
+	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("an ungoverned twin must not make the digest ambiguous, got:\n%s", messages(f))
 	}
 }
