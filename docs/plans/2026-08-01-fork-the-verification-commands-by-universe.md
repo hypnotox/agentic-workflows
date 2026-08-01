@@ -27,7 +27,7 @@ now-enabled gates keep quiet.
 
 ADR-0207 is `Proposed`. Phase 1 appends its `Accepted` and `Implementing` status events and Applied
 batch 1; Phases 2 to 5 each append one further Applied batch in declaration order. The batch
-partition is 2 / 8 / 1 / 1 / 1 across the thirteen declared operations, and the ADR's State changes
+partition is 2 / 11 / 1 / 1 / 1 across the sixteen declared operations, and the ADR's State changes
 list is sequenced to match. Every batch task also flips the ADR's frontmatter `status:` field, which
 the parser cross-checks against the latest Status history entry. The `Implemented` flip lands in
 Phase 5's transaction alongside the final Applied batch, because an `Implementing` status with no
@@ -42,14 +42,18 @@ deferred to the post-terminal-review transaction.
 - **Modified:** `internal/clispec/clispec.go`, `cmd/awf/dispatch.go`, `cmd/awf/main.go`,
   `cmd/awf/check.go`, `cmd/awf/gate.go`, `cmd/awf/prosegate.go`, `cmd/awf/memorygate.go`,
   `internal/project/gatedcommands.go`, `internal/project/currentstate.go`,
-  `internal/migrate/migrate.go`, `x`, `README.md`, `.githooks/check-nested-staged`,
+  `internal/project/validate.go`, `internal/catalog/standard.go`, `internal/configspec/spec.go`,
+  `internal/migrate/migrate.go`, `.awf/config.yaml`, `x`, `README.md`, `.githooks/check-nested-staged`,
   `templates/hooks/pre-commit.sh.tmpl`, `templates/docs/working-with-awf.md.tmpl`,
   `examples/sundial/.awf/config.yaml`, the authored `.awf/` inputs ADR-0207 items 6 and 12 name, the
-  test files each phase names, and the five topic-claim part files the batches mutate:
+  test files each phase names, and the eight topic-claim part files the batches mutate:
   `.awf/topics/parts/tooling/cli/current-state.md`,
   `.awf/topics/parts/tooling/quality-gates/current-state.md`,
   `.awf/topics/parts/tooling/audit-and-snapshots/current-state.md`,
-  `.awf/topics/parts/code-design/dependency-composition/current-state.md`, and
+  `.awf/topics/parts/code-design/dependency-composition/current-state.md`,
+  `.awf/topics/parts/rendering/catalog-and-targets/current-state.md`,
+  `.awf/topics/parts/config/validation/current-state.md`,
+  `.awf/topics/parts/rendering/companion-scripts/current-state.md`, and
   `.awf/topics/parts/rendering/sync-and-drift/current-state.md`.
 - **Deleted:** `cmd/awf/invariants.go`, `cmd/awf/invariants_test.go`.
 
@@ -188,10 +192,25 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   configured `checkCmd` line and the gate line. Mirror the change in `x` if it hardcodes any of them.
   `internal/project/hooks_test.go` pins the payload's four lines verbatim (around :69, and the
   runner-var variant around :112) and is the proof site for
-  `rendering/companion-scripts:hook-payloads-fallback-safe`; update it to pin the new two-line set.
-  This is a deletion rather than a respelling, so Task 2.5's batch does not cover it.
-  ADR-0207 item 1: bare check now covers both universes and both scans, so keeping the standalone
-  lines would run each twice per commit.
+  `rendering/companion-scripts:hook-payloads-fallback-safe`; update it to pin the new two-line set,
+  remove `proseGateCmd` and `memoryGateCmd` from the configured-command fixture, and rewrite the
+  claim prose to name only command vars that still have payload consumers. This is a deletion rather
+  than a respelling, so Task 2.5's batch does not cover it. ADR-0207 item 1: bare check now covers
+  both universes and both scans, so keeping the standalone lines would run each twice per commit.
+- [ ] **Task 2.6b: Retire the two orphaned scan-command vars.** Delete the `proseGateCmd` and
+  `memoryGateCmd` descriptors from `internal/catalog/standard.go` and their availability entries from
+  `internal/configspec/spec.go`; do not rewrite either description to claim a replacement consumer.
+  Remove both keys from this repository's `.awf/config.yaml` rather than respelling their now-inert
+  values. In `internal/project/descriptor_parity_test.go`, remove both keys from `functionalVarKeys`
+  and rewrite the comments that call out their introductions, while keeping the exact-set assertion and
+  its proof marker. In `internal/project/validate.go`, narrow the runner-disabled hook-command loop
+  from four vars to `checkCmd` and `commitGateCmd`, because those are the only awf-verb vars the
+  remaining hook payloads consume; update its comments. In `internal/project/validate_test.go`,
+  delete the two obsolete refusal cases, remove both keys from the runner-less valid fixture, and
+  keep the fixed-order assertions for `checkCmd` then `commitGateCmd`. Render the catalog and config
+  reference after these authored removals. Acceptance: outside frozen history and migration tests,
+  neither retired key appears as a live descriptor, availability entry, hook requirement, or payload
+  fixture.
 - [ ] **Task 2.7: Update the tests the fork invalidates.** `cmd/awf/checkgroup_test.go`'s
   `TestCheckChildrenRejectStaged` is deleted: with `--staged` gone from the table there is no flag to
   reject. Add tests covering `awf check repo prose` resolving to the leaf, `repo state` and
@@ -208,15 +227,17 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   `cmd/awf/run_test.go`, and the refusal test Task 1.4 adds all take the new argv paths
   `check repo prose`, `check repo memory`, and `check staged commit`.
 - [ ] **Task 2.7b: Respell the three subcommands the fork renames.** Batch task, separate from Task
-  2.5 because the transformation and the affected population differ. Every authored site naming
+  2.5 because the transformation and the affected population differ. Every authored live site naming
   `check prose`, `check memory`, or `check commit` takes `check repo prose`, `check repo memory`, or
-  `check staged commit`. Representative, a config var: `.awf/config.yaml`'s
+  `check staged commit`; the two retired keys and their values are deleted by Task 2.6b instead.
+  Representative, a config var: `.awf/config.yaml`'s
   `commitGateCmd: ./awf check commit` becomes `./awf check staged commit`; this one is load-bearing
   for the phase itself, because that var renders `.awf/hooks/commit-msg.sh` and this repository wires
   `core.hooksPath`, so leaving it stale makes the phase's own closing commit fail its own commit-msg
-  hook. Three edges: a CI step (`.github/workflows/ci.yml`, around :30-31), a shipped catalog default
-  descriptor (`internal/catalog/standard.go`, around :248-250), and a config-spec description
-  (`internal/configspec/spec.go`, around :160-260). Also in the set:
+  hook. Three edges: a CI step (`.github/workflows/ci.yml`, around :30-31), the surviving
+  `commitGateCmd` catalog descriptor (`internal/catalog/standard.go`, around :248), and
+  command-related config-spec prose outside the two availability entries Task 2.6b deletes. The
+  retired scan-command descriptors are removed, not respelled. Also in the set:
   `templates/docs/working-with-awf.md.tmpl` (around :35-37), `templates/docs/workflow.md.tmpl`
   (around :81), `README.md` (around :282-284 and :308), `.awf/parts/workflow/commit-discipline.md`
   (around :5), and `.awf/docs/pitfalls.yaml` (around :447 and :1402). Decide explicitly and record in
@@ -244,22 +265,28 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   to the project subtree, so no corpus or prefix filtering is added. Add tests for the four
   combinations of knob on/off against git present/absent; the knob-on-without-git case carries the
   proof marker for `tooling/quality-gates:prose-gate-refuses-without-git`.
-- [ ] **Task 2.10: Apply ADR-0207 batch 2 and its claim mutations.** Append one `Applied` event listing,
-  in declaration order: update `tooling/cli:group-child-project-guard-exemption` (prose narrows to
-  `awf check staged commit` alone), update `tooling/cli:help-lists-group-children` (children at any
-  depth), update `tooling/cli:invariants-in-check` (its second conjunct narrows to the current-state
-  evaluation's own contribution rather than the whole command's exit status), add
+- [ ] **Task 2.10: Apply ADR-0207 batch 2 and its claim mutations.** Append one `Applied` event listing
+  these eleven operations in declaration order: update
+  `tooling/cli:group-child-project-guard-exemption` (prose narrows to `awf check staged commit` alone),
+  update `tooling/cli:help-lists-group-children` (children at any depth), update
+  `tooling/cli:invariants-in-check` (its second conjunct narrows to the current-state evaluation's
+  own contribution rather than the whole command's exit status), add
   `tooling/cli:check-universe-groups` (the fork's contract: membership by subject, what each bare form
-  runs, and the non-aggregating child), update `tooling/quality-gates:memory-citation-gate`,
-  update `tooling/audit-and-snapshots:commit-gate-shared-rule`, and update
-  `code-design/dependency-composition:dependency-composition-commit-classification` (the last three
-  respellings). Each updated claim gains `ADR-0207` appended to its `Revised-by` list at its ascending
-  position and preserves its `Origin`. The added claim carries `Origin: ADR-0207`, `Backing: test`, and
-  a proof marker placed on the Task 2.7 test that asserts the bare aggregate's membership. The batch
-  ends with `update tooling/quality-gates:prose-gate-refuses-without-git`, whose prose narrows to
-  refusing outside a git repository WHEN THE GATE IS ENABLED, and reporting itself disabled without
-  touching git when it is not. Eight operations in this batch. Flip the ADR frontmatter only if it is
-  not already `Implementing`.
+  runs, and the non-aggregating child), update
+  `rendering/catalog-and-targets:var-descriptor-set-pinned` (remove `proseGateCmd` and
+  `memoryGateCmd` from the exact functional set), update `config/validation:hooks-commands-resolvable`
+  (runner-disabled hooks require only `checkCmd` and `commitGateCmd`), update
+  `rendering/companion-scripts:hook-payloads-fallback-safe` (the pre-commit payload is the configured
+  check plus gate and no longer consumes either retired var), update
+  `tooling/quality-gates:memory-citation-gate`, update
+  `tooling/audit-and-snapshots:commit-gate-shared-rule`, update
+  `code-design/dependency-composition:dependency-composition-commit-classification` (these last three
+  respell the live commands), and update `tooling/quality-gates:prose-gate-refuses-without-git`, whose
+  prose narrows to refusing outside a git repository WHEN THE GATE IS ENABLED and reporting itself
+  disabled without touching git when it is not. Each updated claim gains `ADR-0207` appended to its
+  `Revised-by` list at its ascending position and preserves its `Origin`. The added claim carries
+  `Origin: ADR-0207`, `Backing: test`, and a proof marker placed on the Task 2.7 test that asserts the
+  bare aggregate's membership. Flip the ADR frontmatter only if it is not already `Implementing`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -345,15 +372,19 @@ Phase 2's knob-first change binds only when a gate is off, which after this phas
   commit body. Acceptance: `./x check` exits zero with no `note:` line in the example's output, which
   is what `tooling/quality-gates:example-zero-notes` requires and what Phase 5 depends on.
 - [ ] **Task 4.3: Add the chained migration.** Create `internal/migrate/retargetcheckcommands.go` at
-  the next schema generation, registered in `internal/migrate/migrate.go`. It retargets `check prose`
-  to `check repo prose`, `check memory` to `check repo memory`, and `check commit` to
-  `check staged commit`, and clears a var whose value invokes `check invariants`. It matches a
-  three-token invocation; `retiredCommandRe` is anchored to a two-token form and must not be copied.
-  Per ADR-0207 item 11 it does NOT match the bare `invariants` spelling, which the 18-to-19 migration
-  already rewrote and which otherwise belongs to a non-awf runner's vocabulary. Leave
+  the next schema generation, registered in `internal/migrate/migrate.go`. Before inspecting any var
+  value, delete the `proseGateCmd` and `memoryGateCmd` keys themselves whatever values they hold.
+  For every other var, retarget `check prose` to `check repo prose`, `check memory` to
+  `check repo memory`, and `check commit` to `check staged commit`, preserving trailing arguments,
+  and clear a var whose value invokes `check invariants`. It matches a three-token invocation;
+  `retiredCommandRe` is anchored to a two-token form and must not be copied. Per ADR-0207 item 11 it
+  does NOT match the bare `invariants` spelling, which the 18-to-19 migration already rewrote and
+  which otherwise belongs to a non-awf runner's vocabulary. Leave
   `internal/migrate/renameretiredcommands.go` untouched. Add
-  `internal/migrate/retargetcheckcommands_test.go` covering each retarget, the clear, idempotent
-  replay, and a value naming another runner being left alone.
+  `internal/migrate/retargetcheckcommands_test.go` covering unconditional deletion of each retired
+  key (including arbitrary and already-respelled values), each retarget in a different surviving var,
+  trailing-argument preservation, the invariants clear, idempotent replay, and a value naming another
+  runner being left alone.
 - [ ] **Task 4.4: Update the authored inputs whose descriptions the fork changes.** Per ADR-0207 item
   12: replace the superseded follow-on entry at `.awf/docs/parts/roadmap/deferred.md`, landing the
   carried-forward check-architecture cleanup in `.awf/docs/parts/roadmap/ideas.md`; resolve the
@@ -409,7 +440,9 @@ feat(tooling): disclose a disabled opt-in check
 - `git grep -F -- 'check --staged' -- . ':!docs/decisions' ':!docs/plans' ':!changelog' ':!docs/research'`
   returns no output. The same for `git grep -F 'check invariants'` with those exclusions plus
   `':!internal/migrate/renameretiredcommands.go' ':!internal/migrate/renameretiredcommands_test.go'`,
-  which ADR-0207 item 11 freezes with the retired spelling intact.
+  which ADR-0207 item 11 freezes with the retired spelling intact. Outside frozen history and the new
+  migration's explicit fixtures, `proseGateCmd` and `memoryGateCmd` are absent from the catalog,
+  config-spec availability map, hook validation, and hook payload tests.
 - `awf check repo`, `awf check staged`, and bare `awf check` each exit zero on a clean tree; bare
   `awf check` in a non-git directory exits zero having reported the staged universe unavailable.
 - `awf check staged` reports drift when a `.awf/` change is staged without its rendered output.
@@ -419,10 +452,14 @@ feat(tooling): disclose a disabled opt-in check
   plan names, and the dead-code step with `runInvariants`, `CurrentStateInvariants`, `InvariantReport`,
   and `UngatedGroupChildren` all gone.
 - ADR-0207 carries `Accepted`, `Implementing`, five `Applied` events, and `Implemented`, whose
-  operations, concatenated in order, equal its declared thirteen.
+  operations, concatenated in order, equal its declared sixteen.
 
 ## Notes
 
+- Phase 2 retires `proseGateCmd` and `memoryGateCmd` with their only payload consumers and applies
+  the three resulting claim updates in the same eleven-operation batch. Phase 4 owns the chained
+  schema migration because that is where all invalidated adopter var values, including the removed
+  invariants command, are transformed together.
 - Phase 4 bundles the `check invariants` removal, the example invocation's rescope to the repo
   universe, and the example's gate enablement because `tooling/quality-gates:example-adopter-checked`
   describes all three in one sentence and takes exactly one update operation. Splitting them would
