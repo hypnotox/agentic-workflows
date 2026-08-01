@@ -304,8 +304,6 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	}
 }
 
-// invariant: tooling/upgrade-runtime:initial-adoption-version-immutable (TestInitFirstADRChecksClean)
-// TestInitFirstADRChecksClean exercises this first-adoption flow in initrender_test.go.
 func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 	ctx := testContext(t)
 	for _, tc := range []struct {
@@ -336,6 +334,59 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 				t.Fatalf("ambiguous first adoption wrote output: %q", out.String())
 			}
 		})
+	}
+}
+
+// invariant: tooling/upgrade-runtime:initial-adoption-version-immutable (TestInitialAdoptionVersionImmutableAcrossCommands)
+func TestInitialAdoptionVersionImmutableAcrossCommands(t *testing.T) {
+	ctx := testContext(t)
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
+	if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	initial, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertVersion := func(step string) {
+		t.Helper()
+		got, err := manifest.Load(config.LockPath(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.InitializedWithVersion != initial.InitializedWithVersion {
+			t.Fatalf("%s changed initializedWithVersion: %q -> %q", step, initial.InitializedWithVersion, got.InitializedWithVersion)
+		}
+	}
+	if err := runSync(ctx, root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	assertVersion("ordinary sync")
+	if err := runUpgrade(ctx, root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	assertVersion("zero-migration upgrade")
+	if err := runInit(ctx, root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	assertVersion("forced initialization")
+
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "initialize", nil)
+	mutated := *initial
+	mutated.InitializedWithVersion = "0.1.0"
+	if mutated.InitializedWithVersion == initial.InitializedWithVersion {
+		mutated.InitializedWithVersion = "0.2.0"
+	}
+	if err := mutated.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Add(t, repo, ".awf/awf.lock")
+	if err := runCheck(ctx, root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable initializedWithVersion") {
+		t.Fatalf("staged initializedWithVersion mutation error = %v", err)
 	}
 }
 

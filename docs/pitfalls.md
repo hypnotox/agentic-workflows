@@ -254,10 +254,10 @@ dropped it.
 
 _Domains: adr-system_
 
-The contiguity check (ADR numbers cover 1..max with only sealed legacy gaps) makes it
-impossible to reserve a number for a concurrent effort: every branch must scaffold the
-next contiguous number, so parallel efforts each create their own ADR-NNNN with the same
-NNNN (three separate 0151s existed at once on 2026-07-23). The later-merging efforts must
+ADR identity is allocated from the highest number visible on the current branch, with no
+cross-branch reservation: parallel efforts forked from the same tip therefore scaffold
+their own ADR-NNNN with the same NNNN (three separate 0151s existed at once on 2026-07-23).
+The later-merging efforts must
 renumber at merge time, and the cost grows sharply once the ADR has left Proposed: the
 filename, H1, INDEX.md, changelog mentions, and every Origin/Revised-by provenance line in
 the topic parts name the number, and the Status-history digest must still validate after

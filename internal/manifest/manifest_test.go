@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -296,6 +297,22 @@ func TestAuthorityStateValidation(t *testing.T) {
 				return s
 			}() != tc.want {
 				t.Fatalf("state=%v err=%v", l, err)
+			}
+		})
+	}
+}
+
+func TestParseRejectsEveryRetiredRoutingKeyAtSchema31(t *testing.T) {
+	for key, value := range map[string]string{
+		"adrFormatV1From": "1",
+		"adrFormatV2From": "1",
+		"adrFormatV3From": "1",
+		"legacyAdrGaps":   "[]",
+	} {
+		t.Run(key, func(t *testing.T) {
+			input := fmt.Sprintf(`{"awfVersion":"0.31.0","schemaVersion":31,"files":{},%q:%s}`, key, value)
+			if _, err := Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), key) {
+				t.Fatalf("error = %v, want rejection naming %s", err, key)
 			}
 		})
 	}

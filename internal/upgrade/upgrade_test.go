@@ -205,8 +205,14 @@ func finalLock(t *testing.T, dir string, att *manifest.BridgeAttestation) *manif
 	return loaded
 }
 
-func TestFinalUpgradeConsumesSeal(t *testing.T) {
+// invariant: tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded (TestFinalUpgradeDiscardsBridgeADRRoutingPayload)
+func TestFinalUpgradeDiscardsBridgeADRRoutingPayload(t *testing.T) {
 	dir, head, digest := sealedRepo(t)
+	adrPath := filepath.Join(dir, "docs", "decisions", "0001-first.md")
+	adrBefore, err := os.ReadFile(adrPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	lock := finalLock(t, dir, sealedAtt(head, digest))
 	var log bytes.Buffer
 	if err := FinalUpgrade(testContext(t), dir, lock, &log); err != nil {
@@ -225,15 +231,25 @@ func TestFinalUpgradeConsumesSeal(t *testing.T) {
 	if after.BridgeAttestation != nil {
 		t.Fatal("attestation not cleared")
 	}
-	bytes, err := after.Marshal()
+	if after.InitializedWithVersion != "" {
+		t.Fatalf("bridge cutover fabricated initialization provenance %q", after.InitializedWithVersion)
+	}
+	lockBytes, err := after.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(bytes), "adrFormatV1From") || strings.Contains(string(bytes), "legacyAdrGaps") {
-		t.Fatalf("retired routing payload promoted into final lock: %s", bytes)
+	if strings.Contains(string(lockBytes), "adrFormatV1From") || strings.Contains(string(lockBytes), "legacyAdrGaps") {
+		t.Fatalf("retired routing payload promoted into final lock: %s", lockBytes)
 	}
 	if after.Files["docs/x.md"].OutputHash != "sha256:1" {
 		t.Fatal("existing lock files not preserved")
+	}
+	adrAfter, err := os.ReadFile(adrPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(adrAfter, adrBefore) {
+		t.Fatal("final upgrade rewrote ADR bytes")
 	}
 	for _, want := range []string{"operation: applied .awf/current-state-migration.yaml", "operation: applied .awf/awf.lock", "operation: upgrade committed"} {
 		if !strings.Contains(log.String(), want) {
@@ -360,19 +376,5 @@ func TestResetLegacyResidentsCommitsSchemaAndDiscards(t *testing.T) {
 	}
 	if !strings.Contains(log.String(), "operation: upgrade committed") {
 		t.Fatalf("log = %q", log.String())
-	}
-}
-
-// invariant: tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded (TestFinalUpgradeDiscardsBridgeADRRoutingPayload)
-func TestFinalUpgradeDiscardsBridgeADRRoutingPayload(t *testing.T) {
-	lock := &manifest.Lock{AWFVersion: "0.30.0", SchemaVersion: 30, Files: map[string]manifest.Entry{}, BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 7, LegacyADRGaps: []int{2}}}
-	lock.BridgeAttestation = nil
-	lock.SchemaVersion = 31
-	bytes, err := lock.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(bytes), "adrFormatV1From") || strings.Contains(string(bytes), "legacyAdrGaps") {
-		t.Fatalf("routing payload survived final lock: %s", bytes)
 	}
 }

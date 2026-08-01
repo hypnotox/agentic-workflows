@@ -30,7 +30,7 @@ type Loaded struct {
 // single-universe load. gaps are the recorded absent lower ADR numbers the
 // contiguity check tolerates. It does not run Check or EvaluateCoverage; the
 // command layer applies eligibility filters and routes findings.
-func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, _ ...[]int) (Loaded, error) {
+func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 	records, err := adrsFromTree(tree, cfg.DocsDir)
 	if err != nil {
 		return Loaded{}, err
