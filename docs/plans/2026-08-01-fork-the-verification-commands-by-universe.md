@@ -238,9 +238,14 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   `commitGateCmd` catalog descriptor (`internal/catalog/standard.go`, around :248), and
   command-related config-spec prose outside the two availability entries Task 2.6b deletes. The
   retired scan-command descriptors are removed, not respelled. Also in the set:
-  `templates/docs/working-with-awf.md.tmpl` (around :35-37), `templates/docs/workflow.md.tmpl`
-  (around :81), `README.md` (around :282-284 and :308), `.awf/parts/workflow/commit-discipline.md`
-  (around :5), and `.awf/docs/pitfalls.yaml` (around :447 and :1402). Decide explicitly and record in
+  `templates/docs/workflow.md.tmpl` (around :81), `README.md` (around :282-284 and :308),
+  `.awf/parts/workflow/commit-discipline.md` (around :5), and `.awf/docs/pitfalls.yaml` (around :447
+  and :1402). Rewrite `templates/docs/working-with-awf.md.tmpl`'s whole flat check-command list rather
+  than only those three entries: document bare `check`, the `check repo` aggregate and its `drift`,
+  `state`, `prose`, and `memory` children, and the `check staged` aggregate with `state` plus the
+  directly-invoked `commit`; Phase 3 adds `staged drift` when it becomes live. Rewrite README.md's
+  command-table overview to the same hierarchy instead of leaving its flat `drift`, `state`, and
+  `invariants` list as the organizing model. Decide explicitly and record in
   the commit body whether the `check prose:` and `check memory:` output prefixes in
   `cmd/awf/prosegate.go` and `cmd/awf/memorygate.go` change; they are user-facing strings, not
   invocations. Post-check:
@@ -253,6 +258,9 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   `.awf/parts/workflow/composing-the-gate.md` (around :9-14), and `.awf/docs/parts/testing/gate.md`
   (around :11-12), the last two describing the scans as separate non-gate steps the payload runs on
   its own. Rewrite all three to the payload's new shape: the configured check command plus the gate.
+  Semantically rewrite README.md's hook paragraph in the same transaction: pre-commit runs only the
+  configured bare aggregate check and project gate, while commit-msg owns the direct staged commit
+  check. Do not merely respell the deleted staged and standalone scan lines.
 - [ ] **Task 2.9: Make both staged scanners knob-first.** ADR-0207 item 9. In `cmd/awf/prosegate.go`
   and `cmd/awf/memorygate.go`, move the config load and the knob test ahead of the `stagedTree` call,
   loading the config from the project root's `.awf/config.yaml` on disk so a disabled gate returns
@@ -310,9 +318,12 @@ feat(tooling): fork the check commands into repo and staged universes
   managed-output-attribution checks. Watch the known trap: `topicHash` reads absolute paths while the
   tree loader stores repo-relative ones, which produces spurious `stale` on every topic doc if
   unhandled.
-- [ ] **Task 3.2: Cover the hole it closes.** Add a test staging a `.awf/` config change without its
-  re-rendered output and asserting `awf check staged` reports drift, plus a test asserting a fully
-  staged render is clean. The first carries the proof marker for the claim added in Task 3.3.
+- [ ] **Task 3.2: Cover and document the hole it closes.** Add a test staging a `.awf/` config change
+  without its re-rendered output and asserting `awf check staged` reports drift, plus a test asserting
+  a fully staged render is clean. The first carries the proof marker for the claim added in Task 3.3.
+  In the same transaction, add `check staged drift` to the universe hierarchy documented in
+  `templates/docs/working-with-awf.md.tmpl` and README.md, naming its rendered-output-only scope so
+  neither document implies parity with `check repo drift`.
 - [ ] **Task 3.3: Apply ADR-0207 batch 3.** Append one `Applied` event for
   `add rendering/sync-and-drift:staged-drift-rendered-output`, and author the claim with
   `Origin: ADR-0207`, `Backing: test`, its proof marker, and prose naming both what it emits and that
