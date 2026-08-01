@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-08-01
 ---
 # ADR-0201: Test assertion and seam discipline
@@ -155,3 +155,5 @@ convert; only the seam count is ratcheted.
 - 2026-08-01: Accepted; content-sha256: 75442eb0251d20dbe4fed1bfe4581f2ca64cd3ed0dfa86e9a6bb719673d51fca
 - 2026-08-01: Implementing; content-sha256: 75442eb0251d20dbe4fed1bfe4581f2ca64cd3ed0dfa86e9a6bb719673d51fca
 - 2026-08-01: Applied; operations: add `code-design/test-design:stdlib-assertions`
+- 2026-08-01: Applied; operations: add `code-design/test-design:no-new-global-seams`
+- 2026-08-01: Implemented; content-sha256: 75442eb0251d20dbe4fed1bfe4581f2ca64cd3ed0dfa86e9a6bb719673d51fca

@@ -391,7 +391,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:8d9e071b8dc9d8a1642eac46d8a385c65c8f62ead3d0caf3644a1300e9513cff",
+      "outputHash": "sha256:f590b8cfe6f8a88248cb32c1db1ca290f0247e19b768c0eff9a49e4064e3dce5",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -577,8 +577,8 @@
     "docs/topics/code-design/test-design.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:106a7dcf8b5bcec71af1379ffc5a2fe2c17b3e2e38a6f29aaff80d2428b0ffc3",
-      "outputHash": "sha256:8dbb5a813d4c05dcea640c47fd07f8a6dda61eec68e6f0e025b702f3db33df5f"
+      "configHash": "sha256:c5231e52813e93865dd9b83cb79600f5e26e13f2ff39c4c90eac2f09b5aa06a3",
+      "outputHash": "sha256:b802981cd102b0009f956bbd1d2f848e05dfc48087d68651dfcadcd32eb1f828"
     },
     "docs/topics/config/configspec-and-reference.md": {
       "templateId": "topics/topic.md.tmpl",

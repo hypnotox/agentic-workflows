@@ -23,3 +23,14 @@ matcher library.
 Origin: ADR-0201
 Backing: unbacked
 Verify: Inspect the imports of each added or converted test file; an assertion or matcher library import fails, and go.mod gaining a direct assertion-library dependency fails.
+
+### `invariant: no-new-global-seams`
+
+In a new or deliberately converted test, minting a new package-level variable that exists
+to be swapped by a test is always an anti-pattern; a dependency the test newly introduces
+arrives through constructor or parameter injection per
+`code-design/dependency-composition:direct-injection-first`, while a swap of an existing
+census seam stays legal until that seam is deliberately converted.
+Origin: ADR-0201
+Backing: unbacked
+Verify: For each package-level variable added in the diff, check whether any test reassigns it; a new variable existing to be swapped fails, while a test swapping a pre-existing seam passes.
