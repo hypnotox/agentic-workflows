@@ -377,8 +377,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:de9b34786805245715e9e696c0c898a6c617720d1d031b6bd07dc96b11906a12",
-      "outputHash": "sha256:d1906e5a197ffcf497a24657c7177ffcd0c6a74d668fa179b63981a5ce7014df"
+      "configHash": "sha256:8e1eaaa2fa8019fff1c3c1c0b1daea60265ec2cbd032d974809b3ba898350ad1",
+      "outputHash": "sha256:2aea7e1889c645697042fb3cef052454678516e2c3ed4d72bb8fbfbf698c1b43"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -409,8 +409,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e99876e3d365ba66edef46749bfa80a81deb82810ccd660f00857e40bf26b108",
-      "configHash": "sha256:ee3b8467fc5dd3cf2af77422ac2ac66f637c66ac99b68e27f5be19ff34fcf747",
-      "outputHash": "sha256:32d5281898a01ba998aa7934d45bdb428228432b830500bca41bbf58c094e2cd"
+      "configHash": "sha256:d7faf780f40946cef4cc5bab977144080e68759be7c3c4d2d388a66383f51184",
+      "outputHash": "sha256:603aae04ec721bf6fa3ad53901387582cf1390d98bed619b78051ab1a711ac51"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",

@@ -108,20 +108,28 @@ func (r testTempCleanupResult) String() string {
 	return fmt.Sprintf("test temp cleanup: removed %d home(s), %d logical byte(s)\n", r.homes, r.bytes)
 }
 
-type testTempCleanupMode int
+// CleanupMode selects which managed test homes cleanup considers.
+type CleanupMode int
 
 const (
-	cleanupStale testTempCleanupMode = iota
-	cleanupAll
+	// CleanupStale removes only homes strictly older than 24 hours.
+	CleanupStale CleanupMode = iota
+	// CleanupAll removes every canonical managed home.
+	CleanupAll
 )
 
-func (m *testTempManager) cleanup(mode testTempCleanupMode) (testTempCleanupResult, error) {
+func (m *testTempManager) cleanup(mode CleanupMode) (testTempCleanupResult, error) {
+	result, err, _ := m.cleanupWithScan(mode)
+	return result, err
+}
+
+func (m *testTempManager) cleanupWithScan(mode CleanupMode) (testTempCleanupResult, error, bool) {
 	if err := m.ensureRoot(); err != nil {
-		return testTempCleanupResult{}, err
+		return testTempCleanupResult{}, err, false
 	}
 	entries, err := m.fs.readDir(m.root)
 	if err != nil {
-		return testTempCleanupResult{}, fmt.Errorf("read test temp root %s: %w", m.root, err)
+		return testTempCleanupResult{}, fmt.Errorf("read test temp root %s: %w", m.root, err), false
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 	var result testTempCleanupResult
@@ -148,7 +156,7 @@ func (m *testTempManager) cleanup(mode testTempCleanupMode) (testTempCleanupResu
 			failures = append(failures, fmt.Errorf("unsafe test home %s: %w", path, err))
 			continue
 		}
-		if mode == cleanupStale && !info.ModTime().Before(cutoff) {
+		if mode == CleanupStale && !info.ModTime().Before(cutoff) {
 			continue
 		}
 		bytes, err := m.logicalBytes(path)
@@ -168,7 +176,27 @@ func (m *testTempManager) cleanup(mode testTempCleanupMode) (testTempCleanupResu
 		result.homes++
 		result.bytes += bytes
 	}
-	return result, errors.Join(failures...)
+	return result, errors.Join(failures...), true
+}
+
+// CleanTestTemps cleans production managed test homes and writes their summary.
+func CleanTestTemps(mode CleanupMode, output io.Writer) error {
+	return cleanTestTemps(mode, output, productionTestTempManager)
+}
+
+func cleanTestTemps(mode CleanupMode, output io.Writer, managerFactory func() (*testTempManager, error)) error {
+	if mode != CleanupStale && mode != CleanupAll {
+		return fmt.Errorf("unknown test temp cleanup mode %d", mode)
+	}
+	manager, err := managerFactory()
+	if err != nil {
+		return err
+	}
+	result, err, scanned := manager.cleanupWithScan(mode)
+	if scanned {
+		_, _ = io.WriteString(output, result.String())
+	}
+	return err
 }
 
 func (m *testTempManager) logicalBytes(path string) (int64, error) {
@@ -207,7 +235,7 @@ func runIsolated(run func() int, setHome func(string) error, manager *testTempMa
 	if err := manager.ensureRoot(); err != nil {
 		panic(err)
 	}
-	if _, err := manager.cleanup(cleanupStale); err != nil {
+	if _, err := manager.cleanup(CleanupStale); err != nil {
 		fmt.Fprintf(stderr, "testsupport: stale test-home cleanup: %v\n", err)
 	}
 	home, err := manager.allocate()
