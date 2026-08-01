@@ -57,22 +57,21 @@ const (
 // contract; see TransitionMode.
 func CheckPair(before, after Universe, mode TransitionMode) []Finding {
 	var findings []Finding
+	pairs := newPairing(before.ADRs, after.ADRs)
 	findings = append(findings, Check(after.ADRs, after.Topics)...)
-	findings = append(findings, checkTransitions(before.ADRs, after.ADRs, mode)...)
-	findings = append(findings, checkMutations(before, after, mode)...)
+	findings = append(findings, checkTransitions(before.ADRs, after.ADRs, pairs, mode)...)
+	findings = append(findings, checkMutations(before, after, pairs, mode)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
 }
 
 // checkTransitions enforces frozen content, stable-history prefix preservation,
 // and the format-specific event shape for every governed record pair.
-func checkTransitions(before, after []adr.ADR, mode TransitionMode) []Finding {
-	beforeByKey := byPairKey(before)
-	afterByKey := byPairKey(after)
+func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMode) []Finding {
 	var findings []Finding
 	for _, b := range before {
 		if b.IsGoverned() {
-			if _, ok := afterByKey[pairKey(b)]; !ok {
+			if _, ok := pairs.after(b); !ok {
 				findings = append(findings, Finding{fmt.Sprintf("%s ADR-%s was deleted across this transition", adr.FormatMarker(b.Format), b.Identity())})
 			}
 		}
@@ -81,12 +80,23 @@ func checkTransitions(before, after []adr.ADR, mode TransitionMode) []Finding {
 		if !a.IsGoverned() {
 			continue
 		}
-		b, ok := beforeByKey[pairKey(a)]
+		b, ok := pairs.before(a)
 		if !ok || !b.IsGoverned() {
 			continue
 		}
 		if b.Format != a.Format {
 			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed governed format across this transition", a.Identity())})
+			continue
+		}
+		if pairs.renumbered(a) {
+			// The sanctioned renumber permits the number, filename, and heading
+			// change and nothing else about the record. Its canonical content is
+			// equal by construction, since that is the key the pair formed on, so
+			// only the status and Status history need saying, and they are compared
+			// for byte equality rather than through either append-tolerant variant.
+			if !adr.HistoriesEqual(b, a) || !b.HasSameStatus(a) {
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the renumbering rule: renumbering ADR-%s must leave its status and Status history byte-identical", a.Number, b.Number)})
+			}
 			continue
 		}
 		if b.Number != "" && b.Number != a.Number {
@@ -146,9 +156,9 @@ type pairOp struct {
 // across the pair. Every union of an operation ID and a mutated claim ID is
 // classified once, so an operation with no mutation and a mutation with no
 // operation are both surfaced.
-func checkMutations(before, after Universe, mode TransitionMode) []Finding {
-	ops, dups, rejected, batchFindings := pairOps(before.ADRs, after.ADRs, mode)
-	renames := numberingSubstitutions(before.ADRs, after.ADRs)
+func checkMutations(before, after Universe, pairs pairing, mode TransitionMode) []Finding {
+	ops, dups, rejected, batchFindings := pairOps(after.ADRs, pairs, mode)
+	renames := numberingSubstitutions(before.ADRs, pairs)
 	beforeClaims := claimMap(before.Topics)
 	afterClaims := claimMap(after.Topics)
 
@@ -218,8 +228,7 @@ type appendedBatch struct {
 // pairOps derives only newly appended batches. It validates one batch per ADR
 // in authored mode and cross-batch target uniqueness; cross-ADR order is
 // ascending ADR number then intra-ADR history position (ADR-0191).
-func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, []string, map[string]bool, []Finding) {
-	beforeByKey := byPairKey(before)
+func pairOps(after []adr.ADR, pairs pairing, mode TransitionMode) (map[string]pairOp, []string, map[string]bool, []Finding) {
 	var batches []appendedBatch
 	var findings []Finding
 	for _, a := range after {
@@ -231,7 +240,7 @@ func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, [
 			continue
 		}
 		beforeCount := 0
-		if b, ok := beforeByKey[pairKey(a)]; ok && b.IsGoverned() {
+		if b, ok := pairs.before(a); ok && b.IsGoverned() {
 			beforeBatches, beforeErr := b.ApplicationBatches()
 			if beforeErr == nil {
 				beforeCount = len(beforeBatches)
@@ -378,18 +387,18 @@ func removedInUniverse(records []adr.ADR, id string) bool {
 	return false
 }
 
-// numberingSubstitutions maps each slug numbered across this transition to the
-// number it took: exactly the provenance rewrite ADR-0194 item 9 sanctions. It
-// is empty for every transition that numbers nothing, which is what keeps the
-// byte-exact provenance rules in force everywhere else.
-func numberingSubstitutions(before, after []adr.ADR) map[string]string {
-	afterByKey := byPairKey(after)
-	renames := map[string]string{}
+// numberingSubstitutions maps each identity rewritten across this transition to
+// the number it took: a slug to the number numbering assigned it (ADR-0194 item
+// 9), and a renumbered slugless record's old number to its new one. It is empty
+// for every transition that rewrites neither, which is what keeps the byte-exact
+// provenance rules in force everywhere else.
+func numberingSubstitutions(before []adr.ADR, pairs pairing) map[string]string {
+	renames := pairs.renumbers()
 	for _, b := range before {
 		if !b.IsPending() {
 			continue
 		}
-		if a, ok := afterByKey[pairKey(b)]; ok && isNumberingPair(b, a) {
+		if a, ok := pairs.after(b); ok && isNumberingPair(b, a) {
 			renames[b.Slug] = a.Number
 		}
 	}
@@ -573,11 +582,126 @@ func pairKey(a adr.ADR) string {
 	return a.Number
 }
 
-// byPairKey indexes records by their transition pairing key.
-func byPairKey(records []adr.ADR) map[string]adr.ADR {
+// digestKeyPrefix namespaces a resolved digest key away from the number and slug
+// forms, which are the only other keys a record can take.
+const digestKeyPrefix = "content-sha256:"
+
+// pairing is the record correspondence between one transition's two universes,
+// resolved once so every check that pairs them consumes the same answer.
+//
+// A governed record's key is its retained slug, then its canonical content
+// digest when a renumber moved it, then its assigned number. The digest step
+// cannot be a function of one record the way pairKey is: it forms a pair only on
+// a digest carried exactly once on each side, and only where that pair re-keys
+// the record, so both universes have to be in hand at once
+// (ADR-pair-a-slugless-record-across-a-renumber-by-content-digest item 11).
+type pairing struct {
+	beforeAlias map[string]string
+	afterAlias  map[string]string
+	beforeByKey map[string]adr.ADR
+	afterByKey  map[string]adr.ADR
+}
+
+// newPairing resolves both universes' keys once.
+func newPairing(before, after []adr.ADR) pairing {
+	beforeAlias, afterAlias := renumberAliases(before, after)
+	return pairing{
+		beforeAlias: beforeAlias,
+		afterAlias:  afterAlias,
+		beforeByKey: byResolvedKey(before, beforeAlias),
+		afterByKey:  byResolvedKey(after, afterAlias),
+	}
+}
+
+// after returns the after-universe record continuing b, if the transition has one.
+func (p pairing) after(b adr.ADR) (adr.ADR, bool) {
+	a, ok := p.afterByKey[resolvedKey(b, p.beforeAlias)]
+	return a, ok
+}
+
+// before returns the before-universe record a continues, if the transition has one.
+func (p pairing) before(a adr.ADR) (adr.ADR, bool) {
+	b, ok := p.beforeByKey[resolvedKey(a, p.afterAlias)]
+	return b, ok
+}
+
+// renumbered reports whether a is the after side of a digest-paired renumber,
+// the one pair whose assigned number may legally differ across the transition.
+func (p pairing) renumbered(a adr.ADR) bool {
+	_, ok := p.afterAlias[pairKey(a)]
+	return ok
+}
+
+// renumbers maps each renumbered record's old number to its new one. A slugless
+// record's pair key is its number, so the before-side alias keys are exactly the
+// old numbers.
+func (p pairing) renumbers() map[string]string {
+	out := map[string]string{}
+	for oldNumber, key := range p.beforeAlias {
+		if a, ok := p.afterByKey[key]; ok {
+			out[oldNumber] = a.Number
+		}
+	}
+	return out
+}
+
+// renumberAliases resolves the digest step. A governed slugless record whose
+// canonical digest is carried by exactly one record on each side, where the two
+// ends hold different numbers, is one record renumbered, and both ends take one
+// shared key. A digest repeated on either side aliases nothing, so an ambiguous
+// match leaves every record holding it on its number and the transition refuses
+// the rename rather than guessing. A digest matching at the same number aliases
+// nothing either, so an ordinary transition pairs exactly as it did before.
+func renumberAliases(before, after []adr.ADR) (map[string]string, map[string]string) {
+	beforeDigests, afterDigests := uniqueSluglessDigests(before), uniqueSluglessDigests(after)
+	beforeAlias, afterAlias := map[string]string{}, map[string]string{}
+	for digest, beforeKey := range beforeDigests {
+		afterKey, matched := afterDigests[digest]
+		if !matched || afterKey == beforeKey {
+			continue
+		}
+		beforeAlias[beforeKey] = digestKeyPrefix + digest
+		afterAlias[afterKey] = digestKeyPrefix + digest
+	}
+	return beforeAlias, afterAlias
+}
+
+// uniqueSluglessDigests indexes one universe's governed slugless records by
+// canonical content digest, dropping every digest more than one record carries.
+func uniqueSluglessDigests(records []adr.ADR) map[string]string {
+	keys := map[string]string{}
+	ambiguous := map[string]bool{}
+	for _, a := range records {
+		if !a.IsGoverned() || a.Slug != "" {
+			continue
+		}
+		digest := a.CanonicalDigest()
+		if _, seen := keys[digest]; seen {
+			ambiguous[digest] = true
+			continue
+		}
+		keys[digest] = pairKey(a)
+	}
+	for digest := range ambiguous {
+		delete(keys, digest)
+	}
+	return keys
+}
+
+// resolvedKey returns a record's pairing key under its own universe's aliases.
+func resolvedKey(a adr.ADR, alias map[string]string) string {
+	key := pairKey(a)
+	if resolved, aliased := alias[key]; aliased {
+		return resolved
+	}
+	return key
+}
+
+// byResolvedKey indexes records by their resolved pairing key.
+func byResolvedKey(records []adr.ADR, alias map[string]string) map[string]adr.ADR {
 	out := make(map[string]adr.ADR, len(records))
 	for _, a := range records {
-		out[pairKey(a)] = a
+		out[resolvedKey(a, alias)] = a
 	}
 	return out
 }

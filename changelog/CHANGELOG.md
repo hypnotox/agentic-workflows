@@ -197,6 +197,18 @@ query a single version or a range.
   `git reset --hard HEAD~1`, re-merged, and remade, and the command refuses a duplicate-number
   corpus with that recipe rather than guessing. It deliberately does not precondition on a green
   check, so an unrelated finding cannot deadlock it.
+- Staged transition validation now pairs a record predating the slug format across a rename, by
+  its canonical content digest. Such a record is paired on its number, so when the integration
+  branch has taken that number meanwhile, renaming the local one used to pair it with the
+  stranger that took it and fail with a cascade of unrelated findings. The pairing key is now
+  resolved in three steps, retained slug, then content digest, then number, and the digest step
+  applies only to a record carrying no slug, only on a digest carried by exactly one such record
+  on each side, and only where the two ends hold different numbers. An unchanged or amended
+  record therefore pairs on its number exactly as before. Such a pair admits the number,
+  filename, and heading change and nothing else: status and Status history must be byte
+  identical, no application batch may be appended or dropped, and the old number substitutes
+  into `Origin:` and `Revised-by:` under the numbering substitution's rules. Because the digest
+  is the key, a rename and a content amendment cannot share a commit.
 
 - Render a fourth git-hook payload, `.awf/hooks/pre-merge-commit.sh`, running the staged
   current-state check. Git runs no `pre-commit` hook for a true merge commit, so a conflict-free

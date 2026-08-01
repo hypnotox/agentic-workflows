@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: pair-a-slugless-record-across-a-renumber-by-content-digest
-status: Proposed
+status: Implemented
 date: 2026-08-01
 ---
 # ADR-pair-a-slugless-record-across-a-renumber-by-content-digest: Pair a slugless record across a renumber by content digest
@@ -190,3 +190,4 @@ gains the rename discipline, the separate-commits rule, and the cutoff constrain
 ## Status history
 
 - 2026-08-01: Proposed
+- 2026-08-01: Implemented; content-sha256: 20e272fdf43ab4e1cba617ccf9d514be8afe8e5652b9857a047b8599a60a42c4

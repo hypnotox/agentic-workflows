@@ -29,3 +29,15 @@ func ContentDigest(sections map[string]string) string {
 	}
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(b.String())))
 }
+
+// CanonicalDigest answers this record's content-sha256 from its own parsed
+// sections, so a caller outside this package never reads them itself. The value
+// is computed rather than taken from the latest stamped history event: a stamp
+// can sit on an Amended event in the middle of a history whose trailing Applied
+// events carry none, and a record whose latest stamp disagrees with the computed
+// value does not parse, so the two never differ for a record that exists.
+//
+// The frontmatter and the `# ADR-NNNN:` heading are outside every covered
+// section, which is what leaves this value fixed across a renumber and makes it
+// the key a transition pairs a slugless record on.
+func (a ADR) CanonicalDigest() string { return ContentDigest(a.Sections) }

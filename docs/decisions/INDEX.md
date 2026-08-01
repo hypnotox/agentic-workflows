@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0194: Slug-identified pending ADRs numbered at integration](0194-slug-identified-pending-adrs-numbered-at-integration.md) (Implementing)
-- [ADR-pair-a-slugless-record-across-a-renumber-by-content-digest: Pair a slugless record across a renumber by content digest](pair-a-slugless-record-across-a-renumber-by-content-digest.md) (Proposed)
 
 ## History
 
@@ -200,3 +199,4 @@
 - [ADR-0192: Topic coverage and fan-out evaluate independently of config block presence](0192-topic-coverage-and-fan-out-evaluate-independently-of-config-block-presence.md) (Implemented)
 - [ADR-0193: Git access through one semantic seam](0193-git-access-through-one-semantic-seam.md) (Implemented)
 - [ADR-lock-cutoffs-and-schema-generations-reconcile-at-integration: Lock cutoffs and schema generations reconcile at integration](lock-cutoffs-and-schema-generations-reconcile-at-integration.md) (Implemented)
+- [ADR-pair-a-slugless-record-across-a-renumber-by-content-digest: Pair a slugless record across a renumber by content digest](pair-a-slugless-record-across-a-renumber-by-content-digest.md) (Implemented)
