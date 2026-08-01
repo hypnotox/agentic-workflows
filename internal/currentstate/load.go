@@ -27,9 +27,8 @@ type Loaded struct {
 // so a working-tree, index, or commit universe yields exactly the current-state
 // view that tree encodes (ADR-0135). cfg supplies the docs directory, configured
 // domains, and marker-source families; parse it from the same tree for a
-// single-universe load. gaps are the recorded absent lower ADR numbers the
-// contiguity check tolerates. It does not run Check or EvaluateCoverage; the
-// command layer applies eligibility filters and routes findings.
+// single-universe load. It does not run Check or EvaluateCoverage; the command
+// layer applies eligibility filters and routes findings.
 func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 	records, err := adrsFromTree(tree, cfg.DocsDir)
 	if err != nil {
@@ -47,12 +46,10 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 }
 
 // adrsFromTree parses every top-level ADR decision file in the snapshot with the
-// intrinsic router, then enforces the corpus-level facts a per-file parse cannot
-// see: no two files share a number, and the numbers are contiguous from 1 except
-// for the recorded legacy gaps (ADR-0135). Per-file legacy and governed routing
-// is already enforced by adr.ParseRecord, which also rejects a non-reserved file
-// that is neither form. Contiguity stays number-scoped: a pending record has no
-// number to be contiguous with (ADR-0202 item 4).
+// intrinsic router. adr.NewCorpus subsequently enforces corpus-level identity
+// uniqueness that a per-file parse cannot see. Per-file legacy and governed
+// routing is enforced by adr.ParseRecord, which also rejects a non-reserved file
+// that is neither form.
 func adrsFromTree(tree *snapshot.Tree, docsDir string) ([]adr.ADR, error) {
 	prefix := docsDir + "/decisions/"
 	var records []adr.ADR

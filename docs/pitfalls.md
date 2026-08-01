@@ -1699,12 +1699,11 @@ than making the completed plan falsely look prescient.
 
 _Domains: adr-system_
 
-When a concurrent effort merges an ADR that takes your number, neither renumber timing
-works as a separate commit: before the rebase the contiguity check fails (your tree lacks
-the other ADR, so 0150 -> 0152 is an illegal gap and recorded gaps are legacy-only), and
-after the rebase `awf check --staged` fails because it loads the HEAD snapshot too, and
-every intermediate rebased commit carries both files under the duplicate number. The
-working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
+When a concurrent effort merges an ADR that takes your number, a later standalone
+renumber commit does not make the replay safe: the ADR's introducing commit is replayed
+first and collides with the number already on the new base. `awf check --staged` also loads
+the HEAD snapshot, so every intermediate rebased commit must avoid the duplicate identity.
+The working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
 into the conflict resolution of the ADR's introducing commit during the replay; rename
 detection then carries later ADR-editing commits onto the new path. The residue is one
 advisory `adr-status-cochange` audit error (regenerating INDEX.md mid-replay is impossible
