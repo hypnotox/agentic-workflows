@@ -188,21 +188,21 @@ func TestValidatePermanentLockTransitionAllowsOnlyComputedSchema15Cutoff(t *test
 	}
 	before := &manifest.Lock{SchemaVersion: 14, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
 	after := &manifest.Lock{SchemaVersion: 15, ADRFormatV1From: 1, ADRFormatV2From: 3, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(tree, before, after); err != nil {
+	if err := validatePermanentLockTransition(tree, tree, before, after); err != nil {
 		t.Fatalf("computed cutoff: %v", err)
 	}
 	after.ADRFormatV2From = 4
-	if err := validatePermanentLockTransition(tree, before, after); err == nil || !strings.Contains(err.Error(), "want computed cutoff 3") {
+	if err := validatePermanentLockTransition(tree, tree, before, after); err == nil || !strings.Contains(err.Error(), "want computed cutoff 3") {
 		t.Fatalf("arbitrary cutoff error = %v", err)
 	}
 
 	missing, _ := snapshot.NewTree(nil)
 	after.ADRFormatV2From = 1
-	if err := validatePermanentLockTransition(missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
+	if err := validatePermanentLockTransition(missing, missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
 		t.Fatalf("missing config error = %v", err)
 	}
 	badConfig, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Bytes: []byte("unknown: true\n")}})
-	if err := validatePermanentLockTransition(badConfig, before, after); err == nil || !strings.Contains(err.Error(), "compute ADR cutoff") {
+	if err := validatePermanentLockTransition(badConfig, badConfig, before, after); err == nil || !strings.Contains(err.Error(), "compute ADR cutoff") {
 		t.Fatalf("invalid config error = %v", err)
 	}
 }
@@ -230,7 +230,7 @@ func TestValidatePermanentLockTransitionRejectsCutoffDeletionAndMutation(t *test
 		t.Run(tc.name, func(t *testing.T) {
 			after := *before
 			tc.mutate(&after)
-			if err := validatePermanentLockTransition(tree, before, &after); err == nil || !strings.Contains(err.Error(), tc.field) {
+			if err := validatePermanentLockTransition(tree, tree, before, &after); err == nil || !strings.Contains(err.Error(), tc.field) {
 				t.Fatalf("error = %v, want immutable %s", err, tc.field)
 			}
 		})
@@ -1054,22 +1054,78 @@ func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T)
 	}
 	before := &manifest.Lock{SchemaVersion: 27, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
 	after := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(tree, before, after); err != nil {
+	if err := validatePermanentLockTransition(tree, tree, before, after); err != nil {
 		t.Fatalf("computed cutoff: %v", err)
 	}
 	after.ADRFormatV3From = 9
-	if err := validatePermanentLockTransition(tree, before, after); err == nil || !strings.Contains(err.Error(), "adrFormatV3From is 9, want computed cutoff 3") {
+	if err := validatePermanentLockTransition(tree, tree, before, after); err == nil || !strings.Contains(err.Error(), "adrFormatV3From is 9, want computed cutoff 3") {
 		t.Fatalf("arbitrary cutoff error = %v", err)
 	}
 	missing, _ := snapshot.NewTree(nil)
 	after.ADRFormatV3From = 1
-	if err := validatePermanentLockTransition(missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
+	if err := validatePermanentLockTransition(missing, missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
 		t.Fatalf("missing config error = %v", err)
 	}
 	// Each cutoff is sealed by its own generation, so the computed value at any
 	// other generation pair is an authority the migration never writes.
 	offGeneration := &manifest.Lock{SchemaVersion: 27, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(tree, before, offGeneration); err == nil || !strings.Contains(err.Error(), "changes immutable") {
+	if err := validatePermanentLockTransition(tree, tree, before, offGeneration); err == nil || !strings.Contains(err.Error(), "changes immutable") {
 		t.Fatalf("seal without the generation stamp = %v", err)
+	}
+}
+
+// The integration re-seal is the second admitted edge: a cutoff sealed inside an
+// unintegrated branch was computed against a corpus the integration changes, so
+// it is re-derived against the staged tree. The generation must advance, which
+// is what keeps an ordinary commit from moving a published cutoff, and the new
+// value must be the merged corpus's own next identity rather than any number the
+// author likes.
+// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
+func TestValidatePermanentLockTransitionAllowsIntegrationReseal(t *testing.T) {
+	t.Parallel()
+	branch, err := snapshot.NewTree([]snapshot.File{
+		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
+		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The merged corpus carries records the branch never saw, so its next
+	// identity - and therefore the correct cutoff - moved.
+	merged, err := snapshot.NewTree([]snapshot.File{
+		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
+		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
+		{Path: "docs/decisions/0003-three.md", Bytes: []byte("record")},
+		{Path: "docs/decisions/0004-four.md", Bytes: []byte("record")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
+	after := &manifest.Lock{SchemaVersion: 29, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 5, LegacyADRGaps: []int{}}
+	if err := validatePermanentLockTransition(branch, merged, before, after); err != nil {
+		t.Fatalf("integration re-seal rejected: %v", err)
+	}
+
+	// A value the author picked rather than derived is refused: the edge
+	// re-derives, it does not merely permit a change. Leaving the cutoff alone
+	// is not this edge at all - it is the unchanged-authority case above.
+	arbitrary := &manifest.Lock{SchemaVersion: 29, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 9, LegacyADRGaps: []int{}}
+	if err := validatePermanentLockTransition(branch, merged, before, arbitrary); err == nil || !strings.Contains(err.Error(), "want the merged corpus's computed cutoff 5") {
+		t.Fatalf("arbitrary re-seal = %v", err)
+	}
+
+	// The staged corpus is what the new value is derived from, so a staged tree
+	// that cannot yield one surfaces that failure rather than accepting.
+	missing, _ := snapshot.NewTree(nil)
+	if err := validatePermanentLockTransition(branch, missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
+		t.Fatalf("unreadable staged corpus = %v", err)
+	}
+
+	// Without a generation advance the cutoff is immutable, which is what stops
+	// an ordinary commit from moving a published one.
+	sameGeneration := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 5, LegacyADRGaps: []int{}}
+	if err := validatePermanentLockTransition(branch, merged, before, sameGeneration); err == nil || !strings.Contains(err.Error(), "changes immutable") {
+		t.Fatalf("re-seal without a generation advance = %v", err)
 	}
 }

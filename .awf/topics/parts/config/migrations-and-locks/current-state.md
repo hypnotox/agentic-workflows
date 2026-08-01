@@ -4,9 +4,9 @@ These packages migrate the config tree across schema generations and read and wr
 
 ### `invariant: adr-v2-cutoff-atomic-immutable`
 
-Each format cutoff is sealed by its own schema generation, which writes the generation and the computed cutoff in one atomic lock save without rewriting authored ADRs: schema 15 seals the V2 cutoff and schema 28 the V3 cutoff. Every later staged transition preserves the full ordered cutoff set exactly, admitting only the sealing edge of a cutoff the prior authority did not carry.
+Each format cutoff is sealed by its own schema generation, which writes the generation and the computed cutoff in one atomic lock save without rewriting authored ADRs. Every later staged transition preserves the full ordered cutoff set exactly, admitting two edges: the sealing edge of a cutoff the prior authority did not carry, and the re-derivation of a cutoff the prior authority did carry when the transition also advances the schema generation. Both edges require the new value to equal the corpus's computed next identity, the sealing edge against the prior corpus and the re-derivation against the staged one, so a cutoff sealed inside an unintegrated branch is provisional and an ordinary commit still cannot move a published one.
 Origin: ADR-0143
-Revised-by: ADR-0194
+Revised-by: ADR-0194, ADR-lock-cutoffs-and-schema-generations-reconcile-at-integration
 Backing: test
 
 ### `invariant: audit-migration-announces-removal`

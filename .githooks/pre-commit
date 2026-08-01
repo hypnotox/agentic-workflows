@@ -24,7 +24,11 @@ unset $(git rev-parse --local-env-vars)
 # Current-state checks read one Git snapshot. Give the exact staged slice its
 # own temporary identity so both the root project and nested Sundial can resolve
 # a HEAD without observing the caller's unstaged worktree.
-git -C "$tmp" init -q
+# The slice repository is initialized on a branch that is deliberately NOT the
+# configured integrationBranch. A fresh init lands on main, and a pending
+# slug-identified ADR is refused on the integration branch by design, so the
+# slice would reject a record that is perfectly legal on the real branch.
+git -C "$tmp" init -q -b awf-staged-slice
 git -C "$tmp" add -f .
 git -C "$tmp" -c core.hooksPath=/dev/null -c user.name=awf-hook -c user.email=awf-hook@localhost commit -q -m staged-slice
 if ! (cd "$tmp" && go build ./... >/dev/null); then

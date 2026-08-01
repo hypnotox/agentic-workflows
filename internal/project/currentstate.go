@@ -181,7 +181,7 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	if err := validatePermanentLockTransition(beforeTree, beforeLock, afterLock); err != nil {
+	if err := validatePermanentLockTransition(beforeTree, afterTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
 	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
@@ -280,7 +280,7 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 // The sole non-identical edge consumes a HEAD bridge attestation into exactly
 // those same permanent values. Initial adoption is valid only when HEAD has
 // neither config nor lock; committed config without a lock is pre-tracking.
-func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *manifest.Lock) error {
+func validatePermanentLockTransition(beforeTree, afterTree *snapshot.Tree, before, after *manifest.Lock) error {
 	if before == nil {
 		if _, hasConfig := beforeTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
 			if _, hasLock := beforeTree.Lookup(config.DirName + "/awf.lock"); !hasLock {
@@ -316,6 +316,29 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 			return nil
 		}
 		return fmt.Errorf("staged .awf/awf.lock adrFormatV3From is %d, want computed cutoff %d", after.ADRFormatV3From, next)
+	}
+	// The integration re-seal: a cutoff sealed inside an unintegrated branch was
+	// computed against a corpus the integration is about to change, so it is
+	// provisional in the same way a worktree-allocated ADR number is. It may
+	// take a new value when the transition also advances the schema generation -
+	// a migration commit and nothing else, so an ordinary commit still cannot
+	// move a published cutoff - and the new value must be the merged corpus's
+	// computed next identity, which is what makes this a re-derivation rather
+	// than a free edit. Every other permanent value stays byte-identical.
+	if after.SchemaVersion > before.SchemaVersion &&
+		before.ADRFormatV3From > 0 && after.ADRFormatV3From != before.ADRFormatV3From &&
+		before.InitializedWithVersion == after.InitializedWithVersion &&
+		before.ADRFormatV1From == after.ADRFormatV1From &&
+		before.ADRFormatV2From == after.ADRFormatV2From &&
+		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
+		next, err := nextADRIdentityFromTree(afterTree)
+		if err != nil {
+			return err
+		}
+		if after.ADRFormatV3From == next {
+			return nil
+		}
+		return fmt.Errorf("staged .awf/awf.lock re-seals adrFormatV3From to %d, want the merged corpus's computed cutoff %d", after.ADRFormatV3From, next)
 	}
 	if before.SchemaVersion == 14 && before.ADRFormatV2From == 0 &&
 		after.SchemaVersion == 15 && after.ADRFormatV2From > 0 &&

@@ -198,3 +198,4 @@
 - [ADR-0191: Replace the global state sequence with ADR-number provenance order](0191-replace-the-global-state-sequence-with-adr-number-provenance-order.md) (Implemented)
 - [ADR-0192: Topic coverage and fan-out evaluate independently of config block presence](0192-topic-coverage-and-fan-out-evaluate-independently-of-config-block-presence.md) (Implemented)
 - [ADR-0193: Git access through one semantic seam](0193-git-access-through-one-semantic-seam.md) (Implemented)
+- [ADR-lock-cutoffs-and-schema-generations-reconcile-at-integration: Lock cutoffs and schema generations reconcile at integration](lock-cutoffs-and-schema-generations-reconcile-at-integration.md) (Implemented)

@@ -30,8 +30,9 @@ Backing: test
 
 ### `invariant: integration-branch-explicit`
 
-The config carries a required integrationBranch key with no in-code default: validation rejects an absent or empty value, a value containing whitespace, and a value starting with a hyphen while accepting a slashed branch name, the schema-29 migration writes integrationBranch: main visibly into a config that lacks it and leaves a config that already carries one byte-identical, and a freshly scaffolded config writes the key so it validates against its own rules.
+The config carries a required integrationBranch key with no in-code default: validation rejects an absent or empty value, a value containing whitespace, and a value starting with a hyphen while accepting a slashed branch name, its schema migration writes integrationBranch: main visibly into a config that lacks it and leaves a config that already carries one byte-identical, and a freshly scaffolded config writes the key so it validates against its own rules.
 Origin: ADR-0194
+Revised-by: ADR-lock-cutoffs-and-schema-generations-reconcile-at-integration
 Backing: test
 
 ### `invariant: docsdir-default`
