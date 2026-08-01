@@ -220,6 +220,7 @@ After Phase 6 commits, run `./awf effort worktree remove sanction-the-stale-bran
 
 ## Notes
 
+- Phase 4's required addition of `internal/commitmsg/**` to the tooling domain selector mechanically regenerated the applicability line in every tooling topic document and both root/adopter locks, beyond the smaller rendered subset predicted above. Those renderer-owned files traveled with the transaction. Review also added `internal/currentstate/qualification_internal_test.go` to pin exact filename substitutions without exporting package-private policy.
 - The historical version-1 bridge-attestation fields remain deliberately readable compatibility input. Their presence is not permanent lock authority and must not be removed by a broad symbol sweep.
 - Plans remain unversioned and receive no stale-merge authorization path.
 - The plan and ADR stay Proposed throughout plan review. Implementation begins only after the user authorizes execution; the first implementation transaction, not this plan commit, moves the ADR to Implementing.
