@@ -1,7 +1,7 @@
 ---
 date: 2026-08-01
 adrs: []
-status: Proposed
+status: Implemented
 ---
 # Plan: Prevent awf test and hook temp directory leaks
 
@@ -493,3 +493,8 @@ After all phases, run these acceptance checks from the managed worktree:
   decision, not a shortcut in this implementation.
 - No ADR or preparatory refactor is required because all behavior is repo-private and the ownership
   boundary is already settled.
+- Implementation findings: no planned path was created, modified, or omitted differently; terminal
+  review hardened `internal/testsupport/testtemp.go` to fail closed when its pre-run stale-cleanup
+  warning cannot be written, documented the no-fallback diagnostic behavior in
+  `cmd/testtmpclean/main.go`, and made unsafe-root fixture setup failures explicit in
+  `internal/testsupport/testtemp_test.go`.
