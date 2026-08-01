@@ -96,6 +96,14 @@
   instead of prose. The name must not be "awf doctor" without a disambiguating note:
   ADR-0162 retired that name with a different meaning. Needs its own ADR: it adds a
   command surface.
+- Two Verify-line tightenings deferred from the ADR-0199/0200 terminal review, for the
+  next ADR that updates these claims: `code-design/outcome-modeling:actionable-outcome-protocol`
+  should verify that a changed axis records what actually moved rather than what was
+  intended and that the remedy renders under the `next action:` prefix, and
+  `code-design/package-composition:package-owns-one-sentence` should verify the ownership
+  statement reads off a single sentence with further detail sentences legal. Both were
+  reverted at review because an applied claim's Verify: line cannot change without an
+  update operation and a same-ADR add+update pair is illegal.
 - Align error-message prefixes across `cmd/awf`, `internal/adr`, and the changelog
   tooling. Cosmetic, and blocked on deciding which convention wins before any sweep.
 - A plan-reviewer docCurrencyItem for the missing changelog task of an adopter-facing

@@ -13,6 +13,34 @@ _Domains: tooling_
 `git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
 
 
+## A census number is only as good as its stated query
+
+_Domains: adr-system_
+
+Twice in one session an authored census understated reality because the measurement was a
+narrow pattern match presented as a population count: a global-test-seam census of "3"
+came from a column-zero `var X = func(` grep that missed var blocks (an AST census found
+31 across 11 packages), and an outcome-category vocabulary was "confirmed" against one
+refusal family's constructor literals while a second refusal type in the same packages
+carried eleven category kinds the vocabulary never saw. Both survived authoring and were
+caught only when a reviewer re-measured. When a durable record cites a count or a closed
+vocabulary, state the query that produced it next to the number (what population, what
+tool, what exclusions) so a reviewer can re-run it, and prefer parsed syntax over textual
+pattern matches for anything shaped like "all X in production".
+
+## Claim prose is right in its Applied batch or it waits for a successor ADR
+
+_Domains: adr-system_
+
+Every line of a claim's canonical block is claim content, the `Verify:` line included:
+`awf check --staged` rejects any edit to an applied claim that does not travel with a
+matching `update` operation, and one ADR cannot declare both `add` and `update` for the
+same id, so an ADR cannot patch its own already-applied claim. Two Verify-line
+tightenings suggested by a terminal review had to be reverted and deferred to a future
+successor ADR for exactly this reason. Treat the first Applied batch as the one shot at
+the claim's wording: review the Verify: line with the same weight as the claim sentence
+before applying, because afterwards even a comma costs a new decision record.
+
 ## A renumber cannot follow a rebase or merge as its own commit; it must land inside the transition
 
 _Domains: adr-system_
