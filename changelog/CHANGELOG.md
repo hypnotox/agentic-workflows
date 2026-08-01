@@ -20,7 +20,12 @@ query a single version or a range.
   or `awf upgrade` step signals this break, because marker syntax is not part of the config schema;
   the first `awf check` after upgrading reports each unnamed marker with its file and line.
   Adopters migrate their own markers: deriving a name from a test file needs language knowledge
-  awf does not have, and the shipped check deliberately has none.
+  awf does not have, and the shipped check deliberately has none. One knock-on: `awf audit`'s
+  `current-state-transition` rule reads each commit's tree through the same loader, so over a range
+  reaching back before the migration it reports a warning per pre-migration commit instead of
+  evaluating that rule. The rule was already bounded this way by any tree the current binary cannot
+  load; exempting the loader instead would have disabled the name requirement inside
+  `awf check --staged`, which the pre-commit hook runs.
 
 - Remove the `currentState.maxClaimsPerTopic` config key and the non-failing topic claim-count
   note `awf check` emitted from it. Schema generation 28 removes the key from an existing tree;

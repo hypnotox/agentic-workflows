@@ -219,6 +219,26 @@ a live test that proves nothing relevant still passes. That is the separate nomi
 `docs/roadmap.md` tracks as a mutation-testing candidate, and this decision neither solves nor
 worsens it.
 
+`awf audit`'s current-state-transition rule loses its evaluation over pre-migration history. The
+rule loads each commit's current-state universes through the same snapshot path the check now
+enforces, so any commit whose tree still carries unnamed markers fails to load and the rule
+degrades to a warning for that commit rather than evaluating it. This is disclosed rather than
+avoided, for two reasons. The degradation is not new in kind: a current binary already cannot load
+a sufficiently old tree, and auditing across ADR-0105's marker-token rename already fails the same
+way on a config parse error, so the rule has always been bounded by how far back the current binary
+can read. And the alternative, exempting the snapshot loader while the filesystem walker enforces,
+would disable the name requirement inside `awf check --staged`, which loads the staged view through
+that identical path and is what the pre-commit hook runs. Losing an advisory rule over history is
+the smaller cost than losing the gate over the present.
+
+The claim `invariants/topics-and-markers:invariants-unbacked-detected` needs no `State changes`
+operation, for the same reason `invariant-marker-close-token` needs none. Its clause that the index
+accepts a claim once at least one proof marker is present describes the finalize-stage backing
+ledger, not what qualifies as a proof marker; marker validity is already policed separately, and
+`proof-marker-test-scoped` had already made mere presence insufficient before this decision. The
+name requirement adds one more validity condition in that same established shape, so the claim's
+meaning is unchanged and its backing test still holds.
+
 Adopters with existing markers must migrate before the next `awf check` passes, and awf supplies
 no migration tool for them, since deriving names requires knowing their language. The rule is
 mechanical enough to script per language, and adoption of the marker corpus is currently thin.
