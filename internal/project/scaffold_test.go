@@ -24,9 +24,6 @@ func sliceSet(s []string) map[string]bool {
 	return m
 }
 
-// TestScaffoldParsesCleanly verifies that ScaffoldConfig with no overrides produces YAML
-// that parses cleanly under the strict config.Load decoder.
-
 // writeScaffold writes scaffold bytes to a fresh awf dir as config.yaml and
 // returns the dir (the argument config.Load expects).
 func writeScaffold(t *testing.T, b []byte) string {

@@ -126,7 +126,7 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	}
 }
 
-// TestGenerateDomainDocsPropagatesTopicError exercises generateDomainDocs's
+// TestDeriveOperationStateSurfacesTopicAssemblyError exercises generateDomainDocs's
 // topic-corpus assembly error. generateDomainDocs now receives the corpus its
 // operation derived (ADR-0180), so the fault surfaces at the one derivation
 // site rather than inside the producer. An orphan topic part (no matching

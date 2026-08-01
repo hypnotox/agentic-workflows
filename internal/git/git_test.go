@@ -143,13 +143,6 @@ func TestWorkingPaths(t *testing.T) {
 	}
 }
 
-// TestWorktreeStatusInjectsGlobalExcludes fails if a production file calls
-// go-git's Worktree Status() without referencing GlobalExcludePatterns, so a
-// new status-derived path universe cannot silently revert to go-git's
-// repo-local-only ignore semantics (docs/pitfalls.md: "go-git status ignores
-// the global and system gitignore"; the limitation bit audit first and
-// WorkingPaths second). A future staged-only status consumer that never reads
-// untracked entries earns an explicit path exemption here instead.
 func TestWorkingPathsExcludesNestedFileBelowIgnoredManagedWorktreeRoot(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
