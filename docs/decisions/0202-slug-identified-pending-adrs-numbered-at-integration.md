@@ -14,7 +14,8 @@ two in-flight efforts allocate the same number; whichever merges second collides
 renumber by hand at merge time. The 0151 -> 0153 renumber was done manually, the git-seam
 decision ("git access through one semantic seam") carried the number 0186 in its worktree
 and landed as 0193 only after one more manual renumber, and this record itself was
-proposed as 0190 and renumbered by hand to 0194 when main claimed that number first.
+proposed as 0190, renumbered by hand to 0194 when main claimed that number first, and
+renumbered by hand again to 0202 at integration when main claimed 0194 as well.
 
 Hand renumbering is a multi-surface rewrite: filename, heading, topic `Origin:` and
 `Revised-by:` lines, the generated INDEX, and any prose references. One enforced rule
@@ -236,9 +237,12 @@ reference surface is accepted.
 ## Consequences
 
 - Merge-time reconciliation becomes one mechanical gated command; hand renumbering ends.
-  Both anticipated manual renumbers have since happened: the git-seam record landed as
-  0193, and this record itself renumbered 0190 -> 0194 at merge-in - the last manual
-  renumbers this repository should need.
+  Both anticipated manual renumbers have since happened, and this record needed a third:
+  the git-seam record landed as 0193, and this record renumbered 0190 -> 0194 at merge-in
+  and 0194 -> 0202 at integration. They are the last manual renumbers this repository
+  should need, because a record authored after this one is pending and takes its number
+  once. The second of them also proved the mechanism incomplete for records predating it,
+  which is what ADR-0204 settles.
 - Integration gains a mandatory numbering step even when no collision exists. Uniformity
   is chosen deliberately: a step that always runs is more reliable for agents than a
   conditional fix that runs only on collision.
@@ -306,3 +310,4 @@ reference surface is accepted.
 - 2026-07-31: Applied; operations: update `adr-system/adr-lifecycle:corpus-parsed-once`, update `adr-system/adr-lifecycle:adr-new-no-overwrite`
 - 2026-07-31: Applied; operations: update `adr-system/plan-artifacts:plan-adr-link-resolved`
 - 2026-07-31: Applied; operations: add `adr-system/adr-lifecycle:numbering-transition-mode`, add `adr-system/adr-lifecycle:adr-number-immutable`
+- 2026-08-01: Amended; content-sha256: f329db501717dbd3813d477f56c4e56ccb49dbb47135266a5f46b7edce8d550c
