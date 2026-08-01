@@ -1,18 +1,18 @@
 ---
 date: 2026-08-01
-adrs: [199]
+adrs: [207]
 status: Proposed
 ---
 # Plan: Fork the verification commands by universe
 
 ## Goal
 
-Execute ADR-0199: fork `awf check` into `check repo` and `check staged` universe sub-groups, delete
+Execute ADR-0207: fork `awf check` into `check repo` and `check staged` universe sub-groups, delete
 the `--staged` flag and the `check invariants` command, add a narrow `check staged drift`, gate the
 whole check family, and make the two staged scanners consult their knob before reading any index.
 Non-goals: the
 config-tree hygiene sweep and dead-reference halves of staged drift, and the wider check-architecture
-cleanup, both of which ADR-0199 defers by name.
+cleanup, both of which ADR-0207 defers by name.
 
 ## Architecture summary
 
@@ -25,7 +25,7 @@ and turns on the example's gates, which must be one transaction because one clai
 three. Phase 5 discloses a disabled child last, because that disclosure is what the example's
 now-enabled gates keep quiet.
 
-ADR-0199 is `Proposed`. Phase 1 appends its `Accepted` and `Implementing` status events and Applied
+ADR-0207 is `Proposed`. Phase 1 appends its `Accepted` and `Implementing` status events and Applied
 batch 1; Phases 2 to 5 each append one further Applied batch in declaration order. The batch
 partition is 2 / 8 / 1 / 1 / 1 across the thirteen declared operations, and the ADR's State changes
 list is sequenced to match. Every batch task also flips the ADR's frontmatter `status:` field, which
@@ -44,7 +44,7 @@ deferred to the post-terminal-review transaction.
   `internal/project/gatedcommands.go`, `internal/project/currentstate.go`,
   `internal/migrate/migrate.go`, `x`, `README.md`, `.githooks/check-nested-staged`,
   `templates/hooks/pre-commit.sh.tmpl`, `templates/docs/working-with-awf.md.tmpl`,
-  `examples/sundial/.awf/config.yaml`, the authored `.awf/` inputs ADR-0199 items 6 and 12 name, the
+  `examples/sundial/.awf/config.yaml`, the authored `.awf/` inputs ADR-0207 items 6 and 12 name, the
   test files each phase names, and the five topic-claim part files the batches mutate:
   `.awf/topics/parts/tooling/cli/current-state.md`,
   `.awf/topics/parts/tooling/quality-gates/current-state.md`,
@@ -55,7 +55,7 @@ deferred to the post-terminal-review transaction.
 
 ## Phase 1: Gate the check family and remove the per-child gating mechanism
 
-**Execution mode: inline.** One green transaction. Implements ADR-0199 item 13's gating half.
+**Execution mode: inline.** One green transaction. Implements ADR-0207 item 13's gating half.
 Deliberately does NOT touch `StateExempt`, which stays on all three children until Phase 2: the claim
 that describes it also names the command spellings, and a claim carries exactly one update operation.
 
@@ -71,7 +71,7 @@ that describes it also names the command spellings, and a claim carries exactly 
   rewrites, so a reduced-to-passthrough `ResolvedGating` would be indirection with no caller to serve.
   `cmd/awf/gate_test.go` loses its `ResolvedGating` assertion with the function.
   `GatedCommandNames` is unchanged. Forbidden: leaving either function present-but-unreachable or
-  guarded by a `coverage-ignore`; ADR-0199 item 13 requires removal, and the dead-code gate would
+  guarded by a `coverage-ignore`; ADR-0207 item 13 requires removal, and the dead-code gate would
   reject the former.
 - [ ] **Task 1.3: Collapse the published projection to one list.** In
   `internal/project/gatedcommands.go`, remove the exclusions half: the second projection, the
@@ -89,7 +89,7 @@ that describes it also names the command spellings, and a claim carries exactly 
   `cmd/awf/run_test.go` gated-command tables gain the three newly-gated names. Add a test asserting
   that `awf check prose` on a behind-the-project binary refuses; extend the existing
   `tooling/cli:version-compat-gate` proof rather than adding a second marker for the same claim.
-- [ ] **Task 1.5: Apply ADR-0199 batch 1 and its claim mutations.** Append to ADR-0199's Status
+- [ ] **Task 1.5: Apply ADR-0207 batch 1 and its claim mutations.** Append to ADR-0207's Status
   history, in this order, an `Accepted` event, an `Implementing` event, and an `Applied` event.
   EVERY non-Proposed status entry carries a `content-sha256`, `Accepted` included, and `Implementing`
   repeats the stamp `Accepted` established rather than recomputing it. Flip the frontmatter
@@ -106,7 +106,7 @@ that describes it also names the command spellings, and a claim carries exactly 
   In `.awf/topics/parts/tooling/cli/current-state.md`, delete the `group-child-gating-honored` claim
   block entirely, and rewrite `gated-commands-generated`'s prose so it describes one projection: the
   top-level commands whose gating classification is not ungated, with no group-children exclusion
-  list. Append `ADR-0199` to `gated-commands-generated`'s `Revised-by`, preserving its existing
+  list. Append `ADR-0207` to `gated-commands-generated`'s `Revised-by`, preserving its existing
   `Origin`. Obtain the digest by writing 64 zeros and reading the computed value back from
   `./x check`, per the pitfalls entry on frozen digests. Regenerate `docs/decisions/INDEX.md` with
   `./x render` and stage it with the flip; the index records the ADR's status and is never
@@ -137,7 +137,7 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   the `x` invocation that `tooling/quality-gates:example-adopter-checked` names verbatim, and that
   claim takes its single update in Phase 4 alongside two other changes to the same sentence. Delete `"--staged"` from every `BoolFlags` list under
   `check`, and from the `check` group itself. `commit` keeps `MaxPos: 1` and `StateExempt: true`;
-  `prose` and `memory` lose `StateExempt` (ADR-0199 item 13: they no longer run standalone from the
+  `prose` and `memory` lose `StateExempt` (ADR-0207 item 13: they no longer run standalone from the
   payload). `staged` and `repo` each carry `MaxPos: -1` so a leaf name reaches the handler. Rewrite
   each affected `HelpBody` so no usage line spells `--staged` and each names its universe.
 - [ ] **Task 2.2: Make `resolve` return the leaf and carry the resolved path.** In
@@ -163,7 +163,7 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   and `cmd/awf/checkstaged.go` with `runCheckStaged` (moved from `cmd/awf/check.go`). `runCheckRepo`
   runs drift, current-state, prose, and memory, and owns both project-level notes: the version-ahead
   note and `AdvisoryNotes`, emitted once whether invoked directly or through bare `check`
-  (ADR-0199 item 4). `runCheckStaged` runs the transition check and, from Phase 3, staged drift; it
+  (ADR-0207 item 4). `runCheckStaged` runs the transition check and, from Phase 3, staged drift; it
   excludes `commit`. Bare `runCheck` invokes both and, outside a git repository, runs the repo
   universe alone and prints that the staged universe was unavailable. `checkLockVsBinary` loses its
   `staged` bool: `runCheckRepo` compares the working lock, `runCheckStaged` the index lock.
@@ -190,7 +190,7 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   runner-var variant around :112) and is the proof site for
   `rendering/companion-scripts:hook-payloads-fallback-safe`; update it to pin the new two-line set.
   This is a deletion rather than a respelling, so Task 2.5's batch does not cover it.
-  ADR-0199 item 1: bare check now covers both universes and both scans, so keeping the standalone
+  ADR-0207 item 1: bare check now covers both universes and both scans, so keeping the standalone
   lines would run each twice per commit.
 - [ ] **Task 2.7: Update the tests the fork invalidates.** `cmd/awf/checkgroup_test.go`'s
   `TestCheckChildrenRejectStaged` is deleted: with `--staged` gone from the table there is no flag to
@@ -224,7 +224,7 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   `cmd/awf/prosegate.go` and `cmd/awf/memorygate.go` change; they are user-facing strings, not
   invocations. Post-check:
   `git grep -nE 'check (prose|memory|commit)\b' -- . ':!docs/decisions' ':!docs/plans' ':!changelog' ':!docs/research' ':!internal/migrate/renameretiredcommands.go' ':!internal/migrate/renameretiredcommands_test.go'`
-  returns no output; the migrate exclusions are required because ADR-0199 item 11 freezes those
+  returns no output; the migrate exclusions are required because ADR-0207 item 11 freezes those
   two-token spellings.
 - [ ] **Task 2.8: Rewrite the authored inputs whose payload description the fork retires.** Three
   authored parts describe the payload shape Task 2.6 deletes, and go false in this phase rather than a
@@ -232,7 +232,7 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   `.awf/parts/workflow/composing-the-gate.md` (around :9-14), and `.awf/docs/parts/testing/gate.md`
   (around :11-12), the last two describing the scans as separate non-gate steps the payload runs on
   its own. Rewrite all three to the payload's new shape: the configured check command plus the gate.
-- [ ] **Task 2.9: Make both staged scanners knob-first.** ADR-0199 item 9. In `cmd/awf/prosegate.go`
+- [ ] **Task 2.9: Make both staged scanners knob-first.** ADR-0207 item 9. In `cmd/awf/prosegate.go`
   and `cmd/awf/memorygate.go`, move the config load and the knob test ahead of the `stagedTree` call,
   loading the config from the project root's `.awf/config.yaml` on disk so a disabled gate returns
   without requiring git at all. Behaviour required: knob off and no git repository returns success
@@ -244,7 +244,7 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   to the project subtree, so no corpus or prefix filtering is added. Add tests for the four
   combinations of knob on/off against git present/absent; the knob-on-without-git case carries the
   proof marker for `tooling/quality-gates:prose-gate-refuses-without-git`.
-- [ ] **Task 2.10: Apply ADR-0199 batch 2 and its claim mutations.** Append one `Applied` event listing,
+- [ ] **Task 2.10: Apply ADR-0207 batch 2 and its claim mutations.** Append one `Applied` event listing,
   in declaration order: update `tooling/cli:group-child-project-guard-exemption` (prose narrows to
   `awf check staged commit` alone), update `tooling/cli:help-lists-group-children` (children at any
   depth), update `tooling/cli:invariants-in-check` (its second conjunct narrows to the current-state
@@ -253,8 +253,8 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   runs, and the non-aggregating child), update `tooling/quality-gates:memory-citation-gate`,
   update `tooling/audit-and-snapshots:commit-gate-shared-rule`, and update
   `code-design/dependency-composition:dependency-composition-commit-classification` (the last three
-  respellings). Each updated claim gains `ADR-0199` appended to its `Revised-by` list at its ascending
-  position and preserves its `Origin`. The added claim carries `Origin: ADR-0199`, `Backing: test`, and
+  respellings). Each updated claim gains `ADR-0207` appended to its `Revised-by` list at its ascending
+  position and preserves its `Origin`. The added claim carries `Origin: ADR-0207`, `Backing: test`, and
   a proof marker placed on the Task 2.7 test that asserts the bare aggregate's membership. The batch
   ends with `update tooling/quality-gates:prose-gate-refuses-without-git`, whose prose narrows to
   refusing outside a git repository WHEN THE GATE IS ENABLED, and reporting itself disabled without
@@ -268,7 +268,7 @@ feat(tooling): fork the check commands into repo and staged universes
 
 ## Phase 3: Add staged drift
 
-**Execution mode: inline.** Implements ADR-0199 item 5, in its positively-bounded scope.
+**Execution mode: inline.** Implements ADR-0207 item 5, in its positively-bounded scope.
 
 - [ ] **Task 3.1: Render from the staged config and compare against the staged output tree.** Add
   `(*Project) CheckStagedDrift(ctx) ([]Drift, error)` to `internal/project`, reusing the existing
@@ -277,7 +277,7 @@ feat(tooling): fork the check commands into repo and staged universes
   `internal/project`, so drift-kind policy stays there and the command binary keeps only
   presentation. Reuse the existing snapshot-backed readers rather than building new machinery:
   `config.TreeReader`, `project.ProjectTreeReader` with `snapshotTreeReader`, and
-  `StagedContextState`'s assembly of staged config, corpora, and lock. Also forbidden, per ADR-0199
+  `StagedContextState`'s assembly of staged config, corpora, and lock. Also forbidden, per ADR-0207
   item 5: the config-tree hygiene sweep, the dead-reference probe,
   stale-backup flagging, invalid-frontmatter drift, orphaned-path drift, and provenance-banner or
   managed-output-attribution checks. Watch the known trap: `topicHash` reads absolute paths while the
@@ -286,9 +286,9 @@ feat(tooling): fork the check commands into repo and staged universes
 - [ ] **Task 3.2: Cover the hole it closes.** Add a test staging a `.awf/` config change without its
   re-rendered output and asserting `awf check staged` reports drift, plus a test asserting a fully
   staged render is clean. The first carries the proof marker for the claim added in Task 3.3.
-- [ ] **Task 3.3: Apply ADR-0199 batch 3.** Append one `Applied` event for
+- [ ] **Task 3.3: Apply ADR-0207 batch 3.** Append one `Applied` event for
   `add rendering/sync-and-drift:staged-drift-rendered-output`, and author the claim with
-  `Origin: ADR-0199`, `Backing: test`, its proof marker, and prose naming both what it emits and that
+  `Origin: ADR-0207`, `Backing: test`, its proof marker, and prose naming both what it emits and that
   every other drift kind is out of scope.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
@@ -298,7 +298,7 @@ feat(rendering): compare staged config against the staged output tree
 
 ## Phase 4: Remove check invariants, rescope the example, and migrate adopter vars
 
-**Execution mode: inline.** Implements ADR-0199 items 6, 8, 11, and 12. These land together because
+**Execution mode: inline.** Implements ADR-0207 items 6, 8, 11, and 12. These land together because
 one claim, `tooling/quality-gates:example-adopter-checked`, describes all three of what `./x check`
 runs inside the example, which command it names, and whether the example's gates are on. A claim takes
 exactly one update, so the three changes cannot be split across phases without leaving it false in
@@ -310,7 +310,7 @@ Phase 2's knob-first change binds only when a gate is off, which after this phas
   and delete `Project.CurrentStateInvariants` and `InvariantReport` from
   `internal/project/currentstate.go`. Remove `x`'s `(cd examples/sundial && "$bindir/awf" check invariants)`
   line. Remove the false descriptions at `README.md:185` and `README.md:278` rather than
-  correcting them, which is what ADR-0199 item 6 authorises. The mermaid node at `README.md:159`
+  correcting them, which is what ADR-0207 item 6 authorises. The mermaid node at `README.md:159`
   (`CHECK[["awf check /<br/>check invariants"]]`) is CORRECTED to `CHECK[["awf check"]]`, not deleted:
   its `awf check` half is true and stays true, and deleting the node would leave the diagram with no
   edge from invariant claims to any checker. Delete the `check invariants` line from
@@ -323,11 +323,11 @@ Phase 2's knob-first change binds only when a gate is off, which after this phas
   `{file: "invariants.go", owner: "runInvariants", ...}`) and `cmd/awf/gate_test.go` (the
   `"check invariants"` gated-command table entry around :226). Verify with
   `git grep -F 'check invariants' -- . ':!docs/decisions' ':!docs/plans' ':!changelog' ':!internal/migrate/renameretiredcommands.go' ':!internal/migrate/renameretiredcommands_test.go'`
-  returning no output; the two migrate files are excluded because ADR-0199 item 11 freezes the
+  returning no output; the two migrate files are excluded because ADR-0207 item 11 freezes the
   18-to-19 migration, which contractually keeps the retired spelling. Also confirm `./x gate`'s
   dead-code step passes.
 - [ ] **Task 4.2: Rescope the example invocation and enable its gates.** In `x` (around :90), the
-  `examples/sundial` invocation becomes `awf check repo`; ADR-0199 item 8 requires it because sundial
+  `examples/sundial` invocation becomes `awf check repo`; ADR-0207 item 8 requires it because sundial
   is a nested tree whose staged universe would otherwise be evaluated against the containing
   repository's index. Update the verbatim pin in `internal/project/example_wiring_test.go`
   (around :105) to match. Then add to `examples/sundial/.awf/config.yaml`, which declares neither
@@ -349,21 +349,21 @@ Phase 2's knob-first change binds only when a gate is off, which after this phas
   to `check repo prose`, `check memory` to `check repo memory`, and `check commit` to
   `check staged commit`, and clears a var whose value invokes `check invariants`. It matches a
   three-token invocation; `retiredCommandRe` is anchored to a two-token form and must not be copied.
-  Per ADR-0199 item 11 it does NOT match the bare `invariants` spelling, which the 18-to-19 migration
+  Per ADR-0207 item 11 it does NOT match the bare `invariants` spelling, which the 18-to-19 migration
   already rewrote and which otherwise belongs to a non-awf runner's vocabulary. Leave
   `internal/migrate/renameretiredcommands.go` untouched. Add
   `internal/migrate/retargetcheckcommands_test.go` covering each retarget, the clear, idempotent
   replay, and a value naming another runner being left alone.
-- [ ] **Task 4.4: Update the authored inputs whose descriptions the fork changes.** Per ADR-0199 item
+- [ ] **Task 4.4: Update the authored inputs whose descriptions the fork changes.** Per ADR-0207 item
   12: replace the superseded follow-on entry at `.awf/docs/parts/roadmap/deferred.md`, landing the
   carried-forward check-architecture cleanup in `.awf/docs/parts/roadmap/ideas.md`; resolve the
   deferred entry noting `awf check drift` and `awf check state` as uninvoked. The two gate-composition
   parts are NOT here: Task 2.8 rewrites them in the phase that retires what they describe.
-- [ ] **Task 4.5: Apply ADR-0199 batch 4.** Append one `Applied` event for
+- [ ] **Task 4.5: Apply ADR-0207 batch 4.** Append one `Applied` event for
   `update tooling/quality-gates:example-adopter-checked`, and rewrite that claim's prose to drop
   `awf check invariants` from what `./x check` runs inside the example, to record that `./x check`
   invokes the repo universe there, and to record that the example runs with both opt-in gates
-  enabled. Append `ADR-0199` to its `Revised-by`. All three changes are why this claim's single update
+  enabled. Append `ADR-0207` to its `Revised-by`. All three changes are why this claim's single update
   lives here.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
@@ -373,7 +373,7 @@ feat(tooling): remove check invariants and rescope the example adopter
 
 ## Phase 5: Disclose a disabled child
 
-**Execution mode: inline.** Implements ADR-0199 item 7, and closes the ADR. Last because Task 5.1
+**Execution mode: inline.** Implements ADR-0207 item 7, and closes the ADR. Last because Task 5.1
 makes a disabled child emit a `note:` line and `x` fails the example on any such line, so the
 example's gates (Phase 4 Task 4.2) must already be on.
 
@@ -387,9 +387,9 @@ example's gates (Phase 4 Task 4.2) must already be on.
   Acceptance for the phase: `./x check` still exits zero with no `note:` line in the example's
   output, which `tooling/quality-gates:example-zero-notes` requires and which Phase 4 Task 4.2
   established by turning the example's gates on.
-- [ ] **Task 5.3: Apply ADR-0199 batch 5, the final batch, and flip the ADR to Implemented.** Append
+- [ ] **Task 5.3: Apply ADR-0207 batch 5, the final batch, and flip the ADR to Implemented.** Append
   one `Applied` event for `add tooling/cli:check-disabled-child-disclosure`, and author the claim with
-  `Origin: ADR-0199`, `Backing: test`, and its proof marker on the Task 5.2 test.
+  `Origin: ADR-0207`, `Backing: test`, and its proof marker on the Task 5.2 test.
 
   Append the `Implemented` status event carrying the frozen digest IN THIS SAME TRANSACTION. The flip
   cannot be deferred: `internal/adr/application.go` refuses an `Implementing` status whose remaining
@@ -409,7 +409,7 @@ feat(tooling): disclose a disabled opt-in check
 - `git grep -F -- 'check --staged' -- . ':!docs/decisions' ':!docs/plans' ':!changelog' ':!docs/research'`
   returns no output. The same for `git grep -F 'check invariants'` with those exclusions plus
   `':!internal/migrate/renameretiredcommands.go' ':!internal/migrate/renameretiredcommands_test.go'`,
-  which ADR-0199 item 11 freezes with the retired spelling intact.
+  which ADR-0207 item 11 freezes with the retired spelling intact.
 - `awf check repo`, `awf check staged`, and bare `awf check` each exit zero on a clean tree; bare
   `awf check` in a non-git directory exits zero having reported the staged universe unavailable.
 - `awf check staged` reports drift when a `.awf/` change is staged without its rendered output.
@@ -418,7 +418,7 @@ feat(tooling): disclose a disabled opt-in check
 - `./x gate` passes, including the 100% coverage floor with no new `coverage-ignore` beyond any this
   plan names, and the dead-code step with `runInvariants`, `CurrentStateInvariants`, `InvariantReport`,
   and `UngatedGroupChildren` all gone.
-- ADR-0199 carries `Accepted`, `Implementing`, five `Applied` events, and `Implemented`, whose
+- ADR-0207 carries `Accepted`, `Implementing`, five `Applied` events, and `Implemented`, whose
   operations, concatenated in order, equal its declared thirteen.
 
 ## Notes
@@ -430,9 +430,9 @@ feat(tooling): disclose a disabled opt-in check
   `check` rather than rehoming it, so nothing about that sentence changes until Phase 4.
 - Phase 5 is the disclosure rather than an earlier phase because a disabled child emits a `note:`
   line and `x` fails the example on any such line; the example's gates go on in Phase 4.
-- ADR-0199 item 9 was narrowed during plan review: its corpus-and-prefixes half described work
+- ADR-0207 item 9 was narrowed during plan review: its corpus-and-prefixes half described work
   `internal/git/handle.go` already does, so only the knob-first half remains and it rides Phase 2.
-- ADR-0199 item 5 defers the sweep and dead-reference halves of staged drift. The carried-forward
+- ADR-0207 item 5 defers the sweep and dead-reference halves of staged drift. The carried-forward
   check-architecture cleanup lands as a roadmap entry in Task 4.4 and is not implemented here.
 - The three added claims' prose is authored in the phase that applies its operation, not in advance;
-  ADR-0199 declares the operations, and the claim text lands with the mutation.
+  ADR-0207 declares the operations, and the claim text lands with the mutation.
