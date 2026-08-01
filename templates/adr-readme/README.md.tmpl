@@ -78,9 +78,12 @@ Abandoned; Implementing may move only to Implemented or Abandoned. Implemented a
 are terminal. Implementing means a nonempty strict subset is applied. Abandonment keeps applied
 operations historical and cancels the remainder; its terminal event carries a rationale.
 
-The lock has immutable `adrFormatV1From` and `adrFormatV2From` cutoffs. Records below V1 are
-legacy, records from V1 to before V2 retain the four-state V1 grammar, and records at or above V2
-use this five-state grammar. There is no `Superseded` status.
+The lock has an ordered set of immutable cutoffs, `adrFormatV1From`, `adrFormatV2From`, and
+`adrFormatV3From`, routing every numbered record. Records below V1 are legacy, records from V1 to
+before V2 retain the four-state V1 grammar, and records at or above V2 use this five-state grammar,
+which V3 keeps unchanged. A record carrying no number routes by its declared `current-state-v3`
+marker instead, which is how a pending record joins the corpus before it is numbered. There is no
+`Superseded` status.
 
 V2 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
 a terminal status: while Accepted or Implementing an amendment appends
