@@ -155,8 +155,9 @@ fixes.
 The honest net on ceremony: one whole-plan section is retired and five per-task fields are
 added, of which a typical implementation task carries zero or one. `Latitude:` is written
 only to claim the exception, `Kind:` only for a spike or a batch, `Question:` only on a
-spike, and `Paths:` and `Post-check:` are mandatory only on a batch task, which already
-owed both declarations under different names. The argument for accepting this is that
+spike, `Paths:` wherever the affected set is ambiguous, which is always true of a batch
+task, and `Post-check:` on a batch task or any task whose `Paths:` holds a pathspec. A
+batch task already owed both declarations under different names. The argument for accepting this is that
 marked-exception fields on a minority of tasks cost less than a hand-maintained section on
 every plan, and that two of the five fields are renames of existing obligations rather than
 new ones. This decision nonetheless adds vocabulary to a format ADR-0197 deliberately
