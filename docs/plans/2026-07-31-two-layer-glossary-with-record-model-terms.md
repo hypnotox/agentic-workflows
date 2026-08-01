@@ -1,6 +1,6 @@
 ---
 date: 2026-07-31
-adrs: [0207]
+adrs: [0207, narrow-the-glossary-terms-validated-claim-to-the-implementation]
 status: Proposed
 ---
 # Plan: Two-layer glossary with record-model terms
@@ -61,7 +61,7 @@ operation. Phase 4 therefore lands its code, tests, and proof markers only; the 
   - `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`
   - `.awf/topics/parts/tooling/cli/current-state.md`
   - `.awf/topics/parts/config/configspec-and-reference/current-state.md`
-  - `docs/decisions/0198-two-layer-glossary-with-record-model-terms.md`
+  - `docs/decisions/0207-two-layer-glossary-with-record-model-terms.md`
   - `changelog/CHANGELOG.md`
   - all rendered outputs `./x render` regenerates (committed with their sources)
 - **Deleted:** none.
@@ -107,7 +107,7 @@ its replacement `context-surfaces-tiered-pitfalls` was retired by ADR-0134. A pi
   event to be immediately followed by an Applied event, so an intermediate state with Implementing
   alone is red and its error aborts validation before the digest comparison runs.
 
-  In `docs/decisions/0198-two-layer-glossary-with-record-model-terms.md`, set
+  In `docs/decisions/0207-two-layer-glossary-with-record-model-terms.md`, set
   `status: Implementing` in the frontmatter and append exactly two events to `## Status history`,
   after the existing `- 2026-07-31: Proposed` line:
 
