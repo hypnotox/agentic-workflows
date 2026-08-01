@@ -184,7 +184,10 @@ falsified nothing, because nothing declared it.
    removing migration carries a config-bytes action, in both places that record it: the
    comment beside the backstop in `internal/migrate/forwardport_test.go`, and the prose in
    `docs/pitfalls.md`, whose `.awf/` source is edited and re-rendered rather than the
-   generated file.
+   generated file. The rule becomes a governed claim rather than an obligation recorded only
+   in a comment: `Backing: test`, proven by `TestConfigForCurrentSchemaParsesEveryRetiredKey`.
+   Leaving it ungoverned would ship a fourth instance of exactly the defect item 4 exists to
+   close, in the record that diagnoses it.
 
 7. The corrections this work owes travel with it. Three doc comments are rewritten, each
    carrying a statement its own code has outgrown: `validatePermanentLockTransition`'s,
@@ -205,6 +208,7 @@ falsified nothing, because nothing declared it.
 ## State changes
 
 - update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`
+- add `config/migrations-and-locks:port-forward-strips-every-retired-key`
 - update `adr-system/adr-lifecycle:renumber-digest-paired`
 - add `adr-system/adr-lifecycle:governed-format-change-bounded`
 
@@ -234,10 +238,14 @@ also changes `format:` and adds a `slug:` key. The corrected text has to state a
 and its backing has to move: its eight existing proof markers sit on tests that predate the
 widening and none of them exercises the widened admission or the retrofit.
 
-The new claim on the governed-format-change rule closes a gap that made this whole class
-harder to see. An enforcement rule asserted by no claim can be relaxed without falsifying
-anything, so nothing flagged the third relaxation, and the roadmap's own accounting named
-two false sentences rather than three.
+Both added claims close the same gap, and it is the gap that made this whole class harder to
+see. An enforcement rule asserted by no claim can be relaxed without falsifying anything, so
+nothing flagged the third relaxation, and the roadmap's own accounting named two false
+sentences rather than three. The port-forward rule was the same shape one layer down: its
+obligation lived in a test comment and a pitfalls paragraph, neither of which any check
+reads as authority. Two ungoverned rules surfacing in one record is the argument for asking,
+separately, whether an enforcement rule should be mechanically prevented from shipping
+without a governing claim.
 
 The cost of the generalisation is that two refusal predicates now accept strictly more, at
 every generation-sealed cutoff rather than one. That is the same shape of risk as the rule
