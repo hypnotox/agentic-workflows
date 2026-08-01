@@ -256,6 +256,41 @@ func TestFinalUpgradeDiscardsBridgeADRRoutingPayload(t *testing.T) {
 			t.Fatalf("log missing %q: %s", want, log.String())
 		}
 	}
+
+	invalidDir, invalidHead, invalidDigest := sealedRepo(t)
+	invalidLock := finalLock(t, invalidDir, sealedAtt(invalidHead, invalidDigest+"-mismatch"))
+	invalidADRPath := filepath.Join(invalidDir, "docs", "decisions", "0001-first.md")
+	approvalBefore, err := os.ReadFile(filepath.Join(invalidDir, approvalPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lockBefore, err := os.ReadFile(config.LockPath(invalidDir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalidADRBefore, err := os.ReadFile(invalidADRPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := FinalUpgrade(testContext(t), invalidDir, invalidLock, io.Discard); err == nil || !strings.Contains(err.Error(), "digest") {
+		t.Fatalf("invalid seal error = %v, want digest refusal", err)
+	}
+	for path, before := range map[string][]byte{
+		filepath.Join(invalidDir, approvalPath): approvalBefore,
+		config.LockPath(invalidDir):             lockBefore,
+		invalidADRPath:                          invalidADRBefore,
+	} {
+		after, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(after, before) {
+			t.Fatalf("invalid seal mutated %s", path)
+		}
+	}
+	if journalPresence(t, invalidDir) {
+		t.Fatal("invalid seal created a cutover journal")
+	}
 }
 
 func TestFinalUpgradeRequiresAttestation(t *testing.T) {
