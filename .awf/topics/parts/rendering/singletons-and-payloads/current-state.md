@@ -22,8 +22,9 @@ Backing: test
 
 ### `invariant: hook-payloads-rendered`
 
-With the hooks singleton enabled, exactly three payloads render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, and .awf/hooks/pre-push.sh; with it absent or disabled, no path under .awf/hooks/ renders.
+With the hooks singleton enabled, exactly four payloads render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, .awf/hooks/pre-push.sh, and .awf/hooks/pre-merge-commit.sh; with it absent or disabled, no path under .awf/hooks/ renders.
 Origin: ADR-0148
+Revised-by: ADR-0202
 Backing: test
 
 ### `invariant: memory-gitignore-always-on`

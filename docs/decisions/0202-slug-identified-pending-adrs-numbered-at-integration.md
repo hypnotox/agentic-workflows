@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0202: Slug-identified pending ADRs numbered at integration
@@ -311,3 +311,5 @@ reference surface is accepted.
 - 2026-07-31: Applied; operations: update `adr-system/plan-artifacts:plan-adr-link-resolved`
 - 2026-07-31: Applied; operations: add `adr-system/adr-lifecycle:numbering-transition-mode`, add `adr-system/adr-lifecycle:adr-number-immutable`
 - 2026-08-01: Amended; content-sha256: f329db501717dbd3813d477f56c4e56ccb49dbb47135266a5f46b7edce8d550c
+- 2026-08-01: Applied; operations: update `rendering/singletons-and-payloads:hook-payloads-rendered`
+- 2026-08-01: Implemented; content-sha256: f329db501717dbd3813d477f56c4e56ccb49dbb47135266a5f46b7edce8d550c

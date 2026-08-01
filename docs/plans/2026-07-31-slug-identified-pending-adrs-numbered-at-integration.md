@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [202]
-status: Proposed
+status: Implemented
 ---
 # Plan: Slug-identified pending ADRs numbered at integration
 
