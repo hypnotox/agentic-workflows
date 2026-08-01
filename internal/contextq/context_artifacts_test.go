@@ -40,7 +40,13 @@ func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 
 // invariant: tooling/context-and-topic:context-known-artifact-navigation
 func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) {
-	parsed := mustCorpus([]adr.ADR{{Number: "0007", Filename: "0007-real.md"}})
+	// The corpus is deliberately mixed: a pending record is reachable only
+	// through its slug identity, so a number-keyed lookup or a number-valued
+	// identity would drop it from artifact navigation entirely.
+	parsed := mustCorpus([]adr.ADR{
+		{Number: "0007", Filename: "0007-real.md"},
+		{Slug: "a-pending-record", Filename: "a-pending-record.md", Format: adr.CurrentStateV3},
+	})
 	decls := []project.OutputDeclaration{
 		{Path: "documentation/config-reference.md", TemplateID: "docs/config-reference.md.tmpl", Declarers: []string{"config-reference"}},
 		{Path: "documentation/domains/d.md", TemplateID: "domains/domain.md.tmpl", Declarers: []string{"generated-domain"}},
@@ -74,6 +80,7 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 		{".awf/topics/metadata/d/t.yaml", project.ArtifactTopicMetadata, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
 		{".awf/topics/parts/d/t/current-state.md", project.ArtifactClaimPart, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
 		{"documentation/decisions/0007-real.md", project.ArtifactDecisionRecord, "0007", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
+		{"documentation/decisions/a-pending-record.md", project.ArtifactDecisionRecord, "a-pending-record", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
 		{"generated.md", project.ArtifactManagedOutput, "docs/out.tmpl", []artifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: ".awf/docs/out.yaml", Label: "authored data"}, {Path: ".awf/docs/parts/out/content.md", Label: "convention part"}, {Path: ".awf/topics/metadata/d/t.yaml", Label: "topic metadata"}, {Path: ".awf/topics/parts/d/t/current-state.md", Label: "claim part"}, {Path: "documentation/decisions/0007-real.md", Label: "decision record"}}},
 	}
 	for _, tc := range cases {
