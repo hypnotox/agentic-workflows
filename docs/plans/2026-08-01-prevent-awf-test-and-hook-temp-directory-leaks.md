@@ -49,6 +49,12 @@ exit mapping. A successfully scanned cleanup always prints one summary line, par
 that summary and exits nonzero after printing the joined error, and a root/platform failure exits
 nonzero without claiming a removal.
 
+Every path below is repository-root-relative. At the start of each phase, the owner must enter the
+managed worktree, run `worktree_root=$(git rev-parse --show-toplevel)`, verify
+`git branch --show-current` prints `awf/prevent-awf-test-and-hook-temp-directory-leaks`, and
+`cd "$worktree_root"` before running the baseline or tasks. This resolves one exact execution root
+without baking a machine-specific checkout location into the durable plan.
+
 ## File structure
 
 Created:
@@ -85,6 +91,8 @@ Modified:
 - `docs/development.md`, `docs/testing.md`, `docs/architecture.md`, `docs/roadmap.md`: rendered
   outputs of the changed convention parts.
 - `.awf/awf.lock`: rendered hashes for the changed generated documents.
+- `docs/plans/2026-08-01-prevent-awf-test-and-hook-temp-directory-leaks.md`: record terminal
+  implementation findings and freeze the plan after implementation review settles.
 
 Deleted: none.
 
@@ -139,8 +147,16 @@ Deleted: none.
   `go test ./cmd/awf -run '^(TestRepositoryPreCommitHasOnlyPermanentPath|TestRepositoryPreCommitRejectsSliceMissingNestedHelper|TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition|TestRepositoryPreCommitRemovesSliceBeforePayload|TestHookCommandHelper)$'`;
   it must exit zero.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage only `.githooks/pre-commit` and
-  `cmd/awf/check_test.go`, then create the one phase-closing commit. It requires
+- [ ] **Task 1.3: Document the repaired hook lifecycle in the same transaction.** Append one
+  sentence to `.awf/docs/parts/testing/layout.md` naming the isolated-`TMPDIR` real-hook regression
+  and stating that the hand-written stub removes its staged slice before rendered-payload handoff.
+  Run `./x render`, review only the corresponding `docs/testing.md` and `.awf/awf.lock` changes,
+  and run `./x check`; it must exit zero with no drift or note finding. Do not edit generated
+  `docs/testing.md` directly.
+
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage only `.githooks/pre-commit`,
+  `cmd/awf/check_test.go`, `.awf/docs/parts/testing/layout.md`, `docs/testing.md`, and
+  `.awf/awf.lock`, then create the one phase-closing commit. It requires
   `awf check --staged` and `./x gate` to pass, enforced by a wired pre-commit hook or run manually
   first in a clone without one (checkable with `git config core.hooksPath`):
 
@@ -177,8 +193,9 @@ fix(tooling): remove the staged hook slice before payload handoff
   - logical-byte accounting sums regular-file `Info.Size()` values before removal, excludes
     directories and symlink targets, and increments neither homes nor bytes when traversal or
     removal fails;
-  - successful removals are reported in sorted path order, multiple failures are joined in sorted
-    path order, and cleanup continues after one failure;
+  - candidate inspection and deletion attempts occur in sorted path order, multiple failures are
+    joined in that same order, cleanup continues after one failure, and the aggregate result does
+    not retain removed paths solely for tests;
   - `fs.ErrNotExist` from candidate `lstat`, traversal, or removal models concurrent disappearance
     and contributes neither removal nor failure;
   - invalid roots and root-read failures abort without touching any child;
@@ -278,9 +295,32 @@ fix(tooling): remove the staged hook slice before payload handoff
   must complete without a timeout, and every non-equivalent survivor affecting the new manager
   must be killed by an added assertion.
 
+- [ ] **Task 2.6: Document managed homes and the remaining interruption boundary.** Edit the
+  owning sources and render in this same transaction:
+
+  - append to `.awf/docs/parts/testing/layout.md` that the five `TestMain` suites allocate
+    `home-<decimal>` below one per-effective-user root, automatically sweep only homes strictly
+    older than 24 hours, and map failure to remove the current home;
+  - append an `internal/testsupport` component bullet to
+    `.awf/docs/parts/architecture/components.md`, stating that it owns isolated-home allocation,
+    conservative cleanup, logical-byte accounting, and human result rendering;
+  - replace `The test suite leaks temp homes on interrupted runs` in
+    `.awf/docs/parts/roadmap/deferred.md` with a narrowed item for unmanaged Go `t.TempDir`
+    directories: managed `TestMain` homes are bounded and recoverable, but arbitrary `t.TempDir`
+    cleanup still cannot survive abrupt process death and is not selected by the manager;
+  - add a separate roadmap item to remove Windows from `.goreleaser.yaml` and the cross-compile
+    gate in a future release-policy change, noting that this phase retains compile compatibility
+    but implements test-temp ownership only on Linux and macOS.
+
+  Run `./x render`; review the resulting `docs/testing.md`, `docs/architecture.md`,
+  `docs/roadmap.md`, and `.awf/awf.lock` diffs and run `./x check`, which must exit zero. Do not
+  hand-edit generated outputs.
+
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the new manager files,
-  `internal/testsupport/testsupport.go`, and the five exact caller files listed in Task 2.4. Create
-  the one phase-closing commit after `awf check --staged` and `./x gate` pass, enforced by a wired
+  `internal/testsupport/testsupport.go`, the five exact caller files listed in Task 2.4, the three
+  `.awf/docs/parts/` files from Task 2.6, `docs/testing.md`, `docs/architecture.md`,
+  `docs/roadmap.md`, and `.awf/awf.lock`. Create the one phase-closing commit after
+  `awf check --staged` and `./x gate` pass, enforced by a wired
   pre-commit hook or run manually first in a clone without one:
 
 ```commit
@@ -298,21 +338,26 @@ feat(tooling): manage isolated test homes under a stale-reaped root
   `run(args []string, stdout, stderr io.Writer, clean cleanerFunc) int`, where the injected
   function is a parameter and never a package-global seam. Add independent tests that assert:
 
-  - no arguments selects stale cleanup, emits no warning, forwards the manager-owned summary, and
-    exits 0;
-  - exactly `--all` prints
-    `testtmpclean: warning: --all can remove homes used by concurrent test processes\n` before the
-    summary, selects force cleanup, and exits 0;
+  - no arguments selects stale cleanup, emits no warning, forwards the manager-owned summary to
+    stdout, leaves stderr empty, and exits 0;
+  - exactly `--all` writes
+    `testtmpclean: warning: --all can remove homes used by concurrent test processes\n` to stderr
+    before invoking cleanup, selects force cleanup, forwards the summary to stdout, and exits 0;
+    have the injected cleaner assert that the warning is already present at call time so ordering
+    is deterministic without comparing separate streams;
   - any unknown argument or more than one argument prints exactly
-    `usage: testtmpclean [--all]\n` to stderr, does not invoke cleanup, and exits 2;
-  - a partial cleanup preserves the rendered summary, prints `testtmpclean: <error>\n`, and exits
-    1;
-  - a root or unsupported-platform failure prints the prefixed error, prints no removal summary,
-    and exits 1.
+    `usage: testtmpclean [--all]\n` to stderr, leaves stdout empty, does not invoke cleanup, and
+    exits 2;
+  - a partial cleanup preserves the stdout summary, prints `testtmpclean: <error>\n` to stderr, and
+    exits 1;
+  - a root or unsupported-platform failure prints the prefixed error to stderr, leaves stdout
+    empty, and exits 1.
 
-  Also add a repository contract test that reads root `x` and requires the
-  `clean-test-tmp)` dispatch, `go run ./cmd/testtmpclean "$@"`, and the command in the usage line.
-  Run `go test ./cmd/testtmpclean`; it must fail before the command exists.
+  Also add repository contract tests that read root `x` and the new command source. Require the
+  `clean-test-tmp)` dispatch, `go run ./cmd/testtmpclean "$@"`, and the command in the usage line;
+  reject the summary literal `test temp cleanup:` anywhere under `cmd/testtmpclean`, while the
+  exact-rendering test in `internal/testsupport` pins that literal at its owning package. Run
+  `go test ./cmd/testtmpclean`; it must fail before the command exists.
 
 - [ ] **Task 3.2: Export the narrow manager facade and implement the private command.** In
   `internal/testsupport/testtemp.go`, export documented `CleanupMode`, `CleanupStale`,
@@ -320,15 +365,25 @@ feat(tooling): manage isolated test homes under a stale-reaped root
   constructs the production manager, runs the selected cleanup, writes the manager-owned summary
   after every successful root scan (including partial removal), and returns the deterministic
   joined candidate errors. Reject an unknown mode before touching the root. Keep result fields,
-  formatting, filesystem dependencies, and constructors private.
+  formatting, filesystem dependencies, and constructors private. Implement the facade over an
+  unexported `cleanTestTemps(mode, output, managerFactory)` helper whose factory is a required
+  parameter; the exported function supplies the production factory, while tests inject a local
+  manager without a mutable global.
+
+  Extend `internal/testsupport/testtemp_test.go` with direct facade tests. Prove an unknown mode
+  returns before invoking the factory or writing output; stale and all modes reach the matching
+  manager selection; successful and zero-removal scans write the exact summary; a partial removal
+  writes the summary and returns the joined error; and root preparation failure returns the error
+  without writing a summary. The Unix production-root test remains responsible for proving the
+  exported facade's production factory selects the per-effective-user root.
 
   Create `cmd/testtmpclean/main.go` with a one-sentence package comment stating that the command
   owns repo-private test-temp cleanup invoked by `./x clean-test-tmp` and is not part of the shipped
   `awf` CLI. `main` calls the tested `run` boundary and maps its code to `os.Exit`; keep only that
   process boundary under reasoned coverage ignores. The command parses arguments and selects an
-  exported cleanup mode, prints the force warning before invoking cleanup, delegates summary
-  rendering to `testsupport.CleanTestTemps`, prefixes returned errors, and maps usage to 2 and
-  cleanup failures to 1. It must not reproduce canonical-name, stale-age, byte-count, or result
+  exported cleanup mode, prints the force warning to stderr before invoking cleanup, passes stdout
+  to `testsupport.CleanTestTemps`, prints prefixed returned errors to stderr, and maps usage to 2
+  and cleanup failures to 1. It must not reproduce canonical-name, stale-age, byte-count, or result
   formatting policy.
 
 - [ ] **Task 3.3: Wire `./x clean-test-tmp`.** In `x`, add a `clean-test-tmp)` case that executes
@@ -339,51 +394,66 @@ feat(tooling): manage isolated test homes under a stale-reaped root
   `./x clean-test-tmp unexpected`, and `./x clean-test-tmp --all unexpected`; the tests must pass
   and both manual invalid invocations must print the usage and exit 2 without deleting a home.
 
-- [ ] **Task 3.4: Update generated documentation sources and render.** Edit only the owning
-  `.awf` parts, then run `./x render`:
+- [ ] **Task 3.4: Document the explicit cleanup command and render.** Edit only the owning
+  sources for behavior introduced in this phase:
 
   - add a `./x clean-test-tmp [--all]` row to
     `.awf/docs/parts/development/command-runner.md`, stating the strict 24-hour default, the
     concurrency warning and all-canonical-home behavior of `--all`, the Linux/macOS support
     boundary, and that partial cleanup exits nonzero;
-  - append to `.awf/docs/parts/testing/layout.md` that the five `TestMain` suites allocate
-    `home-<decimal>` below one per-effective-user root, automatically sweep only homes strictly
-    older than 24 hours, and map failure to remove the current home; also name the isolated-TMPDIR
-    real-hook regression as protection for staged-slice lifecycle;
-  - append an `internal/testsupport` component bullet and add `cmd/testtmpclean` to the repo-owned
-    supporting commands in `.awf/docs/parts/architecture/components.md`; state that the package
-    owns allocation, conservative cleanup, accounting, and rendering while the command owns
-    parsing and exits;
-  - replace `The test suite leaks temp homes on interrupted runs` in
-    `.awf/docs/parts/roadmap/deferred.md` with a narrowed item for unmanaged Go `t.TempDir`
-    directories: managed `TestMain` homes are now bounded and recoverable, but arbitrary
-    `t.TempDir` cleanup still cannot survive abrupt process death and is not selected by the new
-    command;
-  - add a separate roadmap item to remove Windows from `.goreleaser.yaml` and the cross-compile
-    gate in a future release-policy change, noting that this effort retains compile compatibility
-    but implements test-temp ownership only on Linux and macOS.
+  - add `cmd/testtmpclean` to the repo-owned supporting commands in
+    `.awf/docs/parts/architecture/components.md`, stating that it owns only parsing, warning, and
+    exit mapping while `internal/testsupport` owns cleanup and rendering.
 
-  Review the resulting diffs in `docs/development.md`, `docs/testing.md`,
-  `docs/architecture.md`, `docs/roadmap.md`, and `.awf/awf.lock`. Do not hand-edit those generated
-  files. `./x check` must exit zero with no drift or note finding.
+  Run `./x render`; review only the corresponding `docs/development.md`, `docs/architecture.md`,
+  and `.awf/awf.lock` changes. Do not hand-edit generated files. `./x check` must exit zero with no
+  drift or note finding.
 
 - [ ] **Task 3.5: Verify command error and mutation behavior.** Run
   `go test ./cmd/testtmpclean ./internal/testsupport`; it must exit zero. Temporarily invert the
   `--all` selection, suppress the warning, map a cleanup error to zero, and move result formatting
   into the command one mutation at a time; each behavioral mutation must make a named command or
-  manager test fail, and the ownership mutation must fail the repository contract assertion.
+  manager test fail, and introducing the summary literal under `cmd/testtmpclean` must fail the
+  structural ownership assertion.
   Revert every mutation. Run `./x mutants ./cmd/testtmpclean`; it must complete without a timeout,
   and every non-equivalent survivor in the new parser, warning, or exit mapping must be killed by
   an added assertion.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage `internal/testsupport/testtemp.go`,
-  `cmd/testtmpclean/`, `x`, the four changed `.awf/docs/parts/` files, the four rendered documents,
-  and `.awf/awf.lock`. Review `git diff --cached --name-only` and confirm it is exactly that
+  `internal/testsupport/testtemp_test.go`, `cmd/testtmpclean/`, `x`,
+  `.awf/docs/parts/development/command-runner.md`,
+  `.awf/docs/parts/architecture/components.md`, `docs/development.md`, `docs/architecture.md`, and
+  `.awf/awf.lock`. Review `git diff --cached --name-only` and confirm it is exactly that
   transaction. Create the one phase-closing commit after `awf check --staged` and `./x gate` pass,
   enforced by a wired pre-commit hook or run manually first in a clone without one:
 
 ```commit
 feat(tooling): add explicit test temp cleanup tooling
+```
+
+## Phase 4: Freeze the implementation record after terminal review
+
+**Execution mode: inline.** Defer this transaction until Phases 1 through 3 are committed, the
+whole-effort Verification section is green, and `awf-reviewing-impl` has settled with no unresolved
+finding. Start from `git status --short` empty and `./x check` clean. This phase is deliberately
+after terminal implementation review: the plan remains `status: Proposed` and mutable throughout
+implementation and review.
+
+- [ ] **Task 4.1: Record actual implementation findings and freeze the plan.** In this plan's
+  `## Notes`, append one `Implementation findings:` bullet. If execution matched the plan, use the
+  exact text `- Implementation findings: implementation matched the plan; no deviations.` If it
+  differed, name every created, modified, or omitted path and every behavioral deviation in that
+  bullet, without changing the frozen design rationale. Then change frontmatter `status: Proposed`
+  to `status: Implemented`. Make no other repository change in this transaction.
+
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage only
+  `docs/plans/2026-08-01-prevent-awf-test-and-hook-temp-directory-leaks.md`, verify
+  `git diff --cached --name-only` prints exactly that path, and create the one phase-closing commit
+  after `awf check --staged` and `./x gate` pass, enforced by a wired pre-commit hook or run
+  manually first in a clone without one:
+
+```commit
+docs(plans): freeze temp hygiene implementation record
 ```
 
 ## Verification
