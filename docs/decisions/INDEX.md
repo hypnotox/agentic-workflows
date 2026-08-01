@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0199: Sanction authoring latitude in plans](0199-sanction-authoring-latitude-in-plans.md) (Proposed)
+- [ADR-0200: Corrective re-application of an applied state operation](0200-corrective-re-application-of-an-applied-state-operation.md) (Proposed)
 
 ## History
 
