@@ -177,12 +177,15 @@ func (m *testTempManager) logicalBytes(path string) (int64, error) {
 		if err != nil {
 			return err
 		}
-		if entry.Type()&fs.ModeSymlink != 0 || !entry.Type().IsRegular() {
+		if entry.Type()&fs.ModeSymlink != 0 {
 			return nil
 		}
 		info, err := entry.Info()
 		if err != nil {
 			return err
+		}
+		if info.Mode()&fs.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return nil
 		}
 		if size := info.Size(); size > 0 {
 			total += size

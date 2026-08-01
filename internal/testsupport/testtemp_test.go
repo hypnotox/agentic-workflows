@@ -199,8 +199,9 @@ func TestCleanupAllAccountsOnlySuccessfulRegularFiles(t *testing.T) {
 	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	a := mkdirHome(t, root, "home-2", time.Now())
+	a := mkdirHome(t, root, "home-3", time.Now())
 	b := mkdirHome(t, root, "home-1", time.Now())
+	c := mkdirHome(t, root, "home-2", time.Now())
 	if err := os.WriteFile(filepath.Join(b, "blocked"), []byte("xx"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -215,22 +216,31 @@ func TestCleanupAllAccountsOnlySuccessfulRegularFiles(t *testing.T) {
 	}
 	files := osTestTempFS()
 	var removed []string
+	blockedB := errors.New("blocked home-1")
+	blockedC := errors.New("blocked home-2")
 	files.removeAll = func(path string) error {
 		removed = append(removed, filepath.Base(path))
-		if path == b {
-			return errors.New("blocked")
+		switch path {
+		case b:
+			return blockedB
+		case c:
+			return blockedC
+		default:
+			return os.RemoveAll(path)
 		}
-		return os.RemoveAll(path)
 	}
 	m, err := newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	result, err := m.cleanup(cleanupAll)
-	if err == nil || !strings.Contains(err.Error(), b) {
-		t.Fatalf("failure = %v", err)
+	if err == nil || !errors.Is(err, blockedB) || !errors.Is(err, blockedC) {
+		t.Fatalf("failure identities = %v", err)
 	}
-	if strings.Join(removed, ",") != "home-1,home-2" {
+	if first, second := strings.Index(err.Error(), b), strings.Index(err.Error(), c); first < 0 || second <= first {
+		t.Fatalf("failure order = %v", err)
+	}
+	if strings.Join(removed, ",") != "home-1,home-2,home-3" {
 		t.Fatalf("removal order %q", removed)
 	}
 	if result.homes != 1 || result.bytes != 3 {
@@ -350,6 +360,44 @@ func TestTestTempManagerFaultAndConcurrencyPaths(t *testing.T) {
 	m, _ = newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
 	if result, err := m.cleanup(cleanupAll); err != nil || result.homes != 0 {
 		t.Fatalf("remove disappearance = %+v, %v", result, err)
+	}
+}
+
+func TestTestTempLogicalBytesClassifiesUnknownEntryTypesByInfo(t *testing.T) {
+	base := t.TempDir()
+	directoryInfo, err := os.Stat(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(base, "target")
+	if err := os.WriteFile(target, []byte("target bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	linkInfo, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m := safeTestTempManager(t, base, time.Now())
+	files := m.fs
+	files.walkDir = func(_ string, walk fs.WalkDirFunc) error {
+		for _, entry := range []fs.DirEntry{
+			testTempDirEntry{name: "unknown-directory", info: directoryInfo},
+			testTempDirEntry{name: "unknown-symlink", info: linkInfo},
+		} {
+			if err := walk(entry.Name(), entry, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	m.fs = files
+	if bytes, err := m.logicalBytes("ignored"); err != nil || bytes != 0 {
+		t.Fatalf("logical bytes = %d, %v; want 0", bytes, err)
 	}
 }
 
