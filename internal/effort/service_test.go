@@ -20,7 +20,7 @@ func noTopology(deps *Dependencies) {
 }
 
 func TestFinishRenamesCleansAndRetries(t *testing.T) {
-	// invariant: tooling/effort-management:effort-record-authority
+	// invariant: tooling/effort-management:effort-record-authority (TestFinishRenamesCleansAndRetries)
 	root := initEffortRepo(t)
 	failDelete := true
 	service := openTestService(t, root, func(deps *Dependencies) {

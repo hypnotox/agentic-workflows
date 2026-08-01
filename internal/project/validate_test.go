@@ -30,7 +30,7 @@ func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error
 // wiring (gateCmd plus either the runner or the three vars) and a
 // hooks-disabled config both stay valid, and first-adoption init never runs
 // the rule.
-// invariant: config/validation:hooks-commands-resolvable
+// invariant: config/validation:hooks-commands-resolvable (TestValidateCommandWiring)
 func TestValidateCommandWiring(t *testing.T) {
 	fire := []struct {
 		name, config, want string

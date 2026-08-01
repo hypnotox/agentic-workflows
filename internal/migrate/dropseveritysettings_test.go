@@ -14,7 +14,7 @@ import (
 // applyDropSeveritySettings is the schema 24 -> 25 migration. Both in-repo trees
 // set the two keys, so the upgrade run exercises the happy path, but only these
 // fixtures pin the sibling-preservation and per-key announcement contract.
-// invariant: config/migrations-and-locks:severity-keys-dropped
+// invariant: config/migrations-and-locks:severity-keys-dropped (TestApplyDropSeveritySettings)
 func TestApplyDropSeveritySettings(t *testing.T) {
 	// The sibling block is a full currentState: the migration must leave sources,
 	// testGlobs, and both maxima byte-identical while removing only the two ranks.
@@ -128,7 +128,7 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 // (ADR-0185). Asserting the surviving keys and values by content rather than by
 // exact bytes is what makes that clause falsifiable: a migration that dropped or
 // altered a sibling value would fail here, while a pure re-indent does not.
-// invariant: config/migrations-and-locks:severity-keys-dropped
+// invariant: config/migrations-and-locks:severity-keys-dropped (TestApplyDropSeveritySettingsPreservesValuesNotLayout)
 func TestApplyDropSeveritySettingsPreservesValuesNotLayout(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, ".awf", "config.yaml")

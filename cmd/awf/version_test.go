@@ -20,7 +20,7 @@ func TestRunVersion(t *testing.T) {
 }
 
 func TestAwfVersionSingleAuthority(t *testing.T) {
-	// invariant: tooling/cli:single-version-authority
+	// invariant: tooling/cli:single-version-authority (TestAwfVersionSingleAuthority)
 	if got := awfVersion(); got != project.Version {
 		t.Errorf("awfVersion() = %q, want project.Version %q", got, project.Version)
 	}

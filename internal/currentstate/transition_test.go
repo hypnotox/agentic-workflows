@@ -239,8 +239,8 @@ func TestCheckPairHistoryValid(t *testing.T) {
 	}
 }
 
-// invariant: invariants/current-state-authority:state-impact-transition-atomic
-// invariant: invariants/current-state-authority:implemented-impact-bidirectional
+// invariant: invariants/current-state-authority:state-impact-transition-atomic (TestCheckPairV2IncrementalBatches)
+// invariant: invariants/current-state-authority:implemented-impact-bidirectional (TestCheckPairV2IncrementalBatches)
 func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	addX := op(adr.OpAdd, "d/t:x")
 	updateX := op(adr.OpUpdate, "d/t:x")
@@ -529,7 +529,7 @@ func TestLoadedUniverse(t *testing.T) {
 // orders converge to the same attributed absence, the dominated batch is
 // retained as history with an empty required mutation set, and a dominated
 // chain whose claim survives is rejected.
-// invariant: invariants/current-state-authority:applied-remove-absorbing-tombstone
+// invariant: invariants/current-state-authority:applied-remove-absorbing-tombstone (TestAppliedRemoveAbsorbsConcurrentUpdate)
 func TestAppliedRemoveAbsorbsConcurrentUpdate(t *testing.T) {
 	add := op(adr.OpAdd, "d/t:c")
 	update := op(adr.OpUpdate, "d/t:c")

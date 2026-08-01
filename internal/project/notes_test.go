@@ -14,7 +14,7 @@ import (
 // key is an open to-do and notes; an absent key is the deliberate, deleted
 // acknowledgement and stays silent - the standing-note regression this exists
 // for.
-// invariant: rendering/inplace-and-placeholders:absent-var-acknowledged
+// invariant: rendering/inplace-and-placeholders:absent-var-acknowledged (TestUnsetVarNotesPresentKeySemantics)
 func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 	for name, tc := range map[string]struct {
 		yaml     string
@@ -154,7 +154,7 @@ func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 			stub = append(stub, n)
 		}
 	}
-	// invariant: rendering/doc-outputs:stub-notes-path-keyed
+	// invariant: rendering/doc-outputs:stub-notes-path-keyed (TestStubNotesPathKeyedAcrossTargets)
 	if len(stub) != 2 {
 		t.Fatalf("expected one stub note per target path, got %d: %v", len(stub), notes)
 	}
@@ -354,7 +354,7 @@ func TestTagHealthNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(notes, "\n")
-	// invariant: config/configuration:tag-frequency-note
+	// invariant: config/configuration:tag-frequency-note (TestTagHealthNotes)
 	if !strings.Contains(joined, `tag "alpha" is on 2/4`) {
 		t.Errorf("expected an alpha frequency note; got %v", notes)
 	}
@@ -370,7 +370,7 @@ func TestTagHealthNotes(t *testing.T) {
 	if strings.Contains(joined, "0006-f.md carries no tags") {
 		t.Errorf("a bogus-only artifact has tags - no coverage note expected; got %v", notes)
 	}
-	// invariant: config/configuration:tag-coverage-note
+	// invariant: config/configuration:tag-coverage-note (TestTagHealthNotes)
 	if !strings.Contains(joined, "0005-e.md carries no tags") {
 		t.Errorf("expected a coverage note for the untagged ADR; got %v", notes)
 	}

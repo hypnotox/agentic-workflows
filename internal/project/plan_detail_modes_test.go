@@ -14,7 +14,7 @@ type planPolicySurface struct {
 	name, output, start, end string
 }
 
-// invariant: rendering/workflow-skill-templates:plan-task-detail-modes
+// invariant: rendering/workflow-skill-templates:plan-task-detail-modes (TestPlanTaskDetailModesStayAligned)
 func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	defaultWriter := renderSkillGolden(t, "writing-plans", map[string]any{
 		"prefix": "example",

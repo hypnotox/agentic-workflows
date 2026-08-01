@@ -15,11 +15,11 @@ import (
 // every rendered skill and agent body is free of runtime tool-name tokens. The
 // denylist is matched case-insensitively and word-anchored, so it does not fire
 // on the neutral "subagent" / "subagent's prompt" replacement language.
-// invariant: rendering/workflow-skill-templates:skill-prose-tool-agnostic
+// invariant: rendering/workflow-skill-templates:skill-prose-tool-agnostic (TestSkillProseToolAgnostic)
 //
 // Also the tool-name half of the implementer contract's third sentence: the
 // scan covers every rendered agent body, the implementer's included.
-// invariant: rendering/workflow-skill-templates:implementer-role-contract
+// invariant: rendering/workflow-skill-templates:implementer-role-contract (TestSkillProseToolAgnostic)
 func TestSkillProseToolAgnostic(t *testing.T) {
 	cat := catalog.Standard
 	forbidden := []*regexp.Regexp{

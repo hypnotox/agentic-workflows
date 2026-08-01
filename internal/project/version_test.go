@@ -7,7 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
 
-// invariant: config/migrations-and-locks:schema-min-version
+// invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
 func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	for schema, minimum := range minVersionBySchema {
 		if err := ValidateSchemaMinimumVersion(schema, minimum); err != nil {

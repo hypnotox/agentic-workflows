@@ -12,8 +12,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-// invariant: config/migrations-and-locks:workflow-telemetry-config-migration
-// invariant: rendering/singletons-and-payloads:resident-output-preservation
+// invariant: config/migrations-and-locks:workflow-telemetry-config-migration (TestRemoveWorkflowResidentsMigration)
+// invariant: rendering/singletons-and-payloads:resident-output-preservation (TestRemoveWorkflowResidentsMigration)
 func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	newRoot := func(t *testing.T) string {
 		t.Helper()

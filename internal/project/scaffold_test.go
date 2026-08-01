@@ -38,7 +38,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 // TestScaffoldEnablesCoreTargets asserts that the scaffolded config enables
 // exactly the catalog's core skills and core docs (ADR-0022), with a concrete
 // negative check that a known opt-in skill is omitted.
-// invariant: tooling/init-and-enablement:init-hooks-default-on
+// invariant: tooling/init-and-enablement:init-hooks-default-on (TestScaffoldEnablesCoreTargets)
 func TestScaffoldEnablesCoreTargets(t *testing.T) {
 	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
@@ -57,7 +57,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 			wantSkills[name] = true
 		}
 	}
-	// invariant: rendering/project-output-plan:scaffold-core-only
+	// invariant: rendering/project-output-plan:scaffold-core-only (TestScaffoldEnablesCoreTargets)
 	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
 		t.Errorf("scaffold skills = %v, want core set %v",
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
@@ -76,7 +76,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 
 // TestScaffoldCatalogTrim asserts a non-nil trim dimension replaces the curated
 // core verbatim while a nil dimension keeps the core (full-deselectable trim).
-// invariant: rendering/project-output-plan:catalog-trim-applied
+// invariant: rendering/project-output-plan:catalog-trim-applied (TestScaffoldCatalogTrim)
 func TestScaffoldCatalogTrim(t *testing.T) {
 	cat := catalog.Standard
 
@@ -244,7 +244,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 			t.Fatalf("read %s: %v", tmplPath, err)
 		}
 		for _, v := range render.ReferencedVars(string(src)) {
-			// invariant: rendering/project-output-plan:scaffold-seeds-all-vars
+			// invariant: rendering/project-output-plan:scaffold-seeds-all-vars (TestScaffoldVarsCoverAllReferenced)
 			if _, ok := cfg.Vars[v]; !ok {
 				t.Errorf("scaffold vars missing %q (referenced in %s)", v, tmplPath)
 			}
@@ -306,7 +306,7 @@ func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
 
 // A resolved scope list lands under audit.allowedScopes; an empty list writes
 // no audit key at all (ADR-0051).
-// invariant: tooling/audit-commands:audit-scopes-descriptor-routed
+// invariant: tooling/audit-commands:audit-scopes-descriptor-routed (TestScaffoldWritesAuditScopes)
 func TestScaffoldWritesAuditScopes(t *testing.T) {
 	b, _, err := ScaffoldConfig("example", nil, nil, []string{"adr", "awf"})
 	if err != nil {
@@ -351,7 +351,7 @@ func TestScaffoldDefaultIsClosed(t *testing.T) {
 	for _, d := range cfg.Docs {
 		enabled[catalog.Node{Kind: "doc", Name: d}] = true
 	}
-	// invariant: tooling/init-and-enablement:init-set-closed
+	// invariant: tooling/init-and-enablement:init-set-closed (TestScaffoldDefaultIsClosed)
 	for n := range enabled {
 		for _, r := range catalog.RequiresOf(catalog.Standard, n) {
 			if !enabled[r] {

@@ -32,7 +32,7 @@ func coverageCorpus() Corpus {
 	return c
 }
 
-// invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks
+// invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks (TestEvaluateCoverage)
 func TestEvaluateCoverage(t *testing.T) {
 	c := coverageCorpus()
 	paths := []string{"internal/app/y.go", "internal/lib/x.go", "bare/z.go", "shared/a.go", "README.md"}
@@ -86,7 +86,7 @@ func TestEvaluateCoverage(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-applicability-navigation
+// invariant: tooling/context-and-topic:context-applicability-navigation (TestApplicabilityForTopic)
 func TestApplicabilityForTopic(t *testing.T) {
 	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/t:c": {{Path: "z", Line: 2, ClaimID: "d/t:c"}, {Path: "a", Line: 1, ClaimID: "d/t:c"}}}}
 	topic := Topic{ID: TopicID{"d", "t"}, Metadata: Metadata{Paths: []string{"internal/**"}}, Claims: []Claim{{ID: "d/t:c"}}}

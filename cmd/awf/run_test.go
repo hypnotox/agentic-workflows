@@ -196,7 +196,7 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	}
 }
 
-// invariant: code-design/dependency-composition:sync-project-loader-wiring
+// invariant: code-design/dependency-composition:sync-project-loader-wiring (TestSyncCompositionAndCallers)
 func TestSyncCompositionAndCallers(t *testing.T) {
 	paths, err := filepath.Glob("*.go")
 	if err != nil {
@@ -303,7 +303,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	}
 }
 
-// invariant: tooling/upgrade-runtime:initial-adoption-version-immutable
+// invariant: tooling/upgrade-runtime:initial-adoption-version-immutable (TestInitialAdoptionAuthorityImmutableAcrossCommands)
 func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	ctx := testContext(t)
 	repo := gitfixture.InitRepo(t)
@@ -992,7 +992,7 @@ func TestRunUpgradeMigrationError(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:single-os-exit
+// invariant: tooling/cli:single-os-exit (TestNoOsExitOutsideMain)
 func TestNoOsExitOutsideMain(t *testing.T) {
 	files, err := filepath.Glob("*.go")
 	if err != nil {
@@ -1086,7 +1086,7 @@ func TestRunListPrintsSkills(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:upgrade-always-syncs
+// invariant: tooling/cli:upgrade-always-syncs (TestRunUpgradeAlreadyCurrentStillSyncs)
 func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	ctx := testContext(t)
 	root := scaffoldProject(t)
@@ -1104,7 +1104,7 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	}
 }
 
-// invariant: tooling/init-and-enablement:init-collision-guard
+// invariant: tooling/init-and-enablement:init-collision-guard (TestInitGuardBlocksAndForceOverrides)
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
@@ -1133,7 +1133,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Fatalf("init --force failed: %s", errb.String())
 	}
 	// The original is preserved at <path>.awf-bak.
-	// invariant: tooling/init-and-enablement:init-force-backs-up
+	// invariant: tooling/init-and-enablement:init-force-backs-up (TestInitGuardBlocksAndForceOverrides)
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "mine\n" {
 		t.Fatalf("CLAUDE.md.awf-bak = %q, want original %q", b, "mine\n")
 	}

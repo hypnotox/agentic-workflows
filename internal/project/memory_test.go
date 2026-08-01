@@ -12,7 +12,7 @@ import (
 // resident root awf owns - no config gate, unlike bootstrap/hooks. The
 // standalone memory root is not among them: schema 22 stopped owning it, so no
 // render may bring it back.
-// invariant: rendering/singletons-and-payloads:memory-gitignore-always-on
+// invariant: rendering/singletons-and-payloads:memory-gitignore-always-on (TestResidentGitignoresAlwaysOn)
 func TestResidentGitignoresAlwaysOn(t *testing.T) {
 	root := scaffold(t, "prefix: example\n")
 	p, err := Open(testContext(t), root)

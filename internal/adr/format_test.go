@@ -157,7 +157,7 @@ func TestParseV1FencedHeadingIgnored(t *testing.T) {
 }
 
 // TestParseV1Errors covers each validation failure.
-// invariant: adr-system/adr-lifecycle:decision-items-enumerable
+// invariant: adr-system/adr-lifecycle:decision-items-enumerable (TestParseV1Errors)
 func TestParseV1Errors(t *testing.T) {
 	d := digestFor(t, "None.")
 	cases := []struct {
@@ -216,7 +216,7 @@ func v2DigestFor(t *testing.T, stateChanges string) string {
 	return adr.ContentDigest(a.Sections)
 }
 
-// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestParseV2LifecycleAndApplications)
 func TestParseV2LifecycleAndApplications(t *testing.T) {
 	changes := "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"
 	digest := v2DigestFor(t, changes)
@@ -284,7 +284,7 @@ func TestParseV2AppliedLegacySequenceTolerated(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:applied-history-events-append-only
+// invariant: adr-system/adr-lifecycle:applied-history-events-append-only (TestParseV2RejectsInvalidHistory)
 func TestParseV2RejectsInvalidHistory(t *testing.T) {
 	changes := "- add `a/b:first`\n- update `a/b:second`"
 	digest := v2DigestFor(t, changes)
@@ -347,8 +347,8 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 // chain: only an Amended event introduces a new digest, a status event repeats
 // the preceding stamp or establishes the first, and the latest stamp must equal
 // the computed content digest (ADR-0188).
-// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
-// invariant: adr-system/adr-lifecycle:adr-amendable-until-terminal
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestParseV2StampChain)
+// invariant: adr-system/adr-lifecycle:adr-amendable-until-terminal (TestParseV2StampChain)
 func TestParseV2StampChain(t *testing.T) {
 	changes := "- add `a/b:first`\n- update `a/b:second`"
 	wide := "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"
@@ -404,7 +404,7 @@ func TestParseV2StampChain(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestFormatSpecificTransitionMatrices)
 func TestFormatSpecificTransitionMatrices(t *testing.T) {
 	statuses := []string{"Proposed", "Accepted", "Implementing", "Implemented", "Abandoned"}
 	for _, tc := range []struct {
@@ -435,7 +435,7 @@ func TestFormatSpecificTransitionMatrices(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:applied-history-events-append-only
+// invariant: adr-system/adr-lifecycle:applied-history-events-append-only (TestV2HistoryTransitionPrefixAndShapes)
 func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
 	applied := adr.HistoryEvent{Kind: adr.HistoryApplied, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "a/b:c", Slug: "c"}}}

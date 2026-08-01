@@ -69,7 +69,7 @@ func TestRenderModelsAndTemplates(t *testing.T) {
 // paragraph carries only selectors, the both-must-match rule (or the global
 // variant), and the coverage drilldown: never the matched-path census or marker
 // sites, with an empty selector list degrading to coherent prose.
-// invariant: invariants/topics-and-markers:rendered-applicability-selectors-only
+// invariant: invariants/topics-and-markers:rendered-applicability-selectors-only (TestApplicabilitySummarySelectorsOnly)
 func TestApplicabilitySummarySelectorsOnly(t *testing.T) {
 	scoped := Topic{ID: TopicID{"d", "z"}, Metadata: Metadata{Title: "Beta", Summary: "Second.", Paths: []string{"x/**"}}}
 	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/z:claim": {{Path: "x/pkg/a.go", Line: 3, Kind: ProofMarker, ClaimID: "d/z:claim"}}}}

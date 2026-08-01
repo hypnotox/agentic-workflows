@@ -54,7 +54,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 	return string(b)
 }
 
-// invariant: rendering/guide-and-doc-templates:agentsdoc-parts
+// invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocPartsOverride)
 func TestAgentsDocPartsOverride(t *testing.T) {
 	cfg := "prefix: example\nskills: []\nagents: []\n"
 
@@ -80,7 +80,7 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignPartOverride)
 func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	const uniqueBody = "The local decision posture owns this change."
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n", map[string]string{
@@ -136,7 +136,7 @@ func TestConventionPartPrecedence(t *testing.T) {
 	}
 }
 
-// invariant: rendering/render-engine:sidecar-optional
+// invariant: rendering/render-engine:sidecar-optional (TestSidecarAbsentRendersDefault)
 func TestSidecarAbsentRendersDefault(t *testing.T) {
 	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
 	root := scaffold(t, cfg) // no sidecar, no parts
@@ -149,7 +149,7 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 	}
 }
 
-// invariant: rendering/local-artifacts:local-frontmatter
+// invariant: rendering/local-artifacts:local-frontmatter (TestLocalFrontmatterChecked)
 func TestLocalFrontmatterChecked(t *testing.T) {
 	cfg := "prefix: example\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})

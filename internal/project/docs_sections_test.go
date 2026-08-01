@@ -17,7 +17,7 @@ import (
 // TestDocsSectionParity asserts that for every catalog doc the declared section
 // set equals the template's marker-block set, and that each doc renders from
 // template defaults with no leaked <no value> token.
-// invariant: rendering/guide-and-doc-templates:docs-section-parity
+// invariant: rendering/guide-and-doc-templates:docs-section-parity (TestDocsSectionParity)
 func TestDocsSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Docs {
@@ -59,7 +59,7 @@ func TestDocsSectionParity(t *testing.T) {
 // in the target's catalog-declared set is reported as drift, while a part at a
 // genuinely declared section is not. The valid section is read from the live
 // catalog so the test stays correct as the taxonomy evolves.
-// invariant: rendering/inplace-and-placeholders:section-orphan-flagged
+// invariant: rendering/inplace-and-placeholders:section-orphan-flagged (TestSectionOrphanDetection)
 func TestSectionOrphanDetection(t *testing.T) {
 	cat := catalog.Standard
 	valid := cat.Docs["architecture"].Sections[0]
@@ -106,7 +106,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 // excluded from both TestDocsSectionParity (Mandatory skip) and
 // TestAdrSingletonSectionParity (plainSingletons excludes it), so without this
 // test a guide section could half-land with a broken override path (ADR-0069).
-// invariant: rendering/guide-and-doc-templates:agents-doc-section-parity
+// invariant: rendering/guide-and-doc-templates:agents-doc-section-parity (TestAgentsDocSectionParity)
 func TestAgentsDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	entry := cat.Docs["agents-doc"]
@@ -134,17 +134,17 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 		"layout": testLayout(),
 		"data":   map[string]any{},
 	})
-	// invariant: rendering/workflow-skill-templates:workflow-chain-adr-before-plan
+	// invariant: rendering/workflow-skill-templates:workflow-chain-adr-before-plan (TestWorkflowDocChainOrder)
 	if !strings.Contains(out, "ADR (if warranted) → plan (if warranted)") {
 		t.Errorf("workflow chain must present ADR before plan:\n%s", out)
 	}
-	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync
+	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync (TestWorkflowDocChainOrder)
 	if !strings.Contains(out, "resync (when both)") {
 		t.Errorf("workflow chain must surface the resync step:\n%s", out)
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignGuide)
 func TestMaintainableCodeDesignGuide(t *testing.T) {
 	entry, ok := catalog.Standard.Docs["maintainable-code-design"]
 	if !ok {
@@ -203,7 +203,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:adr-singleton-section-parity
+// invariant: rendering/catalog-and-targets:adr-singleton-section-parity (TestAdrSingletonSectionParity)
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	lay := testLayout()

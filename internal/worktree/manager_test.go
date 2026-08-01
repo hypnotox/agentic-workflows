@@ -16,7 +16,7 @@ import (
 const worktreeTestID = "018f47a0-7b3d-4c52-8f1a-123456789abc"
 
 func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
-	// invariant: tooling/effort-management:managed-worktree-lifecycle
+	// invariant: tooling/effort-management:managed-worktree-lifecycle (TestManagedWorktreeAddIntegrateAndRestartableRemove)
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Managed result")
 	manager := freshWorktreeManager(t, root)
@@ -236,7 +236,7 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:default-worktree-creation
+// invariant: tooling/effort-management:default-worktree-creation (TestNewEffortCreatesTheManagedWorktreeByDefault)
 func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	manager := freshWorktreeManager(t, root)
@@ -262,7 +262,7 @@ func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:default-worktree-creation
+// invariant: tooling/effort-management:default-worktree-creation (TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent)
 func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 	t.Run("rolled back", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
@@ -298,7 +298,7 @@ func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 	})
 }
 
-// invariant: tooling/effort-management:default-worktree-creation
+// invariant: tooling/effort-management:default-worktree-creation (TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly)
 func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 	for _, test := range []struct {
 		name    string
@@ -1227,7 +1227,7 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 // mutations, a fresh manager reads the real topology and finishes from wherever
 // the previous attempt stopped, with no stored evidence of that attempt.
 func TestRestartCompletesFromPartialTopology(t *testing.T) {
-	// invariant: tooling/effort-management:managed-worktree-lifecycle
+	// invariant: tooling/effort-management:managed-worktree-lifecycle (TestRestartCompletesFromPartialTopology)
 	t.Run("branch delete faulted", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
 		slug := "restart-branch-delete"

@@ -93,7 +93,7 @@ func writeMonolith(t *testing.T) string {
 }
 
 func TestGateBlocksWhenBehind(t *testing.T) {
-	// invariant: config/migrations-and-locks:upgrade-gate
+	// invariant: config/migrations-and-locks:upgrade-gate (TestGateBlocksWhenBehind)
 	root := writeMonolith(t) // legacy layout → generation 0
 	if got := mustGeneration(t, root); got != 0 {
 		t.Fatalf("Generation(legacy) = %d, want 0", got)
@@ -159,7 +159,7 @@ func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
 }
 
 func TestNoopGapAutoBumps(t *testing.T) {
-	// invariant: config/migrations-and-locks:noop-autobump
+	// invariant: config/migrations-and-locks:noop-autobump (TestNoopGapAutoBumps)
 	// A gap covered by no registered migration auto-bumps rather than gating.
 	if got := gateStateFor(2, 5, []int{1, 2}); got != "autobump" {
 		t.Errorf("gateStateFor(2,5,[1,2]) = %q, want autobump", got)
@@ -528,7 +528,7 @@ func TestPortAgentsDocProseWriteError(t *testing.T) {
 }
 
 func TestLegacyReadOnlyInMigrate(t *testing.T) {
-	// invariant: config/migrations-and-locks:legacy-read-isolation
+	// invariant: config/migrations-and-locks:legacy-read-isolation (TestLegacyReadOnlyInMigrate)
 	// (a) readLegacy parses a fixture monolith.
 	root := writeMonolith(t)
 	lc, err := readLegacy(filepath.Join(root, ".claude", "awf.yaml"))
@@ -573,7 +573,7 @@ func TestLegacyReadOnlyInMigrate(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:awf-relocation-migration
+// invariant: config/migrations-and-locks:awf-relocation-migration (TestAwfRelocationGatesAndMoves)
 func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	root := t.TempDir()
 	old := filepath.Join(root, ".claude", "awf")
@@ -632,7 +632,7 @@ func awfFile(t *testing.T, root, rel, body string) {
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", rel), body)
 }
 
-// invariant: config/migrations-and-locks:hooks-config-dropped
+// invariant: config/migrations-and-locks:hooks-config-dropped (TestDropHooksStrips)
 func TestDropHooksStrips(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
@@ -993,7 +993,7 @@ func TestProjectPresent(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:migration-ordering
+// invariant: config/migrations-and-locks:migration-ordering (TestMigrationOrderingAscendingAndIdempotent)
 func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
 	// The registry is the ordering contract: Upgrade walks it in slice order and
 	// skips by To, so an entry appended out of order would silently run early.

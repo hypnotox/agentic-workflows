@@ -102,7 +102,7 @@ func TestLoaderOpenResolvesTargetsBeforeResidentRoot(t *testing.T) {
 	}
 }
 
-// invariant: code-design/dependency-composition:sync-project-loader-wiring
+// invariant: code-design/dependency-composition:sync-project-loader-wiring (TestLoaderOpenUsesSemanticResidentRoot)
 func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\ntargets: [claude]\n")
@@ -159,7 +159,7 @@ func TestLoaderOpenUsesInjectedStandardCatalog(t *testing.T) {
 // profile check reads the injected catalog rather than the package global. With
 // the global as its subject the check passed unconditionally in production and
 // in every test, so an injected catalog reached Project.standard unvalidated.
-// invariant: code-design/dependency-composition:sync-project-loader-wiring
+// invariant: code-design/dependency-composition:sync-project-loader-wiring (TestLoaderOpenValidatesInjectedStandardWorkflowProfiles)
 func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")

@@ -6,7 +6,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 )
 
-// invariant: tooling/context-and-topic:context-adr-operation-projection
+// invariant: tooling/context-and-topic:context-adr-operation-projection (TestContextADRProjection)
 func TestContextADRProjection(t *testing.T) {
 	files := ctxFiles()
 	raw := `---

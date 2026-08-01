@@ -265,7 +265,7 @@ func cmdRenderFindings(pkgs []*packages.Package) []string {
 // by dot-import, a cmd rendering that hides the result behind a local type or
 // constructs the result locally instead of receiving it, stays invisible to
 // it; extend the shapes if one ever appears.
-// invariant: tooling/context-and-topic:context-query-boundary
+// invariant: tooling/context-and-topic:context-query-boundary (TestContextQueryBoundary)
 func TestContextQueryBoundary(t *testing.T) {
 	core := loadBoundaryPackages(t, corePattern, nil)
 	if findings := coreVocabularyFindings(core); len(findings) != 0 {

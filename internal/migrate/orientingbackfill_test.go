@@ -12,7 +12,7 @@ import (
 // The backfill enables orienting exactly where brainstorming is enabled and
 // orienting is not, announces the addition, and leaves every other config
 // byte-identical; a re-run is a no-op.
-// invariant: config/migrations-and-locks:orienting-skill-backfill
+// invariant: config/migrations-and-locks:orienting-skill-backfill (TestOrientingBackfill)
 func TestOrientingBackfill(t *testing.T) {
 	const announce = "orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)\n"
 	// The claim opens with "the schema-26 migration", so the marked test pins

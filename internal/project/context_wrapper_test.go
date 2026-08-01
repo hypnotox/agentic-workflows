@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// invariant: tooling/context-and-topic:context-spill-observability
+// invariant: tooling/context-and-topic:context-spill-observability (TestContextSpillObservabilityContract)
 func TestContextSpillObservabilityContract(t *testing.T) {
 	t.Run("wrapper byte and status preservation", testContextRunnerPreservesOutputStatusAndObservesSpills)
 	t.Run("logging failure warning degradation", testContextRunnerLoggingFailureWarnsWithoutChangingSuccess)

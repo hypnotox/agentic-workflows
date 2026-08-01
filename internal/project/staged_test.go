@@ -110,7 +110,7 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 // contract TestCheckCurrentStateNoPolicy pins for the working tree (ADR-0192).
 // stagedHeadFiles already scopes one claim-bearing topic to internal/foo/**, so
 // eight more claimless topics take that path over the nil-receiver budget of 8.
-// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional
+// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckStagedNoPolicy)
 func TestCheckStagedNoPolicy(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -207,7 +207,7 @@ func TestValidatePermanentLockTransitionAllowsOnlyComputedSchema15Cutoff(t *test
 	}
 }
 
-// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
+// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable (TestValidatePermanentLockTransitionRejectsCutoffDeletionAndMutation)
 func TestValidatePermanentLockTransitionRejectsCutoffDeletionAndMutation(t *testing.T) {
 	t.Parallel()
 	tree, err := snapshot.NewTree(nil)
