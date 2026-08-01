@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0194: Slug-identified pending ADRs numbered at integration](0194-slug-identified-pending-adrs-numbered-at-integration.md) (Implementing)
+- [ADR-pair-a-slugless-record-across-a-renumber-by-content-digest: Pair a slugless record across a renumber by content digest](pair-a-slugless-record-across-a-renumber-by-content-digest.md) (Proposed)
 
 ## History
 
