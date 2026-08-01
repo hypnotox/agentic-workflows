@@ -86,9 +86,9 @@ exit 0
 // sweeps never see it; this test pins the wiring so it cannot be silently
 // dropped.
 //
-// invariant: tooling/quality-gates:example-adopter-checked
-// invariant: tooling/quality-gates:example-zero-notes
-// invariant: tooling/quality-gates:example-module-isolated
+// invariant: tooling/quality-gates:example-adopter-checked (TestExampleAdopterWiring)
+// invariant: tooling/quality-gates:example-zero-notes (TestExampleAdopterWiring)
+// invariant: tooling/quality-gates:example-module-isolated (TestExampleAdopterWiring)
 func TestExampleAdopterWiring(t *testing.T) {
 	raw, err := os.ReadFile("../../x")
 	if err != nil {
@@ -124,7 +124,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 // path-keyed container, or to a fingerprint that varies by checkout path, would
 // still go green while orphaning one container, volume, and image per worktree.
 //
-// invariant: tooling/quality-gates:pi-extension-container-gate
+// invariant: tooling/quality-gates:pi-extension-container-gate (TestPiExtensionContainerGateWiring)
 func TestPiExtensionContainerGateWiring(t *testing.T) {
 	rawX, err := os.ReadFile("../../x")
 	if err != nil {
@@ -203,7 +203,7 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 // and its config carries none of the awf-verb command vars, so it dogfoods the
 // rendered defaults a fresh adopter gets.
 //
-// invariant: rendering/companion-scripts:runner-example-adopted
+// invariant: rendering/companion-scripts:runner-example-adopted (TestExampleAdoptsRunner)
 func TestExampleAdoptsRunner(t *testing.T) {
 	cfg, err := os.ReadFile("../../examples/sundial/.awf/config.yaml")
 	if err != nil {
@@ -256,7 +256,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 // half stands alone: a missing strip leaves the lane green while `tsc` silently
 // skips the file, so only this static assertion enforces the coupling.
 //
-// invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip
+// invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip (TestPiExtensionEditorQuietStrip)
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	// Enumerate from the target descriptor, not from a directory walk, and check
 	// BOTH rendered roots. A walk cannot notice a governed file that stopped

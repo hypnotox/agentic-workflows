@@ -14,18 +14,18 @@ import (
 // directory-expansion vocabulary, which is private to this package (ADR-0195
 // item 8); its proof markers are valid anywhere inside currentState.testGlobs.
 
-// invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership
-// invariant: rendering/pi-runtime:pi-child-tool-boundaries
-// invariant: rendering/project-output-plan:multi-target-render
-// invariant: rendering/pi-workflows:pi-subagent-failure-details
-// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch
-// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch
-// invariant: rendering/pi-workflows:pi-subagent-model-wizard
-// invariant: tooling/init-and-enablement:add-skill-pairs-agent
-// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
-// invariant: rendering/pi-runtime:pi-minimum-runtime
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract
+// invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-runtime:pi-child-tool-boundaries (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/project-output-plan:multi-target-render (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-subagent-failure-details (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: tooling/init-and-enablement:add-skill-pairs-agent (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-runtime:pi-minimum-runtime (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.T) {
 	p, err := project.Open(testContext(t), filepath.Clean(filepath.Join("..", "..")))
 	if err != nil {

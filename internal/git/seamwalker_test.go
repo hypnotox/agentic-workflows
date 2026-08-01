@@ -214,7 +214,7 @@ var seamAllowlist = []string{
 // This is the enforcement half of one-implementation-per-entrypoint: without it
 // the seam is a convention, and the seven bypassing call sites this effort
 // removed could return one at a time without anyone noticing.
-// invariant: tooling/git-access:all-access-via-seam
+// invariant: tooling/git-access:all-access-via-seam (TestNoProductionGitAccessOutsideTheSeam)
 func TestNoProductionGitAccessOutsideTheSeam(t *testing.T) {
 	t.Parallel()
 	findings, seen := walkGitAccess(t, false, seamAllowlist)

@@ -17,8 +17,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// invariant: rendering/guide-and-doc-templates:guide-scopes-derived
-// invariant: rendering/workflow-skill-templates:workflow-transitions-advisory
+// invariant: rendering/guide-and-doc-templates:guide-scopes-derived (TestGuideCatalogRowsAreCompleteSafeAndAdvisory)
+// invariant: rendering/workflow-skill-templates:workflow-transitions-advisory (TestGuideCatalogRowsAreCompleteSafeAndAdvisory)
 //
 // The agent guide renders its commit-scope mention from the $.commitScopes
 // render key - never a hand-written token list - and degrades to generic
@@ -26,8 +26,8 @@ import (
 // The invariants are read from awf's OWN .awf/agents-doc.yaml, not a synthetic
 // fixture: a re-introduced hand-written scope entry surfaces as a second
 // Conventional-Commits invariant bullet and fails this test.
-// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
-// invariant: rendering/workflow-skill-templates:workflow-transitions-advisory
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestGuideCatalogRowsAreCompleteSafeAndAdvisory)
+// invariant: rendering/workflow-skill-templates:workflow-transitions-advisory (TestGuideCatalogRowsAreCompleteSafeAndAdvisory)
 func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
 	profile := catalog.Standard.Skills["subagent-driven-development"].Profile
 	if profile.Purpose != "Implement a plan through reviewed phase owners." || profile.Trigger != "Use when a plan phase benefits from delegated implementation ownership." {

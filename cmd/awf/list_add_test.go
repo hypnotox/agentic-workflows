@@ -184,7 +184,7 @@ func TestRunAddDomainScaffoldIdempotent(t *testing.T) {
 // (not refused): SetArrayMember normalizes it to block style. minimalYAML uses
 // flow-style `skills: [tdd]`. brainstorming references no vars and is not
 // doc-gated, so the post-add sync renders cleanly under minimalYAML's seed.
-// invariant: tooling/cli:target-cli
+// invariant: tooling/cli:target-cli (TestRunTargetCLI)
 func TestRunTargetCLI(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -578,7 +578,7 @@ func TestRunAddRemoveFlowStyle(t *testing.T) {
 // Adding an unclosed skill enables its full missing forward closure in one
 // rewrite, printing a provenance plan (ADR-0081 Decision 4). This replaces
 // the ADR-0050 pairing note and the ADR-0013 doc advisory.
-// invariant: tooling/init-and-enablement:add-applies-closure-plan
+// invariant: tooling/init-and-enablement:add-applies-closure-plan (TestRunAddAppliesClosurePlan)
 func TestRunAddAppliesClosurePlan(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -587,7 +587,7 @@ func TestRunAddAppliesClosurePlan(t *testing.T) {
 	if err := runEnable(ctx, root, "skill", "reviewing-impl", false, &out); err != nil {
 		t.Fatalf("add skill reviewing-impl: %v", err)
 	}
-	// invariant: tooling/init-and-enablement:add-skill-pairs-agent
+	// invariant: tooling/init-and-enablement:add-skill-pairs-agent (TestRunAddAppliesClosurePlan)
 	for _, line := range []string{
 		"plan: + skill reviewing-impl\n",
 
@@ -827,7 +827,7 @@ func TestRunListStatesAndKinds(t *testing.T) {
 
 // `awf disable agent` refuses upfront - before any config rewrite - while an
 // enabled, non-local skill requires the agent (ADR-0050).
-// invariant: tooling/init-and-enablement:remove-agent-pairing-guard
+// invariant: tooling/init-and-enablement:remove-agent-pairing-guard (TestRunRemoveAgentPairingGuard)
 func TestRunRemoveAgentPairingGuard(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

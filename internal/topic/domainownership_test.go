@@ -101,7 +101,7 @@ func unownedPackages(domainPaths map[string][]string, files []string) []string {
 // so a package omitted from domain ownership fails here rather than degrading
 // silently to unowned (context coverage is advisory and exits zero over an
 // unowned package).
-// invariant: tooling/context-and-topic:production-packages-domain-owned
+// invariant: tooling/context-and-topic:production-packages-domain-owned (TestProductionPackagesAreDomainOwned)
 func TestProductionPackagesAreDomainOwned(t *testing.T) {
 	root := repoRootForOwnership(t)
 	cfg, err := config.Load(filepath.Join(root, config.DirName))

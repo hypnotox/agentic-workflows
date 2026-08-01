@@ -64,7 +64,7 @@ func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 	}
 }
 
-// invariant: rendering/doc-outputs:domain-doc-regenerated
+// invariant: rendering/doc-outputs:domain-doc-regenerated (TestDomainDocStaleOnTopicAdd)
 func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 	root := topicProject(t)
 	p, err := Open(testContext(t), root)
@@ -172,7 +172,7 @@ func TestDomainPartOrphan(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:docs-section-parity
+// invariant: rendering/guide-and-doc-templates:docs-section-parity (TestDomainDocSectionParity)
 func TestDomainDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	src, err := fs.ReadFile(templates.FS, "domains/domain.md.tmpl")

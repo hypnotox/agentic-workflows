@@ -83,7 +83,7 @@ func assertNoDeliberateSelectionLeakage(t *testing.T, body string) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:deliberate-subagent-model-selection
+// invariant: rendering/workflow-skill-templates:deliberate-subagent-model-selection (TestDeliberateSubagentModelSelectionAcrossGovernedDispatches)
 func TestDeliberateSubagentModelSelectionAcrossGovernedDispatches(t *testing.T) {
 	dirs := map[string]string{
 		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",

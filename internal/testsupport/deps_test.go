@@ -39,8 +39,8 @@ func dependencyViolations(path string, source any) ([]string, error) {
 // TestZeroInternalDeps enforces mechanically that internal/testsupport and its
 // subpackages depend only on the standard library and their own subpackages.
 // gitfixture alone may import the scoped go-git module needed by Git fixtures.
-// invariant: tooling/quality-gates:testsupport-zero-internal-deps
-// invariant: tooling/test-infrastructure:test-support-leaf-boundary
+// invariant: tooling/quality-gates:testsupport-zero-internal-deps (TestZeroInternalDeps)
+// invariant: tooling/test-infrastructure:test-support-leaf-boundary (TestZeroInternalDeps)
 func TestZeroInternalDeps(t *testing.T) {
 	seen := 0
 	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {

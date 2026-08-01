@@ -47,7 +47,7 @@ func TestCommandsWellFormed(t *testing.T) {
 // otherwise. The Inherit zero value is what makes "declares nothing" distinct
 // from "declares Ungated", so an ungated child under a gated parent is honoured
 // rather than silently gated.
-// invariant: tooling/cli:group-child-gating-honored
+// invariant: tooling/cli:group-child-gating-honored (TestResolvedGating)
 func TestResolvedGating(t *testing.T) {
 	// A top-level command has no parent to inherit from, so Inherit is never valid there.
 	for _, c := range Commands {
@@ -170,7 +170,7 @@ func TestGatedCommandNames(t *testing.T) {
 
 func TestNamesAndUsageLine(t *testing.T) {
 	names := Names()
-	// invariant: tooling/cli:cli-command-spec-single-source
+	// invariant: tooling/cli:cli-command-spec-single-source (TestNamesAndUsageLine)
 	if len(names) != len(Commands) || names[0] != "init" {
 		t.Errorf("Names() = %v", names)
 	}

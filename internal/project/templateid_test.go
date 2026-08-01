@@ -166,7 +166,7 @@ func topicTemplatesImportFindings(pkgs []*packages.Package) []string {
 // The detector matches string literals only - an id assembled from fragments
 // that never spell a separator and the suffix together, or read out of data,
 // stays invisible to it; extend the shapes if one ever appears.
-// invariant: rendering/project-output-plan:template-id-single-derivation
+// invariant: rendering/project-output-plan:template-id-single-derivation (TestTemplateIDsDeriveFromTheDeclarationTables)
 func TestTemplateIDsDeriveFromTheDeclarationTables(t *testing.T) {
 	root, production := loadTemplateIDPackages(t, nil)
 	findings, declared := templateIDFindings(root, production)

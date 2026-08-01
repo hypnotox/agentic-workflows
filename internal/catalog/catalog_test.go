@@ -15,7 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// invariant: rendering/catalog-and-targets:catalog-go-single-source
+// invariant: rendering/catalog-and-targets:catalog-go-single-source (TestCatalogIsCompileTimeSingleSource)
 func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 	if _, err := fs.Stat(templates.FS, "catalog.yaml"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("catalog.yaml must not be embedded; got stat err = %v", err)
@@ -28,7 +28,7 @@ func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 
 // Catalog default data must be generic: no default names an awf-repo path or
 // command (ADR-0045). Walks every spec's Data recursively down to the strings.
-// invariant: rendering/catalog-and-targets:catalog-defaults-generic-denylist
+// invariant: rendering/catalog-and-targets:catalog-defaults-generic-denylist (TestCatalogDefaultDataIsGeneric)
 func TestCatalogDefaultDataIsGeneric(t *testing.T) {
 	cat := Standard
 	states, ok := cat.Skills["adr-lifecycle"].Data["adrStates"].([]any)
@@ -111,7 +111,7 @@ var nonReviewingDispatchers = map[string]string{
 	"subagent-driven-development": "implementer",
 }
 
-// invariant: rendering/catalog-and-targets:reviewing-skill-specs-paired
+// invariant: rendering/catalog-and-targets:reviewing-skill-specs-paired (TestReviewingSkillSpecsArePaired)
 func TestReviewingSkillSpecsArePaired(t *testing.T) {
 	cat := Standard
 	for name, spec := range cat.Skills {
@@ -168,7 +168,7 @@ func TestRequiresSkillsDeclarationsValid(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:requires-skills-exact
+// invariant: rendering/catalog-and-targets:requires-skills-exact (TestStandardSkillRequirementsAreEmpty)
 func TestStandardSkillRequirementsAreEmpty(t *testing.T) {
 	for name, spec := range Standard.Skills {
 		if len(spec.RequiresSkills) != 0 {
@@ -182,7 +182,7 @@ func TestStandardSkillRequirementsAreEmpty(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:no-single-marker-init-descriptor
+// invariant: rendering/catalog-and-targets:no-single-marker-init-descriptor (TestNoSingleMarkerInitDescriptor)
 //
 // The catalog exposes no single marker/globs var descriptor; qualified markers
 // reach config only through currentState.sources.

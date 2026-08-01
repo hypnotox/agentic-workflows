@@ -38,11 +38,11 @@ var identityLiterals = []string{"hypnotox", "agentic-workflows"}
 // branches of every conditional, which no render-based sweep can cover - and
 // fails on a concrete awf ADR citation or on a repo-identity literal outside
 // the explicit exemption list (ADR-0082).
-// invariant: rendering/templates:template-source-residue
+// invariant: rendering/templates:template-source-residue (TestTemplateSourceResidue)
 func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
 	// proof site contains the check that proves it (ADR-0131 Task 3.3).
-	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three
+	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three (TestTemplateSourceResidue)
 	if len(identityExempt) != 3 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
@@ -265,7 +265,7 @@ func scanGoLiterals(t *testing.T, dir string) int {
 // guard, so a mis-anchored walk fails rather than passing vacuously. Adopter
 // content, and this repository's authored ADR and plan bodies, are out of scope:
 // the ban covers what awf ships, in awf's own voice (ADR-0115).
-// invariant: tooling/quality-gates:emitted-prose-no-typographic-substitutes
+// invariant: tooling/quality-gates:emitted-prose-no-typographic-substitutes (TestEmittedProseNoTypographicSubstitutes)
 func TestEmittedProseNoTypographicSubstitutes(t *testing.T) {
 	if n := scanEmbedded(t, "templates", templates.FS); n < 40 {
 		t.Fatalf("inspected only %d embedded template file(s); expected the whole tree - did the FS move?", n)

@@ -65,7 +65,7 @@ func (missingFileGit) FileText(context.Context, string, string) (string, bool, e
 	return "", false, nil
 }
 
-// invariant: tooling/audit-commands:repoaudit-requires-explicit-range
+// invariant: tooling/audit-commands:repoaudit-requires-explicit-range (TestUsageError)
 func TestUsageError(t *testing.T) {
 	// No argument at all: there is no default range (ADR-0127 Decision 11), so
 	// this is a refusal with the usage line rather than a report over
@@ -154,7 +154,7 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 // test cannot reach this surface, because repoaudit's finding type is unexported
 // in package main. Without this marker the claim would name a surface no proof
 // reads.
-// invariant: tooling/audit-commands:severity-single-spelling
+// invariant: tooling/audit-commands:severity-single-spelling (TestWarnMissingEntry)
 func TestWarnMissingEntry(t *testing.T) {
 	// Adopter-facing change, [Unreleased] identical across the range -> advisory warn,
 	// exit 0 (ADR-0107): the conformance verdict no longer blocks, only informs.
@@ -167,7 +167,7 @@ func TestWarnMissingEntry(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	// invariant: tooling/changelog-and-release:changelog-rule-advisory
+	// invariant: tooling/changelog-and-release:changelog-rule-advisory (TestWarnMissingEntry)
 	if code != 0 || !strings.Contains(out, "warn    changelog-unreleased") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
@@ -280,7 +280,7 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 func TestMergeBaseFails(t *testing.T) {
 	g := fakeGit{"merge-base b h": {err: errors.New("boom")}}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	// invariant: tooling/audit-and-snapshots:repo-audit-error-exit
+	// invariant: tooling/audit-and-snapshots:repo-audit-error-exit (TestMergeBaseFails)
 	if code != 1 || !strings.Contains(out, "git merge-base b h failed") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}

@@ -17,7 +17,7 @@ import (
 // newest entry must not exceed project.Version. Mid-cycle the const may run ahead of
 // the changelog - entries accumulate under [Unreleased] until the release-prep
 // promotion - and the exact match is enforced at release time by cmd/releasecheck.
-// invariant: tooling/changelog-and-release:changelog-monotonic
+// invariant: tooling/changelog-and-release:changelog-monotonic (TestChangelogMonotonicOrder)
 func TestChangelogMonotonicOrder(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -174,7 +174,7 @@ func TestRunChangelogFlagsExclusive(t *testing.T) {
 	_ = ctx
 	var out bytes.Buffer
 	err := runChangelog("0.2.0", "0.3.0", "", &out)
-	// invariant: tooling/changelog-and-release:changelog-flags-exclusive
+	// invariant: tooling/changelog-and-release:changelog-flags-exclusive (TestRunChangelogFlagsExclusive)
 	if err == nil {
 		t.Fatal("setting both --version and --since should error")
 	}

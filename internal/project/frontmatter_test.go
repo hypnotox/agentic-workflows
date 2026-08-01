@@ -16,7 +16,7 @@ import (
 // with a minimal-adopter data set (prefix + every referenced var seeded empty +
 // full layout) and asserts the frontmatter parses with non-empty name/description
 // and no leaked <no value> token. Agent metadata is encoded separately.
-// invariant: rendering/templates:templates-valid-frontmatter
+// invariant: rendering/templates:templates-valid-frontmatter (TestAllTemplatesProduceValidFrontmatter)
 func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	assertV2ADRTemplatePublicationSafe(t)
 	cat := catalog.Standard

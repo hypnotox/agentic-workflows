@@ -17,8 +17,8 @@ import (
 func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	// invariant: tooling/cli:effort-command-contract
-	// invariant: tooling/effort-management:effort-record-authority
+	// invariant: tooling/cli:effort-command-contract (TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees)
+	// invariant: tooling/effort-management:effort-record-authority (TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees)
 	primary := filepath.Join(t.TempDir(), "primary with spaces")
 	fixture := gitfixture.InitNativeAt(t, primary)
 	if err := os.WriteFile(filepath.Join(primary, "tracked.txt"), []byte("base\n"), 0o600); err != nil {

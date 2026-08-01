@@ -169,7 +169,7 @@ func aheadSchemaGitProject(t *testing.T) string {
 // Ungated under a Gated parent, so they run against a project whose lock is
 // behind this binary where bare `check` refuses. This is the half of the claim
 // the driver owns; the clispec resolver's half is proved in that package.
-// invariant: tooling/cli:group-child-gating-honored
+// invariant: tooling/cli:group-child-gating-honored (TestCheckUngatedChildrenRunOnSchemaAheadProject)
 func TestCheckUngatedChildrenRunOnSchemaAheadProject(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -195,7 +195,7 @@ func TestCheckUngatedChildrenRunOnSchemaAheadProject(t *testing.T) {
 // runnable under a committed current-state journal and under an attested lock,
 // where bare check refuses. Without this a commit-msg hook would refuse to
 // validate a message mid-upgrade.
-// invariant: tooling/cli:group-child-project-guard-exemption
+// invariant: tooling/cli:group-child-project-guard-exemption (TestCheckExemptChildrenRunUnderGuardedProjectState)
 func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

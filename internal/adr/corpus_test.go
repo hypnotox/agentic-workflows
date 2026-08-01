@@ -343,7 +343,7 @@ func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Pa
 // enters through Corpus construction - and inside internal/adr only that seam
 // and NextNumber call it. NextNumber is the command-boundary exception that
 // holds no active topic corpus.
-// invariant: adr-system/adr-lifecycle:corpus-parsed-once
+// invariant: adr-system/adr-lifecycle:corpus-parsed-once (parseDirProblems)
 func parseDirProblems(callers map[callOwner][]string) []string {
 	want := map[callOwner]bool{
 		{path: "internal/adr/corpus.go", name: "LoadCorpus"}: true,
@@ -445,7 +445,7 @@ func NextNumber(dir string)`)
 // TestCorpusOwnsFieldReads enforces ADR-0130's corpus-owns-field-reads: the
 // section questions ADR.Sections answers are asked of the view, not re-derived
 // from the field.
-// invariant: adr-system/adr-lifecycle:corpus-owns-field-reads
+// invariant: adr-system/adr-lifecycle:corpus-owns-field-reads (TestCorpusOwnsFieldReads)
 func TestCorpusOwnsFieldReads(t *testing.T) {
 	bad := sectionReadFindings(loadProductionPackages(t))
 	if len(bad) != 0 {
@@ -626,7 +626,7 @@ func TestLoadCorpusHydratesGovernedRecords(t *testing.T) {
 // corpus below is built with its ADRs out of numeric order, carries two
 // updates whose corpus order is descending, and the claim's applied
 // operations must still resolve as 0001, then 0002 and 0003, then 0005.
-// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number
+// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number (TestClaimOperationHistoryOrdersByADRNumber)
 func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	claimID := "tooling/query:removed"
 	record := func(number, title, status, verb string) adr.ADR {
@@ -691,7 +691,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 // TestCorpusRawAccessEnumerated enforces the closed raw-byte seams: the ordered
 // schema migrations that perform offset surgery. Each goes through the view's
 // named accessor rather than re-reading the file.
-// invariant: adr-system/adr-lifecycle:corpus-raw-access-enumerated
+// invariant: adr-system/adr-lifecycle:corpus-raw-access-enumerated (TestCorpusRawAccessEnumerated)
 func TestCorpusRawAccessEnumerated(t *testing.T) {
 	raw, pathReads := rawAccessFindings(loadProductionPackages(t))
 	want := map[string]bool{
@@ -779,7 +779,7 @@ func TestCorpusAbsentADR(t *testing.T) {
 // blobs rather than the working tree, so it cannot take a Corpus - but it takes
 // the bytes seam, and declares no frontmatter struct of its own. The duplication
 // the ADR removed was the parser and the schema, not the loading strategy.
-// invariant: adr-system/adr-lifecycle:audit-shares-adr-parser
+// invariant: adr-system/adr-lifecycle:audit-shares-adr-parser (TestAuditSharesADRParser)
 func TestAuditSharesADRParser(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "audit", "audit.go"))
 	if err != nil {

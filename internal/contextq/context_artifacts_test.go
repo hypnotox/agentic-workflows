@@ -15,7 +15,7 @@ func testArtifactAuthorities(docsDir string, corpus adr.Corpus) artifactAuthorit
 	return artifactAuthorities{Layout: project.Layout{DocsDir: docsDir, ADRDir: docsDir + "/decisions", IndexMd: docsDir + "/decisions/INDEX.md", DomainsDir: docsDir + "/domains"}, ADRs: corpus}
 }
 
-// invariant: rendering/sync-and-drift:managed-output-attribution
+// invariant: rendering/sync-and-drift:managed-output-attribution (TestArtifactRecordsFollowDeclarations)
 func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	decls := []project.OutputDeclaration{{Path: "docs/out.md", TemplateID: "docs/out.md.tmpl", Declarers: []string{"out"}, Inputs: []project.OutputInput{{Path: ".awf/docs/parts/out/content.md", Role: project.ArtifactConventionPart}}}}
 	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
@@ -38,7 +38,7 @@ func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-known-artifact-navigation
+// invariant: tooling/context-and-topic:context-known-artifact-navigation (TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes)
 func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) {
 	parsed := adr.NewCorpus([]adr.ADR{{Number: "0007", Filename: "0007-real.md"}})
 	decls := []project.OutputDeclaration{
@@ -135,7 +135,7 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 	}
 }
 
-// invariant: tooling/context-and-topic:context-known-artifact-navigation
+// invariant: tooling/context-and-topic:context-known-artifact-navigation (TestContextArtifactFacetAloneRefinesGroupKey)
 func TestContextArtifactFacetAloneRefinesGroupKey(t *testing.T) {
 	base := contextPathImpact{
 		Classification: pathCovered,

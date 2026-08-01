@@ -339,7 +339,7 @@ func producerCallSites(pkgs []*packages.Package) map[string][]string {
 //
 // The scan covers package functions as well as methods, because
 // StagedContextState is a function rather than a method.
-// invariant: code-design/state-ownership:project-derived-state-ownership
+// invariant: code-design/state-ownership:project-derived-state-ownership (TestProjectDerivedStateOwnership)
 func TestProjectDerivedStateOwnership(t *testing.T) {
 	production := loadProjectPackage(t, nil)
 	if findings := projectFieldWriteFindings(production); len(findings) != 0 {

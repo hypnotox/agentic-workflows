@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// invariant: tooling/context-and-topic:context-terminal-output-cap
+// invariant: tooling/context-and-topic:context-terminal-output-cap (TestTerminalOutputCapDeliveryContract)
 func TestTerminalOutputCapDeliveryContract(t *testing.T) {
 	t.Run("exact boundary and secure spill", testDeliverBoundaryAndSpill)
 	t.Run("unsafe temporary locations", testDeliverRejectsUnsafeLocations)

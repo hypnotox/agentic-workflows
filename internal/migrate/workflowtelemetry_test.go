@@ -11,7 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-// invariant: config/migrations-and-locks:workflow-telemetry-config-migration
+// invariant: config/migrations-and-locks:workflow-telemetry-config-migration (TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20)
 func TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, config.DirName), 0o755); err != nil {

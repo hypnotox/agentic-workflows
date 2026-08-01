@@ -26,7 +26,7 @@ func v2MigrationProject(t *testing.T) string {
 	return root
 }
 
-// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
+// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable (TestApplyADRFormatV2CutoffSavesAtomicAuthorityOnce)
 func TestApplyADRFormatV2CutoffSavesAtomicAuthorityOnce(t *testing.T) {
 	root := v2MigrationProject(t)
 	path := config.LockPath(root)

@@ -9,7 +9,7 @@ import (
 )
 
 func TestProtocol2StaticStateAndPublicObject(t *testing.T) {
-	// invariant: tooling/effort-management:effort-record-authority
+	// invariant: tooling/effort-management:effort-record-authority (TestProtocol2StaticStateAndPublicObject)
 	created := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
 	record := Record{
 		SchemaVersion: SchemaVersion,

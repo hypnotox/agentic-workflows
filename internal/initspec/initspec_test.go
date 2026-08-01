@@ -290,7 +290,7 @@ func TestResolveEOFFallsSilent(t *testing.T) {
 // The needed filter (ADR-0086 Decision 6): vars outside the selection's
 // referenced set are seeded empty without a prompt; explicit answers stay
 // honored; a filter error propagates.
-// invariant: tooling/init-and-enablement:init-prompts-enabled-vars
+// invariant: tooling/init-and-enablement:init-prompts-enabled-vars (TestResolveSkipsUnneededVarPrompts)
 func TestResolveSkipsUnneededVarPrompts(t *testing.T) {
 	ds := []catalog.VarDescriptor{
 		{Key: "a", Kind: "string"},

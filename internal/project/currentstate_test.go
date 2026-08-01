@@ -104,7 +104,7 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 // kinds.
 // The claim's routing clause is marked here rather than named in prose from
 // internal/currentstate, which cannot see CurrentStateReport.
-// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked
+// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked (TestCurrentStateReportRouting)
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
 		Static: []currentstate.Finding{{Message: "handshake broke"}},
@@ -230,8 +230,8 @@ func TestCheckCurrentState(t *testing.T) {
 // also what backs severity-not-configurable's fixed-rank clause; that clause lost
 // its only marker when this test's previous assertion (of the struck
 // block-presence sentence) was inverted.
-// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional
-// invariant: config/configuration:severity-not-configurable
+// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckCurrentStateNoPolicy)
+// invariant: config/configuration:severity-not-configurable (TestCheckCurrentStateNoPolicy)
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
 	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
 	files := map[string]string{
@@ -355,7 +355,7 @@ func TestCurrentStateInvariants(t *testing.T) {
 
 // TestCurrentStateInvariantsEmpty proves a project with no invariant claims
 // reports none without error.
-// invariant: invariants/current-state-authority:invariants-zero-slugs-clean
+// invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCurrentStateInvariantsEmpty)
 func TestCurrentStateInvariantsEmpty(t *testing.T) {
 	p := csRepo(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
 	invs, err := p.CurrentStateInvariants(testContext(t))

@@ -67,7 +67,7 @@ func walkPaths(t reflect.Type, prefix string, out map[string]bool) {
 // from the command line (ADR-0127 Decision 3). Asserted across all three
 // surfaces at once, since key parity means a struct field would force a spec
 // entry and vice versa.
-// invariant: config/configuration:audit-no-base-branch-config
+// invariant: config/configuration:audit-no-base-branch-config (TestNoAuditBaseConfigSurface)
 func TestNoAuditBaseConfigSurface(t *testing.T) {
 	for _, e := range Keys() {
 		if strings.Contains(strings.ToLower(e.Path), "basebranch") {
@@ -109,7 +109,7 @@ func TestADRStatesV2DescriptionAndEmptyOverride(t *testing.T) {
 
 // TestConfigspecKeyParity keeps the hand-authored key table bidirectionally
 // matched to the config structs, every entry fully described.
-// invariant: config/configspec-and-reference:configspec-key-parity
+// invariant: config/configspec-and-reference:configspec-key-parity (TestConfigspecKeyParity)
 func TestConfigspecKeyParity(t *testing.T) {
 	want := map[string]bool{}
 	walkPaths(reflect.TypeOf(config.Config{}), "", want)
@@ -183,7 +183,7 @@ func expandedTemplate(t *testing.T, tid string) string {
 // both directions. The domain template's injected pair and the generated
 // config reference's injected collections are exempt (neither is
 // adopter-settable).
-// invariant: config/configspec-and-reference:configspec-data-parity
+// invariant: config/configspec-and-reference:configspec-data-parity (TestConfigspecDataParity)
 func TestConfigspecDataParity(t *testing.T) {
 	type ak struct{ kind, artifact, key string }
 	want := map[ak]bool{}
@@ -245,7 +245,7 @@ func TestConfigspecVarDerivation(t *testing.T) {
 		}
 	}
 	entries := VarEntries()
-	// invariant: config/configspec-and-reference:configspec-var-derivation
+	// invariant: config/configspec-and-reference:configspec-var-derivation (TestConfigspecVarDerivation)
 	if len(entries) != len(want) {
 		t.Errorf("VarEntries returned %d entries, want %d", len(entries), len(want))
 	}
@@ -271,7 +271,7 @@ func TestConfigspecVarDerivation(t *testing.T) {
 
 // TestConfigspecDescriptionResidue bans awf-internal residue from every
 // adopter-facing string: concrete ADR citations and repo-identity literals.
-// invariant: config/configspec-and-reference:configspec-description-residue
+// invariant: config/configspec-and-reference:configspec-description-residue (TestConfigspecDescriptionResidue)
 func TestConfigspecDescriptionResidue(t *testing.T) {
 	adrRE := regexp.MustCompile(`ADR-[0-9]{4}`)
 	check := func(where, s string) {

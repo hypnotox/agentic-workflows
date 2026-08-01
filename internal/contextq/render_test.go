@@ -73,8 +73,8 @@ func renderFixture(t *testing.T) *project.Project {
 	return p
 }
 
-// invariant: tooling/context-and-topic:context-concise-projection
-// invariant: tooling/context-and-topic:context-full-authority-packet
+// invariant: tooling/context-and-topic:context-concise-projection (TestRenderContextFullMatchesEightFacetUnion)
+// invariant: tooling/context-and-topic:context-full-authority-packet (TestRenderContextFullMatchesEightFacetUnion)
 func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 	t.Parallel()
 	q := queryFor(t, renderFixture(t))

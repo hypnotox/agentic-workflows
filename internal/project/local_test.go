@@ -44,7 +44,7 @@ func TestLocalSkillRendersFromBasePerTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/local-artifacts:local-renders-from-base
+	// invariant: rendering/local-artifacts:local-renders-from-base (TestLocalSkillRendersFromBasePerTarget)
 	got := findByTID(files, "skills/_base/SKILL.md.tmpl")
 	if len(got) != 2 { // one per enabled target (claude + cursor)
 		t.Fatalf("expected 2 base-rendered files, got %d", len(got))
@@ -109,7 +109,7 @@ func TestLocalSynthesisDoesNotMutateStandard(t *testing.T) {
 	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/local-artifacts:local-catalog-clone
+	// invariant: rendering/local-artifacts:local-catalog-clone (TestLocalSynthesisDoesNotMutateStandard)
 	if got := len(catalog.Standard.Skills); got != before {
 		t.Errorf("catalog.Standard.Skills mutated: before %d, after %d", before, got)
 	}
@@ -121,7 +121,7 @@ func TestLocalSynthesisDoesNotMutateStandard(t *testing.T) {
 func TestLocalUndeclaredNameFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - ghost\n", nil)
 	_, err := Open(testContext(t), root)
-	// invariant: rendering/local-artifacts:local-requires-declaration
+	// invariant: rendering/local-artifacts:local-requires-declaration (TestLocalUndeclaredNameFailsOpen)
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
 		t.Fatalf("expected not-in-catalog error, got %v", err)
 	}
@@ -177,7 +177,7 @@ func TestLocalNameShadowingStandardStaysStandard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/local-artifacts:local-no-shadow
+	// invariant: rendering/local-artifacts:local-no-shadow (TestLocalNameShadowingStandardStaysStandard)
 	if p.Cat.Skills["tdd"].Base {
 		t.Error("Standard skill tdd was shadowed by a local synthesis")
 	}
@@ -228,7 +228,7 @@ func TestLocalDocRendersFromBase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/local-artifacts:local-doc-renders-from-base
+	// invariant: rendering/local-artifacts:local-doc-renders-from-base (TestLocalDocRendersFromBase)
 	got := findByTID(files, "docs/_base.md.tmpl")
 	if len(got) != 1 { // docs render once (not per-target)
 		t.Fatalf("expected 1 base-rendered doc, got %d", len(got))
@@ -280,7 +280,7 @@ func TestLocalDocSubfolderPathAndMap(t *testing.T) {
 	if found == nil {
 		t.Fatalf("guides/ci missing from document map: %+v", docs)
 	}
-	// invariant: rendering/local-artifacts:local-doc-map-fields
+	// invariant: rendering/local-artifacts:local-doc-map-fields (TestLocalDocSubfolderPathAndMap)
 	if found["title"] != "Ci" || found["desc"] != "How CI runs." {
 		t.Errorf("map fields wrong: %+v", found)
 	}
@@ -292,7 +292,7 @@ func TestLocalDocSynthesisDoesNotMutateStandard(t *testing.T) {
 	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/local-artifacts:local-doc-catalog-clone
+	// invariant: rendering/local-artifacts:local-doc-catalog-clone (TestLocalDocSynthesisDoesNotMutateStandard)
 	if got := len(catalog.Standard.Docs); got != before {
 		t.Errorf("catalog.Standard.Docs mutated: before %d, after %d", before, got)
 	}
@@ -304,7 +304,7 @@ func TestLocalDocSynthesisDoesNotMutateStandard(t *testing.T) {
 func TestLocalDocUndeclaredNameFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - ghost\n", nil)
 	_, err := Open(testContext(t), root)
-	// invariant: rendering/local-artifacts:local-doc-requires-declaration
+	// invariant: rendering/local-artifacts:local-doc-requires-declaration (TestLocalDocUndeclaredNameFailsOpen)
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
 		t.Fatalf("expected not-in-catalog error, got %v", err)
 	}
@@ -350,7 +350,7 @@ func TestLocalDocNameShadowingStandardStaysStandard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/local-artifacts:local-doc-no-shadow
+	// invariant: rendering/local-artifacts:local-doc-no-shadow (TestLocalDocNameShadowingStandardStaysStandard)
 	if p.Cat.Docs["architecture"].TID == "docs/_base.md.tmpl" {
 		t.Error("Standard doc architecture was shadowed by a local synthesis")
 	}

@@ -560,7 +560,7 @@ func TestCollectVarsReadError(t *testing.T) {
 	}
 }
 
-// invariant: rendering/render-engine:dead-reference-gated
+// invariant: rendering/render-engine:dead-reference-gated (TestCheckDetectsDeadReference)
 func TestCheckDetectsDeadReference(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		"parts/agents-doc/identity.md": "See [missing](no/such/file.md).\n",

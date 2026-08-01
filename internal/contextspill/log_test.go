@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// invariant: tooling/context-and-topic:context-spill-observability
+// invariant: tooling/context-and-topic:context-spill-observability (TestSpillObservabilityStorageContract)
 func TestSpillObservabilityStorageContract(t *testing.T) {
 	t.Run("exact notice grammar", testParseNoticeContract)
 	t.Run("exact record", testLogExactRecord)

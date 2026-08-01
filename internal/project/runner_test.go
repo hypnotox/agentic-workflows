@@ -38,7 +38,7 @@ func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 
 // With the singleton enabled, exactly one wrapper `awf` renders at the repo
 // root; absent or disabled, none does.
-// invariant: rendering/companion-scripts:runner-singleton-toggle
+// invariant: rendering/companion-scripts:runner-singleton-toggle (TestRunnerToggle)
 func TestRunnerToggle(t *testing.T) {
 	if runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n") == nil {
 		t.Error("expected the wrapper awf to render when enabled")
@@ -56,7 +56,7 @@ func TestRunnerToggle(t *testing.T) {
 // The rendered wrapper is a pure forwarder: no per-verb dispatch, no in-place
 // region, exactly one exec form per resolution branch, every one forwarding
 // all arguments verbatim.
-// invariant: rendering/companion-scripts:runner-pure-forwarder
+// invariant: rendering/companion-scripts:runner-pure-forwarder (TestRunnerPureForwarder)
 func TestRunnerPureForwarder(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {
@@ -85,7 +85,7 @@ func TestRunnerPureForwarder(t *testing.T) {
 
 // With vars.awfInvokeCmd set the wrapper execs exactly that command; with it
 // unset it probes the bootstrap pin first and falls back to the PATH awf.
-// invariant: rendering/companion-scripts:runner-resolution-pinned-first
+// invariant: rendering/companion-scripts:runner-resolution-pinned-first (TestRunnerResolutionPinnedFirst)
 func TestRunnerResolutionPinnedFirst(t *testing.T) {
 	configured := runnerFile(t, "prefix: example\nvars:\n  awfInvokeCmd: go run ./cmd/awf\nrunner:\n  enabled: true\n")
 	if configured == nil {
@@ -115,7 +115,7 @@ func TestRunnerResolutionPinnedFirst(t *testing.T) {
 
 // The wrapper renders leak-free (no unresolved token, no stray section/marker
 // residue) - the publication-safety contract every awf template meets.
-// invariant: rendering/companion-scripts:runner-render-publication-safe
+// invariant: rendering/companion-scripts:runner-render-publication-safe (TestRunnerPublicationSafe)
 func TestRunnerPublicationSafe(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {
@@ -135,7 +135,7 @@ func TestRunnerPublicationSafe(t *testing.T) {
 // lock entry whose template id is runner/x.tmpl) backs the file up through the
 // standard backup path - never clobbering a prior backup - instead of deleting
 // it, and still reports the path as pruned.
-// invariant: rendering/companion-scripts:runner-prune-backup
+// invariant: rendering/companion-scripts:runner-prune-backup (TestPruneBacksUpCoOwnedRunner)
 func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -222,7 +222,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 // The runner is a dedicated config-tree render block, not a catalog DocEntry, so it
 // stays out of SingletonKinds() - the unified-doc-model completeness set is
 // unchanged by the runner's existence.
-// invariant: rendering/singletons-and-payloads:singleton-kinds-complete
+// invariant: rendering/singletons-and-payloads:singleton-kinds-complete (TestRunnerNotASingletonKind)
 func TestRunnerNotASingletonKind(t *testing.T) {
 	if slices.Contains(catalog.SingletonKinds(), "runner") {
 		t.Error("the runner must not be a catalog SingletonKind (it is a dedicated render block)")

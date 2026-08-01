@@ -7,7 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
-// invariant: rendering/workflow-skill-templates:phase-transaction-ownership
+// invariant: rendering/workflow-skill-templates:phase-transaction-ownership (TestPhaseTransactionOwnershipAcrossWorkflowSurfaces)
 func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 	renderSurfaces := func(data map[string]any) map[string]string {
 		t.Helper()

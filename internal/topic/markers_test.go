@@ -20,9 +20,9 @@ func markerConfig() *config.CurrentStateConfig {
 	return &config.CurrentStateConfig{Sources: []config.CurrentStateSource{{Globs: []string{"internal/**"}, Marker: "//"}, {Globs: []string{"web/**"}, Marker: "<!--", Close: "-->"}}, TestGlobs: []string{"internal/**/*_test.go"}}
 }
 
-// invariant: invariants/topics-and-markers:invariants-marker-whitespace
-// invariant: invariants/topics-and-markers:invariants-multilang-scan
-// invariant: invariants/topics-and-markers:touches-marker-advisory
+// invariant: invariants/topics-and-markers:invariants-marker-whitespace (TestBuildMarkerIndex)
+// invariant: invariants/topics-and-markers:invariants-multilang-scan (TestBuildMarkerIndex)
+// invariant: invariants/topics-and-markers:touches-marker-advisory (TestBuildMarkerIndex)
 func TestBuildMarkerIndex(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// an ordinary comment\n// state machine transition\n// invariant checking helper\n// touches-stateful code\n // state: alpha/contracts:rule\n// touches-state: alpha/contracts:stable - reviewed here\n")
@@ -94,7 +94,7 @@ func TestBuildMarkerIndexWrapsDescendantWalkError(t *testing.T) {
 	}
 }
 
-// invariant: invariants/topics-and-markers:proof-marker-test-scoped
+// invariant: invariants/topics-and-markers:proof-marker-test-scoped (TestBuildMarkerIndexRejected)
 func TestBuildMarkerIndexRejected(t *testing.T) {
 	cases := map[string]struct {
 		back       Backing
@@ -125,10 +125,10 @@ func TestBuildMarkerIndexRejected(t *testing.T) {
 	}
 }
 
-// invariant: invariants/topics-and-markers:backed-requires-proof
-// invariant: invariants/topics-and-markers:invariants-three-state
-// invariant: invariants/topics-and-markers:invariants-unbacked-detected
-// invariant: invariants/topics-and-markers:unbacked-refuses-proof
+// invariant: invariants/topics-and-markers:backed-requires-proof (TestBuildMarkerIndexBackingObligations)
+// invariant: invariants/topics-and-markers:invariants-three-state (TestBuildMarkerIndexBackingObligations)
+// invariant: invariants/topics-and-markers:invariants-unbacked-detected (TestBuildMarkerIndexBackingObligations)
+// invariant: invariants/topics-and-markers:unbacked-refuses-proof (TestBuildMarkerIndexBackingObligations)
 func TestBuildMarkerIndexBackingObligations(t *testing.T) {
 	if _, err := BuildMarkerIndex(t.TempDir(), markerCorpus(TestBacking), nil); err == nil {
 		t.Fatal("missing proof accepted")
@@ -150,8 +150,8 @@ func TestSortSitesKindTie(t *testing.T) {
 	}
 }
 
-// invariant: invariants/topics-and-markers:invariant-marker-close-token
-// invariant: invariants/topics-and-markers:invariants-marker-literal
+// invariant: invariants/topics-and-markers:invariant-marker-close-token (TestMarkerPayloadClosingToken)
+// invariant: invariants/topics-and-markers:invariants-marker-literal (TestMarkerPayloadClosingToken)
 func TestMarkerPayloadClosingToken(t *testing.T) {
 	src := config.CurrentStateSource{Marker: "/*", Close: "*/"}
 	if got, ok := markerPayload("/* state: alpha/contracts:rule */", src); !ok || got != "state: alpha/contracts:rule" {
