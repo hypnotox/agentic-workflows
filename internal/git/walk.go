@@ -100,7 +100,7 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		include := r.prefix == "" || len(nc.Changes) != 0
 		if r.prefix != "" && nc.IsMerge {
 			include, err = mergeTouchesPrefix(c, r.prefix)
-			if err != nil { // coverage-ignore: range iteration already resolved this merge and its first parent trees
+			if err != nil {
 				return err
 			}
 		}
@@ -237,7 +237,7 @@ func toCommit(c *object.Commit, prefix string) (Commit, error) {
 
 func mergeTouchesPrefix(c *object.Commit, prefix string) (bool, error) {
 	curTree, err := c.Tree()
-	if err != nil { // coverage-ignore: range iteration already resolved the merge commit tree
+	if err != nil {
 		return false, err
 	}
 	parent, err := c.Parent(0)
@@ -245,11 +245,11 @@ func mergeTouchesPrefix(c *object.Commit, prefix string) (bool, error) {
 		return false, err
 	}
 	parentTree, err := parent.Tree()
-	if err != nil { // coverage-ignore: range iteration already resolved the first-parent commit tree
+	if err != nil {
 		return false, err
 	}
 	changes, err := object.DiffTree(parentTree, curTree)
-	if err != nil { // coverage-ignore: diffing two resolved trees does not fail
+	if err != nil { // coverage-ignore: diffing two resolved top-level trees compares their entries without loading descendant objects
 		return false, err
 	}
 	for _, change := range changes {

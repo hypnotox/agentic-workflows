@@ -186,6 +186,35 @@ func TestRangeCommitsNestedScopeKeepsRelevantMerges(t *testing.T) {
 	}
 }
 
+func TestRangeCommitsNestedMergeReportsTreeErrors(t *testing.T) {
+	for _, name := range []string{"merge result tree", "first parent tree"} {
+		t.Run(name, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			dir := repo.Root()
+			base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/base.txt": "base\n"})
+			main := gitfixture.Commit(t, repo, "main", map[string]string{"nested/main.txt": "main\n"})
+			gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+			feature := gitfixture.Commit(t, repo, "feature", map[string]string{"nested/feature.txt": "feature\n"})
+			gitfixture.StageFile(t, repo, "nested/main.txt", "main\n", 0o644)
+			merge := gitfixture.Merge(t, repo, "Merge feature", main, feature)
+
+			var hash string
+			switch name {
+			case "merge result tree":
+				hash = gitfixture.TreeHash(t, repo, merge)
+			case "first parent tree":
+				hash = gitfixture.TreeHash(t, repo, main)
+			}
+			if err := os.Remove(filepath.Join(dir, ".git", "objects", hash[:2], hash[2:])); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), "master", "HEAD"); err == nil {
+				t.Fatal("nested merge with missing tree object accepted")
+			}
+		})
+	}
+}
+
 func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
