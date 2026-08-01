@@ -440,10 +440,17 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 	if strings.Contains(body, "AWF_PREP_BRIDGE") || strings.Contains(body, "prep=") {
 		t.Fatal("pre-commit still carries preparation-only bridge behavior")
 	}
-	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "check_slice \"$tmp/examples/sundial\"", "bash \"$staged_helper\"", "exec bash .awf/hooks/pre-commit.sh"} {
-		if !strings.Contains(body, required) {
+	last := -1
+	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "check_slice \"$tmp/examples/sundial\"", "bash \"$staged_helper\"", "rm -rf -- \"$tmp\"", "trap - EXIT", "exec bash .awf/hooks/pre-commit.sh"} {
+		index := strings.Index(body, required)
+		if index == -1 {
 			t.Errorf("pre-commit missing permanent step %q", required)
+			continue
 		}
+		if index <= last {
+			t.Errorf("pre-commit step %q appears before its required predecessor", required)
+		}
+		last = index
 	}
 }
 
@@ -465,6 +472,69 @@ func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "staged slice is missing .githooks/check-nested-staged") {
 		t.Fatalf("missing-helper diagnostic = %q", out)
+	}
+}
+
+func TestRepositoryPreCommitRemovesSliceBeforePayload(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	helperPath, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "check-nested-staged"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	helper, err := os.ReadFile(helperPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(t.TempDir(), "payload-ran")
+	gitfixture.StageFile(t, repo, ".githooks/check-nested-staged", string(helper), 0o755)
+	gitfixture.Stage(t, repo, map[string]string{
+		"examples/sundial/.keep":   "\n",
+		".awf/hooks/pre-commit.sh": "#!/bin/sh\nif [ -n \"$(find \"$TMPDIR\" -mindepth 1 -maxdepth 1 -print -quit)\" ]; then\n  echo \"payload inherited staged slice\" >&2\n  exit 1\nfi\ntouch \"$AWF_PAYLOAD_MARKER\"\n",
+	})
+
+	tools := t.TempDir()
+	wrapper := filepath.Join(tools, "awf-wrapper")
+	if err := os.WriteFile(wrapper, []byte("#!/bin/sh\nif [ \"$1\" = check ]; then exit 0; fi\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeGo := filepath.Join(tools, "go")
+	fakeGoBody := `#!/bin/sh
+out=
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = -o ]; then out="$2"; shift 2; continue; fi
+	shift
+done
+if [ -z "$out" ]; then exit 0; fi
+cp "$AWF_HOOK_WRAPPER" "$out"
+chmod +x "$out"
+`
+	if err := os.WriteFile(fakeGo, []byte(fakeGoBody), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpRoot := t.TempDir()
+	cmd := exec.Command("bash", hook)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "AWF_HOOK_WRAPPER="+wrapper, "AWF_PAYLOAD_MARKER="+marker, "TMPDIR="+tmpRoot, "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("pre-commit failed: %v: %s", err, out)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("payload marker: %v", err)
+	}
+	entries, err := os.ReadDir(tmpRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("TMPDIR entries after payload handoff = %v", entries)
 	}
 }
 
