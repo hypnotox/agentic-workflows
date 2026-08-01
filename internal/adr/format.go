@@ -17,6 +17,7 @@ import (
 const (
 	V1FormatMarker = "current-state-v1"
 	V2FormatMarker = "current-state-v2"
+	V3FormatMarker = "current-state-v3"
 )
 
 // v1SectionOrder is the required exact, ordered section set of a
@@ -29,6 +30,16 @@ type governedFrontmatter struct {
 	Format string `yaml:"format"`
 	Status string `yaml:"status"`
 	Date   string `yaml:"date"`
+}
+
+// v3Frontmatter is the closed V3 frontmatter: the governed three keys plus the
+// mandatory slug identity. V1 and V2 keep the narrower closed struct, so a
+// `slug:` key in a pre-V3 record is still an unknown-field rejection.
+type v3Frontmatter struct {
+	Format string `yaml:"format"`
+	Status string `yaml:"status"`
+	Date   string `yaml:"date"`
+	Slug   string `yaml:"slug"`
 }
 
 // ParseV1 parses and validates one current-state-v1 ADR. name is the base
@@ -46,6 +57,38 @@ func ParseV2(name string, data []byte) (ADR, error) {
 	return parseGoverned(name, data, CurrentStateV2)
 }
 
+// ParseV3 parses and validates one current-state-v3 ADR in either identity
+// form: numbered `NNNN-<slug>.md` with a `# ADR-NNNN: <Title>` heading, or
+// pending `<slug>.md` with a `# ADR-<slug>: <Title>` heading. The record's body
+// rules, history grammar, and digest coverage are V2's exactly; what V3 adds is
+// the mandatory `slug:` key and its agreement with the filename and the heading
+// (ADR-0202 items 1 to 3).
+func ParseV3(name string, data []byte) (ADR, error) {
+	a, err := parseGoverned(name, data, CurrentStateV3)
+	if err != nil {
+		return ADR{}, err
+	}
+	if a.Slug == "" {
+		return ADR{}, errors.New("frontmatter slug is required for a current-state-v3 record")
+	}
+	if canonical, err := slugify(a.Slug); err != nil || canonical != a.Slug {
+		return ADR{}, fmt.Errorf("frontmatter slug %q is not in slug form", a.Slug)
+	}
+	fileSlug := strings.TrimSuffix(name, ".md")
+	identity := fileSlug
+	if m := FilenameRe.FindStringSubmatch(name); m != nil {
+		fileSlug, identity = strings.TrimSuffix(strings.TrimPrefix(name, m[1]+"-"), ".md"), m[1]
+	}
+	if fileSlug != a.Slug {
+		return ADR{}, fmt.Errorf("filename %q does not carry the frontmatter slug %q", name, a.Slug)
+	}
+	prefix := "ADR-" + identity + ": "
+	if !strings.HasPrefix(a.Title, prefix) || strings.TrimSpace(strings.TrimPrefix(a.Title, prefix)) == "" {
+		return ADR{}, fmt.Errorf("heading must be `# %s<Title>`, got %q", prefix, "# "+a.Title)
+	}
+	return a, nil
+}
+
 func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 	fm, body, err := parseGovernedFrontmatter(data, format)
 	if err != nil {
@@ -55,7 +98,7 @@ func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 		return ADR{}, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Format: format, Status: fm.Status, Date: fm.Date, Sections: parsed.bodies, Filename: name}
+	a := ADR{Format: format, Status: fm.Status, Date: fm.Date, Slug: fm.Slug, Sections: parsed.bodies, Filename: name}
 	if decision, ok := parsed.ranges["Decision"]; ok {
 		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
 	}
@@ -76,7 +119,7 @@ func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 		return ADR{}, err
 	}
 	a.Operations, a.NoneState = ops, none
-	if format == CurrentStateV2 {
+	if a.HasV2Semantics() {
 		a.History, err = parseV2History(a.Sections["Status history"], ops)
 	} else {
 		a.History, err = parseStatusHistory(a.Sections["Status history"])
@@ -84,7 +127,7 @@ func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 	if err != nil {
 		return ADR{}, err
 	}
-	if format == CurrentStateV2 {
+	if a.HasV2Semantics() {
 		err = validateV2History(a)
 	} else {
 		err = validateV1History(a)
@@ -100,7 +143,7 @@ func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 // reaches a terminal status. Past its freeze point a record's five
 // content-sha256 sections are locked at their before-state digest (ADR-0188).
 func FrozenContentEqual(before, after ADR) bool {
-	if before.Format == CurrentStateV2 {
+	if before.HasV2Semantics() {
 		return !terminalStatus(before.Status) || ContentDigest(before.Sections) == ContentDigest(after.Sections)
 	}
 	return before.Status == statusProposed || ContentDigest(before.Sections) == ContentDigest(after.Sections)
@@ -130,7 +173,7 @@ func HistoryTransitionValidAggregate(before, after ADR) bool {
 // Implementing (ADR-0188), or an exact before prefix plus the required event
 // shape when the status follows a legal lifecycle edge.
 func HistoryTransitionValid(before, after ADR) bool {
-	if after.Format != CurrentStateV2 {
+	if !after.HasV2Semantics() {
 		if before.Status == after.Status {
 			return historiesEqual(before.History, after.History)
 		}
@@ -175,6 +218,14 @@ func HistoryTransitionValid(before, after ADR) bool {
 	return false // coverage-ignore: every legal V2 transition target is handled by the closed switch
 }
 
+// HistoriesEqual reports whether a pair's Status history is byte-identical.
+// The numbering transition takes this rather than either append-tolerant
+// variant: numbering touches no history event, so the pair's history must not
+// move at all (ADR-0202 item 9).
+func HistoriesEqual(before, after ADR) bool {
+	return historiesEqual(before.History, after.History)
+}
+
 func historiesEqual(a, b []HistoryEvent) bool {
 	return slices.EqualFunc(a, b, func(x, y HistoryEvent) bool {
 		return x.Kind == y.Kind && x.Date == y.Date && x.Status == y.Status &&
@@ -184,17 +235,30 @@ func historiesEqual(a, b []HistoryEvent) bool {
 }
 
 // FormatBoundaries are the immutable ADR format cutoffs from one snapshot.
-// A zero V2From leaves every governed record in the V1 region.
+// A zero V2From leaves every governed record in the V1 region; a zero V3From
+// leaves every numbered governed record at or below the V2 region. The set is
+// ordered V1From <= V2From <= V3From (ADR-0202 item 1).
 type FormatBoundaries struct {
 	V1From int
 	V2From int
+	V3From int
 }
 
-// ParseRecord routes by the V1 and V2 format boundaries.
+// ParseRecord routes a numbered record by the numeric format boundaries and a
+// numberless one by its declared `format:` marker: a pending record has no
+// number to route by, so `current-state-v3` is the only legal numberless
+// declaration and anything else is a corpus error (ADR-0202 item 4).
 func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, error) {
-	num := 0
-	if m := FilenameRe.FindStringSubmatch(name); m != nil {
-		num, _ = strconv.Atoi(m[1]) // the regex admits only four digits
+	m := FilenameRe.FindStringSubmatch(name)
+	if m == nil {
+		if peekFormat(data) == V3FormatMarker {
+			return ParseV3(name, data)
+		}
+		return ADR{}, ErrNotADRRecord(name)
+	}
+	num, _ := strconv.Atoi(m[1]) // the regex admits only four digits
+	if boundaries.V3From > 0 && num >= boundaries.V3From {
+		return ParseV3(name, data)
 	}
 	if boundaries.V2From > 0 && num >= boundaries.V2From {
 		return ParseV2(name, data)
@@ -207,44 +271,62 @@ func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, er
 		return ADR{}, err
 	}
 	if a.IsGoverned() {
-		marker := V1FormatMarker
-		if a.IsV2() {
-			marker = V2FormatMarker
-		}
-		return ADR{}, fmt.Errorf("ADR-%s is below the format cutoff %d but declares %s", a.Number, boundaries.V1From, marker)
+		return ADR{}, fmt.Errorf("ADR-%s is below the format cutoff %d but declares %s", a.Number, boundaries.V1From, FormatMarker(a.Format))
 	}
 	a.Format = Legacy
 	return a, nil
 }
 
+// peekFormat returns the declared `format:` frontmatter value, or the empty
+// string when the file carries no parseable frontmatter. Routing a numberless
+// file needs only the marker, and a file with no usable frontmatter must reach
+// the not-an-ADR-record error rather than a YAML complaint about a file that
+// was never meant to be a record.
+func peekFormat(data []byte) string {
+	var fm adrFrontmatter
+	_, found, err := frontmatter.Parse(data, &fm)
+	if !found || err != nil {
+		return ""
+	}
+	return fm.Format
+}
+
 // parseV1Frontmatter strictly decodes the closed frontmatter, rejecting any
 // unknown key, an absent or wrong format marker, an unknown status, or a
 // non-`YYYY-MM-DD` date.
-func parseGovernedFrontmatter(data []byte, format Format) (governedFrontmatter, []byte, error) {
+func parseGovernedFrontmatter(data []byte, format Format) (v3Frontmatter, []byte, error) {
 	block, body, found := frontmatter.Split(data)
 	if !found {
-		return governedFrontmatter{}, nil, errors.New("missing frontmatter")
+		return v3Frontmatter{}, nil, errors.New("missing frontmatter")
 	}
 	dec := yaml.NewDecoder(bytes.NewReader(block))
 	dec.KnownFields(true)
-	var fm governedFrontmatter
-	if err := dec.Decode(&fm); err != nil {
-		return governedFrontmatter{}, nil, fmt.Errorf("frontmatter: %w", err)
+	var fm v3Frontmatter
+	if format == CurrentStateV3 {
+		if err := dec.Decode(&fm); err != nil {
+			return v3Frontmatter{}, nil, fmt.Errorf("frontmatter: %w", err)
+		}
+	} else {
+		var narrow governedFrontmatter
+		if err := dec.Decode(&narrow); err != nil {
+			return v3Frontmatter{}, nil, fmt.Errorf("frontmatter: %w", err)
+		}
+		fm = v3Frontmatter{Format: narrow.Format, Status: narrow.Status, Date: narrow.Date}
 	}
 	marker := V1FormatMarker
 	known := v1StatusKnown
-	if format == CurrentStateV2 {
-		marker = V2FormatMarker
+	if format != CurrentStateV1 {
+		marker = FormatMarker(format)
 		known = func(status string) bool { return v2Statuses[status] }
 	}
 	if fm.Format != marker {
-		return governedFrontmatter{}, nil, fmt.Errorf("frontmatter format must be %q, got %q", marker, fm.Format)
+		return v3Frontmatter{}, nil, fmt.Errorf("frontmatter format must be %q, got %q", marker, fm.Format)
 	}
 	if !known(fm.Status) {
-		return governedFrontmatter{}, nil, fmt.Errorf("invalid status %q", fm.Status)
+		return v3Frontmatter{}, nil, fmt.Errorf("invalid status %q", fm.Status)
 	}
 	if _, err := time.Parse("2006-01-02", fm.Date); err != nil {
-		return governedFrontmatter{}, nil, fmt.Errorf("invalid date %q", fm.Date)
+		return v3Frontmatter{}, nil, fmt.Errorf("invalid date %q", fm.Date)
 	}
 	return fm, body, nil
 }

@@ -32,8 +32,10 @@ func RenderIndexMD(corpus Corpus) string {
 	return sb.String()
 }
 
-// renderIndexSection writes one INDEX.md section: a heading, then either one
-// number-sorted bullet per ADR or the empty-section placeholder.
+// renderIndexSection writes one INDEX.md section: a heading, then one bullet
+// per ADR or the empty-section placeholder. Numbered records sort first by
+// number and pending records follow alphabetically by slug, so the numbered
+// corpus reads unchanged and the not-yet-numbered tail is grouped (ADR-0202).
 func renderIndexSection(sb *strings.Builder, heading string, adrs []ADR, empty string) {
 	fmt.Fprintf(sb, "## %s\n\n", heading)
 	if len(adrs) == 0 {
@@ -41,7 +43,16 @@ func renderIndexSection(sb *strings.Builder, heading string, adrs []ADR, empty s
 		sb.WriteString("\n")
 		return
 	}
-	sort.Slice(adrs, func(i, j int) bool { return adrs[i].Number < adrs[j].Number })
+	sort.Slice(adrs, func(i, j int) bool {
+		a, b := adrs[i], adrs[j]
+		if (a.Number == "") != (b.Number == "") {
+			return b.Number == ""
+		}
+		if a.Number == "" {
+			return a.Slug < b.Slug
+		}
+		return a.Number < b.Number
+	})
 	for _, a := range adrs {
 		fmt.Fprintf(sb, "- [%s](%s) (%s)\n", a.Title, a.Filename, a.Status)
 	}

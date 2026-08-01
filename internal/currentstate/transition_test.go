@@ -620,3 +620,27 @@ func TestRevisedByCanonicalReorderIsNotAMutation(t *testing.T) {
 		t.Fatalf("a membership change without an operation must stay a mutation finding:\n%s", got)
 	}
 }
+
+// A slugless record whose number was taken is renumbered into the v3 range,
+// where the cutoff decides format by number, so it must acquire the v3 encoding
+// and a slug in the same transition. The canonical digest excludes frontmatter
+// and the heading, so it is unmoved, and that is what pairs the two ends as a
+// rename rather than as an unrelated deletion and addition.
+func TestCheckPairRenumberAcrossTheV3Cutoff(t *testing.T) {
+	sections := map[string]string{"Decision": "one body, two numbers"}
+	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
+	before := adr.ADR{Number: "0199", Format: adr.CurrentStateV2, Status: "Proposed", Sections: sections, History: history}
+	after := adr.ADR{Number: "0205", Slug: "proof-markers", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+	if f := currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("renumber across the v3 cutoff must be finding-free:\n%s", messages(f))
+	}
+
+	// Both halves are required, or the exception would license an ordinary
+	// in-place format edit. A format change that keeps the number is still
+	// refused even though it gains a slug.
+	sameNumber := after
+	sameNumber.Number = before.Number
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{sameNumber}), currentstate.AuthoredCommit)); !strings.Contains(got, "changed governed format") {
+		t.Fatalf("in-place format change must stay refused:\n%s", got)
+	}
+}

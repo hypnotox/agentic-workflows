@@ -342,8 +342,8 @@ func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Pa
 // approved seams. It only computes; TestCorpusParsedOnce is what asserts.
 func parseDirProblems(callers map[callOwner][]string) []string {
 	want := map[callOwner]bool{
-		{path: "internal/adr/corpus.go", name: "LoadCorpus"}: true,
-		{path: "internal/adr/adr.go", name: "NextNumber"}:    true,
+		{path: "internal/adr/corpus.go", name: "LoadCorpus"}:      true,
+		{path: "internal/adr/adr.go", name: "loadIdentityCorpus"}: true,
 	}
 	var problems []string
 	for owner, positions := range callers {
@@ -373,9 +373,11 @@ func replaceMutationSource(t *testing.T, rel, old, replacement string) string {
 
 // TestCorpusParsedOnce enforces ADR-0130 item 1: one parse per invocation.
 // adr.ParseDir has no production caller outside internal/adr - every consumer
-// enters through Corpus construction - and inside internal/adr only that seam
-// and NextNumber call it. NextNumber is the command-boundary exception that
-// holds no active topic corpus.
+// enters through Corpus construction - and inside internal/adr only the two
+// construction seams call it: LoadCorpus, the full-body read every consumer of
+// a governed record enters through, and loadIdentityCorpus, the identity-only
+// read scaffolding uses so authoring never depends on another record's body
+// parsing (ADR-0202 item 17).
 // invariant: adr-system/adr-lifecycle:corpus-parsed-once (TestCorpusParsedOnce)
 func TestCorpusParsedOnce(t *testing.T) {
 	pkgs := loadProductionPackages(t)
@@ -414,14 +416,14 @@ func mutationParseDir() {
 		t.Fatalf("aliased ParseDir invocation escaped the production detector: %#v", got)
 	}
 
-	const nextParseCall = "func NextNumber(dir string) (string, error) {\n\tadrs, err := ParseDir(dir)\n"
-	withoutNext := replaceMutationSource(t, "internal/adr/adr.go", nextParseCall, "func NextNumber(dir string) (string, error) {\n\tvar adrs []ADR\n\tvar err error\n")
-	withoutNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", withoutNext)
-	if problems := parseDirProblems(parseDirCallFindings(withoutNextPkgs)); len(problems) != 1 ||
-		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once") {
+	const identityParseCall = "func loadIdentityCorpus(dir string) (Corpus, error) {\n\tadrs, err := ParseDir(dir)\n"
+	withoutIdentity := replaceMutationSource(t, "internal/adr/adr.go", identityParseCall, "func loadIdentityCorpus(dir string) (Corpus, error) {\n\tvar adrs []ADR\n\tvar err error\n")
+	withoutIdentityPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", withoutIdentity)
+	if problems := parseDirProblems(parseDirCallFindings(withoutIdentityPkgs)); len(problems) != 1 ||
+		!strings.Contains(strings.Join(problems, "\n"), "loadIdentityCorpus must call ParseDir exactly once") {
 		// LoadCorpus is in corpus.go and remains visible, so only the missing
 		// call should be reported.
-		t.Fatalf("removed NextNumber call escaped cardinality proof: %#v", problems)
+		t.Fatalf("removed loadIdentityCorpus call escaped cardinality proof: %#v", problems)
 	}
 
 	extraFunction := replaceMutationSource(t, "internal/adr/adr.go", "\nfunc NextNumber(dir string)", `
@@ -436,11 +438,11 @@ func NextNumber(dir string)`)
 		t.Fatalf("additional adr.go function call escaped enclosing-function proof: %#v", problems)
 	}
 
-	duplicateNext := replaceMutationSource(t, "internal/adr/adr.go", nextParseCall, nextParseCall+"\t_, _ = ParseDir(dir)\n")
-	duplicateNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", duplicateNext)
-	if problems := parseDirProblems(parseDirCallFindings(duplicateNextPkgs)); len(problems) != 1 ||
-		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once; found 2") {
-		t.Fatalf("duplicate NextNumber ParseDir call escaped cardinality proof: %#v", problems)
+	duplicateIdentity := replaceMutationSource(t, "internal/adr/adr.go", identityParseCall, identityParseCall+"\t_, _ = ParseDir(dir)\n")
+	duplicateIdentityPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", duplicateIdentity)
+	if problems := parseDirProblems(parseDirCallFindings(duplicateIdentityPkgs)); len(problems) != 1 ||
+		!strings.Contains(strings.Join(problems, "\n"), "loadIdentityCorpus must call ParseDir exactly once; found 2") {
+		t.Fatalf("duplicate loadIdentityCorpus ParseDir call escaped cardinality proof: %#v", problems)
 	}
 }
 
@@ -578,7 +580,7 @@ func TestApplicationProjectionContracts(t *testing.T) {
 		}
 	}
 
-	corpus := adr.NewCorpus([]adr.ADR{implementing, errors[1]})
+	corpus := mustCorpusOf([]adr.ADR{implementing, errors[1]})
 	got, found, err := corpus.OperationProgress("0002")
 	if err != nil || !found || len(got.Applied) != 1 {
 		t.Fatalf("corpus progress = %#v, found=%v err=%v", got, found, err)
@@ -640,7 +642,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	}
 	invalid := record("0007", "Invalid", "Implemented", "update")
 	invalid.History = nil
-	corpus := adr.NewCorpus([]adr.ADR{
+	corpus := mustCorpusOf([]adr.ADR{
 		invalid,
 		record("0003", "Revise claim", "Implemented", "update"),
 		record("0004", "Ignored proposal", "Proposed", "remove"),
@@ -650,22 +652,22 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	})
 
 	got, ok := corpus.ClaimOperationHistory(claimID)
-	if !ok || got.Origin == nil || got.Origin.Number != "0001" || got.Origin.Status != "Implemented" {
+	if !ok || got.Origin == nil || got.Origin.Identity != "0001" || got.Origin.Status != "Implemented" {
 		t.Fatalf("origin = %#v, found %v", got.Origin, ok)
 	}
-	if len(got.RevisedBy) != 2 || got.RevisedBy[0].Number != "0002" || got.RevisedBy[1].Number != "0003" {
+	if len(got.RevisedBy) != 2 || got.RevisedBy[0].Identity != "0002" || got.RevisedBy[1].Identity != "0003" {
 		t.Fatalf("revisions = %#v", got.RevisedBy)
 	}
-	if got.LegacyBaseline || got.RemovedBy == nil || got.RemovedBy.Number != "0005" {
+	if got.LegacyBaseline || got.RemovedBy == nil || got.RemovedBy.Identity != "0005" {
 		t.Fatalf("history = %#v", got)
 	}
-	legacy, ok := adr.NewCorpus([]adr.ADR{record("0006", "Remove legacy claim", "Implemented", "remove")}).ClaimOperationHistory(claimID)
-	if !ok || !legacy.LegacyBaseline || legacy.Origin != nil || legacy.RemovedBy == nil || legacy.RemovedBy.Number != "0006" {
+	legacy, ok := mustCorpusOf([]adr.ADR{record("0006", "Remove legacy claim", "Implemented", "remove")}).ClaimOperationHistory(claimID)
+	if !ok || !legacy.LegacyBaseline || legacy.Origin != nil || legacy.RemovedBy == nil || legacy.RemovedBy.Identity != "0006" {
 		t.Fatalf("legacy baseline history = %#v, found %v", legacy, ok)
 	}
-	got.RevisedBy[0].Number = "mutated"
+	got.RevisedBy[0].Identity = "mutated"
 	again, _ := corpus.ClaimOperationHistory(claimID)
-	if again.RevisedBy[0].Number != "0002" {
+	if again.RevisedBy[0].Identity != "0002" {
 		t.Fatalf("revision slice aliases a prior result: %#v", again.RevisedBy)
 	}
 	if _, ok := corpus.ClaimOperationHistory("tooling/query:unknown"); ok {
@@ -684,8 +686,8 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	}
 	pending := partial
 	pending.Number, pending.Status, pending.History = "0009", "Proposed", []adr.HistoryEvent{{Kind: adr.HistoryStatus, Status: "Proposed"}}
-	partialHistory, ok := adr.NewCorpus([]adr.ADR{partial, pending}).ClaimOperationHistory(claimID)
-	if !ok || partialHistory.RemovedBy == nil || partialHistory.RemovedBy.Number != "0008" || partialHistory.RemovedBy.Status != "Abandoned" {
+	partialHistory, ok := mustCorpusOf([]adr.ADR{partial, pending}).ClaimOperationHistory(claimID)
+	if !ok || partialHistory.RemovedBy == nil || partialHistory.RemovedBy.Identity != "0008" || partialHistory.RemovedBy.Status != "Abandoned" {
 		t.Fatalf("partial abandonment operation history = %#v, found=%v", partialHistory, ok)
 	}
 }
@@ -796,4 +798,14 @@ func TestAuditSharesADRParser(t *testing.T) {
 	if !strings.Contains(body, "adr.ParseBytes(") {
 		t.Error("internal/audit no longer calls adr.ParseBytes - has the shared seam moved?")
 	}
+}
+
+// mustCorpusOf builds a corpus from a fixture slice, panicking on a duplicate
+// identity no fixture here intends to declare.
+func mustCorpusOf(adrs []adr.ADR) adr.Corpus {
+	c, err := adr.NewCorpus(adrs)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }

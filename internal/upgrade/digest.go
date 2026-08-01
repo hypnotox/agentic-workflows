@@ -123,7 +123,7 @@ func collectADRs(root, decisions string, universe map[string]bool) error {
 		if err != nil { // coverage-ignore: after the optional missing root, only a permission or concurrent-removal fault reaches here
 			return err
 		}
-		if de.IsDir() || !adr.FilenameRe.MatchString(de.Name()) {
+		if de.IsDir() || adr.FileIdentity(de.Name()) == "" {
 			return nil
 		}
 		rel, _ := filepath.Rel(root, path)

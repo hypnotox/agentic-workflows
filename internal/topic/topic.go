@@ -19,7 +19,8 @@ import (
 var (
 	kebabRE        = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 	claimHeadingRE = regexp.MustCompile("^### `((?:rule|invariant)): ([a-z0-9]+(?:-[a-z0-9]+)*)`$")
-	adrRE          = regexp.MustCompile(`^ADR-([0-9]{4})$`)
+	adrRE          = regexp.MustCompile(`^ADR-([a-z0-9]+(?:-[a-z0-9]+)*)$`)
+	allDigitsRE    = regexp.MustCompile(`^[0-9]+$`)
 	claimIDRE      = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$`)
 	headingRE      = regexp.MustCompile(`^#{1,3}(?: |$)`)
 )
@@ -294,11 +295,10 @@ func parseClaim(id TopicID, typ ClaimType, slug string, lines []string) (Claim, 
 	if err != nil {
 		return Claim{}, err
 	}
-	m := adrRE.FindStringSubmatch(origin)
-	if m == nil {
-		return Claim{}, fmt.Errorf("origin must be ADR-NNNN; got %q", origin)
+	c.Origin, err = parseADRRef(origin)
+	if err != nil {
+		return Claim{}, fmt.Errorf("origin must be ADR-NNNN or ADR-<slug>; got %q", origin)
 	}
-	c.Origin = m[1]
 	if pos < len(meta) && strings.HasPrefix(meta[pos], "Revised-by: ") {
 		v, _ := need("Revised-by: ")
 		c.RevisedBy, err = parseADRList(v)
@@ -360,21 +360,37 @@ func reservedMetadata(line string) bool {
 	}
 	return false
 }
+
+// parseADRRef reads one ADR provenance reference in either identity form: the
+// four-digit number of a numbered record, or the slug of a pending record
+// awaiting its number at integration (ADR-0202 item 10). A purely numeric token
+// of any other length is neither form and is rejected, so a mistyped number can
+// never be read as a slug.
+func parseADRRef(s string) (string, error) {
+	m := adrRE.FindStringSubmatch(s)
+	if m == nil {
+		return "", fmt.Errorf("expected ADR-NNNN or ADR-<slug>; got %q", s)
+	}
+	if allDigitsRE.MatchString(m[1]) && len(m[1]) != 4 {
+		return "", fmt.Errorf("expected ADR-NNNN or ADR-<slug>; got %q", s)
+	}
+	return m[1], nil
+}
+
 func parseADRList(v string) ([]string, error) {
 	parts := strings.Split(v, ",")
 	out := make([]string, 0, len(parts))
 	seen := map[string]bool{}
 	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		m := adrRE.FindStringSubmatch(p)
-		if m == nil {
-			return nil, fmt.Errorf("expected ADR-NNNN; got %q", p)
+		ref, err := parseADRRef(strings.TrimSpace(p))
+		if err != nil {
+			return nil, err
 		}
-		if seen[m[1]] {
-			return nil, fmt.Errorf("duplicate ADR-%s", m[1])
+		if seen[ref] {
+			return nil, fmt.Errorf("duplicate ADR-%s", ref)
 		}
-		seen[m[1]] = true
-		out = append(out, m[1])
+		seen[ref] = true
+		out = append(out, ref)
 	}
 	return out, nil
 }

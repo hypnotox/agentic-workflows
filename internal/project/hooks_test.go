@@ -27,23 +27,27 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 	return found
 }
 
-// With the singleton enabled, exactly the three payloads render under
-// .awf/hooks/; absent or disabled, none do.
+// With the singleton enabled, exactly the four payloads render under
+// .awf/hooks/; absent or disabled, none do. The expected set is spelled out
+// rather than derived from hookNames, which would make the assertion agree with
+// whatever that list happens to say: the claim names these paths, so the test
+// has to name them too for a wrong set to be able to fail.
 // invariant: rendering/singletons-and-payloads:hook-payloads-rendered (TestHookPayloadsRendered)
 func TestHookPayloadsRendered(t *testing.T) {
-	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
-	for _, name := range hookNames {
+	want := []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit"}
+	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n")
+	for _, name := range want {
 		if _, ok := got[name]; !ok {
 			t.Errorf("expected .awf/hooks/%s.sh to render when enabled", name)
 		}
 	}
-	if len(got) != len(hookNames) {
-		t.Errorf("rendered %d payloads, want exactly %d: %v", len(got), len(hookNames), got)
+	if len(got) != len(want) {
+		t.Errorf("rendered %d payloads, want exactly %d: %v", len(got), len(want), got)
 	}
 
 	for _, cfg := range []string{
-		"prefix: example\n",
-		"prefix: example\nhooks:\n  enabled: false\n",
+		"prefix: example\nintegrationBranch: main\n",
+		"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: false\n",
 	} {
 		if got := hookFiles(t, cfg); len(got) != 0 {
 			t.Errorf("expected no hook payloads for config %q, got %v", cfg, got)
@@ -60,15 +64,16 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 	for _, tc := range []struct {
 		name, config, awf string
 	}{
-		{"runner enabled", "prefix: example\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "./awf"},
-		{"runner disabled", "prefix: example\nhooks:\n  enabled: true\n", "awf"},
+		{"runner enabled", "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "./awf"},
+		{"runner disabled", "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n", "awf"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
 			wantCmds := map[string][]string{
-				"pre-commit": {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " check prose\n", tc.awf + " check memory\n"},
-				"commit-msg": {tc.awf + ` check commit "$1"` + "\n"},
-				"pre-push":   {tc.awf + " check\n"},
+				"pre-commit":       {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " check prose\n", tc.awf + " check memory\n"},
+				"commit-msg":       {tc.awf + ` check commit "$1"` + "\n"},
+				"pre-push":         {tc.awf + " check\n"},
+				"pre-merge-commit": {tc.awf + " check --staged\n"},
 			}
 			for name, f := range got {
 				lines := strings.Split(f.Content, "\n")
@@ -98,6 +103,7 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 // pin-aware shim.
 func TestHookPayloadsUseConfiguredCommands(t *testing.T) {
 	got := hookFiles(t, `prefix: example
+integrationBranch: main
 vars:
   checkCmd: ./x check
   gateCmd: ./x gate
@@ -109,9 +115,10 @@ hooks:
   enabled: true
 `)
 	want := map[string][]string{
-		"pre-commit": {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n./x memory-gate\n"},
-		"commit-msg": {"./x commit-gate \"$1\"\n"},
-		"pre-push":   {"./x gate full\n"},
+		"pre-commit":       {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n./x memory-gate\n"},
+		"commit-msg":       {"./x commit-gate \"$1\"\n"},
+		"pre-push":         {"./x gate full\n"},
+		"pre-merge-commit": {"./x check --staged\n"},
 	}
 	for name, f := range got {
 		for _, w := range want[name] {
@@ -124,7 +131,7 @@ hooks:
 		}
 	}
 	// pre-push falls back through the chain: gateCmd when gateCmdFull is unset.
-	chain := hookFiles(t, "prefix: example\nvars:\n  gateCmd: ./x gate\nhooks:\n  enabled: true\n")
+	chain := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\nhooks:\n  enabled: true\n")
 	if f := chain["pre-push"]; !strings.Contains(f.Content, "./x gate\n") {
 		t.Errorf("pre-push: want gateCmd fallback, got:\n%s", f.Content)
 	}

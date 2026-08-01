@@ -20,9 +20,9 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 		yaml     string
 		wantNote bool
 	}{
-		"present-empty": {"prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n", true},
-		"present-null":  {"prefix: example\nvars: {testCmd: go test ./..., gateCmd: null}\nskills: [tdd]\nagents: []\n", true},
-		"absent":        {"prefix: example\nvars: {testCmd: go test ./...}\nskills: [tdd]\nagents: []\n", false},
+		"present-empty": {"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n", true},
+		"present-null":  {"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: null}\nskills: [tdd]\nagents: []\n", true},
+		"absent":        {"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./...}\nskills: [tdd]\nagents: []\n", false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p, err := Open(testContext(t), scaffold(t, tc.yaml))
@@ -50,7 +50,7 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 // Adapter duplicates collapse: with two targets the same skill renders twice
 // under one template id and must produce a single note.
 func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {gateCmd: \"\", testCmd: \"\"}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: \"\", testCmd: \"\"}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
 // note itself, not the template id, or the second local artifact is silently
 // skipped.
 func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {alpha: \"\", beta: \"\", gamma: \"\"}\nskills: []\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {alpha: \"\", beta: \"\", gamma: \"\"}\nskills: []\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
 }
 
 func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n",
 		map[string]string{
 			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
 		})
@@ -120,7 +120,7 @@ func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
 // RenderAll never does - so a malformed ADR under a declared domain must surface
 // as an error here rather than being swallowed.
 func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-bad.md"),
 		"---\nstatus: {bad\n---\n# ADR-0001: Bad\n")
 	p, err := Open(testContext(t), root)
@@ -136,7 +136,7 @@ func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
 // per adapter target (inv: stub-notes-path-keyed).
 func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 	root := scaffoldFiles(t,
-		"prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n",
+		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n",
 		map[string]string{
 			"skills/parts/tdd/notes.md": "<!-- awf:stub -->\nstarter notes\n",
 		})
@@ -191,7 +191,7 @@ func TestStubNotesDefaultsClauseUnit(t *testing.T) {
 // line, sections in template order; a stub-marked part moves its section into
 // the parts clause.
 func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
-	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [development]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [development]\n"
 	p, err := Open(testContext(t), scaffold(t, cfg))
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +223,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 // Domain docs render outside RenderAll; their stub current-state default must
 // still reach the advisory.
 func TestStubNotesDomainDocs(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestStubNotesDomainDocs(t *testing.T) {
 // once, under the part path, with the fencing remedy in the note text.
 func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
 	root := scaffoldFiles(t,
-		"prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n",
+		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n",
 		map[string]string{
 			"skills/parts/tdd/notes.md": "some prose\n<!-- awf:section bogus -->\nmore prose\n",
 		})
@@ -293,7 +293,7 @@ func TestMarkerNotesInlineAndFencedSilent(t *testing.T) {
 // Domain docs render outside RenderAll; a marker line in a domain part must
 // still reach the advisory (ADR-0083 Decision 4).
 func TestMarkerNotesDomainDocParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n",
 		map[string]string{
 			"domains/parts/config/current-state.md": "state prose\n<!-- awf:end -->\n",
 		})
@@ -331,7 +331,7 @@ func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 // tag-bearing artifacts and a coverage note for a zero-tag artifact; a 25%-share
 // tag (not strictly over) stays quiet.
 func TestTagHealthNotes(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
 		"tags:\n  alpha: A\n  beta: B\n  gamma: C\n  delta: D\n  epsilon: E\n")
 	// 0001/0002 also carry `bogus`, a non-vocabulary tag: it is excluded from the
 	// frequency accounting (only vocabulary members count) so it never surfaces a
@@ -377,7 +377,7 @@ func TestTagHealthNotes(t *testing.T) {
 }
 
 func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  tooling: Tooling\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  tooling: Tooling\n")
 	governedBody := "status: Proposed\ndate: 2026-07-20\n---\n# ADR-%s: A\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n"
 	writeADR(t, root, "0001-a.md", "---\nformat: current-state-v1\n"+fmt.Sprintf(governedBody, "0001"))
 	writeADR(t, root, "0002-b.md", "---\nformat: current-state-v2\n"+fmt.Sprintf(governedBody, "0002"))
@@ -397,7 +397,7 @@ func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
 // An empty/absent vocabulary makes the whole tag-health producer inert - the
 // example-adopter safety case (sundial carries free-form tags but no vocabulary).
 func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -415,7 +415,7 @@ func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 // With a non-empty vocabulary but every artifact untagged, coverage notes fire and
 // the frequency computation is skipped (empty-denominator guard, no divide-by-zero).
 func TestTagHealthNotesEmptyDenominator(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))
 	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B")))
 	p, err := Open(testContext(t), root)
@@ -440,7 +440,7 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 // A malformed pitfalls sidecar surfaces as an error from tagHealthNotes'
 // pitfallTagEntries (only reached once the vocabulary is non-empty and the ADRs parse).
 func TestTagHealthNotesPitfallError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
 	p, err := Open(testContext(t), root)
@@ -455,7 +455,7 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 // tagHealthNotes counts pitfall tags alongside ADR tags and flags an untagged
 // pitfall - exercising the pitfall arm of the artifact scan.
 func TestTagHealthNotesPitfalls(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +
 			"    - title: Tagged\n      tags: [alpha]\n      body: ok\n" +
 			"    - title: Untagged\n      body: ok\n"})
@@ -482,7 +482,7 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 // parses no ADRs) but a non-empty vocabulary, a malformed ADR fails inside
 // tagHealthNotes, exercising AdvisoryNotes' propagation of that error.
 func TestAdvisoryNotesSurfacesTagHealthError(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
 	p, err := Open(testContext(t), root)

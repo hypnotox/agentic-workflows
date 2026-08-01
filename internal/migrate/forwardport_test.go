@@ -7,21 +7,19 @@ import (
 )
 
 // retiredConfigKeys is every config key a historical migration once wrote (or an
-// adopter once legitimately set) that the current schema no longer declares,
-// paired with the generation whose migration removed it.
+// adopter once legitimately set) that the current schema no longer declares.
 //
 // MAINTENANCE OBLIGATION: a migration that retires a config key adds the key
-// here with its own generation. That is the whole point of this test, so do not
-// skip it.
+// here and to retiredKeyRemovals. That is the whole point of this test, so do
+// not skip it.
 var retiredConfigKeys = []struct {
-	name      string
-	fragment  string
-	removedAt int
+	name     string
+	fragment string
 }{
-	{"workflowTelemetry", "workflowTelemetry:\n  enabled: true\n", 20},
-	{"topicCoverage", "currentState:\n  topicCoverage: error\n", 25},
-	{"topicFanout", "currentState:\n  topicFanout: warn\n", 25},
-	{"maxClaimsPerTopic", "currentState:\n  maxClaimsPerTopic: 20\n", 28},
+	{"workflowTelemetry", "workflowTelemetry:\n  enabled: true\n"},
+	{"topicCoverage", "currentState:\n  topicCoverage: error\n"},
+	{"topicFanout", "currentState:\n  topicFanout: warn\n"},
+	{"maxClaimsPerTopic", "currentState:\n  maxClaimsPerTopic: 20\n"},
 }
 
 // TestConfigForCurrentSchemaParsesEveryRetiredKey is the deterministic backstop
@@ -48,10 +46,12 @@ func TestConfigForCurrentSchemaParsesEveryRetiredKey(t *testing.T) {
 			if _, err := config.Parse("staged/.awf", src); err == nil {
 				t.Fatalf("%q is still accepted by the current schema; it does not belong in retiredConfigKeys", tc.fragment)
 			}
-			// Only generations BEFORE the removal can still carry the key: a tree
-			// already at removedAt has had it removed, so forward-porting from
-			// there correctly skips the branch and is not a reachable state.
-			for from := 1; from < tc.removedAt; from++ {
+			// Every generation, not only those before the removal. A stamped
+			// generation is not proof the removal ever ran: two branches
+			// allocating generations concurrently can leave a tree stamped past
+			// a removal it never applied, which is how ADR-0202's integration
+			// produced a config carrying a retired key at a later stamp.
+			for from := 1; from <= Current(); from++ {
 				ported, err := ConfigForCurrentSchema(src, from)
 				if err != nil {
 					t.Fatalf("from generation %d: %v", from, err)

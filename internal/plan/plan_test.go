@@ -48,13 +48,91 @@ func TestParseDirParsesFrontmatterAndSkipsNonPlans(t *testing.T) {
 	if fm.Status != "Proposed" {
 		t.Errorf("Status = %q, want Proposed", fm.Status)
 	}
-	if len(fm.ADRs) != 2 || fm.ADRs[0] != 97 || fm.ADRs[1] != 98 {
-		t.Errorf("ADRs = %v, want [97 98]", fm.ADRs)
+	if len(fm.ADRs) != 2 || fm.ADRs[0].Identity() != "0097" || fm.ADRs[1].Identity() != "0098" {
+		t.Errorf("ADRs = %v, want [0097 0098]", fm.ADRs)
 	}
 
 	legacy := byName["2026-06-24-legacy.md"]
 	if legacy.HasFrontmatter {
 		t.Error("expected HasFrontmatter false for the frontmatter-less plan")
+	}
+}
+
+// TestParseDirReadsNumberAndSlugADRLinks covers the `adrs:` entry grammar
+// (ADR-0202 item 14): a number and a pending record's slug both parse into the
+// field their spelling names, and every zero-padded spelling the live plans use
+// stays a number whichever tag yaml.v3 resolves it to. Each case asserts the
+// filled field as well as the identity, because a numeric slug and a number
+// share an identity string and only the field distinguishes them.
+func TestParseDirReadsNumberAndSlugADRLinks(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		entry      string
+		wantNumber int
+		wantSlug   string
+		want       string
+	}{
+		{name: "plain number", entry: "97", wantNumber: 97, want: "0097"},
+		{name: "zero-padded number resolves as !!float", entry: "0186", wantNumber: 186, want: "0186"},
+		{name: "zero-padded octal-valid number is no longer read as octal", entry: "0153", wantNumber: 153, want: "0153"},
+		{name: "four-digit number", entry: "0194", wantNumber: 194, want: "0194"},
+		{name: "quoted number stays a number", entry: `"0186"`, wantNumber: 186, want: "0186"},
+		{name: "bare slug", entry: "pending-record-slug", wantSlug: "pending-record-slug", want: "pending-record-slug"},
+		{name: "quoted slug", entry: `"pending-record-slug"`, wantSlug: "pending-record-slug", want: "pending-record-slug"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-07-31-links.md", "---\ndate: 2026-07-31\nadrs: ["+tc.entry+"]\nstatus: Proposed\n---\n# Plan: Links\n")
+			plans, err := plan.ParseDir(dir)
+			if err != nil {
+				t.Fatalf("ParseDir: %v", err)
+			}
+			if len(plans) != 1 || len(plans[0].ADRs) != 1 {
+				t.Fatalf("plans = %#v", plans)
+			}
+			link := plans[0].ADRs[0]
+			if link.Number != tc.wantNumber || link.Slug != tc.wantSlug {
+				t.Errorf("link = {Number:%d Slug:%q}, want {Number:%d Slug:%q}", link.Number, link.Slug, tc.wantNumber, tc.wantSlug)
+			}
+			if got := link.Identity(); got != tc.want {
+				t.Errorf("Identity() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestParseDirRejectsUnusableADRLinks covers the `adrs:` entries that are
+// neither a number nor a slug. A slug that names no record is deliberately not
+// here: it parses, and fails link validation as a scoped finding instead.
+func TestParseDirRejectsUnusableADRLinks(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry string
+		want  string
+	}{
+		{"mapping node", "{a: 1}", "must be an ADR number or slug"},
+		{"fractional scalar", "1.5", "neither an ADR number nor a slug"},
+		{"boolean scalar", "true", "neither an ADR number nor a slug"},
+		{"empty scalar", `""`, "neither an ADR number nor a slug"},
+		{"zero", "0", "not a usable ADR number"},
+		{"past the four-digit identity width", "10000", "not a usable ADR number"},
+		{"number past int range", "99999999999999999999", "not a usable ADR number"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-07-31-links.md", "---\ndate: 2026-07-31\nadrs: ["+tc.entry+"]\nstatus: Proposed\n---\n# Plan: Links\n")
+			_, err := plan.ParseDir(dir)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ParseDir error = %v, want one containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func writePlan(t *testing.T, dir, name, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", name, err)
 	}
 }
 

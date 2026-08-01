@@ -214,3 +214,54 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 		t.Fatal("expected a topic metadata parse error")
 	}
 }
+
+// v3Pending is a valid Proposed pending current-state-v3 record: slug identity,
+// no number, and the slug-form heading.
+func v3Pending(slug string) string {
+	return "---\nformat: current-state-v3\nslug: " + slug + "\nstatus: Proposed\ndate: 2026-07-31\n---\n" +
+		"# ADR-" + slug + ": A decision\n\n" +
+		"## Context\n\nBackground prose.\n\n" +
+		"## Decision\n\n1. The only decision.\n\n" +
+		"## State changes\n\nNone.\n\n" +
+		"## Consequences\n\nConsequence prose.\n\n" +
+		"## Alternatives Considered\n\nNone considered.\n\n" +
+		"## Status history\n\n- 2026-07-31: Proposed\n"
+}
+
+// A pending record joins the corpus without joining the number contiguity set,
+// and a stray file under the decisions directory is a corpus error.
+func TestLoadFromTreeCarriesPendingRecordsOutsideContiguity(t *testing.T) {
+	tree := treeFrom(t, map[string]string{
+		"docs/decisions/0001-first.md": legacyADR(),
+		"docs/decisions/pending-x.md":  v3Pending("pending-x"),
+		"docs/decisions/README.md":     "# Decisions\n",
+		"docs/decisions/INDEX.md":      "# Index\n",
+		"docs/decisions/template.md":   "# Template\n",
+		"docs/decisions/diagram.png":   "not markdown\n",
+	})
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.ADRs) != 2 {
+		t.Fatalf("records = %#v", loaded.ADRs)
+	}
+	if _, ok := loaded.Corpus.BySlug("pending-x"); !ok || !loaded.Corpus.Has("0001") {
+		t.Fatal("loaded corpus indexes")
+	}
+
+	stray := treeFrom(t, map[string]string{"docs/decisions/notes.md": "# Notes\n"})
+	if _, err := currentstate.LoadFromTree(stray, loadCfg(t), adr.FormatBoundaries{}, nil); err == nil ||
+		!strings.Contains(err.Error(), "not an ADR record") {
+		t.Fatalf("stray decisions file = %v", err)
+	}
+
+	duplicate := treeFrom(t, map[string]string{
+		"docs/decisions/dupe.md":      v3Pending("dupe"),
+		"docs/decisions/0001-dupe.md": strings.Replace(v3Pending("dupe"), "# ADR-dupe:", "# ADR-0001:", 1),
+	})
+	if _, err := currentstate.LoadFromTree(duplicate, loadCfg(t), adr.FormatBoundaries{V1From: 1, V2From: 1, V3From: 1}, nil); err == nil ||
+		!strings.Contains(err.Error(), `ADR slug "dupe" is declared by more than one file`) {
+		t.Fatalf("duplicate slug = %v", err)
+	}
+}

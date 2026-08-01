@@ -18,6 +18,7 @@ import (
 func testContext(t *testing.T) context.Context { return testsupport.Context(t) }
 
 const ctxConfig = `prefix: example
+integrationBranch: main
 skills: [tdd]
 agents: [code-reviewer]
 domains: [alpha, core]
@@ -206,7 +207,7 @@ func TestStagedContextStatePropagatesInvalidStagedLock(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
 		".awf/awf.lock":    "{",
 	})
 	if _, err := project.StagedContextState(testContext(t), root); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
@@ -279,6 +280,7 @@ func snapshotTreeForContext(t *testing.T, root string) string {
 }
 
 const uncoveredConfig = `prefix: example
+integrationBranch: main
 skills:
   - tdd
 agents:
@@ -344,7 +346,7 @@ func TestUncovered(t *testing.T) {
 // whole-repo scan folds every unowned path up to ".".
 func TestUncoveredCollapsesToRoot(t *testing.T) {
 	t.Parallel()
-	cfg := "prefix: example\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  maxTopicsPerPath: 8\n"
+	cfg := "prefix: example\nintegrationBranch: main\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  maxTopicsPerPath: 8\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - nonexistent/**\n",
 		"top.txt":                 "x\n",

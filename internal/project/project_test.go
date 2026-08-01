@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // scaffold writes a .awf/config.yaml tree under a fresh temp root.
@@ -63,6 +64,41 @@ func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) str
 	return root
 }
 
+// gitScaffold writes gitSampleYAML into a fresh git-backed root whose checkout
+// sits on branch. A test that exercises branch-aware behaviour needs a real
+// repository, because the branch is read through the git seam rather than
+// injected (ADR-0193 keeps branch detection in one home).
+func gitScaffold(t *testing.T, branch string) string {
+	t.Helper()
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	if branch != defaultFixtureBranch {
+		gitfixture.NativeBranch(t, repo, branch)
+		gitfixture.NativeCheckout(t, repo, branch)
+	}
+	testsupport.WriteAwfConfig(t, root, gitSampleYAML)
+	return root
+}
+
+// defaultFixtureBranch is the branch a go-git fixture repository starts on.
+const defaultFixtureBranch = "master"
+
+// gitSampleYAML is sampleYAML with the integration branch pointed at the
+// fixture default, so a plain git-backed scaffold is "on" the integration
+// branch without any extra checkout.
+const gitSampleYAML = `prefix: example
+integrationBranch: master
+vars:
+  testCmd: go test ./...
+  gateCmd: make gate
+  gateCmdFull: make gate full
+skills:
+  - tdd
+agents:
+  - code-reviewer
+`
+
 // lockFile is the relocated lock path under the tree.
 func lockFile(root string) string {
 	return filepath.Join(root, ".awf", "awf.lock")
@@ -74,6 +110,7 @@ func configPath(root string) string {
 }
 
 const sampleYAML = `prefix: example
+integrationBranch: main
 vars:
   testCmd: go test ./...
   gateCmd: make gate
@@ -109,20 +146,82 @@ func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
 }
 
 func TestNewADRErrors(t *testing.T) {
-	root := t.TempDir()
-	p := &Project{Root: root, Cfg: &config.Config{DocsDir: "docs"}}
-	if _, err := p.NewADR("Missing Lock"); err == nil {
+	root := gitScaffold(t, defaultFixtureBranch)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.NewADR(testContext(t), "Missing Lock"); err == nil {
 		t.Fatal("expected missing lock error")
 	}
 	testsupport.WriteFile(t, p.lockPath(), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`)
 	p.Cfg.DocsDir = "bad["
-	if _, err := p.NewADR("Bad Glob"); err == nil {
+	if _, err := p.NewADR(testContext(t), "Bad Glob"); err == nil {
 		t.Fatal("expected next-number glob error")
 	}
 }
 
+// On the integration branch the scaffold allocates a number; off it - another
+// branch, a detached HEAD, or a tree with no repository at all - it writes the
+// slug-identified pending form (ADR-0202 item 5).
+// invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering (TestNewADRIsBranchAware)
+func TestNewADRIsBranchAware(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		wantBase string
+		setup    func(t *testing.T) string
+	}{
+		{
+			name: "on the integration branch numbers", wantBase: "0001-branch-aware-title.md",
+			setup: func(t *testing.T) string { return gitScaffold(t, defaultFixtureBranch) },
+		},
+		{
+			name: "another branch is pending", wantBase: "branch-aware-title.md",
+			setup: func(t *testing.T) string { return gitScaffold(t, "effort/side") },
+		},
+		{
+			name: "detached HEAD is pending", wantBase: "branch-aware-title.md",
+			setup: func(t *testing.T) string {
+				root := gitScaffold(t, defaultFixtureBranch)
+				repo := gitfixture.At(root)
+				gitfixture.NativeCheckout(t, repo, gitfixture.NativeRevParse(t, repo, "HEAD"))
+				return root
+			},
+		},
+		{
+			name: "no repository is pending", wantBase: "branch-aware-title.md",
+			setup: func(t *testing.T) string { return scaffold(t, gitSampleYAML) },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := tc.setup(t)
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := p.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			path, err := p.NewADR(testContext(t), "Branch Aware Title")
+			if err != nil {
+				t.Fatalf("NewADR: %v", err)
+			}
+			if got := filepath.Base(path); got != tc.wantBase {
+				t.Fatalf("scaffolded %q, want %q", got, tc.wantBase)
+			}
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(body), "slug: branch-aware-title\n") {
+				t.Errorf("scaffold missing the retained slug key:\n%s", body)
+			}
+		})
+	}
+}
+
 func TestNewADRSelectsFormatAtV2Boundary(t *testing.T) {
-	root := scaffold(t, sampleYAML)
+	root := gitScaffold(t, defaultFixtureBranch)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -136,11 +235,12 @@ func TestNewADRSelectsFormatAtV2Boundary(t *testing.T) {
 	}
 	lock.ADRFormatV1From = 1
 	lock.ADRFormatV2From = 1
+	lock.ADRFormatV3From = 9999
 	lock.LegacyADRGaps = []int{}
 	if err := lock.Save(p.lockPath()); err != nil {
 		t.Fatal(err)
 	}
-	path, err := p.NewADR("V2 Boundary")
+	path, err := p.NewADR(testContext(t), "V2 Boundary")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,6 +267,7 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 				Files:                  map[string]manifest.Entry{},
 				ADRFormatV1From:        137,
 				ADRFormatV2From:        200,
+				ADRFormatV3From:        300,
 				LegacyADRGaps:          []int{2, 9},
 				InitializedWithVersion: initializedWithVersion,
 			}
@@ -188,8 +289,8 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.InitializedWithVersion != initializedWithVersion || got.ADRFormatV1From != 137 || got.ADRFormatV2From != 200 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
-				t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoffs=%d/%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.ADRFormatV2From, got.LegacyADRGaps)
+			if got.InitializedWithVersion != initializedWithVersion || got.ADRFormatV1From != 137 || got.ADRFormatV2From != 200 || got.ADRFormatV3From != 300 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
+				t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoffs=%d/%d/%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.ADRFormatV2From, got.ADRFormatV3From, got.LegacyADRGaps)
 			}
 		})
 	}
@@ -205,7 +306,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	lock := &manifest.Lock{AWFVersion: "0.24.0", SchemaVersion: 20, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}, InitializedWithVersion: "0.24.0"}
@@ -324,7 +425,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 }
 
 func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -341,7 +442,7 @@ func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) 
 	if err := os.WriteFile(unrelated, []byte("keep"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	p, err = Open(testContext(t), root)
@@ -430,6 +531,7 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 
 func TestSyncSkipsLocalSkill(t *testing.T) {
 	cfg := `prefix: example
+integrationBranch: main
 vars:
   testCmd: go test ./...
   gateCmd: make gate
@@ -471,6 +573,7 @@ agents:
 // sync/check with "local skill file absent".
 func TestSyncKeepsLocalConvertedSkill(t *testing.T) {
 	cfg := `prefix: example
+integrationBranch: main
 vars:
   testCmd: go test ./...
   gateCmd: make gate
@@ -524,7 +627,7 @@ func writeLocalSkill(t *testing.T, root, rel string) {
 }
 
 func TestOpenRejectsUnknownAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: [does-not-exist]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: [does-not-exist]\n")
 	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown agent")
@@ -535,7 +638,7 @@ func TestOpenRejectsUnknownAgent(t *testing.T) {
 }
 
 func TestOpenRejectsUnknownDoc(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: [nonexistent]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [nonexistent]\n")
 	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown doc")
@@ -546,7 +649,7 @@ func TestOpenRejectsUnknownDoc(t *testing.T) {
 }
 
 func TestSyncRendersDeclaredDoc(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: [architecture]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: [architecture]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -569,6 +672,7 @@ func TestSyncRendersDeclaredDoc(t *testing.T) {
 // its catalog title/desc. A local doc must not appear.
 func TestSyncAutoLinksDocsInAgentsDoc(t *testing.T) {
 	cfg := `prefix: example
+integrationBranch: main
 vars:
   gateCmd: ""
 skills: []
@@ -604,7 +708,7 @@ docs:
 }
 
 func TestOpenRejectsUnknownSkill(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [no-such-skill]\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [no-such-skill]\nagents: []\n")
 	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown skill")
@@ -815,7 +919,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 
 func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	// tdd in the catalog has sections [surfaces, notes]; "bogus" is not declared.
-	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
@@ -835,7 +939,7 @@ func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 
 func TestOpenAllowsValidSectionOverride(t *testing.T) {
 	// "notes" is a declared section for tdd.
-	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  notes:\n    drop: true\n",
 	})
@@ -846,7 +950,7 @@ func TestOpenAllowsValidSectionOverride(t *testing.T) {
 }
 
 func TestOpenAllowsLocalAgentNotInCatalog(t *testing.T) {
-	cfg := "prefix: example\nskills: []\nagents: [my-custom-agent]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: []\nagents: [my-custom-agent]\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"agents/my-custom-agent.yaml": "local: true\n",
 	})
@@ -858,7 +962,7 @@ func TestOpenAllowsLocalAgentNotInCatalog(t *testing.T) {
 
 func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 	// code-reviewer in the catalog has sections universal-lenses/project-focus/doc-currency.
-	cfg := "prefix: example\nskills: []\nagents: [code-reviewer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: []\nagents: [code-reviewer]\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"agents/code-reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
@@ -872,7 +976,7 @@ func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 }
 
 func TestSyncRendersAgentFromMap(t *testing.T) {
-	root := scaffold(t, "prefix: myproject\nagents: [code-reviewer]\nskills: []\n")
+	root := scaffold(t, "prefix: myproject\nintegrationBranch: main\nagents: [code-reviewer]\nskills: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -896,7 +1000,7 @@ func TestSyncRendersAgentFromMap(t *testing.T) {
 // trigger here is content that carries the token itself (the ADR-0011/ADR-0014
 // gotcha: prose containing the literal token trips the guard).
 func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n",
 		map[string]string{
 			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
 		})
@@ -915,7 +1019,7 @@ func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
 
 func TestSyncRendersAgentsDoc(t *testing.T) {
 	t.Run("always-on by default", func(t *testing.T) {
-		root := scaffold(t, "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: []\nagents: []\n")
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: []\nagents: []\n")
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
@@ -933,7 +1037,7 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 	})
 
 	t.Run("a local agents-doc sidecar suppresses it", func(t *testing.T) {
-		root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
+		root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
 			"agents-doc.yaml": "local: true\n",
 		})
 		p, err := Open(testContext(t), root)
@@ -1050,7 +1154,7 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 // at Open instead (TestOpenRefusesUnclosedEnabledSet), so enabled means
 // rendered even when the doc is dropped post-Open.
 func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
-	cfg := "prefix: example\nskills: [roadmap-graduation]\ndocs: [roadmap]\nagents: []\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [roadmap-graduation]\ndocs: [roadmap]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"agents-doc.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -1084,7 +1188,7 @@ func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
 // invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
 // invariant: rendering/sync-and-drift:check-active-md-stale (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	adrDir := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -1138,7 +1242,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncRendersPlaceholderIndexMDWithoutADRs)
 func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1382,7 +1486,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 
 // invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs (TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally)
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1423,7 +1527,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 // ADR-0081's closure validation).
 // invariant: rendering/project-output-plan:reviewing-skill-agent-pairing (TestOpenRejectsPairedSkillWithoutAgent)
 func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
 	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected pairing error for reviewing-impl without code-reviewer")
@@ -1435,7 +1539,7 @@ func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
 }
 
 func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer, implementer]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer, implementer]\n")
 	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatalf("paired skill with its agent must open cleanly, got: %v", err)
 	}
@@ -1449,7 +1553,7 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 		name, cfg, wantSub string
 	}{
 		{"missing doc requirement",
-			"prefix: example\nskills: [roadmap-graduation]\nagents: []\n",
+			"prefix: example\nintegrationBranch: main\nskills: [roadmap-graduation]\nagents: []\n",
 			`skill "roadmap-graduation" requires doc "roadmap"`},
 	}
 	for _, tc := range cases {
@@ -1464,7 +1568,7 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 		})
 	}
 	// A local sidecar exempts the artifact from the closure check.
-	root := scaffoldFiles(t, "prefix: example\nskills: [brainstorming]\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [brainstorming]\nagents: []\n",
 		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -1477,7 +1581,7 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 }
 
 func TestOpenAllowsLocalPairedSkillWithoutAgent(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: [reviewing-impl]\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [reviewing-impl]\nagents: []\n",
 		map[string]string{"skills/reviewing-impl.yaml": "local: true\n"})
 	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatalf("local skill sidecar must skip the pairing check, got: %v", err)

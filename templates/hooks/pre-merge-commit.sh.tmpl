@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Pre-merge-commit payload: the staged current-state check, as the backstop on a
+# merge git resolves by itself. Git runs no pre-commit hook for a true merge
+# commit, so a conflict-free automerge that lands two records on one identity,
+# or a transition nobody authored, would otherwise reach the integration branch
+# unchecked. Inert until wired into a hook setup you own, e.g. a
+# .git/hooks/pre-merge-commit stub containing:
+#   exec bash .awf/hooks/pre-merge-commit.sh "$@"
+set -euo pipefail
+{{- with .vars.checkCmd }}
+{{ . }} --staged
+{{- else }}
+{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check --staged
+{{- end }}

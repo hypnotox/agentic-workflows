@@ -25,7 +25,7 @@ const bakDetail = "stale awf-bak backup: review and delete"
 const localPartsDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 
 func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ntargets: [claude]\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:closed-config-tree (TestSweepFlagsUnclaimedEntries)
 func TestSweepFlagsUnclaimedEntries(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"notes.md":                        "stray\n",
 		"scratch/a.txt":                   "stray\n",
 		"scratch/b/c.txt":                 "stray\n",
@@ -67,7 +67,7 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	})
 	// hooks enabled so .awf/hooks/*.sh are claimed render units; gateCmd and
 	// the runner keep the enabled hooks command-wiring valid (ADR-0156).
-	testsupport.WriteFile(t, configPath(root), "prefix: example\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n")
+	testsupport.WriteFile(t, configPath(root), "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n")
 	drift := checkDrift(t, root)
 	got := orphanedByPath(drift)
 
@@ -100,7 +100,7 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 // Sweep never recurses into an owned resident root: every descendant is dynamic
 // local authority, including one shaped like a nested adopter or a stale backup.
 func TestSweepExemptsResidentRoots(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"efforts/e/memory.md":         "scratch\n",
 		"efforts/e/deep/file.awf-bak": "scratch\n",
 		"efforts/e/sessions/s":        "resident\n",
@@ -113,7 +113,7 @@ func TestSweepExemptsResidentRoots(t *testing.T) {
 }
 
 func TestSweepFlagsLocalArtifactParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"skills/tdd.yaml":            "local: true\n",
 		"skills/parts/tdd/notes.md":  "dead weight\n",
 		"workflow.yaml":              "local: true\n",
@@ -134,7 +134,7 @@ func TestSweepFlagsLocalArtifactParts(t *testing.T) {
 // claimed - a future declaredSections change to catalog.Standard would
 // otherwise silently flag every local artifact's parts.
 func TestSweepClaimsSynthesizedLocalParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-local\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - my-local\nagents: []\n", map[string]string{
 		"skills/my-local.yaml":             "data:\n  description: A local skill.\n",
 		"skills/parts/my-local/content.md": "Body here.\n",
 		"skills/parts/my-local/bogus.md":   "undeclared\n",
@@ -149,7 +149,7 @@ func TestSweepClaimsSynthesizedLocalParts(t *testing.T) {
 }
 
 func TestSweepBaselineClean(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nbootstrap:\n  enabled: true\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nbootstrap:\n  enabled: true\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", nil)
 	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
 		t.Fatalf("a hygienic tree with all render units enabled must sweep clean, got %#v", got)
 	}

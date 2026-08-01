@@ -26,6 +26,7 @@ func topicCmdFixture(t *testing.T) string {
 	root := t.TempDir()
 	gitfixture.InitNativeAt(t, root)
 	testsupport.WriteAwfConfig(t, root, `prefix: example
+integrationBranch: main
 skills: []
 agents: []
 domains: [schedule]
@@ -36,7 +37,7 @@ currentState:
   testGlobs: ["internal/**/*_test.go"]
 `)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/schedule.yaml"), "paths: [\"internal/**\"]\n")
-	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), ADRFormatV1From: 3, ADRFormatV2From: 9999, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), ADRFormatV1From: 3, ADRFormatV2From: 9999, ADRFormatV3From: 9999, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}

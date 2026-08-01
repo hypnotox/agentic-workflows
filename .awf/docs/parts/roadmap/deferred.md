@@ -1,3 +1,33 @@
+## Integrating a branch forked before the v3 sealing generation
+
+Three separate enforcement rules refuse a legal integration, and the 2026-08-01
+named-proof-markers integration had to relax all three inline to land. They need one
+decision record covering the class, against the ADR-0202/0203/0204 lineage.
+
+The shape: an effort branch forked before schema generation 29 merges an integration
+branch already past it. ADR-0202's hand-rename path for a slugless record whose number
+was taken assumes a free number below the v3 cutoff, but the numbering was dense through
+0202 with the cutoff at 203 and `legacyAdrGaps` empty, so the record could only be
+renumbered INTO the v3 range. Living there forces the v3 encoding, and that retrofit is
+what the three rules refuse.
+
+What was relaxed. `validatePermanentLockTransition` gained an inherited-cutoff edge: the
+transition crosses generation 29 in one step, so the cutoff arrives from the other parent
+already computed against a corpus neither tree holds, and re-deriving it would lower it
+under records already sealed above it. `renumberAliases` now skips a record only when its
+slug appears on the OTHER side, rather than whenever it carries one at all: a record
+renumbered across the cutoff acquires its slug in the very transition that renumbers it,
+so a slugless-only index leaves it unpairable, while a slug present on both sides still
+pairs directly and stays out of the digest step, which is what keeps an unrelated pending
+record with a matching body from deadlocking the rename. And the governed-format-change
+rule admits exactly the slugless-to-slugged renumber, both halves required.
+
+What the decision should settle: whether these three belong together as one sanctioned
+"stale branch crosses the seal" transition or are three independent edges; whether the
+inherited cutoff can be verified against anything rather than taken on trust, which is
+the weakest of the three; and whether a fourth rule is waiting behind them for the next
+branch older than this one.
+
 ## Pi and shared Agent Skills discovery
 
 Resolve Pi's collision between its `.pi/skills/` output and the shared

@@ -66,7 +66,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 	cat := catalog.Standard
 	valid := cat.Docs["architecture"].Sections[0]
 	const orphan = "definitely-not-a-section"
-	cfg := "prefix: example\n" + sprintfVars("") +
+	cfg := "prefix: example\nintegrationBranch: main\n" + sprintfVars("") +
 		"skills: []\nagents: []\ndocs:\n  - architecture\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
@@ -184,7 +184,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 		}
 	}
 
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

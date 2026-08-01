@@ -12,6 +12,7 @@ import (
 // invTopicYAML configures a domain owning internal/**, a marker source, and a
 // test-backing glob so an invariant claim can carry its proof marker.
 const invTopicYAML = `prefix: example
+integrationBranch: main
 skills: []
 agents: []
 domains:
@@ -68,7 +69,7 @@ func TestRunInvariantsReportsClaims(t *testing.T) {
 func TestRunInvariantsEmpty(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	dir := gitProjectFiles(t, "prefix: example\nskills: []\nagents: []\n", nil)
+	dir := gitProjectFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", nil)
 	var buf bytes.Buffer
 	if err := runInvariants(ctx, dir, &buf); err != nil {
 		t.Fatalf("runInvariants: %v", err)

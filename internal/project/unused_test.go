@@ -39,7 +39,7 @@ func driftOfKind(drift []manifest.Drift, kind string) []manifest.Drift {
 
 // invariant: rendering/inplace-and-placeholders:unused-var-drift (TestCheckFlagsUnusedVar)
 func TestCheckFlagsUnusedVar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars:\n  bogusVar: set-but-dead\nskills:\n  - tdd\nagents: []\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  bogusVar: set-but-dead\nskills:\n  - tdd\nagents: []\n", nil)
 	hits := driftOfKind(checkDrift(t, root), "unused-var")
 	if len(hits) != 1 || hits[0].Path != ".awf/config.yaml" || !strings.Contains(hits[0].Detail, `"bogusVar"`) {
 		t.Fatalf("want one unused-var entry for bogusVar at .awf/config.yaml, got %#v", hits)
@@ -47,7 +47,7 @@ func TestCheckFlagsUnusedVar(t *testing.T) {
 }
 
 func TestCheckIgnoresEmptyVar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars:\n  bogusVar: \"\"\nskills:\n  - tdd\nagents: []\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  bogusVar: \"\"\nskills:\n  - tdd\nagents: []\n", nil)
 	if hits := driftOfKind(checkDrift(t, root), "unused-var"); len(hits) != 0 {
 		t.Fatalf("an empty var is the seeded open-to-do state (ADR-0022; unset-var-note territory per ADR-0087) and must not flag, got %#v", hits)
 	}
@@ -60,7 +60,7 @@ func TestCheckIgnoresEmptyVar(t *testing.T) {
 // this role: the always-on plans-template singleton now references .vars.gateCmd
 // - ADR-0108 - so it is consumed in every project.)
 func TestPartPlaceholderConsumesVar(t *testing.T) {
-	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nvars:\n  checkCmd: awf check\nskills:\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n"
 	locals := map[string]string{
 		"agents-doc.yaml": "local: true\n",
 		"workflow.yaml":   "local: true\n",
@@ -83,7 +83,7 @@ func TestPartPlaceholderConsumesVar(t *testing.T) {
 // The bare-reference escapes cannot fire through shipped templates (none uses
 // a selector-free .vars/.data form), so the producers are exercised directly.
 func TestBareReferenceEscapes(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars:\n  bogusVar: set-but-dead\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  bogusVar: set-but-dead\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"skills/tdd.yaml": "data:\n  dead: v\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -105,7 +105,7 @@ func TestBareReferenceEscapes(t *testing.T) {
 
 // invariant: rendering/inplace-and-placeholders:unused-data-drift (TestCheckFlagsUnusedDataKey)
 func TestCheckFlagsUnusedDataKey(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: One, location: a, kind: b}\n  dead: v\n",
 	})
 	hits := driftOfKind(checkDrift(t, root), "unused-data")
@@ -118,7 +118,7 @@ func TestCheckFlagsUnusedDataKey(t *testing.T) {
 }
 
 func TestCheckFlagsLocalSidecarData(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"skills/tdd.yaml": "local: true\ndata:\n  k: v\n",
 	})
 	// A local: true artifact's file is hand-maintained and must exist on disk.
@@ -131,7 +131,7 @@ func TestCheckFlagsLocalSidecarData(t *testing.T) {
 }
 
 func TestCheckFlagsDropShadowedDataKey(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: One, location: a, kind: b}\nsections:\n  surfaces:\n    drop: true\n",
 	})
 	hits := driftOfKind(checkDrift(t, root), "unused-data")
@@ -141,7 +141,7 @@ func TestCheckFlagsDropShadowedDataKey(t *testing.T) {
 }
 
 func TestCheckFlagsUnusedSingletonDataKey(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"agents-doc.yaml": "data:\n  deadKey: v\n",
 	})
 	hits := driftOfKind(checkDrift(t, root), "unused-data")
@@ -157,7 +157,7 @@ func TestCheckFlagsUnusedSingletonDataKey(t *testing.T) {
 // for the var-consumption union too, but is unexercisable here: the domain
 // template reads no vars.)
 func TestDomainPartPlaceholderConsumesVar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars:\n  gateCmd: ./x gate\nskills: []\nagents: []\ndomains:\n  - config\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\nskills: []\nagents: []\ndomains:\n  - config\n", map[string]string{
 		"domains/parts/config/current-state.md": "Run {{=awf:gateCmd}} before committing.\n",
 		"agents-doc.yaml":                       "local: true\n",
 		"workflow.yaml":                         "local: true\n",
@@ -172,7 +172,7 @@ func TestDomainPartPlaceholderConsumesVar(t *testing.T) {
 // (ADR-0121 Decision 2; the stripped counterpart of
 // TestPartPlaceholderConsumesVar, same fixture).
 func TestCommentWrappedPlaceholderDoesNotConsumeVar(t *testing.T) {
-	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nvars:\n  checkCmd: awf check\nskills:\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n"
 	with := map[string]string{
 		"agents-doc.yaml": "local: true\n",
 		"workflow.yaml":   "local: true\n",

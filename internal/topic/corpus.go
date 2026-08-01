@@ -167,7 +167,10 @@ func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, d
 			c.byClaim[cl.ID] = cl
 			provenance := append([]string{cl.Origin}, cl.RevisedBy...)
 			for k, num := range provenance {
-				a, ok := adrs.ByNumber(num)
+				// Provenance resolves by identity: the grammar accepts a pending
+				// ADR-<slug> reference, so a number-keyed lookup would refuse to
+				// load any corpus whose claims cite one.
+				a, ok := adrs.ByIdentity(num)
 				if !ok {
 					return Corpus{}, fmt.Errorf("claim %s cites missing ADR-%s", cl.ID, num)
 				}

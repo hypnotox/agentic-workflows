@@ -68,6 +68,8 @@ var registry = []Migration{
 	// is removed rather than tolerated: config.yaml is strict-parsed and a
 	// survivor would hard-fail the new binary.
 	{To: 28, Name: "drop-max-claims-per-topic", Apply: treeOnly(applyDropMaxClaimsPerTopic)},
+	{To: adrFormatV3Generation, Name: "adr-format-v3-cutoff", Apply: treeOnly(applyADRFormatV3Cutoff), OwnsSchemaStamp: true},
+	{To: integrationBranchGeneration, Name: "integration-branch-explicit", Apply: treeOnly(applyIntegrationBranch)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -103,6 +105,15 @@ func applyCurrentStateTopicSubstrate(root string, w io.Writer) error {
 // Current is the current schema generation (the highest registered To).
 func Current() int { return registry[len(registry)-1].To }
 
+// retiredKeyRemovals is where each retired config key lives, so the
+// port-forward can strip it. An empty parent means a top-level key.
+var retiredKeyRemovals = []struct{ parent, key string }{
+	{"", "workflowTelemetry"},
+	{"currentState", "topicCoverage"},
+	{"currentState", "topicFanout"},
+	{"currentState", "maxClaimsPerTopic"},
+}
+
 // ConfigForCurrentSchema applies the config-byte portions of registered
 // migrations after from through the current generation. Snapshot consumers use
 // it to compare a historical committed config with a current staged config
@@ -113,37 +124,48 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 		return nil, fmt.Errorf("config schema generation %d is ahead of current %d", from, Current())
 	}
 	out := src
+	// A key whose struct field no longer exists is stripped unconditionally,
+	// not when its own generation happens to fall inside the ported range. This
+	// function exists so historical bytes PARSE under the current strict
+	// decoder, and a stamped generation is not proof the removal ever ran: two
+	// branches allocating generations concurrently can leave a tree stamped past
+	// a removal it never applied, which is exactly how a config carrying a
+	// retired key reaches a decoder that has no field for it. Removing an absent
+	// key is a no-op, so doing this for every retired key is free.
+	for _, retired := range retiredKeyRemovals {
+		var err error
+		if retired.parent == "" {
+			out, err = config.RemoveKey(out, retired.key)
+		} else {
+			out, err = config.RemoveMappingKey(out, retired.parent, retired.key)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("port-forward removal of retired key %q: %w", retired.key, err)
+		}
+	}
 	for _, migration := range registry {
 		if migration.To <= from {
 			continue
 		}
-		if migration.To == 20 {
-			var err error
-			out, err = config.RemoveKey(out, "workflowTelemetry")
-			if err != nil {
+		// Unlike the pure removals above, this case materializes a key the
+		// committed bytes never had, and it must. integrationBranch is
+		// required with no in-code default (ADR-0202 Decision 6), so a
+		// historical config without it does not merely lack a value: it fails
+		// Validate, and the whole before-side load a transition check depends
+		// on aborts. Seeding exactly what the migration writes is the faithful
+		// port-forward, which is why the question asked here is the migration's
+		// own: a key carrying a value keeps it, and a key that is absent, null,
+		// or empty is seeded, because the migration would have written all three.
+		if migration.To == integrationBranchGeneration {
+			valued, err := config.HasValue(out, "integrationBranch")
+			if err != nil { // coverage-ignore: the retired-key removal pass above already parsed these same bytes as a mapping, so HasValue cannot fail here
 				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 			}
-		}
-		// Deliberately a pure removal, unlike applyDropSeveritySettings, which also
-		// seeds a default budget when the removals would empty the block. This
-		// function exists so a historical config PARSES under the current strict
-		// decoder; coverage is never evaluated from a before-side config, so
-		// materializing a key the committed bytes never had would put a value into
-		// a historical universe rather than fix a parse.
-		if migration.To == 25 {
-			for _, key := range []string{"topicCoverage", "topicFanout"} {
-				var err error
-				out, err = config.RemoveMappingKey(out, "currentState", key)
-				if err != nil {
+			if !valued {
+				out, err = config.SetString(out, "integrationBranch", "main")
+				if err != nil { // coverage-ignore: HasValue parsed these same bytes as a mapping one statement above, so SetString cannot fail here
 					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 				}
-			}
-		}
-		if migration.To == 28 {
-			var err error
-			out, err = config.RemoveMappingKey(out, "currentState", "maxClaimsPerTopic")
-			if err != nil {
-				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 			}
 		}
 	}

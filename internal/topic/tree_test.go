@@ -40,7 +40,7 @@ func parseCfg(t *testing.T, body string) *config.Config {
 
 // oneImplementedADR is the provenance corpus every fixture claim cites.
 func oneImplementedADR() adr.Corpus {
-	return adr.NewCorpus([]adr.ADR{{Number: "0001", Status: "Implemented"}})
+	return mustCorpus([]adr.ADR{{Number: "0001", Status: "Implemented"}})
 }
 
 // TestLoadCorpusFromTreeValidWithoutCurrentState covers the snapshot loader's
@@ -56,7 +56,7 @@ func TestLoadCorpusFromTreeSkipsSymlinkInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := config.Parse(".awf", []byte("prefix: x\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: ['**']\n      marker: //\n"))
+	cfg, err := config.Parse(".awf", []byte("prefix: x\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: ['**']\n      marker: //\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestLoadCorpusFromTreeValidWithoutCurrentState(t *testing.T) {
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
 	})
-	c, err := LoadCorpusFromTree(tree, parseCfg(t, "prefix: test\ndomains: [alpha]\n"), oneImplementedADR())
+	c, err := LoadCorpusFromTree(tree, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,10 +87,10 @@ func TestLoadCorpusFromTreeSkipsNestedAdoptedProjectMarkers(t *testing.T) {
 	tree := treeFrom(t, map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
-		"examples/nested/.awf/config.yaml":             "prefix: nested\n",
+		"examples/nested/.awf/config.yaml":             "prefix: nested\nintegrationBranch: main\n",
 		"examples/nested/internal/x_test.go":           "// invariant: nested/model:unknown\n",
 	})
-	cfg := parseCfg(t, "prefix: test\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"**/*_test.go\"]\n      marker: //\n  testGlobs: [\"**/*_test.go\"]\n")
+	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"**/*_test.go\"]\n      marker: //\n  testGlobs: [\"**/*_test.go\"]\n")
 	c, err := LoadCorpusFromTree(tree, cfg, oneImplementedADR())
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestLoadCorpusFromTreeSkipsNestedAdoptedProjectMarkers(t *testing.T) {
 
 func TestLoadCorpusFromTreeErrors(t *testing.T) {
 	invariantPart := "Intro.\n\n## Claims\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: test\n"
-	currentStateCfg := "prefix: test\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"
+	currentStateCfg := "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"
 	for _, tc := range []struct {
 		name    string
 		cfg     string
@@ -111,7 +111,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 	}{
 		{
 			name: "malformed metadata",
-			cfg:  "prefix: test\ndomains: [alpha]\n",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
 				".awf/topics/metadata/alpha/one.yaml":          "title: [unterminated\n",
 				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
@@ -120,7 +120,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 		},
 		{
 			name: "bad part path",
-			cfg:  "prefix: test\ndomains: [alpha]\n",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
@@ -130,7 +130,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 		},
 		{
 			name: "domain sidecar decode",
-			cfg:  "prefix: test\ndomains: [alpha]\n",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
 				".awf/domains/alpha.yaml":                      "bogusField: 1\n",
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
@@ -140,7 +140,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 		},
 		{
 			name: "assemble failure",
-			cfg:  "prefix: test\ndomains: [alpha]\n",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
 				".awf/topics/metadata/alpha/two.yaml": "title: Two\nsummary: T.\npaths: [\"internal/**\"]\n",
 			},
@@ -158,7 +158,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 		},
 		{
 			name: "backing finalize failure",
-			cfg:  "prefix: test\ndomains: [alpha]\n",
+			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 				".awf/topics/parts/alpha/one/current-state.md": invariantPart,
@@ -216,7 +216,7 @@ func treeFromDir(t *testing.T, root string) *snapshot.Tree {
 
 func TestLoadCorpusFromTreeMatchesFilesystem(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: test\ndomains: [alpha, beta]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: test\nintegrationBranch: main\ndomains: [alpha, beta]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/alpha.yaml"), "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/beta.yaml"), "paths: [\"pkg/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-x.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0001: X"), testsupport.WithBody("## Decision\n\n1. X.\n")))

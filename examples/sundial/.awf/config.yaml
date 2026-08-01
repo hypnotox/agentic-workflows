@@ -69,3 +69,4 @@ currentState:
   testGlobs:
     - "**/*_test.go"
   maxTopicsPerPath: 8
+integrationBranch: main

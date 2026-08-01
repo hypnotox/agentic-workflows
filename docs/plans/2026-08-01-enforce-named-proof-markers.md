@@ -1,13 +1,13 @@
 ---
 date: 2026-08-01
-adrs: [199]
+adrs: [205]
 status: Implemented
 ---
 # Plan: Enforce named proof markers
 
 ## Goal
 
-Implement ADR-0199: make every `invariant:` proof marker name the unit that proves it, and make
+Implement ADR-0205: make every `invariant:` proof marker name the unit that proves it, and make
 `awf check` fail when that name no longer occurs on a searched line of the marker's own file, so a
 marker can no longer outlive its test. Non-goal: detecting a marker whose named test exists but
 does not exercise the claim, which is the separate nominal-proof problem `docs/roadmap.md` tracks.
@@ -15,7 +15,7 @@ does not exercise the claim, which is the separate nominal-proof problem `docs/r
 ## Architecture summary
 
 Four phases, each independently green, sequenced so no commit leaves the corpus and the checker
-disagreeing (ADR-0199 item 12).
+disagreeing (ADR-0205 item 12).
 
 Phase 1 repairs the two claims whose markers already point at nothing, under today's checker.
 Phase 2 splits `markerPayloadRE` into per-kind regexes and lets an `invariant:` payload carry an
@@ -30,7 +30,7 @@ belong to the deferred post-review transaction (see Verification).
 ## File structure
 
 - **Created:** none. The migration script of Phase 3 is written to an untracked working path and
-  is deliberately never committed (ADR-0199 item 9).
+  is deliberately never committed (ADR-0205 item 9).
 - **Modified:** `internal/topic/markers.go`, `internal/topic/markers_test.go`,
   `internal/config/config_test.go`, every tracked `*_test.go` carrying a proof marker (Phase 3,
   set defined by command), the proof-marker fixtures in the test files Phase 4's build rejects,
@@ -140,7 +140,7 @@ carries a name yet, and no check reads one.
 - [ ] **Task 2.1: Split the payload regexes by marker kind.** In `internal/topic/markers.go`,
   replace the shared alternation at the `markerPayloadRE` declaration with a shared claim-id
   fragment and three per-kind expressions, so that a name is grammatically available only to an
-  `invariant:` payload (ADR-0199 items 1 and 4):
+  `invariant:` payload (ADR-0205 items 1 and 4):
 
 ```go
 const claimIDPattern = `[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*`
@@ -151,7 +151,7 @@ var touchesPayloadRE = regexp.MustCompile(`^touches-state: (` + claimIDPattern +
 ```
 
   The `(.+)` name group is greedy by construction, so a name containing parentheses, such as the
-  `it('strips the header')` form ADR-0199 item 2 requires to remain legal, captures through to the
+  `it('strips the header')` form ADR-0205 item 2 requires to remain legal, captures through to the
   payload's final closing parenthesis rather than the first.
 
 - [ ] **Task 2.2: Resolve each kind through its own expression.** In `resolveMarker`, replace the
@@ -165,7 +165,7 @@ var touchesPayloadRE = regexp.MustCompile(`^touches-state: (` + claimIDPattern +
   `s.ClaimID` assignments stay as they are. Binding the name to a local variable here would not
   compile, because Go rejects a declared-and-unused variable and `.golangci.yml` additionally
   enables `unused`, `ineffassign` and `wastedassign`. Do not add a field to `MarkerSite` either,
-  which ADR-0199 rejected for having no consumer. Phase 4 gives the group its first reader.
+  which ADR-0205 rejected for having no consumer. Phase 4 gives the group its first reader.
 
   Forbidden: changing the error text, the error's `path:line` prefix, or the relative order in
   which the three kinds are attempted in a way that would let a `touches-state:` payload match as
@@ -196,7 +196,7 @@ schema from Phase 2 accepts every intermediate state.
 
 - [ ] **Task 3.1: Write the throwaway migration script.** Write it to an untracked working path
   outside the repository tree, or to a path covered by `.gitignore`; it is never committed
-  (ADR-0199 item 9). It may use the Go AST or any other language-specific knowledge, because it
+  (ADR-0205 item 9). It may use the Go AST or any other language-specific knowledge, because it
   runs once and is not part of the shipped checker.
 
   The tracked `*_test.go` set is repo-root-wide and includes `examples/`, whose bundled sundial
@@ -205,7 +205,7 @@ schema from Phase 2 accepts every intermediate state.
   For each line in each tracked `*_test.go` file whose trimmed form matches
   `^// invariant: <claim-id>$`, the script derives a name and rewrites the line as
   `// invariant: <claim-id> (<name>)`, preserving the original leading whitespace exactly. Name
-  derivation follows ADR-0199 item 10, nearest unique anchor first:
+  derivation follows ADR-0205 item 10, nearest unique anchor first:
 
   1. If the marker sits directly above, or within a run of markers and comments directly above, a
      top-level `func (Test|Benchmark|Fuzz|Example)\w*\(` declaration, use that function's
@@ -276,7 +276,7 @@ var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern 
   than falling through to the generic malformed-marker error. Ordering makes this safe:
   `proofPayloadRE` is attempted first, so a well-formed named marker never reaches the fallback.
 
-  The name group stays greedy, so ADR-0199 item 2's `it('strips the header')` case still captures
+  The name group stays greedy, so ADR-0205 item 2's `it('strips the header')` case still captures
   through to the payload's final closing parenthesis. Requiring a non-space first and last
   character implements item 2's "no leading or trailing whitespace" requirement here, at parse
   time, rather than letting ` TestFoo ` reach the occurrence check and be reported as a missing
@@ -285,7 +285,7 @@ var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern 
   In `resolveMarker`, branch on `unnamedProofPayloadRE` after `proofPayloadRE` fails, and use its
   group 1 as the claim id in the new error
   `%s:%d: proof marker for %s does not name a proving unit`, so the diagnostic points at the
-  actual defect rather than falling through to the generic malformed-marker error (ADR-0199 item
+  actual defect rather than falling through to the generic malformed-marker error (ADR-0205 item
   6). Both new statements must be exercised by Task 4.3's cases, since the coverage gate admits no
   unexercised branch.
 
@@ -294,14 +294,14 @@ var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern 
   parsed proof name and empty for `StateMarker` and `TouchesMarker`. It has exactly one caller,
   at `internal/topic/markers.go:132`, so the change is local, and both `scanMarkerBytes` entry
   paths (the walker at `markers.go:87` and the snapshot loader at `tree.go:111`) inherit the
-  result through that one call site, which is what ADR-0199 item 5 requires.
+  result through that one call site, which is what ADR-0205 item 5 requires.
 
   In `scanMarkerBytes`, hoist the line slice produced by `strings.Split(string(b), "\n")` into a
   named variable before the loop, and verify each proof site inline, at the point it resolves
   inside the loop. Do not collect sites and verify after the loop: the hoisted slice is already
   complete before the first iteration, and deferring would put every resolve error in the file
   ahead of every occurrence error, so a malformed marker late in the file would be reported before
-  a missing-name failure early in it. ADR-0199 item 3 requires the scan to keep reporting the
+  a missing-name failure early in it. ADR-0205 item 3 requires the scan to keep reporting the
   first failure in line order. Add an unexported helper:
 
   `proofNameOccurs(lines []string, name, marker string, markerLine int) bool` returns true when
@@ -311,7 +311,7 @@ var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern 
   in the `for _, src := range sources` loop the caller is already inside; it cannot be hardcoded,
   because the exclusion is per-family (`//`, `#`, `<!--`). Because the marker token is the family's comment leader by
   construction, this excludes comments, and every marker line is a special case of a comment line
-  (ADR-0199 item 3).
+  (ADR-0205 item 3).
 
   Recognition must be syntactic and line-local: test the line's leading token only, never whether
   it resolves to a valid claim, so the exclusion introduces no error of its own and the scan keeps
@@ -323,7 +323,7 @@ var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern 
   Forbidden: computing the exclusion from the resolved marker index, which would require a
   resolving pre-pass and could surface a later marker's error before an earlier missing-name one;
   introducing any collection or second pass over the file, for the same reason; and adding a
-  `Proof` field to `MarkerSite`, which ADR-0199 rejected.
+  `Proof` field to `MarkerSite`, which ADR-0205 rejected.
 
 - [ ] **Task 4.3: Repair the proof-marker fixtures the new rule rejects.** Test fixtures that write
   a proof marker into a synthetic file must now carry a name whose text also appears on a
@@ -368,7 +368,7 @@ testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invarian
      exclusion alone and merely duplicate case 1, testing nothing about stacking. The second
      marker is unreachable in that run by design, since the scan returns on its first error, so
      the case pins the comment exclusion rather than a pair of failures. This is the twelve-claim
-     silent-stranding failure mode ADR-0199 item 3 identifies.
+     silent-stranding failure mode ADR-0205 item 3 identifies.
   5. **Bare unnamed marker.** A payload `invariant: alpha/contracts:stable` with no parenthetical
      at all must fail with `does not name a proving unit`. Without this case
      `unnamedProofPayloadRE`'s error statement is never executed once the fixtures above are all
@@ -425,7 +425,7 @@ Whole-effort acceptance, beyond each phase's gate:
   scratch working copy, run `./x check`, and confirm it reports the Task 4.2 error at that
   marker's line. Restore the file afterwards with `git apply -R` or `git restore` from HEAD, not
   by re-typing it. This is the acceptance step that distinguishes a check that works from a check
-  that merely compiles, and ADR-0199's history is the argument for running it: both blockers found
+  that merely compiles, and ADR-0205's history is the argument for running it: both blockers found
   during review were rules that read correctly and did not hold.
 - A stacked-marker site is genuinely protected: delete
   `TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion` in a scratch working copy and
@@ -440,8 +440,8 @@ Whole-effort acceptance, beyond each phase's gate:
 
 Not part of this plan, and owned by the deferred post-review transaction after terminal review
 settles: authoring the claim `invariants/topics-and-markers:proof-marker-names-its-unit` with its
-`Backing: test` prose and its own named proof marker, appending ADR-0199's Applied event for that
-single `add`, flipping ADR-0199 to `Implemented`, and freezing this plan at `status: Implemented`
+`Backing: test` prose and its own named proof marker, appending ADR-0205's Applied event for that
+single `add`, flipping ADR-0205 to `Implemented`, and freezing this plan at `status: Implemented`
 with its implementation findings.
 
 ## Notes
@@ -450,7 +450,7 @@ with its implementation findings.
   survivors of commit 4c61356a; ADR-0198 repaired the other two.
 - Phase 3's script is deliberately disposable. Do not generalise it into a committed tool: the
   separation between language knowledge used once to migrate and never to enforce is the whole
-  adopter-facing argument of ADR-0199, and a committed migration tool would blur it.
+  adopter-facing argument of ADR-0205, and a committed migration tool would blur it.
 - If Phase 4 reveals a fixture that cannot satisfy the name rule without contorting the test it
   belongs to, that is a finding worth recording here rather than working around silently, because
   it would be evidence the rule is harder to satisfy than the corpus census suggested. No such
@@ -480,7 +480,7 @@ with its implementation findings.
   `TestCorpusParsedOnce` above the pure helper `parseDirProblems`, marker included. A seventh,
   `internal/project/docs_sections_test.go`, named its own test correctly but was independently
   satisfied by a TRAILING comment on a code line, which is a boundary of the shipped rule rather
-  than a migration slip; ADR-0199 item 3 now records it. The correct census for f1397870 is 427
+  than a migration slip; ADR-0205 item 3 now records it. The correct census for f1397870 is 427
   above a test function, 91 in a test body, 2 naming a helper, 2 naming their own table row, and
   3 above a package-level table row taking the consuming test's identifier, which is the defect
   this entry records; that partition closes at 525, where the commit's own message says 5
@@ -495,7 +495,7 @@ with its implementation findings.
   line of the marker's own file". The shipped rule skips lines that open with the family's marker
   token, which equals "non-comment" only for a family whose token is its comment leader. Terminal
   review caught the overstatement and the settlement corrected all six documentation sources, the
-  changelog, and ADR-0199 item 3; the task text above is left as the historical instruction.
+  changelog, and ADR-0205 item 3; the task text above is left as the historical instruction.
 
 - **Residual the rule does not close, recorded deliberately.** The check proves a marker names a
   live unit; it cannot judge whether that unit is topical. Six claims now hold exactly one proof

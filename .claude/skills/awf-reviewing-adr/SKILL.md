@@ -20,10 +20,10 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the ADR corpus, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
 
 <!-- awf:edit procedure: default; create .awf/skills/parts/reviewing-adr/procedure.md to override -->
-1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `docs/decisions/` matching the `NNNN-*.md` pattern.
+1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified decision record under `docs/decisions/`: `NNNN-*.md` when numbered, or `<slug>.md` while pending, ignoring `README.md`, `INDEX.md`, and `template.md`.
 
 <!-- awf:edit artifact-path-detection: default; create .awf/skills/parts/reviewing-adr/artifact-path-detection.md to override -->
-2. **Path detection detail.** When no explicit path is given: list `docs/decisions/NNNN-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+2. **Path detection detail.** When no explicit path is given: list the decision records under `docs/decisions/` - both `NNNN-*.md` and any pending `<slug>.md`, never the three reserved basenames - sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->
 3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes the following. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section.

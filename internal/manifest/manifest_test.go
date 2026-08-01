@@ -284,6 +284,38 @@ func TestSchema15PermanentAuthorityV2BoundaryMatrix(t *testing.T) {
 	}
 }
 
+// The cutoff set is ordered and each boundary is sealed by its own schema
+// generation: schema 29 requires adrFormatV3From, which must be positive and at
+// or above adrFormatV2From (ADR-0202 item 1).
+func TestSchema29PermanentAuthorityV3BoundaryMatrix(t *testing.T) {
+	fields := `"awfVersion":"0.30.0","files":{},"adrFormatV1From":4,"adrFormatV2From":6,"legacyAdrGaps":[]`
+	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":28}`)); err != nil {
+		t.Fatalf("schema 28 omission must remain compatible: %v", err)
+	}
+	for _, tc := range []struct {
+		name, v3, want string
+	}{
+		{"missing", "", "requires adrFormatV3From"},
+		{"explicit zero", `,"adrFormatV3From":0`, "must be positive"},
+		{"below V2", `,"adrFormatV3From":5`, "greater than or equal"},
+		{"equal cutoffs", `,"adrFormatV3From":6`, ""},
+		{"later V3 cutoff", `,"adrFormatV3From":9`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Parse([]byte(`{` + fields + `,"schemaVersion":29` + tc.v3 + `}`))
+			if tc.want == "" {
+				if err != nil || got.ADRFormatV3From < got.ADRFormatV2From {
+					t.Fatalf("valid schema-29 authority = %#v, %v", got, err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestAuthorityStateMatrix(t *testing.T) {
 	bridge := `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[2]}`
 	tests := []struct {
@@ -301,6 +333,10 @@ func TestAuthorityStateMatrix(t *testing.T) {
 		{"v2-explicit-zero-only", `"adrFormatV2From":0`, 0, true},
 		{"mixed", bridge + `,"adrFormatV1From":4,"legacyAdrGaps":[]`, 0, true},
 		{"bridge-v2-mixing", bridge + `,"adrFormatV2From":9`, 0, true},
+		{"permanent-v3", `"adrFormatV1From":4,"adrFormatV2From":9,"adrFormatV3From":11,"legacyAdrGaps":[]`, AuthorityPermanent, false},
+		{"v3-positive-only", `"adrFormatV3From":9`, 0, true},
+		{"v3-explicit-zero-only", `"adrFormatV3From":0`, 0, true},
+		{"bridge-v3-mixing", bridge + `,"adrFormatV3From":9`, 0, true},
 		{"v2-zero", `"adrFormatV1From":4,"adrFormatV2From":0,"legacyAdrGaps":[]`, 0, true},
 		{"v2-negative", `"adrFormatV1From":4,"adrFormatV2From":-1,"legacyAdrGaps":[]`, 0, true},
 		{"v2-reversed", `"adrFormatV1From":4,"adrFormatV2From":3,"legacyAdrGaps":[]`, 0, true},

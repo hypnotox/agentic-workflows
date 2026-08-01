@@ -12,7 +12,7 @@ import (
 )
 
 func TestEndToEndGolden(t *testing.T) {
-	assertV2ADRTemplatePublicationSafe(t)
+	assertV3ADRTemplatePublicationSafe(t)
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -84,7 +84,7 @@ func TestEndToEndGolden(t *testing.T) {
 	}
 }
 
-func assertV2ADRTemplatePublicationSafe(t *testing.T) {
+func assertV3ADRTemplatePublicationSafe(t *testing.T) {
 	t.Helper()
 	out := renderGolden(t, "adr-template/template.md.tmpl", map[string]any{
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
@@ -92,8 +92,8 @@ func assertV2ADRTemplatePublicationSafe(t *testing.T) {
 	implementing := strings.Index(out, "Implementing; content-sha256")
 	applied := strings.Index(out, "Applied; operations")
 	history := strings.Index(out, "## Status history\n")
-	if !strings.Contains(out, "format: current-state-v2") || implementing < 0 || applied < implementing || history < applied {
-		t.Fatalf("V2 lifecycle example is not publication-safe:\n%s", out)
+	if !strings.Contains(out, "format: current-state-v3") || implementing < 0 || applied < implementing || history < applied {
+		t.Fatalf("V3 lifecycle example is not publication-safe:\n%s", out)
 	}
 	tail := out[history:]
 	if strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {

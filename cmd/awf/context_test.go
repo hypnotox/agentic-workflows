@@ -20,6 +20,7 @@ import (
 )
 
 const ctxCmdYAML = `prefix: example
+integrationBranch: main
 vars:
   gateCmd: make gate
 skills:

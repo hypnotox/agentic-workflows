@@ -132,5 +132,5 @@ Backing: test
 ### `invariant: proof-marker-names-its-unit`
 
 A proof marker names the unit that proves its claim, `invariant: <domain>/<topic>:<slug> (<name>)`, and building the marker index rejects a proof marker that carries no name. The name is free text, and it must occur verbatim on a line of the marker's own file whose trimmed form does not open with that family's marker token, with the match unflanked by a letter, digit, or underscore; otherwise the scan fails at that marker's line.
-Origin: ADR-0199
+Origin: ADR-0205
 Backing: test

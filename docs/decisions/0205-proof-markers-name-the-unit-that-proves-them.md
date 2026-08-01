@@ -1,9 +1,10 @@
 ---
-format: current-state-v2
+format: current-state-v3
+slug: proof-markers-name-the-unit-that-proves-them
 status: Implemented
 date: 2026-07-31
 ---
-# ADR-0199: Proof markers name the unit that proves them
+# ADR-0205: Proof markers name the unit that proves them
 
 ## Context
 

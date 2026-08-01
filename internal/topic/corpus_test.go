@@ -13,7 +13,7 @@ import (
 func corpusFixture(t *testing.T) (string, *config.Config, adr.Corpus) {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: test\ndomains: [alpha, beta]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: test\nintegrationBranch: main\ndomains: [alpha, beta]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/alpha.yaml"), "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/beta.yaml"), "paths: [\"pkg/**\"]\n")
 	for n, status := range map[string]string{"0001": "Implemented", "0002": "Implemented", "0003": "Proposed"} {
@@ -151,7 +151,7 @@ func TestOperationSpecificProvenance(t *testing.T) {
 		_, err := assembleCorpus(
 			map[string]metaEntry{"alpha/x": {meta: Metadata{Title: "X", Summary: "X.", Paths: []string{"x"}}, path: "meta"}},
 			map[string]partEntry{"alpha/x": {data: []byte("Intro.\n\n## Claims\n\n### `rule: x`\nRule.\nOrigin: ADR-" + origin + "\n" + revisedLine), path: "part"}},
-			[]string{"alpha"}, map[string][]string{"alpha": {"x"}}, adr.NewCorpus(records),
+			[]string{"alpha"}, map[string][]string{"alpha": {"x"}}, mustCorpus(records),
 		)
 		return err
 	}
@@ -195,7 +195,7 @@ func TestRecordMetaRejectsDuplicateID(t *testing.T) {
 func TestLoadCorpusPropagatesMarkerFailure(t *testing.T) {
 	root, _, adrs := corpusFixture(t)
 	writeTopic(t, root, "alpha", "x", "title: X\nsummary: X.\npaths: [\"internal/**\"]\n", "Intro.\n\n## Claims\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: test\n")
-	cfg, err := config.Parse(filepath.Join(root, ".awf"), []byte("prefix: test\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
+	cfg, err := config.Parse(filepath.Join(root, ".awf"), []byte("prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,4 +212,14 @@ func TestLoadCorpusNoTopicTree(t *testing.T) {
 	if err != nil || len(c.All()) != 0 {
 		t.Fatalf("%#v %v", c, err)
 	}
+}
+
+// mustCorpus builds a corpus from a fixture slice, panicking on a duplicate
+// identity no fixture here intends to declare.
+func mustCorpus(adrs []adr.ADR) adr.Corpus {
+	c, err := adr.NewCorpus(adrs)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }

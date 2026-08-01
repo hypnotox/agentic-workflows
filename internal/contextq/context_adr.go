@@ -30,11 +30,7 @@ func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics t
 		return nil
 	}
 	base := path.Base(filePath)
-	match := adr.FilenameRe.FindStringSubmatch(base)
-	if match == nil {
-		return nil
-	}
-	record, ok := adrs.ByNumber(match[1])
+	record, ok := adrs.ByIdentity(adr.FileIdentity(base))
 	if !ok || record.Filename != base {
 		return nil
 	}
@@ -42,11 +38,12 @@ func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics t
 	if record.IsContentAmendable() {
 		mutability = "mutable"
 	}
-	out := &adrArtifactContext{Number: record.Number, Title: trimADRTitle(record.Number, record.Title), Status: record.Status, Mutability: mutability, AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{}}
+	identity := record.Identity()
+	out := &adrArtifactContext{Number: identity, Title: trimADRTitle(identity, record.Title), Status: record.Status, Mutability: mutability, AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{}}
 	if !slices.Contains(facets, FacetPending) {
 		return out
 	}
-	progress, _, err := adrs.OperationProgress(record.Number)
+	progress, _, err := adrs.OperationProgress(identity)
 	if err != nil {
 		return out
 	}

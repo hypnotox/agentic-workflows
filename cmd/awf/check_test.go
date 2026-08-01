@@ -19,6 +19,7 @@ import (
 )
 
 const checkYAML = `prefix: example
+integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
 skills: [tdd]
 agents: []
@@ -123,7 +124,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
 // not the config declares the block.
 func coverageYAML() string {
-	return "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
+	return "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
 		"currentState:\n  maxTopicsPerPath: 1\n"
 }
 
@@ -272,13 +273,16 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 		if generation >= 15 {
 			lock.ADRFormatV2From = 1
 		}
+		if generation >= 28 {
+			lock.ADRFormatV3From = 1
+		}
 		b, err := lock.Marshal()
 		if err != nil {
 			t.Fatal(err)
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
 
 	t.Run("working lock cannot fail staged gate or suppress staged ahead note", func(t *testing.T) {
 		root := stagedCheckProject(t, map[string]string{
@@ -327,6 +331,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		} else {
 			lock.ADRFormatV1From = 1
 			lock.ADRFormatV2From = 1
+			lock.ADRFormatV3From = 1
 			lock.LegacyADRGaps = []int{}
 		}
 		b, err := lock.Marshal()
@@ -335,7 +340,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
 
 	t.Run("missing repository refuses", func(t *testing.T) {
 		t.Chdir(t.TempDir())
@@ -468,7 +473,7 @@ func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *tes
 	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, ADRFormatV3From: 2, LegacyADRGaps: []int{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)
@@ -485,7 +490,7 @@ func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *tes
 	files := map[string]string{
 		".githooks/check-nested-staged":                         string(helperBody),
 		prefix + ".awf/awf.lock":                                string(lockBytes),
-		prefix + ".awf/config.yaml":                             "prefix: sundial\nskills: []\nagents: []\ndomains: [alpha]\n",
+		prefix + ".awf/config.yaml":                             "prefix: sundial\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [alpha]\n",
 		prefix + ".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
 		prefix + ".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
 		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
@@ -565,7 +570,7 @@ func TestRunCheckStagedError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {

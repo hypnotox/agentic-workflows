@@ -188,7 +188,7 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
-	testsupport.WriteAwfConfig(t, root, "prefix: ex\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: ex\nintegrationBranch: main\nskills: []\nagents: []\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}

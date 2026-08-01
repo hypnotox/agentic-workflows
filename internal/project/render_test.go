@@ -14,7 +14,7 @@ import (
 // body, syncs it, and returns the rendered docs/workflow.md content.
 func syncedWorkflowDoc(t *testing.T, body string) string {
 	t.Helper()
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n",
 		map[string]string{"parts/workflow/commit-discipline.md": body})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -70,7 +70,7 @@ func TestCommentOnlyPartRendersEmptySection(t *testing.T) {
 
 // A malformed whole-line opener in a part fails the render naming the part path.
 func TestMalformedAuthoringCommentFailsSync(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n",
 		map[string]string{"parts/workflow/commit-discipline.md": "<!-- awf:comment unclosed\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -112,7 +112,7 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 		t.Fatalf("embedded ADR README source lacks qualified directive %q", directive)
 	}
 
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

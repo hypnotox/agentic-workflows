@@ -337,7 +337,9 @@ func TestAdoptionBoundary(t *testing.T) {
 		dir := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(dir, "0001-one.md"), legacy("0001"))
 		testsupport.WriteFile(t, filepath.Join(dir, "0001-two.md"), legacy("0001"))
-		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		// Duplicate identity has one home: the corpus refuses it before the
+		// boundary reads a single record (ADR-0202 item 4).
+		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
 			t.Fatalf("error=%v", err)
 		}
 	})
@@ -504,25 +506,193 @@ func TestNewFileRejectsNonGovernedFormatAndMissingFrontmatter(t *testing.T) {
 	}
 }
 
+// The template is the one authored surface the scaffold reads, and Phase 6
+// rewrites its frontmatter to the V3 shape. A V3 marker must therefore be
+// accepted, and the per-record slug must stay the scaffold's to write.
+func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
+	dir := t.TempDir()
+	v3Template := strings.Replace(adrTemplateFixture, "format: current-state-v1", "format: current-state-v3", 1)
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(v3Template), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path, err := adr.NewFile(dir, "Keep The Corpus", adr.CurrentStateV3)
+	if err != nil {
+		t.Fatalf("V3 template scaffold: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "slug: keep-the-corpus\n") || strings.Count(string(data), "slug:") != 1 {
+		t.Fatalf("scaffolded slug key:\n%s", data)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(strings.Replace(v3Template, "status: Proposed", "slug: fixed\nstatus: Proposed", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adr.NewFile(dir, "Declared Slug", adr.CurrentStateV3); err == nil || !strings.Contains(err.Error(), "must not declare slug") {
+		t.Fatalf("declared-slug refusal = %v", err)
+	}
+}
+
+// Numbering is highest-plus-one over the numbered subset. Two titles, not one:
+// a repeated title is now a slug collision (ADR-0202 item 2 makes the slug an
+// identity), which TestNewFileRefusals covers.
+// invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering (TestNewFileSequentialCallsGetDifferentNumbers)
 func TestNewFileSequentialCallsGetDifferentNumbers(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
 	swapNow(t, fixedNow)
-	first, err := adr.NewFile(dir, "Same Title", adr.CurrentStateV1)
+	first, err := adr.NewFile(dir, "First Title", adr.CurrentStateV1)
 	if err != nil {
 		t.Fatalf("first NewFile: %v", err)
 	}
-	second, err := adr.NewFile(dir, "Same Title", adr.CurrentStateV1)
+	second, err := adr.NewFile(dir, "Second Title", adr.CurrentStateV1)
 	if err != nil {
 		t.Fatalf("second NewFile: %v", err)
 	}
-	if first == second {
-		t.Fatalf("expected distinct paths, both were %q", first)
-	}
-	wantFirst := filepath.Join(dir, "0001-same-title.md")
-	wantSecond := filepath.Join(dir, "0002-same-title.md")
+	wantFirst := filepath.Join(dir, "0001-first-title.md")
+	wantSecond := filepath.Join(dir, "0002-second-title.md")
 	if first != wantFirst || second != wantSecond {
 		t.Errorf("got (%q, %q), want (%q, %q)", first, second, wantFirst, wantSecond)
+	}
+}
+
+// A pending scaffold writes `<slug>.md` with a `# ADR-<slug>:` heading, the
+// mandatory slug key, and no number; a numbered V3 scaffold keeps the numbered
+// spelling. Both carry the retained slug.
+// invariant: adr-system/adr-lifecycle:pending-adr-slug-identity (TestNewPendingFileWritesSlugIdentity)
+// invariant: adr-system/adr-lifecycle:adr-new-heading-matches-file (TestNewPendingFileWritesSlugIdentity)
+func TestNewPendingFileWritesSlugIdentity(t *testing.T) {
+	dir := t.TempDir()
+	writeTemplateFixture(t, dir)
+	swapNow(t, fixedNow)
+	path, err := adr.NewPendingFile(dir, "Pending Record Here")
+	if err != nil {
+		t.Fatalf("NewPendingFile: %v", err)
+	}
+	if want := filepath.Join(dir, "pending-record-here.md"); path != want {
+		t.Fatalf("path = %q, want %q", path, want)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"format: current-state-v3\n", "slug: pending-record-here\n", "# ADR-pending-record-here: Pending Record Here"} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("pending scaffold missing %q:\n%s", want, body)
+		}
+	}
+	// The record it just wrote parses as a pending member of the corpus.
+	parsed, err := adr.ParseV3(filepath.Base(path), body)
+	if err != nil {
+		t.Fatalf("scaffolded pending record does not parse: %v", err)
+	}
+	if parsed.Number != "" || parsed.Slug != "pending-record-here" {
+		t.Errorf("parsed identity = (%q, %q), want ((empty), pending-record-here)", parsed.Number, parsed.Slug)
+	}
+}
+
+// Every refusal fires before any file is written, in both scaffold forms.
+// invariant: adr-system/adr-lifecycle:adr-slug-frontmatter-mandatory (TestNewFileRefusals)
+func TestNewFileRefusals(t *testing.T) {
+	for _, tc := range []struct{ name, title, want string }{
+		{"reserved stem", "Template", `slugifies to reserved name "template"`},
+		{"reserved stem index", "Index", `slugifies to reserved name "index"`},
+		{"numbered-looking slug", "2026 Roadmap Refresh", `slugifies to "2026-roadmap-refresh", which reads as a numbered filename`},
+		{"four-digit slug", "2026", `slugifies to "2026", which collides with the number identity form`},
+		{"all-digit slug of another width", "123456", `slugifies to "123456", which collides with the number identity form`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, form := range []struct {
+				name string
+				call func(dir string) (string, error)
+			}{
+				{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, tc.title, adr.CurrentStateV3) }},
+				{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, tc.title) }},
+			} {
+				t.Run(form.name, func(t *testing.T) {
+					dir := t.TempDir()
+					writeTemplateFixture(t, dir)
+					swapNow(t, fixedNow)
+					if _, err := form.call(dir); err == nil || !strings.Contains(err.Error(), tc.want) {
+						t.Fatalf("err = %v, want one containing %q", err, tc.want)
+					}
+					written, err := filepath.Glob(filepath.Join(dir, "*.md"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(written) != 1 {
+						t.Errorf("a refusal must write nothing, found %v", written)
+					}
+				})
+			}
+		})
+	}
+}
+
+// A slug already claimed by the corpus is refused, whether the claim comes from
+// a retained slug key or only from a numbered filename's slug segment.
+// invariant: adr-system/adr-lifecycle:corpus-single-identity-key (TestNewFileRefusesSlugAlreadyInCorpus)
+func TestNewFileRefusesSlugAlreadyInCorpus(t *testing.T) {
+	for _, tc := range []struct{ name, seed string }{
+		{"numbered filename segment", "numbered"},
+		{"retained slug key", "pending"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeTemplateFixture(t, dir)
+			swapNow(t, fixedNow)
+			if tc.seed == "numbered" {
+				if _, err := adr.NewFile(dir, "Taken Title", adr.CurrentStateV1); err != nil {
+					t.Fatal(err)
+				}
+			} else if _, err := adr.NewPendingFile(dir, "Taken Title"); err != nil {
+				t.Fatal(err)
+			}
+			_, err := adr.NewPendingFile(dir, "Taken Title")
+			if err == nil || !strings.Contains(err.Error(), `slug "taken-title" already used by`) {
+				t.Fatalf("err = %v, want the slug-collision refusal", err)
+			}
+		})
+	}
+}
+
+// Scaffolding reads the corpus for identity alone, so a governed record whose
+// body does not parse must not stop the next author from scaffolding. That is
+// the ordinary state of a record someone is still filling in, and of another
+// effort's pending record that arrived with a merge of the integration branch.
+// invariant: adr-system/adr-lifecycle:corpus-parsed-once (TestScaffoldReadsIdentityBesideAnUnparseableBody)
+func TestScaffoldReadsIdentityBesideAnUnparseableBody(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		scaffold func(dir string) (string, error)
+	}{
+		{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, "Second One", adr.CurrentStateV1) }},
+		{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, "Second One") }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeTemplateFixture(t, dir)
+			swapNow(t, fixedNow)
+			malformed := "---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-01-01\n---\n" +
+				"# ADR-0004: Half Written\n\n## State changes\n\n- not a parseable operation entry\n"
+			if err := os.WriteFile(filepath.Join(dir, "0004-half-written.md"), []byte(malformed), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			// The body genuinely does not parse: the full-body seam refuses it,
+			// so a green scaffold below is the identity-only read and not a
+			// fixture that happens to be well-formed.
+			if _, err := adr.LoadCorpus(dir); err == nil {
+				t.Fatal("fixture body parses; the regression it guards cannot occur")
+			}
+			path, err := tc.scaffold(dir)
+			if err != nil {
+				t.Fatalf("scaffold refused beside an unparseable body: %v", err)
+			}
+			if _, err := os.Stat(path); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
@@ -558,7 +728,9 @@ func TestNewFileRejectsInvalidGovernedTemplateMarkers(t *testing.T) {
 		{"missing", "", "missing governed format marker"},
 		{"multiple same", "format: current-state-v1\nformat: current-state-v1\n", "exactly one"},
 		{"multiple mixed", "format: current-state-v1\nformat: current-state-v2\n", "exactly one"},
-		{"unsupported", "format: current-state-v3\n", "unsupported governed format marker"},
+		// Every governed format the scaffold knows is accepted, so the refusal
+		// is reached only by a marker no format defines.
+		{"unsupported", "format: current-state-v9\n", "unsupported governed format marker"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()

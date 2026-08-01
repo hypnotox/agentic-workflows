@@ -65,6 +65,8 @@ var minVersionBySchema = map[int]string{
 	26: "0.30.0",
 	27: "0.30.0",
 	28: "0.30.0",
+	29: "0.30.0",
+	30: "0.30.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -352,11 +354,16 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 		lock.InitializedWithVersion = old.InitializedWithVersion
 		lock.ADRFormatV1From = old.ADRFormatV1From
 		lock.ADRFormatV2From = old.ADRFormatV2From
+		lock.ADRFormatV3From = old.ADRFormatV3From
 		lock.LegacyADRGaps = slices.Clone(old.LegacyADRGaps)
 	} else {
 		lock.InitializedWithVersion = seed.InitializedWithVersion
+		// Fresh adoption seals the whole ordered cutoff set at the same
+		// boundary, so a greenfield project authors V3 from its first record
+		// and the V1 <= V2 <= V3 ordering holds trivially (ADR-0202 item 1).
 		lock.ADRFormatV1From = initCutoff
 		lock.ADRFormatV2From = initCutoff
+		lock.ADRFormatV3From = initCutoff
 		lock.LegacyADRGaps = slices.Clone(initGaps)
 	}
 	want := map[string]bool{}
@@ -588,12 +595,39 @@ func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding
 	return append(findings, trans...), commits, nil
 }
 
-// NewADR scaffolds a new ADR file under the project's decisions dir: the next
-// sequential number, the rendered template with its title/date filled in and
-// marker comments stripped, refusing to overwrite an existing file. Mirrors
-// the CheckInvariants/Audit pattern - cmd/awf reaches this only through this
-// exported method, never internal/project.Layout directly.
-func (p *Project) NewADR(title string) (string, error) {
+// onIntegrationBranch reports whether this checkout is positively identified as
+// sitting on the configured integration branch. Every indeterminate outcome -
+// no repository, a probe failure, a detached HEAD - reports false rather than an
+// error, because both consumers must degrade to the safe answer instead of
+// failing: the scaffold writes a pending record, and the pending-record check
+// stays silent (ADR-0202 item 7). A detached HEAD needs no separate test: the
+// seam reports it as an empty branch name, and integrationBranch is validated
+// non-empty, so the comparison cannot match.
+func (p *Project) onIntegrationBranch(ctx context.Context) bool {
+	repo, err := p.gitRepo()
+	if err != nil {
+		return false
+	}
+	branch, err := repo.CurrentBranch(ctx)
+	if err != nil {
+		return false
+	}
+	return branch == p.Cfg.IntegrationBranch
+}
+
+// NewADR scaffolds a new ADR file under the project's decisions dir from the
+// rendered template, with its title/date filled in and marker comments
+// stripped, refusing to overwrite an existing file. It is branch-aware
+// (ADR-0202 item 5): on the integration branch it allocates the next sequential
+// number, and anywhere else - including a detached HEAD or an unreadable
+// repository - it writes a slug-identified pending record that `awf adr number`
+// numbers at integration. Mirrors the CheckInvariants/Audit pattern - cmd/awf
+// reaches this only through this exported method, never internal/project.Layout
+// directly.
+func (p *Project) NewADR(ctx context.Context, title string) (string, error) {
+	if !p.onIntegrationBranch(ctx) {
+		return adr.NewPendingFile(p.decisionsDir(), title)
+	}
 	lock, err := manifest.Load(p.lockPath())
 	if err != nil {
 		return "", err
@@ -606,6 +640,9 @@ func (p *Project) NewADR(title string) (string, error) {
 	format := adr.CurrentStateV1
 	if lock.ADRFormatV2From > 0 && n >= lock.ADRFormatV2From {
 		format = adr.CurrentStateV2
+	}
+	if lock.ADRFormatV3From > 0 && n >= lock.ADRFormatV3From {
+		format = adr.CurrentStateV3
 	}
 	return adr.NewFile(p.decisionsDir(), title, format)
 }

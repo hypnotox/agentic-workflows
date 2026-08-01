@@ -434,8 +434,11 @@ func finding(s severity.Rank, rule string, c awfgit.Commit, detail string) Findi
 	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: c.Subject, Detail: detail}
 }
 
+// isADRFile reports whether path is a decision record directly under adrDir.
+// Every non-reserved Markdown file there is a record, numbered or pending
+// (ADR-0202 item 4).
 func isADRFile(path, adrDir string) bool {
-	return filepath.Dir(path) == adrDir && adr.FilenameRe.MatchString(filepath.Base(path))
+	return filepath.Dir(path) == adrDir && adr.FileIdentity(filepath.Base(path)) != ""
 }
 
 // adrRecordOf parses an ADR from blob text through internal/adr's bytes seam

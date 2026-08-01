@@ -13,7 +13,7 @@ import (
 // and both gate-command vars set (every registry key populated).
 func projectWithScopes(t *testing.T) *Project {
 	t.Helper()
-	root := scaffold(t, "prefix: awftest\n"+
+	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\n"+
 		"vars:\n  gateCmd: ./x gate\n  checkCmd: ./x check\n"+
 		"skills: []\nagents: []\n"+
 		"audit:\n  allowedScopes:\n"+
@@ -30,7 +30,7 @@ func projectWithScopes(t *testing.T) *Project {
 // scopes) and no gate vars - the scope keys and gate keys are all absent.
 func projectAcceptAny(t *testing.T) *Project {
 	t.Helper()
-	p, err := Open(testContext(t), scaffold(t, "prefix: bare\nvars: {}\nskills: []\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: bare\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestPlaceholderEscape(t *testing.T) {
 // invariant: rendering/inplace-and-placeholders:placeholder-value-token-free (TestPlaceholderValueTokenFree)
 func TestPlaceholderValueTokenFree(t *testing.T) {
 	// A scope meaning carrying the token taints commitScopeTable's value.
-	root := scaffold(t, "prefix: awftest\nvars: {}\nskills: []\nagents: []\n"+
+	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n"+
 		"audit:\n  allowedScopes:\n    - {name: adr, meaning: \"see {{=awf:commitScopeList}}\"}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -188,7 +188,7 @@ func TestPlaceholderValueTokenFree(t *testing.T) {
 // a workflow part using {{=awf:commitScopeTable}} renders the table, and a part
 // with an unknown placeholder fails Sync.
 func TestPlaceholderSubstitutionInSync(t *testing.T) {
-	cfg := "prefix: awftest\nvars: {}\nskills: []\nagents: []\n" +
+	cfg := "prefix: awftest\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n" +
 		"audit:\n  allowedScopes:\n    - {name: adr, meaning: ADR docs}\n"
 
 	good := scaffoldFiles(t, cfg, map[string]string{

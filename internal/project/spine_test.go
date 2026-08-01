@@ -1145,7 +1145,7 @@ func TestOrientingSkillContract(t *testing.T) {
 	// The three consumer skills are enabled so the same render proves both the
 	// single home and the references that replaced their inline copies.
 	config := func(target string) string {
-		return "prefix: example\nskills: [brainstorming, exploring, orienting, proposing-adr, writing-plans]\nagents: [explorer, grounding-checker]\ntargets: [" + target + "]\n"
+		return "prefix: example\nintegrationBranch: main\nskills: [brainstorming, exploring, orienting, proposing-adr, writing-plans]\nagents: [explorer, grounding-checker]\ntargets: [" + target + "]\n"
 	}
 	for _, target := range KnownTargets() {
 		t.Run(target, func(t *testing.T) {
@@ -1731,8 +1731,8 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 // set) replaces the layout docs map - used by RequiresDoc-gated templates
 // whose doc path must resolve. TestConditionalTemplatesHaveFallbackCases
 // requires an entry per conditional catalog template (ADR-0080).
-func TestV2ADRTemplateEmptyDataFallback(t *testing.T) {
-	assertV2ADRTemplatePublicationSafe(t)
+func TestV3ADRTemplateEmptyDataFallback(t *testing.T) {
+	assertV3ADRTemplatePublicationSafe(t)
 }
 
 type fallbackCase struct {
@@ -2034,7 +2034,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	// brainstorming carries a local sidecar: the guide's chain sentence needs a
 	// chain skill in the effective set, but a non-local one would demand its
 	// ADR-0081 closure (including adr-lifecycle, banned below) at open.
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - brainstorming\n  - bugfix\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n",
 		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
 	localSkill := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(localSkill), 0o755); err != nil {

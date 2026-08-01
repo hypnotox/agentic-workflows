@@ -21,7 +21,7 @@ import (
 )
 
 func TestLoadTreeCurrentStateRejectsFutureSchema(t *testing.T) {
-	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\n")}})
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\nintegrationBranch: main\n")}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,17 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	if _, err := nextADRIdentityFromTree(configTree); err == nil {
 		t.Fatal("symlink cutoff config accepted")
 	}
-	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
+	// A config today's schema cannot parse for a reason the retired-key
+	// port-forward does not fix. That pass strips keys whose struct field is
+	// gone, so only a key that was never declared still reaches the parser.
+	unknownKey, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\nnoSuchKey: 1\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadTreeCurrentState(".", unknownKey, nil, adr.FormatBoundaries{}, nil); err == nil {
+		t.Fatal("unknown config key accepted")
+	}
+	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
 	if next, err := nextADRIdentityFromTree(ordinary); err != nil || next != 1 {
 		t.Fatalf("next=%d err=%v", next, err)
 	}
@@ -80,7 +90,7 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 	const adversarial = ".awf/efforts/e/.awf/config.yaml"
 	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: adversarial, Mode: snapshot.Regular, Bytes: []byte("prefix: nested\n")},
+		{Path: adversarial, Mode: snapshot.Regular, Bytes: []byte("prefix: nested\nintegrationBranch: main\n")},
 		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
 	})
 	if err != nil {
@@ -130,6 +140,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 // wrong shape, and phase 2 puts a proof marker on exactly those tests. Deriving
 // in this direction has no pattern to fall out of sync.
 const csNoPolicyYAML = `prefix: example
+integrationBranch: main
 skills:
   - tdd
 agents:
@@ -233,7 +244,7 @@ func TestCheckCurrentState(t *testing.T) {
 // invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckCurrentStateNoPolicy)
 // invariant: config/configuration:severity-not-configurable (TestCheckCurrentStateNoPolicy)
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
-	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - internal/**\n",
 		"internal/bar.go":         "package internalx\n",
@@ -274,7 +285,7 @@ func TestCheckStagedRootOutsideRepo(t *testing.T) {
 }
 
 func TestCheckCurrentStateOutsideRepo(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -309,6 +320,7 @@ func TestCheckCurrentStateLoadError(t *testing.T) {
 // invYAML declares a marker source over internal/** and a test-backing glob so a
 // test-backed invariant claim can carry its required proof marker.
 const invYAML = `prefix: example
+integrationBranch: main
 skills:
   - tdd
 agents:
@@ -357,7 +369,7 @@ func TestCurrentStateInvariants(t *testing.T) {
 // reports none without error.
 // invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCurrentStateInvariantsEmpty)
 func TestCurrentStateInvariantsEmpty(t *testing.T) {
-	p := csRepo(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
+	p := csRepo(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
 	invs, err := p.CurrentStateInvariants(testContext(t))
 	if err != nil {
 		t.Fatalf("CurrentStateInvariants: %v", err)
