@@ -585,6 +585,10 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 	}
 }
 
+type testTempErrorWriter struct{ err error }
+
+func (w testTempErrorWriter) Write([]byte) (int, error) { return 0, w.err }
+
 func TestCleanTestTempsRejectsUnknownModeBeforeFactory(t *testing.T) {
 	called := false
 	var output strings.Builder
@@ -648,6 +652,26 @@ func TestCleanTestTempsRendersZeroAndPartialScans(t *testing.T) {
 	})
 	if !errors.Is(err, blocked) || output.String() != "test temp cleanup: removed 0 home(s), 0 logical byte(s)\n" {
 		t.Fatalf("partial err=%v output=%q", err, output.String())
+	}
+}
+
+func TestCleanTestTempsReturnsSummaryWriteFailureWithCleanupFailure(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mkdirHome(t, root, "home-1", time.Now())
+	blocked := errors.New("blocked")
+	writeFailure := errors.New("write summary")
+	err := cleanTestTemps(CleanupAll, testTempErrorWriter{writeFailure}, func() (*testTempManager, error) {
+		m := safeTestTempManager(t, root, time.Now())
+		files := m.fs
+		files.removeAll = func(string) error { return blocked }
+		m.fs = files
+		return m, nil
+	})
+	if !errors.Is(err, blocked) || !errors.Is(err, writeFailure) {
+		t.Fatalf("cleanup error = %v", err)
 	}
 }
 

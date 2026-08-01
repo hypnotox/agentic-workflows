@@ -192,11 +192,14 @@ func cleanTestTemps(mode CleanupMode, output io.Writer, managerFactory func() (*
 	if err != nil {
 		return err
 	}
-	result, err, scanned := manager.cleanupWithScan(mode)
-	if scanned {
-		_, _ = io.WriteString(output, result.String())
+	result, cleanupErr, scanned := manager.cleanupWithScan(mode)
+	if !scanned {
+		return cleanupErr
 	}
-	return err
+	if _, err := io.WriteString(output, result.String()); err != nil {
+		return errors.Join(cleanupErr, fmt.Errorf("write test temp cleanup summary: %w", err))
+	}
+	return cleanupErr
 }
 
 func (m *testTempManager) logicalBytes(path string) (int64, error) {

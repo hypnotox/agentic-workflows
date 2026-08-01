@@ -12,6 +12,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+type errorWriter struct{ err error }
+
+func (w errorWriter) Write([]byte) (int, error) { return 0, w.err }
+
 func TestRunStaleCleanup(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	called := false
@@ -45,6 +49,17 @@ func TestRunAllWarnsBeforeCleanup(t *testing.T) {
 	}
 }
 
+func TestRunAllDoesNotCleanWhenWarningFails(t *testing.T) {
+	called := false
+	code := run([]string{"--all"}, io.Discard, errorWriter{errors.New("write warning")}, func(testsupport.CleanupMode, io.Writer) error {
+		called = true
+		return nil
+	})
+	if code != 1 || called {
+		t.Fatalf("code=%d called=%t", code, called)
+	}
+}
+
 func TestRunRejectsInvalidArguments(t *testing.T) {
 	for _, args := range [][]string{{"unexpected"}, {"--all", "unexpected"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -55,6 +70,22 @@ func TestRunRejectsInvalidArguments(t *testing.T) {
 				t.Fatalf("code=%d called=%t stdout=%q stderr=%q", code, called, stdout.String(), stderr.String())
 			}
 		})
+	}
+}
+
+func TestRunDiagnosticWriteFailuresPreserveExitMapping(t *testing.T) {
+	writeFailure := errors.New("write diagnostic")
+	called := false
+	if code := run([]string{"unexpected"}, io.Discard, errorWriter{writeFailure}, func(testsupport.CleanupMode, io.Writer) error {
+		called = true
+		return nil
+	}); code != 2 || called {
+		t.Fatalf("usage code=%d called=%t", code, called)
+	}
+	if code := run(nil, io.Discard, errorWriter{writeFailure}, func(testsupport.CleanupMode, io.Writer) error {
+		return errors.New("cleanup")
+	}); code != 1 {
+		t.Fatalf("cleanup code=%d", code)
 	}
 }
 
@@ -88,17 +119,29 @@ func TestRepositoryCleanupCommandContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"clean-test-tmp)", "go run ./cmd/testtmpclean \"$@\"", "clean-test-tmp [--all]"} {
-		if !strings.Contains(string(x), want) {
-			t.Errorf("x missing %q", want)
-		}
+	const dispatch = "  clean-test-tmp)\n    go run ./cmd/testtmpclean \"$@\"\n    ;;"
+	if strings.Count(string(x), dispatch) != 1 {
+		t.Errorf("x clean-test-tmp dispatch must be exactly %q", dispatch)
 	}
-	for _, path := range []string{filepath.Join(root, "cmd", "testtmpclean", "main.go"), filepath.Join(root, "cmd", "testtmpclean", "main_test.go")} {
+	if !strings.Contains(string(x), "clean-test-tmp [--all]") {
+		t.Error("x usage missing clean-test-tmp [--all]")
+	}
+
+	commandDir := filepath.Join(root, "cmd", "testtmpclean")
+	entries, err := os.ReadDir(commandDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	forbidden := "test temp " + "cleanup:"
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".go" {
+			continue
+		}
+		path := filepath.Join(commandDir, entry.Name())
 		contents, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		forbidden := "test temp " + "cleanup:"
 		if strings.Contains(string(contents), forbidden) {
 			t.Errorf("%s duplicates manager-owned summary", path)
 		}

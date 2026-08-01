@@ -19,13 +19,15 @@ func run(args []string, stdout, stderr io.Writer, clean cleanerFunc) int {
 	case len(args) == 0:
 	case len(args) == 1 && args[0] == "--all":
 		mode = testsupport.CleanupAll
-		fmt.Fprintln(stderr, "testtmpclean: warning: --all can remove homes used by concurrent test processes")
+		if _, err := fmt.Fprintln(stderr, "testtmpclean: warning: --all can remove homes used by concurrent test processes"); err != nil {
+			return 1
+		}
 	default:
-		fmt.Fprintln(stderr, "usage: testtmpclean [--all]")
+		_, _ = fmt.Fprintln(stderr, "usage: testtmpclean [--all]")
 		return 2
 	}
 	if err := clean(mode, stdout); err != nil {
-		fmt.Fprintf(stderr, "testtmpclean: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "testtmpclean: %v\n", err)
 		return 1
 	}
 	return 0
