@@ -311,6 +311,13 @@ func ParseRecord(name string, data []byte) (ADR, error) {
 func declaredFormatMarker(data []byte) (string, bool, error) {
 	block, _, found := frontmatter.Split(data)
 	if !found {
+		firstLine := data
+		if newline := bytes.IndexByte(firstLine, '\n'); newline >= 0 {
+			firstLine = firstLine[:newline]
+		}
+		if strings.TrimRight(string(firstLine), "\r") == "---" {
+			return "", false, errors.New("unterminated frontmatter")
+		}
 		return "", false, nil
 	}
 	var document yaml.Node
