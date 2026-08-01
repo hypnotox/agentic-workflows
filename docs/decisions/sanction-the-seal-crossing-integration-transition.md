@@ -4,353 +4,224 @@ slug: sanction-the-seal-crossing-integration-transition
 status: Proposed
 date: 2026-08-01
 ---
-# ADR-sanction-the-seal-crossing-integration-transition: Sanction the seal-crossing integration transition
+# ADR-sanction-the-seal-crossing-integration-transition: Make ADR format intrinsic and authorize stale-format merges at commit-msg
 
 ## Context
 
-Three decisions in one lineage made integration the moment an optimistically allocated
-value is settled. ADR-0202 made an ADR number provisional until integration. ADR-0203 made
-a lock cutoff and a schema generation provisional the same way, adding a re-derivation edge
-to permanent lock authority. ADR-0204 made a slugless record pair across a renumber by
-content digest, so the rename survives checking.
+awf currently decides a numbered ADR's parser from three permanent number cutoffs in
+`.awf/awf.lock`. The V1 cutoff and its explicit lower gaps entered with the current-state
+migration bridge; later schema generations added V2 and V3 cutoffs. Staged validation
+preserves or re-derives those values, then reparses the whole corpus under them. The authored
+record's own `format:` marker is checked against the parser selected by its number instead of
+selecting that parser itself.
 
-On 2026-08-01 an effort branch exercised the case none of the three anticipated: a branch
-forked before the sealing generation merging an integration branch already past it. The
-branch carried one governed record whose number the integration had taken. The numbering
-was dense through 0202, `adrFormatV3From` was 203, and `legacyAdrGaps` was empty, so the
-only free number lay at or above the cutoff. A record living there must take the
-`current-state-v3` encoding, because the cutoff decides a record's format from its number
-and a v2 record at or above it is refused for want of a mandatory `slug:` key. The renumber
-therefore forced a format retrofit, and three enforcement rules refused that retrofit:
+That model made an ADR's meaning depend on where integration eventually numbers it. A stale
+branch exposed the contradiction. It carried an ADR authored and implemented as V2 while V2
+was current. Main had since sealed the V3 cutoff and consumed the number the branch had
+chosen. Renumbering the stale ADR above the cutoff forced a V2-to-V3 retrofit even though
+neither its decision nor its implementation had been authored under V3. Three inline
+relaxations then admitted the merge: inheriting a cutoff, widening digest pairing to a newly
+slugged after-side record, and allowing the governed format change. They entered in the evil
+merge `728f6695`, in neither parent as a reviewable commit. Terminal review subsequently
+found that the first pairing predicate admitted deletions and unrelated mutations and had to
+narrow it in `1cda10f8`.
 
-1. `validatePermanentLockTransition` refused the lock transition, because the branch
-   carried no `adrFormatV3From` at all and the value arriving from the other parent was
-   computed against a corpus neither tree holds.
-2. `renumberAliases` refused to pair the two ends, because the digest step considered only
-   a record carrying no slug and the renumbered record acquires its slug in the very
-   transition that moves it.
-3. The governed-format-change rule refused the v2-to-v3 change as an independent edit.
+The incident is not a missing cutoff edge. A format is an authored property. Legacy records
+have no marker; governed records declare `current-state-v1`, `current-state-v2`, or
+`current-state-v3`. All of those formats already have parsers and lifecycle rules. A number
+is identity, not a schema router. Making number placement choose the format adds integration
+strictness without adding semantic evidence.
 
-All three were relaxed inline so the integration could land. That is the first thing this
-record has to answer for, because of how it landed.
+The existing lock authority spreads that strictness across more than parsing. Manifest
+validation requires the ordered cutoffs and legacy gap set, initialization computes them,
+schema migrations seal later values, staged checking validates their transitions, and the
+bridge cutover promotes its attested V1 cutoff and gaps into permanent authority. Removing
+only parser routing would leave this parallel state machine active. The cutoff and gap
+fields therefore leave permanent authority together. A resident bridge attestation still
+has to parse and verify in its historical shape so an in-progress adopter is recoverable,
+but final cutover no longer promotes its routing payload.
 
-### The relaxations were never a reviewable commit
+Cutoff-free parsing creates one narrower admission question. Existing corpora may contain any
+mixture of intrinsically valid formats, and existing older-format records keep following the
+lifecycle of the format they declare. New authoring, however, must not choose an obsolete
+format merely because every historical parser remains available. The current binary owns one
+current authoring format, and `awf new adr` emits it. An ordinary staged transition may
+introduce only that format.
 
-All three entered as an evil merge. The code is absent from both parents of `728f6695` and
-was added in the merge itself, so no commit ever presented it for review as a change. The
-first version of the pairing relaxation admitted any record whose slug was new on its own
-side, and terminal review found that it accepted four transitions the rule had previously
-refused: a numbered record losing its number, a retained v3 slug changed at one number, a
-frozen-content amendment escaping through an unrelated pending twin, and a genuine deletion
-laundered into a rename. The last of these is exactly the fail-closed promise ADR-0204 item
-4 makes explicitly. `1cda10f8` narrowed it afterwards. The gate was green throughout, in
-both versions. Review, not mechanism, was the only thing between the corpus and a rule that
-read correctly and enforced almost nothing.
+A real merge needs one auditable exception. An incoming parent can already contain an ADR
+that was validly authored under an older binary and implemented against that format. The
+merge must be able to carry that record without rewriting it into a newer semantic contract.
+A true fast-forward introduces no integration commit and needs no exception: it only moves a
+reference to history already at its tip. A merge commit, by contrast, can distinguish an
+incoming-parent artifact from code or prose invented in the merge and can carry durable
+authorization in its message.
 
-### Two premises recorded at the time are wrong
+Git fixes where that authorization can be final. For a conflict-free merge,
+`pre-merge-commit` sees neither `MERGE_HEAD` nor `MERGE_MSG`. By `commit-msg`, both the
+assembled index and merge-parent state exist and the proposed message is available. If
+`commit-msg` refuses, Git preserves `MERGE_HEAD` and the staged merge result, so the agent
+can add the required trailers and complete the same merge rather than repeat it. A manual
+merge may be checked earlier once its merge state and message exist, but `commit-msg` is the
+final authorization boundary in every case.
 
-Investigation for this record falsified two claims made when the relaxations landed, and
-both are corrected forward here rather than restated.
-
-The first is that the inherited cutoff is taken on trust. It is not.
-`validatePermanentLockTransition` admits at `internal/project/currentstate.go:181`, and
-`CheckStaged` then reparses the entire staged corpus under the admitted cutoff at
-`:189-190`. A wrong cutoff dies there in both directions: too low and a sealed v3 record
-reparses as v2 and fails the marker equality, too high and a v3 record's `slug:` key meets
-the narrow closed struct under `KnownFields(true)`. A sweep over the live corpus confirms
-it: of 200, 202, 203, 204, 205, 206, and 210, only 203 survives. Simulating the inherited
-edge itself with 202, 203, 204, and 210 showed the validator admitting all four and the
-corpus load rejecting three. The guard is real. It is simply enforced downstream of where
-it is admitted, by a load ordering nothing declares, and it reports as an unrelated YAML
-unknown-field error rather than as a lock-authority violation.
-
-The second is the account of why one clause of
-`adr-system/adr-lifecycle:renumber-digest-paired` is false. The clause says the digest step
-re-keys only where the two ends hold different numbers, and it was recorded as never having
-been true of the code. Git archaeology refutes that. As ADR-0204 shipped at `028b5c64`, the
-index was `uniqueSluglessDigests` and it skipped every slug-carrying record on both sides,
-so every indexed record was numbered and slugless, both sides keyed on their numbers, and
-the comparison was genuine. The clause was true when it was written. This work's widening
-falsified it, because a numbered after-side record whose slug is new now keys on that slug,
-and a slug never equals a four-digit number, so the re-key fires whether or not the numbers
-moved.
-
-### The rules were written one cutoff wide and one generation deep
-
-The relaxations fixed the branch in front of them rather than the shape. Probing
-`validatePermanentLockTransition` directly against an after-lock at generation 30 shows the
-cost:
-
-- The inherited edge is `before.SchemaVersion < 29 && after.SchemaVersion > 29`, strictly
-  greater. A branch forked at generation 28 merging one at exactly 29 never reaches it: the
-  V3 sealing edge is evaluated first, matches `before == 28 && after == 29`, recomputes from
-  the before tree, and refuses on the mismatch. Widening the inherited edge alone therefore
-  does not close this case, because an earlier edge intercepts it. The real merge escaped
-  only because main had already reached generation 30. The regression test pins
-  `SchemaVersion: 30` and never probes 29, so the gap is untested and was unnoticed.
-- The same edge requires `before.ADRFormatV2From == after.ADRFormatV2From`. A branch forked
-  before generation 15 carries `V2From: 0`, fails that clause, and is refused. There is an
-  inherited edge for the V3 cutoff and none for V2 or V1.
-- `isRenumberRetrofit` is `before.IsV2() && after.IsV3() && before.Number != after.Number`,
-  with no v1-to-v2 clause, so a slugless record renumbered across cutoff 144 still trips the
-  format-change rule.
-
-Every one of these reproduces at the next seal. A fourth wall sits behind them in the
-config port-forward: `retiredKeyRemovals` lists four retired keys and omits the top-level
-`invariants` block retired at generation 14 and `audit.baseBranch` retired at generation 11.
-`retiredKeyRemovals` is the only list the port-forward strips from, and
-`ConfigForCurrentSchema`'s registry loop exists solely to seed `integrationBranch`, so
-neither key is stripped on that path and both reach `config.ParseTree`'s `KnownFields(true)`
-as a hard error rather than a finding.
-
-One rule is out of scope here because it sits outside the lock model entirely: the proof
-marker scan at `internal/topic/markers.go:230` hard-errors on an unnamed marker with no
-generation pin at all, so a branch forked before the marker naming rule landed is refused
-however current its schema generation, and no lock-transition edge can ever admit it. That
-needs its own decision.
-
-Finally, the governed-format-change rule at `internal/currentstate/transition.go:87-90` is
-asserted by no current-state claim at all. Its relaxation is the one of the three that
-falsified nothing, because nothing declared it.
+Plans have no authored format marker, cutoff routing, or version admission rule. This
+decision does not add one.
 
 ## Decision
 
-1. A branch forked before a sealing generation integrating across that seal is one
-   sanctioned transition shape, not a collection of independent exceptions. Its two sides
-   are a before authority that predates the seal and an after authority that arrives from
-   the other merge parent already sealed. This item is the framing for the items below
-   rather than a standing governance rule: it names what the following facets have in
-   common, and it binds nothing that no claim below records.
+1. **ADR parsing is intrinsic.** A numbered ADR declaring `format: current-state-v1`,
+   `format: current-state-v2`, or `format: current-state-v3` is parsed and validated by that
+   declared format, independent of its number and of every other record. Absence of a format
+   marker selects the frozen legacy parser. An absent marker is the only legacy signal; an
+   unknown, duplicate, or malformed marker is an error rather than a fallback. Pending ADRs
+   retain the current-format identity rules, including the mandatory V3 slug while V3 is the
+   current format.
 
-2. The inherited-cutoff edge is written over the generation-sealed cutoffs rather than
-   pinned to one generation and one cutoff. The edge admits a transition in which the schema
-   generation advances across the seal of every generation-sealed cutoff the before authority
-   did not carry, each such cutoff takes the value published by the arriving authority, and
-   every permanent value that is not one of them stays byte-identical. Admitting all of them
-   at once rather than one is what makes the edge answer the case it exists for: a branch
-   forked before generation 15 carries neither `adrFormatV2From` nor `adrFormatV3From`, so a
-   one-cutoff edge would still refuse it, and cutoffs seal in ascending generation order, so
-   a single-cutoff `adrFormatV2From` inheritance could only ever fire against an arriving
-   authority between generations 15 and 28, which the binary-version gate puts out of reach
-   of a current binary. Item 3's bound and the staged reparse both apply per cutoff, so the
-   soundness argument generalises across them unchanged. The edge does not cover
-   `adrFormatV1From`, which no generation seals: that cutoff is written at first adoption or
-   by consuming a bridge attestation, its existing edge carries no generation clause, and it
-   keeps that edge unchanged. A published value cannot be re-derived and must not be: the
-   before tree yields the branch's own pre-merge next identity, and the after tree yields one
-   the merge has already moved past, so re-deriving would lower a cutoff under records
-   already sealed above it.
+2. **The binary owns the current authoring format.** One code-level value identifies the
+   running binary's current ADR format. The rendered ADR template and `awf new adr` derive
+   from it rather than from lock boundaries. A non-merge staged transition may introduce a
+   new ADR only in that current format. Existing records in any older intrinsic format may
+   continue along that format's legal lifecycle and transition matrix; they are not upgraded
+   merely because a newer binary checks them.
 
-   The edge admits the case where the after generation equals the sealing generation as well
-   as the case where it exceeds it, and closing the equal case requires more than widening
-   this edge. The sealing edge for that cutoff is evaluated first and refuses on a value it
-   cannot re-derive, so the two are made disjoint by their signal: a transition landing
-   exactly on the sealing generation whose published value does not equal the before
-   corpus's computed next identity falls through to this edge instead of refusing, because
-   that mismatch is precisely the evidence the migration did not run here.
+3. **Cutoff and gap authority is retired completely.** Permanent lock fields for the V1,
+   V2, and V3 cutoffs and for legacy ADR gaps are removed. Initialization stops computing
+   them, migrations stop sealing them, staged lock validation stops comparing them, and
+   corpus loading accepts no boundary or gap arguments. The schema migration that removes
+   the fields rewrites no ADR bytes. The first-adoption binary version remains immutable and
+   continues to serve its independent compatibility purpose.
 
-   The cost has three parts, and the third is the one worth weighing. A locally sealed cutoff
-   at the sealing generation is no longer required to equal the computed next identity
-   exactly; what holds in its place is item 3's upper bound and the staged reparse below it,
-   which together admit only a value the arriving corpus is consistent with. The sealing
-   edge's own refusal disappears with it, and so does the clearest diagnostic the function
-   has: a genuinely mis-run local migration now reports one layer downstream as a corpus
-   parse failure, or as the terminal immutability message, rather than as the lock-authority
-   violation it is. That is the reporting defect this record names in its own Context, and
-   accepting it here is deliberate rather than overlooked. The error path is not part of the
-   relaxation: a failure to compute the before corpus's next identity still refuses, because
-   an uncomputable comparison is not evidence of anything.
+4. **Resident bridge attestations remain consumable.** The compatibility parser continues
+   to accept the attestation version that carries `adrFormatV1From` and `legacyADRGaps`, and
+   final upgrade verifies the complete resident attestation and its approval artifact before
+   committing cutover. The final permanent lock discards those two routing values rather
+   than promoting them. Attestation consumption, approval-file deletion, and final lock
+   replacement retain the existing journaled atomicity, and no step rewrites an ADR.
 
-3. The inherited value is bounded above by the staged merged tree's computed next identity,
-   the value `nextADRIdentityFromTree(afterTree)` returns, which is derivable from what the
-   validator already holds. A cutoff sealed at a value no record has reached is admissible
-   only up to the number that corpus would next assign; beyond that the arriving authority
-   is asserting a seal for records that do not exist. This bound is the one guard the
-   downstream corpus reparse does not supply, because a corpus carrying no record at or
-   above the cutoff routes nothing to the newer parser and so contradicts nothing. Below
-   that bound the reparse remains the enforcement, and that dependence is carried by the
-   updated `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable` text rather than by
-   this record alone, so a later author reordering the staged load meets it in current state
-   instead of in history.
+5. **A real merge may carry an incoming older-format ADR.** Relative to the first parent, a
+   result record whose format is older than the running binary's current format is admitted
+   only when at least one incoming parent already carries the paired record in that same
+   format. Pairing uses the same retained-slug, unique slugless digest, and number resolution
+   as the transition checker. The incoming-parent-to-result pair must pass the ordinary
+   format-specific transition and mutation rules apart from the current-format introduction
+   rule. Thus a sanctioned numbering or renumbering may change the filename, heading,
+   number, and governed provenance exactly as its existing claim permits, but the merge may
+   not retrofit the format, invent semantic content, or use a parent record to cover an
+   unrelated evil-merge edit. This rule applies across every incoming parent, including an
+   octopus merge; one qualifying parent is sufficient for a given result record.
 
-4. The governed-format retrofit is sanctioned across any adjacent cutoff crossing, not the
-   v2-to-v3 pair alone. A governed record renumbered from below a cutoff to at or above it
-   takes the encoding its new number requires, and that format change is the renumber's
-   cost rather than an independent edit. The clauses that keep it shut are unchanged in
-   kind: an in-place format change keeps its number, a downgrade runs the other direction,
-   and a jump across more than one cutoff is not this transition. The claim this item adds
-   is `Backing: test`. Its proof covers both arms of the generalisation, not just the one
-   this integration exercised: the existing `TestCheckPairRenumberAcrossTheV3Cutoff` in
-   `internal/currentstate/transition_test.go` for the v2-to-v3 crossing, and a new case for
-   the v1-to-v2 crossing at cutoff 144, which no test reaches today. A claim asserting an
-   adjacency rule whose second arm nothing exercises is the nominal proof this record
-   otherwise indicts.
+6. **Authorization is a paired commit-message trailer.** Each older format a qualifying
+   merge needs is authorized by this adjacent trailer pair in the final Git trailer block:
 
-5. The digest-pairing after-side widening is sanctioned as it currently stands. The before
-   side considers only a record carrying no slug, so number immutability stays exactly as
-   strong for a slug-carrying record as it was. The after side additionally considers a
-   numbered record whose slug is new in the transition, which is what a record renumbered
-   across a cutoff becomes when it takes the newer encoding. Requiring a number is what
-   keeps the opening shut, because a pending record carries none and therefore can neither
-   launder a deletion into a rename nor make a legitimate rename's digest ambiguous. No
-   predicate changes; this item supplies the authority the rule has been running without.
+   ```text
+   AWF-Allow-Version: current-state-v2
+   AWF-Allow-Reason: integrate an ADR authored and implemented on the incoming branch
+   ```
 
-6. The config port-forward strips the retired keys a maintainer missed. The top-level
-   `invariants` block and `audit.baseBranch` join
-   `retiredKeyRemovals` and the `retiredConfigKeys` backstop. The maintenance obligation is
-   restated as covering every key the current schema no longer declares, whether or not its
-   removing migration carries a config-bytes action, in both places that record it: the
-   comment beside the backstop in `internal/migrate/forwardport_test.go`, and the prose in
-   `docs/pitfalls.md`, whose source is the `data.pitfalls` entry in `.awf/docs/pitfalls.yaml`
-   rather than a part under `.awf/docs/parts/pitfalls/`, and which is re-rendered rather than
-   hand-edited. The rule becomes a governed claim rather than an obligation recorded only
-   in a comment, because leaving it ungoverned would ship a fourth instance of exactly the
-   defect item 4 exists to close, in the record that diagnoses it.
+   `AWF-Allow-Version` uses the exact intrinsic format marker, or the literal `legacy` for a
+   markerless record. Its value must name a format known to the binary. The immediately
+   following `AWF-Allow-Reason` belongs to that version and must remain nonempty after ASCII
+   whitespace is trimmed. Keys and version values use the exact case shown. A complete pair
+   authorizes every qualifying incoming-parent ADR of that version in this merge. Pairs may
+   repeat; duplicate pairs and complete pairs for a version that needs no exception are
+   harmless and auditable. An orphan key, reversed pair, unknown version, empty reason, or
+   lookalike outside the final trailer block authorizes nothing and causes the commit gate to
+   refuse when it uses an `AWF-Allow-` key.
 
-   The claim asserts what its proof establishes and no more: every key the retired set names
-   is stripped from a historical config, whether or not its removing migration carries a
-   config-bytes action. `Backing: test`, proven by
-   `TestConfigForCurrentSchemaParsesEveryRetiredKey`. Completeness of that set is
-   deliberately not claimed. The test iterates the set, so it cannot fail on a key missing
-   from it, which is exactly how the two keys above were missed; asserting completeness on
-   that backing would be the nominal proof this record indicts. Completeness stays a
-   maintenance obligation in the two prose sites, and making it mechanical is an open problem
-   the roadmap already tracks.
+7. **`commit-msg` is the definitive merge authorization boundary.** The earlier staged gate
+   still performs every message-independent transition check. When an actual merge is in
+   progress and the only unresolved issue is missing stale-format authorization, that gate
+   defers rather than aborting before a message exists. The `commit-msg` payload supplies the
+   message file and merge-parent state to the shared validator, which rechecks qualification
+   and the trailer pairs against the assembled index. Missing or invalid authorization
+   refuses the commit without clearing `MERGE_HEAD` or the staged merge. The agent adds or
+   corrects trailers and runs `git commit` to finish the existing merge. Manual merge flows
+   may call the same validation once their message exists, but no earlier success bypasses
+   `commit-msg`. No allowance file, ledger, receipt, preparation command, or automatic
+   upgrade is introduced.
 
-7. The corrections this work owes travel with it. Three doc comments are rewritten, each
-   carrying a statement its own code has outgrown: `validatePermanentLockTransition`'s,
-   which still says the sole non-identical edge while the body admits several;
-   `renumberAliases`', which repeats both wrong clauses of the pairing claim; and
-   `isRenumberRetrofit`'s, which calls the retrofit the one sanctioned governed-format
-   change into the v3 range, which item 4 generalises.
+8. **Audit replays committed authorization.** `awf audit` uses the same trailer parser and
+   merge-qualification validator against the committed merge tree, its first parent, and all
+   incoming parents. It reports an error when a merge admitted an older-format incoming ADR
+   without a matching complete pair or when an `AWF-Allow-` trailer is malformed, and stays
+   silent for valid or redundant complete pairs. Audit does not retroactively compare
+   historical ordinary commits with the auditing binary's current format; transition-time
+   admission was owned by the binary that authored those commits. A true fast-forward has no
+   merge commit or authorization event to replay.
 
-   Four regression tests cover these rules and none carries a proof marker today. Each gains
-   one naming the unit that proves it:
-   `TestValidatePermanentLockTransitionInheritsAPublishedV3Cutoff` in
-   `internal/project/staged_test.go` backs `adr-v2-cutoff-atomic-immutable`;
-   `TestCheckPairRenumberAcrossTheV3Cutoff` in `internal/currentstate/transition_test.go`
-   backs `governed-format-change-bounded`; and `TestCheckPairRetainedSlugCannotChange` and
-   `TestCheckPairPendingAdditionCannotLaunderADeletion`, in the same file, back
-   `renumber-digest-paired`, which is where that claim's backing moves from the eight markers
-   in `internal/currentstate/renumber_test.go` that predate the widening.
-
-   Two shipped tests assert what this record removes and must change with it, not after it.
-   `TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff` in
-   `internal/project/staged_test.go` asserts the exact sealing-edge mismatch refusal that
-   item 2's disjointness clause deletes, and it is itself a proof marker for the claim item 2
-   updates; its expectation becomes that the mismatch falls through and is then admitted or
-   refused by the inherited edge and item 3's bound.
-   `TestValidatePermanentLockTransitionInheritsAPublishedV3Cutoff` admits an inherited cutoff
-   of 203 against an after tree whose computed next identity is 3, which item 3's bound now
-   refuses, so its fixture changes and not merely its assertion.
-
-   Two cases this record's own Context indicts as missing are added rather than assumed. The
-   equal-generation transition is pinned on both sides of the disjointness signal: a
-   published value equal to the before corpus's next identity, and one unequal but within
-   item 3's bound. And each additional cutoff the generalised edge claims to cover gets a
-   case, since the 100% statement gate cannot supply this: the fall-through reuses statements
-   the existing inherited-edge test already covers, so the new behaviour would otherwise ship
-   with exactly the coverage shape the Context indicts.
-
-   The five citations in `internal/topic/markers.go` that name ADR-0199 for the
-   proof-marker naming rule are corrected to ADR-0205: they are un-substituted residue of
-   this very renumber, which substitutes into `Origin:` and `Revised-by:` only, so no check
-   sees a citation in a code comment. The roadmap entry this record discharges is replaced
-   in the same commit by the two items it defers, editing
-   `.awf/docs/parts/roadmap/deferred.md` and re-rendering rather than hand-editing the
-   generated `docs/roadmap.md`; the discharged entry states both premises this record
-   falsifies and must not outlive it.
+9. **The incident relaxations are removed, not generalized.** Intrinsic parsing means a
+   renumbered stale ADR keeps its authored format, so no governed-format retrofit is
+   sanctioned. Digest pairing returns to the slugless-only rule already declared by
+   `adr-system/adr-lifecycle:renumber-digest-paired`; the after-side newly-slugged widening
+   and `isRenumberRetrofit` disappear. The V3 inherited-cutoff edge and its earlier sealing
+   and re-sealing relatives disappear with cutoff authority. This record does not add the
+   previously proposed `governed-format-change-bounded` or port-forward-retirement claims.
 
 ## State changes
 
-- update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`
-- add `config/migrations-and-locks:port-forward-strips-listed-retired-keys`
-- update `adr-system/adr-lifecycle:renumber-digest-paired`
-- add `adr-system/adr-lifecycle:governed-format-change-bounded`
+- remove `adr-system/adr-lifecycle:fresh-adoption-v1-cutoff`
+- add `adr-system/adr-lifecycle:intrinsic-format-routing`
+- update `adr-system/adr-lifecycle:adr-amendable-until-terminal`
+- update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`
+- remove `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`
+- update `tooling/upgrade-runtime:initial-adoption-version-immutable`
+- remove `tooling/upgrade-runtime:legacy-format-set-is-closed`
+- add `tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded`
+- update `invariants/current-state-authority:merge-transition-ordered-aggregate`
+- add `invariants/current-state-authority:older-format-incoming-parent-sanction`
+- add `tooling/audit-and-snapshots:stale-merge-trailer-replay`
 
 ## Consequences
 
-Integration by a stale branch stops being a bespoke event. The generalisation over the
-cutoff set means the next seal does not reproduce this record, and it holds for a branch
-older than one seal as well as for one forked since the last: because the edge admits every
-generation-sealed cutoff the before authority lacks rather than one, a fork predating two
-seals inherits both in the same transition. The untested equal-generation case is closed
-too, rather than left to the accident that main had moved one generation further.
+An ADR's parser and lifecycle no longer change when integration changes its number. Existing
+mixed-format corpora remain valid, and a stale branch can integrate an ADR under the schema
+in which its decision and implementation were actually authored. The dangerous retrofit and
+pairing relaxations that motivated this record can be deleted instead of expanded to every
+future format.
 
-The record supersedes a current-state claim ADR-0204 item 10 established. That item says a
-renumber target must stay below the V3 cutoff, and that a target at or above it fails for
-want of a slug or trips the changed-format rule. Item 4 here sanctions exactly that target.
-ADR-0204 is Implemented and is history rather than active authority, so nothing is edited
-there; the claim it established changes by the operations above.
+The lock and migration model becomes smaller. Four permanent routing fields, their ordered
+and generation-sealed validation, three migration paths, staged transition exceptions, and
+legacy-gap enforcement leave normal authority. Compatibility code for the resident bridge
+shape remains until that historical input no longer needs to be consumed; it verifies old
+bytes but produces no replacement routing state.
 
-`config/migrations-and-locks:adr-v2-cutoff-atomic-immutable` opens by saying each format
-cutoff is sealed by its own schema generation. Item 2 establishes that `adrFormatV1From` is
-not: it is written at adoption or by consuming a bridge attestation. The updated text has
-to say which cutoffs a generation seals rather than asserting it of all of them, alongside
-the third edge and the reparse dependence item 3 assigns to it. A fourth change is owed and
-is easy to miss: the claim currently ends by saying both edges require the new value to
-equal the corpus's computed next identity, the sealing edge against the prior corpus. Item
-2's disjointness clause makes that half false, since a mismatch there is no longer a
-refusal, and the text has to say what bounds the value instead. Updating the claim for the
-three obvious points alone would leave it contradicting the decision that authored it.
+Keeping all historical parsers is now a permanent compatibility obligation. Adding a future
+ADR format requires a new intrinsic parser and transition matrix, a new current-authoring
+constant and template, and tests that older formats still parse without becoming available
+for ordinary new authoring. It does not require allocating a number cutoff or changing old
+records.
 
-`adr-system/adr-lifecycle:renumber-digest-paired` is false in three clauses, not the two
-recorded on the roadmap. Beyond the two already named, it ends by saying such a pair admits
-the number, filename, and heading change and nothing else, while the sanctioned retrofit
-also changes `format:` and adds a `slug:` key. The corrected text has to state all three,
-and its backing has to move: its eight existing proof markers sit on tests that predate the
-widening and none of them exercises the widened admission or the retrofit.
+The stale-format exception is narrow but not invisible. Authorization lives in the merge
+commit that used it, names each admitted format, and explains why. Qualification against an
+actual incoming parent prevents the trailer from laundering an ADR invented or semantically
+rewritten in the merge. Finalizing at `commit-msg` makes the ordinary conflict-free failure
+recoverable while avoiding a second state machine. The cost is that the commit gate and
+audit need richer Git snapshots: first parent, every incoming parent, result tree, and the
+full message must reach one shared validator.
 
-Both added claims close the same gap, and it is the gap that made this whole class harder to
-see. An enforcement rule asserted by no claim can be relaxed without falsifying anything, so
-nothing flagged the third relaxation, and the roadmap's own accounting named two false
-sentences rather than three. The port-forward rule was the same shape one layer down: its
-obligation lived in a test comment and a pitfalls paragraph, neither of which any check
-reads as authority. Two ungoverned rules surfacing in one record is the argument for asking,
-separately, whether an enforcement rule should be mechanically prevented from shipping
-without a governing claim.
+A redundant valid stamp does not make a merge fail, so proactive agents may stamp before
+knowing whether pairing will require it. Malformed reserved trailers do fail, which keeps a
+typo from looking like durable authorization. Reasons are intentionally human prose rather
+than a controlled vocabulary; audit proves presence and scope, not the truth of the reason.
 
-Governing the port-forward rule does not make it complete, and the record is explicit about
-that rather than trading one nominal assertion for another. The claim covers the retired set
-as listed; whether that set is the whole set remains held by a maintenance obligation, for
-the plain reason that a test iterating a list cannot fail on what the list omits. A claim
-sized to its proof is the honest option available here, and the gap it leaves is the same
-one the roadmap's nominal-proof entry already owns.
+True fast-forwards remain ordinary Git reference movement. They neither fabricate a merge
+result nor create a place for an authorization message, so forcing a no-fast-forward commit
+solely to carry a stamp would add ceremony without adding transition evidence.
 
-The cost of the generalisation is that two refusal predicates now accept strictly more, at
-every generation-sealed cutoff rather than one. That is the same shape of risk as the rule
-this record indicts for reading correctly and enforcing almost nothing, and it deserves
-naming rather than burying. Four things hold it shut. Every permanent value other than the
-inheriting cutoff stays byte-identical, so nothing else moves under cover of the edge. Item
-3's upper bound refuses a cutoff sealed past what the arriving corpus could reach. The
-retrofit admits only an adjacent cutoff crossing, so a record cannot skip a format. And the
-after-side digest index still requires a number, which is what keeps a pending record from
-laundering a deletion into a rename. Item 2's disjointness clause is the one place the net
-loosens without a compensating clause of its own, and it is bounded to transitions landing
-exactly on a sealing generation.
-
-What this record does not fix is the reason it was needed. Both versions of the pairing
-relaxation passed the gate, and only terminal review distinguished them. The evil-merge
-shape is the aggravating factor: code that appears in neither parent of a merge is never
-presented as a change, so the review that catches it is reviewing a diff nobody wrote. The
-proof markers item 7 adds are a partial answer, since a marker whose test is deleted or
-renamed fails the check, but they do not make a too-broad predicate fail. That remains
-open.
-
-Two items move to the roadmap rather than here. The ungoverned proof-marker scan sits
-outside the lock model and needs its own record. Whether a rule of this kind should be
-mechanically prevented from shipping without a governing claim is a broader question than
-this transition.
+Plans remain unchanged. Their current frontmatter, ADR-link, and commit-fence checks continue
+without a version field or stale-merge exception.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
-| Leave the three relaxations as shipped and only correct the false claims | Cheapest, and it was the initial scope. It leaves two current-state sentences correct but the code refusing a branch forked at generation 28 merging one at exactly 29, and reproduces the whole class at the next seal. |
-| Three independent edges, each justified on its own terms | Matches the existing claim topology, which spans two domains. It gives a future reader no single place to look for what happens when a branch is stale, and it was the framing that produced three separately-scoped relaxations in the first place. |
-| Declare a lock-versus-corpus coherence check as the guard | Investigated and largely rejected. The derived admissible range is mathematically identical to the reparse that already runs, and the contiguity rule refusing a recorded gap at or above a cutoff means the range always collapses to a single value above `adrFormatV1From`. Only the upper bound survives, as item 3. |
-| Verify the inherited cutoff against the other merge parent's lock | Would confirm the published value exactly. It requires reading git provenance during lock validation, which the numbering rules deliberately avoid, and `validatePermanentLockTransition` has no merge signal at that point. |
-| Retire the cutoff-forced retrofit by reserving numbers below the cutoff | Removes the forcing condition rather than sanctioning its consequence. It requires holding numbers free against a future stale branch, which trades a rare integration cost for a permanent numbering distortion. |
+| Generalize inherited cutoffs and format retrofits across every seal | Preserves the mechanism that caused the defect: number placement would still rewrite authored semantics, and each future format would add another permanent boundary and transition edge. |
+| Automatically upgrade an incoming ADR to the current format | A newer marker asserts lifecycle and history semantics under which neither the decision nor its implementation was reviewed. Integration must not fabricate that conformance. |
+| Admit every incoming-parent older format without a stamp | Parent provenance prevents an evil-merge invention but leaves no durable record that the agent knowingly exercised the exception or why. |
+| Store allowances in the lock, an approval file, or a receipt ledger | Adds persistent authority and a preparation workflow for an event already represented durably by the merge commit. |
+| Validate definitively in `pre-merge-commit` | Conflict-free Git merges expose neither `MERGE_HEAD` nor `MERGE_MSG` there, so it cannot validate the same evidence as `commit-msg` without auxiliary state. |
+| Require `git merge --no-commit --no-ff` for every stale integration | Gives proactive agents an optional early workflow but makes ordinary conflict-free merges needlessly restartable. A recoverable `commit-msg` refusal preserves the assembled merge. |
+| Add plan format versions and matching merge stamps | Plans have no version-dependent parser or transition rule today, so this would create a new problem rather than solve the ADR one. |
 
 ## Status history
 
