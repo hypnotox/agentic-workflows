@@ -4,7 +4,7 @@ slug: pair-a-slugless-record-across-a-renumber-by-content-digest
 status: Implemented
 date: 2026-08-01
 ---
-# ADR-pair-a-slugless-record-across-a-renumber-by-content-digest: Pair a slugless record across a renumber by content digest
+# ADR-0204: Pair a slugless record across a renumber by content digest
 
 ## Context
 

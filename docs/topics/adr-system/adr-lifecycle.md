@@ -61,7 +61,7 @@ Backing: test
 
 An ADR number, once assigned, changes only across a sanctioned digest-paired rename: a checked transition refuses a record that takes a different number or loses its number under the same slug, and refuses every other number change. A stale numbering is unmade rather than corrected, so on a corpus carrying duplicate numbers and no pending record `awf adr number` refuses and offers the reset-remake recipe verbatim as a hint, deciding that from the corpus alone and reading no git provenance or merge base.
 Origin: ADR-0202
-Revised-by: ADR-pair-a-slugless-record-across-a-renumber-by-content-digest
+Revised-by: ADR-0204
 Backing: test
 
 ### `invariant: adr-related-ascending`
@@ -159,7 +159,7 @@ Backing: test
 
 The retained slug is the first step of the pairing resolution, so a pending record pairs with the numbered successor numbering produced instead of reading as a deletion plus an addition. For such a pair it admits exactly the numbering effects and nothing else: the number, filename, and heading gain, and `Origin:` and `Revised-by:` entries changing from that record's slug form to its assigned number with each touched list canonicalized to duplicate-free ascending order. The pair's status and Status history must be byte-identical, everything else about it must be unchanged, and a provenance substitution with neither a paired numbering nor a paired rename behind it stays an unmatched mutation. The relaxation composes with both the authored-commit and merge-aggregate contracts, and `awf adr number` never preconditions on a green check.
 Origin: ADR-0202
-Revised-by: ADR-pair-a-slugless-record-across-a-renumber-by-content-digest
+Revised-by: ADR-0204
 Backing: test
 
 ### `invariant: pending-adr-slug-identity`
@@ -177,5 +177,5 @@ Backing: test
 ### `invariant: renumber-digest-paired`
 
 Staged transition validation resolves a governed record's pairing key once per transition, in three steps: its retained slug, then its canonical content digest, then its assigned number. Every check that pairs the two universes consumes that one resolution. The digest step considers only a record carrying no slug, forms a pair only on a digest carried by exactly one such record on each side, and re-keys only where the two ends hold different numbers, so a record whose number does not move keeps pairing on that number and an ambiguous digest forms no pair at all. The digest is computed over the five canonical sections rather than read from a stamped history event, which leaves it fixed across exactly the rewrite a rename performs; it is a transition pairing key and never a corpus identity key. Such a pair admits the number, filename, and heading change and nothing else: its status and Status history must be byte-identical, no application batch may be appended or dropped, and its old number substitutes into `Origin:` and `Revised-by:` under the same rules a numbering substitution takes.
-Origin: ADR-pair-a-slugless-record-across-a-renumber-by-content-digest
+Origin: ADR-0204
 Backing: test

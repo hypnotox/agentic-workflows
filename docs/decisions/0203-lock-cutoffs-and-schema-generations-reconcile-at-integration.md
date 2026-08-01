@@ -4,7 +4,7 @@ slug: lock-cutoffs-and-schema-generations-reconcile-at-integration
 status: Implemented
 date: 2026-08-01
 ---
-# ADR-lock-cutoffs-and-schema-generations-reconcile-at-integration: Lock cutoffs and schema generations reconcile at integration
+# ADR-0203: Lock cutoffs and schema generations reconcile at integration
 
 ## Context
 

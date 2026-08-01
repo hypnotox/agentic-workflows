@@ -391,7 +391,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:c5770c3e9e2e589535cbb52170211dead6b4f8ac02160739e06644432d6ff03c",
+      "outputHash": "sha256:ad6cba9a64b12c8b083a129eabf25b40fe7ff40637fd5d529cb2800249a9a7c0",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -511,8 +511,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:de8c66708d08f98fddb666886eae33daa9b7c66e6a6e6dd80c0da6202c76523f",
-      "outputHash": "sha256:392613e25bfd472bd3a988be2e6a99cf0cf473078cffa702fd35b8133a929da8"
+      "configHash": "sha256:776af248d781239005b8b9e664f9d7d799c222bff98129460bea68598a0e4f71",
+      "outputHash": "sha256:6c9c830defdb75f38acc886093440630660b9025c7cf2eda0fa6c325f64cc1a1"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -589,8 +589,8 @@
     "docs/topics/config/configuration.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:42f217ba32d923f0efbbf8566e385b5af7f10a2edaa5fa5225c55e25174b0558",
-      "outputHash": "sha256:e24e19d7d8014866583e80b3f1fc8011076a69bec3cbac6426182e790e45941a"
+      "configHash": "sha256:44607782f02061a0671cf6d89c0e7dfb76ba7663b34722d60ba834b51dd61e61",
+      "outputHash": "sha256:b5bb834af3d730625e65684de65729c0b0da667407ad736b9ae316532995af23"
     },
     "docs/topics/config/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -601,8 +601,8 @@
     "docs/topics/config/migrations-and-locks.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:634e4470864ab6ddb3a39cd0a9bfcbc6a0539a2088eee79108c3a168e710fddc",
-      "outputHash": "sha256:702a91be4b61ea98d1d3256fe68374248970a5327c28716a93bd3e3e52782cb7"
+      "configHash": "sha256:72a2f4b88b97b471faae2cefeaabf3f2a12374d45dbd71426f7de42b9a88bd70",
+      "outputHash": "sha256:2e62d1d8f45eff228d4cb7b34e65fbda4225c1c70b0511d34db04b44d3f5d93c"
     },
     "docs/topics/config/validation.md": {
       "templateId": "topics/topic.md.tmpl",

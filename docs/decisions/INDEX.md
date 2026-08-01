@@ -206,5 +206,5 @@
 - [ADR-0196: Deduplicate the verification delivery layers](0196-deduplicate-the-verification-delivery-layers.md) (Implemented)
 - [ADR-0197: Trim the rendered skill ceremony](0197-trim-the-rendered-skill-ceremony.md) (Implemented)
 - [ADR-0198: Ephemeral content-keyed Pi extension test container](0198-ephemeral-content-keyed-pi-extension-test-container.md) (Implemented)
-- [ADR-lock-cutoffs-and-schema-generations-reconcile-at-integration: Lock cutoffs and schema generations reconcile at integration](lock-cutoffs-and-schema-generations-reconcile-at-integration.md) (Implemented)
-- [ADR-pair-a-slugless-record-across-a-renumber-by-content-digest: Pair a slugless record across a renumber by content digest](pair-a-slugless-record-across-a-renumber-by-content-digest.md) (Implemented)
+- [ADR-0203: Lock cutoffs and schema generations reconcile at integration](0203-lock-cutoffs-and-schema-generations-reconcile-at-integration.md) (Implemented)
+- [ADR-0204: Pair a slugless record across a renumber by content digest](0204-pair-a-slugless-record-across-a-renumber-by-content-digest.md) (Implemented)
