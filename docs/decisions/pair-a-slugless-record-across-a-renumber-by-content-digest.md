@@ -32,13 +32,15 @@ is what makes the rename necessary. A pairing rule that only inspects records le
 therefore never sees these two, which is why the fallback shape this record first proposed could
 not fire.
 
-Seven slugless records across five other in-flight efforts already collide with numbers the
-integration branch has taken. Each hits this wall at integration.
+Seven slugless records across five in-flight efforts, this one included, already collide with
+numbers the integration branch has taken. Each hits this wall at integration.
 
 A slugless record nevertheless carries an identifier that survives a renumber. The content-sha256
 covers the five canonical body sections and excludes the frontmatter and the `# ADR-NNNN:` heading,
 which is precisely why ADR-0202's own numbering rewrite is digest-safe. For a slugless record that
 digest is what the slug is for a current-state-v3 one: a name that does not mention the number.
+It is a key for pairing two universes, not a corpus identity key. Parse-time identity and
+duplicate detection keep reading the number, so `corpus-single-identity-key` is untouched.
 
 Verified on the real merged tree, with the effort branch as first parent and `MERGE_HEAD` present
 so the check applies its merge contract: resolving the digest before the number key takes the same
@@ -55,9 +57,10 @@ transition from 37 findings to clean, with the rest of the suite unaffected.
 2. The digest is the content-sha256 computed over the record's five canonical sections on each
    side. A record's latest Status history stamp equals that value by construction, because
    `internal/adr/format.go` refuses a record whose latest stamp does not, so the computed form is
-   used and no history position is consulted: the current stamp can sit on an `Amended` event in
-   the middle of a history whose trailing `Applied` events carry no digest at all. An empty or
-   absent digest never forms a pair.
+   used and no history position is consulted. That is not a convenience: the current stamp can
+   sit on an `Amended` event in the middle of a history whose trailing `Applied` events carry no
+   digest at all, so an implementation reading the last event's stamp would key such a record on
+   an empty value. The computed form has no absent case to guard.
 
 3. The digest is exposed as a method on the record. `ADR.Sections` is owned by `internal/adr`
    (ADR-0130 item 2, enforced by a test that also counts the permitted mutation fixtures), so the
@@ -65,8 +68,12 @@ transition from 37 findings to clean, with the rest of the suite unaffected.
 
 4. A digest pair forms only on a digest carried by exactly one governed slugless record on each
    side, and only where it re-keys the record: a record whose digest resolves to the key it
-   already has is left on its number. An unchanged record therefore still pairs exactly as it does
-   today, and a digest repeated on either side leaves every record holding it on its number. This
+   already has is left on its number. The digest step therefore changes a record's key only when
+   that record's number changes across the pair: an amended record's two digests differ so neither
+   side finds a partner, and a status flip or an appended batch moves neither the digest nor the
+   number. Since a slugless record whose number changes is refused today in every case, this
+   cannot silently accept anything the current rule refused, apart from the renumber shape item 6
+   constrains. A digest repeated on either side leaves every record holding it on its number, which
    is what makes the rule fail closed: a genuine deletion alongside an unrelated addition carries
    different digests, forms no pair, and stays refused with the wording it has today.
 
@@ -99,9 +106,13 @@ transition from 37 findings to clean, with the rest of the suite unaffected.
     above it parses as V3, fails for want of a mandatory `slug:` key, or trips the changed-format
     rule.
 
-11. Every site that pairs the two universes resolves the key the same way: both directions of the
-    record-level transition checks, the appended-batch derivation, and the provenance substitution
-    map. Resolving it in one and not the others leaves the remaining sites still mispairing.
+11. The pairing keys are resolved once per transition, from both universes together, and every
+    site consumes that one resolution: both directions of the record-level transition checks, the
+    appended-batch derivation, and the provenance substitution map. A key function taking one
+    record cannot express this rule, because both the uniqueness guard and the re-key test depend
+    on the other universe, so the record indexes are built from the resolved keys rather than
+    recomputed per record. Resolving it in one site and not the others leaves the remaining sites
+    mispairing.
 
 ## State changes
 
@@ -126,20 +137,37 @@ byte, and on applied batch count, so a mispair still has to look exactly like a 
 respect other than the number. Two distinct decisions with identical Context, Decision, State
 changes, Consequences and Alternatives are not a shape the corpus produces.
 
+A duplicated digest does not mispair; it makes the renumber unavailable. The uniqueness guard
+withholds the pair, so the rename is refused with the wording it has today, and the operator's
+remedy is to distinguish the two bodies before renaming. That is the safe direction to fail, but
+the refusal does not say so, which is worth knowing before reading it.
+
 `adr-number-immutable` is amended rather than left to be read narrowly. Its opening sentence is
 unconditional, and a slugless record's number now does change under a checked transition, so the
 sentence is corrected to carve out the digest-paired rename while keeping the reset-remake remedy
-for a stale numbering. `numbering-transition-mode` is amended because it ends by declaring that a
-provenance substitution with no paired numbering behind it stays an unmatched mutation, which a
-digest-paired substitution now also satisfies.
+for a stale numbering. `numbering-transition-mode` is amended on both ends: it opens by stating
+that validation pairs governed records on their retained slug, which now describes only the first
+of three steps, and it closes by declaring that a provenance substitution with no paired numbering
+behind it stays an unmatched mutation, which a digest-paired substitution now also satisfies. The
+three-step resolution is owned by `renumber-digest-paired`, and `numbering-transition-mode` states
+the slug as that resolution's first step rather than restating the order itself, so the two claims
+cannot drift apart.
 
 The proof obligation is specific, because this effort has repeatedly shipped proofs that could not
 fail. The claim is backed by test, and its fixtures must be plural and heterogeneous: a record
 whose current stamp sits on a mid-history `Amended` event with digest-less trailing `Applied`
 events, a universe where the old number is occupied on the after side rather than vacant, a
-duplicated digest that must refuse to pair, and an unchanged record that must still pair on its
-number. A uniform fixture passes against an implementation that reads the last history event's
-digest, and a vacant-old-number fixture passes against the fallback shape that cannot fire at all.
+duplicated digest that must refuse to pair, an unchanged record that must still pair on its
+number, a record amended at an unchanged number whose moved digest must still fall through to the
+number, and a renumbered record that both carries provenance substitutions and derives an appended
+batch, so all four pairing sites are proven to resolve the same key.
+
+Each of those pins something a weaker fixture would miss. A uniform history passes against an
+implementation that reads the last event's digest. A vacant old number passes against the fallback
+shape that cannot fire at all. Without the amended-at-the-same-number case the ordinary commit
+path is unpinned, and without the last case every fixture is satisfiable by an implementation that
+fixes only the record-level check and leaves the batch derivation and the substitution map keying
+on the number, which is the exact shape of this effort's Phase 2 defect.
 
 The missing tool is a real cost. `awf adr number` renumbers a pending record; nothing renumbers a
 slugless one, so the operation this record sanctions is performed by hand, and its discipline
@@ -152,7 +180,7 @@ gains the rename discipline, the separate-commits rule, and the cutoff constrain
 | Alternative | Why not chosen |
 |---|---|
 | Resolve the digest as a fallback after the number key | Cannot fire. The old number is occupied on the after side in every instance, because a number being taken is what makes the rename necessary, so no record is ever left unpaired for a fallback to consider. Verified against the real merged tree. |
-| Reverse the merge direction so the integration branch is the before side | Verified to work with no pairing change at all, but it gives up the property that the integration branch only ever fast-forwards, and moves conflict resolution onto a branch the integration branch has already observed. The fast-forward property was chosen deliberately. |
+| Reverse the merge direction so the integration branch is the before side | Verified to work with no pairing change at all: the renamed record becomes an ordinary addition and the same transition is clean. Rejected because integration fast-forwards the integration branch onto the effort tip, so no commit exists on that side for a check to run against, and reversing means the integration branch takes a merge commit and becomes the place merges are debugged. A sanctioned follow-on recorded in `docs/roadmap.md` moves the other way, toward making `awf effort integrate` fast-forward-only. |
 | Commit the renumber with `--no-verify` | Drops build, drift, staged-authority, gate, prose and memory checks together for one narrow rewrite, leaves no trace, and routes around the `pre-merge-commit` payload for the exact operation it was rendered to catch. |
 | A declarative flag or environment variable authorizing the renumber | Every in-flight effort would have to discover it at integration time, the worst moment to learn a new escape hatch, and an escape hatch checked by nothing is `--no-verify` with extra steps. |
 | Retrofit the colliding record to current-state-v3 so slug pairing covers it | Adds an identity key to a record whose application batches are already applied and whose transitions were validated without it, and would have to be repeated for every slugless record a future integration renames. |
