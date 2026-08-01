@@ -68,24 +68,39 @@ Downgrade compatibility is not a goal.
    publication without moving the session.
 
 2. Associate one Pi session with at most one effort and let one effort publish at most one
-   current session claim. The extension creates an ephemeral session-owner UUID and keeps
-   it for owner-checked heartbeat, checkout-update, and detach calls. Attaching to another
+   current session claim. The extension creates an ephemeral session-owner UUID and carries
+   it in immutable association snapshots replaced at attach, checkout, heartbeat, ownership
+   loss, and detach boundaries; it does not preserve correctness through mutable-field reset
+   order. Publication data is derived anew from each binary result. Attaching to another
    effort first detaches the session's prior claim. Attaching over another session reports
    that claim's owner, checkout, attachment time, last heartbeat, and age; a stale claim is
-   called out as stale, but stale and fresh takeovers both warn and proceed. This protocol
-   prevents an old session from accidentally updating or deleting its successor's claim;
-   it is not a security boundary or lock.
+   called out as stale, but stale and fresh takeovers both warn and proceed. Binary owner
+   checks, rather than caller-remembered ordering, prevent an old session from accidentally
+   updating or deleting its successor's claim. This is not a security boundary or lock.
 
 3. Add optional mutable `.awf/efforts/<slug>/activity.json` beside immutable `state.json`
    and owned `memory.md`. The awf binary alone creates, atomically replaces, reads, and
    removes it. Its versioned bounded record contains the session owner, `attachedAt`,
    `heartbeatAt`, committed absolute CWD, recorded absolute receiving-checkout CWD, and
    checkout role (`managed` or `receiving`), with no redundant `active` flag, workflow
-   phase, or copied memory text. Attach/takeover,
-   heartbeat, checkout-update, and detach are explicit binary-owned operations; the latter
-   three require the current owner. Missing activity means no attachment claim. Every
-   transition reports a structured outcome suitable for extension action and human
-   diagnostics.
+   phase, or copied memory text. The extension-facing grammar is:
+
+   - `awf effort activity resolve <slug> --destination <managed|receiving> [--receiving-checkout <absolute-path>] --json`
+   - `awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json`
+   - `awf effort activity heartbeat <slug> --owner <uuid> --json`
+   - `awf effort activity checkout <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --json`
+   - `awf effort activity detach <slug> --owner <uuid> --json`
+
+   Resolve is read-only and returns the validated destination, effort and memory metadata,
+   and any prior claim. Attach atomically creates or takes over only after Pi reports the
+   live CWD change; heartbeat, checkout, and detach require the current owner. Their protocol-1
+   JSON envelope carries `schemaVersion`, a stable `condition`, current activity when present,
+   and the operation-specific effort, memory, destination, or prior-claim facts. Handled
+   conditions are `ready`, `attached`, `taken-over`, `heartbeat`, `checkout-updated`,
+   `detached`, `not-owner`, and `missing`; ownership loss and missing effort are data, not
+   error-prose branches. Malformed invocation, unsafe residents, invalid headers, repository
+   mismatch, and I/O failure exit nonzero with empty stdout and bounded actionable stderr,
+   preserving the existing JSON CLI convention. Missing activity means no attachment claim.
 
 4. Treat activity as advisory resident state. It never authorizes mutation, changes Git
    topology, changes effort lifecycle meaning, or blocks show, list, memory update,
@@ -160,17 +175,22 @@ Downgrade compatibility is not a goal.
     topology remains behind awf's existing Git boundary; command code owns argument parsing
     and human rendering. Architecture and user documentation describe the optional resident,
     same-session CWD behavior, advisory Remote Pi contract, downgrade boundary, and recovery
-    paths.
+    paths. The Implemented transaction updates the authoring sources for `README.md`,
+    `AGENTS.md`, `docs/architecture.md`, `docs/working-with-awf.md`, `docs/workflow.md`,
+    `docs/testing.md`, every declared claim and its provenance, and any other behavior-stating
+    artifact found during implementation, then renders their generated outputs in the same
+    commit.
 
 11. Land prerequisites in owner order before awf advertises end-to-end runtime support.
     Pi first implements and merges SessionManager persistence/relocation, runtime and
     extension types, lifecycle, official TUI/RPC/print host bindings, tests, documentation,
     and changelog, then publishes them in one lockstep Pi/coding-agent patch release. Remote
-    Pi independently implements and merges the process-local override, capability, replay,
-    status, identity-reconciliation, unit/end-to-end tests, and README contract, then
-    publishes a release whose authoritative signal is `nameOverride.version === 1` with the
-    `awf` namespace. Exact minimum versions are filled in from the first releases that
-    contain those capabilities, never guessed in advance.
+    Pi has implemented and committed the process-local override, capability, replay, status,
+    identity-reconciliation, tests, and README contract at commit
+    `3355463ff484bbd4fb80ada9fcd826dcb6ad6a53`; its prerequisite remains unreleased until a
+    maintainer authorizes a version and publish path. Its authoritative runtime signal is
+    `nameOverride.version === 1` with the `awf` namespace. Exact minimum versions are filled
+    in from the first releases that contain those capabilities, never guessed in advance.
 
     After the owning releases exist, awf updates its pinned Pi test/runtime floor and Remote
     Pi integration expectation, renders the extension, and adds real-runtime smoke coverage.
@@ -186,7 +206,14 @@ Downgrade compatibility is not a goal.
     enabled-skill selection. Add the new generated extension to the containerized TypeScript
     strict-check and 100 percent line/function/branch coverage lane, and extend pinned
     real-runtime smoke to prove same-session CWD persistence, memory metadata publication,
-    capability replay, transient-name restoration, and advisory failure behavior.
+    capability replay, transient-name restoration, and advisory failure behavior. Render
+    coverage also exercises every new template with empty optional values, proving coherent
+    missingkey-zero output with no `<no value>` token.
+
+13. Add `rendering/pi-workflows:pi-effort-session-association` as `Backing: test`. The
+    implementation transaction places its exact proof marker in a Go catalog/render spine
+    test named `TestPiEffortSessionAssociationContract`, which verifies the public tool,
+    support skill, binary orchestration boundary, advisory semantics, and generated output.
 
 ## State changes
 
@@ -197,7 +224,6 @@ Downgrade compatibility is not a goal.
 - update `rendering/pi-runtime:pi-minimum-runtime`
 - update `rendering/pi-runtime:pi-real-runtime-smoke`
 - add `rendering/pi-workflows:pi-effort-session-association`
-- update `rendering/pi-workflows:pi-native-workflow-skills`
 
 ## Consequences
 
