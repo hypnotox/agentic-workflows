@@ -47,7 +47,7 @@ func TestRunInvariantsReportsClaims(t *testing.T) {
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
 		".awf/topics/parts/alpha/one/current-state.md": invClaimPart,
 		"internal/foo.go":                              "package foo\n",
-		"internal/foo_test.go":                         "package foo\n// invariant: alpha/one:backed\n",
+		"internal/foo_test.go":                         "package foo\n// invariant: alpha/one:backed (TestBacked)\nfunc TestBacked() {}\n",
 	})
 	var buf bytes.Buffer
 	if err := runInvariants(ctx, dir, &buf); err != nil {

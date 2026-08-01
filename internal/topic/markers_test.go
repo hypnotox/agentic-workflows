@@ -26,7 +26,7 @@ func markerConfig() *config.CurrentStateConfig {
 func TestBuildMarkerIndex(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// an ordinary comment\n// state machine transition\n// invariant checking helper\n// touches-stateful code\n // state: alpha/contracts:rule\n// touches-state: alpha/contracts:stable - reviewed here\n")
-	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
 	testsupport.WriteFile(t, filepath.Join(root, "web/x.html"), "<!-- ordinary comment without close\n<!-- state machine comment without close\n<!-- state: alpha/contracts:rule -->\n")
 	testsupport.WriteFile(t, filepath.Join(root, "README.md"), "unmatched\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".git/ignored.go"), "// state: alpha/contracts:missing\n")
@@ -96,19 +96,23 @@ func TestBuildMarkerIndexWrapsDescendantWalkError(t *testing.T) {
 
 // invariant: invariants/topics-and-markers:proof-marker-test-scoped (TestBuildMarkerIndexRejected)
 func TestBuildMarkerIndexRejected(t *testing.T) {
+	// Every proof marker below carries a name and a matching declaration line, so
+	// each case still fails for the reason it is named after rather than newly
+	// failing on the name rule. want pins that.
 	cases := map[string]struct {
 		back       Backing
 		path, line string
 		mutate     func(*config.CurrentStateConfig)
+		want       string
 	}{
-		"malformed":       {TestBacking, "internal/a.go", "// state: nope\n// invariant: alpha/contracts:stable\n", nil},
-		"unknown":         {TestBacking, "internal/a.go", "// state: alpha/contracts:missing\n// invariant: alpha/contracts:stable\n", nil},
-		"out of scope":    {TestBacking, "web/out.html", "<!-- state: alpha/contracts:rule -->\n", nil},
-		"proof test glob": {TestBacking, "internal/a.go", "// invariant: alpha/contracts:stable\n", nil},
-		"proof rule":      {TestBacking, "internal/a_test.go", "// invariant: alpha/contracts:rule\n// invariant: alpha/contracts:stable\n", nil},
-		"proof unbacked":  {Unbacked, "internal/a_test.go", "// invariant: alpha/contracts:stable\n", nil},
-		"touches empty":   {TestBacking, "internal/a.go", "// touches-state: alpha/contracts:rule - \n// invariant: alpha/contracts:stable\n", nil},
-		"missing close":   {TestBacking, "web/out.html", "<!-- state: alpha/contracts:rule\n", nil},
+		"malformed":       {TestBacking, "internal/a.go", "// state: nope\n// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "malformed current-state marker"},
+		"unknown":         {TestBacking, "internal/a.go", "// state: alpha/contracts:missing\n// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "unknown claim ID"},
+		"out of scope":    {TestBacking, "web/out.html", "<!-- state: alpha/contracts:rule -->\n", nil, "outside effective topic scope"},
+		"proof test glob": {TestBacking, "internal/a.go", "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "proof marker is outside currentState.testGlobs"},
+		"proof rule":      {TestBacking, "internal/a_test.go", "// invariant: alpha/contracts:rule (TestRule)\nfunc TestRule() {}\n", nil, "proof marker targets non-test-backed invariant"},
+		"proof unbacked":  {Unbacked, "internal/a_test.go", "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "proof marker targets non-test-backed invariant"},
+		"touches empty":   {TestBacking, "internal/a.go", "// touches-state: alpha/contracts:rule - \n// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "malformed current-state marker"},
+		"missing close":   {TestBacking, "web/out.html", "<!-- state: alpha/contracts:rule\n", nil, "missing closing token"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -118,8 +122,12 @@ func TestBuildMarkerIndexRejected(t *testing.T) {
 			if tc.mutate != nil {
 				tc.mutate(cfg)
 			}
-			if _, err := BuildMarkerIndex(root, markerCorpus(tc.back), cfg); err == nil {
+			_, err := BuildMarkerIndex(root, markerCorpus(tc.back), cfg)
+			if err == nil {
 				t.Fatal("wanted error")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to mention %q", err, tc.want)
 			}
 		})
 	}
@@ -134,7 +142,7 @@ func TestBuildMarkerIndexBackingObligations(t *testing.T) {
 		t.Fatal("missing proof accepted")
 	}
 	root := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
 	if _, err := BuildMarkerIndex(root, markerCorpus(Unbacked), markerConfig()); err == nil {
 		t.Fatal("unbacked proof accepted")
 	}
@@ -165,24 +173,40 @@ func TestMarkerPayloadClosingToken(t *testing.T) {
 	}
 }
 
-// A proof marker may carry a trailing name; a state marker may not. Nothing reads
-// the name yet, so this pins the grammar the corpus migration depends on.
-func TestBuildMarkerIndexAcceptsAnOptionalProofName(t *testing.T) {
-	for _, payload := range []string{
-		"// invariant: alpha/contracts:stable (TestStable)\n",
-		"// invariant: alpha/contracts:stable (it('strips the header'))\n",
-		"// invariant: alpha/contracts:stable (T)\n",
-		"// invariant: alpha/contracts:stable\n",
+// A proof marker must carry a trailing name; a state marker may not. The accepted
+// bodies pin that the name is free text rather than an identifier, which keeps the
+// rule portable to an adopter whose tests are string literals, not named functions.
+func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
+	for _, body := range []string{
+		"// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n",
+		"// invariant: alpha/contracts:stable (it('strips the header'))\nit('strips the header')\n",
+		"// invariant: alpha/contracts:stable (T)\nfunc T() {}\n",
 	} {
 		root := t.TempDir()
-		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), payload)
+		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), body)
 		idx, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
 		if err != nil {
-			t.Fatalf("payload %q rejected: %v", payload, err)
+			t.Fatalf("body %q rejected: %v", body, err)
 		}
 		sites := idx.ForClaim("alpha/contracts:stable")
 		if len(sites) != 1 || sites[0].Kind != ProofMarker {
-			t.Errorf("payload %q resolved to %+v, want one proof site", payload, sites)
+			t.Errorf("body %q resolved to %+v, want one proof site", body, sites)
+		}
+	}
+
+	// A bare payload, and the padded and empty parentheticals, all reach the named
+	// diagnostic rather than falling through to the generic malformed-marker error.
+	// The declaration is present in every case, so only the payload is on trial.
+	for _, payload := range []string{
+		"// invariant: alpha/contracts:stable\n",
+		"// invariant: alpha/contracts:stable ( TestStable )\n",
+		"// invariant: alpha/contracts:stable ()\n",
+	} {
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), payload+"func TestStable() {}\n")
+		_, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+		if err == nil || !strings.Contains(err.Error(), "does not name a proving unit") {
+			t.Fatalf("payload %q: err = %v, want it to report no proving unit", payload, err)
 		}
 	}
 
@@ -190,9 +214,55 @@ func TestBuildMarkerIndexAcceptsAnOptionalProofName(t *testing.T) {
 	// to the proof expression alone, so this falls through to malformed.
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// state: alpha/contracts:rule (TestThing)\n")
-	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
 	_, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
 	if err == nil || !strings.Contains(err.Error(), "malformed current-state marker") {
 		t.Fatalf("named state marker: err = %v, want malformed current-state marker", err)
+	}
+}
+
+// The name must actually occur in the file, on a line that is neither a comment
+// nor the marker's own. Each case below is one load-bearing mechanism of that
+// rule; without any one of them a stranded marker stays green.
+func TestProofNameMustOccurInTheFile(t *testing.T) {
+	build := func(body string) error {
+		t.Helper()
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), body)
+		_, err := BuildMarkerIndex(root, markerCorpus(TestBacking), markerConfig())
+		return err
+	}
+
+	// The named unit appears nowhere in the file: the plain stranding.
+	err := build("// invariant: alpha/contracts:stable (TestStable)\nfunc TestOther() {}\n")
+	if err == nil || !strings.Contains(err.Error(), `names "TestStable", which does not occur in this file`) {
+		t.Fatalf("absent name: err = %v", err)
+	}
+
+	// The name's sole occurrence is inside a comment. This is the regression test
+	// for the class the comment exclusion closes: this repo's convention puts a doc
+	// comment naming the test directly above the marker block, and without the
+	// exclusion that comment alone would satisfy a marker whose test is gone.
+	err = build("// TestStable pins the contract.\n// invariant: alpha/contracts:stable (TestStable)\nfunc TestOther() {}\n")
+	if err == nil || !strings.Contains(err.Error(), "does not occur in this file") {
+		t.Fatalf("comment-only name: err = %v", err)
+	}
+
+	// Flanking. A rename leaves a longer identifier behind; without the flanking
+	// condition it would satisfy the marker, and a rename is exactly the drift
+	// this check exists to catch.
+	err = build("// invariant: alpha/contracts:stable (TestStable)\nfunc TestStableAndMore() {}\n")
+	if err == nil || !strings.Contains(err.Error(), "does not occur in this file") {
+		t.Fatalf("flanked name: err = %v", err)
+	}
+
+	// Stacked markers naming the same absent unit do not satisfy each other, and
+	// the first one is what fails. They must name the SAME unit: two different
+	// absent names would fail on the marker-line exclusion alone and would merely
+	// duplicate the first case. The second marker is unreachable in this run by
+	// design, since the scan returns on its first error.
+	err = build("// invariant: alpha/contracts:stable (TestStable)\n// invariant: alpha/contracts:stable (TestStable)\nfunc TestOther() {}\n")
+	if err == nil || !strings.Contains(err.Error(), "a_test.go:1:") {
+		t.Fatalf("stacked markers: err = %v, want the first marker's line", err)
 	}
 }

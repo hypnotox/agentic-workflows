@@ -152,7 +152,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			files: map[string]string{
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
-				"internal/x_test.go":                           "package x\n// invariant: alpha/one:ghost\n",
+				"internal/x_test.go":                           "package x\n// invariant: alpha/one:ghost (TestGhost)\nfunc TestGhost() {}\n",
 			},
 			wantErr: "unknown claim ID",
 		},
@@ -225,7 +225,7 @@ func TestLoadCorpusFromTreeMatchesFilesystem(t *testing.T) {
 	writeTopic(t, root, "beta", "two", "title: Two\nsummary: T.\napplies: global\n", rulePart("g", "0001", ""))
 	// A proof marker under testGlobs backs the test-backed invariant, so the
 	// backing contract passes and the marker index is non-empty in both loaders.
-	testsupport.WriteFile(t, filepath.Join(root, "internal/pkg/x_test.go"), "package pkg\n// invariant: alpha/one:stable\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/pkg/x_test.go"), "package pkg\n// invariant: alpha/one:stable (TestStable)\nfunc TestStable() {}\n")
 
 	cfg, err := config.Load(filepath.Join(root, ".awf"))
 	if err != nil {

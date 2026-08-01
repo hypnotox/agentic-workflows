@@ -88,7 +88,7 @@ func ctxCmdFixture(t *testing.T) string {
 		"docs/decisions/0002-later.md": acceptedV1(t, "0002", "Later", "2026-07-20", "- add `alpha/one:pending-rule`"),
 		"internal/foo/x.go":            "package foo\n// state: alpha/one:order\n",
 		"internal/foo/y.go":            "package foo\n",
-		"internal/foo/y_test.go":       "package foo\n// invariant: alpha/one:tested\n",
+		"internal/foo/y_test.go":       "package foo\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n",
 	}
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(rel)), body)
@@ -116,7 +116,7 @@ func TestRunContextRendersMarkerRelationships(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := ctxCmdFixture(t)
-	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
+	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested (TestTested)\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n"
 	if err := os.WriteFile(filepath.Join(root, "internal", "foo", "x_test.go"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := ctxCmdFixture(t)
-	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n"
+	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n"
 	if err := os.WriteFile(filepath.Join(root, "internal", "foo", "x_test.go"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -334,7 +334,7 @@ func TestCurrentStateInvariants(t *testing.T) {
 			"### `invariant: backed`\nBacked one.\nOrigin: ADR-0001\nBacking: test\n\n" +
 			"### `invariant: reasoned`\nReasoned one.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect by hand.\n",
 		"internal/foo.go":      "package foo\n",
-		"internal/foo_test.go": "package foo\n// invariant: alpha/one:backed\n",
+		"internal/foo_test.go": "package foo\n// invariant: alpha/one:backed (TestBacked)\nfunc TestBacked() {}\n",
 	})
 	invs, err := p.CurrentStateInvariants(testContext(t))
 	if err != nil {

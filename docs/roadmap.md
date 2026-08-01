@@ -125,32 +125,6 @@ and advisory-only today - and whether a scoped, gate-wired subset can be made
 fast and deterministic enough to block a commit. Worth an ADR if it can, since
 a proof marker that cannot fail is worse than no marker at all.
 
-A second subclass in the same family is cheaper to catch and has now occurred
-twice. A proof marker can outlive the test it was proving. Commit 4c61356a
-deleted `TestPiExtensionContainerGateWiring` and
-`TestPiExtensionEditorQuietStrip` and left both markers behind in
-`internal/project/example_wiring_test.go`, at lines 54 and 115, so
-`tooling/quality-gates:pi-extension-container-gate` and
-`rendering/pi-workflows:pi-extension-editor-quiet-strip` have both declared
-`Backing: test` while being proven by nothing ever since. The marker at line
-115 is the file's last line, with no test beneath it at all. ADR-0164's `State
-changes` never touched either claim, so this was an unremediated regression
-from an unrelated refactor rather than a sanctioned retirement. Until now it
-was recorded only in ephemeral working memory under `.awf/efforts/`; this
-entry is the durable record.
-
-Unlike the nominal-proof case this subclass may not need mutation testing. The
-scan that satisfies `Backing: test` appears to be a line-text scan over the
-whole file rather than an association between a marker and the test function
-that follows it, in which case requiring that association turns an orphaned
-marker into a check failure directly. Confirm that against
-`internal/topic/markers.go` before designing anything, because it is the whole
-basis for the cheap fix. What is unresolved either way is what an association
-rule does to the two marker forms that deliberately do not attach to one test,
-`touches-state:` and `state:`, and whether a repo-wide sweep finds more than
-these two instances. ADR-0198 restores backing for both claims above as a
-by-product of rewriting the code they describe; the general rule is not in its
-scope.
 ## The rationale site a token cannot address
 
 `docs/decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md`

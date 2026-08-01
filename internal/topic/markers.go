@@ -45,10 +45,20 @@ const claimIDPattern = `[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-
 // Each marker kind gets its own expression so a trailing name is grammatically
 // available only to a proof marker (ADR-0199). The name group is greedy, so a
 // name containing parentheses captures through to the payload's final closing
-// parenthesis; nothing reads it until the occurrence check lands.
+// parenthesis. Requiring a non-space first and last character enforces the
+// no-surrounding-whitespace rule here, at parse time, rather than letting
+// " TestFoo " reach the occurrence check and be reported as a missing unit.
 var statePayloadRE = regexp.MustCompile(`^state: (` + claimIDPattern + `)$`)
-var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `)(?: \((.+)\))?$`)
+var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `) \((\S(?:.*\S)?)\)$`)
 var touchesPayloadRE = regexp.MustCompile(`^touches-state: (` + claimIDPattern + `) - (.+)$`)
+
+// unnamedProofPayloadRE is the diagnostic fallback for a proof marker that
+// proofPayloadRE rejected. It deliberately also matches a padded or empty
+// parenthetical, so "invariant: <id> ( TestFoo )" and "invariant: <id> ()"
+// reach the named diagnostic instead of the generic malformed-marker error.
+// Ordering makes this safe: proofPayloadRE is attempted first, so a well-formed
+// named marker never reaches it.
+var unnamedProofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `)(?: \(.*\))?$`)
 
 type markerWalkDir func(string, fs.WalkDirFunc) error
 
@@ -119,7 +129,8 @@ func matchingSources(cfg *config.CurrentStateConfig, rel string) []config.Curren
 // select it, resolving each valid marker into a site on idx. It is the byte-fed
 // scan core shared by the filesystem walker and the snapshot loader.
 func scanMarkerBytes(idx MarkerIndex, rel string, b []byte, sources []config.CurrentStateSource, corpus Corpus, cfg *config.CurrentStateConfig) error {
-	for n, line := range strings.Split(string(b), "\n") {
+	lines := strings.Split(string(b), "\n")
+	for n, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		for _, src := range sources {
 			if !strings.HasPrefix(trimmed, src.Marker) {
@@ -136,9 +147,16 @@ func scanMarkerBytes(idx MarkerIndex, rel string, b []byte, sources []config.Cur
 			if !markerCandidate(payload) {
 				continue
 			}
-			site, err := resolveMarker(rel, n+1, payload, corpus, cfg)
+			site, name, err := resolveMarker(rel, n+1, payload, corpus, cfg)
 			if err != nil {
 				return err
+			}
+			// Verified here, at the point the site resolves, rather than after
+			// the loop: deferring would report every resolve error in the file
+			// ahead of every occurrence error, and the scan must keep reporting
+			// the first failure in line order (ADR-0199 item 3).
+			if site.Kind == ProofMarker && !proofNameOccurs(lines, name, src.Marker, n+1) {
+				return fmt.Errorf("%s:%d: proof marker for %s names %q, which does not occur in this file; the test was deleted, renamed, or moved", rel, n+1, site.ClaimID, name)
 			}
 			idx.sites[site.ClaimID] = append(idx.sites[site.ClaimID], site)
 			break
@@ -193,37 +211,82 @@ func markerCandidate(payload string) bool {
 	}
 	return false
 }
-func resolveMarker(path string, line int, payload string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerSite, error) {
+
+// resolveMarker parses one marker payload into a site, returning the proof
+// name alongside it. The name is empty for a state or touches marker, which
+// have no grammatical slot for one.
+func resolveMarker(path string, line int, payload string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerSite, string, error) {
 	s := MarkerSite{Path: path, Line: line}
+	name := ""
 	if m := statePayloadRE.FindStringSubmatch(payload); m != nil {
 		s.Kind = StateMarker
 		s.ClaimID = m[1]
 	} else if m := proofPayloadRE.FindStringSubmatch(payload); m != nil {
 		s.Kind = ProofMarker
 		s.ClaimID = m[1]
+		name = m[2]
+	} else if m := unnamedProofPayloadRE.FindStringSubmatch(payload); m != nil {
+		return s, "", fmt.Errorf("%s:%d: proof marker for %s does not name a proving unit", path, line, m[1])
 	} else if m := touchesPayloadRE.FindStringSubmatch(payload); m != nil {
 		s.Kind = TouchesMarker
 		s.ClaimID = m[1]
 		s.Note = strings.TrimSpace(m[2])
 	} else {
-		return s, fmt.Errorf("%s:%d: malformed current-state marker %q", path, line, payload)
+		return s, "", fmt.Errorf("%s:%d: malformed current-state marker %q", path, line, payload)
 	}
 	claim, ok := corpus.byClaim[s.ClaimID]
 	if !ok {
-		return s, fmt.Errorf("%s:%d: unknown claim ID %s", path, line, s.ClaimID)
+		return s, "", fmt.Errorf("%s:%d: unknown claim ID %s", path, line, s.ClaimID)
 	}
 	t := corpus.byTopic[strings.Split(s.ClaimID, ":")[0]]
 	if s.Kind == ProofMarker {
 		if claim.Type != Invariant || claim.Backing != TestBacking {
-			return s, fmt.Errorf("%s:%d: proof marker targets non-test-backed invariant %s", path, line, s.ClaimID)
+			return s, "", fmt.Errorf("%s:%d: proof marker targets non-test-backed invariant %s", path, line, s.ClaimID)
 		}
 		if !matchesAny(cfg.TestGlobs, path) {
-			return s, fmt.Errorf("%s:%d: proof marker is outside currentState.testGlobs", path, line)
+			return s, "", fmt.Errorf("%s:%d: proof marker is outside currentState.testGlobs", path, line)
 		}
 	} else if !topicMatchesPath(*t, corpus.DomainPaths[t.ID.Domain], path) {
-		return s, fmt.Errorf("%s:%d: marker for %s is outside effective topic scope", path, line, s.ClaimID)
+		return s, "", fmt.Errorf("%s:%d: marker for %s is outside effective topic scope", path, line, s.ClaimID)
 	}
-	return s, nil
+	return s, name, nil
+}
+
+// proofNameOccurs reports whether name appears verbatim on some line other than
+// the marker's own, outside comments, and not as part of a longer identifier.
+// The flanking condition is what catches a rename: a marker naming TestFoo is
+// not satisfied by a surviving TestFooBar.
+//
+// Recognition is syntactic and line-local. A line is excluded when its trimmed
+// form begins with the family's marker token, which is that family's comment
+// leader by construction, so this excludes comments and every marker line is a
+// special case of a comment line (ADR-0199 item 3). The token is a parameter
+// because the exclusion is per-family; it cannot be hardcoded.
+func proofNameOccurs(lines []string, name, marker string, markerLine int) bool {
+	for i, line := range lines {
+		if i+1 == markerLine || strings.HasPrefix(strings.TrimSpace(line), marker) {
+			continue
+		}
+		// Padding removes the bounds cases from the flanking test: a match can
+		// never sit at either end of the padded line.
+		padded := " " + line + " "
+		for off := 1; ; {
+			j := strings.Index(padded[off:], name)
+			if j < 0 {
+				break
+			}
+			start := off + j
+			if !identByte(padded[start-1]) && !identByte(padded[start+len(name)]) {
+				return true
+			}
+			off = start + 1
+		}
+	}
+	return false
+}
+
+func identByte(c byte) bool {
+	return c == '_' || '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'
 }
 func topicMatchesPath(t Topic, domainPaths []string, path string) bool {
 	if t.Metadata.Applies == "global" {

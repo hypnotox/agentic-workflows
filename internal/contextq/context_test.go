@@ -38,7 +38,7 @@ func ctxFiles() map[string]string {
 		".awf/topics/parts/core/g/current-state.md":    "Intro.\n\n## Claims\n\n### `rule: everywhere`\nApplies everywhere.\nOrigin: ADR-0001\n",
 		"internal/foo/x.go":                            "package foo\n// state: alpha/one:order\n",
 		"internal/foo/y.go":                            "package foo\n",
-		"internal/foo/y_test.go":                       "package foo\n// invariant: alpha/one:tested\n",
+		"internal/foo/y_test.go":                       "package foo\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n",
 	}
 }
 

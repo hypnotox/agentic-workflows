@@ -10,6 +10,17 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Every `invariant:` proof marker must now name the unit that proves it,
+  `<marker> invariant: <domain>/<topic>:<slug> (<name>)`, and that text must occur verbatim on a
+  non-comment line of the marker's own file, unflanked by an identifier character (ADR-0199). A
+  marker whose test was deleted, renamed, or moved now fails `awf check` instead of satisfying
+  `Backing: test` while proving nothing. The name is free text, not an identifier, so an adopter
+  whose tests are string literals rather than named functions can name the literal. No schema bump
+  or `awf upgrade` step signals this break, because marker syntax is not part of the config schema;
+  the first `awf check` after upgrading reports each unnamed marker with its file and line.
+  Adopters migrate their own markers: deriving a name from a test file needs language knowledge
+  awf does not have, and the shipped check deliberately has none.
+
 - Remove the `currentState.maxClaimsPerTopic` config key and the non-failing topic claim-count
   note `awf check` emitted from it. Schema generation 28 removes the key from an existing tree;
   because `config.yaml` is strict-parsed, a tree that still carries the key fails to load on

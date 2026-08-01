@@ -1075,13 +1075,18 @@ data:
       body: |
         The current-state marker scanner (`internal/topic`) matches a claim id only when the marker
         opens its line after indentation; `strings.TrimLeft(line, " \t")` must start with the
-        configured marker, then `invariant: <domain>/<topic>:<slug>`. This is deliberate: a mid-line
-        match could sit inside a string literal (a test fixture's source-code string) and falsely back
-        a claim. The consequence is a natural-looking backing that silently does not count: a trailing
-        `clone.Docs = maps.Clone(...) // invariant: <domain>/<topic>:<slug>` reads as *unbacked*, and
-        the gap hides until the claim is loaded or the ADR's `remove`/`update` operation is staged,
-        exactly when the effort is trying to conclude. Put the `// invariant: <domain>/<topic>:<slug>`
-        on its own line directly above the statement it describes.
+        configured marker, then `invariant: <domain>/<topic>:<slug> (<name>)`. This is deliberate: a
+        mid-line match could sit inside a string literal (a test fixture's source-code string) and
+        falsely back a claim. The consequence is a natural-looking backing that silently does not
+        count: a trailing
+        `clone.Docs = maps.Clone(...) // invariant: <domain>/<topic>:<slug> (<name>)` reads as
+        *unbacked*, and the gap hides until the claim is loaded or the ADR's `remove`/`update`
+        operation is staged, exactly when the effort is trying to conclude. Put the
+        `// invariant: <domain>/<topic>:<slug> (<name>)` on its own line directly above the statement
+        it describes. The same line-opening rule is what makes the name requirement work: the
+        occurrence search ignores every line that opens with the marker token, so a neighbouring
+        marker naming the same unit cannot satisfy it and neither can a doc comment that merely
+        mentions the test.
     - title: "Relocating a cross-cutting guard out of a shared helper drops it for internal callers"
       domains: [tooling]
       tags: [cli-dispatch, version-authority]
