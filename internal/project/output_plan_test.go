@@ -217,7 +217,6 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/catalog-and-targets:claude-md-bridge (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestCurrentStateOutputPlanMatchesTree)

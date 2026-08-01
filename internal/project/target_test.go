@@ -233,7 +233,6 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestHandoffWorkflowUsesOwnedCheckpoint)
 func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{"Continue a validated fresh-session handoff.", "Continue from an optional effort-owned awf checkpoint", "Read ${memoryPath} first.", "Then continue with this immediate action"} {
