@@ -10,6 +10,7 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 ## Rules
 
 - **Terse.** Managed docs are read repeatedly; every word is a recurring cost. Use the shortest phrasing that stays precise.
+- **Glossary entries are terser still.** One sentence stating what the thing is; a second only when a contrast or boundary is load-bearing. Do not restate what the term's own words already say. An over-long entry raises a non-failing advisory.
 - **Linter-rules out of prose.** State a tooling-enforced rule once and cite the ADR that owns it; do not narrate the mechanism. The agent meets the check regardless.
 - **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it: one source of truth per fact.
 - **No editorializing or dating.** Write the rule, not its history or a judgement of it.

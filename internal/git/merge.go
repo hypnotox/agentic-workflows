@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // MergeInProgress reports whether the checkout containing projectRoot has a
@@ -22,19 +23,33 @@ import (
 // branch-sized. `git merge --squash` records no MERGE_HEAD and so reports false,
 // which is correct: it produces an ordinary commit carrying no merge provenance.
 func MergeInProgress(projectRoot string) (bool, error) {
+	heads, err := MergeHeads(projectRoot)
+	return len(heads) > 0, err
+}
+
+// MergeHeads returns every worktree-private MERGE_HEAD hash in file order.
+// Absence means no merge is in progress and returns a nil slice.
+func MergeHeads(projectRoot string) ([]string, error) {
 	dir, err := containingGitDir(projectRoot)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	switch _, err = os.Lstat(filepath.Join(dir, "MERGE_HEAD")); {
+	data, err := os.ReadFile(filepath.Join(dir, "MERGE_HEAD"))
+	switch {
 	case err == nil:
-		return true, nil
+		var heads []string
+		for _, line := range strings.Split(string(data), "\n") {
+			if hash := strings.TrimSpace(line); hash != "" {
+				heads = append(heads, hash)
+			}
+		}
+		return heads, nil
 	case errors.Is(err, os.ErrNotExist):
-		return false, nil
+		return nil, nil
 	default:
 		// Reachable without a fault: a gitdir pointer naming a regular file makes
-		// the MERGE_HEAD lstat report ENOTDIR rather than os.ErrNotExist.
-		return false, err
+		// the MERGE_HEAD read report ENOTDIR rather than os.ErrNotExist.
+		return nil, err
 	}
 }
 

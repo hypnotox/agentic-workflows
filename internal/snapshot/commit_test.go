@@ -70,6 +70,25 @@ func TestCommitTreeOutsideRepo(t *testing.T) {
 }
 
 // TestCommitTreeBadRevision wraps the revision-resolution failure.
+func TestCommitTreesPreservesRevisionOrder(t *testing.T) {
+	t.Parallel()
+	fixture := gitfixture.InitRepo(t)
+	first := gitfixture.Commit(t, fixture, "first", map[string]string{"a.txt": "one"})
+	second := gitfixture.Commit(t, fixture, "second", map[string]string{"a.txt": "two"})
+	trees, err := snapshot.CommitTrees(testContext(t), snapshotRepo(t, fixture.Root()), []string{second, first})
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstFile, _ := trees[0].Lookup("a.txt")
+	secondFile, _ := trees[1].Lookup("a.txt")
+	if string(firstFile.Bytes) != "two" || string(secondFile.Bytes) != "one" {
+		t.Fatalf("CommitTrees order = %q, %q", firstFile.Bytes, secondFile.Bytes)
+	}
+	if _, err := snapshot.CommitTrees(testContext(t), snapshotRepo(t, fixture.Root()), []string{"missing"}); err == nil {
+		t.Fatal("missing revision succeeded")
+	}
+}
+
 func TestCommitTreeBadRevision(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)

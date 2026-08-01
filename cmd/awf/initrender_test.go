@@ -68,8 +68,7 @@ func setScaffoldGateCmd(t *testing.T, root string) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff (TestInitFirstADRChecksClean)
-func TestInitFirstADRChecksClean(t *testing.T) {
+func TestInitFirstADRChecksCleanRender(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	testInitFirstADRChecksClean(t)
@@ -152,8 +151,8 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	}
 	text := string(template)
 	history := strings.Index(text, "## Status history\n")
-	if !strings.Contains(text, "format: current-state-v2") || history < 0 || strings.Index(text, "Implementing; content-sha256") > strings.Index(text, "Applied; operations") {
-		t.Fatalf("empty-init V2 ADR template is not lifecycle-safe:\n%s", text)
+	if !strings.Contains(text, "format: current-state-v3") || history < 0 || strings.Index(text, "Implementing; content-sha256") > strings.Index(text, "Applied; operations") {
+		t.Fatalf("empty-init V3 ADR template is not lifecycle-safe:\n%s", text)
 	}
 	if tail := text[history:]; strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {
 		t.Fatalf("fresh Proposed scaffold includes later events:\n%s", tail)
@@ -199,7 +198,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
@@ -220,7 +219,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
 		"<!-- awf:stub -->\nstarter notes\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
@@ -236,11 +235,35 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	}
 }
 
+// Glossary terseness notes are advisory: they print and never affect the exit
+// code, exactly like the unset-var and stub families.
+// invariant: tooling/cli:terseness-advisory-nonfailing (TestCheckGlossaryTersenessNotesAreNonFailing)
+func TestCheckGlossaryTersenessNotesAreNonFailing(t *testing.T) {
+	ctx := testContext(t)
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "glossary.yaml"),
+		"data:\n  terms:\n    - term: bloated\n      meaning: \""+strings.Repeat("x", 400)+"\"\n")
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+	var out bytes.Buffer
+	if err := runCheck(ctx, root, false, &out); err != nil {
+		t.Fatalf("check must stay clean with an over-length glossary meaning, got: %v", err)
+	}
+	if !strings.Contains(out.String(), "note: ") ||
+		!strings.Contains(out.String(), `term "bloated" meaning is 400 characters`) {
+		t.Errorf("missing glossary terseness note, got:\n%s", out.String())
+	}
+}
+
 func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 		"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 	if err := runCheck(ctx, root, false, io.Discard); err == nil {

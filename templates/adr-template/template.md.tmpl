@@ -1,6 +1,6 @@
 <!-- awf:section frontmatter -->
 ---
-format: current-state-v2
+format: {{ with .adrFormat }}{{ . }}{{ else }}current-state-v3{{ end }}
 status: Proposed
 date: YYYY-MM-DD
 ---

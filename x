@@ -66,6 +66,9 @@ case "$cmd" in
   test)
     go test ./... "$@"
     ;;
+  clean-test-tmp)
+    go run ./cmd/testtmpclean "$@"
+    ;;
   render)
     # The rendered ./awf wrapper runs awf from source (awfInvokeCmd) so the
     # dogfooded render always matches the tree.
@@ -155,7 +158,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|render|check|context|pi-test <run|reset>|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run|reset>|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

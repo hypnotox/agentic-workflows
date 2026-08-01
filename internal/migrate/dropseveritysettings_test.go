@@ -188,7 +188,9 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\n"
+	// The port-forward crosses every later generation too, so it also seeds the
+	// required integrationBranch key (ADR-0202 Decision 6).
+	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\nintegrationBranch: main\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}
@@ -201,12 +203,17 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 	if string(again) != want {
 		t.Fatalf("not idempotent: %q", again)
 	}
+	// A retired key is stripped whatever generation the tree is stamped with.
+	// The stamp is not proof the removal ever ran - concurrent generation
+	// allocation can leave a tree stamped past a removal it never applied - and
+	// the struct has no field left to decode these into, so a survivor would
+	// fail the parse this function exists to make succeed.
 	at25, err := ConfigForCurrentSchema(src, 25)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(at25) != string(src) {
-		t.Fatalf("generation 25 must not re-apply the removal, got %q", at25)
+	if strings.Contains(string(at25), "topicCoverage") || strings.Contains(string(at25), "topicFanout") {
+		t.Fatalf("a retired key must not survive any stamped generation, got %q", at25)
 	}
 }
 

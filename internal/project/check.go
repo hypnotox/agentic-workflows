@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
@@ -61,6 +62,46 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	notes = append(notes, pcs...)
+	gt, err := p.glossaryTersenessNotes()
+	if err != nil {
+		return nil, err
+	}
+	notes = append(notes, gt...)
+	return notes, nil
+}
+
+// glossaryTersenessNotes returns advisory (non-failing) notes for each glossary
+// term whose meaning exceeds glossaryMeaningMax. It evaluates the MERGED set,
+// so the threshold bounds the vocabulary awf ships as well as the project's own
+// terms (ADR-0207 decision 10). Inert when the glossary doc is disabled.
+func (p *Project) glossaryTersenessNotes() ([]string, error) {
+	if !slices.Contains(p.Cfg.Docs, "glossary") {
+		return nil, nil
+	}
+	sc, err := p.Cfg.Sidecar("docs", "glossary")
+	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
+		return nil, err
+	}
+	// The on-disk sidecar never carries standardTerms, so overlay the catalog
+	// default exactly as render.go does upstream of the transform; without this
+	// the shipped layer would escape the threshold entirely. The ingestion can
+	// still fail here: a local: true sidecar is skipped by the render pass, so
+	// AdvisoryNotes having rendered the doc above does not vouch for it.
+	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data))
+	if err != nil {
+		return nil, err
+	}
+	slices.SortFunc(records, func(a, b glossaryRecord) int {
+		return strings.Compare(strings.ToLower(a.Term), strings.ToLower(b.Term))
+	})
+	var notes []string
+	for _, r := range records {
+		// Runes, not bytes: the guideline is a reading-length notion, and accented
+		// letters stay legal under the plain-punctuation rule.
+		if n := utf8.RuneCountInString(r.Meaning); n > glossaryMeaningMax {
+			notes = append(notes, fmt.Sprintf("%s: term %q meaning is %d characters, over the %d-character guideline; tighten it", glossarySidecarPath, r.Term, n, glossaryMeaningMax))
+		}
+	}
 	return notes, nil
 }
 
@@ -431,13 +472,46 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 		return nil, err
 	}
 	drift = append(drift, pitfallDrift...)
+	glossaryDrift, err := p.checkGlossary()
+	if err != nil {
+		return nil, err
+	}
+	drift = append(drift, glossaryDrift...)
 	tagDrift, err := p.checkTagVocabulary(corpus)
 	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
 		return nil, err
 	}
 	drift = append(drift, tagDrift...)
 	drift = append(drift, p.checkADRRelatedLinks(corpus)...)
+	drift = append(drift, p.checkPendingADRs(ctx, corpus)...)
 	return drift, nil
+}
+
+// checkPendingADRs refuses a slug-identified pending record on the integration
+// branch. Numbering happens at integration, so a pending record that reached
+// the integration branch was never numbered, and every `ADR-<slug>` provenance
+// reference it left behind resolves to nothing.
+//
+// The block fires only on a positive branch identification (ADR-0202 item 7):
+// a detached HEAD, another branch, or an unreadable repository emits nothing,
+// because an indeterminate answer is not evidence that the record is in the
+// wrong place. That deliberately leaves automated detached-HEAD runs to the
+// branch-independent duplicate-identity check, which is the real corruption
+// backstop; this check exists to make the missing numbering step visible where
+// it is actually owed.
+func (p *Project) checkPendingADRs(ctx context.Context, corpus adr.Corpus) []manifest.Drift {
+	if !p.onIntegrationBranch(ctx) {
+		return nil
+	}
+	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	var drift []manifest.Drift
+	for _, a := range corpus.All() {
+		if a.Number != "" {
+			continue
+		}
+		drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "pending-adr-on-integration-branch", Detail: a.Slug})
+	}
+	return drift
 }
 
 // checkLockedFiles compares each lock entry (except the separately-checked
@@ -577,6 +651,8 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // template.md and README.md). Frontmatter-less plans (the grandfathered corpus,
 // ADR-0098) are skipped. A ```commit subject's length/type/shape violation is
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
+// An adrs: entry resolves by identity, so a number and a pending record's slug
+// resolve through one lookup and a link survives numbering (ADR-0202 item 14).
 func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
 	plansDir := filepath.Join(p.Root, p.Cfg.DocsDir, "plans")
 	plans, err := plan.ParseDir(plansDir)
@@ -594,9 +670,10 @@ func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
 		if !plan.ValidStatuses[pl.Status] {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "plan-frontmatter", Detail: fmt.Sprintf("status %q not in {Proposed, Implemented}", pl.Status)})
 		}
-		for _, n := range pl.ADRs {
-			if !corpus.Has(fmt.Sprintf("%04d", n)) {
-				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: fmt.Sprintf("ADR-%04d", n)})
+		for _, link := range pl.ADRs {
+			id := link.Identity()
+			if _, ok := corpus.ByIdentity(id); !ok {
+				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: "ADR-" + id})
 			}
 		}
 		for _, sub := range pl.CommitSubjects {
@@ -669,6 +746,38 @@ func (p *Project) checkPitfalls(corpus adr.Corpus) ([]manifest.Drift, error) {
 		for _, n := range e.Related {
 			if !corpus.Has(fmt.Sprintf("%04d", n)) {
 				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%q: ADR-%04d", e.Title, n)})
+			}
+		}
+	}
+	return drift, nil
+}
+
+// checkGlossary validates the glossary sidecar when the doc is enabled: each
+// record's domains: must resolve to a configured domain, mirroring checkPitfalls.
+// Structural validation (term/meaning) is the transform's job; this resolves the
+// domains the transform cannot see. A disabled glossary doc, or a sidecar with no
+// data.terms, yields no drift.
+func (p *Project) checkGlossary() ([]manifest.Drift, error) {
+	if !slices.Contains(p.Cfg.Docs, "glossary") {
+		return nil, nil
+	}
+	sc, err := p.Cfg.Sidecar("docs", "glossary")
+	if err != nil { // coverage-ignore: the glossary sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
+		return nil, err
+	}
+	records, err := glossaryRecords(sc.Data["terms"])
+	if err != nil {
+		return nil, err
+	}
+	domains := map[string]bool{}
+	for _, d := range p.Cfg.Domains {
+		domains[d] = true
+	}
+	var drift []manifest.Drift
+	for _, r := range records {
+		for _, d := range r.Domains {
+			if !domains[d] {
+				drift = append(drift, manifest.Drift{Path: glossarySidecarPath, Kind: "glossary-domain", Detail: fmt.Sprintf("%q: unknown domain %q", r.Term, d)})
 			}
 		}
 	}

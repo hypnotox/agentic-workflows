@@ -218,3 +218,4 @@ proseGate:
       count: 1
 memoryCite:
   enabled: true
+integrationBranch: main

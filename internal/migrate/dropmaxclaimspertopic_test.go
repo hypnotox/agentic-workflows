@@ -111,7 +111,9 @@ func TestConfigForCurrentSchemaDropsHistoricalMaxClaimsPerTopic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\n"
+	// Porting forward to the current generation also runs the later
+	// integration-branch migration, which seeds the required key.
+	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\nintegrationBranch: main\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
 	}
@@ -128,8 +130,11 @@ func TestConfigForCurrentSchemaDropsHistoricalMaxClaimsPerTopic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(at28) != string(src) {
-		t.Fatalf("generation 28 must not re-apply the removal, got %q", at28)
+	// A retired key is stripped whatever generation the tree is stamped with:
+	// the stamp is not proof the removal ever ran, and CurrentStateConfig has no
+	// field left to decode it into.
+	if string(at28) != want {
+		t.Fatalf("a retired key must not survive any stamped generation:\ngot  %q\nwant %q", at28, want)
 	}
 }
 
@@ -140,10 +145,16 @@ func TestConfigForCurrentSchemaRefusesMalformedMaxClaimsYAML(t *testing.T) {
 }
 
 func TestDropMaxClaimsPerTopicRegistered(t *testing.T) {
-	if Current() != 28 {
-		t.Fatalf("current generation = %d, want 28", Current())
+	var found *Migration
+	for i := range registry {
+		if registry[i].Name == "drop-max-claims-per-topic" {
+			found = &registry[i]
+		}
 	}
-	if last := registry[len(registry)-1]; last.Name != "drop-max-claims-per-topic" {
-		t.Fatalf("last registry entry = %q, want drop-max-claims-per-topic", last.Name)
+	if found == nil {
+		t.Fatal("drop-max-claims-per-topic is not registered")
+	}
+	if found.To != 28 {
+		t.Fatalf("drop-max-claims-per-topic generation = %d, want 28", found.To)
 	}
 }

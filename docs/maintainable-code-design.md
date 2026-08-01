@@ -16,6 +16,11 @@ Treat SOLID, DRY, and YAGNI as questions, not compliance rules. Ask whether owne
 
 Distinguish domain meaning from storage, transport, UI, and framework shapes. Where behavior needs them, model state, invariants, transitions, and ownership explicitly, without mechanically adding wrapper types when a direct representation already carries the meaning.
 
+<!-- awf:edit readability: default; create .awf/parts/maintainable-code-design/readability.md to override -->
+## Readability
+
+Write for the next reader, who arrives mid-task with partial context. Name things for what they mean in the domain, not for how they are computed; let the common path read top to bottom without detours, and move exceptional handling to the edges where it interrupts nothing. Prefer the boring construct that says what it does over the clever one that must be decoded, and let structure carry meaning before comments do: a comment states what the code cannot say, such as a constraint, an external contract, or a why, never what the next line already says. When a reader must hold several distant facts in mind to see that a passage is correct, restructure until the passage argues its own correctness.
+
 <!-- awf:edit boundaries-and-dependencies: default; create .awf/parts/maintainable-code-design/boundaries-and-dependencies.md to override -->
 ## Boundaries and dependency direction
 

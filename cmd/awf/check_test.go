@@ -19,6 +19,7 @@ import (
 )
 
 const checkYAML = `prefix: example
+integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
 skills: [tdd]
 agents: []
@@ -123,7 +124,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
 // not the config declares the block.
 func coverageYAML() string {
-	return "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
+	return "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
 		"currentState:\n  maxTopicsPerPath: 1\n"
 }
 
@@ -268,17 +269,14 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 	_ = ctx
 	lockText := func(version string, generation int) string {
 		t.Helper()
-		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
-		if generation >= 15 {
-			lock.ADRFormatV2From = 1
-		}
+		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}}
 		b, err := lock.Marshal()
 		if err != nil {
 			t.Fatal(err)
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
 
 	t.Run("working lock cannot fail staged gate or suppress staged ahead note", func(t *testing.T) {
 		root := stagedCheckProject(t, map[string]string{
@@ -324,10 +322,6 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 		if attested {
 			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}}
-		} else {
-			lock.ADRFormatV1From = 1
-			lock.ADRFormatV2From = 1
-			lock.LegacyADRGaps = []int{}
 		}
 		b, err := lock.Marshal()
 		if err != nil {
@@ -335,7 +329,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		}
 		return string(b)
 	}
-	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
 
 	t.Run("missing repository refuses", func(t *testing.T) {
 		t.Chdir(t.TempDir())
@@ -435,10 +429,17 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 	if strings.Contains(body, "AWF_PREP_BRIDGE") || strings.Contains(body, "prep=") {
 		t.Fatal("pre-commit still carries preparation-only bridge behavior")
 	}
-	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "check_slice \"$tmp/examples/sundial\"", "bash \"$staged_helper\"", "exec bash .awf/hooks/pre-commit.sh"} {
-		if !strings.Contains(body, required) {
+	last := -1
+	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "check_slice \"$tmp/examples/sundial\"", "bash \"$staged_helper\"", "rm -rf -- \"$tmp\"", "trap - EXIT", "exec bash .awf/hooks/pre-commit.sh"} {
+		index := strings.Index(body, required)
+		if index == -1 {
 			t.Errorf("pre-commit missing permanent step %q", required)
+			continue
 		}
+		if index <= last {
+			t.Errorf("pre-commit step %q appears before its required predecessor", required)
+		}
+		last = index
 	}
 }
 
@@ -463,12 +464,75 @@ func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
 	}
 }
 
+func TestRepositoryPreCommitRemovesSliceBeforePayload(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	helperPath, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "check-nested-staged"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	helper, err := os.ReadFile(helperPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(t.TempDir(), "payload-ran")
+	gitfixture.StageFile(t, repo, ".githooks/check-nested-staged", string(helper), 0o755)
+	gitfixture.Stage(t, repo, map[string]string{
+		"examples/sundial/.keep":   "\n",
+		".awf/hooks/pre-commit.sh": "#!/bin/sh\nif [ -n \"$(find \"$TMPDIR\" -mindepth 1 -maxdepth 1 -print -quit)\" ]; then\n  echo \"payload inherited staged slice\" >&2\n  exit 1\nfi\ntouch \"$AWF_PAYLOAD_MARKER\"\n",
+	})
+
+	tools := t.TempDir()
+	wrapper := filepath.Join(tools, "awf-wrapper")
+	if err := os.WriteFile(wrapper, []byte("#!/bin/sh\nif [ \"$1\" = check ]; then exit 0; fi\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeGo := filepath.Join(tools, "go")
+	fakeGoBody := `#!/bin/sh
+out=
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = -o ]; then out="$2"; shift 2; continue; fi
+	shift
+done
+if [ -z "$out" ]; then exit 0; fi
+cp "$AWF_HOOK_WRAPPER" "$out"
+chmod +x "$out"
+`
+	if err := os.WriteFile(fakeGo, []byte(fakeGoBody), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpRoot := t.TempDir()
+	cmd := exec.Command("bash", hook)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "AWF_HOOK_WRAPPER="+wrapper, "AWF_PAYLOAD_MARKER="+marker, "TMPDIR="+tmpRoot, "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("pre-commit failed: %v: %s", err, out)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("payload marker: %v", err)
+	}
+	entries, err := os.ReadDir(tmpRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("TMPDIR entries after payload handoff = %v", entries)
+	}
+}
+
 func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)
@@ -485,7 +549,7 @@ func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *tes
 	files := map[string]string{
 		".githooks/check-nested-staged":                         string(helperBody),
 		prefix + ".awf/awf.lock":                                string(lockBytes),
-		prefix + ".awf/config.yaml":                             "prefix: sundial\nskills: []\nagents: []\ndomains: [alpha]\n",
+		prefix + ".awf/config.yaml":                             "prefix: sundial\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [alpha]\n",
 		prefix + ".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
 		prefix + ".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
 		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
@@ -565,7 +629,7 @@ func TestRunCheckStagedError(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {

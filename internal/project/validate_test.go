@@ -37,27 +37,27 @@ func TestValidateCommandWiring(t *testing.T) {
 	}{
 		{
 			"gateCmd unset",
-			"prefix: example\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n",
 			"hooks.enabled requires vars.gateCmd: the rendered hook payloads run the project gate; set vars.gateCmd in .awf/config.yaml",
 		},
 		{
 			"runner disabled, checkCmd first",
-			"prefix: example\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\n",
 			"hooks.enabled without the runner singleton requires vars.checkCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
 		},
 		{
 			"runner disabled, commitGateCmd second",
-			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\nhooks:\n  enabled: true\nrunner:\n  enabled: false\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\nhooks:\n  enabled: true\nrunner:\n  enabled: false\n",
 			"hooks.enabled without the runner singleton requires vars.commitGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
 		},
 		{
 			"runner disabled, proseGateCmd third",
-			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\nhooks:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\nhooks:\n  enabled: true\n",
 			"hooks.enabled without the runner singleton requires vars.proseGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
 		},
 		{
 			"runner disabled, memoryGateCmd fourth",
-			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\nhooks:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\nhooks:\n  enabled: true\n",
 			"hooks.enabled without the runner singleton requires vars.memoryGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
 		},
 	}
@@ -76,19 +76,19 @@ func TestValidateCommandWiring(t *testing.T) {
 	valid := []struct{ name, config string }{
 		{
 			"runner satisfies the awf-verb vars",
-			"prefix: example\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n",
 		},
 		{
 			"explicit vars satisfy a runner-less config",
-			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\n  memoryGateCmd: make memory-gate\nhooks:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\n  memoryGateCmd: make memory-gate\nhooks:\n  enabled: true\n",
 		},
 		{
 			"hooks disabled needs nothing",
-			"prefix: example\nhooks:\n  enabled: false\n",
+			"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: false\n",
 		},
 		{
 			"hooks absent needs nothing",
-			"prefix: example\n",
+			"prefix: example\nintegrationBranch: main\n",
 		},
 	}
 	for _, tc := range valid {

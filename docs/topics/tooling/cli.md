@@ -3,7 +3,7 @@
 
 Command dispatch and the behaviour of the awf command surfaces.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
 
 The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. Effort commands manage optional durable coordination, memory, and managed worktrees.
 
@@ -87,6 +87,12 @@ Backing: test
 
 Unreplaced stub sections and stub-marked convention parts never by themselves cause awf check or any other gated command to exit non-zero.
 Origin: ADR-0070
+Backing: test
+
+### `invariant: terseness-advisory-nonfailing`
+
+The glossary terseness notes that `awf check` prints for over-long term meanings are informational only and never change the command's exit code.
+Origin: ADR-0207
 Backing: test
 
 ### `invariant: target-cli`

@@ -36,7 +36,7 @@ func runRecover(root string, stdout io.Writer) error {
 
 // runUpgrade consumes a sealed attestation when the lock carries one: the final
 // current-state cutover verifies only the sealed facts and journals the approval
-// deletion plus the permanent lock (promoting the sealed cutoff/gaps). With no
+// deletion plus the replacement lock (discarding the sealed routing payload). With no
 // attestation it applies every registered migration past the project's current
 // schema generation, then always runs a normal sync - even when no migration
 // applies - so a same-schema binary bump still re-renders every managed file and
@@ -64,8 +64,6 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 		return upgrade.FinalUpgrade(ctx, root, lock, stdout)
 	case manifest.AuthorityPermanent:
 		// Continue with ordinary schema migration and sync.
-	case manifest.AuthorityPreTracking:
-		return errors.New("pre-tracking authority: use the bridge release to attest before upgrading")
 	default: // coverage-ignore: AuthorityState returns only the closed enum values
 		return errors.New("invalid authority: restore .awf/awf.lock from version control")
 	}

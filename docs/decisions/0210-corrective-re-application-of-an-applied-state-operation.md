@@ -3,7 +3,7 @@ format: current-state-v2
 status: Proposed
 date: 2026-08-01
 ---
-# ADR-0200: Corrective re-application of an applied state operation
+# ADR-0210: Corrective re-application of an applied state operation
 
 ## Context
 

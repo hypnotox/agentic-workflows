@@ -22,7 +22,9 @@ func TestDocsSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Docs {
 		if spec.Mandatory {
-			continue // singletons render from non-docs/ templates through the full layout; covered by TestAdrSingletonSectionParity
+			// Singletons render from non-docs/ templates through the full layout;
+			// covered by TestAdrSingletonSectionParity.
+			continue
 		}
 		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
 		src, err := fs.ReadFile(templates.FS, tid)
@@ -64,7 +66,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 	cat := catalog.Standard
 	valid := cat.Docs["architecture"].Sections[0]
 	const orphan = "definitely-not-a-section"
-	cfg := "prefix: example\n" + sprintfVars("") +
+	cfg := "prefix: example\nintegrationBranch: main\n" + sprintfVars("") +
 		"skills: []\nagents: []\ndocs:\n  - architecture\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
@@ -150,7 +152,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 	if !ok {
 		t.Fatal("maintainable-code-design catalog entry missing")
 	}
-	wantSections := []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}
+	wantSections := []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "readability", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}
 	if !entry.Mandatory || !entry.DocumentMap || entry.Title != "Maintainable Code Design" || entry.Desc != "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design" || entry.Path != "maintainable-code-design.md" || entry.TemplateKey != "maintainableCodeDesign" || entry.TID != "docs/maintainable-code-design.md.tmpl" || strings.Join(entry.Sections, ",") != strings.Join(wantSections, ",") {
 		t.Errorf("catalog entry = %#v, want mandatory document-map guide with sections %v", entry, wantSections)
 	}
@@ -171,7 +173,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 
 	out := renderGolden(t, entry.TID, map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}})
 	assertNoLeaks(t, out)
-	for _, want := range append([]string{"# Maintainable Code Design", "SOLID", "DRY", "YAGNI", "Strategy", "Adapter", "without mechanically adding wrapper types"}, append([]string{"## Decision posture", "## SOLID, DRY, and YAGNI", "## Semantic modeling", "## Boundaries and dependency direction", "## Illustrative pattern toolbox", "## Preparatory refactoring", "## Failure modes"}, []string{"perform it first", "include it in the current effort", "defer it in a durable project-owned record", "decline it with the trade-off stated"}...)...) {
+	for _, want := range append([]string{"# Maintainable Code Design", "SOLID", "DRY", "YAGNI", "Strategy", "Adapter", "without mechanically adding wrapper types"}, append([]string{"## Decision posture", "## SOLID, DRY, and YAGNI", "## Semantic modeling", "## Readability", "## Boundaries and dependency direction", "## Illustrative pattern toolbox", "## Preparatory refactoring", "## Failure modes"}, []string{"perform it first", "include it in the current effort", "defer it in a durable project-owned record", "decline it with the trade-off stated"}...)...) {
 		if !strings.Contains(out, want) {
 			t.Errorf("guide missing %q:\n%s", want, out)
 		}
@@ -182,7 +184,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 		}
 	}
 
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

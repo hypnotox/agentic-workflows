@@ -23,9 +23,16 @@ Backing: test
 
 ### `invariant: config-serialization-owned`
 
-The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, SetMappingScalar, the typed nested-integer SetMappingInteger editor, and the nested-string SetMappingString editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
+The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, the top-level scalar SetString editor, SetMappingScalar, the typed nested-integer SetMappingInteger editor, and the nested-string SetMappingString editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
 Origin: ADR-0026
-Revised-by: ADR-0144, ADR-0159
+Revised-by: ADR-0144, ADR-0159, ADR-0202
+Backing: test
+
+### `invariant: integration-branch-explicit`
+
+The config carries a required integrationBranch key with no in-code default: validation rejects an absent or empty value, a value containing whitespace, and a value starting with a hyphen while accepting a slashed branch name, its schema migration writes integrationBranch: main visibly into a config that lacks it and leaves a config that already carries one byte-identical, and a freshly scaffolded config writes the key so it validates against its own rules.
+Origin: ADR-0202
+Revised-by: ADR-0203
 Backing: test
 
 ### `invariant: docsdir-default`

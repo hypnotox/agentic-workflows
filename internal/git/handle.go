@@ -385,6 +385,46 @@ func (r *Repo) IndexBlobs(ctx context.Context) ([]IndexBlob, error) {
 	return out, nil
 }
 
+// CommitParents returns the full parent hashes of rev in recorded order.
+func (r *Repo) CommitParents(ctx context.Context, rev string) ([]string, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	commit, err := r.resolveCommit(rev)
+	if err != nil {
+		return nil, err
+	}
+	parents := make([]string, len(commit.ParentHashes))
+	for i, hash := range commit.ParentHashes {
+		parents[i] = hash.String()
+	}
+	return parents, nil
+}
+
+// CommitMessage returns the full message recorded by rev.
+func (r *Repo) CommitMessage(ctx context.Context, rev string) (string, error) {
+	if err := checkContext(ctx); err != nil {
+		return "", err
+	}
+	commit, err := r.resolveCommit(rev)
+	if err != nil {
+		return "", err
+	}
+	return commit.Message, nil
+}
+
+func (r *Repo) resolveCommit(rev string) (*object.Commit, error) {
+	hash, err := r.repo.ResolveRevision(plumbing.Revision(rev))
+	if err != nil {
+		return nil, opaqueWrap(fmt.Sprintf("resolve %q", rev), err)
+	}
+	commit, err := r.repo.CommitObject(*hash)
+	if err != nil { // coverage-ignore: ResolveRevision accepts only commitish revisions; the non-commit-object test proves blobs refuse before this lookup
+		return nil, opaqueWrap(fmt.Sprintf("commit %q", rev), err)
+	}
+	return commit, nil
+}
+
 // CommitBlobs returns the sorted regular and executable blobs of the tree that
 // rev resolves to. Symlinks and gitlinks carry no regular-file content to scan
 // and are skipped. It reads the repository only.

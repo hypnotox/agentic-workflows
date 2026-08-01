@@ -11,6 +11,8 @@ This project's rendered skills, agents, and docs (and this guide) are produced b
 
 See [docs/working-with-awf.md](docs/working-with-awf.md) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
 
+When a real merge imports an older-format ADR, `commit-msg` is definitive. If it refuses an unstamped conflict-free merge, preserve the staged index and `MERGE_HEAD`, add adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers, then run `git commit`; optionally begin proactively with `git merge --no-commit --no-ff`. Never retrofit the ADR or create allowance state, and do not stamp a true fast-forward.
+
 <!-- awf:edit you-and-this-project: default; create .awf/parts/agents-doc/you-and-this-project.md to override -->
 ## You and this project
 
@@ -39,7 +41,7 @@ Hard rules every change must respect:
 - **Clamped latitude.** `almanac.Sun` clamps latitude to [-90, 90] before the day-length model; out-of-range input degrades to the pole, never to a domain error. (ADR-0001)
 - **Decimal degrees only.** The CLI accepts coordinates exclusively as decimal degrees; no DMS parsing exists. (ADR-0002)
 - **Conventional Commits, scopes `almanac`, `schedule`, `cli`, `docs`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
-- **Binary-version gate.** Every gated command (`render`, `check`, `audit`, `effort`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`, except `check prose`, `check memory`, and `check commit`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
+- **Binary-version gate.** Every gated command (`render`, `check`, `audit`, `effort`, `adr`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`, except `check prose`, `check memory`, and `check commit`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
@@ -103,7 +105,7 @@ go run ./cmd/sundial 52.5 13.4: print this week's sun table for Berlin
 - **Architecture:** [docs/architecture.md](docs/architecture.md), system shape, packages, key components, dependencies
 - **Debugging:** [docs/debugging.md](docs/debugging.md), recipes for common failure modes
 - **Development:** [docs/development.md](docs/development.md), local setup, the command runner, dependency reference
-- **Glossary:** [docs/glossary.md](docs/glossary.md), project jargon and term ownership
+- **Glossary:** [docs/glossary.md](docs/glossary.md), project jargon and the awf vocabulary it ships
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md), recurring bugs and tricky areas
 - **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers

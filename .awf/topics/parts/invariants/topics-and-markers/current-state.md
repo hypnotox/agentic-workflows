@@ -121,3 +121,9 @@ Backing: test
 A rendered topic document's applicability paragraph carries only the owning-domain selectors, the topic selectors, the both-must-match rule (or the global-topic variant), and a drilldown to `awf topic <id> --coverage`; it never embeds current matched paths or marker sites, and an empty selector list degrades to coherent prose.
 Origin: ADR-0147
 Backing: test
+
+### `invariant: proof-marker-names-its-unit`
+
+A proof marker names the unit that proves its claim, `invariant: <domain>/<topic>:<slug> (<name>)`, and building the marker index rejects a proof marker that carries no name. The name is free text, and it must occur verbatim on a line of the marker's own file whose trimmed form does not open with that family's marker token, with the match unflanked by a letter, digit, or underscore; otherwise the scan fails at that marker's line.
+Origin: ADR-0205
+Backing: test

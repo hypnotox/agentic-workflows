@@ -41,14 +41,28 @@ Backing: test
 
 ### `invariant: glossary-terms-sorted`
 
-The rendered glossary table orders its rows case-insensitively by term regardless of the authored map order, and two sidecars carrying the same entries in different order render byte-identically.
+The rendered glossary table orders its rows case-insensitively by term regardless of the authored order, and two sidecars carrying the same entries in different order render byte-identically.
 Origin: ADR-0148
+Revised-by: ADR-0207
 Backing: test
 
 ### `invariant: glossary-terms-validated`
 
-An empty term, an empty, null, or non-string meaning, an interior newline in a term or meaning, a non-string map key, or a case-insensitive duplicate term in the glossary sidecar fails the render, naming the sidecar path and the offending key.
+An empty, missing, or non-string term, an empty, null, or non-string meaning, an interior newline in a term or meaning, a malformed record, an unknown record key, or a case-insensitive duplicate term within a single layer of the glossary sidecar fails the render, naming the sidecar path, and the offending term where the term itself parsed.
 Origin: ADR-0148
+Revised-by: ADR-0207, ADR-0208
+Backing: test
+
+### `invariant: glossary-standard-vocabulary`
+
+The rendered glossary merges the catalog's shipped standard vocabulary with the project's authored terms into one sorted table, a project term overriding a shipped term of the same case-insensitive name.
+Origin: ADR-0207
+Backing: test
+
+### `invariant: glossary-standard-terms-portable`
+
+Every shipped standard term carries exactly a string term and a string meaning, with no domains key, no ADR reference, and no meaning exceeding the terseness threshold, so the shipped layer is portable into any adopter tree.
+Origin: ADR-0207
 Backing: test
 
 ### `invariant: guide-scopes-derived`
@@ -79,6 +93,7 @@ Backing: test
 
 ### `invariant: maintainable-code-design-guide`
 
-The standard catalog renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with ordered convention-part sections for decision posture, contextual heuristics, semantic modeling, boundaries and dependencies, an illustrative pattern toolbox, preparatory refactoring, and failure modes; empty project data remains coherent, adopter-neutral, language-agnostic, and free of repository-specific content.
+The standard catalog renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with ordered convention-part sections for decision posture, contextual heuristics, semantic modeling, readability, boundaries and dependencies, an illustrative pattern toolbox, preparatory refactoring, and failure modes; empty project data remains coherent, adopter-neutral, language-agnostic, and free of repository-specific content.
 Origin: ADR-0168
+Revised-by: ADR-0200
 Backing: test

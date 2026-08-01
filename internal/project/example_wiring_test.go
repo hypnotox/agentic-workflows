@@ -71,15 +71,6 @@ exit 0
 	}
 }
 
-// TestSundialCurrentStateMigrated pins the committed sundial fixture as a
-// current-state adopter after the Plan 4 cutover: it carries a currentState
-// config block (not legacy invariants), an authored topic corpus, sits at schema
-// generation 14, and its committed lock records no bridge attestation. These
-// properties hold identically in the preparation slice and after the final
-// cutover, so the sealed contract stays green across both. Reading the fixture
-// as data (never executing the binary) keeps this a static contract alongside
-// the other example-wiring assertions.
-
 // ADR-0090: the committed example adopter is kept deterministic through ./x -
 // sync re-renders it from source; check drift-, invariant-, note-, and
 // test-gates it. The example is its own Go module so the enclosing ./...

@@ -1,3 +1,5 @@
 {{=awf:sectionDefault}}
 
 awf itself keeps the `bootstrap` singleton disabled but enables the `runner` singleton with a from-source `awfInvokeCmd`, so `./awf` is the rendered awf wrapper while `./x` stays the hand-written project runner; the `examples/sundial` adopter demonstrates the same split. The rendered git-hook payloads under `.awf/hooks/` are enabled here; the executable `.githooks/` stubs delegate to them, and awf never activates hooks itself.
+
+When a real merge imports an older-format ADR, `commit-msg` is the definitive authorization boundary. If an unstamped conflict-free merge is refused, do not restart it: leave the staged index and `MERGE_HEAD` intact, add an adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` pair to the final trailer block, then run `git commit` to finish that merge. A proactive agent may instead use `git merge --no-commit --no-ff`. Never retrofit the ADR's format or create allowance state; a true fast-forward creates no authorization event.

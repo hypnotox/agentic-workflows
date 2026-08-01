@@ -83,6 +83,74 @@ func TestSetArray(t *testing.T) {
 	}
 }
 
+func TestSetString(t *testing.T) {
+	cases := []struct {
+		name, src, key, value string
+		want                  string
+		wantErr               bool
+	}{
+		{"create absent key", "prefix: x\n", "integrationBranch", "main", "prefix: x\nintegrationBranch: main\n", false},
+		{"replace existing", "integrationBranch: trunk\n", "integrationBranch", "main", "integrationBranch: main\n", false},
+		{"replace non-scalar", "integrationBranch:\n  - trunk\n", "integrationBranch", "main", "integrationBranch: main\n", false},
+		{"preserves comments and order", "# lead\nprefix: x # trailing\ndocsDir: docs\n", "integrationBranch", "main", "# lead\nprefix: x # trailing\ndocsDir: docs\nintegrationBranch: main\n", false},
+		{"parse error", "prefix: [a, b\n", "integrationBranch", "main", "", true},
+		{"non-mapping", "- a\n", "integrationBranch", "main", "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := SetString([]byte(tc.src), tc.key, tc.value)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			// invariant: config/configuration:config-serialization-owned (TestSetString)
+			if string(got) != tc.want {
+				t.Errorf("SetString:\n got: %q\nwant: %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// HasValue answers emptiness, not presence: only a key carrying a non-empty
+// scalar counts, so a null or empty value reads the same as an absent key -
+// which is what makes the port-forward seed exactly what the migration writes.
+// A malformed document errors.
+func TestHasValue(t *testing.T) {
+	for _, tc := range []struct {
+		name, src, key string
+		want, wantErr  bool
+	}{
+		{name: "present with value", src: "integrationBranch: main\n", key: "integrationBranch", want: true},
+		{name: "present but empty", src: "integrationBranch: \"\"\n", key: "integrationBranch"},
+		{name: "present but null", src: "integrationBranch:\n", key: "integrationBranch"},
+		{name: "absent", src: "prefix: x\n", key: "integrationBranch"},
+		{name: "nested key does not count", src: "currentState:\n  integrationBranch: main\n", key: "integrationBranch"},
+		{name: "mapping value is not a scalar value", src: "integrationBranch:\n  nested: main\n", key: "integrationBranch"},
+		{name: "malformed", src: "prefix: [\n", key: "integrationBranch", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := HasValue([]byte(tc.src), tc.key)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected a parse error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("HasValue = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRemoveKey(t *testing.T) {
 	cases := []struct {
 		name, src, key, want string

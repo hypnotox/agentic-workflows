@@ -90,7 +90,7 @@ Subcommands:
   invariants   report each invariant claim's backing and proof sites
   prose        scan tracked text files for typographic punctuation, blocking
   memory       scan staged decision records for working-memory citations, blocking
-  commit       validate one commit message (Conventional Commits), blocking
+  commit       validate one commit message and stale-ADR merge authorization, blocking
 `,
 		Children: []Command{
 			{Name: "drift", Summary: "Report stale or hand-edited rendered output",
@@ -142,17 +142,22 @@ one with memoryCite.exemptions. awf installs no hook; wire this into your own
 pre-commit hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the
 hooks artifact is enabled).
 `},
-			{Name: "commit", Summary: "Validate one commit message (Conventional Commits), blocking",
+			{Name: "commit", Summary: "Validate one commit message and stale-ADR merge authorization, blocking",
 				BoolFlags: []string{"--staged"}, MaxPos: 1,
 				Gating: Ungated, StateExempt: true,
 				HelpBody: `Usage: awf check commit [FILE]
 
-Validate one commit message against the Conventional Commits rules (type, scope,
-72-char subject) and exit non-zero on a violation. Reads FILE (the path a
-commit-msg hook passes as $1) or stdin; cleans the message git-style and exempts
-merge/autosquash subjects. awf installs no hook; wire this into your own
-commit-msg hook (the rendered .awf/hooks/commit-msg.sh payload runs it when the
-hooks artifact is enabled).
+Validate one commit message against the Conventional Commits rules and
+definitively validate stale-format ADR merge authorization. Reads FILE (the
+path a commit-msg hook passes as $1) or stdin and cleans it git-style. Merge and
+autosquash subjects are exempt only from Conventional Commits. An older-format
+ADR introduced by a real merge must qualify against an incoming MERGE_HEAD
+parent and carry an adjacent AWF-Allow-Version / nonempty AWF-Allow-Reason pair
+in the final trailer block; malformed reserved trailers refuse. Refusal leaves
+the staged index, message, and merge state unchanged so correcting the trailers
+and rerunning git commit finishes the existing merge. awf installs no hook; wire
+this into your own commit-msg hook (the rendered .awf/hooks/commit-msg.sh payload
+runs it when the hooks artifact is enabled).
 `},
 		},
 	},
@@ -208,6 +213,23 @@ Manage the fixed .awf/worktrees/<slug> checkout and awf/<slug> branch without st
 `},
 			{Name: "integrate", Summary: "Integrate a managed worktree", MinPos: 1, MaxPos: 1,
 				HelpBody: "Usage: awf effort integrate <slug>\n\nIntegrate into the invoking clean target checkout without committing, reviewing, removing, or finishing.\n"},
+		},
+	},
+	{
+		Name: "adr", Summary: "ADR lifecycle operations", MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf adr <subcommand>
+
+Perform an ADR lifecycle operation that the corpus, not the author, owns.
+`,
+		Children: []Command{
+			{Name: "number", Summary: "Number pending ADRs at integration", MinPos: 0, MaxPos: -1,
+				HelpBody: `Usage: awf adr number [<slug>...]
+
+Number pending ADRs after merging the integration branch in and before merging
+back. Bare invocation numbers a single pending ADR; several pending ADRs require
+an explicit list naming every pending slug, in the intended add-before-revise
+order.
+`},
 		},
 	},
 	{
@@ -306,8 +328,15 @@ Scaffold a new artifact. <kind> is adr, plan, topic, skill, agent, or doc.
 				Name: "adr", Summary: "Scaffold a new ADR", MinPos: 0, MaxPos: -1,
 				HelpBody: `Usage: awf new adr <title>
 
-Scaffold a new ADR under docs/decisions with the next sequential number, from
-the rendered template with its date and title heading filled in.
+Scaffold a new ADR under docs/decisions from the rendered template, with its
+date and title heading filled in. The identity depends on the branch: on the
+configured integrationBranch the record gets the next sequential number
+(NNNN-<slug>.md), and anywhere else it is written as a pending record named
+<slug>.md, which awf adr number numbers at integration time.
+
+The title must not slugify to a reserved name (readme, index, template), to a
+slug already used in the corpus, or to something opening with four digits and a
+hyphen, which would read as a number.
 `,
 			},
 			{
@@ -388,10 +417,11 @@ Flags:
 Migrate the .awf/ config tree to the current schema version, then sync.
 
 When the lock carries a bridge attestation, plain upgrade instead performs the
-final current-state cutover: it verifies only the sealed facts (the prepared
-HEAD and tree digest), then journals the deletion of the migration approval file
-and the permanent lock, promoting the sealed format cutoff and gaps. Attestation
-and readiness reporting live only in the preceding bridge release; this binary
+final current-state cutover: it verifies the complete sealed attestation,
+including the prepared HEAD, tree digest, and historical routing payload, then
+journals deletion of the migration approval file and replacement of the
+permanent lock while discarding the cutoff and gap payload. Attestation and
+readiness reporting live only in the preceding bridge release; this binary
 consumes seals, it never produces them.
 
   --recover              replay the current-state upgrade journal's recovery

@@ -20,11 +20,11 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the ADR corpus, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
 
 <!-- awf:section procedure -->
-1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .layout.adrDir }}/` matching the `NNNN-*.md` pattern.
+1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified decision record under `{{ .layout.adrDir }}/`: `NNNN-*.md` when numbered, or `<slug>.md` while pending, ignoring `README.md`, `INDEX.md`, and `template.md`.
 <!-- awf:end -->
 
 <!-- awf:section artifact-path-detection -->
-2. **Path detection detail.** When no explicit path is given: list `{{ .layout.adrDir }}/NNNN-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+2. **Path detection detail.** When no explicit path is given: list the decision records under `{{ .layout.adrDir }}/` - both `NNNN-*.md` and any pending `<slug>.md`, never the three reserved basenames - sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->

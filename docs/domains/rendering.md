@@ -12,6 +12,8 @@ The render engine overlays authored convention parts onto embedded templates wit
 
 The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
 
+The glossary renders from two layers: a standard vocabulary the catalog ships into every adopter tree, overlaid by the project's authored `data.terms` records, merged into one case-insensitively sorted table. A project term overrides a shipped term of the same name, which is the only way to reword or retire one; an over-long meaning in either layer raises a non-failing advisory.
+
 Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff accepts exactly one effort-owned memory path, `.awf/efforts/<slug>/memory.md`, validating the slug grammar, lexical containment, no-follow components, ownership, the bounded singly-linked leaf, an `Effort: <slug>` first line, and unchanged identity across validation, alongside bounded kickoff input. It remains lifecycle-independent: it does not parse effort state, select or assign an effort, mutate memory, or invoke the awf binary.
 
 

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
@@ -41,27 +42,33 @@ type Sidecar struct {
 // data/sections/local live in sidecars, not here. Targets is the adapter-runtime
 // enable array (default ["claude"]); adapter artifacts render once per entry.
 type Config struct {
-	Prefix        string              `yaml:"prefix"`
-	DocsDir       string              `yaml:"docsDir"`
-	Vars          map[string]any      `yaml:"vars"`
-	Skills        []string            `yaml:"skills"`
-	Agents        []string            `yaml:"agents"`
-	Docs          []string            `yaml:"docs"`
-	Domains       []string            `yaml:"domains"`
-	Tags          map[string]string   `yaml:"tags"`
-	ContextIgnore []string            `yaml:"contextIgnore"`
-	Targets       []string            `yaml:"targets"`
-	CurrentState  *CurrentStateConfig `yaml:"currentState"`
-	Audit         *AuditConfig        `yaml:"audit"`
-	Bootstrap     *BootstrapConfig    `yaml:"bootstrap"`
-	Hooks         *HooksConfig        `yaml:"hooks"`
-	Runner        *RunnerConfig       `yaml:"runner"`
-	ProseGate     *ProseGateConfig    `yaml:"proseGate"`
-	MemoryCite    *MemoryCiteConfig   `yaml:"memoryCite"`
-	root          string              // <project>/.awf, for sidecar/part resolution
-	raw           []byte              // the exact config.yaml bytes Load read, for in-place byte edits
-	read          TreeReader          // selected filesystem or immutable snapshot universe
-	filesystem    bool
+	Prefix  string `yaml:"prefix"`
+	DocsDir string `yaml:"docsDir"`
+	// IntegrationBranch names the branch effort work integrates into. It is
+	// required-explicit and carries no in-code default (the Prefix precedent,
+	// not the DocsDir one): the schema migration writes `integrationBranch:
+	// main` visibly so no adopter silently inherits a branch name it never
+	// chose (ADR-0202 Decision 6, keeping ADR-0127's silent-default removal).
+	IntegrationBranch string              `yaml:"integrationBranch"`
+	Vars              map[string]any      `yaml:"vars"`
+	Skills            []string            `yaml:"skills"`
+	Agents            []string            `yaml:"agents"`
+	Docs              []string            `yaml:"docs"`
+	Domains           []string            `yaml:"domains"`
+	Tags              map[string]string   `yaml:"tags"`
+	ContextIgnore     []string            `yaml:"contextIgnore"`
+	Targets           []string            `yaml:"targets"`
+	CurrentState      *CurrentStateConfig `yaml:"currentState"`
+	Audit             *AuditConfig        `yaml:"audit"`
+	Bootstrap         *BootstrapConfig    `yaml:"bootstrap"`
+	Hooks             *HooksConfig        `yaml:"hooks"`
+	Runner            *RunnerConfig       `yaml:"runner"`
+	ProseGate         *ProseGateConfig    `yaml:"proseGate"`
+	MemoryCite        *MemoryCiteConfig   `yaml:"memoryCite"`
+	root              string              // <project>/.awf, for sidecar/part resolution
+	raw               []byte              // the exact config.yaml bytes Load read, for in-place byte edits
+	read              TreeReader          // selected filesystem or immutable snapshot universe
+	filesystem        bool
 }
 
 // TreeReader supplies canonical config-tree-relative bytes without exposing a
@@ -503,6 +510,9 @@ func (c *Config) Validate() error {
 	if strings.HasPrefix(c.DocsDir, "/") || strings.Contains(c.DocsDir, "..") {
 		return fmt.Errorf("docsDir %q must be a relative path without \"..\"", c.DocsDir)
 	}
+	if err := validateIntegrationBranch(c.IntegrationBranch); err != nil {
+		return err
+	}
 	for _, d := range c.Domains {
 		if err := ValidateDomainName(d); err != nil {
 			return err
@@ -650,6 +660,23 @@ func hasPathSep(s string) bool {
 // the any-depth form.
 func validatePathGlob(g string) error {
 	return pathglob.Validate(g)
+}
+
+// validateIntegrationBranch enforces the required-explicit integrationBranch
+// key's shape: non-empty, free of whitespace, and not starting with `-` (git
+// reads a leading dash as an option). Slashes stay legal, so `release/1.0` is
+// an accepted branch name.
+func validateIntegrationBranch(b string) error {
+	if b == "" {
+		return errors.New("integrationBranch must not be empty; set it explicitly (for example `integrationBranch: main`)")
+	}
+	if strings.ContainsFunc(b, unicode.IsSpace) {
+		return fmt.Errorf("integrationBranch %q must not contain whitespace", b)
+	}
+	if strings.HasPrefix(b, "-") {
+		return fmt.Errorf("integrationBranch %q must not start with %q", b, "-")
+	}
+	return nil
 }
 
 func validateUniquePathGlobs(globs []string) error {

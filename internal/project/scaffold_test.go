@@ -24,9 +24,6 @@ func sliceSet(s []string) map[string]bool {
 	return m
 }
 
-// TestScaffoldParsesCleanly verifies that ScaffoldConfig with no overrides produces YAML
-// that parses cleanly under the strict config.Load decoder.
-
 // writeScaffold writes scaffold bytes to a fresh awf dir as config.yaml and
 // returns the dir (the argument config.Load expects).
 func writeScaffold(t *testing.T, b []byte) string {
@@ -74,6 +71,27 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 	// Concrete negative: a known opt-in skill must not be scaffolded.
 	if slices.Contains(cfg.Skills, "tdd") {
 		t.Errorf("scaffold should not enable the opt-in skill tdd")
+	}
+}
+
+// A freshly scaffolded config carries the required integrationBranch key and
+// therefore passes its own validation. Without the key the scaffold would emit
+// a config that fails on the very next open (ADR-0202 Decision 6).
+// invariant: config/configuration:integration-branch-explicit (TestScaffoldWritesValidIntegrationBranch)
+func TestScaffoldWritesValidIntegrationBranch(t *testing.T) {
+	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)
+	if err != nil {
+		t.Fatalf("ScaffoldConfig: %v", err)
+	}
+	if !strings.Contains(string(b), "integrationBranch: main\n") {
+		t.Fatalf("scaffolded config does not write the key visibly:\n%s", b)
+	}
+	cfg, err := config.Load(writeScaffold(t, b))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("a freshly scaffolded config must validate: %v", err)
 	}
 }
 

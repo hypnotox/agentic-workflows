@@ -70,15 +70,20 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
 	}
 	out, err := config.MarshalSkeleton(config.Skeleton{
-		Prefix:    prefix,
-		Vars:      seeded,
-		Skills:    skillNames,
-		Agents:    agentNames,
-		Docs:      docNames,
-		Audit:     auditBlk,
-		Bootstrap: &config.BootstrapConfig{Enabled: true},
-		Hooks:     &config.HooksConfig{Enabled: true},
-		Runner:    &config.RunnerConfig{Enabled: true},
+		Prefix: prefix,
+		// The default integration branch a fresh project starts on. It is
+		// written, never defaulted in code, so an adopter sees and can change
+		// the branch name the ADR scaffold and the pending-record block key
+		// off (ADR-0202 Decision 6).
+		IntegrationBranch: "main",
+		Vars:              seeded,
+		Skills:            skillNames,
+		Agents:            agentNames,
+		Docs:              docNames,
+		Audit:             auditBlk,
+		Bootstrap:         &config.BootstrapConfig{Enabled: true},
+		Hooks:             &config.HooksConfig{Enabled: true},
+		Runner:            &config.RunnerConfig{Enabled: true},
 	})
 	if err != nil { // coverage-ignore: MarshalSkeleton serializes an in-memory struct; it cannot fail on this input
 		return nil, nil, err

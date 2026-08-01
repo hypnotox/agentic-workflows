@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -190,12 +191,12 @@ func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
 	if b, _ := os.ReadFile(p); strings.Contains(string(b), "legacyAdrGaps") {
 		t.Fatalf("pre-cutover lock gained permanent gap authority: %s", b)
 	}
-	permanent := &Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]Entry{}, ADRFormatV1From: 137, LegacyADRGaps: []int{}}
+	permanent := &Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]Entry{}}
 	if err := permanent.Save(p); err != nil {
 		t.Fatal(err)
 	}
-	if b, _ := os.ReadFile(p); !strings.Contains(string(b), `"legacyAdrGaps": []`) {
-		t.Fatalf("post-cutover empty gap set is not explicit: %s", b)
+	if b, _ := os.ReadFile(p); strings.Contains(string(b), "legacyAdrGaps") {
+		t.Fatalf("ordinary lock retained retired routing: %s", b)
 	}
 	// A populated attestation round-trips byte-stably.
 	l := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}, BridgeAttestation: &BridgeAttestation{Version: 1, PreparedHead: "abc123", TreeDigest: "sha256:deadbeef", ADRFormatV1From: 137, LegacyADRGaps: []int{12, 44}}}
@@ -214,174 +215,6 @@ func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
 	b2, _ := os.ReadFile(p)
 	if string(b1) != string(b2) {
 		t.Errorf("attested lock serialization not stable")
-	}
-}
-
-func TestV2CutoffCanonicalRoundTrip(t *testing.T) {
-	lock := &Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]Entry{}, ADRFormatV1From: 4, ADRFormatV2From: 9, LegacyADRGaps: []int{2}, InitializedWithVersion: "0.19.0"}
-	b, err := lock.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(b)
-	v1 := strings.Index(text, `"adrFormatV1From"`)
-	v2 := strings.Index(text, `"adrFormatV2From"`)
-	gaps := strings.Index(text, `"legacyAdrGaps"`)
-	initialized := strings.Index(text, `"initializedWithVersion"`)
-	if v1 >= v2 || v2 >= gaps || gaps >= initialized {
-		t.Fatalf("noncanonical authority order:\n%s", text)
-	}
-	got, err := Parse(b)
-	if err != nil || got.ADRFormatV2From != 9 {
-		t.Fatalf("V2 round trip = %#v, %v", got, err)
-	}
-	again, err := got.Marshal()
-	if err != nil || string(again) != text {
-		t.Fatalf("V2 round trip changed bytes: %v\n%s", err, again)
-	}
-
-	preV2 := &Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]Entry{}, ADRFormatV1From: 4, LegacyADRGaps: []int{2}}
-	before, err := preV2.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	parsed, err := Parse(before)
-	if err != nil {
-		t.Fatal(err)
-	}
-	after, err := parsed.Marshal()
-	if err != nil || string(before) != string(after) || strings.Contains(string(after), "adrFormatV2From") {
-		t.Fatalf("pre-V2 serialization changed: %v\n%s", err, after)
-	}
-}
-
-func TestSchema15PermanentAuthorityV2BoundaryMatrix(t *testing.T) {
-	fields := `"awfVersion":"0.20.0","files":{},"adrFormatV1From":4,"legacyAdrGaps":[]`
-	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":14}`)); err != nil {
-		t.Fatalf("schema 14 omission must remain compatible: %v", err)
-	}
-	for _, tc := range []struct {
-		name, v2, want string
-	}{
-		{"missing", "", "requires adrFormatV2From"},
-		{"explicit zero", `,"adrFormatV2From":0`, "must be positive"},
-		{"below V1", `,"adrFormatV2From":3`, "greater than or equal"},
-		{"equal cutoffs", `,"adrFormatV2From":4`, ""},
-		{"later V2 cutoff", `,"adrFormatV2From":9`, ""},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := Parse([]byte(`{` + fields + `,"schemaVersion":15` + tc.v2 + `}`))
-			if tc.want == "" {
-				if err != nil || got.ADRFormatV2From < got.ADRFormatV1From {
-					t.Fatalf("valid schema-15 authority = %#v, %v", got, err)
-				}
-				return
-			}
-			if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("error = %v, want %q", err, tc.want)
-			}
-		})
-	}
-}
-
-func TestAuthorityStateMatrix(t *testing.T) {
-	bridge := `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[2]}`
-	tests := []struct {
-		name, fields string
-		want         AuthorityState
-		wantErr      bool
-	}{
-		{"bridge", bridge, AuthorityBridge, false},
-		{"permanent-migrated", `"adrFormatV1From":4,"legacyAdrGaps":[2]`, AuthorityPermanent, false},
-		{"permanent-initialized", `"adrFormatV1From":4,"legacyAdrGaps":[2],"initializedWithVersion":"0.20.0"`, AuthorityPermanent, false},
-		{"permanent-v-prefixed", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"v0.20.0"`, AuthorityPermanent, false},
-		{"permanent-v2", `"adrFormatV1From":4,"adrFormatV2From":9,"legacyAdrGaps":[]`, AuthorityPermanent, false},
-		{"pre-tracking", "", AuthorityPreTracking, false},
-		{"v2-positive-only", `"adrFormatV2From":9`, 0, true},
-		{"v2-explicit-zero-only", `"adrFormatV2From":0`, 0, true},
-		{"mixed", bridge + `,"adrFormatV1From":4,"legacyAdrGaps":[]`, 0, true},
-		{"bridge-v2-mixing", bridge + `,"adrFormatV2From":9`, 0, true},
-		{"v2-zero", `"adrFormatV1From":4,"adrFormatV2From":0,"legacyAdrGaps":[]`, 0, true},
-		{"v2-negative", `"adrFormatV1From":4,"adrFormatV2From":-1,"legacyAdrGaps":[]`, 0, true},
-		{"v2-reversed", `"adrFormatV1From":4,"adrFormatV2From":3,"legacyAdrGaps":[]`, 0, true},
-		{"init-without-cutoff", `"initializedWithVersion":"0.20.0"`, 0, true},
-		{"gaps-without-cutoff", `"legacyAdrGaps":[]`, 0, true},
-		{"cutoff-without-gaps", `"adrFormatV1From":1`, 0, true},
-		{"null-gaps", `"adrFormatV1From":1,"legacyAdrGaps":null`, 0, true},
-		{"negative-cutoff", `"adrFormatV1From":-1,"legacyAdrGaps":[]`, 0, true},
-		{"bad-gaps-duplicate", `"adrFormatV1From":4,"legacyAdrGaps":[2,2]`, 0, true},
-		{"bad-gaps-descending", `"adrFormatV1From":4,"legacyAdrGaps":[3,2]`, 0, true},
-		{"bad-gaps-zero", `"adrFormatV1From":4,"legacyAdrGaps":[0]`, 0, true},
-		{"bad-gaps-cutoff", `"adrFormatV1From":4,"legacyAdrGaps":[4]`, 0, true},
-		{"bad-init-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"nope"`, 0, true},
-		{"bad-awf-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"0.20.0"`, 0, true},
-		{"future-init-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"0.21.0"`, 0, true},
-		{"bridge-null-gaps", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":null}`, 0, true},
-		{"bridge-zero-cutoff", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":0,"legacyADRGaps":[]}`, 0, true},
-		{"bridge-bad-gaps", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[2,2]}`, 0, true},
-		{"bridge-descending-gaps", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[3,2]}`, 0, true},
-		{"bridge-gap-zero", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[0]}`, 0, true},
-		{"bridge-gap-cutoff", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[4]}`, 0, true},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			comma := ""
-			if tc.fields != "" {
-				comma = "," + tc.fields
-			}
-			awfVersion := "0.20.0"
-			if tc.name == "permanent-v-prefixed" {
-				awfVersion = "v0.20.0"
-			}
-			if tc.name == "bad-awf-version" {
-				awfVersion = "broken"
-			}
-			lock, err := Parse([]byte(`{"awfVersion":"` + awfVersion + `","schemaVersion":14,"files":{}` + comma + `}`))
-			if tc.wantErr {
-				if err == nil {
-					t.Fatal("expected invalid authority")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			got, err := lock.AuthorityState()
-			if err != nil || got != tc.want {
-				t.Fatalf("state=%v err=%v, want %v", got, err, tc.want)
-			}
-			b, err := lock.Marshal()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if tc.want == AuthorityPermanent && !strings.Contains(string(b), `"legacyAdrGaps"`) {
-				t.Fatalf("permanent gaps omitted: %s", b)
-			}
-			if tc.name == "permanent-migrated" && strings.Contains(string(b), "initializedWithVersion") {
-				t.Fatalf("old lock gained init provenance: %s", b)
-			}
-		})
-	}
-	if _, err := Parse([]byte(`{"awfVersion":"0.20.0","schemaVersion":"bad","files":{}}`)); err == nil {
-		t.Fatal("typed lock mismatch parsed")
-	}
-	invalid := &Lock{AWFVersion: "0.20.0", InitializedWithVersion: "0.20.0"}
-	if _, err := invalid.Marshal(); err == nil {
-		t.Fatal("invalid programmatic lock marshaled")
-	}
-	if err := invalid.Save(filepath.Join(t.TempDir(), "invalid.lock")); err == nil {
-		t.Fatal("invalid programmatic lock saved")
-	}
-	cutoffWithoutExplicitGaps := &Lock{AWFVersion: "0.20.0", ADRFormatV1From: 4}
-	if _, err := cutoffWithoutExplicitGaps.Marshal(); err == nil || !strings.Contains(err.Error(), "non-nil legacyAdrGaps") {
-		t.Fatalf("cutoff plus nil gaps Marshal error = %v", err)
-	}
-	validProgrammatic := &Lock{AWFVersion: "v0.20.0", ADRFormatV1From: 4, LegacyADRGaps: []int{}, InitializedWithVersion: "v0.19.0"}
-	if _, err := validProgrammatic.Marshal(); err != nil {
-		t.Fatalf("v-prefixed programmatic authority rejected: %v", err)
-	}
-	if _, found, err := LoadOptional(filepath.Join(t.TempDir(), "missing.lock")); found || err != nil {
-		t.Fatalf("missing lock is pre-tracking at the project boundary: found=%v err=%v", found, err)
 	}
 }
 
@@ -425,5 +258,83 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	b2, _ := os.ReadFile(p)
 	if string(b1) != string(b2) {
 		t.Errorf("lock serialization not stable")
+	}
+}
+
+func TestAuthorityStateValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		want         AuthorityState
+		bad          bool
+	}{
+		{"bridge", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":1,"legacyAdrGaps":[]}}`, AuthorityBridge, false},
+		{"bridge initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"initializedWithVersion":"0.1.0","bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":1,"legacyAdrGaps":[]}}`, 0, true},
+		{"bridge nil gaps", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":1,"legacyAdrGaps":null}}`, 0, true},
+		{"bridge invalid cutoff", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":0,"legacyAdrGaps":[]}}`, 0, true},
+		{"bridge zero gap", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":3,"legacyAdrGaps":[0]}}`, 0, true},
+		{"bridge gap at cutoff", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":3,"legacyAdrGaps":[3]}}`, 0, true},
+		{"bridge unsorted gaps", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":4,"legacyAdrGaps":[2,1]}}`, 0, true},
+		{"bad initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"initializedWithVersion":"bad"}`, 0, true},
+		{"later initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"initializedWithVersion":"0.2.0"}`, 0, true},
+		{"ordinary", `{"awfVersion":"0.1.0","schemaVersion":31,"files":{}}`, AuthorityPermanent, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			l, err := Parse([]byte(tc.source))
+			if tc.bad {
+				if err == nil {
+					t.Fatal("accepted invalid lock")
+				}
+				return
+			}
+			if err != nil || func() AuthorityState {
+				s, e := l.AuthorityState()
+				if e != nil {
+					t.Fatal(e)
+				}
+				return s
+			}() != tc.want {
+				t.Fatalf("state=%v err=%v", l, err)
+			}
+		})
+	}
+}
+
+func TestParseRejectsEveryRetiredRoutingKeyAtSchema31(t *testing.T) {
+	for key, value := range map[string]string{
+		"adrFormatV1From": "1",
+		"adrFormatV2From": "1",
+		"adrFormatV3From": "1",
+		"legacyAdrGaps":   "[]",
+	} {
+		t.Run(key, func(t *testing.T) {
+			input := fmt.Sprintf(`{"awfVersion":"0.31.0","schemaVersion":31,"files":{},%q:%s}`, key, value)
+			if _, err := Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), key) {
+				t.Fatalf("error = %v, want rejection naming %s", err, key)
+			}
+		})
+	}
+}
+
+func TestParseAndMarshalFailurePaths(t *testing.T) {
+	for _, input := range [][]byte{
+		[]byte("{"),
+		[]byte(`{"schemaVersion":"bad"}`),
+		[]byte(`{"awfVersion":"0.31.0","schemaVersion":31,"files":{},"adrFormatV1From":1}`),
+		[]byte(`{"awfVersion":"0.31.0","schemaVersion":31,"files":[]}`),
+		[]byte(`{"awfVersion":"bad","schemaVersion":31,"files":{},"initializedWithVersion":"1.0.0"}`),
+	} {
+		if _, err := Parse(input); err == nil {
+			t.Fatalf("parsed %s", input)
+		}
+	}
+	invalid := &Lock{AWFVersion: "bad", InitializedWithVersion: "1.0.0"}
+	if _, err := invalid.Marshal(); err == nil {
+		t.Fatal("marshaled invalid")
+	}
+	if err := invalid.Save(filepath.Join(t.TempDir(), "awf.lock")); err == nil {
+		t.Fatal("saved invalid")
+	}
+	if err := (&Lock{}).Save(t.TempDir()); err == nil {
+		t.Fatal("saved to directory")
 	}
 }

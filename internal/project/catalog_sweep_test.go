@@ -38,7 +38,7 @@ var doubleBacktickExempt = map[string]bool{}
 // list (ADR-0080).
 // invariant: rendering/templates:catalog-template-sweep (TestCatalogTemplatesDegradeLeakFree)
 func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
-	assertV2ADRTemplatePublicationSafe(t)
+	assertV3ADRTemplatePublicationSafe(t)
 	cat := catalog.Standard
 	sweep := func(tid, requiresDoc string) {
 		t.Run(tid, func(t *testing.T) {

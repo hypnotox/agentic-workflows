@@ -1,4 +1,4 @@
-Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, resident-root gitignores, and executable-mode rules.
+Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, resident-root gitignores, and executable-mode rules. The commit-msg payload remains a thin delegate to the definitive commit-message and stale-ADR merge authorization gate; pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
 
 ## Claims
 
@@ -22,8 +22,9 @@ Backing: test
 
 ### `invariant: hook-payloads-rendered`
 
-With the hooks singleton enabled, exactly three payloads render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, and .awf/hooks/pre-push.sh; with it absent or disabled, no path under .awf/hooks/ renders.
+With the hooks singleton enabled, exactly four payloads render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, .awf/hooks/pre-push.sh, and .awf/hooks/pre-merge-commit.sh; with it absent or disabled, no path under .awf/hooks/ renders.
 Origin: ADR-0148
+Revised-by: ADR-0202
 Backing: test
 
 ### `invariant: memory-gitignore-always-on`

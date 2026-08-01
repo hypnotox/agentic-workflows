@@ -31,11 +31,14 @@ type FileChange struct {
 
 // Commit is the semantic view of one range commit.
 type Commit struct {
-	Hash    string
-	Subject string
-	Body    string
-	IsMerge bool
-	Changes []FileChange
+	Hash     string
+	Revision string
+	Subject  string
+	Body     string
+	Message  string
+	Parents  []string
+	IsMerge  bool
+	Changes  []FileChange
 }
 
 // RangeCommits returns the commits reachable from head but not from base. The
@@ -94,7 +97,14 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		if err != nil { // coverage-ignore: every branch toCommit can fail on is itself unreachable from a walk that already enumerated this commit's ancestry (see its own ignored branches)
 			return err
 		}
-		if r.prefix == "" || len(nc.Changes) != 0 {
+		include := r.prefix == "" || len(nc.Changes) != 0
+		if r.prefix != "" && nc.IsMerge {
+			include, err = mergeTouchesPrefix(c, r.prefix)
+			if err != nil {
+				return err
+			}
+		}
+		if include {
 			commits = append(commits, nc)
 		}
 		return nil
@@ -178,7 +188,11 @@ func (r *Repo) RangeDiffText(ctx context.Context, base, head string) (string, er
 
 func toCommit(c *object.Commit, prefix string) (Commit, error) {
 	subject, body := splitMessage(c.Message)
-	nc := Commit{Hash: c.Hash.String()[:8], Subject: subject, Body: body, IsMerge: c.NumParents() > 1}
+	parents := make([]string, len(c.ParentHashes))
+	for i, parent := range c.ParentHashes {
+		parents[i] = parent.String()
+	}
+	nc := Commit{Hash: c.Hash.String()[:8], Revision: c.Hash.String(), Subject: subject, Body: body, Message: c.Message, Parents: parents, IsMerge: c.NumParents() > 1}
 	if nc.IsMerge {
 		return nc, nil
 	}
@@ -219,6 +233,33 @@ func toCommit(c *object.Commit, prefix string) (Commit, error) {
 		}
 	}
 	return nc, nil
+}
+
+func mergeTouchesPrefix(c *object.Commit, prefix string) (bool, error) {
+	curTree, err := c.Tree()
+	if err != nil {
+		return false, err
+	}
+	parent, err := c.Parent(0)
+	if err != nil { // coverage-ignore: range iteration already traversed the merge's first parent
+		return false, err
+	}
+	parentTree, err := parent.Tree()
+	if err != nil {
+		return false, err
+	}
+	changes, err := object.DiffTree(parentTree, curTree)
+	if err != nil { // coverage-ignore: diffing two resolved top-level trees compares their entries without loading descendant objects
+		return false, err
+	}
+	for _, change := range changes {
+		_, oldInside := scopedPath(change.From.Name, prefix)
+		_, newInside := scopedPath(change.To.Name, prefix)
+		if oldInside || newInside {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map[string]object.FileStat, prefix string) (FileChange, bool, error) {

@@ -1,6 +1,7 @@
 package currentstate_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -618,5 +619,88 @@ func TestRevisedByCanonicalReorderIsNotAMutation(t *testing.T) {
 	got := messages(currentstate.CheckPair(before, uni(records, claim("d/t:c", "0140", "0141")), currentstate.AuthoredCommit))
 	if !strings.Contains(got, "changed with no ADR update operation") {
 		t.Fatalf("a membership change without an operation must stay a mutation finding:\n%s", got)
+	}
+}
+
+// A renumbered intrinsically formatted ADR keeps the format in which it was
+// authored. Changing V2 to V3 while moving it is therefore a format change, not
+// part of the sanctioned slugless digest-paired rename.
+func TestCheckPairRefusesFormatRetrofitDuringRenumber(t *testing.T) {
+	sections := map[string]string{"Decision": "one body, two numbers"}
+	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
+	before := adr.ADR{Number: "0199", Format: adr.CurrentStateV2, Status: "Proposed", Sections: sections, History: history}
+	after := adr.ADR{Number: "0205", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+	got := messages(currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), currentstate.AuthoredCommit))
+	if !strings.Contains(got, "changed governed format across this transition") {
+		t.Fatalf("a slugless digest-paired format retrofit must be refused:\n%s", got)
+	}
+}
+
+func TestOlderIntroductions(t *testing.T) {
+	current := adr.ADR{Slug: "current", Format: adr.CurrentStateV3}
+	if got := currentstate.OlderIntroductions(uni(nil), uni([]adr.ADR{current}), adr.CurrentStateV3); len(got) != 0 {
+		t.Fatalf("current-format introduction = %#v, want none", got)
+	}
+
+	beforeV2 := adr.ADR{Number: "0004", Format: adr.CurrentStateV2, Status: "Accepted"}
+	afterV2 := beforeV2
+	afterV2.Status = "Implementing"
+	if got := currentstate.OlderIntroductions(uni([]adr.ADR{beforeV2}), uni([]adr.ADR{afterV2}), adr.CurrentStateV3); len(got) != 0 {
+		t.Fatalf("existing older lifecycle transition = %#v, want none", got)
+	}
+
+	renumberedBefore := adr.ADR{Number: "0005", Format: adr.CurrentStateV2, Sections: map[string]string{"Decision": "same record"}}
+	renumberedAfter := renumberedBefore
+	renumberedAfter.Number = "0008"
+	if got := currentstate.OlderIntroductions(uni([]adr.ADR{renumberedBefore}), uni([]adr.ADR{renumberedAfter}), adr.CurrentStateV3); len(got) != 0 {
+		t.Fatalf("existing older slugless renumber = %#v, want none", got)
+	}
+
+	after := uni([]adr.ADR{
+		{Number: "0002", Format: adr.CurrentStateV1},
+		{Number: "0001", Format: adr.Legacy},
+		{Number: "0003", Format: adr.CurrentStateV2},
+		current,
+	})
+	want := []currentstate.Introduction{
+		{Identity: "0001", Format: adr.Legacy},
+		{Identity: "0002", Format: adr.CurrentStateV1},
+		{Identity: "0003", Format: adr.CurrentStateV2},
+	}
+	if got := currentstate.OlderIntroductions(uni(nil), after, adr.CurrentStateV3); !reflect.DeepEqual(got, want) {
+		t.Fatalf("older introductions = %#v, want %#v", got, want)
+	}
+}
+
+// A V3 record's slug is retained forever, so changing it at the same number is
+// not a rename to be paired but a violation to be reported. The before side of
+// the digest index stays slugless-only for exactly this reason: admitting a
+// record whose old slug is absent from the after side would let the two ends
+// pair by body and launder the slug change away.
+func TestCheckPairRetainedSlugCannotChange(t *testing.T) {
+	sections := map[string]string{"Decision": "one body under two slugs"}
+	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
+	before := adr.ADR{Number: "0300", Slug: "the-original-slug", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+	after := before
+	after.Slug = "a-renamed-slug"
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), currentstate.AuthoredCommit)); got == "" {
+		t.Fatal("a retained slug changing at the same number must not be finding-free")
+	}
+}
+
+// A pending record carries no number, so it can only be an addition and must
+// never become the far end of a renumber. Without that exclusion a genuine
+// deletion standing beside an unrelated pending addition whose canonical body
+// coincides is laundered into a rename, which is the fail-closed promise
+// ADR-0204 item 4 makes and the widening for the v3 retrofit could have broken.
+func TestCheckPairPendingAdditionCannotLaunderADeletion(t *testing.T) {
+	sections := map[string]string{"Decision": "a body two records happen to share"}
+	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
+	deleted := adr.ADR{Number: "0100", Format: adr.CurrentStateV2, Status: "Implemented", Sections: sections,
+		History: []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}, {Date: "2026-01-02", Status: "Implemented", Digest: "d"}}}
+	pending := adr.ADR{Slug: "an-unrelated-new-record", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+	got := messages(currentstate.CheckPair(uni([]adr.ADR{deleted}), uni([]adr.ADR{pending}), currentstate.AuthoredCommit))
+	if !strings.Contains(got, "was deleted across this transition") {
+		t.Fatalf("a pending addition must not pair with a deleted record:\n%s", got)
 	}
 }

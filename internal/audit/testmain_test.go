@@ -13,5 +13,5 @@ import (
 // core.excludesFile into its cleanliness read precisely so the answer matches
 // real git - so the tests must not inherit the developer's.
 func TestMain(m *testing.M) {
-	os.Exit(testsupport.RunIsolated(m, "awf-audit-test-home"))
+	os.Exit(testsupport.RunIsolated(m))
 }

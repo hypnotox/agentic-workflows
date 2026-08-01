@@ -53,7 +53,7 @@ func TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20(t *testing.T
 	if err := os.WriteFile(config.ConfigPath(registryRoot), []byte("prefix: registry\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	lock := &manifest.Lock{AWFVersion: "0.21.0", SchemaVersion: 16, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{AWFVersion: "0.21.0", SchemaVersion: 16, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(config.LockPath(registryRoot)); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := strings.Join(applied, ","), "workflow-telemetry,enable-runner,rename-retired-commands,drop-workflow-telemetry,remove-workflow-residents,unified-effort-residents,implementer-agent-closure,explorer-grounding-closure,drop-severity-settings,orienting-skill-backfill,adr-number-provenance,drop-max-claims-per-topic"; got != want {
+	if got, want := strings.Join(applied, ","), "workflow-telemetry,enable-runner,rename-retired-commands,drop-workflow-telemetry,remove-workflow-residents,unified-effort-residents,implementer-agent-closure,explorer-grounding-closure,drop-severity-settings,orienting-skill-backfill,adr-number-provenance,drop-max-claims-per-topic,integration-branch-explicit,intrinsic-adr-format"; got != want {
 		t.Fatalf("applied = %q, want %q", got, want)
 	}
 	body, err := os.ReadFile(config.ConfigPath(registryRoot))

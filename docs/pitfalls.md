@@ -13,6 +13,34 @@ _Domains: tooling_
 `git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
 
 
+## A census number is only as good as its stated query
+
+_Domains: adr-system_
+
+Twice in one session an authored census understated reality because the measurement was a
+narrow pattern match presented as a population count: a global-test-seam census of "3"
+came from a column-zero `var X = func(` grep that missed var blocks (an AST census found
+31 across 11 packages), and an outcome-category vocabulary was "confirmed" against one
+refusal family's constructor literals while a second refusal type in the same packages
+carried eleven category kinds the vocabulary never saw. Both survived authoring and were
+caught only when a reviewer re-measured. When a durable record cites a count or a closed
+vocabulary, state the query that produced it next to the number (what population, what
+tool, what exclusions) so a reviewer can re-run it, and prefer parsed syntax over textual
+pattern matches for anything shaped like "all X in production".
+
+## Claim prose is right in its Applied batch or it waits for a successor ADR
+
+_Domains: adr-system_
+
+Every line of a claim's canonical block is claim content, the `Verify:` line included:
+`awf check --staged` rejects any edit to an applied claim that does not travel with a
+matching `update` operation, and one ADR cannot declare both `add` and `update` for the
+same id, so an ADR cannot patch its own already-applied claim. Two Verify-line
+tightenings suggested by a terminal review had to be reverted and deferred to a future
+successor ADR for exactly this reason. Treat the first Applied batch as the one shot at
+the claim's wording: review the Verify: line with the same weight as the claim sentence
+before applying, because afterwards even a comma costs a new decision record.
+
 ## A renumber cannot follow a rebase or merge as its own commit; it must land inside the transition
 
 _Domains: adr-system_
@@ -254,10 +282,10 @@ dropped it.
 
 _Domains: adr-system_
 
-The contiguity check (ADR numbers cover 1..max with only sealed legacy gaps) makes it
-impossible to reserve a number for a concurrent effort: every branch must scaffold the
-next contiguous number, so parallel efforts each create their own ADR-NNNN with the same
-NNNN (three separate 0151s existed at once on 2026-07-23). The later-merging efforts must
+ADR identity is allocated from the highest number visible on the current branch, with no
+cross-branch reservation: parallel efforts forked from the same tip therefore scaffold
+their own ADR-NNNN with the same NNNN (three separate 0151s existed at once on 2026-07-23).
+The later-merging efforts must
 renumber at merge time, and the cost grows sharply once the ADR has left Proposed: the
 filename, H1, INDEX.md, changelog mentions, and every Origin/Revised-by provenance line in
 the topic parts name the number, and the Status-history digest must still validate after
@@ -293,25 +321,42 @@ blocked until the Applied line exists. `awf check` reports that claim-provenance
 ahead of any drift, which also means the documented digest probe only becomes reachable
 once the batch line is present, even with a placeholder digest.
 
+## Retired ADR routing keys are compatibility input, not lock authority
+
+Schema-30 lock snapshots may carry historical ADR cutoff and gap keys. Parse them only to
+read old snapshots, then let generation 31 write a current lock without those keys. Do not
+reintroduce fields on manifest.Lock or promote bridge-attestation payload into final state.
+
 ## Parallel efforts collide on ADR numbers and schema generations at integration
 
 _Domains: adr-system, config_
 
 _Related: ADR-0191_
 
-Until slug-identified pending ADRs land, an effort branch and the target can both consume
-the same ADR number and the same schema generation while apart; the 0191 integration hit
-both at once (its ADR authored as 0189 collided with the target's 0189, and both sides
-registered generation 26). Resolve inside the merge, where both sides are visible. For the
-ADR: rename the file to the next free number, rewrite the heading and every branch-owned
-reference (topic Origin and Revised-by lines, plan frontmatter and prose, glossary,
-changelog, code comments), and, because in-body self-references are digest-covered, record
-the edit as an Amended event with the recomputed digest while the ADR is still
-nonterminal. For the migration: move the registry entry to the next generation, update the
-minimum-version map and every generation-pinning test, and resolve the lock conflict to
-the TARGET side's generation so `awf upgrade` re-runs the moved migration over the merged
-corpus; taking the branch lock skips it silently. Grep for the old number afterwards and
-sort surviving hits into the other effort's legitimate references versus your leftovers.
+Slug-identified pending ADRs removed the ADR-number half of this: a record authored off
+the integration branch carries no number until `awf adr number` assigns one at
+integration. Schema migration generations and the permanent lock cutoffs still collide
+exactly the same way, and neither has a command. Both are allocated optimistically as
+highest-plus-one in a worktree, so two branches take the same one while apart; the 0191
+integration hit the ADR and the generation at once (its ADR authored as 0189 collided
+with the target's 0189, and both sides registered generation 26), and the 0202
+integration hit the generation and the cutoff after its own mechanism had retired the
+ADR case. Resolve inside the merge, where both sides are visible. For a record predating
+the slug format, which has no slug to be numbered by: rename the file to the next free
+number, rewrite the heading and every branch-owned reference (topic Origin and Revised-by
+lines, plan frontmatter and prose, glossary, changelog, code comments), and, because
+in-body self-references are digest-covered, record that edit as an Amended event with the
+recomputed digest in its own later commit while the ADR is still nonterminal. For the
+migration: move the registry entry to the next generation, and carry the minimum-version
+map and every generation-pinning test, comment, and doc sentence with it. For the lock,
+keep the BRANCH side's generation and hand-apply the effect of any migration that stamp
+now skips as applied, and re-derive a stale cutoff so it equals the merged corpus's next
+identity. The advice here used to be the reverse, taking the target's generation so `awf
+upgrade` re-runs the moved migration; that discards the branch's own migrations, and it
+is unnecessary now that the port-forward strips every retired key from a historical
+config unconditionally rather than by generation range, so only the live config tree
+needs the hand edit. Grep for the old number afterwards and sort surviving hits into the
+other effort's legitimate references versus your leftovers.
 
 Resolving inside the merge stops working once your ADR has an Applied batch. On
 2026-07-31 the 0192 integration tried it and `awf check --staged` refused with "ADR-0190
@@ -328,21 +373,74 @@ took the next one mid-diagnosis, and note that `git filter-branch --tree-filter`
 usable index, so a filter built on `git ls-files` silently does nothing while the renames
 it also performs appear to succeed; drive the sweep with `find` and verify afterwards.
 
-There is a simpler remedy than rewriting history, and it is about merge DIRECTION.
-`awf check --staged` validates HEAD to index as ONE transition, so whichever side is
-HEAD supplies the before-corpus. Merge the target INTO your branch and the target's own
-claims arrive as additions with no operation behind them, which is a structural refusal
-no resolution can satisfy. Build the merge with the TARGET as HEAD instead - integrate
-from the receiving checkout, or from a prep branch cut off the target - and the same
-conflicts resolve to the same content while the handshake sees only your claims as
-additions, with their operations present. On 2026-07-31 that let the git-seam effort
-renumber its already-Implemented ADR inside the merge, which the branch-side direction
-had refused minutes earlier with the identical tree. Two facts make the renumber safe
-for a terminal ADR: the content digest covers Context, Decision, State changes,
-Consequences, and Alternatives Considered but never the heading or the Status history,
-so a rename is digest-neutral unless the body self-references, and stripping a retired
-status segment is an encoding migration the append-only rule explicitly permits. Confirm
-both by recomputation rather than by assuming.
+Merge DIRECTION looks like a remedy and is not the one to reach for. `awf check
+--staged` validates HEAD to index as ONE transition, so whichever side is HEAD supplies
+the before-corpus, and building the merge with the TARGET as HEAD does make a renumber
+resolve that the branch-side direction refuses with the identical tree; on 2026-07-31
+that is how the git-seam effort renumbered its already-Implemented ADR. But the settled
+integration flow runs the other way and deliberately: the effort branch merges the
+integration branch in, numbers, and is then fast-forwarded, so the integration branch
+only ever fast-forwards and every check runs on the merge commit whose first parent is
+the effort branch. `awf effort integrate` enforces that direction, refusing to run from
+the managed worktree. Under it a renumber must be resolvable in the branch-side
+direction, which is what digest pairing provides for a slugless record. Reach for the
+target-as-HEAD trick only to diagnose, never as the integration itself.
+
+Two facts make a renumber safe for a terminal ADR: the content digest covers Context,
+Decision, State changes, Consequences, and Alternatives Considered but never the heading
+or the Status history, so a rename is digest-neutral unless the body self-references, and
+stripping a retired status segment is an encoding migration the append-only rule
+explicitly permits. Confirm both by recomputation rather than by assuming.
+
+## A staged-slice validation repository lands on the default branch
+
+_Domains: tooling, adr-system_
+
+_Related: ADR-0202_
+
+A pre-commit hook that validates the staged slice by materializing it in a throwaway
+`git init` gets a repository on whatever branch `git init` defaults to, which is not the
+branch the real commit is on. Every branch-conditional check then evaluates against the
+wrong branch. This repository's stub refused a legal commit with
+`pending-adr-on-integration-branch`, because the slice repository looked like it sat on
+the integration branch while the real work was in a managed worktree. Name a branch
+explicitly, `git init -b awf-staged-slice`, so the slice can never be mistaken for the
+integration branch. The trap waits for any adopter wiring their own staged-slice
+validation, and the symptom accuses the content rather than the harness.
+
+Two adjacent facts about hooks, both discovered the same way. `core.hooksPath` is an
+absolute path, so the hook that actually runs is the PRIMARY checkout's copy: the same
+edit has to reach that checkout before it takes effect, no matter which worktree the
+commit is made from. And a `pre-commit` hook DOES run when a conflicted merge is
+finished with `git commit`; only a merge that Git resolves and commits by itself skips
+it, which is exactly the hole `pre-merge-commit` exists to cover.
+
+An `EXIT` trap does not survive `exec`: replacing the hook shell with the rendered payload
+bypasses the creator shell's cleanup entirely. Delete a staged slice after its last
+consumer and before `exec`, keep the trap armed until that deletion succeeds, then disarm
+it. A real-hook regression should make the payload observe an empty isolated `TMPDIR` so
+the lifecycle is proved across the replacement boundary rather than inferred from script
+text.
+
+## A piped gate run reports the pipe's exit code, not the gate's
+
+_Domains: tooling_
+
+_Related: ADR-0202_
+
+`./x gate 2>&1 | tail -60` exits with `tail`'s status, which is 0 whatever the gate did,
+and the failing line is usually far enough up the output to have scrolled past the
+window anyway. Both halves fail in the same direction: the run reads as green. This has
+bitten more than once, in different sessions, including one where the same agent had
+recorded the trap earlier the same day. Run `./x gate > /tmp/gate.log 2>&1; echo $?` and
+grep the log. The same applies to any long verification command whose exit code decides
+whether work continues.
+
+The gate is not the only place a false green comes from a shell habit. `sed` with `|` as
+its delimiter silently fails to apply a substitution whose pattern contains `||`, which
+is how a mutation test can report "mutation survived" when the mutation was never
+written to the file. Confirm a mutation actually landed, by grepping the file, before
+trusting a green run to mean anything about it.
 
 ## Retiring a concept needs paraphrase sweeps, not just identifier greps
 
@@ -1141,13 +1239,18 @@ _Domains: invariants_
 
 The current-state marker scanner (`internal/topic`) matches a claim id only when the marker
 opens its line after indentation; `strings.TrimLeft(line, " \t")` must start with the
-configured marker, then `invariant: <domain>/<topic>:<slug>`. This is deliberate: a mid-line
-match could sit inside a string literal (a test fixture's source-code string) and falsely back
-a claim. The consequence is a natural-looking backing that silently does not count: a trailing
-`clone.Docs = maps.Clone(...) // invariant: <domain>/<topic>:<slug>` reads as *unbacked*, and
-the gap hides until the claim is loaded or the ADR's `remove`/`update` operation is staged,
-exactly when the effort is trying to conclude. Put the `// invariant: <domain>/<topic>:<slug>`
-on its own line directly above the statement it describes.
+configured marker, then `invariant: <domain>/<topic>:<slug> (<name>)`. This is deliberate: a
+mid-line match could sit inside a string literal (a test fixture's source-code string) and
+falsely back a claim. The consequence is a natural-looking backing that silently does not
+count: a trailing
+`clone.Docs = maps.Clone(...) // invariant: <domain>/<topic>:<slug> (<name>)` reads as
+*unbacked*, and the gap hides until the claim is loaded or the ADR's `remove`/`update`
+operation is staged, exactly when the effort is trying to conclude. Put the
+`// invariant: <domain>/<topic>:<slug> (<name>)` on its own line directly above the statement
+it describes. The same line-opening rule is what makes the name requirement work: the
+occurrence search ignores every line that opens with the marker token, so a neighbouring
+marker naming the same unit cannot satisfy it and neither can a doc comment that merely
+mentions the test.
 
 ## Relocating a cross-cutting guard out of a shared helper drops it for internal callers
 
@@ -1631,12 +1734,11 @@ than making the completed plan falsely look prescient.
 
 _Domains: adr-system_
 
-When a concurrent effort merges an ADR that takes your number, neither renumber timing
-works as a separate commit: before the rebase the contiguity check fails (your tree lacks
-the other ADR, so 0150 -> 0152 is an illegal gap and recorded gaps are legacy-only), and
-after the rebase `awf check --staged` fails because it loads the HEAD snapshot too, and
-every intermediate rebased commit carries both files under the duplicate number. The
-working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
+When a concurrent effort merges an ADR that takes your number, a later standalone
+renumber commit does not make the replay safe: the ADR's introducing commit is replayed
+first and collides with the number already on the new base. `awf check --staged` also loads
+the HEAD snapshot, so every intermediate rebased commit must avoid the duplicate identity.
+The working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
 into the conflict resolution of the ADR's introducing commit during the replay; rename
 detection then carries later ADR-editing commits onto the new path. The residue is one
 advisory `adr-status-cochange` audit error (regenerating INDEX.md mid-replay is impossible
@@ -1932,6 +2034,75 @@ its verdict: prefer a substitution that fails loudly on a missing pattern, such 
 with an `assert pattern in source` before the replace. One more trap in the same loop:
 undoing a mutation with `git checkout -- <file>` also discards any UNCOMMITTED real edit
 to that file, so a comment written minutes earlier vanishes with the mutation.
+
+## An unstamped stale-ADR merge is recoverable at commit-msg
+
+_Domains: adr-system, tooling_
+
+A conflict-free merge can assemble an older-format ADR before Git exposes its final
+message and `MERGE_HEAD` parents to awf. The earlier `pre-merge-commit` hook therefore
+cannot decide the exception. `commit-msg` is definitive: the result must match a paired
+incoming-parent record except for sanctioned numbering substitutions, and the final
+trailer block must carry adjacent `AWF-Allow-Version: <marker-or-legacy>` and
+`AWF-Allow-Reason: <nonempty reason>` lines. If that check refuses, do not repeat the
+merge or retrofit the ADR. Git preserves the index and `MERGE_HEAD`; correct the message
+trailers and run `git commit` to finish the existing merge. Malformed `AWF-Allow-`
+syntax refuses rather than becoming inert prose. A proactive agent may use
+`git merge --no-commit --no-ff`, while a true fast-forward has no merge commit and needs
+no authorization.
+
+## Amending an ADR revises its prose but never re-authorizes a spent claim operation
+
+_Domains: adr-system_
+
+_Related: ADR-0134, ADR-0188, ADR-0191_
+
+ADR-0188 makes a V2 body amendable until it goes terminal, and that rule reads as though it
+covers correcting a claim the ADR established. It does not, and nothing states the limit.
+Claim mutations are authorized only by an Applied batch newly appended in the same
+transition: `pairOps` derives its operation set from newly appended batches alone, so an
+`Amended` event authorizes nothing about claims however genuine it is. An ADR also declares
+any given operation at most once, enforced twice over, at parse time (`state changes names
+<id> more than once`) and again in `OperationProgress` (`applies operation ... more than
+once`). So once an ADR's single `update` for a claim is spent by an earlier batch, that ADR
+can never touch that claim's body again, and a later edit fails the staged check with
+`claim <id> was changed with no ADR update operation in this transition`.
+Three near-misses make this expensive to discover. A vacuous amendment is rejected
+separately (`amended event must record a digest different from the preceding stamp`), so an
+attempt that edits only the claim looks like a digest problem rather than an authorization
+one. Declaring the operation a second time fails at parse, before any claim check runs, so
+the two failures mask each other. And bare `awf check` stays clean throughout, because only
+`--staged` evaluates transitions: the tree looks healthy right up until the commit is
+refused.
+Practical consequence when wording a claim: the `update` an ADR spends on a claim is its
+one and only shot, so word the body no broader than the implementation and re-read it
+against the actual error strings before the batch lands. Once it is spent, the only way to
+change that claim is a successor ADR declaring its own `update`, which is the same
+mechanism invariant retirement already uses. Deferring the correction into an already
+planned decision is legitimate, but it leaves a claim that is read as current authority
+wrong in the meantime.
+
+## A stale merge first parent must parse under the result checker's marker grammar
+
+_Domains: invariants, adr-system, tooling_
+
+_Related: ADR-0205, ADR-0206_
+
+A long-lived effort can predate a breaking proof-marker grammar while main already enforces
+it. Merging main into that effort does not make the old first parent disappear: staged
+transition validation loads both universes with the merged binary, so it can reject the
+branch-side tree before examining the correctly migrated result. The glossary integration
+hit this when ADR-0205 required every `invariant:` marker to name its proving unit. Main's
+merge result had named markers, but the branch parent still carried the old spelling, and
+`awf check --staged` stopped on that parent.
+
+Port the compatibility half before merging: first land the parser that accepts both old and
+named markers, then land the mechanical marker-name migration while the branch's own gate
+can still validate each commit. Name branch-only markers in the same preparation. Only then
+merge the enforcing side. Do not bypass the hook or reverse the settled merge direction;
+both hide the invalid first-parent transition rather than making it replayable. This is a
+general stale-branch rule: when a new checker grammar is not backward-readable, inspect what
+the merged checker must load from HEAD, not only whether the result tree has migrated.
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

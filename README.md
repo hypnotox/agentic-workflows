@@ -180,9 +180,10 @@ ignored owner-only `.awf/local/context-spills.log`; logging failures only warn. 
 while the log is nonempty, and the operator resolves or promotes the recurring issue and removes it.
 
 **Invariants are enforced, not just documented.** An invariant claim declares its backing:
-`Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug>`) on a
-real test, while `Backing: unbacked` is a reasoned contract that must carry a `Verify:` line and
-no marker. `awf check` and its `invariants` subcommand enforce this symmetrically, so an invariant with no
+`Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug> (<name>)`)
+on a real test, where `<name>` names the unit that proves it and must occur in that same file, so a
+marker outlives neither its test nor a rename. `Backing: unbacked` is a reasoned contract that must
+carry a `Verify:` line and no marker. `awf check` and its `invariants` subcommand enforce this symmetrically, so an invariant with no
 backing in source fails loudly instead of rotting. Rules carry no backing.
 
 Adopting this release from an older awf is a one-time sealed cutover handled by plain `awf
@@ -263,7 +264,7 @@ disk.
 
 | Command | Purpose |
 |---|---|
-| `awf init` | Scaffold `.awf/`, seal first-adoption version and ADR cutoff authority, and render. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
+| `awf init` | Scaffold `.awf/`, seal first-adoption version, and render. ADR format is authored by each record rather than selected by lock cutoffs. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
 | `awf render` | Re-render after a config or template change. |
 | `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. Subcommands narrow it to one check: `drift`, `state`, `invariants`, `prose`, `memory`, `commit`. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
@@ -274,14 +275,14 @@ disk.
 | `awf effort new "<outcome>" [--json]` | Derive an immutable slug and publish schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; `list` and `show` expose the same protocol. |
 | `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
-| `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
+| `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. It also replays stale-ADR authorization for schema-31-and-later merge commits. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf check invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report tier-0 directory orientation and tier-1 exact/staged/range file relationships (`State`, `Touches`, `Proofs`), with per-topic counts and eight named `--show` facets. Only `artifacts` refines groups; `--full` is the facet union. Human output is capped at 8 KiB with secure caller-owned spill delivery above it; `--uncovered` shares the cap. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf check prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf check memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
-| `awf check commit [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
+| `awf check commit [FILE]` | Validate Conventional Commits and definitively qualify and authorize older-format ADRs imported by a real merge; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
 | `awf uninstall` | Remove awf's generated files while keeping authored configuration and optional local residents. |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
@@ -294,24 +295,24 @@ Run `awf help` for the full synopsis.
 `awf init` never silently clobbers your files. If a path it would write (say, an
 existing `AGENTS.md`) is present and not awf-managed, init refuses and lists the
 collisions; `awf init --force` overwrites them after backing each original up to
-`<path>.awf-bak`. First adoption records the running awf version and seals ADR identity authority:
-cutoff 1 for an empty decision corpus, or highest-plus-one and explicit lower gaps for validated
-brownfield history. Forced init preserves existing authority instead of rewriting history, and an
-older project with neither permanent authority nor a bridge attestation is refused before mutation.
+`<path>.awf-bak`. First adoption records the running awf version without deriving ADR format authority from corpus numbering. ADRs retain their authored markers, and forced init preserves the recorded version instead of rewriting history. Schema-30 locks with retired routing keys remain readable only as upgrade compatibility input; schema-31 locks omit them.
 Rendered skills are named `<prefix>-<skill>`, with the prefix derived from the repo directory's
 basename; change it via `prefix` in `.awf/config.yaml`. You can back out anytime: `awf uninstall`
 removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
-yours. With the `hooks` artifact enabled (default on init), three inert payload scripts
+yours. With the `hooks` artifact enabled (default on init), four inert payload scripts
 land under `.awf/hooks/`: `pre-commit.sh` (ordinary drift check, staged authority check,
-project gate, then enabled prose gate), `commit-msg.sh` (`awf check commit`), and `pre-push.sh`.
+project gate, then enabled prose gate), `commit-msg.sh` (`awf check commit`), `pre-push.sh`,
+and `pre-merge-commit.sh` (the staged evidence available before the final message and parents).
 Invoke them from wiring you own,
 e.g. an executable `.git/hooks/pre-commit` containing
 `exec bash .awf/hooks/pre-commit.sh "$@"`, or a tracked `core.hooksPath` directory. If
 you adopted an earlier awf that ran `awf setup`, your repo's `core.hooksPath` may still
 point at the no-longer-rendered `.githooks/`; run `git config --unset core.hooksPath`
 after upgrading.
+
+The `commit-msg` check is definitive for stale-format ADR imports, and `awf audit` replays the same parser and incoming-parent qualification for committed schema-31-and-later merges. A real merge must carry the exact incoming-parent record, apart from sanctioned numbering substitutions, plus adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers. Malformed reserved syntax refuses. The index and `MERGE_HEAD` remain intact, so correct the message and run `git commit`; optionally start with `git merge --no-commit --no-ff`. True fast-forwards need no authorization, and an ADR must never be retrofitted or backed by allowance state.
 
 Local hooks are per-clone, so back them with CI. A minimal GitHub Actions job, kept on
 the exact awf version the repo was rendered with by the bootstrap:

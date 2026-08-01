@@ -9,7 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "awf-snapshot-test-home")) }
+func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m)) }
 
 // TestNewTreeSortsAndCopiesBytes checks that NewTree returns files in path
 // order and that neither the caller's input slice nor a List result can mutate

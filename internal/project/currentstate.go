@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/git"
@@ -28,14 +28,16 @@ import (
 const currentStateTransitionRule = "current-state-transition"
 
 // CurrentStateReport is the routed outcome of a current-state check over one
-// snapshot: the static ADR-to-claim handshake findings (all blocking) and the
+// snapshot: the static ADR-to-claim handshake findings (all blocking), staged
+// older-format introductions awaiting commit-message evidence, and the
 // coverage/fan-out findings, which carry ranks fixed in code rather than
 // configured - coverage at error, fan-out at warn (ADR-0183). Findings and Notes
 // split the report into blocking lines and non-failing note lines so the command
 // layer never re-derives the routing.
 type CurrentStateReport struct {
-	Static   []currentstate.Finding
-	Coverage []topic.CoverageFinding
+	Static      []currentstate.Finding
+	Provisional []currentstate.Introduction
+	Coverage    []topic.CoverageFinding
 }
 
 // Findings returns the blocking lines: every static handshake finding and every
@@ -53,11 +55,19 @@ func (r CurrentStateReport) Findings() []string {
 	return out
 }
 
-// Notes returns the non-failing lines: coverage/fan-out findings at warn. There
-// is no suppressing rank, so every finding the evaluator emits is routed here or
-// to Findings, never dropped.
+// Notes returns the non-failing lines: provisional older-format introductions
+// and coverage/fan-out findings at warn. Provisional introductions are not
+// findings because the staged boundary lacks definitive merge-parent and
+// message evidence; every independently derivable finding remains blocking.
 func (r CurrentStateReport) Notes() []string {
-	out := []string{}
+	out := make([]string, 0, len(r.Provisional))
+	for _, introduction := range r.Provisional {
+		marker := adr.FormatMarker(introduction.Format)
+		if marker == "" {
+			marker = "legacy"
+		}
+		out = append(out, fmt.Sprintf("provisional older-format ADR-%s (%s) requires commit-msg qualification", introduction.Identity, marker))
+	}
 	for _, c := range r.Coverage {
 		if c.Severity == severity.Warn {
 			out = append(out, coverageLine(c))
@@ -76,21 +86,18 @@ func coverageLine(c topic.CoverageFinding) string {
 }
 
 // workingState is one loaded working-tree current-state universe: the parsed
-// ADR/topic view, the Tree it came from, the lock, and the sealed boundaries.
+// ADR/topic view, the Tree it came from, and the lock.
 // It is the shared substrate for CheckCurrentState and CurrentStateInvariants,
 // which each read exactly one working Tree so a check and a report never mix a
 // working and an index universe.
 type workingState struct {
-	Loaded     currentstate.Loaded
-	Tree       *snapshot.Tree
-	Lock       *manifest.Lock
-	Cfg        *config.Config
-	Boundaries adr.FormatBoundaries
+	Loaded currentstate.Loaded
+	Tree   *snapshot.Tree
+	Lock   *manifest.Lock
+	Cfg    *config.Config
 }
 
-// workingCurrentState loads the working-tree ADR/topic view plus the sealed
-// boundaries/gaps. Parse has already classified the lock: permanent authority owns
-// the fields directly, while a bridge attestation owns them until cutover.
+// workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
 func (p *Project) workingCurrentState(ctx context.Context) (workingState, error) {
 	tree, err := p.workingTree(ctx)
 	if err != nil {
@@ -100,32 +107,14 @@ func (p *Project) workingCurrentState(ctx context.Context) (workingState, error)
 	if err != nil {
 		return workingState{}, err
 	}
-	boundaries, gaps := attestationBoundaries(lock)
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, boundaries, gaps)
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
 	if err != nil {
 		return workingState{}, err
 	}
 	if cfg == nil { // coverage-ignore: Project.Open already required config; only a concurrent deletion after path enumeration can remove it
 		return workingState{}, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
 	}
-	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg, Boundaries: boundaries}, nil
-}
-
-// attestationBoundaries returns the format boundaries and recorded legacy gaps
-// that govern ADR parsing. Permanent authority owns both boundaries; during the
-// migration window the bridge attestation owns only V1. Before either exists
-// every ADR parses as legacy.
-func attestationBoundaries(lock *manifest.Lock) (adr.FormatBoundaries, []int) {
-	if lock == nil {
-		return adr.FormatBoundaries{}, nil
-	}
-	if lock.ADRFormatV1From != 0 {
-		return adr.FormatBoundaries{V1From: lock.ADRFormatV1From, V2From: lock.ADRFormatV2From}, lock.LegacyADRGaps
-	}
-	if lock.BridgeAttestation != nil {
-		return adr.FormatBoundaries{V1From: lock.BridgeAttestation.ADRFormatV1From}, lock.BridgeAttestation.LegacyADRGaps
-	}
-	return adr.FormatBoundaries{}, nil
+	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
 }
 
 // CheckCurrentState loads the working-tree current-state view and runs the
@@ -178,16 +167,14 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	if err := validatePermanentLockTransition(beforeTree, beforeLock, afterLock); err != nil {
+	if err := validateLockTransition(beforeTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
-	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
+	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock, afterBoundaries, afterGaps)
+	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -211,9 +198,148 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	if merging {
 		mode = currentstate.MergeAggregate
 	}
-	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), mode)}
+	report := CurrentStateReport{
+		Static:      currentstate.CheckPair(before.Universe(), after.Universe(), mode),
+		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
+	}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	return report, nil
+}
+
+// CommitAuthorizationResult is the non-mutating outcome of definitive
+// commit-message stale-merge authorization.
+type CommitAuthorizationResult struct {
+	Category          string
+	Condition         string
+	ChangedIndex      bool
+	ChangedMessage    bool
+	ChangedMergeState bool
+	NextActions       []string
+}
+
+// String renders the complete operation outcome for people and hooks.
+func (r CommitAuthorizationResult) String() string {
+	yesNo := func(changed bool) string {
+		if changed {
+			return "yes"
+		}
+		return "no"
+	}
+	next := "none"
+	if len(r.NextActions) > 0 {
+		parts := make([]string, len(r.NextActions))
+		for i, action := range r.NextActions {
+			parts[i] = fmt.Sprintf("%d. %s", i+1, action)
+		}
+		next = strings.Join(parts, " ")
+	}
+	return fmt.Sprintf("%s: %s; changed index: %s; changed message: %s; changed merge state: %s; next actions: %s", r.Category, r.Condition, yesNo(r.ChangedIndex), yesNo(r.ChangedMessage), yesNo(r.ChangedMergeState), next)
+}
+
+// CheckCommitAuthorization validates the index, first parent, every incoming
+// MERGE_HEAD parent, and the cleaned final message without mutating any axis.
+func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
+	success := CommitAuthorizationResult{Category: "operation", Condition: "stale merge authorization satisfied"}
+	refusal := func(observed, deficiency string) CommitAuthorizationResult {
+		return CommitAuthorizationResult{
+			Category:    "operation",
+			Condition:   observed + ": " + deficiency,
+			NextActions: []string{"correct the message trailers", "run git commit to finish the existing merge"},
+		}
+	}
+	heads, err := git.MergeHeads(p.Root)
+	if err != nil {
+		return CommitAuthorizationResult{}, fmt.Errorf("read merge heads: %w", err)
+	}
+	observed := "non-merge"
+	if len(heads) > 0 {
+		observed = "merge with MERGE_HEAD " + strings.Join(heads, ",")
+	}
+	authorizations, parseErr := commitmsg.ParseAuthorizations(msg, func(value string) bool {
+		return value == "legacy" || adr.KnownFormatMarker(value)
+	})
+	if parseErr != nil {
+		var syntax *commitmsg.SyntaxError
+		if errors.As(parseErr, &syntax) {
+			return refusal(observed, fmt.Sprintf("malformed reserved trailer at cleaned line %d: %s", syntax.Line, syntax.Reason)), parseErr
+		}
+		return CommitAuthorizationResult{}, parseErr // coverage-ignore: commitmsg exposes only SyntaxError refusals
+	}
+	repo, err := p.gitRepo()
+	if err != nil {
+		return CommitAuthorizationResult{}, fmt.Errorf("open authorization repository: %w", err)
+	}
+	resultTree, err := snapshot.IndexTree(ctx, repo)
+	if err != nil {
+		return CommitAuthorizationResult{}, fmt.Errorf("load result index tree: %w", err)
+	}
+	hasHead, err := repo.HeadExists(ctx)
+	if err != nil {
+		return CommitAuthorizationResult{}, fmt.Errorf("resolve first-parent HEAD: %w", err)
+	}
+	var firstTree *snapshot.Tree
+	if hasHead {
+		firstTree, err = snapshot.CommitTree(ctx, repo, "HEAD")
+	} else {
+		firstTree, err = snapshot.NewTree(nil)
+	}
+	if err != nil { // coverage-ignore: NewTree(nil) cannot fail, and HeadExists resolved the same HEAD immediately before CommitTree; only a concurrent repository fault reaches this
+		return CommitAuthorizationResult{}, fmt.Errorf("load first-parent HEAD tree: %w", err)
+	}
+	incomingTrees, err := snapshot.CommitTrees(ctx, repo, heads)
+	if err != nil {
+		return CommitAuthorizationResult{}, fmt.Errorf("load incoming parent trees %s: %w", strings.Join(heads, ","), err)
+	}
+	load := func(label string, tree *snapshot.Tree) (currentstate.Universe, error) {
+		lock, _, err := optionalLockFromTree(tree)
+		if err != nil {
+			return currentstate.Universe{}, fmt.Errorf("load %s lock: %w", label, err)
+		}
+		loaded, _, err := loadTreeCurrentState(p.Root, tree, lock)
+		if err != nil {
+			return currentstate.Universe{}, fmt.Errorf("load %s current state: %w", label, err)
+		}
+		return loaded.Universe(), nil
+	}
+	first, err := load("first-parent HEAD", firstTree)
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	result, err := load("result index", resultTree)
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	incoming := make([]currentstate.Universe, len(incomingTrees))
+	for i, tree := range incomingTrees {
+		incoming[i], err = load("incoming parent "+heads[i], tree)
+		if err != nil {
+			return CommitAuthorizationResult{}, err
+		}
+	}
+	qualifications := currentstate.QualifyIncoming(first, result, incoming, adr.CurrentFormat())
+	if len(qualifications) == 0 {
+		return success, nil
+	}
+	if len(heads) == 0 {
+		return refusal(observed, "provisional older-format introduction without merge parents"), nil
+	}
+	allowed := map[string]bool{}
+	for _, authorization := range authorizations {
+		allowed[authorization.Version] = true
+	}
+	for _, qualification := range qualifications {
+		if !qualification.Qualified {
+			return refusal(observed, "unqualified incoming-parent record ADR-"+qualification.Introduction.Identity), nil
+		}
+		version := adr.FormatMarker(qualification.Introduction.Format)
+		if version == "" {
+			version = "legacy"
+		}
+		if !allowed[version] {
+			return refusal(observed, "missing authorization version "+version+" for ADR-"+qualification.Introduction.Identity), nil
+		}
+	}
+	return success, nil
 }
 
 func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
@@ -273,91 +399,27 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	return lock, true, nil
 }
 
-// validatePermanentLockTransition makes the promoted format identity immutable.
-// The sole non-identical edge consumes a HEAD bridge attestation into exactly
-// those same permanent values. Initial adoption is valid only when HEAD has
-// neither config nor lock; committed config without a lock is pre-tracking.
-func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *manifest.Lock) error {
+// validateLockTransition preserves the remaining first-adoption identity. A
+// schema-31 migration is the only accepted lock-shape change: compatibility
+// routing input is parsed from the old side and discarded in the new lock.
+func validateLockTransition(beforeTree *snapshot.Tree, before, after *manifest.Lock) error {
 	if before == nil {
 		if _, hasConfig := beforeTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
-			if _, hasLock := beforeTree.Lookup(config.DirName + "/awf.lock"); !hasLock {
-				return nil
-			}
-		}
-		return errors.New("pre-tracking authority: staged permanent lock requires an empty pre-adoption HEAD without .awf/config.yaml or .awf/awf.lock")
-	}
-	if before.InitializedWithVersion == after.InitializedWithVersion &&
-		before.ADRFormatV1From == after.ADRFormatV1From &&
-		before.ADRFormatV2From == after.ADRFormatV2From &&
-		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		return nil
-	}
-	if before.SchemaVersion == 14 && before.ADRFormatV2From == 0 &&
-		after.SchemaVersion == 15 && after.ADRFormatV2From > 0 &&
-		before.InitializedWithVersion == after.InitializedWithVersion &&
-		before.ADRFormatV1From == after.ADRFormatV1From &&
-		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		next, err := nextADRIdentityFromTree(beforeTree)
-		if err != nil {
-			return err
-		}
-		if after.ADRFormatV2From == next {
 			return nil
 		}
-		return fmt.Errorf("staged .awf/awf.lock adrFormatV2From is %d, want computed cutoff %d", after.ADRFormatV2From, next)
+		return errors.New("pre-tracking authority: staged lock requires an empty pre-adoption HEAD without .awf/config.yaml")
 	}
-	if before.InitializedWithVersion == "" && after.InitializedWithVersion == "" &&
-		before.ADRFormatV1From == 0 && before.BridgeAttestation != nil &&
-		after.BridgeAttestation == nil && after.ADRFormatV2From == 0 &&
-		after.ADRFormatV1From == before.BridgeAttestation.ADRFormatV1From &&
-		slices.Equal(after.LegacyADRGaps, before.BridgeAttestation.LegacyADRGaps) {
-		return nil
+	if before.InitializedWithVersion != after.InitializedWithVersion {
+		return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion authority")
 	}
-	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/adrFormatV2From/legacyAdrGaps authority")
-}
-
-func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
-	file, ok := tree.Lookup(config.DirName + "/config.yaml")
-	if !ok {
-		return 0, errors.New("compute ADR V2 cutoff: snapshot has no .awf/config.yaml")
-	}
-	if !file.Scannable() {
-		return 0, errors.New("compute ADR V2 cutoff: snapshot .awf/config.yaml is not scannable")
-	}
-	cfg, err := config.Parse(".", file.Bytes)
-	if err != nil {
-		return 0, fmt.Errorf("compute ADR V2 cutoff: %w", err)
-	}
-	prefix := strings.Trim(cfg.DocsDir, "/") + "/decisions/"
-	max := 0
-	for _, f := range tree.List() {
-		if !f.Scannable() || !strings.HasPrefix(f.Path, prefix) {
-			continue
-		}
-		name := strings.TrimPrefix(f.Path, prefix)
-		if strings.Contains(name, "/") {
-			continue
-		}
-		match := adr.FilenameRe.FindStringSubmatch(name)
-		if match == nil {
-			continue
-		}
-		n, err := strconv.Atoi(match[1])
-		if err != nil { // coverage-ignore: FilenameRe captures exactly four decimal digits
-			return 0, err
-		}
-		if n > max {
-			max = n
-		}
-	}
-	return max + 1, nil
+	return nil
 }
 
 // loadTreeCurrentState loads the current-state view from tree, parsing config
 // from that same tree so the load is single-universe (ADR-0135). The returned
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
-func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock, boundaries adr.FormatBoundaries, gaps []int) (currentstate.Loaded, *config.Config, error) {
+func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock) (currentstate.Loaded, *config.Config, error) {
 	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {
 		return currentstate.Loaded{}, nil, nil
@@ -380,7 +442,7 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock,
 	if err := cfg.Validate(); err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
-	loaded, err := currentstate.LoadFromTree(tree, cfg, boundaries, gaps)
+	loaded, err := currentstate.LoadFromTree(tree, cfg)
 	if err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
@@ -459,8 +521,7 @@ func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, a
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
+	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
@@ -468,8 +529,7 @@ func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, a
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock, afterBoundaries, afterGaps)
+	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}

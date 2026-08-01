@@ -59,6 +59,9 @@ func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
 	if one.Body != "body text\nmore" {
 		t.Fatalf("message body = %q", one.Body)
 	}
+	if len(one.Revision) != 40 || one.Message != "feat(awf): one\r\n\r\nbody text\r\nmore\r\n" || len(one.Parents) != 1 || len(one.Parents[0]) != 40 {
+		t.Fatalf("committed evidence = %#v", one)
+	}
 	if c, ok := findWalkChange(one.Changes, "a.md"); !ok || c.Action != Modified || c.OldText != "old\n" || c.NewText != "new\n" || c.Added != 1 || c.Deleted != 1 {
 		t.Fatalf("markdown modification = %#v", c)
 	}
@@ -107,6 +110,9 @@ func TestRangeCommitsMergedRangeKeepsMergeAndNoChanges(t *testing.T) {
 	if len(commits[0].Changes) != 0 {
 		t.Fatalf("merge changes = %#v", commits[0].Changes)
 	}
+	if len(commits[0].Parents) != 2 || len(commits[0].Revision) != 40 || commits[0].Message != "Merge branch 'master' into feature" {
+		t.Fatalf("merge evidence = %#v", commits[0])
+	}
 }
 
 func TestRangeCommitsNestedScopeFiltersAndReroots(t *testing.T) {
@@ -139,6 +145,73 @@ func TestRangeCommitsNestedScopeFiltersAndReroots(t *testing.T) {
 	}
 	if text, found, err := walkRepo(t, filepath.Join(dir, "nested")).FileText(testContext(t), "HEAD", "docs/old.md"); err != nil || !found || text != "new\n" {
 		t.Fatalf("nested file text = %q, %t, %v", text, found, err)
+	}
+}
+
+func TestRangeCommitsNestedScopeKeepsRelevantMerges(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/base.txt": "base\n", "outside.txt": "base\n"})
+	main := gitfixture.Commit(t, repo, "main", map[string]string{"outside.txt": "main\n"})
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feature", map[string]string{"nested/feature.txt": "feature\n"})
+	gitfixture.StageFile(t, repo, "outside.txt", "main\n", 0o644)
+	gitfixture.Merge(t, repo, "Merge feature", main, feature)
+
+	commits, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), "master", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(commits) != 2 || !commits[0].IsMerge || commits[0].Subject != "Merge feature" || commits[1].Subject != "feature" {
+		t.Fatalf("nested merge range = %#v", commits)
+	}
+	if len(commits[0].Changes) != 0 {
+		t.Fatalf("nested merge changes = %#v", commits[0].Changes)
+	}
+
+	outsideRepo := gitfixture.InitRepo(t)
+	outsideDir := outsideRepo.Root()
+	outsideBase := gitfixture.Commit(t, outsideRepo, "base", map[string]string{"nested/base.txt": "base\n", "outside.txt": "base\n"})
+	outsideMain := gitfixture.Commit(t, outsideRepo, "main", map[string]string{"outside.txt": "main\n"})
+	gitfixture.CheckoutNewBranch(t, outsideRepo, "feature", outsideBase)
+	outsideFeature := gitfixture.Commit(t, outsideRepo, "feature", map[string]string{"feature.txt": "feature\n"})
+	gitfixture.StageFile(t, outsideRepo, "outside.txt", "main\n", 0o644)
+	gitfixture.Merge(t, outsideRepo, "Merge outside", outsideMain, outsideFeature)
+	commits, err = walkRepo(t, filepath.Join(outsideDir, "nested")).RangeCommits(testContext(t), "master", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(commits) != 0 {
+		t.Fatalf("outside-only nested range = %#v", commits)
+	}
+}
+
+func TestRangeCommitsNestedMergeReportsTreeErrors(t *testing.T) {
+	for _, name := range []string{"merge result tree", "first parent tree"} {
+		t.Run(name, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			dir := repo.Root()
+			base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/base.txt": "base\n"})
+			main := gitfixture.Commit(t, repo, "main", map[string]string{"nested/main.txt": "main\n"})
+			gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+			feature := gitfixture.Commit(t, repo, "feature", map[string]string{"nested/feature.txt": "feature\n"})
+			gitfixture.StageFile(t, repo, "nested/main.txt", "main\n", 0o644)
+			merge := gitfixture.Merge(t, repo, "Merge feature", main, feature)
+
+			var hash string
+			switch name {
+			case "merge result tree":
+				hash = gitfixture.TreeHash(t, repo, merge)
+			case "first parent tree":
+				hash = gitfixture.TreeHash(t, repo, main)
+			}
+			if err := os.Remove(filepath.Join(dir, ".git", "objects", hash[:2], hash[2:])); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), "master", "HEAD"); err == nil {
+				t.Fatal("nested merge with missing tree object accepted")
+			}
+		})
 	}
 }
 

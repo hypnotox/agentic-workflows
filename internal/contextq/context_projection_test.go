@@ -73,7 +73,7 @@ func TestProjectionHelpers(t *testing.T) {
 // invariant: tooling/context-and-topic:context-path-attribution (TestContextDirectProjectionDeduplicatesMixedRequests)
 func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 	files := ctxFiles()
-	files["internal/foo/x_test.go"] = "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
+	files["internal/foo/x_test.go"] = "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested (TestTested)\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n"
 	q := queryFor(t, ctxRepo(t, ctxConfig, files))
 	res := q.ContextForOptions([]string{"internal/foo", "internal/foo/x_test.go"}, ContextOptions{Selection: SelectionExplicit})
 	if len(res.Requests) != 2 || res.Requests[0].Index != 1 || res.Requests[1].Index != 2 || res.Requests[0].Directory == nil || res.Requests[1].Exact == nil {
@@ -195,9 +195,9 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 
 func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	files := ctxFiles()
-	files["internal/foo/a_test.go"] = "package foo\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
-	files["internal/foo/b_test.go"] = "package foo\n// invariant: alpha/one:tested\n"
-	files["internal/foo/c_test.go"] = "package foo\n// invariant: alpha/one:tested\n"
+	files["internal/foo/a_test.go"] = "package foo\n// invariant: alpha/one:tested (TestTested)\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n"
+	files["internal/foo/b_test.go"] = "package foo\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n"
+	files["internal/foo/c_test.go"] = "package foo\n// invariant: alpha/one:tested (TestTested)\nfunc TestTested() {}\n"
 	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder prose.\nSummary: Order summary.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n"
 	p := ctxRepo(t, ctxConfig, files)
 	state, err := p.ContextState(testContext(t))

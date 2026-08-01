@@ -47,8 +47,21 @@ Backing: test
 
 ### `invariant: pitfall-domains-resolved`
 
-check fails a pitfall entry whose domains list names a domain not configured in the project; an entry with no domains is valid and never surfaces through context.
+check fails a pitfall entry whose domains list names a domain not configured in the project; an entry with no domains is valid.
 Origin: ADR-0148
+Revised-by: ADR-0207
+Backing: test
+
+### `invariant: glossary-domains-resolved`
+
+check fails a glossary record whose domains list names a domain not configured in the project; a record with no domains is valid.
+Origin: ADR-0207
+Backing: test
+
+### `invariant: glossary-terseness-advisory`
+
+check reports one non-failing note per glossary term whose meaning exceeds the terseness threshold, naming the sidecar path, the term, and its length. The evaluated set is the merged one, so the shipped standard vocabulary is bound by the threshold alongside the project's authored terms.
+Origin: ADR-0207
 Backing: test
 
 ### `invariant: skill-ref-dead-fails`
