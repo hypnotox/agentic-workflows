@@ -110,6 +110,11 @@ the append-only column records what the commands were called when those decision
    adopter `checkCmd` that already carried a flag would have rendered an invocation the group
    handler rejects for subcommand order. No new adopter-visible var is introduced.
 
+   `proseGateCmd` and `memoryGateCmd` are retired from the catalog with their only consumers. Keeping
+   either descriptor after deleting its payload line would publish a configurable command that no
+   rendered artifact invokes. `checkCmd` now owns both scans through the bare aggregate, while
+   `commitGateCmd` remains live in the separate commit-msg payload.
+
    It also completes ADR-0196 Decision 3 rather than regressing it. That decision made the payload's
    standalone scan lines the single local enforcement point; item 4 makes `checkCmd` cover them, so
    keeping the standalone lines would run each scan and the staged universe twice per commit.
@@ -227,18 +232,19 @@ the append-only column records what the commands were called when those decision
     unknown-subcommand message enumerates the leaf set of the group actually addressed rather than
     the one flattened level `checkSubcommands()` produces today (`cmd/awf/dispatch.go:51-58`).
 
-11. A new schema migration covers every var this decision invalidates, on one rule: retarget where a
-    live replacement exists, clear where none does. It retargets `check prose` to `check repo prose`,
-    `check memory` to `check repo memory`, and `check commit` to `check staged commit`, and it clears
-    a var invoking the removed command in its `check invariants` spelling. The pre-ADR-0159 bare
-    `invariants` spelling is deliberately not matched: an awf-invoked value was already rewritten to
-    `check invariants` by the 18-to-19 migration and so never reaches this one, and the values that
-    still spell it bare are the non-awf-runner values ADR-0159 declined to own on the stated ground
-    that awf does not own another runner's vocabulary
-    (`internal/migrate/renameretiredcommands.go:57-60`). The three retargeted spellings are pinned catalog var descriptors
-    (`proseGateCmd`, `memoryGateCmd`, `commitGateCmd`) that an adopter holds and a hook invokes, so
-    leaving them would reproduce exactly the failure ADR-0159's migration was written to prevent: an
-    unknown-subcommand error inside a pre-commit hook rather than at upgrade time.
+11. A new schema migration covers every var this decision invalidates. It clears the retired
+    `proseGateCmd` and `memoryGateCmd` keys themselves, whatever values they hold. In every other var,
+    it retargets `check prose` to `check repo prose` and `check memory` to `check repo memory` where
+    those live commands remain meaningful. It retargets `check commit` to `check staged commit` for
+    the still-live `commitGateCmd`, and it clears any var invoking the removed command in its
+    `check invariants` spelling. The pre-ADR-0159 bare `invariants` spelling is deliberately not
+    matched: an awf-invoked value was already rewritten to `check invariants` by the 18-to-19
+    migration and so never reaches this one, and the values that still spell it bare are the
+    non-awf-runner values ADR-0159 declined to own on the stated ground that awf does not own another
+    runner's vocabulary (`internal/migrate/renameretiredcommands.go:57-60`). Retargeting the retired
+    keys would preserve descriptors with no consumer; leaving a stale live spelling elsewhere would
+    instead reproduce exactly the failure ADR-0159's migration was written to prevent: an
+    unknown-subcommand error inside a hook rather than at upgrade time.
 
     The migration matches a three-token invocation. `retiredCommandRe`
     (`internal/migrate/renameretiredcommands.go:28`) is anchored to a two-token form and cannot be
@@ -294,6 +300,7 @@ the append-only column records what the commands were called when those decision
 - update `tooling/cli:help-lists-group-children`
 - update `tooling/cli:invariants-in-check`
 - add `tooling/cli:check-universe-groups`
+- update `rendering/catalog-and-targets:var-descriptor-set-pinned`
 - update `tooling/quality-gates:memory-citation-gate`
 - update `tooling/audit-and-snapshots:commit-gate-shared-rule`
 - update `code-design/dependency-composition:dependency-composition-commit-classification`
@@ -331,9 +338,11 @@ Respelling a flag as a positional makes the hook payload's composition order-sen
 `staged` would not, because a subcommand must precede them. Item 1 removes the append rather than
 leaving adopters to discover the ordering rule from a rejected invocation.
 
-An adopter upgrading past this schema loses a var value rather than having it rewritten. That is
-deliberate: the alternative is a var that names a command which no longer exists, which fails inside
-a hook rather than at upgrade time, the exact failure mode the ADR-0159 migration was written to
+An adopter upgrading past this schema loses the retired `proseGateCmd` and `memoryGateCmd` keys, and
+loses any other var value that names the removed invariants command, rather than having those values
+rewritten. That is deliberate: the two retired keys have no consumer, while the removed command has
+no live target. Preserving either shape would publish inert configuration or defer an
+unknown-subcommand failure into a hook, the exact failure mode the ADR-0159 migration was written to
 prevent.
 
 ## Alternatives Considered
@@ -349,6 +358,7 @@ prevent.
 | Make bare `awf check` refuse outside a git repository, since this workflow assumes git | Breaks `rendering/project-output-plan:curated-init-skill-refs-clean`, whose proof checks a freshly-scaffolded non-repository tree; assuming git is right for an adopter using awf, not for a tree that merely has not become one yet |
 | Make bare `awf check` mean `check repo` alone, with the staged universe always named explicitly | Preserves today's bare-form semantics at no cost, but gives the bare command no way to verify the thing about to be committed even where it could |
 | Build `check staged drift` with the sweep and dead-reference halves included | Both need a semantic decision about what they mean over a tree with no directory entries and no untracked files; deciding them inside a blocking pre-commit gate is where a wrong answer is most expensive |
+| Keep `proseGateCmd` and `memoryGateCmd` declared but unconsumed | Publishes configuration with no rendered consumer after item 1 deletes the only two payload lines that read it; the bare `checkCmd` aggregate is the new enforcement point |
 
 ## Status history
 
