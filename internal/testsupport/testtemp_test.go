@@ -48,9 +48,24 @@ func TestTestTempManagerConstruction(t *testing.T) {
 	if _, err := newTestTempManager(t.TempDir(), time.Now, files, nil); err == nil {
 		t.Fatal("nil validator accepted")
 	}
-	files.removeAll = nil
-	if _, err := newTestTempManager(t.TempDir(), time.Now, files, func(string, fs.FileInfo) error { return nil }); err == nil {
-		t.Fatal("nil filesystem operation accepted")
+	for _, tc := range []struct {
+		name  string
+		clear func(*testTempFS)
+	}{
+		{"mkdir", func(files *testTempFS) { files.mkdir = nil }},
+		{"mkdirTemp", func(files *testTempFS) { files.mkdirTemp = nil }},
+		{"lstat", func(files *testTempFS) { files.lstat = nil }},
+		{"readDir", func(files *testTempFS) { files.readDir = nil }},
+		{"walkDir", func(files *testTempFS) { files.walkDir = nil }},
+		{"removeAll", func(files *testTempFS) { files.removeAll = nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := osTestTempFS()
+			tc.clear(&files)
+			if _, err := newTestTempManager(t.TempDir(), time.Now, files, func(string, fs.FileInfo) error { return nil }); err == nil {
+				t.Fatal("nil filesystem operation accepted")
+			}
+		})
 	}
 }
 
@@ -194,6 +209,43 @@ func TestCleanupStaleBoundaryAndPreservation(t *testing.T) {
 	}
 }
 
+func TestCleanupAllPreservesNoncanonicalEntries(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	canonical := mkdirHome(t, root, "home-1", time.Now())
+	for _, name := range []string{"home-", "home-abc", "other"} {
+		if err := os.Mkdir(filepath.Join(root, name), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	unrelatedFile := filepath.Join(root, "unrelated-file")
+	if err := os.WriteFile(unrelatedFile, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	unrelatedLink := filepath.Join(root, "unrelated-link")
+	if err := os.Symlink(canonical, unrelatedLink); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := safeTestTempManager(t, root, time.Now()).cleanup(cleanupAll)
+	if err != nil || result.homes != 1 {
+		t.Fatalf("cleanup result=%+v err=%v", result, err)
+	}
+	for _, path := range []string{
+		filepath.Join(root, "home-"),
+		filepath.Join(root, "home-abc"),
+		filepath.Join(root, "other"),
+		unrelatedFile,
+		unrelatedLink,
+	} {
+		if _, err := os.Lstat(path); err != nil {
+			t.Errorf("noncanonical entry %s was not preserved: %v", path, err)
+		}
+	}
+}
+
 func TestCleanupAllAccountsOnlySuccessfulRegularFiles(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "root")
 	if err := os.Mkdir(root, 0o700); err != nil {
@@ -268,6 +320,9 @@ func TestCleanupAllAccountsOnlySuccessfulRegularFiles(t *testing.T) {
 	}
 	if got := result.String(); got != "test temp cleanup: removed 1 home(s), 3 logical byte(s)\n" {
 		t.Fatalf("render = %q", got)
+	}
+	if got := (testTempCleanupResult{}).String(); got != "test temp cleanup: removed 0 home(s), 0 logical byte(s)\n" {
+		t.Fatalf("zero render = %q", got)
 	}
 }
 
