@@ -49,11 +49,12 @@ exit mapping. A successfully scanned cleanup always prints one summary line, par
 that summary and exits nonzero after printing the joined error, and a root/platform failure exits
 nonzero without claiming a removal.
 
-Every path below is repository-root-relative. At the start of each phase, the owner must enter the
-managed worktree, run `worktree_root=$(git rev-parse --show-toplevel)`, verify
+Every path below is repository-root-relative. At the start of Phases 1 through 3, the owner must
+enter the managed worktree, run `worktree_root=$(git rev-parse --show-toplevel)`, verify
 `git branch --show-current` prints `awf/prevent-awf-test-and-hook-temp-directory-leaks`, and
-`cd "$worktree_root"` before running the baseline or tasks. This resolves one exact execution root
-without baking a machine-specific checkout location into the durable plan.
+`cd "$worktree_root"` before running the baseline or tasks. Phase 4 instead runs in the integration
+checkout after integration, as its own baseline specifies. These rules resolve one exact execution
+root without baking a machine-specific checkout location into the durable plan.
 
 ## File structure
 
@@ -431,13 +432,18 @@ feat(tooling): manage isolated test homes under a stale-reaped root
 feat(tooling): add explicit test temp cleanup tooling
 ```
 
-## Phase 4: Freeze the implementation record after terminal review
+## Phase 4: Freeze the implementation record after reviewed integration
 
-**Execution mode: inline.** Defer this transaction until Phases 1 through 3 are committed, the
-whole-effort Verification section is green, and `awf-reviewing-impl` has settled with no unresolved
-finding. Start from `git status --short` empty and `./x check` clean. This phase is deliberately
-after terminal implementation review: the plan remains `status: Proposed` and mutable throughout
-implementation and review.
+**Execution mode: inline.** The main thread owns this transaction in the integration checkout, not
+the managed worktree. Defer it until Phases 1 through 3 are committed, the whole-effort
+Verification section is green, terminal `awf-reviewing-impl` has settled, and the reviewed work has
+been integrated into `main`. If integration required a divergent merge, defer again until the
+required renewed implementation review settles on that integrated result. In the integration
+checkout, verify `git branch --show-current` prints `main`, `git status --short` prints nothing,
+the integrated history contains the three phase-closing commits, and `./x check` is clean before
+editing the plan. The plan deliberately remains `status: Proposed` through implementation, review,
+and integration so findings or decision corrections can still be recorded directly without
+reopening a frozen lifecycle.
 
 - [ ] **Task 4.1: Record actual implementation findings and freeze the plan.** In this plan's
   `## Notes`, append one `Implementation findings:` bullet. If execution matched the plan, use the
