@@ -269,7 +269,14 @@ func TestProofNameMustOccurInTheFile(t *testing.T) {
 	// loses the rename protection an ASCII one gets.
 	err = build("// invariant: alpha/contracts:stable (TestStable)\nfunc TestStableé() {}\n")
 	if err == nil || !strings.Contains(err.Error(), "does not occur in this file") {
-		t.Fatalf("rune-flanked name: err = %v", err)
+		t.Fatalf("trailing rune-flanked name: err = %v", err)
+	}
+
+	// Both sides decode runes, so the leading side needs its own non-ASCII case:
+	// testing only the trailing one lets identBefore revert to a byte test unseen.
+	err = build("// invariant: alpha/contracts:stable (TestStable)\nfunc éTestStable() {}\n")
+	if err == nil || !strings.Contains(err.Error(), "does not occur in this file") {
+		t.Fatalf("leading rune-flanked name: err = %v", err)
 	}
 
 	// A flanked hit must not abandon the line: the same name can occur twice on one

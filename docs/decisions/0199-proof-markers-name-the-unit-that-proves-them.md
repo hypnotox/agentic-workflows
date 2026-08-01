@@ -196,13 +196,16 @@ such as `TestFoo` deleted while a `t.Run("TestFoo")` string remains elsewhere in
 Closing it would require knowing which occurrence is a declaration, which is the language
 knowledge this decision refuses to take on.
 
-The much larger comment-borne form of that residual is closed rather than accepted, and it was
-measured rather than assumed. Naming a test in a doc comment above its marker block is this
-repository's dominant convention, so a rule that searched comments would have missed 120 of 425
-markers above a test, and the tree already contains an instance: `internal/project/example_wiring_test.go`
+The much larger comment-borne form of that residual is closed rather than accepted for a family
+whose marker token is its comment leader, and it was measured rather than assumed. Naming a test
+in a doc comment above its marker block is this repository's dominant convention, so a rule that
+searched comments would have missed 120 of 425 markers above a test, and the tree already contains
+an instance: `internal/project/example_wiring_test.go`
 carries a doc comment naming `TestSundialCurrentStateMigrated`, a test that no longer exists
-anywhere. Item 3's comment exclusion catches that today. The remaining residual needs the name to
-survive on a code line, which is a far narrower accident than surviving in prose.
+anywhere. Item 3's exclusion catches that today. For such a family the remaining residual needs
+the name to survive on a code line, which is a far narrower accident than surviving in prose; for
+a family whose token is a prefixed or block-comment form, item 3's boundary paragraph records that
+ordinary comments stay searchable and the prose-borne residual is accepted rather than closed.
 
 More fundamentally, the check constrains the *form* of a marker, not the *discrimination* of its
 name. Nothing requires the name to be specific, so a weak or over-general name that happens to

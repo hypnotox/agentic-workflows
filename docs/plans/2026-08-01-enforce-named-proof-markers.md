@@ -433,9 +433,10 @@ Whole-effort acceptance, beyond each phase's gate:
   the twelve stacked markers. Reporting that first marker is what proves the neighbours no longer
   satisfy each other. Do not expect twelve reported failures: `scanMarkerBytes` returns on its
   first error, so one failure per run is the designed behaviour. Restore afterwards.
-- `./x gate` is clean at every phase boundary, and `git log --oneline` shows six commits: the four
-  phase commits in order, plus the two repair commits execution surfaced and the user authorised
-  before Phase 3 (see Notes).
+- `./x gate` is clean at every phase boundary, and the implementation series is six commits: the
+  four phase commits in order, plus the two repair commits execution surfaced and the user
+  authorised before Phase 3 (see Notes). Review settlement and the deferred post-review
+  transaction add further commits outside that list, so count the series, not the log.
 
 Not part of this plan, and owned by the deferred post-review transaction after terminal review
 settles: authoring the claim `invariants/topics-and-markers:proof-marker-names-its-unit` with its
@@ -465,6 +466,12 @@ with its implementation findings.
   its own commit before the sweep (6f69c9f6): every affected claim retains another proof marker,
   so no claim lost backing. A repo-wide sweep for comments naming an absent test found four more
   cases carrying no marker, fixed separately in 14706ee3.
+
+- **Wording correction at review.** Tasks 4.4 and 4.5 above prescribe "must occur on a non-comment
+  line of the marker's own file". The shipped rule skips lines that open with the family's marker
+  token, which equals "non-comment" only for a family whose token is its comment leader. Terminal
+  review caught the overstatement and the settlement corrected all six documentation sources, the
+  changelog, and ADR-0199 item 3; the task text above is left as the historical instruction.
 
 - **Residual the rule does not close, recorded deliberately.** The check proves a marker names a
   live unit; it cannot judge whether that unit is topical. Six claims now hold exactly one proof
