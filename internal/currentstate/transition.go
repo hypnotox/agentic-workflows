@@ -594,7 +594,7 @@ const digestKeyPrefix = "content-sha256:"
 // cannot be a function of one record the way pairKey is: it forms a pair only on
 // a digest carried exactly once on each side, and only where that pair re-keys
 // the record, so both universes have to be in hand at once
-// (ADR-pair-a-slugless-record-across-a-renumber-by-content-digest item 11).
+// (ADR-0204 item 11).
 type pairing struct {
 	beforeAlias map[string]string
 	afterAlias  map[string]string
@@ -652,17 +652,21 @@ func (p pairing) renumbers() map[string]string {
 // match leaves every record holding it on its number and the transition refuses
 // the rename rather than guessing. A digest matching at the same number aliases
 // nothing either, so an ordinary transition pairs exactly as it did before.
-// A record whose slug exists on BOTH sides pairs on that slug and never reaches
-// the digest step, so it stays out of the index: letting it in would let an
-// unrelated pending record that happens to share a renamed record's canonical
-// body make the digest ambiguous and refuse the rename. A slug that is new in
-// this transition is the exception, because a slugless record renumbered across
-// the v3 cutoff must take the v3 encoding to live at its new number and so
-// acquires its slug in the very transition that renumbers it; excluding it would
-// leave that record unpairable and report the renumber as an unrelated deletion
-// and addition.
+// The before side stays slugless-only, exactly as ADR-0204 item 5 wrote it:
+// passing its own slugs makes the exclusion self-referential, so a slug-carrying
+// record there never reaches the digest step and number immutability stays as
+// strong for it as before.
+//
+// The after side admits one further record: a NUMBERED record whose slug is new
+// in this transition. A slugless record renumbered across the v3 cutoff must take
+// the v3 encoding to live at its new number, so it acquires its slug in the very
+// transition that renumbers it and would otherwise be unpairable. Requiring a
+// number is what keeps the opening shut: a pending record carries none, so an
+// unrelated pending addition can neither launder a genuine deletion into a rename
+// nor make a legitimate rename's digest ambiguous, which are the two failures
+// ADR-0204 items 4 and 5 close.
 func renumberAliases(before, after []adr.ADR) (map[string]string, map[string]string) {
-	beforeDigests := uniqueDigests(before, slugSet(after))
+	beforeDigests := uniqueDigests(before, slugSet(before))
 	afterDigests := uniqueDigests(after, slugSet(before))
 	beforeAlias, afterAlias := map[string]string{}, map[string]string{}
 	for digest, beforeKey := range beforeDigests {
@@ -682,10 +686,13 @@ func renumberAliases(before, after []adr.ADR) (map[string]string, map[string]str
 // it is refused for want of a slug, so taking the v3 encoding is what the
 // renumber costs rather than an independent edit. The retrofit is
 // meaning-preserving and leaves the canonical digest untouched, which is what let
-// the two ends pair as a rename at all. Both halves are required, so an in-place
-// format edit at the same number stays refused.
+// the two ends pair as a rename at all. Each clause refuses a different edit: an
+// in-place format change keeps its number, a downgrade runs the other direction,
+// and a jump from any other format is not this transition. A pending far end
+// needs no clause of its own, because uniqueDigests refuses to pair one, so an
+// un-numbering never reaches here.
 func isRenumberRetrofit(before, after adr.ADR) bool {
-	return before.Slug == "" && after.Slug != "" && before.Number != after.Number
+	return before.IsV2() && after.IsV3() && before.Number != after.Number
 }
 
 // slugSet collects the slugs one universe carries, which is what tells the other
@@ -701,14 +708,15 @@ func slugSet(records []adr.ADR) map[string]bool {
 }
 
 // uniqueDigests indexes one universe's governed records by canonical content
-// digest, dropping every digest more than one record carries. A record whose
-// slug appears in pairedSlugs, the other universe's slugs, is skipped: it pairs
-// on that slug already.
+// digest, dropping every digest more than one record carries. A slug-carrying
+// record is skipped when its slug appears in pairedSlugs, because it pairs on
+// that slug already, and a pending one is skipped outright: with no number it can
+// only be an addition, never the far end of a renumber.
 func uniqueDigests(records []adr.ADR, pairedSlugs map[string]bool) map[string]string {
 	keys := map[string]string{}
 	ambiguous := map[string]bool{}
 	for _, a := range records {
-		if !a.IsGoverned() || (a.Slug != "" && pairedSlugs[a.Slug]) {
+		if !a.IsGoverned() || (a.Slug != "" && (pairedSlugs[a.Slug] || a.Number == "")) {
 			continue
 		}
 		digest := a.CanonicalDigest()

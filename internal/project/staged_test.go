@@ -1153,10 +1153,24 @@ func TestValidatePermanentLockTransitionInheritsAPublishedV3Cutoff(t *testing.T)
 		t.Fatalf("inherited cutoff: %v", err)
 	}
 	// The generation advance is the guard, so every other permanent value still
-	// has to arrive byte-identical.
-	moved := *after
-	moved.ADRFormatV2From = 7
-	if err := validatePermanentLockTransition(tree, tree, before, &moved); err == nil || !strings.Contains(err.Error(), "changes immutable") {
-		t.Fatalf("moved sibling authority = %v", err)
+	// has to arrive byte-identical. The dimension the branch reads is WHICH
+	// authority moved, so each one gets its own case: a single mutated value
+	// would leave the other three clauses proven by nothing.
+	for _, tc := range []struct {
+		name string
+		move func(*manifest.Lock)
+	}{
+		{"initializedWithVersion", func(l *manifest.Lock) { l.InitializedWithVersion = "9.9.9" }},
+		{"adrFormatV1From", func(l *manifest.Lock) { l.ADRFormatV1From = 7 }},
+		{"adrFormatV2From", func(l *manifest.Lock) { l.ADRFormatV2From = 7 }},
+		{"legacyAdrGaps", func(l *manifest.Lock) { l.LegacyADRGaps = []int{5} }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			moved := *after
+			tc.move(&moved)
+			if err := validatePermanentLockTransition(tree, tree, before, &moved); err == nil || !strings.Contains(err.Error(), "changes immutable") {
+				t.Fatalf("moved %s = %v", tc.name, err)
+			}
+		})
 	}
 }

@@ -236,11 +236,27 @@ pairs directly and stays out of the digest step, which is what keeps an unrelate
 record with a matching body from deadlocking the rename. And the governed-format-change
 rule admits exactly the slugless-to-slugged renumber, both halves required.
 
+Two current-state sentences are FALSE as written until that decision lands, both authored
+by terminal records so neither can be corrected without one. `config/migrations-and-locks:
+adr-v2-cutoff-atomic-immutable` says the transition admits exactly two edges and that
+"Both edges require the new value to equal the corpus's computed next identity"; the
+inherited-cutoff edge is a third and derives nothing, taking the published value on trust.
+`adr-system/adr-lifecycle:renumber-digest-paired` says "The digest step considers only a
+record carrying no slug"; it now also considers a numbered record whose slug is new in the
+transition. The neighbouring `adr-number-immutable` and `adr-slug-frontmatter-mandatory`
+were briefly falsified by a first, too-broad version of the pairing change and are true
+again under the shipped rule.
+
 What the decision should settle: whether these three belong together as one sanctioned
 "stale branch crosses the seal" transition or are three independent edges; whether the
 inherited cutoff can be verified against anything rather than taken on trust, which is
 the weakest of the three; and whether a fourth rule is waiting behind them for the next
 branch older than this one.
+
+The review that caught the first version is the argument for writing it soon. That version
+read correctly and silently accepted four transitions the rule had refused, including
+laundering a genuine deletion plus an unrelated pending addition into a rename, which is
+the fail-closed promise ADR-0204 item 4 makes explicitly.
 
 ## Pi and shared Agent Skills discovery
 

@@ -635,12 +635,69 @@ func TestCheckPairRenumberAcrossTheV3Cutoff(t *testing.T) {
 		t.Fatalf("renumber across the v3 cutoff must be finding-free:\n%s", messages(f))
 	}
 
-	// Both halves are required, or the exception would license an ordinary
-	// in-place format edit. A format change that keeps the number is still
-	// refused even though it gains a slug.
+	// Every clause is required, or the exception would license an ordinary format
+	// edit. Each case below moves exactly one of them away from the sanctioned
+	// shape, so a clause deleted from the predicate leaves one of them green.
 	sameNumber := after
 	sameNumber.Number = before.Number
-	if got := messages(currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{sameNumber}), currentstate.AuthoredCommit)); !strings.Contains(got, "changed governed format") {
-		t.Fatalf("in-place format change must stay refused:\n%s", got)
+
+	downgrade := adr.ADR{Number: "0205", Format: adr.CurrentStateV2, Status: "Proposed", Sections: sections, History: history}
+	v3Before := adr.ADR{Number: "0199", Slug: "proof-markers", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+
+	unNumbered := after
+	unNumbered.Number = ""
+
+	v1Before := before
+	v1Before.Format = adr.CurrentStateV1
+
+	for _, tc := range []struct {
+		name          string
+		before, after adr.ADR
+	}{
+		{"format edit keeping the number", before, sameNumber},
+		{"v3 downgraded to v2 across a renumber", v3Before, downgrade},
+		{"numbered record losing its number", before, unNumbered},
+		{"v1 record skipping straight to v3", v1Before, after},
+		{"renumber into a non-v3 format", before, adr.ADR{Number: "0205", Slug: "proof-markers", Format: adr.CurrentStateV1, Status: "Proposed", Sections: sections, History: history}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := messages(currentstate.CheckPair(uni([]adr.ADR{tc.before}), uni([]adr.ADR{tc.after}), currentstate.AuthoredCommit))
+			if got == "" {
+				t.Fatalf("%s must not be finding-free", tc.name)
+			}
+		})
+	}
+}
+
+// A pending record carries no number, so it can only be an addition and must
+// never become the far end of a renumber. Without that clause a genuine deletion
+// standing beside an unrelated pending addition whose canonical body coincides
+// is laundered into a rename, which is the fail-closed promise ADR-0204 item 4
+// makes and the widening for the v3 retrofit could otherwise have broken.
+// A V3 record's slug is retained forever, so changing it at the same number is
+// not a rename to be paired but a violation to be reported. The before side of
+// the digest index stays slugless-only for exactly this reason: admitting a
+// record whose old slug is absent from the after side would let the two ends
+// pair by body and launder the slug change away.
+func TestCheckPairRetainedSlugCannotChange(t *testing.T) {
+	sections := map[string]string{"Decision": "one body under two slugs"}
+	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
+	before := adr.ADR{Number: "0300", Slug: "the-original-slug", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+	after := before
+	after.Slug = "a-renamed-slug"
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), currentstate.AuthoredCommit)); got == "" {
+		t.Fatal("a retained slug changing at the same number must not be finding-free")
+	}
+}
+
+func TestCheckPairPendingAdditionCannotLaunderADeletion(t *testing.T) {
+	sections := map[string]string{"Decision": "a body two records happen to share"}
+	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
+	deleted := adr.ADR{Number: "0100", Format: adr.CurrentStateV2, Status: "Implemented", Sections: sections,
+		History: []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}, {Date: "2026-01-02", Status: "Implemented", Digest: "d"}}}
+	pending := adr.ADR{Slug: "an-unrelated-new-record", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+	got := messages(currentstate.CheckPair(uni([]adr.ADR{deleted}), uni([]adr.ADR{pending}), currentstate.AuthoredCommit))
+	if !strings.Contains(got, "was deleted across this transition") {
+		t.Fatalf("a pending addition must not pair with a deleted record:\n%s", got)
 	}
 }
