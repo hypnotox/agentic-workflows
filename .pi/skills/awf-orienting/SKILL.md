@@ -31,12 +31,12 @@ When a needed fact's location is unknown and inline search would pollute the par
 ## Managed context
 
 Once candidate files are identified, run `awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.
-If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 
 <!-- awf:edit resume-revalidation: default; create .awf/skills/parts/orienting/resume-revalidation.md to override -->
 ## Resume revalidation
 
-When resuming an effort or taking over a handoff, read the effort's memory file at `.awf/efforts/<slug>/memory.md` whole: its header (`Effort:`, `Phase:`, `Next:`, `Updated:`), its brief, its decision log including every `Record:` block, its observations, and its handoff log. A decision already settled there is not yours to re-decide. Then verify every load-bearing claim against repository truth before acting on it: commits landed since the checkpoint (`git log` since `Updated:`), worktree topology versus what memory describes (`git worktree list`), cited decision-record statuses against the decision index, and cited plan and file existence. A discrepancy resolves in favor of the repository. Only the effort's one user-managed writer corrects the stale checkpoint before continuing; a dispatched child never edits it.
+When resuming an effort or taking over a handoff, read the effort's memory file at `.awf/efforts/<slug>/memory.md` whole: its header (`Effort:`, `Phase:`, `Next:`, `Updated:`), its brief, its decision log including every `Record:` block present, its observations, and its handoff log. A decision already settled there is not yours to re-decide. Then verify every load-bearing claim against repository truth before acting on it: commits landed since the checkpoint (`git log` since `Updated:`), worktree topology versus what memory describes (`git worktree list`), cited decision-record statuses against the decision index, and cited plan and file existence. A discrepancy resolves in favor of the repository. Only the effort's one user-managed writer corrects the stale checkpoint before continuing; a dispatched child never edits it.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/orienting/hand-off.md to override -->
 ## Hand-off

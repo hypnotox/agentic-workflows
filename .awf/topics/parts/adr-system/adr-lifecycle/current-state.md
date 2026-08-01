@@ -6,7 +6,7 @@ The adr package parses decision records, derives their identity, and validates t
 
 The ADR format cutoffs are an ordered set, V1 at or below V2 at or below V3. Empty first adoption seals every cutoff at 1; brownfield first adoption seals every cutoff at the highest existing identity plus one with every lower gap explicit; upgrading an existing adopter preserves each already-sealed cutoff and seals the next one at the highest identity plus one; a numbered ADR is legacy below V1, V1 from that cutoff to before V2, V2 from there to before V3, and V3 at or above the V3 cutoff.
 Origin: ADR-0139
-Revised-by: ADR-0143, ADR-0194
+Revised-by: ADR-0143, ADR-0202
 Backing: test
 
 ### `invariant: adr-amendable-until-terminal`
@@ -19,21 +19,21 @@ stamp; a status event repeats the preceding stamp or establishes the first; the 
 stamp must equal the computed content digest; and an amendment never alters or removes an
 operation already referenced by an Applied event.
 Origin: ADR-0188
-Revised-by: ADR-0194
+Revised-by: ADR-0202
 Backing: test
 
 ### `invariant: adr-new-heading-matches-file`
 
 A file created by awf new adr carries a heading whose identity token matches its own filename: # ADR-NNNN: <title> over a numbered NNNN-<slug>.md record and # ADR-<slug>: <title> over a pending <slug>.md one, and the literal Title placeholder never survives into the written file.
 Origin: ADR-0042
-Revised-by: ADR-0194
+Revised-by: ADR-0202
 Backing: test
 
 ### `invariant: adr-new-no-overwrite`
 
 awf new adr refuses to overwrite an existing file at its computed target path, returning an already-exists error rather than clobbering it.
 Origin: ADR-0042
-Revised-by: ADR-0194
+Revised-by: ADR-0202
 Backing: unbacked
 Verify: Read scaffoldRecord in internal/adr/adr.go, which both NewFile and NewPendingFile delegate to, and confirm it stats the computed target path and returns an already-exists error before performing any write.
 
@@ -41,7 +41,7 @@ Verify: Read scaffoldRecord in internal/adr/adr.go, which both NewFile and NewPe
 
 awf new adr allocates its identity from the branch: on the configured integrationBranch it takes the highest existing ADR number in the decisions directory plus one and never reuses a number already present there, and on any other outcome - a different branch, a detached HEAD, or a repository it cannot read - it writes a slug-identified pending record carrying no number at all.
 Origin: ADR-0042
-Revised-by: ADR-0194
+Revised-by: ADR-0202
 Backing: test
 
 ### `invariant: adr-new-strips-markers`
@@ -53,7 +53,7 @@ Backing: test
 ### `invariant: adr-number-immutable`
 
 An ADR number, once assigned, changes only across a sanctioned digest-paired rename: a checked transition refuses a record that takes a different number or loses its number under the same slug, and refuses every other number change. A stale numbering is unmade rather than corrected, so on a corpus carrying duplicate numbers and no pending record `awf adr number` refuses and offers the reset-remake recipe verbatim as a hint, deciding that from the corpus alone and reading no git provenance or merge base.
-Origin: ADR-0194
+Origin: ADR-0202
 Revised-by: ADR-pair-a-slugless-record-across-a-renumber-by-content-digest
 Backing: test
 
@@ -78,21 +78,21 @@ Backing: test
 ### `invariant: adr-slug-frontmatter-mandatory`
 
 A current-state-v3 record carries a mandatory `slug:` frontmatter key equal to the slug segment its filename derives, and retains that key forever once the record is numbered. The slug must already be in slug form, and it is unique across every slug-carrying record in the corpus, pending or numbered.
-Origin: ADR-0194
+Origin: ADR-0202
 Backing: test
 
 ### `invariant: adr-status-enum-and-matrix`
 
 Every governed ADR is routed by the three immutable format cutoffs: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, and application-cardinality transitions. A record with no number routes by its `current-state-v3` frontmatter marker rather than by any cutoff.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0194
+Revised-by: ADR-0143, ADR-0188, ADR-0202
 Backing: test
 
 ### `invariant: applied-history-events-append-only`
 
 Stable Status history in either governed digest format, V2 and V3, is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations, and a checked pair refuses deletion or mutation of any prior event. Numbering a pending record is no exception; it touches no history event.
 Origin: ADR-0143
-Revised-by: ADR-0191, ADR-0194
+Revised-by: ADR-0191, ADR-0202
 Backing: test
 
 ### `invariant: audit-shares-adr-parser`
@@ -118,7 +118,7 @@ Backing: test
 
 adr.ParseDir has no production call site outside internal/adr, and inside internal/adr only the two corpus construction seams call it: the full-body read every consumer of a governed record enters through, and the identity-only read that answers scaffolding's number and slug questions without parsing any body. Consumers do not independently parse the decisions directory.
 Origin: ADR-0130
-Revised-by: ADR-0138, ADR-0194
+Revised-by: ADR-0138, ADR-0202
 Backing: test
 
 ### `invariant: corpus-raw-access-enumerated`
@@ -132,7 +132,7 @@ Backing: test
 
 Every parsed ADR has one identity key: the four-digit number taken from its NNNN-*.md filename prefix for a numbered record, and the retained slug for a current-state-v3 record that is not numbered yet. Under the decisions directory the reserved README.md, INDEX.md, and template.md are excluded; any other file that parses as neither identity form is a corpus error, and a duplicate of either key is a corpus error.
 Origin: ADR-0130
-Revised-by: ADR-0194
+Revised-by: ADR-0202
 Backing: test
 
 ### `invariant: decision-index-is-historical-not-authoritative`
@@ -151,20 +151,20 @@ Backing: test
 ### `invariant: numbering-transition-mode`
 
 The retained slug is the first step of the pairing resolution, so a pending record pairs with the numbered successor numbering produced instead of reading as a deletion plus an addition. For such a pair it admits exactly the numbering effects and nothing else: the number, filename, and heading gain, and `Origin:` and `Revised-by:` entries changing from that record's slug form to its assigned number with each touched list canonicalized to duplicate-free ascending order. The pair's status and Status history must be byte-identical, everything else about it must be unchanged, and a provenance substitution with neither a paired numbering nor a paired rename behind it stays an unmatched mutation. The relaxation composes with both the authored-commit and merge-aggregate contracts, and `awf adr number` never preconditions on a green check.
-Origin: ADR-0194
+Origin: ADR-0202
 Revised-by: ADR-pair-a-slugless-record-across-a-renumber-by-content-digest
 Backing: test
 
 ### `invariant: pending-adr-slug-identity`
 
 A current-state-v3 ADR authored before it is numbered is a pending record: the file is `<slug>.md`, the heading is `# ADR-<slug>: <Title>`, and its identity form is `ADR-<slug>`. The slug is the filename derivation of the title, frozen at scaffold time and never tracking later title edits. A numberless file routes into the corpus by its `current-state-v3` marker, and the reserved README.md, INDEX.md, and template.md basenames are never records. Numbering prepends the number to the filename and rewrites the heading, leaving the slug key in place. The decision index sorts numbered records first by number and pending records after, alphabetically by slug.
-Origin: ADR-0194
+Origin: ADR-0202
 Backing: test
 
 ### `invariant: pending-blocked-from-integration-branch`
 
 awf check reports a pending-adr-on-integration-branch finding for every slug-identified pending record in the corpus while the git seam positively identifies the checkout as being on the configured integrationBranch, and reports nothing for those same records on another branch, on a detached HEAD, or when the repository cannot be read.
-Origin: ADR-0194
+Origin: ADR-0202
 Backing: test
 
 ### `invariant: renumber-digest-paired`

@@ -48,7 +48,7 @@ type Config struct {
 	// required-explicit and carries no in-code default (the Prefix precedent,
 	// not the DocsDir one): the schema migration writes `integrationBranch:
 	// main` visibly so no adopter silently inherits a branch name it never
-	// chose (ADR-0194 Decision 6, keeping ADR-0127's silent-default removal).
+	// chose (ADR-0202 Decision 6, keeping ADR-0127's silent-default removal).
 	IntegrationBranch string              `yaml:"integrationBranch"`
 	Vars              map[string]any      `yaml:"vars"`
 	Skills            []string            `yaml:"skills"`
@@ -98,10 +98,9 @@ func (c *Config) Source() []byte { return c.raw }
 // current-state topics. It is deliberately separate from the legacy invariant
 // authority, which remains active throughout the bridge tranche.
 type CurrentStateConfig struct {
-	Sources           []CurrentStateSource `yaml:"sources"`
-	TestGlobs         []string             `yaml:"testGlobs"`
-	MaxTopicsPerPath  *int                 `yaml:"maxTopicsPerPath"`
-	MaxClaimsPerTopic *int                 `yaml:"maxClaimsPerTopic"`
+	Sources          []CurrentStateSource `yaml:"sources"`
+	TestGlobs        []string             `yaml:"testGlobs"`
+	MaxTopicsPerPath *int                 `yaml:"maxTopicsPerPath"`
 }
 
 // UnmarshalYAML preserves strict nested field validation for the custom-decoded
@@ -132,12 +131,6 @@ func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 				return err
 			}
 			c.MaxTopicsPerPath = &maximum
-		case "maxClaimsPerTopic":
-			maximum, err := decodeIntegerScalar(value, "currentState.maxClaimsPerTopic")
-			if err != nil {
-				return err
-			}
-			c.MaxClaimsPerTopic = &maximum
 		default:
 			return fmt.Errorf("field %s not found in type config.CurrentStateConfig", key)
 		}
@@ -152,15 +145,6 @@ func (c *CurrentStateConfig) EffectiveMaxTopicsPerPath() int {
 		return 8
 	}
 	return *c.MaxTopicsPerPath
-}
-
-// EffectiveMaxClaimsPerTopic returns the configured topic claim-count advisory
-// threshold, defaulting to 20 without materializing it into decoded config.
-func (c *CurrentStateConfig) EffectiveMaxClaimsPerTopic() int {
-	if c == nil || c.MaxClaimsPerTopic == nil {
-		return 20
-	}
-	return *c.MaxClaimsPerTopic
 }
 
 func decodeIntegerScalar(node *yaml.Node, field string) (int, error) {
@@ -540,7 +524,6 @@ func (c *Config) Validate() error {
 			value *int
 		}{
 			{"maxTopicsPerPath", c.CurrentState.MaxTopicsPerPath},
-			{"maxClaimsPerTopic", c.CurrentState.MaxClaimsPerTopic},
 		} {
 			if maximum.value != nil && *maximum.value <= 0 {
 				return fmt.Errorf("currentState.%s must be positive; got %d", maximum.name, *maximum.value)

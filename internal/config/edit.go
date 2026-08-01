@@ -19,23 +19,17 @@ import (
 type Skeleton struct {
 	Prefix string `yaml:"prefix"`
 	// IntegrationBranch is written explicitly because the key is required and
-	// carries no in-code default (ADR-0194 Decision 6): a scaffold omitting it
+	// carries no in-code default (ADR-0202 Decision 6): a scaffold omitting it
 	// would emit a config that fails its own validation on the next open.
-	IntegrationBranch string                `yaml:"integrationBranch"`
-	Vars              map[string]string     `yaml:"vars"`
-	Skills            []string              `yaml:"skills"`
-	Agents            []string              `yaml:"agents"`
-	Docs              []string              `yaml:"docs"`
-	Audit             *SkeletonAudit        `yaml:"audit,omitempty"`
-	Bootstrap         *BootstrapConfig      `yaml:"bootstrap,omitempty"`
-	Hooks             *HooksConfig          `yaml:"hooks,omitempty"`
-	Runner            *RunnerConfig         `yaml:"runner,omitempty"`
-	CurrentState      *SkeletonCurrentState `yaml:"currentState,omitempty"`
-}
-
-// SkeletonCurrentState carries current-state defaults written by a fresh init.
-type SkeletonCurrentState struct {
-	MaxClaimsPerTopic int `yaml:"maxClaimsPerTopic"`
+	IntegrationBranch string            `yaml:"integrationBranch"`
+	Vars              map[string]string `yaml:"vars"`
+	Skills            []string          `yaml:"skills"`
+	Agents            []string          `yaml:"agents"`
+	Docs              []string          `yaml:"docs"`
+	Audit             *SkeletonAudit    `yaml:"audit,omitempty"`
+	Bootstrap         *BootstrapConfig  `yaml:"bootstrap,omitempty"`
+	Hooks             *HooksConfig      `yaml:"hooks,omitempty"`
+	Runner            *RunnerConfig     `yaml:"runner,omitempty"`
 }
 
 // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
@@ -131,7 +125,7 @@ func SetArray(src []byte, key string, values []string) ([]byte, error) {
 // (ADR-0026). It is the top-level string sibling of SetArray (sequence):
 // the required-explicit integrationBranch key has no in-code default, so its
 // schema migration must materialize a visible scalar line rather than append
-// to or seed a nested block (ADR-0194 Decision 6).
+// to or seed a nested block (ADR-0202 Decision 6).
 func SetString(src []byte, key, value string) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {

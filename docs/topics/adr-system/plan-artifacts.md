@@ -13,7 +13,7 @@ The plan package parses and validates implementation plan documents. The claims 
 
 awf check fails when a frontmatter-bearing plan's adrs: entry resolves to no record: a numeric entry against a docs/decisions/NNNN-*.md file, a slug entry against a pending record's file or a numbered record's retained slug key. Numbering never rewrites a plan. A plan with no frontmatter is skipped.
 Origin: ADR-0098
-Revised-by: ADR-0194
+Revised-by: ADR-0202
 Backing: test
 
 ### `invariant: plan-commit-subject-length-checked`

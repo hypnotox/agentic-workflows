@@ -10,9 +10,9 @@ import (
 
 // integrationBranchGeneration is the schema generation that materializes the
 // required-explicit integrationBranch key.
-const integrationBranchGeneration = 29
+const integrationBranchGeneration = 30
 
-// applyIntegrationBranch ports schema 28 -> 29 (ADR-0194 Decision 6): the new
+// applyIntegrationBranch ports schema 29 -> 30 (ADR-0202 Decision 6): the new
 // integrationBranch key is required and has no in-code default, so an adopter's
 // config must gain a visible `integrationBranch: main` line or fail its own
 // validation on the next open. The value is written, never defaulted in code,

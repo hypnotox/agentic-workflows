@@ -46,7 +46,7 @@ type Lock struct {
 	ADRFormatV2From int `json:"adrFormatV2From,omitempty"`
 	// ADRFormatV3From is the permanent V3 boundary. It is absent before schema
 	// 28 and positive at schema 28 and later. The cutoff set is ordered:
-	// V1From <= V2From <= V3From (ADR-0194 item 1).
+	// V1From <= V2From <= V3From (ADR-0202 item 1).
 	ADRFormatV3From int `json:"adrFormatV3From,omitempty"`
 	// LegacyADRGaps is the sorted set of absent lower ADR numbers the final
 	// upgrade promotes alongside the cutoff, closing the migration-time identity
@@ -64,7 +64,7 @@ type Lock struct {
 
 // adrFormatV3Schema is the schema generation from which permanent authority
 // must carry adrFormatV3From, mirroring schema 15's adrFormatV2From floor.
-const adrFormatV3Schema = 28
+const adrFormatV3Schema = 29
 
 // AuthorityState is the closed lock-authority state machine.
 type AuthorityState uint8

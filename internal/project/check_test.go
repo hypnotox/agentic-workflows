@@ -300,7 +300,7 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 // docs/plans/ set: a plan linking a nonexistent ADR yields plan-adr-link drift,
 // a bad status: yields plan-frontmatter drift, a valid plan yields none, and a
 // frontmatter-less (grandfathered) plan is skipped. A slug entry resolves
-// against a pending record and drifts when it names none (ADR-0194 item 14).
+// against a pending record and drifts when it names none (ADR-0202 item 14).
 // invariant: adr-system/plan-artifacts:plan-frontmatter-validated
 // invariant: adr-system/plan-artifacts:plan-adr-link-resolved
 func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
@@ -376,7 +376,7 @@ func pendingADRFixture(slug string) string {
 // The pending-record block fires on a positive integration-branch
 // identification and on nothing else: another branch, a detached HEAD, and a
 // tree with no readable repository all pass, because an indeterminate answer is
-// not evidence that the record is in the wrong place (ADR-0194 item 7).
+// not evidence that the record is in the wrong place (ADR-0202 item 7).
 // invariant: adr-system/adr-lifecycle:pending-blocked-from-integration-branch
 func TestCheckPendingADRsFiresOnlyOnPositiveIdentification(t *testing.T) {
 	for _, tc := range []struct {
@@ -444,7 +444,7 @@ func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Two records, because the claim quantifies over EVERY pending record: a
-	// worktree that authored several is the case ADR-0194 item 8 orders by
+	// worktree that authored several is the case ADR-0202 item 8 orders by
 	// argument, and reporting only the first would leave the rest to be
 	// discovered one integration attempt at a time.
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
@@ -721,7 +721,7 @@ func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
 }
 
 // A first adoption whose decisions dir carries two ADRs with the same number
-// fails at corpus load: duplicate identity has one home (ADR-0194 item 4), so
+// fails at corpus load: duplicate identity has one home (ADR-0202 item 4), so
 // the refusal precedes every consumer rather than being re-derived by each.
 func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 	root := scaffold(t, sampleYAML)

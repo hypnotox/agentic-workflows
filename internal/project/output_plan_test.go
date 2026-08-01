@@ -213,44 +213,6 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 	}
 }
 
-// invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership
-// invariant: rendering/pi-runtime:pi-child-tool-boundaries
-// invariant: rendering/project-output-plan:multi-target-render
-// invariant: rendering/pi-workflows:pi-subagent-failure-details
-// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch
-// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch
-// invariant: rendering/pi-workflows:pi-subagent-model-wizard
-// invariant: tooling/init-and-enablement:add-skill-pairs-agent
-// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
-// invariant: rendering/pi-runtime:pi-minimum-runtime
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract
-func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.T) {
-	p, err := Open(testContext(t), filepath.Clean(filepath.Join("..", "..")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	const extension = ".pi/extensions/awf-subagents/index.ts"
-	result, err := p.ContextForOptions(testContext(t), []string{extension}, ContextOptions{Selection: SelectionExplicit})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Requests) != 1 || result.Requests[0].Exact == nil || result.Requests[0].Exact.Context.Classification != PathGeneratedOutput {
-		t.Fatalf("extension classification = %#v", result.Requests)
-	}
-	path := result.Requests[0].Exact.Context
-	if !slices.ContainsFunc(path.Domains, func(domain DomainRef) bool { return domain.Name == "rendering" }) || !slices.ContainsFunc(path.Topics, func(topic ContextPathTopic) bool { return topic.ID == "rendering/adapter-outputs" }) {
-		t.Fatalf("extension ownership = domains %#v topics %#v", path.Domains, path.Topics)
-	}
-	expanded, err := p.ContextForOptions(testContext(t), []string{".pi/extensions"}, ContextOptions{Selection: SelectionExplicit})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(expanded.Requests) != 1 || expanded.Requests[0].Kind != RequestDirectoryEmpty || expanded.Requests[0].Directory == nil || expanded.Requests[0].Directory.Included != 0 {
-		t.Fatalf("generated extension entered whole-tree expansion: %#v", expanded)
-	}
-}
-
 // invariant: rendering/pi-runtime:pi-child-process-safety
 // invariant: rendering/catalog-and-targets:claude-md-bridge
 // invariant: rendering/sync-and-drift:uninstall-removes-lock-entries

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 // TestInjectBannerShebang covers the shebang branch: the banner becomes a
@@ -64,12 +65,13 @@ func TestInjectBannerFrontmatter(t *testing.T) {
 // leading #-comment keyed on the template id (ADR-0069).
 func TestInjectBannerResidentGitignore(t *testing.T) {
 	want := "# " + bannerText + "\n*\n!.gitignore\n"
-	for _, tc := range []struct {
-		name string
-		tid  string
-	}{{"efforts", effortsTID}, {"worktrees", worktreesTID}} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := injectBanner("*\n!.gitignore\n", tc.tid)
+	names := resident.RootNames()
+	if len(names) == 0 {
+		t.Fatal("no resident roots to check")
+	}
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			got := injectBanner("*\n!.gitignore\n", residentGitignoreTID(name))
 			if got != want {
 				t.Errorf("gitignore banner:\ngot  %q\nwant %q", got, want)
 			}

@@ -3,7 +3,7 @@ format: current-state-v2
 status: Implementing
 date: 2026-07-31
 ---
-# ADR-0194: Slug-identified pending ADRs numbered at integration
+# ADR-0202: Slug-identified pending ADRs numbered at integration
 
 
 ## Context

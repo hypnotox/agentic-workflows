@@ -28,7 +28,7 @@ type operationAt struct {
 	op    adr.Operation
 	// order is the owning record's provenance rank: its number when numbered,
 	// and a rank above every number when pending, because a pending record
-	// takes the corpus's next numbers at integration (ADR-0194 item 10).
+	// takes the corpus's next numbers at integration (ADR-0202 item 10).
 	order    int
 	batchIdx int
 }
@@ -341,7 +341,7 @@ func checkAppliedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present, was
 
 // checkBackward validates each claim's authored provenance against the applied
 // operation set. The index key is the owning record's identity: its number when
-// numbered, its slug while pending (ADR-0194 item 4).
+// numbered, its slug while pending (ADR-0202 item 4).
 //
 // A slug-form entry resolves only against a pending record's slug, never
 // against the retained slug of an already-numbered one, which is what forces
@@ -350,7 +350,7 @@ func checkAppliedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present, was
 // strictly ascending, a slug entry is legal only after every numeric entry, and
 // slug entries compare in authored list order among themselves. When the Origin
 // is itself a slug, its greater-than-Origin comparison is deferred to numbering,
-// which the command's add-before-revise refusal guarantees (ADR-0194 item 10).
+// which the command's add-before-revise refusal guarantees (ADR-0202 item 10).
 func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]topic.Claim) []Finding {
 	byOperation := map[string]operationAt{}
 	for _, operation := range applied {

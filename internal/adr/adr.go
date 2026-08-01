@@ -41,13 +41,13 @@ type ADR struct {
 	// Slug is the mandatory retained `slug:` frontmatter key of a V3 record. It
 	// is the identity of a pending record (Number is empty until numbering) and
 	// survives numbering so an `ADR-<slug>` reference stays resolvable
-	// (ADR-0194 items 2 and 3). Pre-V3 records carry none.
+	// (ADR-0202 items 2 and 3). Pre-V3 records carry none.
 	Slug string
 }
 
 // Identity returns the record's single identity key: the four-digit number for
 // a numbered record, and the retained slug for a pending V3 record that has not
-// been numbered yet (ADR-0194 item 4).
+// been numbered yet (ADR-0202 item 4).
 func (a ADR) Identity() string {
 	if a.Number != "" {
 		return a.Number
@@ -68,7 +68,7 @@ func IsSlugIdentity(ref string) bool { return !numberRe.MatchString(ref) }
 
 // pendingIdentityOrder ranks every pending identity above every four-digit
 // number, which is where numbering will in fact place it: a pending record
-// takes the corpus's next numbers at integration (ADR-0194 item 10). No
+// takes the corpus's next numbers at integration (ADR-0202 item 10). No
 // numbered record can reach the rank, so the two regions never interleave.
 const pendingIdentityOrder = 100000
 
@@ -97,7 +97,7 @@ const (
 	CurrentStateV2
 	// CurrentStateV3 is a `format: current-state-v3` ADR: V2 semantics exactly,
 	// plus the mandatory retained slug identity and the pending record form
-	// (ADR-0194 item 1).
+	// (ADR-0202 item 1).
 	CurrentStateV3
 )
 
@@ -154,7 +154,7 @@ var FilenameRe = regexp.MustCompile(`^(\d{4})-.+\.md$`)
 
 // reservedBasenames are the decisions-directory files that are never records:
 // the hand-written README, the generated INDEX, and the rendered scaffold
-// template (ADR-0194 item 4).
+// template (ADR-0202 item 4).
 var reservedBasenames = map[string]bool{"README.md": true, "INDEX.md": true, "template.md": true}
 
 // IsReservedBasename reports whether a decisions-directory basename is one of
@@ -164,7 +164,7 @@ func IsReservedBasename(name string) bool { return reservedBasenames[name] }
 
 // ErrNotADRRecord names a decisions-directory file that is neither a numbered
 // record nor a pending current-state-v3 record. Such a file used to be silently
-// ignored; ADR-0194 item 4 makes it a corpus error.
+// ignored; ADR-0202 item 4 makes it a corpus error.
 func ErrNotADRRecord(name string) error {
 	return fmt.Errorf("%s: not an ADR record (expected NNNN-*.md or a pending current-state-v3 file)", name)
 }
@@ -385,13 +385,13 @@ func AdoptionBoundary(dir string) (cutoff int, gaps []int, err error) {
 	}
 	numbers := make([]int, 0, len(adrs))
 	// LoadCorpus above already refused a duplicate number, so this set answers
-	// only the gap question (ADR-0194 item 4 gave duplicate identity one home).
+	// only the gap question (ADR-0202 item 4 gave duplicate identity one home).
 	seen := map[int]bool{}
 	for _, a := range adrs {
 		if a.Number == "" {
 			// A pending V3 record has no number yet, so it is not part of the
 			// brownfield identity set the boundary seals; it takes a number at
-			// or above the cutoff when it is numbered (ADR-0194 item 3).
+			// or above the cutoff when it is numbered (ADR-0202 item 3).
 			continue
 		}
 		n, err := strconv.Atoi(a.Number)
@@ -440,7 +440,7 @@ func NextNumber(dir string) (string, error) {
 
 // loadIdentityCorpus indexes the decisions directory by identity alone. It is
 // the identity-only corpus construction seam beside LoadCorpus's full-body one
-// (ADR-0194 item 17): scaffolding asks only what the next free number is and
+// (ADR-0202 item 17): scaffolding asks only what the next free number is and
 // whether a slug is taken, and the frontmatter and filenames ParseDir already
 // reads answer both, so nothing below the heading is parsed.
 //
@@ -481,7 +481,7 @@ func replaceOnce(s, old, replacement string) (string, error) {
 }
 
 // numberedSlugRe matches a slug that opens like a numbered filename. Such a
-// slug is refused at authoring time (ADR-0194 item 2): ParseRecord routes by
+// slug is refused at authoring time (ADR-0202 item 2): ParseRecord routes by
 // filename before it peeks the format marker, so a pending `2026-roadmap.md`
 // would be read as numbered record 2026, fail the filename-equals-slug check,
 // and take the whole corpus down instead of producing a scoped finding.
@@ -511,7 +511,7 @@ func NewFile(dir, title string, format Format) (string, error) {
 // NewPendingFile scaffolds a slug-identified pending ADR under dir: `<slug>.md`
 // with heading `# ADR-<slug>:` and no number. A pending record is always
 // current-state-v3 - the format marker is what routes a numberless file to the
-// V3 parser - so the format is not the caller's to choose (ADR-0194 item 2).
+// V3 parser - so the format is not the caller's to choose (ADR-0202 item 2).
 // Numbering at integration turns it into the numbered form.
 func NewPendingFile(dir, title string) (string, error) {
 	return scaffoldRecord(dir, title, CurrentStateV3, true)
@@ -606,7 +606,7 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 	front := strings.Replace(string(block), "format: "+templateMarker, "format: "+marker, 1)
 	if format == CurrentStateV3 {
 		// The slug is mandatory in V3 and frozen at scaffold time; it does not
-		// track later title edits (ADR-0194 item 2).
+		// track later title edits (ADR-0202 item 2).
 		front = strings.Replace(front, "format: "+marker, "format: "+marker+"\nslug: "+slug, 1)
 	}
 	content = "---\n" + front + "---\n" + string(body)

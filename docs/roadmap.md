@@ -26,11 +26,6 @@
   lines are dropped. No claim states this, so every migration that edits config inherits an unstated
   contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
   covering whether the property is claimed once for the package or restated per migration.
-- Promote the topic-claim-budget advisory from a non-failing note to a fixed blocking
-  rank now that ADR-0148 brought every topic under budget; needs its own small ADR
-  revising `tooling/cli:topic-claim-budget-advisory`. ADR-0183 forecloses the
-  configurable-severity and adopter-facing-config-key half of this idea: awf exposes no
-  severity setting, so the promotion is to a rank fixed in code or not at all.
 - Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
@@ -75,6 +70,40 @@
   re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
   it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
   expensive.
+- Broaden the task-skill set. Nothing produces a PR title and body from the commits of an
+  effort; there is no skill for reviewing an incoming third-party PR, no security-review
+  lens, no refactor-execution skill (`refactor-coupling-audit` only scopes the decision),
+  and no dependency-upgrade skill. For the last, a concrete by-hand model exists from
+  2026-07-10: cooldown window, govulncheck reachability triage, SHA-pin bumps, changelog
+  entry.
+- Publish the standard as an artifact. No versioned spec exists (the standard is implied
+  by the renderer and its templates), there is no discoverability surface beyond the
+  GitHub README, and no examples gallery beyond `examples/sundial`.
+- Audit this repo's own overrides for dogfooding. The principle (user, 2026-07-26): only
+  overwrite what is really needed, otherwise dogfood the shipped defaults, and use
+  template defaults inside overrides so they keep rendering. A survey that day found 7
+  full-replacement parts under `.awf/parts/`, 2 under `.awf/skills/parts/`
+  (retrospective/procedure and debugging/debugging-surfaces are the worrying pair: awf
+  never renders those shipped defaults at all), and 14 under `.awf/docs/parts/`.
+- An advisory for hand-curated prose counts, which drift when the source-of-truth count
+  changes; two recorded occurrences (the agent-guide invariant list and the glossary
+  exemption count).
+- A static-state inventory command enumerating the outstanding bounded candidates of
+  ratchet-scoped code-design claims (today: the shallow `os.Is*` predicate sites,
+  message-text identity assertions, exported error identities no caller matches,
+  undocumented exported declarations, and the global test-seam census),
+  so each ratchet topic can point its existing-violation backlog at a mechanical census
+  instead of prose. The name must not be "awf doctor" without a disambiguating note:
+  ADR-0162 retired that name with a different meaning. Needs its own ADR: it adds a
+  command surface.
+- Align error-message prefixes across `cmd/awf`, `internal/adr`, and the changelog
+  tooling. Cosmetic, and blocked on deciding which convention wins before any sweep.
+- A plan-reviewer docCurrencyItem for the missing changelog task of an adopter-facing
+  plan, to be added if a second plan ships without one (first occurrence 2026-07-12; the
+  repo-local audit rule already catches the omission, just later than plan review would).
+- The init collision probe over-refuses on artifacts a `--set` trim would deselect.
+  Accepted as conservative design; revisit only if an adopter reports hitting it.
+
 - Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
   merge the target in the managed worktree, run `awf check --staged`, run the gate, commit,
@@ -108,7 +137,7 @@
 
 `loadTreeCurrentState` validates the HEAD-side config after porting it forward, so a
 key that is required with no in-code default fails the whole before-side load until
-every committed config in range carries it. ADR-0194's `integrationBranch` hit this and
+every committed config in range carries it. ADR-0202's `integrationBranch` hit this and
 paid for it with a per-key seeding case in `ConfigForCurrentSchema` (`internal/migrate/
 migrate.go`), the first case in that function to materialize a key rather than remove
 one - which the function's own generation-25 comment argues against.
@@ -119,7 +148,7 @@ it does, the before-side of every transition check is red for a release cycle. T
 alternative worth settling is that the before-side needs a historical config to PARSE,
 not to satisfy today's validation rules, since coverage is never evaluated from a
 before-side config. That would retire the seeding cases entirely rather than adding one
-per key. Raised by the Phase 3 review of ADR-0194 on 2026-07-31 as a policy question
+per key. Raised by the Phase 3 review of ADR-0202 on 2026-07-31 as a policy question
 rather than a defect.
 
 ## A claim can carry at most one operation per ADR
@@ -132,7 +161,7 @@ correction - the fix has to wait for a different decision record.
 
 The live instance: `config/configuration:config-serialization-owned` asserts a CLOSED
 enumeration of the editors that mutate config.yaml, and it omits `RemoveKey` and
-`RemoveMappingKey`, both of which live migrations use. ADR-0194 already spent its one
+`RemoveMappingKey`, both of which live migrations use. ADR-0202 already spent its one
 update on that claim (adding `SetString`), so the enumeration stays false until another
 ADR updates it. Worth folding into whatever decision next touches the config editors, and
 worth asking there whether a "closed enumeration" claim should be backed by a
@@ -149,12 +178,12 @@ The scaffold now refuses an all-digit title slug outright (`allDigitSlugRe`,
 `internal/adr/adr.go`), which closes the only path that mints one through awf. A
 hand-authored `2026.md` carrying `slug: 2026` still parses into the corpus and is still
 unreachable by identity. The complete guard belongs on `corpus-single-identity-key`, whose
-text already governs what is a corpus error - but ADR-0194 spent its one operation on that
+text already governs what is a corpus error - but ADR-0202 spent its one operation on that
 claim in batch 1, and a claim carries at most one operation per ADR, so widening it needs a
 later decision record. Worth folding into whatever decision next touches corpus identity,
 and worth asking there whether the number-shaped-slug check belongs beside the existing
 duplicate-key error rather than as a separate rule. Surfaced by the Phase 4 review of
-ADR-0194 on 2026-07-31; the scaffold half landed the same day.
+ADR-0202 on 2026-07-31; the scaffold half landed the same day.
 
 
 ## Two pending records tie in the appended-batch rank
@@ -173,12 +202,12 @@ author's workaround is to apply the two batches in separate commits.
 
 Imposing a topological order instead would contradict
 `invariants/current-state-authority:provenance-ordered-by-adr-number`, which says slug
-entries compare in authored list order among themselves - and ADR-0194 spent its one
+entries compare in authored list order among themselves - and ADR-0202 spent its one
 operation on that claim, so restating it needs a later decision record. Worth folding into
 whatever decision next touches pending provenance order, and worth deciding there whether
 the authored order should instead be something the tree records explicitly, since nothing
 today declares the intended numbering order until the command is invoked. Surfaced by the
-Phase 5 review of ADR-0194 on 2026-08-01.
+Phase 5 review of ADR-0202 on 2026-08-01.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
@@ -192,7 +221,11 @@ names. ADR-0122's Pi and Codex target layouts may need a successor decision.
 
 `invariant-proof-exercises-its-claim` has now failed to prevent three sessions
 of partially-backed proof markers, the last shipping roughly nine at once and
-hiding a real defect behind a green gate. It has been strengthened from a
+hiding a real defect behind a green gate. A standing instance sits in
+`internal/migrate/dropworkflowtelemetry_test.go`, whose
+`workflow-telemetry-config-migration` marker covers a body that only pins the
+current schema generation, while the claim is about generation 21 removing two
+resident roots: the marker exercises nothing it backs, and no gate notices. It has been strengthened from a
 judgement item to an enumerating one, but that is still rung 3: probabilistic,
 and applied only when a reviewer runs.
 
@@ -204,6 +237,33 @@ exercised it stays green. What is unresolved is the cost - a full run is slow
 and advisory-only today - and whether a scoped, gate-wired subset can be made
 fast and deterministic enough to block a commit. Worth an ADR if it can, since
 a proof marker that cannot fail is worse than no marker at all.
+
+A second subclass in the same family is cheaper to catch and has now occurred
+twice. A proof marker can outlive the test it was proving. Commit 4c61356a
+deleted `TestPiExtensionContainerGateWiring` and
+`TestPiExtensionEditorQuietStrip` and left both markers behind in
+`internal/project/example_wiring_test.go`, at lines 54 and 115, so
+`tooling/quality-gates:pi-extension-container-gate` and
+`rendering/pi-workflows:pi-extension-editor-quiet-strip` have both declared
+`Backing: test` while being proven by nothing ever since. The marker at line
+115 is the file's last line, with no test beneath it at all. ADR-0164's `State
+changes` never touched either claim, so this was an unremediated regression
+from an unrelated refactor rather than a sanctioned retirement. Until now it
+was recorded only in ephemeral working memory under `.awf/efforts/`; this
+entry is the durable record.
+
+Unlike the nominal-proof case this subclass may not need mutation testing. The
+scan that satisfies `Backing: test` appears to be a line-text scan over the
+whole file rather than an association between a marker and the test function
+that follows it, in which case requiring that association turns an orphaned
+marker into a check failure directly. Confirm that against
+`internal/topic/markers.go` before designing anything, because it is the whole
+basis for the cheap fix. What is unresolved either way is what an association
+rule does to the two marker forms that deliberately do not attach to one test,
+`touches-state:` and `state:`, and whether a repo-wide sweep finds more than
+these two instances. ADR-0198 restores backing for both claims above as a
+by-product of rewriting the code they describe; the general rule is not in its
+scope.
 ## The rationale site a token cannot address
 
 `docs/decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md`
@@ -294,30 +354,23 @@ their own decision; the pitfalls entry recording the occurrence is the interim m
 
 ## Decomposing the `internal/project` god object
 
-`internal/project.Project` carries roughly ninety-five production methods across
-thirty production files, imports seventeen internal packages, and is imported by
-exactly two. Fourteen of those files touch no `Project` field at all, which is
-the clearest signal that several cohesive units are sharing one type.
+Decided and executed by ADR-0195: `internal/contextq` (the context query behind
+the `ContextState` seam) and `internal/resident` (resident-root policy and
+anchoring) are carved out, the core keeps the cycle-bound sync engine, and the
+export surface shrank with each carve. The ADR's Context records why the
+sequencing reversed relative to this entry's earlier prescription: the
+boundaries were measured empirically (a cluster map, two verified cycles, a
+per-symbol coupling census), which grounds this package's split more strongly
+than a generic cohesion pattern would, and the direction half of any such
+pattern is already owned by `code-design/dependency-composition`.
 
-The split has been deferred repeatedly and, until now, was recorded only in
-ephemeral working memory under `.awf/efforts/`, so it vanished whenever an
-effort finished. This entry is the durable record.
-
-Two of its three prerequisites are settled. ADR-0178 established
-`code-design/dependency-composition`, so dependency direction and wiring have an
-authority to answer to. ADR-0180 established `code-design/state-ownership` and
-converted the three per-invocation derived fields, so the type no longer holds
-state written after construction and a future package boundary cannot inherit a
-hidden cache. The remaining prerequisite is a package-cohesion and boundary
-pattern, which is where the deferred `receiver-reads-owned-state` rule belongs:
-a method reads at least one receiver field, and behaviour that reads none takes
-parameters instead. Its evidence is already collected, the fourteen zero-field
-files and the four synthetic partial `Project` literals.
-
-Sequencing matters more than usual here. Half of "where does a package boundary
-go" is dependency direction, which `dependency-composition` already owns, so a
-cohesion pattern authored without reference to it would create dual authority.
-The decomposition itself should follow the pattern rather than accompany it.
+What stays open is the generalization, not the split: the deferred
+`receiver-reads-owned-state` rule (a method reads at least one receiver field;
+behaviour that reads none takes parameters instead) remains unowned by any
+topic and belongs to a future package-cohesion pattern that generalizes from
+ADR-0195's evidence rather than gating it. Further decomposition of the
+remaining core is likewise accepted at decision time as future-effort
+territory rather than silent scope; this entry is that record.
 
 ## A `coverage-ignore` the profile records as executed is a false ignore
 
@@ -344,13 +397,62 @@ Worth settling in the same decision: whether the rule is an error or a warning d
 transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
 subsumed by it or kept as the complementary "touched, re-evaluate" signal.
 
-## `awf context` disagrees with its own spec about a required path
+## The rendered pre-commit payload validates the worktree, not the staged slice
 
-`internal/clispec` declares `context` with `MinPos: 0`, but the handler rejects
-a bare `awf context` with a usage error and exit 2. One of the two is wrong:
-either the spec should require a positional path, or the handler should accept
-the bare form. Found in passing on 2026-07-31 while enumerating gated commands
-for the version-gate test, which had to pass a path to reach the gate at all.
-Low impact, since the usage error is clear either way, but the spec is what the
-CLI reference renders from, so the mismatch publishes a wrong arity.
+A partial-staging commit whose staged subset is drift-inconsistent (a rendered,
+lock, or config hunk left unstaged while the fixing hunk sits in the worktree)
+passes a pre-commit gate that checks the worktree, and lands a broken HEAD. It
+bit this repo at commit a85bd6a and the repo-local hook was extended on
+2026-07-15 to also run `awf check` on a checkout-index slice, but the shipped
+payload (ADR-0048) still checks the worktree, so adopter repos keep the gap.
+
+A fix is feasible and language-agnostic: checkout-index to a temporary tree and
+run the pinned `awf check` there, read-only, safer than `git stash
+--keep-index`. It is deferred because it changes ADR-0048's deliberately
+minimal, inert payload contract and adds per-commit latency to catch a
+power-user footgun (adopters who stage everything never hit it), so it needs
+its own ADR. The user chose repo-local-now, standard-level-recorded on
+2026-07-15.
+
+## Live-agent outcome evals
+
+The deterministic harness-integrity half shipped as ADR-0053 and ADR-0054: a
+fixture-based eval suite that pins chain handoffs and skill parity without
+executing an agent. The other half, live-agent outcome evals over a golden-task
+corpus (ADR-0017's original framing), stays deferred as cost-prohibitive; the
+field is choking on exactly that cost, which is why the deterministic in-lane
+variant was built instead. Revisit only with a concrete budget and a scoring
+harness design.
+
+## Partial-amendment back-pointer check
+
+When an ADR body cites another ADR's specific Decision item (a partial
+amendment), the cited ADR's `related:` should name the citing ADR, or the
+amendment is invisible from the amended side. The promotion trigger has fired:
+recorded misses at ADR-0065 (missed pointer to ADR-0079) and ADR-0093 (missed
+pointer to ADR-0024), each caught only in retrospective. Deferred because the
+rung is expensive: a detection heuristic over citation prose, tests at the 100%
+floor, and false-positive risk on citations that do not amend. Worth its own
+focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
+the natural shape of the fix.
+
+## The test suite leaks temp homes on interrupted runs
+
+An interrupted `go test` run orphans `awf-project-test-home*` directories in the system temp
+dir (13 stale ones found on 2026-07-31 while diagnosing a full 16G tmpfs; the sibling leak,
+the gate's mktemp coverage profile at ~45MB per interrupted run, was fixed structurally by
+ADR-0196's durable `coverage.out`). `t.TempDir` cannot clean up across a kill. Low priority:
+either a periodic cleanup note or naming the fixture dirs under one parent so a stale sweep
+is one `rm`.
+
+## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
+
+Neither subcommand is invoked by any hook payload, runner step, or CI job in this
+repository - every enforcement path calls bare `awf check`, which runs both halves
+together. Surveyed 2026-07-31 during the workflow-friction effort and deliberately
+kept: they are cheap, tested, and harmless single-half conveniences for focused
+debugging, and removing shipped CLI surface is more churn than a dormant tested
+branch. Tripwire, mirroring the removed `--json` precedent: if either subcommand
+starts misleading users about what bare `awf check` covers, cut it then. Do not
+keep re-asking why they are uninvoked.
 

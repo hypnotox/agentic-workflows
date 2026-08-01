@@ -163,7 +163,7 @@ func TestNewADRErrors(t *testing.T) {
 
 // On the integration branch the scaffold allocates a number; off it - another
 // branch, a detached HEAD, or a tree with no repository at all - it writes the
-// slug-identified pending form (ADR-0194 item 5).
+// slug-identified pending form (ADR-0202 item 5).
 // invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering
 func TestNewADRIsBranchAware(t *testing.T) {
 	for _, tc := range []struct {

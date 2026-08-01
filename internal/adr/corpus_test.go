@@ -344,7 +344,7 @@ func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Pa
 // construction seams call it: LoadCorpus, the full-body read every consumer of
 // a governed record enters through, and loadIdentityCorpus, the identity-only
 // read scaffolding uses so authoring never depends on another record's body
-// parsing (ADR-0194 item 17).
+// parsing (ADR-0202 item 17).
 // invariant: adr-system/adr-lifecycle:corpus-parsed-once
 func parseDirProblems(callers map[callOwner][]string) []string {
 	want := map[callOwner]bool{

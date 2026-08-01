@@ -121,7 +121,7 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 
 // observeRenderInputs records an existing output as a managed-output input when
 // the section plan carries an in-place section, so the read-back channel shows
-// up in the output declaration parity.
+// up among the node's observed inputs.
 func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)

@@ -134,7 +134,7 @@ func TestCheckPairNumberingTransition(t *testing.T) {
 	// comparison from the ordinary append-tolerant rule. Proposed -> Accepted is a
 	// legal transition anywhere else, so the ordinary rule accepts it and only the
 	// byte-identical comparison refuses numbering that rides along with it
-	// (ADR-0194 item 9: numbering touches no status-history event).
+	// (ADR-0202 item 9: numbering touches no status-history event).
 	t.Run("a status advance riding along", func(t *testing.T) {
 		got := messages(currentstate.CheckPair(
 			uni([]adr.ADR{v3record("", "beta", "Proposed")}),
@@ -149,7 +149,7 @@ func TestCheckPairNumberingTransition(t *testing.T) {
 // The substitution must also reach a declared update landing in the same
 // transition: ADR-0400 revises two claims whose authored provenance still cites
 // the pending slug, so the preserve-Origin and Revised-by rules compare the
-// substituted before claim (ADR-0194 item 11). Without it both rules fire on
+// substituted before claim (ADR-0202 item 11). Without it both rules fire on
 // provenance the numbering in this very pair rewrote, and the integration commit
 // is blocked by a finding about its own effect. The two claims split the halves:
 // d/t:y carries the slug as its Origin, d/t:z carries it in Revised-by.

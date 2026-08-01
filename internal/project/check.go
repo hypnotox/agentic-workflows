@@ -160,7 +160,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 			continue
 		}
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
+		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
 			label = localLabel(f.TemplateID, f.Path)
 		}
 		note := fmt.Sprintf("%s references unset vars: %s; set a value, or delete the key to accept the generic prose",
@@ -354,32 +354,10 @@ func artifactLabel(tid string) string {
 // "<prefix>-" prefix); adapter duplicates share one path-derived name, so note
 // dedup still collapses them.
 func localLabel(tid, path string) string {
-	if tid == baseSkillTID {
+	if tid == baseTID("skills") {
 		return "skill " + filepath.Base(filepath.Dir(path))
 	}
 	return "agent " + strings.TrimSuffix(filepath.Base(path), ".md")
-}
-
-// validateArtifact validates an artifact using its declared encoder, never a
-// filename suffix. This keeps policy routing independent of path spelling.
-func validateArtifact(content []byte, encoder AgentDialect) error {
-	if encoder == TOMLAgentDialect {
-		return validateTOMLAgent(content)
-	}
-	return validateFrontmatter(content)
-}
-
-// localOutPaths returns the conventional output paths for a local artifact.
-func (p *Project) localOutPaths(kind, name string) []string {
-	d, ok := descriptorByPlural(kind)
-	if !ok || d.outPath == nil {
-		return nil
-	}
-	paths := make([]string, 0, len(p.Targets))
-	for _, t := range p.Targets {
-		paths = append(paths, d.outPath(t, p.Cfg.Prefix, name))
-	}
-	return paths
 }
 
 // declaredSections returns the catalog-declared section names for a target.
@@ -468,7 +446,7 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 // the integration branch was never numbered, and every `ADR-<slug>` provenance
 // reference it left behind resolves to nothing.
 //
-// The block fires only on a positive branch identification (ADR-0194 item 7):
+// The block fires only on a positive branch identification (ADR-0202 item 7):
 // a detached HEAD, another branch, or an unreadable repository emits nothing,
 // because an indeterminate answer is not evidence that the record is in the
 // wrong place. That deliberately leaves automated detached-HEAD runs to the
@@ -513,7 +491,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 				drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})
 				continue
 			}
-			onDisk, err := os.ReadFile(p.outputPath(path))
+			onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 			if err != nil {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 				continue
@@ -538,7 +516,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"})
 			continue
 		}
-		onDisk, err := os.ReadFile(p.outputPath(path))
+		onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 		if err != nil {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 			continue
@@ -628,7 +606,7 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // ADR-0098) are skipped. A ```commit subject's length/type/shape violation is
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
 // An adrs: entry resolves by identity, so a number and a pending record's slug
-// resolve through one lookup and a link survives numbering (ADR-0194 item 14).
+// resolve through one lookup and a link survives numbering (ADR-0202 item 14).
 func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
 	plansDir := filepath.Join(p.Root, p.Cfg.DocsDir, "plans")
 	plans, err := plan.ParseDir(plansDir)

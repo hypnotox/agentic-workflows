@@ -363,7 +363,7 @@ func reservedMetadata(line string) bool {
 
 // parseADRRef reads one ADR provenance reference in either identity form: the
 // four-digit number of a numbered record, or the slug of a pending record
-// awaiting its number at integration (ADR-0194 item 10). A purely numeric token
+// awaiting its number at integration (ADR-0202 item 10). A purely numeric token
 // of any other length is neither form and is rejected, so a mistyped number can
 // never be read as a slug.
 func parseADRRef(s string) (string, error) {

@@ -17,17 +17,9 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
-)
-
-const (
-	bridgeTID    = "claude/CLAUDE.md.tmpl"
-	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
-	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
-	effortsTID   = "efforts/gitignore.tmpl"
-	worktreesTID = "worktrees/gitignore.tmpl"
-	runnerTID    = "runner/awf.tmpl"
 )
 
 // runnerSections is the pure awf wrapper's single declared section: the body
@@ -36,7 +28,8 @@ const (
 var runnerSections = []string{"runner-body"}
 
 // hookNames are the git-hook payload scripts the hooks singleton renders as a
-// unit under .awf/hooks/ (ADR-0048); template ids are hooks/<name>.sh.tmpl.
+// unit under .awf/hooks/ (ADR-0048); each name resolves its template id
+// through hookTID.
 var hookNames = []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit"}
 
 // HookNames returns the git-hook payload names the hooks singleton renders
@@ -78,9 +71,10 @@ type RenderedFile struct {
 	// consumption the assembled source cannot show (both ADR-0086).
 	kind, artifact string
 	partVarRefs    []string
-	// ConsumedInputs is observed at the render seam. It is intentionally
-	// independent of BuildOutputDeclarations so declaration omissions and role
-	// mistakes fail output-plan parity.
+	// ConsumedInputs is observed at the render seam, independently of
+	// BuildOutputDeclarations: the context artifact report reads the observed
+	// set, so a declaration omission or role mistake shows there rather than
+	// being papered over by the declaration it was derived from.
 	ConsumedInputs     []OutputInput
 	ObservedTemplateID string
 }
@@ -392,7 +386,7 @@ type renderKindSpec struct {
 // touches-state: rendering/local-artifacts:local-renders-from-base - skillTID resolves a local skill to the base template; proof in local_test.go
 func (p *Project) skillTID(n string) string {
 	if p.Cat.Skills[n].Base {
-		return baseSkillTID
+		return baseTID("skills")
 	}
 	return mustDescriptor("skills").tid(n)
 }
@@ -400,7 +394,7 @@ func (p *Project) skillTID(n string) string {
 // agentTID mirrors skillTID for agents.
 func (p *Project) agentTID(n string) string {
 	if p.Cat.Agents[n].Base {
-		return baseAgentTID
+		return baseTID("agents")
 	}
 	return mustDescriptor("agents").tid(n)
 }
@@ -557,7 +551,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		data["docs"] = docs
 		data["mandatoryDocs"] = p.documentMapDocs()
-		rf, err := p.renderTarget("agents-doc", "", "agents-doc/AGENTS.md.tmpl",
+		rf, err := p.renderTarget("agents-doc", "", p.Cat.Docs["agents-doc"].TID,
 			p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
 		if err != nil {
 			return nil, err
@@ -627,7 +621,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// sections, like the bootstrap; awf never activates them.
 	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
 		for _, name := range hookNames {
-			hrf, err := p.renderTarget("hooks", "", "hooks/"+name+".sh.tmpl",
+			hrf, err := p.renderTarget("hooks", "", hookTID(name),
 				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/hooks/"+name+".sh", eff)
 			if err != nil { // coverage-ignore: every var reference in the hook templates is with/else- or if-wrapped (ADR-0045), and they use no parts, so renderTarget cannot produce <no value> or a read error
 				return nil, err
@@ -648,8 +642,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	}
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
-	for _, resident := range residentRoots {
-		rf, err := p.renderTarget(resident.Name, "", resident.TemplateID, nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+resident.Name+"/.gitignore", eff)
+	for _, name := range resident.RootNames() {
+		rf, err := p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff)
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}
@@ -752,7 +746,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "efforts" && kind != "worktrees" && kind != "runner" {
+	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err

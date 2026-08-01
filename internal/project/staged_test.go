@@ -1040,7 +1040,7 @@ func publicTopicClaims(slugs ...string) string {
 
 // The V3 sealing edge admits exactly the schema migration's write: the computed
 // corpus cutoff into an authority that carried none, with every other permanent
-// value unchanged (ADR-0194 item 1).
+// value unchanged (ADR-0202 item 1).
 // invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
 func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T) {
 	t.Parallel()
@@ -1052,8 +1052,8 @@ func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := &manifest.Lock{SchemaVersion: 27, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
-	after := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
+	before := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
+	after := &manifest.Lock{SchemaVersion: 29, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
 	if err := validatePermanentLockTransition(tree, tree, before, after); err != nil {
 		t.Fatalf("computed cutoff: %v", err)
 	}
@@ -1068,7 +1068,7 @@ func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T)
 	}
 	// Each cutoff is sealed by its own generation, so the computed value at any
 	// other generation pair is an authority the migration never writes.
-	offGeneration := &manifest.Lock{SchemaVersion: 27, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
+	offGeneration := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
 	if err := validatePermanentLockTransition(tree, tree, before, offGeneration); err == nil || !strings.Contains(err.Error(), "changes immutable") {
 		t.Fatalf("seal without the generation stamp = %v", err)
 	}

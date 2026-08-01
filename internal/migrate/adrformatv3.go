@@ -11,7 +11,7 @@ import (
 )
 
 // adrFormatV3Generation is the schema generation that seals the V3 cutoff.
-const adrFormatV3Generation = 28
+const adrFormatV3Generation = 29
 
 func applyADRFormatV3Cutoff(root string, out io.Writer) error {
 	return applyADRFormatV3CutoffWithSave(root, out, func(lock *manifest.Lock, path string) error {
@@ -21,7 +21,7 @@ func applyADRFormatV3Cutoff(root string, out io.Writer) error {
 
 // applyADRFormatV3CutoffWithSave seals the permanent V3 boundary at the corpus's
 // next identity, so every record authored from here on is current-state-v3 and
-// every existing record is grandfathered at its authored format (ADR-0194 item
+// every existing record is grandfathered at its authored format (ADR-0202 item
 // 1). The schema stamp and the cutoff travel in one atomic lock save.
 func applyADRFormatV3CutoffWithSave(root string, out io.Writer, save lockSaver) error {
 	lockPath := config.LockPath(root)

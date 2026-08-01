@@ -25,13 +25,13 @@ Backing: test
 
 The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, the top-level scalar SetString editor, SetMappingScalar, the typed nested-integer SetMappingInteger editor, and the nested-string SetMappingString editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
 Origin: ADR-0026
-Revised-by: ADR-0144, ADR-0159, ADR-0194
+Revised-by: ADR-0144, ADR-0159, ADR-0202
 Backing: test
 
 ### `invariant: integration-branch-explicit`
 
 The config carries a required integrationBranch key with no in-code default: validation rejects an absent or empty value, a value containing whitespace, and a value starting with a hyphen while accepting a slashed branch name, its schema migration writes integrationBranch: main visibly into a config that lacks it and leaves a config that already carries one byte-identical, and a freshly scaffolded config writes the key so it validates against its own rules.
-Origin: ADR-0194
+Origin: ADR-0202
 Revised-by: ADR-lock-cutoffs-and-schema-generations-reconcile-at-integration
 Backing: test
 
@@ -45,12 +45,6 @@ Backing: test
 
 The skills, agents, and docs keys in config.yaml are plain string arrays whose entries enable targets by presence, and a data, sections, or local key placed at the root of config.yaml is rejected at load.
 Origin: ADR-0009
-Backing: test
-
-### `invariant: topic-claim-budget-configured`
-
-The positive currentState.maxClaimsPerTopic setting has an effective default of 20, is explicitly serialized by scaffold and schema migration, and is exposed consistently through strict config parsing, configspec, generated reference state, render hashing, and lock inputs.
-Origin: ADR-0144
 Backing: test
 
 ### `invariant: no-replacewith`

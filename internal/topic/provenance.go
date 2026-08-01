@@ -21,7 +21,7 @@ const (
 // record's assigned `ADR-NNNN` form, and every touched `Revised-by:` list is
 // rewritten to the duplicate-free ascending order ADR-0191 requires.
 //
-// This is the substitution half of numbering (ADR-0194 item 9), and it lives
+// This is the substitution half of numbering (ADR-0202 item 9), and it lives
 // here because the `Origin:`/`Revised-by:` line grammar is this package's. Two
 // scoping rules keep the effect exhaustive: it is anchored on those two
 // metadata lines, so a slug named in claim prose is never rewritten, and it

@@ -14,7 +14,7 @@ import (
 // The open is the ordinary one on purpose. It loads config and the catalog but
 // never the ADR corpus, so a corpus carrying a duplicate identity - exactly the
 // corpus `awf adr number` exists to diagnose - reaches the engine's refusal
-// logic as data instead of aborting the open (ADR-0194 item 12).
+// logic as data instead of aborting the open (ADR-0202 item 12).
 func runADR(c *cmdCtx) error {
 	if c.sub != "number" {
 		return &usageErr{"usage: awf adr number [<slug>...]"}

@@ -168,6 +168,48 @@ func sameWorktreePath(left, right string) bool {
 // assert on without depending on any Git message.
 func failing(name string) error { return errors.New("injected " + name) }
 
+// mergedTip and otherTip are the two commits a topology test needs: the one
+// MERGE_HEAD names, and any commit that is not it.
+const (
+	mergedTip = "0000000000000000000000000000000000000001"
+	otherTip  = "0000000000000000000000000000000000000002"
+)
+
+// markerAt answers an existing path for one Git operation marker and an absent
+// path for every other, which is how a test puts a checkout mid-operation.
+func markerAt(t *testing.T, present string) func(context.Context, string) (string, error) {
+	t.Helper()
+	marker := filepath.Join(t.TempDir(), present)
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	absent := t.TempDir()
+	return func(_ context.Context, name string) (string, error) {
+		if name == present {
+			return marker, nil
+		}
+		return filepath.Join(absent, name), nil
+	}
+}
+
+// mergeHeadAt answers commit for MERGE_HEAD and a different commit for every
+// other revision, so a test proves attribution reads the merged tip from
+// MERGE_HEAD and not from whatever revision it happens to ask for.
+func mergeHeadAt(commit string) func(context.Context, string) (string, error) {
+	return func(_ context.Context, revision string) (string, error) {
+		if revision == "MERGE_HEAD" {
+			return commit, nil
+		}
+		return otherTip, nil
+	}
+}
+
+// registrations answers a fixed worktree listing, so a test states the managed
+// topology it exercises as data rather than by building one.
+func registrations(listed ...awfgit.WorktreeRegistration) func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+	return func(context.Context) ([]awfgit.WorktreeRegistration, error) { return listed, nil }
+}
+
 // worktreeControlRoots resolves the control roots the composed command would.
 func worktreeControlRoots(t *testing.T, root string) awfgit.ControlRoots {
 	t.Helper()

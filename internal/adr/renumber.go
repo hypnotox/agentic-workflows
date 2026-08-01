@@ -11,7 +11,7 @@ import (
 // `NNNN-<slug>.md` and rewrites its `# ADR-<slug>:` heading to `# ADR-NNNN:`.
 // Nothing else moves: the retained `slug:` frontmatter key, every body byte, and
 // every Status history event survive verbatim, which is what makes numbering
-// digest-safe and history-free (ADR-0194 item 9).
+// digest-safe and history-free (ADR-0202 item 9).
 //
 // It is the rewrite seam the numbering command performs its rename through, and
 // the only reader and writer of a decision record's path outside this package's

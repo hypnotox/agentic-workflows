@@ -1,13 +1,13 @@
 ---
 date: 2026-07-31
-adrs: [194]
+adrs: [202]
 status: Proposed
 ---
 # Plan: Slug-identified pending ADRs numbered at integration
 
 ## Goal
 
-Implement ADR-0194: format `current-state-v3` pending ADRs (`<slug>.md`, mandatory
+Implement ADR-0202: format `current-state-v3` pending ADRs (`<slug>.md`, mandatory
 retained `slug:` frontmatter), branch-aware scaffolding against a new required-explicit
 `integrationBranch` config key, the pending-on-integration-branch block, slug-capable
 plan links, the gated `awf adr number` command with its sanctioned numbering transition,
@@ -24,7 +24,7 @@ execution stops there.
 ## Architecture summary
 
 Six phases, each an independently green transaction. Phase 1 merges the landed seam work
-in and resyncs (including the possible one-time manual renumber of ADR-0194 itself).
+in and resyncs (including the possible one-time manual renumber of ADR-0202 itself).
 Phase 2 makes pending records first-class corpus members: the `adrFormatV3From` lock
 cutoff, the V3 parse path with slug identity, slug-aware corpus indexing with hard
 duplicate errors, provenance matching for slug-form `Origin:`/`Revised-by:`, INDEX
@@ -36,7 +36,7 @@ to accept slugs. Phase 5 builds `awf adr number` and the slug-paired numbering
 transition validation. Phase 6 renders the pre-merge-commit payload and lands the
 documentation and changelog obligations.
 
-ADR-0194's operations apply as six Implementing batches: one per implementation phase
+ADR-0202's operations apply as six Implementing batches: one per implementation phase
 (Phase 2 appends the Implementing status event first), plus one that lands with the
 Phase 3 review settlement. Each batch's Applied event lists
 its operations in State-changes declaration order using the post-ADR-0191 grammar
@@ -104,7 +104,7 @@ suite, no backend types across the surface).
     `templates/adr-template/template.md.tmpl`
   - `.awf/awf.lock`, `.awf/config.yaml`, `examples/sundial/.awf/awf.lock`,
     `examples/sundial/.awf/config.yaml` (self-migration via `awf upgrade`)
-  - `docs/decisions/0194-slug-identified-pending-adrs-numbered-at-integration.md`
+  - `docs/decisions/0202-slug-identified-pending-adrs-numbered-at-integration.md`
     (status history events), `changelog/`, rendered docs via `./x render`
 - **Deleted:** none.
 
@@ -146,7 +146,7 @@ docs(plans): record the seam-landing baseline for the numbering plan
 ## Phase 2: Format V3 core - lock cutoff, pending identity, corpus and checks
 
 **Execution mode: subagent-driven.** Baseline commands: `git status --short` prints
-nothing; `./x gate` exits 0; `./awf check` prints clean. This phase closes with ADR-0194
+nothing; `./x gate` exits 0; `./awf check` prints clean. This phase closes with ADR-0202
 entering `Implementing` and Applied batch 1.
 
 - [x] **Task 2.1: Lock field `ADRFormatV3From`.** In `internal/manifest/manifest.go`,
@@ -222,7 +222,7 @@ entering `Implementing` and Applied batch 1.
   `*DuplicateIdentityError{Numbers, Slugs []string}` whose message reads
   `"ADR number %s is declared by more than one file"` /
   `"ADR slug %q is declared by more than one file"` (closing the silent last-wins
-  blindness ADR-0194's Consequences name). The returned `Corpus` is still populated
+  blindness ADR-0202's Consequences name). The returned `Corpus` is still populated
   (last-wins) alongside the typed error, documented as being for the numbering
   command's refusal path only; every other caller treats the error as fatal. Add `HasSlug(slug string) bool` and `BySlug(slug string) (ADR, bool)`. Update
   every `NewCorpus`/`LoadCorpus` caller (enumerate via `grep -rn "NewCorpus\|LoadCorpus"
@@ -241,7 +241,7 @@ entering `Implementing` and Applied batch 1.
   pending record's slug. A slug reference with no matching pending record is the
   finding `"claim %s cites pending ADR-%s which is not in the corpus"` - after
   numbering, a leftover slug reference is therefore an error, which is what forces the
-  substitution to be complete. ADR-0194 item 10's ordering rule lands here too, inside
+  substitution to be complete. ADR-0202 item 10's ordering rule lands here too, inside
   `checkBackward`'s ascending-order validation: numeric entries keep the existing
   ascending comparison; a slug entry is legal only after every numeric entry; slug
   entries compare in authored list order among themselves; and when the `Origin:` is
@@ -279,11 +279,11 @@ entering `Implementing` and Applied batch 1.
   at scaffold, `format: current-state-v3` routing, reserved basenames excluded) and
   `adr-slug-frontmatter-mandatory` (V3 records carry a mandatory `slug:` key equal to
   the filename derivation, retained after numbering; corpus-wide uniqueness over
-  slug-carrying records), each `Backing: test` with `Origin: ADR-0194` and Revised-by
+  slug-carrying records), each `Backing: test` with `Origin: ADR-0202` and Revised-by
   appended on the updates. Also in the adr-lifecycle part: update
   `applied-history-events-append-only`, generalizing it from "Stable V2 Status
   history" to both governed digest formats, V2 and V3, with no numbering exception
-  (ADR-0194 item 15 attributes this update to item 1's restatement; numbering touches
+  (ADR-0202 item 15 attributes this update to item 1's restatement; numbering touches
   no history event). In
   `.awf/topics/parts/config/migrations-and-locks/current-state.md`: update
   `adr-v2-cutoff-atomic-immutable` from "both permanent format cutoffs" to the full
@@ -319,7 +319,7 @@ exits 0; `./awf check` clean.
   top-level scalar mapping entry, mirroring `SetArray`'s node handling (:107-122) with a
   scalar value node. Test: create-new, replace-existing, preserved comments/order,
   invalid-yaml error. The `config-serialization-owned` claim's closed editor
-  enumeration gains `SetString` (the claim update is declared by ADR-0194 and applies
+  enumeration gains `SetString` (the claim update is declared by ADR-0202 and applies
   in this phase's batch, Task 3.7).
 - [x] **Task 3.2: `integrationBranch` config key.** In `internal/config/config.go`: add
   `IntegrationBranch string` (`yaml:"integrationBranch"`) beside `Prefix` (:44); NO
@@ -391,7 +391,7 @@ exits 0; `./awf check` clean.
   branch as `cfg.IntegrationBranch`, emit drift
   `{Kind: "pending-adr-on-integration-branch", Detail: "<slug>"}` per pending record.
   Detached HEAD, another branch, or a probe error emits nothing (positive
-  identification only, per ADR-0194 item 7). Test both firing and all three
+  identification only, per ADR-0202 item 7). Test both firing and all three
   non-firing outcomes with a mocked seam.
 - [x] **Task 3.7: Claim mutations and batch 2.** In the adr-lifecycle part: update
   `adr-new-sequential-numbering` (branch-aware: highest-plus-one numbering on the
@@ -403,7 +403,7 @@ exits 0; `./awf check` clean.
   migration writes `integrationBranch: main` visibly, no in-code default, audit range
   resolution never reads it); update `config-serialization-owned` (the closed editor
   enumeration gains the top-level `SetString`). Proof markers on the Task
-  3.1/3.2/3.3/3.5/3.6 tests. Placement note: ADR-0194 item 15 names
+  3.1/3.2/3.3/3.5/3.6 tests. Placement note: ADR-0202 item 15 names
   internal/currentstate as `pending-blocked-from-integration-branch`'s proof home, but
   the block is a corpus-level drift check implemented in internal/project (Task 3.6),
   so its marker lands on the internal/project test - a deliberate, stated deviation
@@ -484,7 +484,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
      duplicates - error `"no pending ADR to number"`; multiple pending and no args -
      error listing every pending slug, one per line; an arg naming a non-pending slug -
      error naming it; an explicit list omitting any pending slug - error naming the
-     omitted slugs (ADR-0194 item 8: completeness is required, partial numbering has
+     omitted slugs (ADR-0202 item 8: completeness is required, partial numbering has
      no legal destination); an argument order that numbers a pending record before
      another pending record whose claim-add it revises - error naming the dependency
      (`"<slug-a> revises a claim added by <slug-b>; number <slug-b> first"`; the check
@@ -519,7 +519,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   engine over a fixture whose `docs/plans/` holds a plan linking the pending record by
   slug, and assert every file under `docs/plans/` is byte-identical afterwards and the
   slug link still resolves. Phase 4 shipped that claim's "Numbering never rewrites a
-  plan" sentence, and this is the only test that can falsify it - ADR-0194 spent its one
+  plan" sentence, and this is the only test that can falsify it - ADR-0202 spent its one
   operation on the claim in batch 4 and cannot amend the sentence again.
 - [x] **Task 5.3: Slug-paired numbering transition validation.** In
   `internal/currentstate/transition.go`: the pairing key (`byNumber`, :456-457, and
@@ -553,7 +553,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   preconditions on a green check) and `adr-number-immutable` (a number once assigned
   never changes; stale numbering is unmade by reset-remake; the command refuses a
   duplicate-number corpus with the recipe hint and uses no git provenance). Proof
-  markers on Task 5.2/5.3 tests. Placement note: ADR-0194 item 15 names
+  markers on Task 5.2/5.3 tests. Placement note: ADR-0202 item 15 names
   internal/currentstate as `adr-number-immutable`'s proof home, but the refusals it
   proves live in the internal/project numbering engine (Task 5.2), so its marker
   lands on the internal/project test - a deliberate, stated deviation
@@ -589,7 +589,7 @@ feat(adr-system): add awf adr number and its numbering transition
   `hook-payloads-rendered`'s existing proof marker stays on that test, which is what keeps
   the claim backed while its prose waits for Task 6.3's deferred transaction.
 - [x] **Task 6.2: Documentation obligations.** Update the authored sources named by
-  ADR-0194 item 16: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
+  ADR-0202 item 16: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
   carries the `slug:` key and the pending shape (keep every interpolation
   publication-safe), AND the shipped default it overrides,
   `templates/adr-template/template.md.tmpl` (frontmatter section), carrying the same
@@ -603,7 +603,7 @@ feat(adr-system): add awf adr number and its numbering transition
   and `templates/skills/reviewing-impl/SKILL.md.tmpl` step 8 (:72-77, the
   worktree-integration routing), which gains the merge-in, `awf adr number`, gate,
   merge-back procedure and states that a worktree holding several pending records
-  requires an explicit list naming every one in add-before-revise order (ADR-0194
+  requires an explicit list naming every one in add-before-revise order (ADR-0202
   item 16; publication-safe interpolations, golden-update the rendered outputs).
   Update the three shipped templates that still teach the numbered-only convention:
   `templates/adr-readme/README.md.tmpl` (:30, :33, :40 - "exactly three keys" becomes
@@ -704,7 +704,7 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   sequence-shift step, the sequence-modulo transition relaxation, the mapping's
   sequence lines (Phase 5), and every phase-close "next unclaimed sequence"
   instruction describe machinery that no longer exists. RESYNC REQUIRED: amend the
-  still-Proposed ADR-0194 against 0191 (and verify 0192's impact), then run plan
+  still-Proposed ADR-0202 against 0191 (and verify 0192's impact), then run plan
   resync; execution pauses after this Phase 1 close.
 - 2026-07-31, Phase 2 execution findings, four deviations from the task wording, each
   forced by a repository invariant or by a defect Phase 2's own change would otherwise
@@ -807,7 +807,7 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
     against ADR-0107; the correction is recorded as a breaking change.
   - Task 4.1's "a string node matching the slug grammar fills `Slug`; anything else errors"
     is implemented as: any non-empty string scalar fills `Slug`, and an entry naming no
-    record fails link validation as scoped `plan-adr-link` drift. ADR-0194 item 14 says an
+    record fails link validation as scoped `plan-adr-link` drift. ADR-0202 item 14 says an
     entry that resolves to neither "fails link validation", and aborting the whole check on
     a non-canonical string would report the same mistake worse. A number outside 1 to 9999
     and an empty scalar are refused at parse, since neither can name a record.
@@ -829,12 +829,12 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   routes a four-digit key to the number index, and unlinkable from a plan, since
   `plan.ADRLink` reads any digits-only entry as a number. The scaffold now refuses an
   all-digit slug (`allDigitSlugRe`), which closes both and is the half available here:
-  the complete guard belongs on `corpus-single-identity-key`, and ADR-0194 spent its one
+  the complete guard belongs on `corpus-single-identity-key`, and ADR-0202 spent its one
   operation on that claim in batch 1. The corpus-guard remainder stays in docs/roadmap.md
   for a later record.
 - 2026-07-31, Phase 4 review blocker, ruled by the user: the claim sentence "Numbering
   never rewrites a plan." shipped in batch 4 with nothing able to falsify it, and
-  ADR-0194 cannot amend it (a claim carries at most one operation per ADR, and batch 4
+  ADR-0202 cannot amend it (a claim carries at most one operation per ADR, and batch 4
   spent it). Rather than a successor ADR, Phase 5 proves it: Task 5.2 gains a
   plans-byte-identical test and Task 5.4 puts a second `plan-adr-link-resolved` proof
   marker on it. No operation is added - the claim text does not change again.

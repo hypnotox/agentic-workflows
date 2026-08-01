@@ -69,5 +69,4 @@ currentState:
   testGlobs:
     - "**/*_test.go"
   maxTopicsPerPath: 8
-  maxClaimsPerTopic: 20
 integrationBranch: main

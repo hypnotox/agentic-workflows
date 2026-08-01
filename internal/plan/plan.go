@@ -28,7 +28,7 @@ var FilenameRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-.+\.md$`)
 // ADRLink is one `adrs:` frontmatter entry. A plan links a decision record by
 // its number or, before integration numbers it, by the retained slug of a
 // pending record, so the link stays valid across numbering without the plan
-// being rewritten (ADR-0194 item 14). Exactly one field is set.
+// being rewritten (ADR-0202 item 14). Exactly one field is set.
 type ADRLink struct {
 	Number int
 	Slug   string
@@ -50,7 +50,7 @@ const adrLinkMaxNumber = 9999
 // UnmarshalYAML reads one `adrs:` entry: a digits-only scalar is a number, and
 // any other non-empty string scalar is a slug. A slug is not validated against
 // the slug grammar here - an entry that names no record in the corpus fails
-// link validation with a scoped finding (ADR-0194 item 14) rather than taking
+// link validation with a scoped finding (ADR-0202 item 14) rather than taking
 // the whole check down. The number case is matched first, so an entirely
 // numeric slug would be read as a number; the ADR scaffold refuses an all-digit
 // slug for exactly that reason. Any other node names itself in the error.

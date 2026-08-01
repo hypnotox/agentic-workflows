@@ -232,3 +232,25 @@ func validateFrontmatter(content []byte) error {
 	}
 	return nil
 }
+
+// validateArtifact validates an artifact using its declared encoder, never a
+// filename suffix. This keeps policy routing independent of path spelling.
+func validateArtifact(content []byte, encoder AgentDialect) error {
+	if encoder == TOMLAgentDialect {
+		return validateTOMLAgent(content)
+	}
+	return validateFrontmatter(content)
+}
+
+// localOutPaths returns the conventional output paths for a local artifact.
+func (p *Project) localOutPaths(kind, name string) []string {
+	d, ok := descriptorByPlural(kind)
+	if !ok || d.outPath == nil {
+		return nil
+	}
+	paths := make([]string, 0, len(p.Targets))
+	for _, t := range p.Targets {
+		paths = append(paths, d.outPath(t, p.Cfg.Prefix, name))
+	}
+	return paths
+}

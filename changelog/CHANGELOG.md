@@ -10,6 +10,36 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Remove the `currentState.maxClaimsPerTopic` config key and the non-failing topic claim-count
+  note `awf check` emitted from it. Schema generation 28 removes the key from an existing tree;
+  because `config.yaml` is strict-parsed, a tree that still carries the key fails to load on
+  this binary until `awf upgrade` runs. Topic cohesion is now an authoring and review concern:
+  see the `One subject per topic` rule in the documentation standard.
+
+- Compress the rendered checkpoint blocks to a four-step digest and replace the inlined
+  context-spill recovery paragraph with a one-line pointer at every context-calling skill and
+  the grounding-checker agent body; the full spill contract moves to a new `Context spill
+  notices` subsection of `docs/working-with-awf.md`, its single rendered home (ADR-0197).
+  Authority precedence and the one-writer contract leave the checkpoint blocks for the
+  workflow doc's working-memory section. An adopter overriding the working-with-awf doc's
+  `commands` part must carry the spill contract in the override.
+
+- The four reviewing skills dispatch their verify pass conditionally (ADR-0197): a fix round
+  whose applied fixes are all mechanical skips it and records the skip; any reasoned or
+  user-decision fix keeps it. The `Record:` evidence block narrows to material decisions
+  (scope, design, authority, or previously-approved output); reviewer briefs paste whatever
+  blocks exist. The reviewing skills' restated commit-scope list and the coverage-regression
+  reminder are deleted where deterministic gates already enforce them; an adopter without
+  such gates loses a reminder, not a control.
+
+- Reword the staged-authority instruction across the agent guide, the adr-lifecycle,
+  executing-plans, subagent-driven-development, and writing-plans skills, the implementer
+  contract, and the plans README and template: every commit still requires the staged check and
+  the gate to pass, but a wired pre-commit hook is named as the enforcing layer and a manual run
+  before committing is instructed only for a clone without wired hooks. The unconditional
+  "run both commands manually, the hook repeats the staged check as defense in depth" model no
+  longer renders (ADR-0196).
+
 - A zero-padded `adrs:` entry in a plan is now always read as a decimal ADR number. The YAML
   decoder previously read one whose digits are all octal-valid as octal, so `adrs: [0153]`
   silently resolved against ADR-0107 and `adrs: [0012]` against ADR-0010, while a spelling
@@ -20,7 +50,7 @@ query a single version or a range.
   empty entry, are now refused outright instead of decoding to an unusable number.
 
 - Add the `current-state-v3` ADR format and its `adrFormatV3From` lock cutoff, sealed by schema
-  generation 28. V3 is `current-state-v2` plus a mandatory `slug:` frontmatter key that is
+  generation 29. V3 is `current-state-v2` plus a mandatory `slug:` frontmatter key that is
   retained forever, and a record carrying no number routes into the corpus by that format marker
   instead of by a cutoff. Two adopter-visible consequences land with it. A file under
   `docs/decisions/` that is neither a reserved basename (`README.md`, `INDEX.md`, `template.md`)
@@ -30,7 +60,7 @@ query a single version or a range.
   last-wins parse. Run `awf upgrade` to seal the cutoff; a fresh adoption seals V3 alongside V2.
 
 - Add the required `integrationBranch` config key, written visibly into `config.yaml` by schema
-  generation 29. It is the first key awf requires explicitly with no in-code default: it decides
+  generation 30. It is the first key awf requires explicitly with no in-code default: it decides
   whether `awf new adr` writes a numbered or a pending record, and a silently defaulted branch
   name would silently change which. `awf upgrade` seeds `integrationBranch: main`; a config that
   reaches validation without the key is refused. A pending ADR checked out on that branch now
@@ -230,7 +260,7 @@ query a single version or a range.
   bodies, refactor-coupling-audit uncounts its categories and gives each one its own report
   line so sidecar-dropped categories drop cleanly, restated working-memory and notes prose is
   trimmed, and shared spine prose moves into new `templates/partials/` files
-  (context-orientation, escalation-menu, coverage-oracle, exploration-breadth,
+  (context-orientation, escalation-menu, exploration-breadth,
   exploration-detail). Rendered output changes for every target.
 
 - Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
@@ -318,6 +348,20 @@ query a single version or a range.
   awf-verb vars already carry.
 
 ### Bug fixes
+
+- Managed-worktree refusals no longer direct an agent to resolve or discard work that may belong
+  to a concurrent effort. A checkout mid-merge is now refused with "finish or abort this merge
+  only if you started it; otherwise wait until this checkout is clean, then retry", and the
+  refusal names the effort whose tip is being merged when it can prove one from repository truth
+  alone (MERGE_HEAD matched against the effort branches registered at their managed worktrees).
+  The cleanliness refusal, which cannot attribute unstaged work, now asks the caller to confirm
+  the changes are its own before acting. Previously the cleanliness refusal told a blocked agent
+  to inspect and discard the changes with native Git and the merge refusal told it to finish or
+  abort the operation unconditionally, either of which destroys a peer's staged integration when
+  several efforts finish at once. The other four in-progress operations (cherry-pick, revert, and
+  the two rebase states) keep the unconditional finish-or-abort guidance. Attribution is
+  best-effort and decorates the refusal without deciding it: an unresolvable probe drops the
+  effort name and keeps the same instruction.
 
 - Divergent effort-integration guidance now derives the project gate command from `vars.gateCmd` and uses generic project-gate prose when that value is unavailable.
 - Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.

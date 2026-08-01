@@ -392,7 +392,7 @@ func keysOf(m map[string]string) []string {
 	return out
 }
 
-// Numbering deliberately does not precondition on a green check (ADR-0194 item
+// Numbering deliberately does not precondition on a green check (ADR-0202 item
 // 11): a green check between merge-in and numbering is the norm, but an
 // unrelated finding must not deadlock the one command that resolves the corpus.
 // The claim says so about this engine, and every other proof for it sits on the

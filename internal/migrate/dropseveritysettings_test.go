@@ -133,7 +133,7 @@ func TestApplyDropSeveritySettingsPreservesValuesNotLayout(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, ".awf", "config.yaml")
 	testsupport.WriteFile(t, p, "prefix: ex\ncurrentState:\n    topicCoverage: error\n"+
-		"    testGlobs: ['**/*_test.go']\n    maxTopicsPerPath:   8\n    maxClaimsPerTopic: 20\n")
+		"    testGlobs: ['**/*_test.go']\n    maxTopicsPerPath:   8\n")
 	if err := applyDropSeveritySettings(root, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
@@ -146,16 +146,13 @@ func TestApplyDropSeveritySettingsPreservesValuesNotLayout(t *testing.T) {
 		t.Fatalf("migrated config must parse: %v", err)
 	}
 	if cfg.CurrentState == nil {
-		t.Fatal("currentState block must survive: three siblings remain")
+		t.Fatal("currentState block must survive: two siblings remain")
 	}
 	if n := len(cfg.CurrentState.TestGlobs); n != 1 || cfg.CurrentState.TestGlobs[0] != "**/*_test.go" {
 		t.Errorf("testGlobs = %#v, want the configured value intact", cfg.CurrentState.TestGlobs)
 	}
 	if cfg.CurrentState.MaxTopicsPerPath == nil || *cfg.CurrentState.MaxTopicsPerPath != 8 {
 		t.Errorf("maxTopicsPerPath = %v, want the configured 8 intact", cfg.CurrentState.MaxTopicsPerPath)
-	}
-	if cfg.CurrentState.MaxClaimsPerTopic == nil || *cfg.CurrentState.MaxClaimsPerTopic != 20 {
-		t.Errorf("maxClaimsPerTopic = %v, want the configured 20 intact", cfg.CurrentState.MaxClaimsPerTopic)
 	}
 	if cfg.Prefix != "ex" {
 		t.Errorf("prefix = %q, want the configured value intact", cfg.Prefix)
@@ -192,7 +189,7 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The port-forward crosses every later generation too, so it also seeds the
-	// required integrationBranch key (ADR-0194 Decision 6).
+	// required integrationBranch key (ADR-0202 Decision 6).
 	want := "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8\nintegrationBranch: main\n"
 	if string(got) != want {
 		t.Fatalf("forward-ported config:\ngot  %q\nwant %q", got, want)
@@ -206,15 +203,17 @@ func TestConfigForCurrentSchemaDropsHistoricalSeveritySettings(t *testing.T) {
 	if string(again) != want {
 		t.Fatalf("not idempotent: %q", again)
 	}
-	// A generation at or past 25 skips the removal branch: the severity keys
-	// survive. The later integrationBranch seed still applies, so compare the
-	// removal's own effect rather than the whole document.
+	// A retired key is stripped whatever generation the tree is stamped with.
+	// The stamp is not proof the removal ever ran - concurrent generation
+	// allocation can leave a tree stamped past a removal it never applied - and
+	// the struct has no field left to decode these into, so a survivor would
+	// fail the parse this function exists to make succeed.
 	at25, err := ConfigForCurrentSchema(src, 25)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(at25), "topicCoverage: error") || !strings.Contains(string(at25), "topicFanout: warn") {
-		t.Fatalf("generation 25 must not re-apply the removal, got %q", at25)
+	if strings.Contains(string(at25), "topicCoverage") || strings.Contains(string(at25), "topicFanout") {
+		t.Fatalf("a retired key must not survive any stamped generation, got %q", at25)
 	}
 }
 

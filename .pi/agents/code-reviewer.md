@@ -39,7 +39,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Consensus adherence
 
-When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the diff against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the diff against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
 ## Universal lenses
 
@@ -113,7 +113,7 @@ Apply all lenses to every implementation diff:
 **migration-executed-not-read**: a migration that rewrites authored files (anything under the decisions dir, or config the adopter wrote) must be RUN against the real corpus before review concludes, not reasoned about from the diff. Reading cannot see what running shows: the generation-12 supersession-keys migration shipped three defects past code review that a single real run surfaced instantly - a slug anchor emitted with the item key so the token was inert, a stale `DecisionEnd` offset that appended into the following heading and silently deleted every slug an ADR declared (surfacing far away as unrelated token-ref drift), and a block-style list whose key line was stripped leaving orphan entries, producing invalid YAML and a corpus that no longer parsed. Check equally that the migrated corpus is CHECK-CLEAN, not merely that the expected strings appear: asserting token substrings is what let a chained-supersession defect through
 
 
-**insertion-preserves-comment-anchoring**: a comment or marker binds to the declaration that FOLLOWS it, so inserting a test or helper into an existing file silently re-anchors any comment block or `invariant:`/`touches-state:` marker it lands under. Check each insertion point in the diff for a preceding comment it now separates from its subject. Both shapes landed in one session on 2026-07-31: a new test inserted between two tooling/context-and-topic markers and the census test they backed left `context-path-classification`, whose ONLY proof repo-wide that marker was, pointing at a test exercising one of its eight classifications; and a helper inserted between writeValidJournal's doc comment and writeValidJournal left the comment describing the wrong function. Neither is visible to the gate or to `awf check` - the marker still resolves to A test and the code still compiles - and neither is visible in the diff hunk either, because the displaced comment is unchanged context rather than a changed line. Open the file at each insertion point. This is the cheap positional cause of the nominal-proof class the roadmap tracks separately.
+**comment-anchoring-survives-insertion-and-deletion**: a comment or marker binds to the declaration that FOLLOWS it, so inserting a test or helper into an existing file silently re-anchors any comment block or `invariant:`/`touches-state:` marker it lands under. Check each insertion point in the diff for a preceding comment it now separates from its subject. Both shapes landed in one session on 2026-07-31: a new test inserted between two tooling/context-and-topic markers and the census test they backed left `context-path-classification`, whose ONLY proof repo-wide that marker was, pointing at a test exercising one of its eight classifications; and a helper inserted between writeValidJournal's doc comment and writeValidJournal left the comment describing the wrong function. Neither is visible to the gate or to `awf check` - the marker still resolves to A test and the code still compiles - and neither is visible in the diff hunk either, because the displaced comment is unchanged context rather than a changed line. Open the file at each insertion point. This is the cheap positional cause of the nominal-proof class the roadmap tracks separately. DELETION is the mirror case and lands the same way: cutting a declaration from its own line forward to the NEXT declaration also removes the comment block belonging to that next one. On 2026-07-31 removing a single test that way stripped two `invariant:` markers off the following test, taking both claims from two backing sites to one; `awf check` requires only that a test-backed claim retain at least ONE marker anywhere, so nothing went red. Census the `invariant:`/`touches-state:` markers in any diff that deletes a declaration, and compare against the parent rather than reading the diff.
 
 
 **dependency-composition-authority**: when the diff changes dependency selection, ownership, or wiring, consult code-design/dependency-composition and flag speculative capability or a capability without one concrete first consumer
@@ -123,6 +123,18 @@ Apply all lenses to every implementation diff:
 
 
 **single-home-authority**: when the diff adds or converts a shared policy or mechanism, consult code-design/single-home and flag a second implementation of a concern another package already owns, a reduced copy where configuring the shared one would serve, and any fork or added coverage escape justified by coverage rather than by a materially different contract from a distinct source
+
+
+**presentation-ownership-authority**: when the diff changes where a result model is rendered for humans, or adds such a rendering, consult code-design/presentation-ownership and flag rendering that lives outside the package owning the model, and any model crossing a package boundary as a loosely-typed map whose discarded assertions turn a renamed field into a silently empty render under a green gate
+
+
+**outcome-modeling-authority**: when the diff changes how an outcome is surfaced, matched, or asserted, consult code-design/outcome-modeling and flag a production branch on a message substring, a new shallow os.Is* predicate call, a new error identity without a branching consumer in the same transaction, a test asserting error text where identity is the contract, and a new repository-state refusal outside the actionable outcome protocol
+
+
+**package-composition-authority**: when the diff adds a package, file, or exported surface, consult code-design/package-composition and flag a package doc comment that cannot state its ownership in one sentence, a grab-bag package or production file name, a new export with no outside-package production consumer in the same commit, and a new exported declaration of a bound kind without a doc comment
+
+
+**test-design-authority**: when the diff adds or converts Go tests, consult code-design/test-design and flag an assertion or matcher library import and a new package-level variable minted to be swapped by a test instead of constructor or parameter injection; swapping an existing census seam stays legal
 
 
 

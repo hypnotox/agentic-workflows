@@ -285,9 +285,9 @@ func TestSchema15PermanentAuthorityV2BoundaryMatrix(t *testing.T) {
 }
 
 // The cutoff set is ordered and each boundary is sealed by its own schema
-// generation: schema 28 requires adrFormatV3From, which must be positive and at
-// or above adrFormatV2From (ADR-0194 item 1).
-func TestSchema28PermanentAuthorityV3BoundaryMatrix(t *testing.T) {
+// generation: schema 29 requires adrFormatV3From, which must be positive and at
+// or above adrFormatV2From (ADR-0202 item 1).
+func TestSchema29PermanentAuthorityV3BoundaryMatrix(t *testing.T) {
 	fields := `"awfVersion":"0.30.0","files":{},"adrFormatV1From":4,"adrFormatV2From":6,"legacyAdrGaps":[]`
 	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":27}`)); err != nil {
 		t.Fatalf("schema 27 omission must remain compatible: %v", err)
@@ -302,10 +302,10 @@ func TestSchema28PermanentAuthorityV3BoundaryMatrix(t *testing.T) {
 		{"later V3 cutoff", `,"adrFormatV3From":9`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := Parse([]byte(`{` + fields + `,"schemaVersion":28` + tc.v3 + `}`))
+			got, err := Parse([]byte(`{` + fields + `,"schemaVersion":29` + tc.v3 + `}`))
 			if tc.want == "" {
 				if err != nil || got.ADRFormatV3From < got.ADRFormatV2From {
-					t.Fatalf("valid schema-28 authority = %#v, %v", got, err)
+					t.Fatalf("valid schema-29 authority = %#v, %v", got, err)
 				}
 				return
 			}

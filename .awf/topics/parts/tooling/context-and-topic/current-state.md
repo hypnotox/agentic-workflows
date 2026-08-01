@@ -58,6 +58,12 @@ Each effective path receives exactly one precedence-ordered classification: outs
 Origin: ADR-0148
 Backing: test
 
+### `invariant: context-query-boundary`
+
+Context assembly, classification, projection, and result rendering live in internal/contextq; internal/project's exported surface carries no context result vocabulary, and contextq reaches core state only through the assembled context-state value and its two core-side constructors.
+Origin: ADR-0195
+Backing: test
+
 ### `invariant: context-read-only`
 
 Direct awf context assembly reads one selected working-tree or immutable index universe and never mutates repository config, lock, outputs, or caches; staged config, lock, topic, marker, path, and artifact inputs never mix with dirty working bytes, while successful oversize delivery may create only the caller-owned external temporary file.
@@ -94,6 +100,12 @@ Backing: test
 
 awf init --describe prints the var descriptor set as JSON to stdout and creates no files under the target root.
 Origin: ADR-0148
+Backing: test
+
+### `invariant: production-packages-domain-owned`
+
+Every production package under internal/ and cmd/ is matched by at least one domain's paths; a package omitted from domain ownership fails the structural test rather than degrading silently to unowned.
+Origin: ADR-0195
 Backing: test
 
 ### `invariant: uncovered-collapses-directories`

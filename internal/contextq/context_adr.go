@@ -1,4 +1,4 @@
-package project
+package contextq
 
 import (
 	"path"
@@ -9,22 +9,22 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-type ADROperationDetail struct {
-	Current  *ContextClaimImpact
+type adrOperationDetail struct {
+	Current  *contextClaimImpact
 	History  *topic.ClaimHistory
-	Evidence []ContextEvidence
+	Evidence []contextEvidence
 }
-type ADROperationContext struct {
+type adrOperationContext struct {
 	Operation, Claim, Topic, Progress string
 	ClaimState                        string
-	Detail                            *ADROperationDetail
+	Detail                            *adrOperationDetail
 }
-type ADRArtifactContext struct {
+type adrArtifactContext struct {
 	Number, Title, Status, Mutability, AuthorityRole string
-	Operations                                       []ADROperationContext
+	Operations                                       []adrOperationContext
 }
 
-func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics topic.Corpus, facets []ContextFacet) *ADRArtifactContext {
+func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics topic.Corpus, facets []ContextFacet) *adrArtifactContext {
 	prefix := strings.TrimRight(decisionsDir, "/") + "/"
 	if !strings.HasPrefix(filePath, prefix) {
 		return nil
@@ -39,7 +39,7 @@ func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics t
 		mutability = "mutable"
 	}
 	identity := record.Identity()
-	out := &ADRArtifactContext{Number: identity, Title: trimADRTitle(identity, record.Title), Status: record.Status, Mutability: mutability, AuthorityRole: "pending intent or decision history; not current authority", Operations: []ADROperationContext{}}
+	out := &adrArtifactContext{Number: identity, Title: trimADRTitle(identity, record.Title), Status: record.Status, Mutability: mutability, AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{}}
 	if !slices.Contains(facets, FacetPending) {
 		return out
 	}
@@ -70,9 +70,9 @@ func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics t
 			copy := query.History[0]
 			history = &copy
 		}
-		entry := ADROperationContext{Operation: string(op.Verb), Claim: op.ID, Topic: topicOfClaim(op.ID), Progress: s, ClaimState: claimStateForOperation(string(op.Verb), op.ID, s, topics, history)}
+		entry := adrOperationContext{Operation: string(op.Verb), Claim: op.ID, Topic: topicOfClaim(op.ID), Progress: s, ClaimState: claimStateForOperation(string(op.Verb), op.ID, s, topics, history)}
 		if slices.Contains(facets, FacetEvidence) {
-			detail := &ADROperationDetail{History: history, Evidence: []ContextEvidence{}}
+			detail := &adrOperationDetail{History: history, Evidence: []contextEvidence{}}
 			if claim, active := topics.ByClaimID(op.ID); active {
 				impact := projectClaimImpact(claim, topics, facets)
 				detail.Current = &impact

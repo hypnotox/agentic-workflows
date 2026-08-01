@@ -132,12 +132,58 @@ func operationFree(ctx context.Context, checkout Runner) error {
 			return err
 		}
 		if _, err = os.Lstat(candidate); err == nil {
+			if name == "MERGE_HEAD" {
+				return mergeRefusal(ctx, checkout)
+			}
 			return refusal("operation", "checkout has an in-progress Git operation", false, "finish or abort the native Git operation, then retry")
 		} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
 			return err
 		}
 	}
 	return nil
+}
+
+// mergeRefusal is the one refusal that conditions resolution on ownership.
+// Finishing or aborting a merge destroys work when the caller did not start it,
+// and an effort integration sits staged and uncommitted in the receiving
+// checkout for the whole gate and renewed review. The caller's own stuck merge
+// still needs an exit, though, and this same probe runs against a caller's
+// managed checkout during removal, so the instruction guards resolution rather
+// than forbidding it. Attribution decorates the condition; it never decides the
+// instruction, because a merge nothing could name is no safer to abort.
+func mergeRefusal(ctx context.Context, checkout Runner) error {
+	condition := "a merge is in progress in this checkout"
+	if slug := integrationHolder(ctx, checkout); slug != "" {
+		condition = "a merge of effort " + slug + " is in progress in this checkout"
+	}
+	return refusal("operation", condition, false, "finish or abort this merge only if you started it; otherwise wait until this checkout is clean, then retry")
+}
+
+// integrationHolder names the effort whose branch is being merged here, or the
+// empty string when none can be proven. It derives the answer from repository
+// truth alone: MERGE_HEAD names the merged tip, and an effort branch is checked
+// out at its own managed worktree, so a registration on an effort branch whose
+// own HEAD is that tip identifies the holder. The registration carries the
+// commit already, so the whole topology is read from one snapshot rather than
+// re-resolved per branch. A probe that cannot answer leaves the merge
+// unattributed rather than propagating, because the refusal it decorates is
+// already correct without a name, and a wrong name is worse than none.
+func integrationHolder(ctx context.Context, checkout Runner) string {
+	tip, err := checkout.ResolveCommit(ctx, "MERGE_HEAD")
+	if err != nil {
+		return ""
+	}
+	registrations, err := checkout.WorktreeList(ctx)
+	if err != nil {
+		return ""
+	}
+	for _, registration := range registrations {
+		slug, ok := strings.CutPrefix(registration.Branch, "refs/heads/"+branch(""))
+		if ok && slug != "" && registration.HEAD == tip {
+			return slug
+		}
+	}
+	return ""
 }
 
 // requireClean refuses on any tracked, staged, or nonignored untracked change.
@@ -152,7 +198,7 @@ func requireClean(ctx context.Context, checkout Runner) error {
 		return err
 	}
 	if tracked > 0 || untracked > 0 {
-		return refusal("cleanliness", "checkout has tracked, untracked, or staged changes", false, "commit, remove, or explicitly inspect and discard the changes with native Git, then retry")
+		return refusal("cleanliness", "checkout has tracked, untracked, or staged changes", false, "confirm the changes are yours and not a concurrent effort's work, then commit them or inspect and discard them explicitly with native Git, and retry")
 	}
 	return nil
 }

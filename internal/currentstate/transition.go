@@ -102,7 +102,7 @@ func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMod
 		if b.Number != "" && b.Number != a.Number {
 			// Slug pairing makes a renumber or an un-numbering visible as one
 			// pair instead of a delete plus an add, so the number-immutability
-			// rule has to be stated here (ADR-0194 item 12).
+			// rule has to be stated here (ADR-0202 item 12).
 			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed its assigned number to ADR-%s across this transition; an assigned ADR number never changes", b.Number, a.Identity())})
 			continue
 		}
@@ -113,7 +113,7 @@ func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMod
 			// The sanctioned numbering transition permits the number, filename,
 			// and heading gain and nothing else about the record, so its status
 			// and Status history are compared for byte equality rather than
-			// through either append-tolerant variant (ADR-0194 item 11).
+			// through either append-tolerant variant (ADR-0202 item 11).
 			if !adr.HistoriesEqual(b, a) || !b.HasSameStatus(a) {
 				findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the numbering-transition rule: numbering pending ADR-%s must leave its status and Status history byte-identical", a.Number, b.Slug)})
 			}
@@ -135,7 +135,7 @@ func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMod
 
 // isNumberingPair reports whether a pair is the sanctioned numbering shape: the
 // before record is pending and the after record is the same slug carrying its
-// assigned number (ADR-0194 item 11).
+// assigned number (ADR-0202 item 11).
 func isNumberingPair(before, after adr.ADR) bool {
 	return before.IsPending() && after.Number != ""
 }
@@ -216,7 +216,7 @@ type appendedBatch struct {
 	// order is the owning record's provenance rank: its number when numbered,
 	// and one rank shared by every pending record, above every number. That
 	// places a pending batch after every numbered one, which is the order
-	// numbering will in fact assign it (ADR-0194 item 10). Pending records tie
+	// numbering will in fact assign it (ADR-0202 item 10). Pending records tie
 	// with each other and the stable sort falls back to corpus order, which is
 	// the authored order the provenance claim gives slug entries among
 	// themselves; docs/roadmap.md records what that tie costs.
@@ -388,7 +388,7 @@ func removedInUniverse(records []adr.ADR, id string) bool {
 }
 
 // numberingSubstitutions maps each identity rewritten across this transition to
-// the number it took: a slug to the number numbering assigned it (ADR-0194 item
+// the number it took: a slug to the number numbering assigned it (ADR-0202 item
 // 9), and a renumbered slugless record's old number to its new one. It is empty
 // for every transition that rewrites neither, which is what keeps the byte-exact
 // provenance rules in force everywhere else.
@@ -443,7 +443,7 @@ func numberedProvenance(c topic.Claim, renames map[string]string) (topic.Claim, 
 // and the updating ADRs (ADR-0191). When the transition also numbers a record
 // the before claim cites, the preserve-Origin and Revised-by rules are applied
 // to the substituted before claim, which is how the sanctioned numbering
-// transition composes with a declared update in the same pair (ADR-0194 item 11).
+// transition composes with a declared update in the same pair (ADR-0202 item 11).
 func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAfter bool, renames map[string]string, updaters []string) []Finding {
 	if len(updaters) == 0 {
 		updaters = []string{adrNum}
@@ -470,7 +470,7 @@ func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAft
 // legacy Origin is the closed migration bootstrap and needs no add operation.
 //
 // A claim whose authored provenance cites a record numbered in this transition
-// takes the sanctioned numbering contract instead (ADR-0194 item 11): its
+// takes the sanctioned numbering contract instead (ADR-0202 item 11): its
 // permitted delta is exactly the slug-to-number substitution with each touched
 // list canonicalized, compared in order, and it declares no operation because
 // numbering appends no application batch. This is the only rule that admits a
@@ -574,7 +574,7 @@ func claimMateriallyEqual(a, b topic.Claim) bool {
 // record and the numbered successor numbering produced are the same record, and
 // only the slug is stable across that rename. Keying on the number would read
 // the rename as a delete plus an add, and would collide every pending record on
-// the empty number (ADR-0194 item 11).
+// the empty number (ADR-0202 item 11).
 func pairKey(a adr.ADR) string {
 	if a.Slug != "" {
 		return a.Slug

@@ -1,8 +1,11 @@
-package project
+// Package contextq answers context and coverage questions over one assembled
+// context state: path classification, request assembly, universe assembly,
+// topic and claim and pending projection, artifact records, the context and
+// uncovered result vocabulary, and the human rendering of those results
+// (ADR-0195).
+package contextq
 
 import (
-	"context"
-	"fmt"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -10,107 +13,38 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/currentstate"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
+	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// DomainRef is an owning domain and its rendered current-state doc path.
-type DomainRef struct{ Name, CurrentState string }
+// domainRef is an owning domain and its rendered current-state doc path.
+type domainRef struct{ Name, CurrentState string }
 
-type PendingChange struct {
+type pendingChange struct {
 	ADR, Title, Status string
 	Applied, Declared  int
 	Op, Claim          string
 	Progress           string
 }
 
-type contextAssemblyState struct {
-	Loaded       currentstate.Loaded
-	Tree         *snapshot.Tree
-	Lock         *manifest.Lock
-	Config       *config.Config
-	Declarations []OutputDeclaration
-}
+// Query answers context questions over one assembled context state. It is the
+// package's only construction path: every entry point is a method, so a query
+// can never run against a partially-assembled universe.
+type Query struct{ state project.ContextState }
 
-func (p *Project) ContextForOptions(ctx context.Context, paths []string, options ContextOptions) (ContextResult, error) {
-	ws, err := p.workingCurrentState(ctx)
-	if err != nil {
-		return ContextResult{}, err
-	}
-	universe := &Project{Root: p.Root, Cfg: ws.Cfg, standard: p.standard, repo: p.repo}
-	universe.Targets, err = resolveTargets(ws.Cfg.Targets)
-	if err != nil {
-		return ContextResult{}, err
-	}
-	universe.Cat, err = universe.effectiveCatalog()
-	if err != nil {
-		return ContextResult{}, err
-	}
-	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
-	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
-		return ContextResult{}, err
-	}
-	return universe.assembleContextUniverse(contextAssemblyState{Loaded: ws.Loaded, Tree: ws.Tree, Lock: ws.Lock, Config: ws.Cfg, Declarations: declarations}, paths, options)
-}
+// New binds a query to one assembled context state. The state is produced by
+// one of the core's two constructors - Project.ContextState for the working
+// tree, project.StagedContextState for the index - and is read, never written.
+func New(state project.ContextState) *Query { return &Query{state: state} }
 
-func StagedContextRootOptions(ctx context.Context, root string, paths []string, options ContextOptions) (ContextResult, error) {
-	p, err := openRootProject(root)
-	if err != nil {
-		return ContextResult{}, err
-	}
-	state, err := p.indexCurrentState(ctx)
-	if err != nil {
-		return ContextResult{}, err
-	}
-	targets, err := resolveTargets(state.Cfg.Targets)
-	if err != nil {
-		return ContextResult{}, err
-	}
-	universe := &Project{Root: root, Cfg: state.Cfg, Targets: targets, standard: catalog.Standard, repo: p.repo}
-	universe.Cat, err = universe.effectiveCatalog()
-	if err != nil {
-		return ContextResult{}, err
-	}
-	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
-	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
-		return ContextResult{}, err
-	}
-	return universe.assembleContextUniverse(contextAssemblyState{Loaded: state.Loaded, Tree: state.Tree, Lock: state.Lock, Config: state.Cfg, Declarations: declarations}, paths, options)
-}
-
-type indexState struct {
-	Loaded currentstate.Loaded
-	Tree   *snapshot.Tree
-	Lock   *manifest.Lock
-	Cfg    *config.Config
-}
-
-func (p *Project) indexCurrentState(ctx context.Context) (indexState, error) {
-	tree, err := p.indexTree(ctx)
-	if err != nil {
-		return indexState{}, err
-	}
-	lock, err := lockFromTree(tree)
-	if err != nil {
-		return indexState{}, err
-	}
-	boundaries, gaps := attestationBoundaries(lock)
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, boundaries, gaps)
-	if err != nil {
-		return indexState{}, err
-	}
-	if cfg == nil {
-		return indexState{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
-	}
-	return indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
-}
-
-func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []string, options ContextOptions) (ContextResult, error) {
+// ContextForOptions assembles the full context report for the queried paths.
+// It writes nothing and cannot fail: every fallible step already happened while
+// the state was loaded.
+func (q *Query) ContextForOptions(queries []string, options ContextOptions) ContextResult {
+	state := q.state
 	if options.Selection == "" {
 		options.Selection = SelectionExplicit
 	}
@@ -122,44 +56,44 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	}
 	nested := []string{}
 	for _, f := range state.Tree.List() {
-		if !isResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
+		if !resident.IsResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
 			nested = append(nested, strings.TrimSuffix(f.Path, "/"+config.DirName+"/config.yaml"))
 		}
 	}
 	slices.Sort(nested)
-	set := contextPathSet{tree: state.Tree, eligible: eligiblePaths(state.Tree, state.Lock, state.Config.ContextIgnore), nested: nested, outputs: outputs, ignores: state.Config.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]ContextPathImpact{}}
+	set := contextPathSet{tree: state.Tree, nested: nested, outputs: outputs, ignores: state.Cfg.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]contextPathImpact{}}
 	selectedADRs := state.Loaded.Corpus
-	lay := p.layout()
+	lay := state.Layout
 	markerSitesByPath := map[string][]topic.MarkerSite{}
 	for _, site := range state.Loaded.Topics.Markers.All() {
 		markerSitesByPath[site.Path] = append(markerSitesByPath[site.Path], site)
 	}
-	makeImpact := func(filePath string, explicit bool) ContextPathImpact {
+	makeImpact := func(filePath string, explicit bool) contextPathImpact {
 		class, nestedRoot, targetInside := classifyContextPath(filePath, set)
 		records := artifactRecords(filePath, state.Declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})
 		applyArtifactSnapshots(records, filePath, state.Tree, state.Lock)
-		impact := ContextPathImpact{Classification: class, NestedRoot: nestedRoot, TargetInsideRepository: targetInside, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []ContextWarning{}}
+		impact := contextPathImpact{Classification: class, NestedRoot: nestedRoot, TargetInsideRepository: targetInside, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}
 		for _, record := range records {
-			impact.Provenance = append(impact.Provenance, ContextProvenance{Role: string(record.Role), Identity: record.Identity, Sources: cloneArtifactLinks(record.Sources), Outputs: cloneArtifactLinks(record.Outputs), Navigation: cloneArtifactLinks(record.Navigation)})
+			impact.Provenance = append(impact.Provenance, contextProvenance{Role: string(record.Role), Identity: record.Identity, Sources: cloneArtifactLinks(record.Sources), Outputs: cloneArtifactLinks(record.Outputs), Navigation: cloneArtifactLinks(record.Navigation)})
 		}
-		literalGlob := explicit && (class == PathNotFound || class == PathContextIgnored) && globLiteralQuery(filePath)
-		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
+		literalGlob := explicit && (class == pathNotFound || class == pathContextIgnored) && globLiteralQuery(filePath)
+		safe := class != pathOutsideRepository && class != pathNestedAdopter && class != pathSymlink
 		if safe && !literalGlob {
 			impact.Relationships = contextRelationshipsForPath(markerSitesByPath, filePath)
 			for _, d := range slices.Sorted(maps.Keys(state.Loaded.Topics.DomainPaths)) {
-				if pathMatchesAny(state.Loaded.Topics.DomainPaths[d], filePath) {
-					impact.Domains = append(impact.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
+				if pathglob.MatchAny(state.Loaded.Topics.DomainPaths[d], filePath) {
+					impact.Domains = append(impact.Domains, domainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
 				}
 			}
 			for _, t := range topic.TopicsForPath(state.Loaded.Topics, filePath) {
-				impact.Topics = append(impact.Topics, ContextPathTopic{ID: t.ID.String()})
+				impact.Topics = append(impact.Topics, contextPathTopic{ID: t.ID.String()})
 			}
 		}
 		if literalGlob {
-			impact.Warnings = append(impact.Warnings, WarningGlobLiteral)
+			impact.Warnings = append(impact.Warnings, warningGlobLiteral)
 		}
-		if class == PathEligibleUnowned {
-			impact.Warnings = append(impact.Warnings, WarningEligibleUnowned)
+		if class == pathEligibleUnowned {
+			impact.Warnings = append(impact.Warnings, warningEligibleUnowned)
 		}
 		if explicit {
 			impact.ADR = projectADRArtifact(filePath, lay.ADRDir, selectedADRs, state.Loaded.Topics, options.Facets)
@@ -171,15 +105,15 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	}
 	for _, raw := range queries {
 		if strings.TrimSpace(raw) != "" {
-			q := filepath.ToSlash(filepath.Clean(raw))
-			set.impacts[q] = makeImpact(q, options.Selection == SelectionExplicit)
+			lookup := filepath.ToSlash(filepath.Clean(raw))
+			set.impacts[lookup] = makeImpact(lookup, options.Selection == SelectionExplicit)
 		}
 	}
 	requests := buildContextRequests(queries, set, options)
 	directSources := map[string]map[int]map[string]bool{}
 	applicable := map[string]topic.Topic{}
 	for _, request := range requests {
-		impacts := []ContextPathImpact{}
+		impacts := []contextPathImpact{}
 		if request.Exact != nil {
 			impacts = append(impacts, request.Exact.Context)
 			addContextRelationshipSources(directSources, request.Index, request.Exact.Context.Relationships)
@@ -200,7 +134,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 			}
 		}
 	}
-	result := ContextResult{Selection: options.Selection, Range: options.Range, Requests: requests, Topics: []TopicImpact{}}
+	result := ContextResult{Selection: options.Selection, Range: options.Range, Requests: requests, Topics: []topicImpact{}}
 	currentPaths := safelyMatchablePaths(state.Tree)
 	projectedSources := contextRelationshipSources(directSources)
 	globallyVisible := contextVisibleClaimIDs(applicable, projectedSources, options.Facets)
@@ -208,10 +142,10 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	for _, id := range slices.Sorted(maps.Keys(applicable)) {
 		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, projectedSources, globallyVisible, referencedSeen, currentPaths, pendingChanges(state.Loaded.Corpus, map[string]bool{id: true}), options.Facets))
 	}
-	return result, nil
+	return result
 }
 
-func contextVisibleClaimIDs(applicable map[string]topic.Topic, directSources map[string][]ContextRelationshipSource, facets []ContextFacet) map[string]bool {
+func contextVisibleClaimIDs(applicable map[string]topic.Topic, directSources map[string][]contextRelationshipSource, facets []ContextFacet) map[string]bool {
 	visible := map[string]bool{}
 	for _, t := range applicable {
 		for _, claim := range t.Claims {
@@ -223,7 +157,7 @@ func contextVisibleClaimIDs(applicable map[string]topic.Topic, directSources map
 	return visible
 }
 
-func addContextRelationshipSources(dst map[string]map[int]map[string]bool, requestIndex int, relationships ContextRelationships) {
+func addContextRelationshipSources(dst map[string]map[int]map[string]bool, requestIndex int, relationships contextRelationships) {
 	for _, kind := range []struct {
 		label string
 		ids   []string
@@ -248,8 +182,8 @@ func addContextRelationshipSources(dst map[string]map[int]map[string]bool, reque
 	}
 }
 
-func contextRelationshipSources(in map[string]map[int]map[string]bool) map[string][]ContextRelationshipSource {
-	out := map[string][]ContextRelationshipSource{}
+func contextRelationshipSources(in map[string]map[int]map[string]bool) map[string][]contextRelationshipSource {
+	out := map[string][]contextRelationshipSource{}
 	for id, byRequest := range in {
 		for _, requestIndex := range slices.Sorted(maps.Keys(byRequest)) {
 			kinds := []string{}
@@ -258,18 +192,18 @@ func contextRelationshipSources(in map[string]map[int]map[string]bool) map[strin
 					kinds = append(kinds, kind)
 				}
 			}
-			out[id] = append(out[id], ContextRelationshipSource{RequestIndex: requestIndex, Kinds: kinds})
+			out[id] = append(out[id], contextRelationshipSource{RequestIndex: requestIndex, Kinds: kinds})
 		}
 	}
 	return out
 }
 
-func pendingChanges(corpus adr.Corpus, matchedTopics map[string]bool) []PendingChange {
-	var out []PendingChange
+func pendingChanges(corpus adr.Corpus, matchedTopics map[string]bool) []pendingChange {
+	var out []pendingChange
 	ordered := slices.Clone(corpus.All())
 	// A pending V3 record answers to its slug, so every lookup and every
 	// presented reference here is the identity, not the number: keying on the
-	// number would resolve nothing and sort the record before 0001 (ADR-0194
+	// number would resolve nothing and sort the record before 0001 (ADR-0202
 	// item 10 places a pending record after every numbered one).
 	sort.SliceStable(ordered, func(i, j int) bool {
 		return adr.IdentityOrder(ordered[i].Identity()) < adr.IdentityOrder(ordered[j].Identity())
@@ -286,7 +220,7 @@ func pendingChanges(corpus adr.Corpus, matchedTopics map[string]bool) []PendingC
 		declared := len(progress.Applied) + len(progress.Remaining) + len(progress.Canceled)
 		for _, op := range progress.Remaining {
 			if matchedTopics[topicOfClaim(op.ID)] {
-				out = append(out, PendingChange{ADR: identity, Title: strings.TrimPrefix(a.Title, "ADR-"+identity+": "), Status: a.Status, Applied: len(progress.Applied), Declared: declared, Op: string(op.Verb), Claim: op.ID, Progress: "remaining"})
+				out = append(out, pendingChange{ADR: identity, Title: strings.TrimPrefix(a.Title, "ADR-"+identity+": "), Status: a.Status, Applied: len(progress.Applied), Declared: declared, Op: string(op.Verb), Claim: op.ID, Progress: "remaining"})
 			}
 		}
 	}
@@ -298,14 +232,6 @@ func topicOfClaim(id string) string {
 	}
 	return id
 }
-func pathMatchesAny(globs []string, p string) bool {
-	for _, g := range globs {
-		if pathglob.Match(g, p) {
-			return true
-		}
-	}
-	return false
-}
 
 // UncoveredResult is the read-only coverage report for a set of scan roots: the
 // eligible paths owned by no domain (collapsed to a topmost trailing-slash node)
@@ -313,49 +239,32 @@ func pathMatchesAny(globs []string, p string) bool {
 // ScanRoots echoes the requested roots (empty = whole repository).
 type UncoveredResult struct {
 	ScanRoots []string
-	Unowned   []UnownedEntry
-	Uncovered []UncoveredTopic
+	Unowned   []unownedEntry
+	Uncovered []uncoveredTopic
 }
 
-// UnownedEntry is one collapsed unowned node: UnownedCount is the in-scope
+// unownedEntry is one collapsed unowned node: UnownedCount is the in-scope
 // eligible unowned paths it covers, ExcludedCount the in-scope scannable paths
 // beneath it that coverage excludes (generated, context-ignored, resident,
 // or nested-adopter). Plain file entries keep ExcludedCount zero.
-type UnownedEntry struct {
+type unownedEntry struct {
 	Path          string
 	UnownedCount  int
 	ExcludedCount int
 }
 
-// UncoveredTopic is one domain-owned path lacking a scoped topic that covers it.
-type UncoveredTopic struct {
+// uncoveredTopic is one domain-owned path lacking a scoped topic that covers it.
+type uncoveredTopic struct {
 	Path   string
 	Domain string
 }
 
-// Uncovered assembles the coverage report over the working-tree eligible paths:
+// Uncovered assembles the coverage report over the state's eligible paths:
 // those neither generated nor contextIgnore-matched (ADR-0134). scanRoots
 // restrict the report to paths at or beneath them on slash-separated segment
 // boundaries; empty scanRoots scans everything. It writes nothing.
-func (p *Project) Uncovered(ctx context.Context, scanRoots []string) (UncoveredResult, error) {
-	ws, err := p.workingCurrentState(ctx)
-	if err != nil {
-		return UncoveredResult{}, err
-	}
-	return assembleUncovered(ws.Loaded.Topics, p.eligibleCoveragePaths(ws.Tree, ws.Lock), safelyMatchablePaths(ws.Tree), scanRoots), nil
-}
-
-// StagedUncoveredRoot reports coverage entirely from the index universe.
-func StagedUncoveredRoot(ctx context.Context, root string, scanRoots []string) (UncoveredResult, error) {
-	p, err := openRootProject(root)
-	if err != nil {
-		return UncoveredResult{}, err
-	}
-	state, err := p.indexCurrentState(ctx)
-	if err != nil {
-		return UncoveredResult{}, err
-	}
-	return assembleUncovered(state.Loaded.Topics, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore), safelyMatchablePaths(state.Tree), scanRoots), nil
+func (q *Query) Uncovered(scanRoots []string) UncoveredResult {
+	return assembleUncovered(q.state.Loaded.Topics, q.state.Eligible, safelyMatchablePaths(q.state.Tree), scanRoots)
 }
 
 func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) UncoveredResult {
@@ -387,14 +296,14 @@ func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) U
 		}
 	}
 	for _, f := range topic.EvaluateCoverage(corpus, scoped, topic.CoveragePolicy{Coverage: true, Fanout: false}) {
-		res.Uncovered = append(res.Uncovered, UncoveredTopic{Path: f.Path, Domain: f.Domain})
+		res.Uncovered = append(res.Uncovered, uncoveredTopic{Path: f.Path, Domain: f.Domain})
 	}
 
 	// Unowned: eligible paths matched by no domain glob, collapsed to the topmost
 	// node with no owned descendant in scope.
 	owned := func(path string) bool {
 		for _, d := range corpus.DomainPaths {
-			if pathMatchesAny(d, path) {
+			if pathglob.MatchAny(d, path) {
 				return true
 			}
 		}
@@ -419,7 +328,7 @@ func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) U
 		}
 		unowned = append(unowned, path)
 	}
-	entries := map[string]*UnownedEntry{}
+	entries := map[string]*unownedEntry{}
 	for _, u := range unowned {
 		pick := u
 		for _, a := range ancestors(u) {
@@ -434,7 +343,7 @@ func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) U
 		}
 		e := entries[pick]
 		if e == nil {
-			e = &UnownedEntry{Path: pick}
+			e = &unownedEntry{Path: pick}
 			entries[pick] = e
 		}
 		e.UnownedCount++

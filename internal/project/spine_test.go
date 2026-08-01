@@ -625,12 +625,12 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		{
 			name: "Pi", data: map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
 			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"allowCommits: true", "complete phase", "Stage the complete transaction"},
+			wants: []string{"allowCommits: true", "complete phase", "stages the complete transaction"},
 		},
 		{
 			name: "generic", data: data,
 			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"complete phase", "Stage the complete transaction"},
+			wants: []string{"complete phase", "stages the complete transaction"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -728,6 +728,106 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 			t.Errorf("managed context template %s has no context invocation", name)
 		}
 	}
+	// The grounding-checker agent body carries the same pointer sentence the
+	// skills do (ADR-0197 widened the claim to the agent body).
+	agentSource, err := fs.ReadFile(templates.FS, "agents/grounding-checker.md.tmpl")
+	if err != nil {
+		t.Fatalf("read grounding-checker template: %v", err)
+	}
+	agentExpanded, err := render.ExpandIncludes(string(agentSource), templates.FS)
+	if err != nil {
+		t.Fatalf("expand grounding-checker template: %v", err)
+	}
+	if !strings.Contains(agentExpanded, spillContract) {
+		t.Errorf("grounding-checker agent body lacks the spill pointer:\n%s", agentExpanded)
+	}
+	// The pointer's destination must exist: the working-with-awf doc template is
+	// the contract's single rendered home, and deleting the subsection would
+	// leave every pointer site dangling with the suite otherwise green.
+	docSource, err := fs.ReadFile(templates.FS, "docs/working-with-awf.md.tmpl")
+	if err != nil {
+		t.Fatalf("read working-with-awf template: %v", err)
+	}
+	docExpanded, err := render.ExpandIncludes(string(docSource), templates.FS)
+	if err != nil {
+		t.Fatalf("expand working-with-awf template: %v", err)
+	}
+	for _, want := range []string{
+		"### Context spill notices",
+		"byte length equals",
+		"`bytes=<decimal>` descriptor",
+		"Best-effort delete the named file after packet use",
+	} {
+		if !strings.Contains(docExpanded, want) {
+			t.Errorf("working-with-awf template lacks the spill contract clause %q", want)
+		}
+	}
+	// This repository overrides the doc's commands part, so its own rendered
+	// doc is a second home the template assertion cannot see; an override that
+	// drops the contract would leave every pointer dangling here.
+	repoDoc, err := os.ReadFile(filepath.Clean(filepath.Join("..", "..", "docs", "working-with-awf.md")))
+	if err != nil {
+		t.Fatalf("read repository working-with-awf doc: %v", err)
+	}
+	for _, want := range []string{
+		"### Context spill notices",
+		"byte length equals",
+		"`bytes=<decimal>` descriptor",
+		"Best-effort delete the named file after packet use",
+	} {
+		if !strings.Contains(string(repoDoc), want) {
+			t.Errorf("repository working-with-awf doc lacks the spill contract clause %q", want)
+		}
+	}
+}
+
+// TestConditionalVerifyPass pins ADR-0197 item 3: the four reviewing skills
+// dispatch the verify pass only for reasoned or user-decision fixes, a
+// solely-mechanical round records the skip, and a fix-free round dispatches
+// nothing.
+func TestConditionalVerifyPass(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"layout": testLayout(),
+		"data":   map[string]any{},
+	}
+	for _, name := range []string{"reviewing-adr", "reviewing-plan", "reviewing-plan-resync", "reviewing-impl"} {
+		t.Run(name, func(t *testing.T) {
+			out := renderSkillGolden(t, name, data)
+			assertOrderedPhrases(t, out,
+				"**Verify pass.**",
+				"applied no fixes dispatches no verify pass",
+				"all classified `mechanical` skips it",
+				"recording the skip and its ground",
+				"classified `reasoned` or was applied under a `user-decision` ruling",
+			)
+		})
+	}
+}
+
+// TestCheckpointDigestShape pins the compression ADR-0197 item 2 delivers: the
+// routine and approval checkpoint partials each stay a four-step digest, so a
+// re-expanded fifth step cannot creep back in with the ordered-phrase proofs
+// still green.
+// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
+func TestCheckpointDigestShape(t *testing.T) {
+	for _, partial := range []string{"partials/checkpoint-routine.md", "partials/checkpoint-approval.md"} {
+		raw, err := fs.ReadFile(templates.FS, partial)
+		if err != nil {
+			t.Fatalf("read %s: %v", partial, err)
+		}
+		steps := 0
+		for _, line := range strings.Split(string(raw), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if len(trimmed) > 1 && trimmed[0] >= '1' && trimmed[0] <= '9' && strings.HasPrefix(trimmed[1:], ". ") {
+				steps++
+			}
+		}
+		if steps != 4 {
+			t.Errorf("%s renders %d numbered steps, want the four-step digest", partial, steps)
+		}
+	}
 }
 
 func TestWritingPlansTemplate(t *testing.T) {
@@ -792,22 +892,22 @@ func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name, func(t *testing.T) {
 			out := renderSkillGolden(t, name, configured)
-			assertOrderedPhrases(t, out, "Stage the complete transaction", "`awf check --staged`", "`./x gate`", "Commit only after both commands pass", "defense in depth")
+			assertOrderedPhrases(t, out, "the complete transaction", "`awf check --staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 
 	agents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", configured)
-	assertOrderedPhrases(t, agents, "Stage the complete transaction", "`awf check --staged`", "`./x gate`", "Commit only after both commands pass", "defense in depth")
+	assertOrderedPhrases(t, agents, "the complete transaction", "`awf check --staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 
 	fallback := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}}
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name+"-fallback", func(t *testing.T) {
 			out := renderSkillGolden(t, name, fallback)
-			assertOrderedPhrases(t, out, "Stage the complete transaction", "`awf check --staged`", "the project's gate", "Commit only after both commands pass", "defense in depth")
+			assertOrderedPhrases(t, out, "the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 	fallbackAgents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", fallback)
-	assertOrderedPhrases(t, fallbackAgents, "Stage the complete transaction", "`awf check --staged`", "the project's gate", "Commit only after both commands pass", "defense in depth")
+	assertOrderedPhrases(t, fallbackAgents, "the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 }
 
 func TestExecutingPlansTemplate(t *testing.T) {
@@ -1068,7 +1168,7 @@ func TestOrientingSkillContract(t *testing.T) {
 				"location is unknown", "and inline search would pollute the parent context",
 				"exact-known-file", "genuinely trivial", "`example-exploring`",
 				"landed since the checkpoint", "git worktree list", "against the decision index",
-				"its decision log including every `Record:` block", "not yours to re-decide",
+				"its decision log including every `Record:` block present", "not yours to re-decide",
 				"cited plan and file existence", "A discrepancy resolves in favor of the repository",
 				"never creates an effort, never commits", "never prescribe `--full`",
 				"single-pass and advisory, never a chain gate",
@@ -1480,8 +1580,13 @@ func TestAgentsDocGuide(t *testing.T) {
 	}
 	// Exactly the invariants-section copy: the workflow section must not
 	// regrow the duplicated gate sentence (ADR-0157 evicted-prose class).
+	// Both counts guard: the sentence opener catches a partial regrowth, the
+	// hook clause is distinctive of the ADR-0196 conditional wording.
 	if got := strings.Count(out, "Stage the complete transaction"); got != 1 {
 		t.Errorf("guide must carry exactly one gate sentence (invariants section), got %d:\n%s", got, out)
+	}
+	if got := strings.Count(out, "wired pre-commit hook enforces both"); got != 1 {
+		t.Errorf("guide must carry exactly one hook-enforcement clause (invariants section), got %d:\n%s", got, out)
 	}
 }
 
@@ -1533,7 +1638,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	orienting := renderSkillGolden(t, "orienting", data)
 	for _, want := range []string{
 		"landed since the checkpoint", "git worktree list", "against the decision index",
-		"its decision log including every `Record:` block", "not yours to re-decide",
+		"its decision log including every `Record:` block present", "not yours to re-decide",
 		"A discrepancy resolves in favor of the repository",
 	} {
 		if !strings.Contains(orienting, want) {
@@ -1567,7 +1672,7 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 	}
 	for _, skill := range []string{"reviewing-adr", "reviewing-plan", "reviewing-impl"} {
 		out := renderSkillGolden(t, skill, data)
-		for _, want := range []string{"pasted verbatim", "`Record:` blocks included"} {
+		for _, want := range []string{"pasted verbatim", "including whatever `Record:` blocks exist"} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s missing decision-log paste phrase %q:\n%s", skill, want, out)
 			}
@@ -1802,7 +1907,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-		want: []string{"known clean and green baseline", "the project's gate", "defense in depth", "Sequential dispatch only, never parallel"},
+		want: []string{"known clean and green baseline", "the project's gate", "wired pre-commit hook enforces both", "Sequential dispatch only, never parallel"},
 	},
 	{
 		tmpl: "skills/writing-plans/SKILL.md.tmpl",

@@ -53,7 +53,6 @@ currentState:
   testGlobs:
     - '**/*_test.go'
   maxTopicsPerPath: 8
-  maxClaimsPerTopic: 20
 prefix: awf
 skills:
   - adr-lifecycle
@@ -216,12 +215,6 @@ proseGate:
       count: 7
     - path: docs/plans/2026-07-13-invariant-backing-migration-to-enforced-test-scoped-backing.md
       codepoint: U+2014
-      count: 1
-    - path: .awf/docs/pitfalls.yaml
-      codepoint: U+201C
-      count: 1
-    - path: docs/pitfalls.md
-      codepoint: U+201C
       count: 1
 memoryCite:
   enabled: true

@@ -1,4 +1,4 @@
-package project
+package contextq
 
 import (
 	"slices"
@@ -8,8 +8,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[string][]ContextRelationshipSource, globallyVisible, referencedSeen map[string]bool, currentPaths []string, pending []PendingChange, facets []ContextFacet) TopicImpact {
-	out := TopicImpact{ID: t.ID.String(), Title: t.Metadata.Title, Summary: t.Metadata.Summary, Direct: []ContextClaimImpact{}, Invariants: []ContextClaimImpact{}, Additional: []ContextClaimImpact{}, Referenced: []ContextClaimImpact{}, Pending: contextPending(pending, slices.Contains(facets, FacetPending))}
+func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[string][]contextRelationshipSource, globallyVisible, referencedSeen map[string]bool, currentPaths []string, pending []pendingChange, facets []ContextFacet) topicImpact {
+	out := topicImpact{ID: t.ID.String(), Title: t.Metadata.Title, Summary: t.Metadata.Summary, Direct: []contextClaimImpact{}, Invariants: []contextClaimImpact{}, Additional: []contextClaimImpact{}, Referenced: []contextClaimImpact{}, Pending: contextPending(pending, slices.Contains(facets, FacetPending))}
 	for _, claim := range t.Claims {
 		if claim.Type == topic.Invariant {
 			out.Counts.Invariants++
@@ -45,7 +45,7 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 	}
 	if slices.Contains(facets, FacetSelectors) {
 		a := topic.ApplicabilityForTopic(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers, currentPaths)
-		out.Selectors = &ContextSelectorImpact{DomainPaths: nonNilStrings(a.DomainPaths), TopicPaths: nonNilStrings(a.TopicPaths), DeclaredGlobal: a.DeclaredGlobal}
+		out.Selectors = &contextSelectorImpact{DomainPaths: nonNilStrings(a.DomainPaths), TopicPaths: nonNilStrings(a.TopicPaths), DeclaredGlobal: a.DeclaredGlobal}
 	}
 	if slices.Contains(facets, FacetReferences) {
 		byID := map[string]topic.Claim{}
@@ -55,7 +55,7 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 			}
 		}
 		refs := map[string]bool{}
-		applyEdges := func(items []ContextClaimImpact) []ContextClaimImpact {
+		applyEdges := func(items []contextClaimImpact) []contextClaimImpact {
 			for i := range items {
 				items[i].Incoming = nonNilStrings(corpus.Incoming(items[i].ID))
 				items[i].Outgoing = nonNilStrings(corpus.Outgoing(items[i].ID))
@@ -82,8 +82,8 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 			}
 		}
 	}
-	sortClaims := func(items []ContextClaimImpact) {
-		slices.SortFunc(items, func(a, b ContextClaimImpact) int { return strings.Compare(a.ID, b.ID) })
+	sortClaims := func(items []contextClaimImpact) {
+		slices.SortFunc(items, func(a, b contextClaimImpact) int { return strings.Compare(a.ID, b.ID) })
 	}
 	sortClaims(out.Direct)
 	sortClaims(out.Invariants)
@@ -92,8 +92,8 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 	return out
 }
 
-func projectClaimImpact(claim topic.Claim, corpus topic.Corpus, facets []ContextFacet) ContextClaimImpact {
-	out := ContextClaimImpact{ID: claim.ID, Type: string(claim.Type), Summary: claimSummary(claim), Sources: []ContextRelationshipSource{}, Evidence: []ContextEvidence{}, Incoming: []string{}, Outgoing: []string{}}
+func projectClaimImpact(claim topic.Claim, corpus topic.Corpus, facets []ContextFacet) contextClaimImpact {
+	out := contextClaimImpact{ID: claim.ID, Type: string(claim.Type), Summary: claimSummary(claim), Sources: []contextRelationshipSource{}, Evidence: []contextEvidence{}, Incoming: []string{}, Outgoing: []string{}}
 	if slices.Contains(facets, FacetEvidence) {
 		out.Backing, out.Verify = string(claim.Backing), claim.Verify
 		out.Evidence = contextEvidenceForClaim(claim.ID, corpus)
@@ -101,16 +101,16 @@ func projectClaimImpact(claim topic.Claim, corpus topic.Corpus, facets []Context
 	return out
 }
 
-func cloneContextRelationshipSources(in []ContextRelationshipSource) []ContextRelationshipSource {
-	out := make([]ContextRelationshipSource, 0, len(in))
+func cloneContextRelationshipSources(in []contextRelationshipSource) []contextRelationshipSource {
+	out := make([]contextRelationshipSource, 0, len(in))
 	for _, source := range in {
-		out = append(out, ContextRelationshipSource{RequestIndex: source.RequestIndex, Kinds: slices.Clone(source.Kinds)})
+		out = append(out, contextRelationshipSource{RequestIndex: source.RequestIndex, Kinds: slices.Clone(source.Kinds)})
 	}
 	return out
 }
 
-func contextEvidenceForClaim(claimID string, corpus topic.Corpus) []ContextEvidence {
-	out := []ContextEvidence{}
+func contextEvidenceForClaim(claimID string, corpus topic.Corpus) []contextEvidence {
+	out := []contextEvidence{}
 	for _, kind := range []topic.MarkerKind{topic.StateMarker, topic.TouchesMarker, topic.ProofMarker} {
 		sites := []topic.MarkerSite{}
 		for _, site := range corpus.Markers.ForClaim(claimID) {
@@ -127,7 +127,7 @@ func contextEvidenceForClaim(claimID string, corpus topic.Corpus) []ContextEvide
 			}
 			return a.Line - b.Line
 		})
-		e := ContextEvidence{Kind: string(kind), Count: len(sites), Sites: []topic.MarkerSite{}}
+		e := contextEvidence{Kind: string(kind), Count: len(sites), Sites: []topic.MarkerSite{}}
 		if len(sites) <= 3 {
 			e.Sites = sites
 		}
@@ -156,8 +156,8 @@ func claimSummary(claim topic.Claim) string {
 	return string(runes[:cut]) + "..."
 }
 
-func contextPending(changes []PendingChange, expanded bool) ContextPendingImpact {
-	out := ContextPendingImpact{OperationCount: len(changes), ADRs: []string{}, Operations: []PendingChange{}}
+func contextPending(changes []pendingChange, expanded bool) contextPendingImpact {
+	out := contextPendingImpact{OperationCount: len(changes), ADRs: []string{}, Operations: []pendingChange{}}
 	seen := map[string]bool{}
 	for _, change := range changes {
 		if !seen[change.ADR] {

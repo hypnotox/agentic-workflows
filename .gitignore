@@ -26,3 +26,11 @@
 
 # Repository-local context spill observability is operator-owned and ignored.
 .awf/local/
+
+# Per-checkout golangci-lint cache (exported by ./x); never committed.
+/.cache/
+
+# awf preserves a pre-existing hand-written file at <path>.awf-bak rather than
+# clobbering it on render. That is a local rescue copy of superseded content, so
+# it is never committed; one reached main before this rule existed.
+*.awf-bak

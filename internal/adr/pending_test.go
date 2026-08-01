@@ -339,7 +339,7 @@ func TestNewCorpusReportsDuplicateIdentitiesAndStillPopulates(t *testing.T) {
 		t.Fatalf("message = %q", msg)
 	}
 	// The corpus is still populated, last-wins, for the numbering command's
-	// refusal path (ADR-0194 item 12).
+	// refusal path (ADR-0202 item 12).
 	if got, ok := corpus.ByNumber("0001"); !ok || got.Filename != "0001-c.md" {
 		t.Fatalf("last-wins number = %#v ok=%v", got, ok)
 	}

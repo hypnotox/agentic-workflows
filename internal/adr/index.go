@@ -35,7 +35,7 @@ func RenderIndexMD(corpus Corpus) string {
 // renderIndexSection writes one INDEX.md section: a heading, then one bullet
 // per ADR or the empty-section placeholder. Numbered records sort first by
 // number and pending records follow alphabetically by slug, so the numbered
-// corpus reads unchanged and the not-yet-numbered tail is grouped (ADR-0194).
+// corpus reads unchanged and the not-yet-numbered tail is grouped (ADR-0202).
 func renderIndexSection(sb *strings.Builder, heading string, adrs []ADR, empty string) {
 	fmt.Fprintf(sb, "## %s\n\n", heading)
 	if len(adrs) == 0 {

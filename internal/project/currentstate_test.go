@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -50,6 +51,16 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	}
 	if _, err := nextADRIdentityFromTree(configTree); err == nil {
 		t.Fatal("symlink cutoff config accepted")
+	}
+	// A config today's schema cannot parse for a reason the retired-key
+	// port-forward does not fix. That pass strips keys whose struct field is
+	// gone, so only a key that was never declared still reaches the parser.
+	unknownKey, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\nnoSuchKey: 1\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadTreeCurrentState(".", unknownKey, nil, adr.FormatBoundaries{}, nil); err == nil {
+		t.Fatal("unknown config key accepted")
 	}
 	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
 	if next, err := nextADRIdentityFromTree(ordinary); err != nil || next != 1 {
@@ -92,7 +103,7 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 	if !slices.Contains(got, "internal/owned.go") {
 		t.Fatalf("ordinary source was filtered: %v", got)
 	}
-	if !isResidentPath(adversarial) || isResidentPath(".awf/effort/other") {
+	if !resident.IsResidentPath(adversarial) || resident.IsResidentPath(".awf/effort/other") {
 		t.Fatal("resident path predicate is not closed to resident roots")
 	}
 }
@@ -215,27 +226,6 @@ func TestCheckCurrentState(t *testing.T) {
 	}
 	if len(report.Notes()) != 0 {
 		t.Errorf("notes = %#v; want none", report.Notes())
-	}
-}
-
-func TestCheckCurrentStateClaimBudgetAdvisory(t *testing.T) {
-	cfg := csYAML + "  maxClaimsPerTopic: 1\n"
-	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
-	p := csRepo(t, cfg, map[string]string{
-		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
-		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
-		".awf/topics/parts/alpha/one/current-state.md": part,
-	})
-	report, err := p.CheckCurrentState(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(report.Findings()) != 0 {
-		t.Fatalf("advisory changed success status: %#v", report.Findings())
-	}
-	want := "topic alpha/one has 2 claims, above maxClaimsPerTopic limit 1; consider splitting .awf/topics/metadata/alpha/one.yaml and .awf/topics/parts/alpha/one/current-state.md"
-	if notes := report.Notes(); len(notes) != 1 || notes[0] != want {
-		t.Fatalf("notes = %#v, want %q", notes, want)
 	}
 }
 

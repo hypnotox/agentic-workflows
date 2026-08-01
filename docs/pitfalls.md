@@ -13,6 +13,64 @@ _Domains: tooling_
 `git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
 
 
+## A renumber cannot follow a rebase or merge as its own commit; it must land inside the transition
+
+_Domains: adr-system_
+
+When main has taken a number a branch's ADR also declares, rebasing or merging first and
+renumbering after does not work: every intermediate commit AND the resulting HEAD declare the
+number twice, and `awf check --staged` refuses to evaluate any transition from a
+duplicate-number HEAD, which blocks every commit including the renumber itself. The rename
+has to land inside the transition that first combines the two histories - during a rebase,
+fold it into the first replayed commit's conflict resolution (git rename detection carries
+the later commits' edits onto the new path); during a merge, rename and update references
+before the merge commit. The decompose effort hit this twice in one day (0191 to 0194 at
+rebase, 0194 to 0195 at integration); the first attempt as a post-rebase commit was
+structurally refused and forced a redo of the whole rebase. The workflow-friction effort
+hit the same double renumber the same day (0194/0195 to 0195/0196 at rebase, then to
+0196/0197 at integration when main took 0195 in between). One fact makes the fold cheap:
+the content digest excludes frontmatter and the H1 title, so a renumber that edits only
+the heading leaves every Implementing/Implemented stamp valid with no Amended event owed.
+
+## A renumber substitution must be scoped to the citations the effort owns
+
+_Domains: adr-system_
+
+Renumbering inside the merge, as the entry above requires, puts the substitution in the one
+place where both histories' text is present at once. A blanket
+`sed 's/ADR-OLD/ADR-NEW/g'` over the files carrying the effort's references will then also
+rewrite the OTHER side's citations of that same number, if the merge happened to bring them
+into one of those files. ADR-0198 renumbered from 0195 and corrupted two sentences in
+`.awf/docs/parts/roadmap/deferred.md` that main had just added about ITS ADR-0195, the
+`internal/project` decomposition: the roadmap then told a reader that the decomposition was
+decided by the Pi-extension container decision.
+Nothing mechanical caught it, and nothing will. Every gate stayed green through the merge
+commit, the render, the staged check, and the full gate, because no check reads a prose ADR
+citation for meaning; only the post-merge review found it. Treat the number as ambiguous
+rather than unique for the duration of the merge: substitute per known reference site, or
+substitute blindly and then diff every touched file against the merge source, confirming
+that nothing differs except the effort's own additions. The second form is the cheap one
+and it is what proved the repair. Note the asymmetry with the sibling entry above, "An ADR
+citation in a Go comment survives a renumber": one hazard is a citation the sweep misses,
+the other is a citation the sweep should never have touched, and a sweep tuned to avoid one
+walks straight into the other.
+
+## An applied claim's prose only changes beside an update operation, so prose findings rewrite the phase commit
+
+_Domains: adr-system_
+
+The transition validator refuses a claim body edit with no ADR update operation for that
+claim in the same HEAD-to-index step ("changed with no ADR update operation"). A review
+finding against claim prose therefore cannot land as a normal settlement commit once the
+phase that applied the claim has committed: the only legal homes are the transition that
+carries the claim's own operation, or a later ADR's update operation. While the phase-close
+commit is still branch-local, the practical response is soft-reset, fold the reword in, and
+recommit the phase (recompute the Implementing digest if the ADR body also changed; no
+Amended event is needed for changes landing before the stamp's commit). The decompose effort
+did this three times - review reworded a plan-prescribed claim body at Phases 1, 5, and 6 -
+so settle prose-touching findings BEFORE the phase-close commit when the review can run
+earlier.
+
 ## An ADR citation in a Go comment survives a renumber, because nothing validates it
 
 _Domains: adr-system_
@@ -52,6 +110,26 @@ never had one to choke on. Reading those precedents is therefore not enough. The
 appears at the phase-closing staged check, never in the migration's own test, which
 operates on fixture bytes and passes regardless.
 
+This prose did not prevent a recurrence: ADR-0194 repeated it, and a plan reviewer
+caught it rather than the gate. `TestConfigForCurrentSchemaParsesEveryRetiredKey` in
+`internal/migrate/forwardport_test.go` is now the deterministic backstop. Its
+`retiredConfigKeys` table carries the maintenance obligation: a migration that retires
+a config key adds the key and its generation there, and the test then fails inside the
+migrate package the moment a forward-port branch is missing, rather than at the
+phase-closing staged check.
+
+A third trap fires only when the retired key was written by a migration rather than set
+by hand. Historical migrations are never edited, so the migration that ADDED the key
+keeps writing it, and any later migration that parses config through
+`loadForMigration` then meets a key the current schema no longer declares. A tree
+upgrading from before the adding generation hard-fails mid-ladder, which is an adopter
+bug, not a fixture artifact. ADR-0194 hit exactly this: generation 16 writes
+`maxClaimsPerTopic`, generation 23 parses, generation 28 removes. The fix is to strip
+the retired key in `loadForMigration` beside the `invariants` block it already strips,
+because a migration reads a config at its historical shape, not the current schema's.
+Before retiring a key, grep the migration set for one that writes it; the severity-key
+removal had no such problem only because nothing wrote those keys.
+
 Two related traps in the same area. `RemoveMappingKey` drops the parent key when the
 removal empties it, so removing the last children of a block deletes the block; when a
 feature is gated on the block being present, that silently disables it. And
@@ -59,37 +137,37 @@ feature is gated on the block being present, that silently disables it. And
 collapsed block afterwards relocates it: seed the surviving key before the removals
 instead.
 
-## The pi-extension container test races concurrent git activity
+## Three pi-extension lane flakes that ADR-0198 removed, and what they mean now
 
 _Domains: tooling_
 
-One `./x gate` run during the ADR-0155 effort failed in the pi-extension-test lane with
-tsc reporting every listed input file missing under /workspace/repo, while the same gate
-passed clean immediately before and after. The lane's container.sh copies the checkout
-(`cp -a /source/. /workspace/repo/`) and a concurrent session's git operations mid-copy
-can produce a partial tree, so the compiler sees a file list whose members vanished. In a
-shared checkout, treat a pi-extension lane failure whose errors are missing-file TS6053
-lines under /workspace/repo as this race: rerun the gate before diagnosing, and only
-investigate if the failure reproduces on a quiet tree.
+Until ADR-0198 the lane copied the whole repository root into its container and reused one
+long-lived container per checkout path, which produced three flake classes that a shared
+checkout hit repeatedly. All three are now structurally impossible, so this entry is kept
+inverted: if you see one of these signatures today, it is NOT the old race and rerunning
+will not clear it.
 
-The race also surfaces as module resolution failures rather than TS6053, so match on the
-failure class and not that one signature. A 2026-07-26 pre-commit run failed with
-`Cannot find module './languages/sql'` out of a nested node_modules, `Cannot find module`
-for two test files that were present on disk, and one invariant reporting a degraded
-resolution status, while a standalone `./x gate` passed immediately before and again
-immediately after. Missing-file and missing-module errors are the tell either way;
-assertion failures are not.
+Missing-file TS6053 errors under /workspace/repo came from `cp -a /source/. /workspace/repo/`
+racing a concurrent session's `.git/index.lock`, leaving the compiler a file list whose
+members had vanished. The copy no longer includes `.git` or anything else the suite does
+not compile.
 
-A third class does present as an assertion failure, so the "assertion failures are not
-the tell" rule above is necessary but not sufficient. `TestPiRealRuntimeSmoke`
-(`internal/project/target_test.go`) shells out to `./x pi-test run`, the same container
-lane the gate runs directly, so `go test ./...` and a concurrent session's gate contend
-for one container. During ADR-0179 Part B this produced three distinct signatures across
-one session: `generated Pi runtime smoke failed: exit status 1`, a run reporting 0%
-TypeScript coverage against a 100% threshold, and one `find: .pi/extensions: No such file
-or directory` while a concurrent render was mid-prune. Each time the lane passed standalone
-immediately after. Before diagnosing any of these, run `tools/pi-extension-test/container.sh
-run` and `go test ./internal/project/ -run TestPiRealRuntimeSmoke` alone on a quiet tree.
+`Cannot find module` failures out of a nested node_modules were misattributed to that same
+race for a long time. They were a different defect: the copy dragged in the untracked host
+`tools/pi-extension-test/node_modules`, which landed nearer the test files than the
+repository-root symlink and so won module resolution against the image's pinned tree. The
+lane no longer copies it, and dependencies now resolve from the image only.
+
+Assertion-shaped failures came from `TestPiRealRuntimeSmoke` (`internal/project/target_test.go`),
+which shells out to `./x pi-test run`, contending with a concurrent gate over one shared
+container: `generated Pi runtime smoke failed: exit status 1`, a run reporting 0% TypeScript
+coverage against a 100% threshold, and `find: .pi/extensions: No such file or directory`
+during a concurrent render. Each run now gets its own container, so there is nothing to
+contend over.
+
+What remains legal under concurrency is two cold gates building the same image tag at once.
+Docker tolerates it: both succeed, the last tag write wins, and the layer cache makes the
+second cheap.
 
 ## A claim must not out-claim the filter its own command applies
 
@@ -611,12 +689,12 @@ for the milestone gate alone.
 _Domains: tooling_
 
 Go's doc-comment normalization (gofmt since Go 1.19) treats a literal double-backtick pair in
-a doc comment as the old quoting convention and rewrites it to a curly quote (`“`); so a
-comment trying to *depict* markdown double-backtick spans gets silently mangled into wrong
-typography, and restoring the backticks verbatim just re-triggers the rewrite (hit twice on
-2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the construct out
-in words ("a double-backtick quoting span"); literal backtick pairs are only safe inside
-non-doc comments or raw strings.
+a doc comment as the old quoting convention and rewrites it to a left curly quote (U+201C);
+so a comment trying to *depict* markdown double-backtick spans gets silently mangled into
+wrong typography, and restoring the backticks verbatim just re-triggers the rewrite (hit
+twice on 2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the
+construct out in words ("a double-backtick quoting span"); literal backtick pairs are only
+safe inside non-doc comments or raw strings.
 
 ## Topic and decision edits regenerate navigation outside the authored file
 
@@ -942,6 +1020,43 @@ victim seat: when a staged file vanishes, `git log --oneline -- <file>` names th
 that captured it. The rule gains its converse: **every commit in a shared checkout is a
 pathspec commit, including your effort's final one** - and the audit-rule follow-up on
 the roadmap now has five occurrences behind it.
+
+**Scope after ADR-0189 (recorded 2026-07-31).** Managed worktrees are now the default
+execution location: `awf effort new` creates one and directs execution there, so
+cross-effort work is separated by default and every occurrence above predates that
+cutover. The discipline in this entry still binds the residual shared-tree cases:
+non-effort work in the primary checkout, two sessions inside one checkout or worktree,
+and the effort-owned memory files that always live under the primary `.awf/efforts/`.
+The live hazard shape under the worktree-default topology is different - a
+primary-checkout path silently splitting a worktree transaction - and has its own entry.
+
+**Sixth occurrence, 2026-07-31, and the first where the sweep rode a `git checkout`.**
+`git checkout -- <path>` restores from the INDEX, not from HEAD, and in a shared checkout
+the index is another writer's mutable state. A two-file doc edit (dropping two
+`proseGate.exemptions` entries and the glyph they covered) was left uncommitted in the
+primary checkout while a merge was open there; the index absorbed the working-tree edits,
+so the intended `git checkout -- <paths>` revert restored that same content back onto disk
+instead of dropping it, and it landed in the merge commit. The result is an evil merge:
+`git show <merge>:<path>` carries the change while neither `^1` nor `^2` does, so the
+change was never independently gated and is attributed to an unrelated merge subject.
+Detection is its own trap - `git log -S<string> -- <path>` reports NOTHING, because
+`git log -S` skips merge commits by default; diff the merge against both parents, or pass
+`--diff-merges=first-parent`. The tell at the time was in plain sight and read backwards:
+the file went from ` M` to `M ` across the checkout, i.e. it became STAGED rather than
+clean, which is proof the revert restored rather than discarded. Rule: before reverting
+your own uncommitted hunks in a shared checkout, run `git diff --cached -- <paths>` first;
+if the index already holds your content, `git checkout --` is a no-op that re-lands it, and
+the only safe revert is reverse-applying your own patch (`git apply -R`). Exposure here is
+proportional to how long a merge stays open in a shared checkout, so anything that
+shortens that window shrinks this hazard without removing the underlying rule.
+
+**Sixth occurrence, 2026-07-31, hours after the scope note above was written, inside one
+of its named residual cases.** Integration runs in the primary checkout, and resolving the
+divergent merge with `git add -A` swept a concurrent session's uncommitted prose-exemption
+edit into the merge commit undisclosed; the renewed terminal review caught it. Merge
+resolution is not exempt from the pathspec rule: stage the resolved conflict paths and
+your own renumber edits by name, and run a fresh `git status` first, because integration
+is precisely the moment two sessions' work meets in one index.
 
 ## Link ADRs by their on-disk filename, never by constructing one from the title
 
@@ -1733,9 +1848,9 @@ needed exactly that: its tip was rewritten back to the pre-flip phase, and Phase
 after integration as two batches, five operations moving it to `Implementing` and the sixth
 landing with the flip once terminal review settled. Treat the flip as the last thing that
 happens, after terminal review, and prefer an incremental batch whenever any question about
-the decision's content is still open. Note also that a terminal event carrying explicit
-`Applied` events must NOT repeat a `state-sequence`; mixing explicit batches with implicit
-terminal sequencing is rejected outright.
+the decision's content is still open. (The original note about a terminal event not
+repeating a `state-sequence` retired with the global sequence itself in ADR-0191; Applied
+events carry operations only.)
 
 ## In a managed worktree, a primary-checkout path silently splits the transaction
 
@@ -1803,6 +1918,20 @@ instrument keeps proving itself. Beware two shapes especially - a check whose su
 a regexp over source, where the language's syntax is richer than the pattern; and a
 check reused from another context, where the boundary it encodes may not be the boundary
 you need. Both look identical to a working check from the output alone.
+
+A fourth shape inverts the failure: the check is fine and the FALSIFICATION is broken, so
+the habit above silently degrades into the thing it was meant to replace. Planting a
+violation with `sed -i "s|...|...|"` fails outright when the pattern contains `||`, since
+the alternation collides with the `s|` delimiter; `sed` prints its usage error, the
+surrounding script carries on, and the test then passes because nothing was ever mutated.
+Two of three mutations in one ADR-0198 round failed exactly this way and their green
+results were briefly read as evidence. A mutation that does not apply is indistinguishable
+from a test that catches nothing, and it is the more dangerous of the two, because it
+arrives wearing the costume of due diligence. Assert the mutation landed before trusting
+its verdict: prefer a substitution that fails loudly on a missing pattern, such as python
+with an `assert pattern in source` before the replace. One more trap in the same loop:
+undoing a mutation with `git checkout -- <file>` also discards any UNCOMMITTED real edit
+to that file, so a comment written minutes earlier vanishes with the mutation.
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

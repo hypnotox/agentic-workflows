@@ -199,7 +199,6 @@ currentState:
   testGlobs:
     - '**/*_test.md'
   maxTopicsPerPath: 5
-  maxClaimsPerTopic: 12
 proseGate:
   enabled: true
   exemptions:
@@ -228,7 +227,6 @@ memoryCite:
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
 		"`currentState.testGlobs` | string list | none | 1 globs |",
 		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
-		"`currentState.maxClaimsPerTopic` | positive integer | 20 | 12 |",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)
@@ -313,13 +311,13 @@ func TestConfigReferenceSurfacesSynthesizedLocalDataKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := p.dataKeyRows()
+	rows, err := p.dataKeyRowsTyped()
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := map[string]bool{}
 	for _, r := range rows {
-		got[r["artifact"].(string)+"."+r["key"].(string)] = true
+		got[r.Artifact+"."+r.Key] = true
 	}
 	for _, want := range []string{"local skills.description", "local agents.description", "local docs.title", "local docs.description"} {
 		if !got[want] {
@@ -338,12 +336,12 @@ func TestConfigReferenceOmitsBaseRowsWithoutSynthesizedLocal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := p.dataKeyRows()
+	rows, err := p.dataKeyRowsTyped()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, r := range rows {
-		if strings.HasPrefix(r["artifact"].(string), "local ") {
+		if strings.HasPrefix(r.Artifact, "local ") {
 			t.Errorf("unexpected _base row for a local:true opt-out: %v", r)
 		}
 	}

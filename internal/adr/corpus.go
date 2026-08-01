@@ -25,7 +25,7 @@ type Corpus struct {
 // DuplicateIdentityError reports corpus identity keys declared by more than one
 // file. It is typed because exactly one consumer needs the detail rather than
 // the message: the numbering command refuses on a duplicate-number corpus and
-// hints the reset-remake recipe (ADR-0194 item 12). Every other consumer treats
+// hints the reset-remake recipe (ADR-0202 item 12). Every other consumer treats
 // it as fatal.
 type DuplicateIdentityError struct {
 	Numbers []string
@@ -49,7 +49,7 @@ type Status = string
 // OperationRecord is the ADR identity for one claim operation: the number for a
 // numbered record and the slug for a pending one. Ascending ADR number is the
 // per-claim provenance order (ADR-0191), with pending records after every number
-// (ADR-0194 item 10).
+// (ADR-0202 item 10).
 type OperationRecord struct {
 	Identity string
 	Title    string
@@ -67,7 +67,7 @@ type ClaimOperationHistory struct {
 
 // NewCorpus builds the view over an already-parsed slice, indexing both
 // identity keys: the four-digit number of a numbered record and the retained
-// slug of every slug-carrying record, pending or numbered (ADR-0194 item 3).
+// slug of every slug-carrying record, pending or numbered (ADR-0202 item 3).
 //
 // A duplicate in either index is a *DuplicateIdentityError. The returned Corpus
 // is still populated, last-wins, so the numbering command can read the pending
@@ -178,7 +178,7 @@ func (c Corpus) BySlug(slug string) (ADR, bool) {
 
 // ByIdentity returns the record whose identity key equals id: a four-digit
 // number resolves against the numbered index, anything else against the slug
-// index (ADR-0194 item 4).
+// index (ADR-0202 item 4).
 func (c Corpus) ByIdentity(id string) (ADR, bool) {
 	if IsSlugIdentity(id) {
 		return c.BySlug(id)

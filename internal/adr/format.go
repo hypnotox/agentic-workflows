@@ -62,7 +62,7 @@ func ParseV2(name string, data []byte) (ADR, error) {
 // pending `<slug>.md` with a `# ADR-<slug>: <Title>` heading. The record's body
 // rules, history grammar, and digest coverage are V2's exactly; what V3 adds is
 // the mandatory `slug:` key and its agreement with the filename and the heading
-// (ADR-0194 items 1 to 3).
+// (ADR-0202 items 1 to 3).
 func ParseV3(name string, data []byte) (ADR, error) {
 	a, err := parseGoverned(name, data, CurrentStateV3)
 	if err != nil {
@@ -221,7 +221,7 @@ func HistoryTransitionValid(before, after ADR) bool {
 // HistoriesEqual reports whether a pair's Status history is byte-identical.
 // The numbering transition takes this rather than either append-tolerant
 // variant: numbering touches no history event, so the pair's history must not
-// move at all (ADR-0194 item 9).
+// move at all (ADR-0202 item 9).
 func HistoriesEqual(before, after ADR) bool {
 	return historiesEqual(before.History, after.History)
 }
@@ -237,7 +237,7 @@ func historiesEqual(a, b []HistoryEvent) bool {
 // FormatBoundaries are the immutable ADR format cutoffs from one snapshot.
 // A zero V2From leaves every governed record in the V1 region; a zero V3From
 // leaves every numbered governed record at or below the V2 region. The set is
-// ordered V1From <= V2From <= V3From (ADR-0194 item 1).
+// ordered V1From <= V2From <= V3From (ADR-0202 item 1).
 type FormatBoundaries struct {
 	V1From int
 	V2From int
@@ -247,7 +247,7 @@ type FormatBoundaries struct {
 // ParseRecord routes a numbered record by the numeric format boundaries and a
 // numberless one by its declared `format:` marker: a pending record has no
 // number to route by, so `current-state-v3` is the only legal numberless
-// declaration and anything else is a corpus error (ADR-0194 item 4).
+// declaration and anything else is a corpus error (ADR-0202 item 4).
 func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, error) {
 	m := FilenameRe.FindStringSubmatch(name)
 	if m == nil {

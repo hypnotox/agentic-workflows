@@ -64,7 +64,9 @@ func WriteAwfConfig(t *testing.T, root, yamlContent string) {
 // forceNonInteractive-shaped idiom: a *T package-private seam variable
 // reassigned for one test, in the same package as the test. Does not cover
 // internal/adr's swapNow, an external-test-package accessor of a different
-// shape (ADR-0044 Context).
+// shape (ADR-0044 Context). Serves the existing seam census only: minting a
+// new package-level swap variable is banned for new work by
+// code-design/test-design (no-new-global-seams).
 func SwapVar[T any](t *testing.T, seam *T, val T) {
 	t.Helper()
 	orig := *seam

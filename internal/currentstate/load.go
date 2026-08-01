@@ -20,7 +20,7 @@ type Loaded struct {
 	ADRs []adr.ADR
 	// Corpus is the identity-indexed view over ADRs, built and validated once
 	// here. Consumers take it rather than rebuilding one, so the corpus-wide
-	// duplicate-identity refusal (ADR-0194 item 4) has a single evaluation point
+	// duplicate-identity refusal (ADR-0202 item 4) has a single evaluation point
 	// per load instead of one per consumer.
 	Corpus adr.Corpus
 	Topics topic.Corpus
@@ -57,7 +57,7 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, boundaries adr.Format
 // except for the recorded legacy gaps (ADR-0135). Per-file legacy, V1, V2, and
 // pending-V3 routing is already enforced by adr.ParseRecord, which also rejects
 // a non-reserved file that is neither form. Contiguity stays number-scoped: a
-// pending record has no number to be contiguous with (ADR-0194 item 4).
+// pending record has no number to be contiguous with (ADR-0202 item 4).
 func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoundaries, gaps []int) ([]adr.ADR, error) {
 	prefix := docsDir + "/decisions/"
 	var records []adr.ADR

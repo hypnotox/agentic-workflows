@@ -126,6 +126,7 @@ var Standard = &Catalog{
 				"focusItems": []any{
 					map[string]any{"name": "decision-clarity", "description": "each Decision item is a discrete, implementable commitment a reader could act on without further consultation"},
 					map[string]any{"name": "consequences-honesty", "description": "trade-offs name real costs and operational implications, not straw men"},
+					map[string]any{"name": "claim-topic-cohesion", "description": "each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds."},
 				},
 				"docCurrencyItems": []any{
 					map[string]any{"check": "every document that states the behaviour this ADR changes is updated in the same commit"},
@@ -248,7 +249,7 @@ var Standard = &Catalog{
 		{Key: "proseGateCmd", Kind: "string", Description: "Command that runs the prose scan (the pre-commit hook payload calls it). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled).", Default: "", Options: []string{"./awf check prose"}},
 		{Key: "memoryGateCmd", Kind: "string", Description: "Command that runs the working-memory citation scan (the pre-commit hook payload calls it). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled).", Default: "", Options: []string{"./awf check memory"}},
 		{Key: "testCmd", Kind: "string", Description: "Command that runs the test suite.", Default: "", Options: []string{"./x test", "go test ./...", "npm test"}},
-		{Key: "commitScopes", Kind: "string", Target: "audit-scopes", Description: "Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes and enforced by awf check commit/audit and quoted by the reviewing skills. Leave empty to accept any scope.", Default: "", Options: []string{"adr,awf,plans"}},
+		{Key: "commitScopes", Kind: "string", Target: "audit-scopes", Description: "Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes and enforced by awf check commit/audit and quoted by the agent guide. Leave empty to accept any scope.", Default: "", Options: []string{"adr,awf,plans"}},
 		{Key: "activeMdRegenCmd", Kind: "string", Description: "Command that regenerates the generated ADR decision index (INDEX.md).", Default: "", Options: []string{"./awf render", "awf render"}},
 		{Key: "awfInvokeCmd", Kind: "string", Description: "Command the rendered ./awf wrapper execs to invoke awf. Leave empty to resolve the bootstrap-pinned binary, falling back to PATH awf.", Default: "", Options: []string{"go run ./cmd/awf"}},
 		{Key: "invariantTestPath", Kind: "string", Description: "Path or glob where invariant-backing tests live.", Default: "", Options: []string{"./internal/..."}},

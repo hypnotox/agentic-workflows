@@ -24,3 +24,14 @@ git reset --hard HEAD~1 && git merge <integrationBranch> && awf adr number
 A record predating the slug format has no slug to be numbered by, and merging the integration branch in can bring a record that has taken its number. Renaming it is the one sanctioned exception to the paragraph above, and it is done by hand: no command performs it. The transition pairs the two ends by their canonical content digest, which covers the five body sections and excludes the frontmatter and the heading, so the rename must touch the filename and the heading line and nothing else. A file-wide substitution of the old number moves the digest, dissolves the pairing, and is reported as an unrelated deletion and addition rather than as a rename. For the same reason a rename and a content amendment cannot share a commit: rename first, amend second. The new number must also stay below the V3 cutoff the integration re-derives, since a record at or above it is parsed as `current-state-v3` and refused for want of a `slug:` key.
 
 For `awf context`, bare directories provide tier-0 census, compact grouping, provenance, topic counts, and bounded pending orientation; bare exact, staged, and range-selected files additionally provide tier-1 `State`, `Touches`, and `Proofs` relationships from actual markers. The eight named facets expand directory relationships, non-direct authority, evidence, selectors, references, pending operations, or artifacts; only `artifacts` refines groups, and `--full` is their union. Output above 8,192 bytes retains secure caller-owned spill delivery.
+
+### Context spill notices
+
+When `awf context` output would exceed 8,192 bytes, the report securely spills outside the
+repository and the command returns exactly a two-line `AWF_CONTEXT_SPILL_V1` notice. On that
+exact notice, read the file named on its second line and verify that its byte length equals
+the `bytes=<decimal>` descriptor before treating its contents as the context packet.
+Best-effort delete the named file after packet use, whether packet use succeeds or fails.
+Treat any other output as the context packet itself; do not interpret a near-match as a
+spill notice. This subsection is the contract's single rendered home; skills and agent
+bodies point here.

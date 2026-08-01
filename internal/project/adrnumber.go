@@ -34,14 +34,14 @@ func (r NumberingReport) String() string {
 }
 
 // duplicateNumbersRecipe is the reset-remake recipe a duplicate-number corpus
-// with no pending record is offered verbatim (ADR-0194 item 12). It is a hint,
+// with no pending record is offered verbatim (ADR-0202 item 12). It is a hint,
 // never an action: numbering unmakes a stale numbering commit by reset, and
 // reads no git provenance to decide that for the caller.
 const duplicateNumbersRecipe = "duplicate ADR numbers with no pending record: if a stale numbering commit collided, " +
 	"run: git reset --hard HEAD~1 && git merge <integration branch> && awf adr number, then gate and merge back"
 
 // NumberPendingADRs numbers the corpus's pending records at integration
-// (ADR-0194 item 8). It runs in the effort worktree after the integration
+// (ADR-0202 item 8). It runs in the effort worktree after the integration
 // branch has been merged in and before the merge back: with exactly one pending
 // record a bare call numbers it, and with several the caller must name every
 // pending slug in the intended add-before-revise order.
@@ -132,7 +132,7 @@ func pendingSlugs(corpus adr.Corpus) []string {
 // caller's arguments, or names why numbering cannot run. An explicit list must
 // name every pending record: the integration-branch block leaves partial
 // numbering no legal destination, and completeness is what keeps the
-// substitution's canonicalization total (ADR-0194 item 8).
+// substitution's canonicalization total (ADR-0202 item 8).
 func numberingOrder(pending, args []string, duplicates *adr.DuplicateIdentityError) ([]string, error) {
 	switch {
 	case duplicates != nil && len(pending) != 0:
@@ -175,7 +175,7 @@ var reviseVerbs = map[adr.OpVerb]string{adr.OpUpdate: "revises", adr.OpRemove: "
 // corpus-local and topological over the pending set alone, which is what
 // guarantees no slug Origin can end up inverted against its slug revisions: an
 // already-numbered adder necessarily holds a smaller number than anything this
-// run assigns (ADR-0194 items 8 and 10).
+// run assigns (ADR-0202 items 8 and 10).
 func checkAddBeforeRevise(corpus adr.Corpus, order []string) error {
 	addedBy := map[string]string{}
 	for _, slug := range order {

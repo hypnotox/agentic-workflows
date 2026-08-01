@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -54,14 +55,17 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 			config.DirName + "/current-state-upgrade.journal": true,
 		},
 		dirs: map[string]bool{
-			config.DirName:                true,
-			config.DirName + "/parts":     true,
-			config.DirName + "/efforts":   true,
-			config.DirName + "/memory":    true,
-			config.DirName + "/worktrees": true,
+			config.DirName:             true,
+			config.DirName + "/parts":  true,
+			config.DirName + "/memory": true,
 		},
 		enabled:    map[string]map[string]bool{},
 		singletons: map[string]bool{},
+	}
+	// A resident root is a structural directory even when its dynamic tree is
+	// empty. The names come from the resident table, never re-spelled here.
+	for _, name := range resident.RootNames() {
+		m.dirs[config.DirName+"/"+name] = true
 	}
 	for _, f := range files {
 		if strings.HasPrefix(f.Path, config.DirName+"/") {
@@ -202,7 +206,7 @@ func (p *Project) sweepConfigTree(files []RenderedFile, topics topic.Corpus) ([]
 			// Dynamic residents exist only at the primary control root. A linked
 			// checkout's same-named tree is not resident authority and must not be
 			// silently exempted from its tracked config sweep.
-			if isResidentPath(rel) && p.Root == p.residentRoot {
+			if resident.IsResidentPath(rel) && p.Root == p.roots.Resident {
 				return filepath.SkipDir
 			}
 			if m.claimedDir(rel) {

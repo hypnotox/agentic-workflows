@@ -3,7 +3,7 @@
 
 Coverage, prose, working-memory citations, and the command-runner gate machinery.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/coverage/**`, `internal/memorycite/**`, `internal/prosegate/**`, `tools/**`, `x`. Both domain and topic selectors must match. Run `awf topic tooling/quality-gates --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/coverage/**`, `internal/memorycite/**`, `internal/prosegate/**`, `tools/**`, `x`. Both domain and topic selectors must match. Run `awf topic tooling/quality-gates --coverage` for current matched paths and marker sites.
 
 These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, working-memory citations, and the gate tiers. The claims below capture the current gate contracts.
 
@@ -73,8 +73,9 @@ Backing: test
 
 ### `invariant: pi-extension-container-gate`
 
-The command runner wires a Pi-extension gate lane that runs the extension's tests inside a dependency-fingerprinted persistent Docker environment, requiring no host Node or npm, and keeps its explicit stop and reset cleanup commands available.
+The command runner wires a Pi-extension gate lane that runs the extension's tests inside an ephemeral Docker container built from a content-fingerprinted image shared by every checkout, requiring no host Node or npm, leaving behind no container and no volume, and keeping an explicit reset cleanup command available.
 Origin: ADR-0123
+Revised-by: ADR-0198
 Backing: test
 
 ### `invariant: prose-gate-refuses-without-git`

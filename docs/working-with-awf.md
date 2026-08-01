@@ -45,6 +45,17 @@ A record predating the slug format has no slug to be numbered by, and merging th
 
 For `awf context`, bare directories provide tier-0 census, compact grouping, provenance, topic counts, and bounded pending orientation; bare exact, staged, and range-selected files additionally provide tier-1 `State`, `Touches`, and `Proofs` relationships from actual markers. The eight named facets expand directory relationships, non-direct authority, evidence, selectors, references, pending operations, or artifacts; only `artifacts` refines groups, and `--full` is their union. Output above 8,192 bytes retains secure caller-owned spill delivery.
 
+### Context spill notices
+
+When `awf context` output would exceed 8,192 bytes, the report securely spills outside the
+repository and the command returns exactly a two-line `AWF_CONTEXT_SPILL_V1` notice. On that
+exact notice, read the file named on its second line and verify that its byte length equals
+the `bytes=<decimal>` descriptor before treating its contents as the context packet.
+Best-effort delete the named file after packet use, whether packet use succeeds or fails.
+Treat any other output as the context packet itself; do not interpret a near-match as a
+spill notice. This subsection is the contract's single rendered home; skills and agent
+bodies point here.
+
 
 <!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->
 Rendering recognizes exactly two repository-wide resident roots, `.awf/efforts` and `.awf/worktrees`, matching the only state protocol 2 keeps: `.awf/efforts/<slug>/` and `.awf/worktrees/<slug>/`. There is no standalone memory root; an effort's memory lives inside the effort that owns it. Rendering governs only each root's self-ignoring `.gitignore`; dynamic descendants are local state that render, drift checks, sweep, and uninstall preserve without recursing into. Schema generation 21 removes obsolete metrics and assignment residents during upgrade, and generation 22 resets protocol-1 effort records and standalone `.awf/memory/` content rather than migrating them. That reset is journaled with the lock replacement as its commit point, so it refuses beforehand, and changes nothing, while any legacy managed worktree path, registration, or branch remains.

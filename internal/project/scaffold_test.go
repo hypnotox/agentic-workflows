@@ -79,7 +79,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 
 // A freshly scaffolded config carries the required integrationBranch key and
 // therefore passes its own validation. Without the key the scaffold would emit
-// a config that fails on the very next open (ADR-0194 Decision 6).
+// a config that fails on the very next open (ADR-0202 Decision 6).
 // invariant: config/configuration:integration-branch-explicit
 func TestScaffoldWritesValidIntegrationBranch(t *testing.T) {
 	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)

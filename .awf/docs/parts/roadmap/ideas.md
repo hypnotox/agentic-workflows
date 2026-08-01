@@ -22,11 +22,6 @@
   lines are dropped. No claim states this, so every migration that edits config inherits an unstated
   contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
   covering whether the property is claimed once for the package or restated per migration.
-- Promote the topic-claim-budget advisory from a non-failing note to a fixed blocking
-  rank now that ADR-0148 brought every topic under budget; needs its own small ADR
-  revising `tooling/cli:topic-claim-budget-advisory`. ADR-0183 forecloses the
-  configurable-severity and adopter-facing-config-key half of this idea: awf exposes no
-  severity setting, so the promotion is to a rank fixed in code or not at all.
 - Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
@@ -71,6 +66,40 @@
   re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
   it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
   expensive.
+- Broaden the task-skill set. Nothing produces a PR title and body from the commits of an
+  effort; there is no skill for reviewing an incoming third-party PR, no security-review
+  lens, no refactor-execution skill (`refactor-coupling-audit` only scopes the decision),
+  and no dependency-upgrade skill. For the last, a concrete by-hand model exists from
+  2026-07-10: cooldown window, govulncheck reachability triage, SHA-pin bumps, changelog
+  entry.
+- Publish the standard as an artifact. No versioned spec exists (the standard is implied
+  by the renderer and its templates), there is no discoverability surface beyond the
+  GitHub README, and no examples gallery beyond `examples/sundial`.
+- Audit this repo's own overrides for dogfooding. The principle (user, 2026-07-26): only
+  overwrite what is really needed, otherwise dogfood the shipped defaults, and use
+  template defaults inside overrides so they keep rendering. A survey that day found 7
+  full-replacement parts under `.awf/parts/`, 2 under `.awf/skills/parts/`
+  (retrospective/procedure and debugging/debugging-surfaces are the worrying pair: awf
+  never renders those shipped defaults at all), and 14 under `.awf/docs/parts/`.
+- An advisory for hand-curated prose counts, which drift when the source-of-truth count
+  changes; two recorded occurrences (the agent-guide invariant list and the glossary
+  exemption count).
+- A static-state inventory command enumerating the outstanding bounded candidates of
+  ratchet-scoped code-design claims (today: the shallow `os.Is*` predicate sites,
+  message-text identity assertions, exported error identities no caller matches,
+  undocumented exported declarations, and the global test-seam census),
+  so each ratchet topic can point its existing-violation backlog at a mechanical census
+  instead of prose. The name must not be "awf doctor" without a disambiguating note:
+  ADR-0162 retired that name with a different meaning. Needs its own ADR: it adds a
+  command surface.
+- Align error-message prefixes across `cmd/awf`, `internal/adr`, and the changelog
+  tooling. Cosmetic, and blocked on deciding which convention wins before any sweep.
+- A plan-reviewer docCurrencyItem for the missing changelog task of an adopter-facing
+  plan, to be added if a second plan ships without one (first occurrence 2026-07-12; the
+  repo-local audit rule already catches the omission, just later than plan review would).
+- The init collision probe over-refuses on artifacts a `--set` trim would deselect.
+  Accepted as conservative design; revisit only if an adopter reports hitting it.
+
 - Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
   merge the target in the managed worktree, run `awf check --staged`, run the gate, commit,
@@ -104,7 +133,7 @@
 
 `loadTreeCurrentState` validates the HEAD-side config after porting it forward, so a
 key that is required with no in-code default fails the whole before-side load until
-every committed config in range carries it. ADR-0194's `integrationBranch` hit this and
+every committed config in range carries it. ADR-0202's `integrationBranch` hit this and
 paid for it with a per-key seeding case in `ConfigForCurrentSchema` (`internal/migrate/
 migrate.go`), the first case in that function to materialize a key rather than remove
 one - which the function's own generation-25 comment argues against.
@@ -115,7 +144,7 @@ it does, the before-side of every transition check is red for a release cycle. T
 alternative worth settling is that the before-side needs a historical config to PARSE,
 not to satisfy today's validation rules, since coverage is never evaluated from a
 before-side config. That would retire the seeding cases entirely rather than adding one
-per key. Raised by the Phase 3 review of ADR-0194 on 2026-07-31 as a policy question
+per key. Raised by the Phase 3 review of ADR-0202 on 2026-07-31 as a policy question
 rather than a defect.
 
 ## A claim can carry at most one operation per ADR
@@ -128,7 +157,7 @@ correction - the fix has to wait for a different decision record.
 
 The live instance: `config/configuration:config-serialization-owned` asserts a CLOSED
 enumeration of the editors that mutate config.yaml, and it omits `RemoveKey` and
-`RemoveMappingKey`, both of which live migrations use. ADR-0194 already spent its one
+`RemoveMappingKey`, both of which live migrations use. ADR-0202 already spent its one
 update on that claim (adding `SetString`), so the enumeration stays false until another
 ADR updates it. Worth folding into whatever decision next touches the config editors, and
 worth asking there whether a "closed enumeration" claim should be backed by a
@@ -145,12 +174,12 @@ The scaffold now refuses an all-digit title slug outright (`allDigitSlugRe`,
 `internal/adr/adr.go`), which closes the only path that mints one through awf. A
 hand-authored `2026.md` carrying `slug: 2026` still parses into the corpus and is still
 unreachable by identity. The complete guard belongs on `corpus-single-identity-key`, whose
-text already governs what is a corpus error - but ADR-0194 spent its one operation on that
+text already governs what is a corpus error - but ADR-0202 spent its one operation on that
 claim in batch 1, and a claim carries at most one operation per ADR, so widening it needs a
 later decision record. Worth folding into whatever decision next touches corpus identity,
 and worth asking there whether the number-shaped-slug check belongs beside the existing
 duplicate-key error rather than as a separate rule. Surfaced by the Phase 4 review of
-ADR-0194 on 2026-07-31; the scaffold half landed the same day.
+ADR-0202 on 2026-07-31; the scaffold half landed the same day.
 
 
 ## Two pending records tie in the appended-batch rank
@@ -169,9 +198,9 @@ author's workaround is to apply the two batches in separate commits.
 
 Imposing a topological order instead would contradict
 `invariants/current-state-authority:provenance-ordered-by-adr-number`, which says slug
-entries compare in authored list order among themselves - and ADR-0194 spent its one
+entries compare in authored list order among themselves - and ADR-0202 spent its one
 operation on that claim, so restating it needs a later decision record. Worth folding into
 whatever decision next touches pending provenance order, and worth deciding there whether
 the authored order should instead be something the tree records explicitly, since nothing
 today declares the intended numbering order until the command is invoked. Surfaced by the
-Phase 5 review of ADR-0194 on 2026-08-01.
+Phase 5 review of ADR-0202 on 2026-08-01.

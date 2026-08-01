@@ -553,7 +553,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			// The scaffold writes integrationBranch: main while a go-git
 			// fixture starts on master; put the checkout on the branch the
 			// scaffolded config names, so `new adr` takes the numbered path
-			// this test is about (ADR-0194 item 5).
+			// this test is about (ADR-0202 item 5).
 			gitfixture.NativeBranch(t, repo, "main")
 			gitfixture.NativeCheckout(t, repo, "main")
 			if err := runNew(ctx, root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
@@ -580,7 +580,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			text := string(body)
 			// Fresh adoption seals the whole ordered cutoff set at the same
 			// boundary, so a scaffolded record is V3 with its slug key
-			// (ADR-0194 items 1 and 2).
+			// (ADR-0202 items 1 and 2).
 			if !strings.Contains(text, "format: current-state-v3\n") {
 				t.Fatalf("new ADR at cutoff %d is not current-state-v3", tc.cutoff)
 			}

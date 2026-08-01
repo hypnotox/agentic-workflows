@@ -59,7 +59,7 @@ func TestParseDirParsesFrontmatterAndSkipsNonPlans(t *testing.T) {
 }
 
 // TestParseDirReadsNumberAndSlugADRLinks covers the `adrs:` entry grammar
-// (ADR-0194 item 14): a number and a pending record's slug both parse into the
+// (ADR-0202 item 14): a number and a pending record's slug both parse into the
 // field their spelling names, and every zero-padded spelling the live plans use
 // stays a number whichever tag yaml.v3 resolves it to. Each case asserts the
 // filled field as well as the identity, because a numeric slug and a number

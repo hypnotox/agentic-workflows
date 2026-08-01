@@ -1,4 +1,4 @@
-package project
+package contextq
 
 import (
 	"testing"
@@ -40,8 +40,7 @@ None.
 
 - 2026-07-27: Proposed
 `
-	p := csRepo(t, ctxConfig, files)
-	ws, err := p.workingCurrentState(testContext(t))
+	state, err := ctxRepo(t, ctxConfig, files).ContextState(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,33 +48,33 @@ None.
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus := mustCorpus(append(ws.Loaded.ADRs, record))
-	plain := projectADRArtifact("docs/decisions/0002-example.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil)
+	corpus := mustCorpus(append(state.Loaded.ADRs, record))
+	plain := projectADRArtifact("docs/decisions/0002-example.md", state.Layout.ADRDir, corpus, state.Loaded.Topics, nil)
 	if plain == nil || plain.Status != "Proposed" || len(plain.Operations) != 0 {
 		t.Fatalf("plain=%#v", plain)
 	}
-	full := projectADRArtifact("docs/decisions/0002-example.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
+	full := projectADRArtifact("docs/decisions/0002-example.md", state.Layout.ADRDir, corpus, state.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
 	if len(full.Operations) != 1 || full.Operations[0].Progress != "proposed" || full.Operations[0].ClaimState != "not-yet-current" {
 		t.Fatalf("full=%#v", full)
 	}
-	if projectADRArtifact("docs/decisions/not-an-adr.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil) != nil {
+	if projectADRArtifact("docs/decisions/not-an-adr.md", state.Layout.ADRDir, corpus, state.Loaded.Topics, nil) != nil {
 		t.Fatal("lookalike attributed")
 	}
-	if projectADRArtifact("docs/decisions/0002-wrong.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil) != nil {
+	if projectADRArtifact("docs/decisions/0002-wrong.md", state.Layout.ADRDir, corpus, state.Loaded.Topics, nil) != nil {
 		t.Fatal("wrong filename attributed")
 	}
-	if projectADRArtifact("elsewhere/0002-example.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil) != nil {
+	if projectADRArtifact("elsewhere/0002-example.md", state.Layout.ADRDir, corpus, state.Loaded.Topics, nil) != nil {
 		t.Fatal("outside directory attributed")
 	}
 	update := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/one:order", Slug: "order"}
 	add := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:new-rule", Slug: "new-rule"}
 	broken := adr.ADR{Number: "0005", Title: "ADR-0005: Broken", Filename: "0005-broken.md", Status: "Implementing", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Operations: []adr.Operation{update}}}}
-	brokenImpact := projectADRArtifact("docs/decisions/0005-broken.md", p.layout().ADRDir, mustCorpus([]adr.ADR{broken}), ws.Loaded.Topics, []ContextFacet{FacetPending})
+	brokenImpact := projectADRArtifact("docs/decisions/0005-broken.md", state.Layout.ADRDir, mustCorpus([]adr.ADR{broken}), state.Loaded.Topics, []ContextFacet{FacetPending})
 	if brokenImpact == nil || len(brokenImpact.Operations) != 0 {
 		t.Fatal(brokenImpact)
 	}
 	implementing := adr.ADR{Number: "0003", Title: "ADR-0003: Implementing", Filename: "0003-implementing.md", Status: "Implementing", Format: adr.CurrentStateV2, Operations: []adr.Operation{update, add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Operations: []adr.Operation{update}}}}
-	impl := projectADRArtifact("docs/decisions/0003-implementing.md", p.layout().ADRDir, mustCorpus([]adr.ADR{implementing}), ws.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
+	impl := projectADRArtifact("docs/decisions/0003-implementing.md", state.Layout.ADRDir, mustCorpus([]adr.ADR{implementing}), state.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
 	if impl == nil || len(impl.Operations) != 2 || impl.Operations[0].Progress != "applied" || impl.Operations[1].Progress != "remaining" || impl.Operations[0].Detail == nil {
 		t.Fatalf("implementing=%#v", impl)
 	}
@@ -89,20 +88,11 @@ None.
 	if got := pendingChanges(mustCorpus([]adr.ADR{{Number: "0002", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}}}), map[string]bool{"other/topic": true}); len(got) != 0 {
 		t.Fatal(got)
 	}
-	// A pending record answers to its slug, so it is projected under that
-	// identity and sorted after every numbered record rather than dropped by a
-	// number lookup that resolves nothing.
-	pending := adr.ADR{Slug: "keep-the-corpus", Title: "ADR-keep-the-corpus: Pending", Filename: "keep-the-corpus.md", Status: "Accepted", Format: adr.CurrentStateV3, Operations: []adr.Operation{add}}
-	numbered := adr.ADR{Number: "0002", Title: "ADR-0002: Numbered", Filename: "0002-numbered.md", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add2}}
-	mixed := pendingChanges(mustCorpus([]adr.ADR{pending, numbered}), map[string]bool{"alpha/one": true})
-	if len(mixed) != 2 || mixed[0].ADR != "0002" || mixed[1].ADR != "keep-the-corpus" || mixed[1].Title != "Pending" || mixed[1].Claim != "alpha/one:new-rule" {
-		t.Fatalf("pending identity projection=%#v", mixed)
-	}
 	malformed := adr.ADR{Number: "0006", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Operations: []adr.Operation{update}}}}
 	if got := pendingChanges(mustCorpus([]adr.ADR{malformed}), map[string]bool{"alpha/one": true}); len(got) != 0 {
 		t.Fatal(got)
 	}
-	gone := projectADRArtifact("docs/decisions/0004-abandoned.md", p.layout().ADRDir, mustCorpus([]adr.ADR{abandoned}), ws.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
+	gone := projectADRArtifact("docs/decisions/0004-abandoned.md", state.Layout.ADRDir, mustCorpus([]adr.ADR{abandoned}), state.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
 	if gone == nil || gone.Operations[1].Progress != "canceled" {
 		t.Fatalf("abandoned=%#v", gone)
 	}
@@ -129,9 +119,19 @@ None.
 		{"v1 Implemented", "Implemented", "frozen", adr.CurrentStateV1},
 	} {
 		rec := adr.ADR{Number: "0007", Title: "ADR-0007: Case", Filename: "0007-case.md", Status: tc.status, Format: tc.format}
-		got := projectADRArtifact("docs/decisions/0007-case.md", p.layout().ADRDir, mustCorpus([]adr.ADR{rec}), ws.Loaded.Topics, nil)
+		got := projectADRArtifact("docs/decisions/0007-case.md", state.Layout.ADRDir, mustCorpus([]adr.ADR{rec}), state.Loaded.Topics, nil)
 		if got == nil || got.Mutability != tc.want {
 			t.Errorf("%s mutability = %#v, want %q", tc.name, got, tc.want)
 		}
 	}
+}
+
+// mustCorpus builds a corpus from fixture records that carry no duplicate
+// identity, so the construction error the seam returns cannot occur here.
+func mustCorpus(records []adr.ADR) adr.Corpus {
+	c, err := adr.NewCorpus(records)
+	if err != nil { // coverage-ignore: fixture records are duplicate-free by construction
+		panic(err)
+	}
+	return c
 }

@@ -41,7 +41,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Consensus adherence
 
-When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the ADR against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating ADR passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the ADR against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating ADR passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
 ## Universal lenses
 
@@ -70,6 +70,9 @@ Apply all lenses to every ADR:
 
 
 **consequences-honesty**: trade-offs name real costs and operational implications, not straw men
+
+
+**claim-topic-cohesion**: each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds.
 
 
 

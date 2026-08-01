@@ -8,7 +8,7 @@ Pi renders native discoverable skills, the subagent extension, and the lifecycle
 
 The topic producer renders each valid pair to `<docsDir>/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `<docsDir>/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page. Generated output follows the normal manifest, drift, and prune lifecycle.
 
-The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Catalog workflow profiles provide kind, purpose, trigger, and optional advisory neighbors. Every enabled skill is independently discoverable; advisory neighbors do not create enablement edges or required transitions.
+The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Resident-root policy lives in `internal/resident` as the single production home of the root table, the resident path and kind predicates, and the anchoring `Roots` value the render core consumes; template identity derives only from the catalog and the kind-descriptor, singleton, and target declaration tables (ADR-0195). Catalog workflow profiles provide kind, purpose, trigger, and optional advisory neighbors. Every enabled skill is independently discoverable; advisory neighbors do not create enablement edges or required transitions.
 
 The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
 

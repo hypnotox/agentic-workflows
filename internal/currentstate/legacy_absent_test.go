@@ -25,11 +25,12 @@ var legacyAuthorityIdents = []string{
 
 // legacyContextFields are the old ContextResult expansion fields: the
 // ADR-derived governing/related/background context that ADR-0134's topic-centric
-// context replaced. They are scoped to internal/project/context.go rather than
-// banned tree-wide, because Related collides with the live adr.ADR.Related
-// frontmatter field and Background/Plans are ordinary words elsewhere; context.go
-// is the one file the legacy result lived in, so their absence there proves the
-// expansion is gone without a false positive.
+// context replaced. They are scoped to the context producer rather than banned
+// tree-wide, because Related collides with the live adr.ADR.Related frontmatter
+// field and Background/Plans are ordinary words elsewhere; that file is the one
+// place the legacy result lived, so their absence there proves the expansion is
+// gone without a false positive. ADR-0195 carved the producer out of
+// internal/project into internal/contextq; the suffix follows it.
 var legacyContextFields = []string{"Governing", "Related", "Background", "Pitfalls", "Plans"}
 
 // migrationApprovalSeams are the only production files that may spell out the
@@ -50,7 +51,7 @@ const bridgeImportPath = `"github.com/hypnotox/agentic-workflows/internal/bridge
 
 // contextGoSuffix identifies the rewritten context producer among the walked
 // files without depending on the test's working directory.
-const contextGoSuffix = "internal/project/context.go"
+const contextGoSuffix = "internal/contextq/context.go"
 
 // bannedWholeWords returns which banned identifiers occur in body as whole words.
 // The pure matcher is unit-tested directly so the tree scan cannot pass vacuously.
@@ -121,7 +122,7 @@ func TestLegacyAuthorityAbsent(t *testing.T) {
 		t.Fatalf("inspected only %d production Go file(s) under internal/ and cmd/; the scan is not reaching the tree", goSeen)
 	}
 	if !sawContext {
-		t.Fatal("internal/project/context.go was not scanned - has the context producer moved?")
+		t.Fatal(contextGoSuffix + " was not scanned - has the context producer moved?")
 	}
 	for _, seam := range migrationApprovalSeams {
 		if !seams[seam] {

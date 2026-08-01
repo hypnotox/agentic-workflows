@@ -448,20 +448,19 @@ func TestManagerValidationAndOperationRefusals(t *testing.T) {
 
 	for _, operation := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"} {
 		t.Run(operation, func(t *testing.T) {
-			candidate := filepath.Join(t.TempDir(), operation)
-			if err := os.WriteFile(candidate, nil, 0o600); err != nil {
-				t.Fatal(err)
-			}
 			present := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
-				stub.gitPath = func(_ context.Context, name string) (string, error) {
-					if name == operation {
-						return candidate, nil
-					}
-					return filepath.Join(t.TempDir(), name), nil
-				}
+				stub.gitPath = markerAt(t, operation)
 			}))
-			if err := operationFree(testContext(t), present.git); err == nil || !strings.Contains(err.Error(), "in-progress") {
-				t.Fatalf("operation error = %v", err)
+			err := operationFree(testContext(t), present.git)
+			var refused *RefusalError
+			if !errors.As(err, &refused) || refused.Category != "operation" {
+				t.Fatalf("operation error = %v, want an operation refusal", err)
+			}
+			// Only a merge conditions resolution on ownership; the other four
+			// operations are unambiguously the caller's own to finish or abort.
+			merge := operation == "MERGE_HEAD"
+			if strings.Contains(refused.NextAction, "only if you started it") != merge {
+				t.Fatalf("%s refusal = %v, want merge advice only for MERGE_HEAD", operation, refused)
 			}
 		})
 	}
@@ -470,6 +469,107 @@ func TestManagerValidationAndOperationRefusals(t *testing.T) {
 	}))
 	if err := operationFree(testContext(t), faulted.git); err == nil {
 		t.Fatal("operation probe error hidden")
+	}
+}
+
+// A merge is the one in-progress operation whose resolution destroys work the
+// caller may not own, so its refusal conditions finishing or aborting on having
+// started it, named or not, and names the effort when one is provable.
+func TestMergeRefusalConditionsResolutionOnOwnership(t *testing.T) {
+	for name, expect := range map[string]struct {
+		list func(context.Context) ([]awfgit.WorktreeRegistration, error)
+		slug string
+	}{
+		"attributed to the effort whose tip is being merged": {
+			list: registrations(
+				awfgit.WorktreeRegistration{Path: "/primary", Branch: "refs/heads/main", HEAD: mergedTip},
+				awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: mergedTip},
+			),
+			slug: "peer",
+		},
+		"unattributed when no effort branch is at the merged tip": {
+			list: registrations(awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: otherTip}),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := operationFree(testContext(t), &checkoutStub{
+				gitPath:       markerAt(t, "MERGE_HEAD"),
+				resolveCommit: mergeHeadAt(mergedTip),
+				worktreeList:  expect.list,
+			})
+			if err == nil {
+				t.Fatal("merge in progress accepted")
+			}
+			if !strings.Contains(err.Error(), "finish or abort this merge only if you started it") {
+				t.Fatalf("refusal = %v, want ownership-conditioned advice", err)
+			}
+			named := strings.Contains(err.Error(), "effort "+expect.slug)
+			if (expect.slug != "") != named {
+				t.Fatalf("refusal = %v, want attribution to %q", err, expect.slug)
+			}
+		})
+	}
+}
+
+// Attribution is restricted to effort branches, and to a slug that exists. A
+// candidate that fails either guard must not end the scan, or a registration
+// listed after it would never be reached.
+func TestIntegrationHolderSkipsNonEffortRegistrations(t *testing.T) {
+	for name, listed := range map[string][]awfgit.WorktreeRegistration{
+		"ordinary branch at the merged tip": {
+			{Path: "/primary", Branch: "refs/heads/main", HEAD: mergedTip},
+			{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: mergedTip},
+		},
+		"effort prefix with an empty slug at the merged tip": {
+			{Path: "/managed", Branch: "refs/heads/awf/", HEAD: mergedTip},
+			{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: mergedTip},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			holder := integrationHolder(testContext(t), &checkoutStub{
+				resolveCommit: mergeHeadAt(mergedTip),
+				worktreeList:  registrations(listed...),
+			})
+			if holder != "peer" {
+				t.Fatalf("holder = %q, want peer", holder)
+			}
+		})
+	}
+}
+
+// A probe that cannot answer leaves the merge unattributed rather than
+// propagating: the refusal it decorates is already correct without a name.
+func TestIntegrationHolderAnswersUnattributed(t *testing.T) {
+	for name, checkout := range map[string]*checkoutStub{
+		"merge head unresolvable": {
+			resolveCommit: func(context.Context, string) (string, error) { return "", failing("resolve") },
+		},
+		// The listing carries a registration that would attribute the merge, so
+		// swallowing its error names a holder read from a failed probe.
+		"registrations unreadable": {
+			resolveCommit: mergeHeadAt(mergedTip),
+			worktreeList: func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+				return []awfgit.WorktreeRegistration{
+					{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: mergedTip},
+				}, failing("worktree list")
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if slug := integrationHolder(testContext(t), checkout); slug != "" {
+				t.Fatalf("holder = %q, want unattributed", slug)
+			}
+		})
+	}
+}
+
+// The cleanliness refusal cannot attribute unstaged work, so it warns rather
+// than directing an agent to discard changes that may not be its own.
+func TestCleanlinessRefusalWarnsBeforeDiscarding(t *testing.T) {
+	dirty := &checkoutStub{changeCounts: func(context.Context) (int, int, error) { return 1, 0, nil }}
+	err := requireClean(testContext(t), dirty)
+	if err == nil || !strings.Contains(err.Error(), "concurrent") {
+		t.Fatalf("refusal = %v, want one warning about concurrent work", err)
 	}
 }
 
@@ -912,22 +1012,36 @@ func TestIntegrationFactDriftBranches(t *testing.T) {
 }
 
 func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
-	t.Run("target operation", func(t *testing.T) {
-		m, root := newManagerWithEffort(t, "Remove operation")
-		if _, err := m.Add(testContext(t), "remove-operation", "HEAD"); err != nil {
-			t.Fatal(err)
-		}
-		mergeHead := gitfixture.NativeGitPath(t, gitfixture.At(root), "MERGE_HEAD")
-		if !filepath.IsAbs(mergeHead) {
-			mergeHead = filepath.Join(root, mergeHead)
-		}
-		if err := os.WriteFile(mergeHead, nil, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := m.Remove(testContext(t), "remove-operation"); err == nil || !strings.Contains(err.Error(), "in-progress") {
-			t.Fatalf("error = %v", err)
-		}
-	})
+	// Removal probes both checkouts, and a merge in either refuses. Both say the
+	// same thing, because the caller can resolve only a merge it started: the
+	// managed case is exactly where that merge provably is the caller's own.
+	for name, locate := range map[string]func(root string) string{
+		"target operation":  func(root string) string { return root },
+		"managed operation": func(root string) string { return filepath.Join(root, ".awf", "worktrees", "remove-operation") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			m, root := newManagerWithEffort(t, "Remove operation")
+			if _, err := m.Add(testContext(t), "remove-operation", "HEAD"); err != nil {
+				t.Fatal(err)
+			}
+			checkout := locate(root)
+			mergeHead := gitfixture.NativeGitPath(t, gitfixture.At(checkout), "MERGE_HEAD")
+			if !filepath.IsAbs(mergeHead) {
+				mergeHead = filepath.Join(checkout, mergeHead)
+			}
+			if err := os.WriteFile(mergeHead, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err := m.Remove(testContext(t), "remove-operation")
+			var refused *RefusalError
+			if !errors.As(err, &refused) || refused.Category != "operation" {
+				t.Fatalf("error = %v, want an operation refusal", err)
+			}
+			if !strings.Contains(refused.NextAction, "finish or abort this merge only if you started it") {
+				t.Fatalf("refusal = %v, want ownership-conditioned advice", refused)
+			}
+		})
+	}
 	t.Run("remove and branch failures", func(t *testing.T) {
 		for name, broken := range map[string]func(*checkoutStub){
 			"worktree remove": func(s *checkoutStub) {
