@@ -471,7 +471,7 @@ After all phases, run these acceptance checks from the managed worktree:
 2. `go test ./internal/testsupport ./cmd/testtmpclean` exits zero.
 3. `rg 'RunIsolated\([^)]*,' --glob '*.go'` returns no output, proving no caller retains an
    arbitrary prefix.
-4. `rg 'awf-(project-|audit-|git-|snapshot-)?test-home' --glob '*.go'` returns no output, proving
+4. `rg '"awf-(project-|audit-|git-|snapshot-)?test-home"' --glob '*.go'` returns no output, proving
    the old unmanaged home grammars are gone.
 5. `GOOS=windows GOARCH=amd64 go build ./...` exits zero, while Linux/macOS tests exercise the real
    ownership policy.
