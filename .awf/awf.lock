@@ -391,7 +391,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:d6c584765832db0b8868b82e89b2000bad6e4ad89df14e793db4ee3fe6faca68",
+      "outputHash": "sha256:2080baaefb6ac124424816cc86b790ad72216b5e07ef96af3a92aa330a022057",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -511,8 +511,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:b36403d97409fc9cb7730d41912af25ba6dbde964e2068c08a440f065cb09fd6",
-      "outputHash": "sha256:31a6409ea6efd9961af8e4905cd08989d61cfb861d25ba731edb4bbe3b425a28"
+      "configHash": "sha256:bceb7cb9dcfed0fd6e7119ba80af901de956ce2425f8bc0fd00b072cd6f06f62",
+      "outputHash": "sha256:528fbb5cadb829cea08028b43e024cfaa95dbf761f7a5e1ec30a568f8720dfaf"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -613,8 +613,8 @@
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:8b602895163e5ad4134711cd13761c40274a37325b8860430daa20ee4e246a03",
-      "outputHash": "sha256:67a36fdd5fcf13e6594ff6d6c18ab1de08a8b14c1ee26e1e2eb4bb7df5292b2b"
+      "configHash": "sha256:6261e5c65a2060fbf79f5c4bda35385fdc8d4dd7960abf7ccb4d01a644318784",
+      "outputHash": "sha256:d835dc8e97a09418b839189fe505f54fa388adbfa78660cd25169ee141e79ede"
     },
     "docs/topics/invariants/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -799,8 +799,8 @@
     "docs/topics/tooling/upgrade-runtime.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:c9b4b752a816bda65c63afacd452bf221db4bb3bd3cbb79eebb2aea1b179656a",
-      "outputHash": "sha256:a7d8b8b13f12f4ea86ddb2ea723890cb5b364f501ebc0b06e742921862c055ad"
+      "configHash": "sha256:2fd9af44a78a9a50e9d4822b4f954bf095688e74b75d99710f0ccab28d936a22",
+      "outputHash": "sha256:f47ce6e71e667ed57e405803ea8b8cf8b6908515dd51a8d3d51a0191ad833ee7"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",

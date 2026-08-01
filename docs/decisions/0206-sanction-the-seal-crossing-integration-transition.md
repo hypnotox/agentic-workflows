@@ -4,7 +4,7 @@ slug: sanction-the-seal-crossing-integration-transition
 status: Implementing
 date: 2026-08-01
 ---
-# ADR-sanction-the-seal-crossing-integration-transition: Make ADR format intrinsic and authorize stale-format merges at commit-msg
+# ADR-0206: Make ADR format intrinsic and authorize stale-format merges at commit-msg
 
 ## Context
 

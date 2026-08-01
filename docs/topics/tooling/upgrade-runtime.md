@@ -13,7 +13,7 @@ The upgrade package runs the current-state migration: it verifies the bridge sea
 
 The first-adoption binary version is sealed once and preserved unchanged by ordinary sync, zero-migration upgrade, staged authority checks, and forced initialization. ADR format is authored in each record and no cutoff or legacy-gap set forms permanent lock authority.
 Origin: ADR-0139
-Revised-by: ADR-sanction-the-seal-crossing-integration-transition
+Revised-by: ADR-0206
 Backing: test
 
 ### `invariant: current-state-cutover-is-atomic`
@@ -33,7 +33,7 @@ Verify: Fixtures with missing, duplicate, unknown, retired-key, malformed, and d
 ### `invariant: bridge-attestation-cutoff-payload-discarded`
 
 Final upgrade continues to parse and verify a resident version-1 bridge attestation and its approval artifact, including the historical `adrFormatV1From` and `legacyADRGaps` payload, but the journaled cutover discards those routing values instead of promoting them. Approval deletion and final lock replacement retain the existing atomic commit point, and no ADR byte is rewritten.
-Origin: ADR-sanction-the-seal-crossing-integration-transition
+Origin: ADR-0206
 Backing: test
 
 ### `invariant: migration-approval-artifact-is-ephemeral`
