@@ -1,4 +1,4 @@
-These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. The claims below capture the current audit and snapshot contracts.
+These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. From schema generation 31, audit replays the shared cleaned-message authorization parser and exact incoming-parent qualification for committed merges, while pre-epoch merges and non-merges remain outside that replay. The claims below capture the current audit and snapshot contracts.
 
 ## Claims
 

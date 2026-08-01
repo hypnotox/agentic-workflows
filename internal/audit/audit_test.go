@@ -3,6 +3,7 @@ package audit
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -11,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -540,6 +542,250 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 	if err != nil || len(findings) != 0 {
 		t.Fatalf("findings = %#v, %v", findings, err)
 	}
+}
+
+func TestAuditReplaysStaleMergeTrailers(t *testing.T) {
+	cases := []struct {
+		name    string
+		format  adr.Format
+		message string
+		evil    bool
+		schema  int
+		want    string
+	}{
+		{"valid V1", adr.CurrentStateV1, allow(adr.V1FormatMarker), false, 31, ""},
+		{"valid V2", adr.CurrentStateV2, allow(adr.V2FormatMarker), false, 31, ""},
+		{"valid legacy", adr.Legacy, allow("legacy"), false, 31, ""},
+		{"missing", adr.CurrentStateV1, "Merge feature", false, 31, "missing authorization version"},
+		{"malformed", adr.CurrentStateV1, "Merge feature\n\nAWF-Allow-Version: current-state-v1", false, 31, "malformed reserved trailer"},
+		{"wrong version", adr.CurrentStateV1, allow(adr.V2FormatMarker), false, 31, "missing authorization version"},
+		{"duplicate", adr.CurrentStateV1, allow(adr.V1FormatMarker) + "\nAWF-Allow-Version: current-state-v1\nAWF-Allow-Reason: repeated", false, 31, ""},
+		{"redundant", adr.CurrentStateV1, allow(adr.V1FormatMarker) + "\nAWF-Allow-Version: current-state-v2\nAWF-Allow-Reason: unrelated", false, 31, ""},
+		{"evil mutation", adr.CurrentStateV1, allow(adr.V1FormatMarker), true, 31, "unqualified incoming-parent record"},
+		{"pre generation 31", adr.CurrentStateV1, "Merge feature", false, 30, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo, base := staleAuditRepo(t, tc.schema)
+			main := gitfixture.Commit(t, repo, "feat(awf): main", map[string]string{"main.txt": "main\n"})
+			gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+			path, record := "docs/decisions/0001-old.md", staleADR(tc.format, "0001")
+			feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{path: record})
+			result := record
+			if tc.evil {
+				result = strings.Replace(result, "Context.", "Evil mutation.", 1)
+			}
+			gitfixture.Stage(t, repo, map[string]string{"main.txt": "main\n", path: result})
+			gitfixture.Merge(t, repo, tc.message, main, feature)
+
+			findings, _, err := Run(testContext(t), repo.Root(), "master", "HEAD", Inputs{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if len(findings) != 0 {
+					t.Fatalf("findings = %#v", findings)
+				}
+				return
+			}
+			if len(findings) != 1 || findings[0].Rule != "stale-merge-authorization" || findings[0].Severity != severity.Error || !strings.Contains(findings[0].Detail, tc.want) {
+				t.Fatalf("findings = %#v, want %q", findings, tc.want)
+			}
+		})
+	}
+
+	t.Run("octopus qualification", func(t *testing.T) {
+		repo, base := staleAuditRepo(t, 31)
+		main := gitfixture.Commit(t, repo, "feat(awf): main", map[string]string{"main.txt": "main\n"})
+		gitfixture.CheckoutNewBranch(t, repo, "one", base)
+		one := gitfixture.Commit(t, repo, "feat(awf): one", map[string]string{"docs/decisions/0001-one.md": staleADR(adr.CurrentStateV1, "0001")})
+		gitfixture.CheckoutNewBranch(t, repo, "two", base)
+		two := gitfixture.Commit(t, repo, "feat(awf): two", map[string]string{"docs/decisions/0002-two.md": staleADR(adr.CurrentStateV2, "0002")})
+		gitfixture.Stage(t, repo, map[string]string{
+			"main.txt":                   "main\n",
+			"docs/decisions/0001-one.md": staleADR(adr.CurrentStateV1, "0001"),
+			"docs/decisions/0002-two.md": staleADR(adr.CurrentStateV2, "0002"),
+		})
+		gitfixture.Merge(t, repo, allow(adr.V1FormatMarker)+"\nAWF-Allow-Version: current-state-v2\nAWF-Allow-Reason: second parent", main, one, two)
+		findings, _, err := Run(testContext(t), repo.Root(), "master", "HEAD", Inputs{})
+		if err != nil || len(findings) != 0 {
+			t.Fatalf("findings = %#v, %v", findings, err)
+		}
+	})
+
+	t.Run("generation 31 non merge and fast forward", func(t *testing.T) {
+		repo, base := staleAuditRepo(t, 31)
+		gitfixture.Commit(t, repo, "feat(awf): old record", map[string]string{"docs/decisions/0001-old.md": staleADR(adr.CurrentStateV1, "0001")})
+		findings, _, err := Run(testContext(t), repo.Root(), base, "HEAD", Inputs{})
+		if err != nil || len(findings) != 0 {
+			t.Fatalf("non-merge findings = %#v, %v", findings, err)
+		}
+		findings, _, err = Run(testContext(t), repo.Root(), "HEAD", "HEAD", Inputs{})
+		if err != nil || len(findings) != 0 {
+			t.Fatalf("fast-forward findings = %#v, %v", findings, err)
+		}
+	})
+}
+
+func staleAuditRepo(t *testing.T, schema int) (gitfixture.Fixture, string) {
+	t.Helper()
+	repo := gitfixture.InitRepo(t)
+	lock := `{"awfVersion":"v0.18.0","schemaVersion":` + strconv.Itoa(schema) + `,"files":{}}`
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
+		".awf/awf.lock":    lock,
+		".awf/config.yaml": "prefix: test\nintegrationBranch: master\ntargets: [claude]\n",
+	})
+	return repo, base
+}
+
+func allow(version string) string {
+	return "Merge feature\n\nAWF-Allow-Version: " + version + "\nAWF-Allow-Reason: carried from a stale branch"
+}
+
+func TestAuditSnapshotReadersAndErrors(t *testing.T) {
+	if _, err := staleAuthorizationSyntax(os.ErrInvalid); err == nil {
+		t.Fatal("non-syntax authorization error accepted")
+	}
+	tree := auditTree(t, []snapshot.File{
+		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"v0.18.0","schemaVersion":31,"files":{}}`)},
+		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: [claude]\n")},
+		{Path: ".awf/parts/a.md", Mode: snapshot.Regular, Bytes: []byte("part")},
+		{Path: ".awf/parts/link.md", Mode: snapshot.Symlink, Bytes: []byte("part")},
+	})
+	reader := auditSnapshotReader{tree}
+	got, ok := reader.ReadFile("parts/a.md")
+	if !ok || string(got) != "part" {
+		t.Fatalf("ReadFile = %q, %v", got, ok)
+	}
+	got[0] = 'x'
+	if again, _ := reader.ReadFile("parts/a.md"); string(again) != "part" {
+		t.Fatalf("ReadFile did not clone: %q", again)
+	}
+	if _, ok := reader.ReadFile("parts/link.md"); ok {
+		t.Fatal("ReadFile accepted a symlink")
+	}
+	if _, ok := reader.ReadFile("missing"); ok {
+		t.Fatal("ReadFile accepted a missing file")
+	}
+	if paths := reader.Paths("parts"); len(paths) != 1 || paths[0] != "parts/a.md" {
+		t.Fatalf("Paths = %v", paths)
+	}
+	if paths := reader.Paths("missing"); len(paths) != 0 {
+		t.Fatalf("missing Paths = %v", paths)
+	}
+	if lock, found, err := auditLockFromTree(tree); err != nil || !found || lock.SchemaVersion != 31 {
+		t.Fatalf("lock = %#v, %v, %v", lock, found, err)
+	}
+	if _, found, err := auditLockFromTree(auditTree(t, nil)); err != nil || found {
+		t.Fatalf("missing lock found=%v err=%v", found, err)
+	}
+	for _, file := range []snapshot.File{
+		{Path: ".awf/awf.lock", Mode: snapshot.Symlink, Bytes: []byte("lock")},
+		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")},
+	} {
+		if _, _, err := auditLockFromTree(auditTree(t, []snapshot.File{file})); err == nil {
+			t.Fatalf("bad lock %#v accepted", file)
+		}
+	}
+	if universe, err := auditUniverse(t.TempDir(), auditTree(t, nil)); err != nil || len(universe.ADRs) != 0 {
+		t.Fatalf("absent config = %#v, %v", universe, err)
+	}
+	for _, files := range [][]snapshot.File{
+		{{Path: ".awf/config.yaml", Mode: snapshot.Symlink, Bytes: []byte("config")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: 1\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: [claude]\n")}, {Path: "docs/decisions/0001-bad.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: unknown\n---\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: bad/test\nintegrationBranch: master\ntargets: [claude]\n")}},
+		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: [claude]\n")}, {Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")}},
+	} {
+		if _, err := auditUniverse(t.TempDir(), auditTree(t, files)); err == nil {
+			t.Fatalf("invalid audit universe accepted: %#v", files)
+		}
+	}
+	if universe, err := auditUniverse(t.TempDir(), tree); err != nil || len(universe.ADRs) != 0 {
+		t.Fatalf("full audit universe = %#v, %v", universe, err)
+	}
+}
+
+func auditTree(t *testing.T, files []snapshot.File) *snapshot.Tree {
+	t.Helper()
+	tree, err := snapshot.NewTree(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tree
+}
+
+func TestReplayStaleMergeAuthorizationErrorPaths(t *testing.T) {
+	repo, base := staleAuditRepo(t, 31)
+	main := gitfixture.Commit(t, repo, "feat(awf): main", map[string]string{"main.txt": "main\n"})
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{"docs/decisions/0001-old.md": staleADR(adr.CurrentStateV1, "0001")})
+	gitfixture.Stage(t, repo, map[string]string{"main.txt": "main\n", "docs/decisions/0001-old.md": staleADR(adr.CurrentStateV1, "0001")})
+	merge := gitfixture.Merge(t, repo, allow(adr.V1FormatMarker), main, feature)
+	handle, _, err := awfgit.OpenContaining(repo.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	commit := Commit{Hash: merge[:8], Revision: merge, IsMerge: true, Parents: []string{main, feature}}
+	for _, tc := range []struct {
+		name   string
+		commit Commit
+	}{
+		{"missing result", Commit{Hash: "missing", Revision: "missing", IsMerge: true}},
+		{"one parent", Commit{Hash: merge[:8], Revision: merge, IsMerge: true, Parents: []string{main}}},
+		{"missing parent", Commit{Hash: merge[:8], Revision: merge, IsMerge: true, Parents: []string{main, "missing"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := replayStaleMergeAuthorizations(testContext(t), repo.Root(), handle, []Commit{tc.commit}); err == nil {
+				t.Fatal("replay accepted broken commit evidence")
+			}
+		})
+	}
+	bad := gitfixture.Commit(t, repo, "feat(awf): bad config", map[string]string{".awf/config.yaml": "prefix: [\n"})
+	for _, tc := range []struct {
+		name    string
+		parents []string
+	}{
+		{"first parent config", []string{bad, feature}},
+		{"incoming parent config", []string{main, bad}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			broken := commit
+			broken.Parents = tc.parents
+			if _, err := replayStaleMergeAuthorizations(testContext(t), repo.Root(), handle, []Commit{broken}); err == nil {
+				t.Fatal("replay accepted malformed parent config")
+			}
+		})
+	}
+
+	badRepo := gitfixture.InitRepo(t)
+	badBase := gitfixture.Commit(t, badRepo, "feat(awf): base", map[string]string{
+		".awf/awf.lock":    `{"awfVersion":"v0.18.0","schemaVersion":31,"files":{}}`,
+		".awf/config.yaml": "prefix: [\n",
+	})
+	badMain := gitfixture.Commit(t, badRepo, "feat(awf): main", map[string]string{"main.txt": "main\n"})
+	gitfixture.CheckoutNewBranch(t, badRepo, "feature", badBase)
+	badFeature := gitfixture.Commit(t, badRepo, "feat(awf): feature", map[string]string{"feature.txt": "feature\n"})
+	gitfixture.Stage(t, badRepo, map[string]string{"main.txt": "main\n"})
+	gitfixture.Merge(t, badRepo, "Merge feature", badMain, badFeature)
+	if _, _, err := Run(testContext(t), badRepo.Root(), "master", "HEAD", Inputs{}); err == nil {
+		t.Fatal("Run accepted malformed merge result config")
+	}
+
+	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": "{"})
+	badLock := gitfixture.Merge(t, repo, "Merge broken lock", main, feature)
+	if _, err := replayStaleMergeAuthorizations(testContext(t), repo.Root(), handle, []Commit{{Hash: badLock[:8], Revision: badLock, IsMerge: true, Parents: []string{main, feature}}}); err == nil {
+		t.Fatal("replay accepted malformed merge result lock")
+	}
+}
+
+func staleADR(format adr.Format, number string) string {
+	if format == adr.Legacy {
+		return "---\nstatus: Proposed\ndate: 2026-01-01\n---\n# ADR-" + number + ": Old\n"
+	}
+	marker := adr.FormatMarker(format)
+	return "---\nformat: " + marker + "\nstatus: Proposed\ndate: 2026-01-01\n---\n" +
+		"# ADR-" + number + ": Old\n\n## Context\n\nContext.\n\n## Decision\n\n1. Decide.\n\n## State changes\n\nNone.\n\n## Consequences\n\nConsequence.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-01-01: Proposed\n"
 }
 
 func TestRuleUncommittedChanges(t *testing.T) {

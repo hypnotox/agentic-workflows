@@ -265,6 +265,20 @@ func KnownFormatMarker(marker string) bool {
 	return false
 }
 
+// FormatAtGeneration returns the format active at generation. It reports false
+// before the first governed format activation.
+func FormatAtGeneration(generation int) (Format, bool) {
+	var format Format
+	found := false
+	for _, activation := range formatActivations {
+		if activation.generation > generation {
+			break
+		}
+		format, found = activation.format, true
+	}
+	return format, found
+}
+
 // ParseRecord routes an ADR by its authored format marker. Marker absence is
 // the sole legacy route; invalid frontmatter and every nonempty unregistered
 // marker are refusals rather than legacy fallbacks.

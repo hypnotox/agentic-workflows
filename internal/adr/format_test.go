@@ -98,6 +98,27 @@ func TestParseRecordRoutesByIntrinsicFormat(t *testing.T) {
 	}
 }
 
+func TestFormatAtGeneration(t *testing.T) {
+	cases := []struct {
+		generation int
+		want       adr.Format
+		ok         bool
+	}{
+		{13, adr.Legacy, false},
+		{14, adr.CurrentStateV1, true},
+		{15, adr.CurrentStateV2, true},
+		{28, adr.CurrentStateV2, true},
+		{29, adr.CurrentStateV3, true},
+		{31, adr.CurrentStateV3, true},
+	}
+	for _, tc := range cases {
+		got, ok := adr.FormatAtGeneration(tc.generation)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("FormatAtGeneration(%d) = %v, %t; want %v, %t", tc.generation, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
 // build assembles a current-state-v1 ADR document from its varying parts. The
 // Context, Consequences, and Alternatives Considered bodies are fixed; only the
 // status, date, Decision items, State changes, and Status history vary.

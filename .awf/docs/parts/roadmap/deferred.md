@@ -1,7 +1,9 @@
-## Integrating a branch forked before the v3 sealing generation
+## Historical stale-branch seal-crossing incident
 
-Three separate enforcement rules refuse a legal integration, and the 2026-08-01
-named-proof-markers integration had to relax all three inline to land. They need one
+The former cutoff-based integration incident is superseded by intrinsic ADR formats and stale-merge authorization. Schema generation 31 retires permanent format cutoffs; a real merge may instead import an exact older-format incoming-parent ADR when its final message has the shared authorization trailer pair. `awf audit` replays that authorization for committed schema-31-and-later merges. The historical account below is retained as the incident record that motivated the successor decision.
+
+Three separate enforcement rules refused a legal integration, and the 2026-08-01
+named-proof-markers integration had to relax all three inline to land. They needed one
 decision record covering the class, against the ADR-0202/0203/0204 lineage.
 
 The shape: an effort branch forked before schema generation 29 merges an integration

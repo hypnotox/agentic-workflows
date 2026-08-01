@@ -52,7 +52,8 @@ the local pre-tag rehearsal.
 
    All three must pass (`audit` is advisory but should be clean for a release). The audit
    range is required and has no default (ADR-0127): use the previous release tag as the base,
-   so the audit covers exactly the commits this release ships.
+   so the audit covers exactly the commits this release ships, including stale-ADR authorization
+   replay for schema-31-and-later merge commits.
 
 2. **Verify `project.Version` equals the target version and promote the changelog.** A
    schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already

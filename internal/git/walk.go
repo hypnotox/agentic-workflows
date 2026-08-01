@@ -31,11 +31,14 @@ type FileChange struct {
 
 // Commit is the semantic view of one range commit.
 type Commit struct {
-	Hash    string
-	Subject string
-	Body    string
-	IsMerge bool
-	Changes []FileChange
+	Hash     string
+	Revision string
+	Subject  string
+	Body     string
+	Message  string
+	Parents  []string
+	IsMerge  bool
+	Changes  []FileChange
 }
 
 // RangeCommits returns the commits reachable from head but not from base. The
@@ -178,7 +181,11 @@ func (r *Repo) RangeDiffText(ctx context.Context, base, head string) (string, er
 
 func toCommit(c *object.Commit, prefix string) (Commit, error) {
 	subject, body := splitMessage(c.Message)
-	nc := Commit{Hash: c.Hash.String()[:8], Subject: subject, Body: body, IsMerge: c.NumParents() > 1}
+	parents := make([]string, len(c.ParentHashes))
+	for i, parent := range c.ParentHashes {
+		parents[i] = parent.String()
+	}
+	nc := Commit{Hash: c.Hash.String()[:8], Revision: c.Hash.String(), Subject: subject, Body: body, Message: c.Message, Parents: parents, IsMerge: c.NumParents() > 1}
 	if nc.IsMerge {
 		return nc, nil
 	}

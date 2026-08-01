@@ -59,6 +59,9 @@ func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
 	if one.Body != "body text\nmore" {
 		t.Fatalf("message body = %q", one.Body)
 	}
+	if len(one.Revision) != 40 || one.Message != "feat(awf): one\r\n\r\nbody text\r\nmore\r\n" || len(one.Parents) != 1 || len(one.Parents[0]) != 40 {
+		t.Fatalf("committed evidence = %#v", one)
+	}
 	if c, ok := findWalkChange(one.Changes, "a.md"); !ok || c.Action != Modified || c.OldText != "old\n" || c.NewText != "new\n" || c.Added != 1 || c.Deleted != 1 {
 		t.Fatalf("markdown modification = %#v", c)
 	}
@@ -106,6 +109,9 @@ func TestRangeCommitsMergedRangeKeepsMergeAndNoChanges(t *testing.T) {
 	}
 	if len(commits[0].Changes) != 0 {
 		t.Fatalf("merge changes = %#v", commits[0].Changes)
+	}
+	if len(commits[0].Parents) != 2 || len(commits[0].Revision) != 40 || commits[0].Message != "Merge branch 'master' into feature" {
+		t.Fatalf("merge evidence = %#v", commits[0])
 	}
 }
 
