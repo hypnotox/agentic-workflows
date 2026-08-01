@@ -516,38 +516,6 @@ func TestBoundedExplorationReporting(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation
-
-// invariant: rendering/pi-workflows:pi-subagent-progress-rendering
-
-// invariant: rendering/pi-workflows:pi-subagent-failure-details
-
-// invariant: rendering/pi-workflows:pi-subagent-progress-bounds
-
-// invariant: rendering/pi-runtime:pi-child-tool-boundaries
-
-// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity
-
-// invariant: rendering/pi-runtime:pi-child-process-safety
-
-// invariant: rendering/pi-runtime:pi-implementation-state-boundary
-
-// invariant: rendering/pi-runtime:pi-minimum-runtime
-
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract
-
-// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
-
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow
-
-// TestNeutralSingletonSessionHandoffSignal pins the ADR-0157 Decision 6
-// contract: the neutral (once-rendered) guide and workflow doc receive a
-// project-level targetSessionHandoff signal, true iff any enabled target
-// supports session handoff, so their Pi-gated prose renders for a
-// handoff-capable target set and stays absent otherwise. These both-branch
-// assertions belong to guide-entry-point-routing's proof set.
-// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
-
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
