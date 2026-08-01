@@ -12,7 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// Loaded is one immutable current-state view: the cutoff-aware ADR records and
+// Loaded is one immutable current-state view: the intrinsically routed ADR records and
 // the topic corpus assembled from the same snapshot. A caller runs Check over
 // the records and topics and EvaluateCoverage over the topic corpus, so both
 // the static handshake and coverage read a single consistent universe.
@@ -30,13 +30,11 @@ type Loaded struct {
 // so a working-tree, index, or commit universe yields exactly the current-state
 // view that tree encodes (ADR-0135). cfg supplies the docs directory, configured
 // domains, and marker-source families; parse it from the same tree for a
-// single-universe load. boundaries are the lock's ADR format cutoffs routing
-// per-ADR legacy/V1/V2 parsing, and gaps are the recorded absent lower ADR
-// numbers the contiguity check tolerates. It does not run Check or
-// EvaluateCoverage; the command layer applies eligibility filters and routes
-// findings.
-func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, boundaries adr.FormatBoundaries, gaps []int) (Loaded, error) {
-	records, err := adrsFromTree(tree, cfg.DocsDir, boundaries, gaps)
+// single-universe load. gaps are the recorded absent lower ADR numbers the
+// contiguity check tolerates. It does not run Check or EvaluateCoverage; the
+// command layer applies eligibility filters and routes findings.
+func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, gaps []int) (Loaded, error) {
+	records, err := adrsFromTree(tree, cfg.DocsDir, gaps)
 	if err != nil {
 		return Loaded{}, err
 	}
@@ -52,13 +50,13 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, boundaries adr.Format
 }
 
 // adrsFromTree parses every top-level ADR decision file in the snapshot with the
-// cutoff-aware router, then enforces the corpus-level facts a per-file parse
-// cannot see: no two files share a number, and the numbers are contiguous from 1
-// except for the recorded legacy gaps (ADR-0135). Per-file legacy, V1, V2, and
-// pending-V3 routing is already enforced by adr.ParseRecord, which also rejects
-// a non-reserved file that is neither form. Contiguity stays number-scoped: a
-// pending record has no number to be contiguous with (ADR-0202 item 4).
-func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoundaries, gaps []int) ([]adr.ADR, error) {
+// intrinsic router, then enforces the corpus-level facts a per-file parse cannot
+// see: no two files share a number, and the numbers are contiguous from 1 except
+// for the recorded legacy gaps (ADR-0135). Per-file legacy and governed routing
+// is already enforced by adr.ParseRecord, which also rejects a non-reserved file
+// that is neither form. Contiguity stays number-scoped: a pending record has no
+// number to be contiguous with (ADR-0202 item 4).
+func adrsFromTree(tree *snapshot.Tree, docsDir string, gaps []int) ([]adr.ADR, error) {
 	prefix := docsDir + "/decisions/"
 	var records []adr.ADR
 	var numbers []int
@@ -73,7 +71,7 @@ func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoun
 		if !strings.HasSuffix(rel, ".md") || adr.IsReservedBasename(rel) {
 			continue // README.md, INDEX.md, the template, or a non-Markdown companion file
 		}
-		rec, err := adr.ParseRecord(rel, f.Bytes, boundaries)
+		rec, err := adr.ParseRecord(rel, f.Bytes)
 		if err != nil {
 			return nil, err
 		}
@@ -84,16 +82,15 @@ func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoun
 		num, _ := strconv.Atoi(rec.Number) // a numbered record carries FilenameRe's four-digit group
 		numbers = append(numbers, num)
 	}
-	if err := checkADRContiguity(numbers, gaps, boundaries.V1From); err != nil {
+	if err := checkADRContiguity(numbers, gaps); err != nil {
 		return nil, err
 	}
 	return records, nil
 }
 
 // checkADRContiguity verifies the parsed ADR numbers are unique and cover 1..max
-// except for the recorded legacy gaps, which must all fall below the cutoff. An
-// empty corpus is left to the caller.
-func checkADRContiguity(numbers, gaps []int, cutoff int) error {
+// except for the recorded legacy gaps. An empty corpus is left to the caller.
+func checkADRContiguity(numbers, gaps []int) error {
 	if len(numbers) == 0 {
 		return nil
 	}
@@ -117,11 +114,6 @@ func checkADRContiguity(numbers, gaps []int, cutoff int) error {
 	want := make([]int, len(gaps))
 	copy(want, gaps)
 	sort.Ints(want)
-	for _, g := range want {
-		if cutoff > 0 && g >= cutoff {
-			return fmt.Errorf("recorded legacy gap %04d is at or above the format cutoff %d", g, cutoff)
-		}
-	}
 	if !equalInts(absent, want) {
 		return fmt.Errorf("ADR numbers are not contiguous from 1: missing %v, recorded gaps %v", absent, want)
 	}

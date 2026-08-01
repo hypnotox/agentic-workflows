@@ -129,29 +129,22 @@ func TestParseV3RejectsMalformedSlugIdentity(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestParseRecordRoutesPendingAndV3Cutoff)
-func TestParseRecordRoutesPendingAndV3Cutoff(t *testing.T) {
-	boundaries := adr.FormatBoundaries{V1From: 100, V2From: 150, V3From: 200}
-	v3, err := adr.ParseRecord("0200-cutoff.md", []byte(buildV3("0200", "cutoff")), boundaries)
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestParseRecordRoutesPendingAndV3)
+func TestParseRecordRoutesPendingAndV3(t *testing.T) {
+	v3, err := adr.ParseRecord("0200-record.md", []byte(buildV3("0200", "record")))
 	if err != nil || !v3.IsV3() {
 		t.Fatalf("numbered V3 = %#v err=%v", v3.Format, err)
 	}
-	v2, err := adr.ParseRecord("0199-below.md", []byte(strings.Replace(buildV3("0199", "below"), "format: current-state-v3\nslug: below\n", "format: current-state-v2\n", 1)), boundaries)
-	if err != nil || !v2.IsV2() {
-		t.Fatalf("record below the V3 cutoff = %#v err=%v", v2.Format, err)
-	}
-	// A numberless file routes by its declared marker, not by any cutoff.
-	pending, err := adr.ParseRecord("cutoff-free.md", []byte(pendingFixture("cutoff-free")), adr.FormatBoundaries{})
+	pending, err := adr.ParseRecord("pending.md", []byte(pendingFixture("pending")))
 	if err != nil || !pending.IsV3() || pending.Number != "" {
 		t.Fatalf("pending routing = %#v err=%v", pending, err)
 	}
 	for _, tc := range []struct{ name, body string }{
 		{"no frontmatter", "# Just notes\n"},
-		{"unparseable frontmatter", "---\nstatus: [bad\n---\n# Notes\n"},
 		{"non-governed frontmatter", "---\nstatus: Accepted\n---\n# Notes\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := adr.ParseRecord("notes.md", []byte(tc.body), boundaries); err == nil || !strings.Contains(err.Error(), "not an ADR record") {
+			if _, err := adr.ParseRecord("notes.md", []byte(tc.body)); err == nil || !strings.Contains(err.Error(), "not an ADR record") {
 				t.Fatalf("err = %v, want the not-an-ADR-record refusal", err)
 			}
 		})
@@ -189,29 +182,10 @@ func TestParseDirRefusesStraysAndCarriesPendingRecords(t *testing.T) {
 	if got, ok := corpus.ByIdentity("0001"); !ok || got.Number != "0001" {
 		t.Fatalf("ByIdentity(number) = %#v ok=%v", got, ok)
 	}
-	// The pending record holds no number, so it neither raises the next number
-	// nor the next identity.
-	if next, err := adr.NextNumber(dir); err != nil || next != "0002" {
-		t.Fatalf("NextNumber = %q err=%v", next, err)
-	}
+	// The pending record holds no number, so it does not raise the next identity.
 	if next, err := corpus.NextIdentity(); err != nil || next != 2 {
 		t.Fatalf("NextIdentity = %d err=%v", next, err)
 	}
-	// A pending record is outside the brownfield identity set the boundary seals.
-	cutoff, gaps, err := adr.AdoptionBoundary(dir)
-	if err != nil || cutoff != 2 || len(gaps) != 0 {
-		t.Fatalf("AdoptionBoundary = %d %v %v", cutoff, gaps, err)
-	}
-	// A corpus of nothing but pending records leaves that identity set empty,
-	// which yields the same boundary an empty corpus does rather than indexing
-	// past the end of it.
-	onlyPending := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(onlyPending, "pending-two.md"), pendingFixture("pending-two"))
-	cutoff, gaps, err = adr.AdoptionBoundary(onlyPending)
-	if err != nil || cutoff != 1 || len(gaps) != 0 {
-		t.Fatalf("pending-only AdoptionBoundary = %d %v %v", cutoff, gaps, err)
-	}
-
 	stray := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(stray, "notes.md"), "# Just notes\n")
 	if _, err := adr.ParseDir(stray); err == nil || !strings.Contains(err.Error(), "notes.md: not an ADR record") {

@@ -399,7 +399,7 @@ func TestCorpusParsedOnce(t *testing.T) {
 		}
 	})
 	if problems := parseDirProblems(callers); len(problems) != 0 {
-		t.Errorf("ParseDir call set differs from the single LoadCorpus and NextNumber calls:\n\t%s", strings.Join(problems, "\n\t"))
+		t.Errorf("ParseDir call set differs from the full-body and identity-only corpus seams:\n\t%s", strings.Join(problems, "\n\t"))
 	}
 
 	aliasMutation := loadMutationPackage(t, "internal/currentstate/corpus_mutation_fixture.go", "./internal/currentstate", `package currentstate
@@ -426,12 +426,12 @@ func mutationParseDir() {
 		t.Fatalf("removed loadIdentityCorpus call escaped cardinality proof: %#v", problems)
 	}
 
-	extraFunction := replaceMutationSource(t, "internal/adr/adr.go", "\nfunc NextNumber(dir string)", `
+	extraFunction := replaceMutationSource(t, "internal/adr/adr.go", "\nfunc NewFile(dir, title string)", `
 func mutationOtherParseDir(dir string) {
 	_, _ = ParseDir(dir)
 }
 
-func NextNumber(dir string)`)
+func NewFile(dir, title string)`)
 	extraFunctionPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", extraFunction)
 	if problems := parseDirProblems(parseDirCallFindings(extraFunctionPkgs)); len(problems) != 1 ||
 		!strings.Contains(strings.Join(problems, "\n"), "adr.go:mutationOtherParseDir calls ParseDir outside") {
@@ -612,15 +612,9 @@ func TestLoadCorpusHydratesGovernedRecords(t *testing.T) {
 		t.Fatalf("hydrated V2 record = %#v, found=%v", record, ok)
 	}
 
-	v1Dir := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(v1Dir, "0001-v1.md"), build("Proposed", "2026-07-20", oneDecision, "None.", "- 2026-07-20: Proposed"))
-	if _, _, err := adr.AdoptionBoundary(v1Dir); err == nil || !strings.Contains(err.Error(), "declares current-state-v1") {
-		t.Fatalf("governed brownfield adoption error = %v", err)
-	}
-
 	badDir := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(badDir, "0002-v2.md"), "---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-07-21\n---\n# ADR-0002: Broken\n")
-	if _, err := adr.LoadCorpus(badDir); err == nil || !strings.Contains(err.Error(), "as current-state-v2") {
+	if _, err := adr.LoadCorpus(badDir); err == nil || !strings.Contains(err.Error(), "parse 0002-v2.md") {
 		t.Fatalf("malformed V2 corpus error = %v", err)
 	}
 }

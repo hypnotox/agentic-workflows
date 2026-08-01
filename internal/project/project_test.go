@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -220,7 +221,18 @@ func TestNewADRIsBranchAware(t *testing.T) {
 	}
 }
 
-func TestNewADRSelectsFormatAtV2Boundary(t *testing.T) {
+func TestLegacyAuthorityCompatibilityIgnoresPendingIdentity(t *testing.T) {
+	corpus, err := adr.NewCorpus([]adr.ADR{{Filename: "pending.md", Slug: "pending", Format: adr.CurrentStateV3}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cutoff, gaps := legacyAuthorityCompatibility(corpus)
+	if cutoff != 1 || len(gaps) != 0 {
+		t.Fatalf("compatibility = cutoff %d gaps %v", cutoff, gaps)
+	}
+}
+
+func TestNewADRUsesCurrentFormatIndependentOfCutoffs(t *testing.T) {
 	root := gitScaffold(t, defaultFixtureBranch)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -248,8 +260,8 @@ func TestNewADRSelectsFormatAtV2Boundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "format: current-state-v2") {
-		t.Fatalf("V2 cutoff scaffold:\n%s", data)
+	if !strings.Contains(string(data), "format: "+adr.CurrentFormatMarker()) {
+		t.Fatalf("registry current-format scaffold:\n%s", data)
 	}
 }
 

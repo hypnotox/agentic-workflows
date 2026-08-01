@@ -2,24 +2,17 @@ The adr package parses decision records, derives their identity, and validates t
 
 ## Claims
 
-### `invariant: fresh-adoption-v1-cutoff`
+### `invariant: intrinsic-format-routing`
 
-The ADR format cutoffs are an ordered set, V1 at or below V2 at or below V3. Empty first adoption seals every cutoff at 1; brownfield first adoption seals every cutoff at the highest existing identity plus one with every lower gap explicit; upgrading an existing adopter preserves each already-sealed cutoff and seals the next one at the highest identity plus one; a numbered ADR is legacy below V1, V1 from that cutoff to before V2, V2 from there to before V3, and V3 at or above the V3 cutoff.
-Origin: ADR-0139
-Revised-by: ADR-0143, ADR-0202
+A numbered ADR is parsed by its authored format marker, independent of its number: `current-state-v1`, `current-state-v2`, and `current-state-v3` select their matching frozen parser, while marker absence selects the legacy parser. An unknown, duplicate, empty, or malformed marker is refused rather than treated as legacy. A pending ADR is valid only in the running binary's current authoring format, and `awf new adr` emits that format from the activation registry.
+Origin: ADR-sanction-the-seal-crossing-integration-transition
 Backing: test
 
 ### `invariant: adr-amendable-until-terminal`
 
-A governed ADR at or above the V2 cutoff, whether current-state-v2 or current-state-v3,
-has digest-covered content that is amendable while Proposed, Accepted, or Implementing and
-freezes permanently at a terminal status. Post-Accepted amendment is recorded as a stamp
-chain: only an Amended event introduces a new digest, which must differ from the preceding
-stamp; a status event repeats the preceding stamp or establishes the first; the latest
-stamp must equal the computed content digest; and an amendment never alters or removes an
-operation already referenced by an Applied event.
+A current-state-v2 or current-state-v3 ADR has digest-covered content that is amendable while Proposed, Accepted, or Implementing and freezes permanently at a terminal status, independent of its assigned number. Post-Accepted amendment is recorded as a stamp chain: only an Amended event introduces a new digest, which must differ from the preceding stamp; a status event repeats the preceding stamp or establishes the first; the latest stamp must equal the computed content digest; and an amendment never alters or removes an operation already referenced by an Applied event.
 Origin: ADR-0188
-Revised-by: ADR-0202
+Revised-by: ADR-0202, ADR-sanction-the-seal-crossing-integration-transition
 Backing: test
 
 ### `invariant: adr-new-heading-matches-file`
@@ -83,9 +76,9 @@ Backing: test
 
 ### `invariant: adr-status-enum-and-matrix`
 
-Every governed ADR is routed by the three immutable format cutoffs: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, and application-cardinality transitions. A record with no number routes by its `current-state-v3` frontmatter marker rather than by any cutoff.
+Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, and application-cardinality transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0202
+Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-sanction-the-seal-crossing-integration-transition
 Backing: test
 
 ### `invariant: applied-history-events-append-only`

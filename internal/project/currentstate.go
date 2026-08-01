@@ -76,21 +76,18 @@ func coverageLine(c topic.CoverageFinding) string {
 }
 
 // workingState is one loaded working-tree current-state universe: the parsed
-// ADR/topic view, the Tree it came from, the lock, and the sealed boundaries.
+// ADR/topic view, the Tree it came from, and the lock.
 // It is the shared substrate for CheckCurrentState and CurrentStateInvariants,
 // which each read exactly one working Tree so a check and a report never mix a
 // working and an index universe.
 type workingState struct {
-	Loaded     currentstate.Loaded
-	Tree       *snapshot.Tree
-	Lock       *manifest.Lock
-	Cfg        *config.Config
-	Boundaries adr.FormatBoundaries
+	Loaded currentstate.Loaded
+	Tree   *snapshot.Tree
+	Lock   *manifest.Lock
+	Cfg    *config.Config
 }
 
-// workingCurrentState loads the working-tree ADR/topic view plus the sealed
-// boundaries/gaps. Parse has already classified the lock: permanent authority owns
-// the fields directly, while a bridge attestation owns them until cutover.
+// workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
 func (p *Project) workingCurrentState(ctx context.Context) (workingState, error) {
 	tree, err := p.workingTree(ctx)
 	if err != nil {
@@ -100,32 +97,29 @@ func (p *Project) workingCurrentState(ctx context.Context) (workingState, error)
 	if err != nil {
 		return workingState{}, err
 	}
-	boundaries, gaps := attestationBoundaries(lock)
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, boundaries, gaps)
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, attestationGaps(lock))
 	if err != nil {
 		return workingState{}, err
 	}
 	if cfg == nil { // coverage-ignore: Project.Open already required config; only a concurrent deletion after path enumeration can remove it
 		return workingState{}, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
 	}
-	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg, Boundaries: boundaries}, nil
+	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
 }
 
-// attestationBoundaries returns the format boundaries and recorded legacy gaps
-// that govern ADR parsing. Permanent authority owns the whole ordered cutoff
-// set; during the migration window the bridge attestation owns only V1. Before
-// either exists every ADR parses as legacy.
-func attestationBoundaries(lock *manifest.Lock) (adr.FormatBoundaries, []int) {
+// attestationGaps returns the historical recorded gaps while their lock
+// compatibility representation remains supported.
+func attestationGaps(lock *manifest.Lock) []int {
 	if lock == nil {
-		return adr.FormatBoundaries{}, nil
+		return nil
 	}
 	if lock.ADRFormatV1From != 0 {
-		return adr.FormatBoundaries{V1From: lock.ADRFormatV1From, V2From: lock.ADRFormatV2From, V3From: lock.ADRFormatV3From}, lock.LegacyADRGaps
+		return lock.LegacyADRGaps
 	}
 	if lock.BridgeAttestation != nil {
-		return adr.FormatBoundaries{V1From: lock.BridgeAttestation.ADRFormatV1From}, lock.BridgeAttestation.LegacyADRGaps
+		return lock.BridgeAttestation.LegacyADRGaps
 	}
-	return adr.FormatBoundaries{}, nil
+	return nil
 }
 
 // CheckCurrentState loads the working-tree current-state view and runs the
@@ -181,13 +175,11 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	if err := validatePermanentLockTransition(beforeTree, afterTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
-	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
+	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, attestationGaps(beforeLock))
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock, afterBoundaries, afterGaps)
+	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock, attestationGaps(afterLock))
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -421,7 +413,7 @@ func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
 // from that same tree so the load is single-universe (ADR-0135). The returned
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
-func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock, boundaries adr.FormatBoundaries, gaps []int) (currentstate.Loaded, *config.Config, error) {
+func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock, gaps []int) (currentstate.Loaded, *config.Config, error) {
 	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {
 		return currentstate.Loaded{}, nil, nil
@@ -444,7 +436,7 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock,
 	if err := cfg.Validate(); err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
-	loaded, err := currentstate.LoadFromTree(tree, cfg, boundaries, gaps)
+	loaded, err := currentstate.LoadFromTree(tree, cfg, gaps)
 	if err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
@@ -523,8 +515,7 @@ func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, a
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
+	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, attestationGaps(beforeLock))
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
@@ -532,8 +523,7 @@ func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, a
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock, afterBoundaries, afterGaps)
+	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock, attestationGaps(afterLock))
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}

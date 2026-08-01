@@ -109,24 +109,13 @@ func LoadCorpus(dir string) (Corpus, error) {
 		return Corpus{}, err
 	}
 	for i, a := range adrs {
-		if !a.IsGoverned() {
-			continue
-		}
 		data, err := os.ReadFile(a.Path)
 		if err != nil { // coverage-ignore: ParseDir just read the same discovered file
 			return Corpus{}, err
 		}
-		var parsed ADR
-		switch {
-		case a.IsV3():
-			parsed, err = ParseV3(a.Filename, data)
-		case a.IsV2():
-			parsed, err = ParseV2(a.Filename, data)
-		default:
-			parsed, err = ParseV1(a.Filename, data)
-		}
+		parsed, err := ParseRecord(a.Filename, data)
 		if err != nil {
-			return Corpus{}, fmt.Errorf("parse %s as %s: %w", a.Filename, FormatMarker(a.Format), err)
+			return Corpus{}, fmt.Errorf("parse %s: %w", a.Filename, err)
 		}
 		parsed.Path = a.Path
 		adrs[i] = parsed

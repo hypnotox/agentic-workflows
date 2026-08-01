@@ -70,7 +70,7 @@ func TestLoadFromTreeSkipsSymlinkADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestLoadFromTreeAssembles(t *testing.T) {
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
 	})
-	got, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: 2, V2From: 3}, nil)
+	got, err := currentstate.LoadFromTree(tree, loadCfg(t), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestLoadFromTreeAssembles(t *testing.T) {
 // clean empty view rather than a contiguity failure.
 func TestLoadFromTreeEmpty(t *testing.T) {
 	tree := treeFrom(t, map[string]string{"docs/decisions/README.md": "# Index\n"})
-	got, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	got, err := currentstate.LoadFromTree(tree, loadCfg(t), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,21 +164,11 @@ func TestLoadFromTreeContiguity(t *testing.T) {
 			},
 			wantErr: "more than one file",
 		},
-		{
-			name: "gap at or above cutoff",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0003-c.md": v1Scaffold(),
-			},
-			cutoff:  2,
-			gaps:    []int{2},
-			wantErr: "at or above the format cutoff",
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			tree := treeFrom(t, tc.files)
-			_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: tc.cutoff}, tc.gaps)
+			_, err := currentstate.LoadFromTree(tree, loadCfg(t), tc.gaps)
 			if tc.wantErr == "" {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -192,13 +182,12 @@ func TestLoadFromTreeContiguity(t *testing.T) {
 	}
 }
 
-// TestLoadFromTreeADRParseError propagates a per-file parse failure: an
-// at-or-above-cutoff ADR that is not valid current-state-v1.
+// TestLoadFromTreeADRParseError propagates a malformed authored format.
 func TestLoadFromTreeADRParseError(t *testing.T) {
-	tree := treeFrom(t, map[string]string{"docs/decisions/0001-a.md": legacyADR()})
-	_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: 1}, nil)
+	tree := treeFrom(t, map[string]string{"docs/decisions/0001-a.md": "---\nformat: unknown\n---\n# ADR-0001: Invalid\n"})
+	_, err := currentstate.LoadFromTree(tree, loadCfg(t), nil)
 	if err == nil {
-		t.Fatal("expected a parse error for a legacy body above the cutoff")
+		t.Fatal("expected a parse error for an unknown authored format")
 	}
 }
 
@@ -209,7 +198,7 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 		"docs/decisions/0001-a.md":            legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml": "title: [unterminated\n",
 	})
-	_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	_, err := currentstate.LoadFromTree(tree, loadCfg(t), nil)
 	if err == nil {
 		t.Fatal("expected a topic metadata parse error")
 	}
@@ -239,7 +228,7 @@ func TestLoadFromTreeCarriesPendingRecordsOutsideContiguity(t *testing.T) {
 		"docs/decisions/template.md":   "# Template\n",
 		"docs/decisions/diagram.png":   "not markdown\n",
 	})
-	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +240,7 @@ func TestLoadFromTreeCarriesPendingRecordsOutsideContiguity(t *testing.T) {
 	}
 
 	stray := treeFrom(t, map[string]string{"docs/decisions/notes.md": "# Notes\n"})
-	if _, err := currentstate.LoadFromTree(stray, loadCfg(t), adr.FormatBoundaries{}, nil); err == nil ||
+	if _, err := currentstate.LoadFromTree(stray, loadCfg(t), nil); err == nil ||
 		!strings.Contains(err.Error(), "not an ADR record") {
 		t.Fatalf("stray decisions file = %v", err)
 	}
@@ -260,7 +249,7 @@ func TestLoadFromTreeCarriesPendingRecordsOutsideContiguity(t *testing.T) {
 		"docs/decisions/dupe.md":      v3Pending("dupe"),
 		"docs/decisions/0001-dupe.md": strings.Replace(v3Pending("dupe"), "# ADR-dupe:", "# ADR-0001:", 1),
 	})
-	if _, err := currentstate.LoadFromTree(duplicate, loadCfg(t), adr.FormatBoundaries{V1From: 1, V2From: 1, V3From: 1}, nil); err == nil ||
+	if _, err := currentstate.LoadFromTree(duplicate, loadCfg(t), nil); err == nil ||
 		!strings.Contains(err.Error(), `ADR slug "dupe" is declared by more than one file`) {
 		t.Fatalf("duplicate slug = %v", err)
 	}

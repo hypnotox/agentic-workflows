@@ -290,8 +290,7 @@ func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	before, _, err := loadTreeCurrentState(dir, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
+	before, _, err := loadTreeCurrentState(dir, beforeTree, beforeLock, attestationGaps(beforeLock))
 	if err != nil {
 		t.Fatalf("load staged before snapshot with its lock: %v", err)
 	}
@@ -303,8 +302,7 @@ func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	after, _, err := loadTreeCurrentState(dir, afterTree, afterLock, afterBoundaries, afterGaps)
+	after, _, err := loadTreeCurrentState(dir, afterTree, afterLock, attestationGaps(afterLock))
 	if err != nil {
 		t.Fatalf("load staged after snapshot with its lock: %v", err)
 	}

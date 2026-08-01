@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -26,7 +25,7 @@ func TestLoadTreeCurrentStateRejectsFutureSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock := &manifest.Lock{SchemaVersion: migrate.Current() + 1}
-	if _, _, err := loadTreeCurrentState(".", tree, lock, adr.FormatBoundaries{}, nil); err == nil || !strings.Contains(err.Error(), "ahead of current") {
+	if _, _, err := loadTreeCurrentState(".", tree, lock, nil); err == nil || !strings.Contains(err.Error(), "ahead of current") {
 		t.Fatalf("future schema current-state load error = %v", err)
 	}
 }
@@ -46,7 +45,7 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := loadTreeCurrentState(".", configTree, nil, adr.FormatBoundaries{}, nil); err == nil {
+	if _, _, err := loadTreeCurrentState(".", configTree, nil, nil); err == nil {
 		t.Fatal("symlink config accepted")
 	}
 	if _, err := nextADRIdentityFromTree(configTree); err == nil {
@@ -59,7 +58,7 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := loadTreeCurrentState(".", unknownKey, nil, adr.FormatBoundaries{}, nil); err == nil {
+	if _, _, err := loadTreeCurrentState(".", unknownKey, nil, nil); err == nil {
 		t.Fatal("unknown config key accepted")
 	}
 	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})

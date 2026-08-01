@@ -10,6 +10,11 @@ query a single version or a range.
 
 ### Features
 
+- ADR parsing now follows each record's authored format marker rather than its number. Markerless
+  numbered records remain legacy, governed V1, V2, and V3 records select their matching frozen
+  parser at any number, and unknown or malformed markers are refused. New numbered and pending
+  ADRs derive the binary's current authoring format from one activation registry.
+
 - The shipped Maintainable Code Design guide gains a Readability section between semantic
   modeling and boundaries (ADR-0200): language-agnostic decision-framework guidance on naming
   for meaning, straight-line common paths, boring-over-clever constructs, comments stating

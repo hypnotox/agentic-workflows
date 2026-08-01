@@ -74,12 +74,13 @@ Abandoned; Implementing may move only to Implemented or Abandoned. Implemented a
 are terminal. Implementing means a nonempty strict subset is applied. Abandonment keeps applied
 operations historical and cancels the remainder; its terminal event carries a rationale.
 
-The lock has an ordered set of immutable cutoffs, `adrFormatV1From`, `adrFormatV2From`, and
-`adrFormatV3From`, routing every numbered record. Records below V1 are legacy, records from V1 to
-before V2 retain the four-state V1 grammar, and records at or above V2 use this five-state grammar,
-which V3 keeps unchanged. A record carrying no number routes by its declared `current-state-v3`
-marker instead, which is how a pending record joins the corpus before it is numbered. There is no
-`Superseded` status.
+Every ADR is routed by its authored format, independent of its number: markerless records use the
+frozen legacy parser, and `current-state-v1`, `current-state-v2`, and `current-state-v3` select
+their matching governed parsers. A pending record must declare the running binary's current format,
+which is how it joins the corpus before it is numbered. Adding a future format means adding its
+parser and transition matrix, registering its schema activation and current marker, updating
+scaffolding, and proving older-format compatibility; it never means adding a number cutoff. There
+is no `Superseded` status.
 
 V2 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
 a terminal status: while Accepted or Implementing an amendment appends

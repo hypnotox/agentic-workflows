@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -740,10 +741,9 @@ func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 	}
 }
 
-// A first adoption whose decisions dir parses cleanly but declares a governed
-// format inside the brownfield legacy set fails authority sealing, after the
-// entry derivation succeeded.
-func TestInitializeReportSurfacesBrownfieldGovernedRecord(t *testing.T) {
+// A first adoption accepts an existing intrinsically governed record without
+// rewriting it or using its number to select a parser.
+func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", "0001-governed.md"),
 		"---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-07-13\n---\n# ADR-0001: Governed\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-13: Proposed\n")
@@ -751,8 +751,18 @@ func TestInitializeReportSurfacesBrownfieldGovernedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
-		!strings.Contains(err.Error(), "seal first-adoption ADR authority") {
-		t.Fatalf("expected a brownfield governed record to fail authority sealing, got %v", err)
+	before, err := os.ReadFile(filepath.Join(root, "docs/decisions", "0001-governed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatalf("initialize governed brownfield: %v", err)
+	}
+	after, err := os.ReadFile(filepath.Join(root, "docs/decisions", "0001-governed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("initialization rewrote the existing ADR")
 	}
 }

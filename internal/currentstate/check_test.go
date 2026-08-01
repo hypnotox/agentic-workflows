@@ -449,36 +449,27 @@ func TestEveryHandshakeFindingIsBlocking(t *testing.T) {
 	}
 }
 
-// TestParseRecordRouting covers cutoff-based legacy/V1/V2 routing.
-// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff (TestParseRecordRouting)
+// TestParseRecordRouting covers intrinsic legacy/V1/V2 routing.
 // invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestParseRecordRouting)
 func TestParseRecordRouting(t *testing.T) {
 	legacy := []byte("---\nstatus: Implemented\ndate: 2026-01-01\n---\n# ADR-0100: Legacy\n\n## Context\n\nx\n")
-	a, err := adr.ParseRecord("0100-legacy.md", legacy, adr.FormatBoundaries{V1From: 137})
+	a, err := adr.ParseRecord("0100-legacy.md", legacy)
 	if err != nil || a.IsV1() || a.Number != "0100" {
 		t.Fatalf("legacy routing: %+v err=%v", a, err)
 	}
-	// A below-cutoff ADR that declares the v1 marker is rejected.
-	strayV1 := []byte("---\nformat: current-state-v1\nstatus: Implemented\ndate: 2026-01-01\n---\n# ADR-0100: X\n")
-	if _, err := adr.ParseRecord("0100-x.md", strayV1, adr.FormatBoundaries{V1From: 137}); err == nil || !strings.Contains(err.Error(), "below the format cutoff") {
-		t.Fatalf("stray v1 marker below cutoff: err=%v", err)
-	}
 	governed := []byte("---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-01-01\n---\n# ADR-0137: Governed\n\n## Context\n\nx\n\n## Decision\n\n1. Decide.\n\n## State changes\n\nNone.\n\n## Consequences\n\nx\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-01-01: Proposed\n")
-	v1, err := adr.ParseRecord("0137-governed.md", governed, adr.FormatBoundaries{V1From: 137, V2From: 138})
+	v1, err := adr.ParseRecord("0137-governed.md", governed)
 	if err != nil || !v1.IsV1() || v1.IsV2() {
 		t.Fatalf("V1 routing: %+v err=%v", v1, err)
 	}
 	v2Bytes := []byte(strings.Replace(string(governed), adr.V1FormatMarker, adr.V2FormatMarker, 1))
-	v2, err := adr.ParseRecord("0138-governed.md", v2Bytes, adr.FormatBoundaries{V1From: 137, V2From: 138})
+	v2, err := adr.ParseRecord("0138-governed.md", v2Bytes)
 	if err != nil || !v2.IsV2() || v2.IsV1() {
 		t.Fatalf("V2 routing: %+v err=%v", v2, err)
 	}
-	if _, err := adr.ParseRecord("0138-wrong-v1.md", governed, adr.FormatBoundaries{V1From: 137, V2From: 138}); err == nil || !strings.Contains(err.Error(), adr.V2FormatMarker) {
-		t.Fatalf("V1 record in V2 region accepted: %v", err)
-	}
-	// Cutoff of zero treats everything as legacy.
-	if a, err := adr.ParseRecord("0200-x.md", legacy, adr.FormatBoundaries{}); err != nil || a.IsGoverned() {
-		t.Fatalf("cutoff 0 routing: %+v err=%v", a, err)
+	// Markerless records remain legacy regardless of number.
+	if a, err := adr.ParseRecord("0200-x.md", legacy); err != nil || a.IsGoverned() {
+		t.Fatalf("markerless routing: %+v err=%v", a, err)
 	}
 }
 

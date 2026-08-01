@@ -68,7 +68,6 @@ func setScaffoldGateCmd(t *testing.T, root string) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff (TestInitFirstADRChecksClean)
 func TestInitFirstADRChecksClean(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

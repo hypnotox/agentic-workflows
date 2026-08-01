@@ -39,40 +39,59 @@ func TestParseDirExtractsStatusAndTitle(t *testing.T) {
 	}
 }
 
-// TestParseDirExtractsTagsAndRelated confirms the revived tags:/related:
-// frontmatter is lifted into adr.ADR (previously parsed past and dropped).
-func TestParseRecordRoutesV1AndV2Cutoffs(t *testing.T) {
+// invariant: adr-system/adr-lifecycle:intrinsic-format-routing (TestParseRecordRoutesByIntrinsicFormat)
+func TestParseRecordRoutesByIntrinsicFormat(t *testing.T) {
 	_, body, found := strings.Cut(adrTemplateFixture, "---\n")
 	if !found {
 		t.Fatal("fixture frontmatter delimiter missing")
 	}
 	v1 := strings.Replace("---\n"+body, "YYYY-MM-DD", "2026-07-21", 2)
 	v1 = strings.Replace(v1, "ADR-NNNN", "ADR-0005", 1)
-	v2 := strings.Replace(v1, "current-state-v1", "current-state-v2", 1)
+	v2 := strings.Replace(v1, adr.V1FormatMarker, adr.V2FormatMarker, 1)
+	legacy := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Legacy"))
 	for _, tc := range []struct {
 		name, file, doc string
-		v2From          int
-		wantV1, wantV2  bool
+		want            adr.Format
 	}{
-		{"V1 region", "0005-v1.md", v1, 8, true, false},
-		{"V2 boundary", "0008-v2.md", strings.Replace(v2, "ADR-0005", "ADR-0008", 1), 8, false, true},
-		{"missing V2 cutoff remains V1", "0005-v1.md", v1, 0, true, false},
+		{"markerless before former cutoffs", "0001-legacy.md", legacy, adr.Legacy},
+		{"V1 after former cutoffs", "9999-v1.md", strings.Replace(v1, "ADR-0005", "ADR-9999", 1), adr.CurrentStateV1},
+		{"V2 before former cutoffs", "0001-v2.md", strings.Replace(v2, "ADR-0005", "ADR-0001", 1), adr.CurrentStateV2},
+		{"V3 after former cutoffs", "9999-v3.md", buildV3("9999", "v3"), adr.CurrentStateV3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			a, err := adr.ParseRecord(tc.file, []byte(tc.doc), adr.FormatBoundaries{V1From: 5, V2From: tc.v2From})
-			if err != nil || a.IsV1() != tc.wantV1 || a.IsV2() != tc.wantV2 {
+			a, err := adr.ParseRecord(tc.file, []byte(tc.doc))
+			if err != nil || a.Format != tc.want {
 				t.Fatalf("record=%#v err=%v", a, err)
 			}
 		})
 	}
-	if _, err := adr.ParseRecord("0004-stray.md", []byte(strings.Replace(v2, "ADR-0005", "ADR-0004", 1)), adr.FormatBoundaries{V1From: 5, V2From: 8}); err == nil || !strings.Contains(err.Error(), "current-state-v2") {
-		t.Fatalf("stray V2 below cutoff error=%v", err)
+	if pending, err := adr.ParseRecord("pending.md", []byte(pendingFixture("pending"))); err != nil || !pending.IsV3() {
+		t.Fatalf("pending V3 = %#v err=%v", pending, err)
 	}
-	for _, marker := range []string{adr.V1FormatMarker, adr.V2FormatMarker} {
-		t.Run("quoted "+marker+" below cutoff", func(t *testing.T) {
-			doc := "---\nformat: \"" + marker + "\"\nstatus: Proposed\ndate: 2026-07-21\n---\n# ADR-0004: Stray\n"
-			if _, err := adr.ParseRecord("0004-stray.md", []byte(doc), adr.FormatBoundaries{V1From: 5, V2From: 8}); err == nil || !strings.Contains(err.Error(), marker) {
-				t.Fatalf("quoted %s below cutoff error=%v", marker, err)
+	for _, tc := range []struct{ name, doc string }{
+		{"unknown", strings.Replace(v1, adr.V1FormatMarker, "current-state-v99", 1)},
+		{"duplicate", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: "+adr.V1FormatMarker+"\nformat: "+adr.V1FormatMarker, 1)},
+		{"malformed YAML", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: [", 1)},
+		{"non-mapping frontmatter", "---\nscalar\n---\n# ADR-0001: Invalid\n"},
+		{"non-scalar marker", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: []", 1)},
+		{"empty", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: ", 1)},
+		{"strict V3 frontmatter", strings.Replace(buildV3("0001", "invalid"), "status: Proposed", "extra: nope\nstatus: Proposed", 1)},
+		{"invalid legacy frontmatter value", "---\nstatus: Accepted\nrelated: nope\n---\n# ADR-0001: Invalid\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := adr.ParseRecord("0001-invalid.md", []byte(tc.doc)); err == nil {
+				t.Fatal("expected routing refusal")
+			}
+		})
+	}
+	for _, tc := range []struct{ name, doc string }{
+		{"markerless", legacy},
+		{"V1", v1},
+		{"V2", v2},
+	} {
+		t.Run("pending "+tc.name, func(t *testing.T) {
+			if _, err := adr.ParseRecord("pending.md", []byte(tc.doc)); err == nil {
+				t.Fatal("expected pending refusal")
 			}
 		})
 	}
@@ -297,106 +316,19 @@ func swapNow(t *testing.T, fn func() time.Time) {
 
 func fixedNow() time.Time { return time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC) }
 
-func TestAdoptionBoundary(t *testing.T) {
-	legacy := func(number string) string {
-		return testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(number+": Legacy"))
-	}
-	t.Run("empty", func(t *testing.T) {
-		cutoff, gaps, err := adr.AdoptionBoundary(t.TempDir())
-		if err != nil || cutoff != 1 || gaps == nil || len(gaps) != 0 {
-			t.Fatalf("got %d %v %v", cutoff, gaps, err)
-		}
-	})
-	t.Run("contiguous and gapped", func(t *testing.T) {
-		for _, tc := range []struct {
-			names  []string
-			cutoff int
-			gaps   []int
-		}{
-			{[]string{"0001-one.md", "0002-two.md"}, 3, []int{}},
-			{[]string{"0001-one.md", "0003-three.md"}, 4, []int{2}},
-		} {
-			dir := t.TempDir()
-			for _, name := range tc.names {
-				testsupport.WriteFile(t, filepath.Join(dir, name), legacy(name[:4]))
-			}
-			cutoff, gaps, err := adr.AdoptionBoundary(dir)
-			if err != nil || cutoff != tc.cutoff || !reflect.DeepEqual(gaps, tc.gaps) {
-				t.Fatalf("got %d %v %v, want %d %v", cutoff, gaps, err, tc.cutoff, tc.gaps)
-			}
-		}
-	})
-	t.Run("malformed", func(t *testing.T) {
-		dir := t.TempDir()
-		testsupport.WriteFile(t, filepath.Join(dir, "0001-bad.md"), "---\nstatus: [bad\n---\n")
-		if _, _, err := adr.AdoptionBoundary(dir); err == nil {
-			t.Fatal("expected parse error")
-		}
-	})
-	t.Run("duplicate", func(t *testing.T) {
-		dir := t.TempDir()
-		testsupport.WriteFile(t, filepath.Join(dir, "0001-one.md"), legacy("0001"))
-		testsupport.WriteFile(t, filepath.Join(dir, "0001-two.md"), legacy("0001"))
-		// Duplicate identity has one home: the corpus refuses it before the
-		// boundary reads a single record (ADR-0202 item 4).
-		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
-			t.Fatalf("error=%v", err)
-		}
-	})
-	_, governedBody, found := strings.Cut(adrTemplateFixture, "---\n")
-	if !found {
-		t.Fatal("fixture frontmatter delimiter missing")
-	}
-	for _, marker := range []string{adr.V1FormatMarker, adr.V2FormatMarker} {
-		t.Run(marker+" below cutoff", func(t *testing.T) {
-			dir := t.TempDir()
-			doc := strings.Replace("---\n"+governedBody, adr.V1FormatMarker, marker, 1)
-			doc = strings.Replace(doc, "YYYY-MM-DD", "2026-07-21", 2)
-			doc = strings.Replace(doc, "ADR-NNNN", "ADR-0001", 1)
-			testsupport.WriteFile(t, filepath.Join(dir, "0001-governed.md"), doc)
-			if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "inside the brownfield legacy set") || !strings.Contains(err.Error(), marker) {
-				t.Fatalf("error=%v", err)
-			}
-		})
+func TestFormatMarkerRejectsAnUnknownFormat(t *testing.T) {
+	if marker := adr.FormatMarker(adr.Format(99)); marker != "" {
+		t.Fatalf("unknown marker = %q", marker)
 	}
 }
 
-func TestNextNumberEmptyDir(t *testing.T) {
+func TestLoadCorpusValidatesExistingIdentities(t *testing.T) {
 	dir := t.TempDir()
-	got, err := adr.NextNumber(dir)
-	if err != nil {
-		t.Fatalf("NextNumber: %v", err)
-	}
-	if got != "0001" {
-		t.Errorf("NextNumber(empty) = %q, want 0001", got)
-	}
-}
-
-func TestNextNumberSkipsGapToMaxPlusOne(t *testing.T) {
-	dir := t.TempDir()
-	for _, name := range []string{"0001-first.md", "0003-third.md"} {
-		content := testsupport.ADR("Accepted", testsupport.WithTitle("title"))
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	got, err := adr.NextNumber(dir)
-	if err != nil {
-		t.Fatalf("NextNumber: %v", err)
-	}
-	// invariant: adr-system/adr-lifecycle:adr-new-sequential-numbering (TestNextNumberSkipsGapToMaxPlusOne)
-	if got != "0004" {
-		t.Errorf("NextNumber = %q, want 0004", got)
-	}
-}
-
-func TestNextNumberPropagatesParseDirError(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "bad[")
-	if err := os.Mkdir(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := adr.NextNumber(dir); err == nil {
-		t.Fatal("expected glob error to propagate")
+	legacy := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Legacy"))
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-one.md"), legacy)
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-two.md"), legacy)
+	if _, err := adr.LoadCorpus(dir); err == nil || !strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
+		t.Fatalf("error=%v", err)
 	}
 }
 
@@ -409,7 +341,7 @@ func TestNewFileHappyPath(t *testing.T) {
 		return time.Date(2026, 7, clockCalls, 0, 0, 0, 0, time.UTC)
 	})
 
-	path, err := adr.NewFile(dir, "My Cool Title", adr.CurrentStateV1)
+	path, err := adr.NewFile(dir, "My Cool Title")
 	if err != nil {
 		t.Fatalf("NewFile: %v", err)
 	}
@@ -439,69 +371,42 @@ func TestNewFileHappyPath(t *testing.T) {
 	if clockCalls != 1 {
 		t.Errorf("clock calls = %d, want 1", clockCalls)
 	}
-	if _, err := adr.ParseV1(filepath.Base(path), got); err != nil {
-		t.Fatalf("scaffolded ADR does not parse as current-state-v1: %v", err)
+	if _, err := adr.ParseV3(filepath.Base(path), got); err != nil {
+		t.Fatalf("scaffolded ADR does not parse as current-state-v3: %v", err)
 	}
 }
 
 // TestNewFileSequentialCallsGetDifferentNumbers documents why NewFile's
-// overwrite guard can never fire from repeated same-process calls: NextNumber
-// always returns one more than every existing NNNN-*.md file, so a second call
+// overwrite guard can never fire from repeated same-process calls: identity
+// allocation returns one more than every existing NNNN-*.md file, so a second call
 // with the same title lands at the next number instead of colliding.
-func TestNewFileReplacesEitherGovernedTemplateMarkerWithRequestedFormat(t *testing.T) {
+func TestNewFileUsesCurrentRegisteredFormat(t *testing.T) {
 	swapNow(t, fixedNow)
-	for _, templateMarker := range []string{adr.V1FormatMarker, adr.V2FormatMarker} {
-		for _, requested := range []adr.Format{adr.CurrentStateV1, adr.CurrentStateV2} {
-			requestedName := adr.V1FormatMarker
-			if requested == adr.CurrentStateV2 {
-				requestedName = adr.V2FormatMarker
-			}
-			t.Run(templateMarker+" to "+requestedName, func(t *testing.T) {
-				dir := t.TempDir()
-				template := strings.Replace(adrTemplateFixture, "format: current-state-v1", "format: "+templateMarker, 1)
-				template = strings.Replace(template, "## Context\n", "## Context\n\nformat: current-state-v1 remains prose.\n", 1)
-				if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(template), 0o644); err != nil {
-					t.Fatal(err)
-				}
-				path, err := adr.NewFile(dir, "Format Title", requested)
-				if err != nil {
-					t.Fatal(err)
-				}
-				data, err := os.ReadFile(path)
-				if err != nil {
-					t.Fatal(err)
-				}
-				wantMarker := adr.V1FormatMarker
-				parse := adr.ParseV1
-				if requested == adr.CurrentStateV2 {
-					wantMarker = adr.V2FormatMarker
-					parse = adr.ParseV2
-				}
-				wantCount := 1
-				if requested == adr.CurrentStateV1 {
-					wantCount = 2 // frontmatter plus the deliberately similar body prose
-				}
-				if strings.Count(string(data), "format: "+wantMarker) != wantCount || !strings.Contains(string(data), "format: current-state-v1 remains prose.") {
-					t.Fatalf("format selection rewrote outside frontmatter or emitted the wrong marker:\n%s", data)
-				}
-				if _, err := parse(filepath.Base(path), data); err != nil {
-					t.Fatalf("requested %s scaffold does not parse: %v", requestedName, err)
-				}
-			})
-		}
+	dir := t.TempDir()
+	writeTemplateFixture(t, dir)
+	path, err := adr.NewFile(dir, "Format Title")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "format: "+adr.CurrentFormatMarker()) {
+		t.Fatalf("scaffold did not emit current marker:\n%s", data)
+	}
+	if _, err := adr.ParseV3(filepath.Base(path), data); err != nil {
+		t.Fatalf("current scaffold does not parse: %v", err)
 	}
 }
 
-func TestNewFileRejectsNonGovernedFormatAndMissingFrontmatter(t *testing.T) {
+func TestNewFileRejectsMissingFrontmatter(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
-	if _, err := adr.NewFile(dir, "Legacy", adr.Legacy); err == nil || !strings.Contains(err.Error(), "scaffold format") {
-		t.Fatalf("legacy format error = %v", err)
-	}
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte("# ADR-NNNN: Title\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "No Frontmatter", adr.CurrentStateV1); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
+	if _, err := adr.NewFile(dir, "No Frontmatter"); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
 		t.Fatalf("missing frontmatter error = %v", err)
 	}
 }
@@ -515,7 +420,7 @@ func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(v3Template), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	path, err := adr.NewFile(dir, "Keep The Corpus", adr.CurrentStateV3)
+	path, err := adr.NewFile(dir, "Keep The Corpus")
 	if err != nil {
 		t.Fatalf("V3 template scaffold: %v", err)
 	}
@@ -529,7 +434,7 @@ func TestNewFileAcceptsAV3TemplateAndRefusesADeclaredSlug(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(strings.Replace(v3Template, "status: Proposed", "slug: fixed\nstatus: Proposed", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Declared Slug", adr.CurrentStateV3); err == nil || !strings.Contains(err.Error(), "must not declare slug") {
+	if _, err := adr.NewFile(dir, "Declared Slug"); err == nil || !strings.Contains(err.Error(), "must not declare slug") {
 		t.Fatalf("declared-slug refusal = %v", err)
 	}
 }
@@ -542,11 +447,11 @@ func TestNewFileSequentialCallsGetDifferentNumbers(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
 	swapNow(t, fixedNow)
-	first, err := adr.NewFile(dir, "First Title", adr.CurrentStateV1)
+	first, err := adr.NewFile(dir, "First Title")
 	if err != nil {
 		t.Fatalf("first NewFile: %v", err)
 	}
-	second, err := adr.NewFile(dir, "Second Title", adr.CurrentStateV1)
+	second, err := adr.NewFile(dir, "Second Title")
 	if err != nil {
 		t.Fatalf("second NewFile: %v", err)
 	}
@@ -607,7 +512,7 @@ func TestNewFileRefusals(t *testing.T) {
 				name string
 				call func(dir string) (string, error)
 			}{
-				{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, tc.title, adr.CurrentStateV3) }},
+				{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, tc.title) }},
 				{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, tc.title) }},
 			} {
 				t.Run(form.name, func(t *testing.T) {
@@ -643,9 +548,8 @@ func TestNewFileRefusesSlugAlreadyInCorpus(t *testing.T) {
 			writeTemplateFixture(t, dir)
 			swapNow(t, fixedNow)
 			if tc.seed == "numbered" {
-				if _, err := adr.NewFile(dir, "Taken Title", adr.CurrentStateV1); err != nil {
-					t.Fatal(err)
-				}
+				legacy := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Taken Title"))
+				testsupport.WriteFile(t, filepath.Join(dir, "0001-taken-title.md"), legacy)
 			} else if _, err := adr.NewPendingFile(dir, "Taken Title"); err != nil {
 				t.Fatal(err)
 			}
@@ -667,7 +571,7 @@ func TestScaffoldReadsIdentityBesideAnUnparseableBody(t *testing.T) {
 		name     string
 		scaffold func(dir string) (string, error)
 	}{
-		{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, "Second One", adr.CurrentStateV1) }},
+		{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, "Second One") }},
 		{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, "Second One") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -696,19 +600,19 @@ func TestScaffoldReadsIdentityBesideAnUnparseableBody(t *testing.T) {
 	}
 }
 
-func TestNewFilePropagatesNextNumberError(t *testing.T) {
+func TestNewFilePropagatesIdentityCorpusError(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "bad[")
 	if err := os.Mkdir(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1); err == nil {
-		t.Fatal("expected NextNumber's glob error to propagate")
+	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
+		t.Fatal("expected the identity corpus glob error to propagate")
 	}
 }
 
 func TestNewFileMissingTemplate(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := adr.NewFile(dir, "No Template Here", adr.CurrentStateV1); err == nil {
+	if _, err := adr.NewFile(dir, "No Template Here"); err == nil {
 		t.Fatal("expected error for missing template.md")
 	}
 }
@@ -716,7 +620,7 @@ func TestNewFileMissingTemplate(t *testing.T) {
 func TestNewFileEmptySlug(t *testing.T) {
 	dir := t.TempDir()
 	// No template.md needed - slugify errors before the file is ever read.
-	if _, err := adr.NewFile(dir, "!!!", adr.CurrentStateV1); err == nil {
+	if _, err := adr.NewFile(dir, "!!!"); err == nil {
 		t.Fatal("expected slugify error for an all-punctuation title")
 	}
 }
@@ -738,7 +642,7 @@ func TestNewFileRejectsInvalidGovernedTemplateMarkers(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := adr.NewFile(dir, "Bad Format", adr.CurrentStateV1); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := adr.NewFile(dir, "Bad Format"); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("format marker error = %v, want %q", err, tc.want)
 			}
 		})
@@ -751,7 +655,7 @@ func TestNewFileMissingDatePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1)
+	_, err := adr.NewFile(dir, "Some Title")
 	if err == nil || !strings.Contains(err.Error(), `template missing expected "date: YYYY-MM-DD"`) {
 		t.Fatalf("err = %v, want missing frontmatter date placeholder", err)
 	}
@@ -763,7 +667,7 @@ func TestNewFileMissingProposedHistoryDatePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1)
+	_, err := adr.NewFile(dir, "Some Title")
 	if err == nil || !strings.Contains(err.Error(), `ADR template Proposed history: adr: template missing expected "- YYYY-MM-DD: Proposed"`) {
 		t.Fatalf("err = %v, want missing Proposed history date placeholder", err)
 	}
@@ -775,7 +679,7 @@ func TestNewFileMissingTitlePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1); err == nil {
+	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
 		t.Fatal("expected error for missing title placeholder")
 	}
 }

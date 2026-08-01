@@ -272,6 +272,31 @@ func (p *Project) SyncReport(ctx context.Context) ([]Backup, []Change, []string,
 	return p.syncReport(ctx, nil)
 }
 
+// legacyAuthorityCompatibility derives the schema-30 cutoff payload that a
+// first-adoption lock must still encode. ADR parsing never consumes this value;
+// generation 31 removes it in the next migration.
+func legacyAuthorityCompatibility(corpus adr.Corpus) (int, []int) {
+	seen := map[int]bool{}
+	maxNumber := 0
+	for _, record := range corpus.All() {
+		if record.Number == "" {
+			continue
+		}
+		number, _ := strconv.Atoi(record.Number) // parsed corpus admits only FilenameRe's four-digit number
+		seen[number] = true
+		if number > maxNumber {
+			maxNumber = number
+		}
+	}
+	gaps := []int{}
+	for number := 1; number <= maxNumber; number++ {
+		if !seen[number] {
+			gaps = append(gaps, number)
+		}
+	}
+	return maxNumber + 1, gaps
+}
+
 // InitAuthority is the explicit provenance supplied only by first adoption.
 type InitAuthority struct {
 	InitializedWithVersion string
@@ -294,15 +319,9 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	var initCutoff int
-	var initGaps []int
 	if seed != nil {
 		if found {
 			return nil, nil, nil, errors.New("first-adoption initialization requires an absent lock")
-		}
-		initCutoff, initGaps, err = adr.AdoptionBoundary(p.decisionsDir())
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("seal first-adoption ADR authority: %w", err)
 		}
 	} else {
 		if !found {
@@ -358,13 +377,13 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 		lock.LegacyADRGaps = slices.Clone(old.LegacyADRGaps)
 	} else {
 		lock.InitializedWithVersion = seed.InitializedWithVersion
-		// Fresh adoption seals the whole ordered cutoff set at the same
-		// boundary, so a greenfield project authors V3 from its first record
-		// and the V1 <= V2 <= V3 ordering holds trivially (ADR-0202 item 1).
-		lock.ADRFormatV1From = initCutoff
-		lock.ADRFormatV2From = initCutoff
-		lock.ADRFormatV3From = initCutoff
-		lock.LegacyADRGaps = slices.Clone(initGaps)
+		// Schema 30 still requires these compatibility fields. Intrinsic parsing
+		// ignores them, and generation 31 removes them in the next phase.
+		cutoff, gaps := legacyAuthorityCompatibility(corpus)
+		lock.ADRFormatV1From = cutoff
+		lock.ADRFormatV2From = cutoff
+		lock.ADRFormatV3From = cutoff
+		lock.LegacyADRGaps = gaps
 	}
 	want := map[string]bool{}
 	for _, f := range files {
@@ -628,23 +647,7 @@ func (p *Project) NewADR(ctx context.Context, title string) (string, error) {
 	if !p.onIntegrationBranch(ctx) {
 		return adr.NewPendingFile(p.decisionsDir(), title)
 	}
-	lock, err := manifest.Load(p.lockPath())
-	if err != nil {
-		return "", err
-	}
-	number, err := adr.NextNumber(p.decisionsDir())
-	if err != nil {
-		return "", err
-	}
-	n, _ := strconv.Atoi(number)
-	format := adr.CurrentStateV1
-	if lock.ADRFormatV2From > 0 && n >= lock.ADRFormatV2From {
-		format = adr.CurrentStateV2
-	}
-	if lock.ADRFormatV3From > 0 && n >= lock.ADRFormatV3From {
-		format = adr.CurrentStateV3
-	}
-	return adr.NewFile(p.decisionsDir(), title, format)
+	return adr.NewFile(p.decisionsDir(), title)
 }
 
 // NewPlan scaffolds a new plan under docsDir/plans from the rendered plans

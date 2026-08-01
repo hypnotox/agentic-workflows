@@ -88,6 +88,7 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 		"data":          nonNil(sc.Data),
 		"layout":        p.layout().templateMap(),
 		"version":       Version,
+		"adrFormat":     adr.CurrentFormatMarker(),
 		"skills":        eff,
 		"skillRows":     p.skillRows(),
 		"commitScopes":  p.commitScopesDisplay(),

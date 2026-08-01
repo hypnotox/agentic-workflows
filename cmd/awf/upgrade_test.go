@@ -17,7 +17,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
-// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff (TestRunUpgradeAuthorityRefusalsDoNotMutate)
 // invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable (TestRunUpgradeAuthorityRefusalsDoNotMutate)
 
 func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -234,61 +233,105 @@ func historiesEqual(a, b []HistoryEvent) bool {
 	})
 }
 
-// FormatBoundaries are the immutable ADR format cutoffs from one snapshot.
-// A zero V2From leaves every governed record in the V1 region; a zero V3From
-// leaves every numbered governed record at or below the V2 region. The set is
-// ordered V1From <= V2From <= V3From (ADR-0202 item 1).
-type FormatBoundaries struct {
-	V1From int
-	V2From int
-	V3From int
+// formatActivation is one authored ADR format's exact marker and schema
+// generation. Its order is the historical activation order and its final entry
+// is the format new records use.
+type formatActivation struct {
+	format     Format
+	marker     string
+	generation int
 }
 
-// ParseRecord routes a numbered record by the numeric format boundaries and a
-// numberless one by its declared `format:` marker: a pending record has no
-// number to route by, so `current-state-v3` is the only legal numberless
-// declaration and anything else is a corpus error (ADR-0202 item 4).
-func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, error) {
-	m := FilenameRe.FindStringSubmatch(name)
-	if m == nil {
-		if peekFormat(data) == V3FormatMarker {
-			return ParseV3(name, data)
+var formatActivations = []formatActivation{
+	{CurrentStateV1, V1FormatMarker, 14},
+	{CurrentStateV2, V2FormatMarker, 15},
+	{CurrentStateV3, V3FormatMarker, 29},
+}
+
+// CurrentFormat returns the format newly authored ADRs use.
+func CurrentFormat() Format { return formatActivations[len(formatActivations)-1].format }
+
+// CurrentFormatMarker returns the exact marker newly authored ADRs use.
+func CurrentFormatMarker() string { return formatActivations[len(formatActivations)-1].marker }
+
+// KnownFormatMarker reports whether marker names one registered governed ADR
+// format.
+func KnownFormatMarker(marker string) bool {
+	for _, activation := range formatActivations {
+		if marker == activation.marker {
+			return true
 		}
-		return ADR{}, ErrNotADRRecord(name)
 	}
-	num, _ := strconv.Atoi(m[1]) // the regex admits only four digits
-	if boundaries.V3From > 0 && num >= boundaries.V3From {
-		return ParseV3(name, data)
-	}
-	if boundaries.V2From > 0 && num >= boundaries.V2From {
-		return ParseV2(name, data)
-	}
-	if boundaries.V1From > 0 && num >= boundaries.V1From {
-		return ParseV1(name, data)
-	}
-	a, _, err := ParseBytes(name, data)
+	return false
+}
+
+// ParseRecord routes an ADR by its authored format marker. Marker absence is
+// the sole legacy route; invalid frontmatter and every nonempty unregistered
+// marker are refusals rather than legacy fallbacks.
+func ParseRecord(name string, data []byte) (ADR, error) {
+	marker, declared, err := declaredFormatMarker(data)
 	if err != nil {
 		return ADR{}, err
 	}
-	if a.IsGoverned() {
-		return ADR{}, fmt.Errorf("ADR-%s is below the format cutoff %d but declares %s", a.Number, boundaries.V1From, FormatMarker(a.Format))
+	if !declared {
+		if FilenameRe.MatchString(name) {
+			a, _, err := ParseBytes(name, data)
+			if err != nil {
+				return ADR{}, err
+			}
+			a.Format = Legacy
+			return a, nil
+		}
+		return ADR{}, ErrNotADRRecord(name)
 	}
-	a.Format = Legacy
-	return a, nil
+	if marker == "" {
+		return ADR{}, errors.New("empty governed ADR format marker")
+	}
+	switch marker {
+	case V1FormatMarker:
+		if !FilenameRe.MatchString(name) {
+			return ADR{}, ErrNotADRRecord(name)
+		}
+		return ParseV1(name, data)
+	case V2FormatMarker:
+		if !FilenameRe.MatchString(name) {
+			return ADR{}, ErrNotADRRecord(name)
+		}
+		return ParseV2(name, data)
+	case V3FormatMarker:
+		return ParseV3(name, data)
+	default:
+		return ADR{}, fmt.Errorf("unknown governed ADR format marker %q", marker)
+	}
 }
 
-// peekFormat returns the declared `format:` frontmatter value, or the empty
-// string when the file carries no parseable frontmatter. Routing a numberless
-// file needs only the marker, and a file with no usable frontmatter must reach
-// the not-an-ADR-record error rather than a YAML complaint about a file that
-// was never meant to be a record.
-func peekFormat(data []byte) string {
-	var fm adrFrontmatter
-	_, found, err := frontmatter.Parse(data, &fm)
-	if !found || err != nil {
-		return ""
+// declaredFormatMarker reads the routing marker while distinguishing a missing
+// key (legacy) from an explicitly empty key (invalid). The initial strict
+// frontmatter parse detects malformed YAML and duplicate keys before routing.
+func declaredFormatMarker(data []byte) (string, bool, error) {
+	block, _, found := frontmatter.Split(data)
+	if !found {
+		return "", false, nil
 	}
-	return fm.Format
+	var document yaml.Node
+	if err := yaml.Unmarshal(block, &document); err != nil {
+		return "", false, fmt.Errorf("frontmatter: %w", err)
+	}
+	if len(document.Content) == 0 || document.Content[0].Kind != yaml.MappingNode {
+		return "", false, errors.New("frontmatter must be a mapping")
+	}
+	mapping := document.Content[0]
+	for i := 0; i < len(mapping.Content); i += 2 {
+		key, value := mapping.Content[i], mapping.Content[i+1]
+		if key.Value != "format" {
+			continue
+		}
+		if value.Kind != yaml.ScalarNode {
+			return "", true, errors.New("malformed governed ADR format marker")
+		}
+		return value.Value, true, nil
+	}
+	return "", false, nil
 }
 
 // parseV1Frontmatter strictly decodes the closed frontmatter, rejecting any
