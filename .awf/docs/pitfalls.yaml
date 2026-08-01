@@ -272,19 +272,30 @@ data:
       related: [191]
       tags: [adr-lifecycle, worktree-isolation, schema-migration]
       body: |
-        Until slug-identified pending ADRs land, an effort branch and the target can both consume
-        the same ADR number and the same schema generation while apart; the 0191 integration hit
-        both at once (its ADR authored as 0189 collided with the target's 0189, and both sides
-        registered generation 26). Resolve inside the merge, where both sides are visible. For the
-        ADR: rename the file to the next free number, rewrite the heading and every branch-owned
-        reference (topic Origin and Revised-by lines, plan frontmatter and prose, glossary,
-        changelog, code comments), and, because in-body self-references are digest-covered, record
-        the edit as an Amended event with the recomputed digest while the ADR is still
-        nonterminal. For the migration: move the registry entry to the next generation, update the
-        minimum-version map and every generation-pinning test, and resolve the lock conflict to
-        the TARGET side's generation so `awf upgrade` re-runs the moved migration over the merged
-        corpus; taking the branch lock skips it silently. Grep for the old number afterwards and
-        sort surviving hits into the other effort's legitimate references versus your leftovers.
+        Slug-identified pending ADRs removed the ADR-number half of this: a record authored off
+        the integration branch carries no number until `awf adr number` assigns one at
+        integration. Schema migration generations and the permanent lock cutoffs still collide
+        exactly the same way, and neither has a command. Both are allocated optimistically as
+        highest-plus-one in a worktree, so two branches take the same one while apart; the 0191
+        integration hit the ADR and the generation at once (its ADR authored as 0189 collided
+        with the target's 0189, and both sides registered generation 26), and the 0202
+        integration hit the generation and the cutoff after its own mechanism had retired the
+        ADR case. Resolve inside the merge, where both sides are visible. For a record predating
+        the slug format, which has no slug to be numbered by: rename the file to the next free
+        number, rewrite the heading and every branch-owned reference (topic Origin and Revised-by
+        lines, plan frontmatter and prose, glossary, changelog, code comments), and, because
+        in-body self-references are digest-covered, record that edit as an Amended event with the
+        recomputed digest in its own later commit while the ADR is still nonterminal. For the
+        migration: move the registry entry to the next generation, and carry the minimum-version
+        map and every generation-pinning test, comment, and doc sentence with it. For the lock,
+        keep the BRANCH side's generation and hand-apply the effect of any migration that stamp
+        now skips as applied, and re-derive a stale cutoff so it equals the merged corpus's next
+        identity. The advice here used to be the reverse, taking the target's generation so `awf
+        upgrade` re-runs the moved migration; that discards the branch's own migrations, and it
+        is unnecessary now that the port-forward strips every retired key from a historical
+        config unconditionally rather than by generation range, so only the live config tree
+        needs the hand edit. Grep for the old number afterwards and sort surviving hits into the
+        other effort's legitimate references versus your leftovers.
 
         Resolving inside the merge stops working once your ADR has an Applied batch. On
         2026-07-31 the 0192 integration tried it and `awf check --staged` refused with "ADR-0190
@@ -301,21 +312,46 @@ data:
         usable index, so a filter built on `git ls-files` silently does nothing while the renames
         it also performs appear to succeed; drive the sweep with `find` and verify afterwards.
 
-        There is a simpler remedy than rewriting history, and it is about merge DIRECTION.
-        `awf check --staged` validates HEAD to index as ONE transition, so whichever side is
-        HEAD supplies the before-corpus. Merge the target INTO your branch and the target's own
-        claims arrive as additions with no operation behind them, which is a structural refusal
-        no resolution can satisfy. Build the merge with the TARGET as HEAD instead - integrate
-        from the receiving checkout, or from a prep branch cut off the target - and the same
-        conflicts resolve to the same content while the handshake sees only your claims as
-        additions, with their operations present. On 2026-07-31 that let the git-seam effort
-        renumber its already-Implemented ADR inside the merge, which the branch-side direction
-        had refused minutes earlier with the identical tree. Two facts make the renumber safe
-        for a terminal ADR: the content digest covers Context, Decision, State changes,
-        Consequences, and Alternatives Considered but never the heading or the Status history,
-        so a rename is digest-neutral unless the body self-references, and stripping a retired
-        status segment is an encoding migration the append-only rule explicitly permits. Confirm
-        both by recomputation rather than by assuming.
+        Merge DIRECTION looks like a remedy and is not the one to reach for. `awf check
+        --staged` validates HEAD to index as ONE transition, so whichever side is HEAD supplies
+        the before-corpus, and building the merge with the TARGET as HEAD does make a renumber
+        resolve that the branch-side direction refuses with the identical tree; on 2026-07-31
+        that is how the git-seam effort renumbered its already-Implemented ADR. But the settled
+        integration flow runs the other way and deliberately: the effort branch merges the
+        integration branch in, numbers, and is then fast-forwarded, so the integration branch
+        only ever fast-forwards and every check runs on the merge commit whose first parent is
+        the effort branch. `awf effort integrate` enforces that direction, refusing to run from
+        the managed worktree. Under it a renumber must be resolvable in the branch-side
+        direction, which is what digest pairing provides for a slugless record. Reach for the
+        target-as-HEAD trick only to diagnose, never as the integration itself.
+
+        Two facts make a renumber safe for a terminal ADR: the content digest covers Context,
+        Decision, State changes, Consequences, and Alternatives Considered but never the heading
+        or the Status history, so a rename is digest-neutral unless the body self-references, and
+        stripping a retired status segment is an encoding migration the append-only rule
+        explicitly permits. Confirm both by recomputation rather than by assuming.
+    - title: "A staged-slice validation repository lands on the default branch"
+      domains: [tooling, adr-system]
+      related: [202]
+      tags: [commit-gate, worktree-isolation]
+      body: |
+        A pre-commit hook that validates the staged slice by materializing it in a throwaway
+        `git init` gets a repository on whatever branch `git init` defaults to, which is not the
+        branch the real commit is on. Every branch-conditional check then evaluates against the
+        wrong branch. This repository's stub refused a legal commit with
+        `pending-adr-on-integration-branch`, because the slice repository looked like it sat on
+        the integration branch while the real work was in a managed worktree. Name a branch
+        explicitly, `git init -b awf-staged-slice`, so the slice can never be mistaken for the
+        integration branch. The trap waits for any adopter wiring their own staged-slice
+        validation, and the symptom accuses the content rather than the harness.
+
+        Two adjacent facts about hooks, both discovered the same way. `core.hooksPath` is an
+        absolute path, so the hook that actually runs is the PRIMARY checkout's copy: the same
+        edit has to reach that checkout before it takes effect, no matter which worktree the
+        commit is made from. And a `pre-commit` hook DOES run when a conflicted merge is
+        finished with `git commit`; only a merge that Git resolves and commits by itself skips
+        it, which is exactly the hole `pre-merge-commit` exists to cover.
+
     - title: "Retiring a concept needs paraphrase sweeps, not just identifier greps"
       domains: [rendering, adr-system]
       related: [191]
