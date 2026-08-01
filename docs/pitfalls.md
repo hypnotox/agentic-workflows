@@ -2082,5 +2082,27 @@ mechanism invariant retirement already uses. Deferring the correction into an al
 planned decision is legitimate, but it leaves a claim that is read as current authority
 wrong in the meantime.
 
+## A stale merge first parent must parse under the result checker's marker grammar
+
+_Domains: invariants, adr-system, tooling_
+
+_Related: ADR-0205, ADR-0206_
+
+A long-lived effort can predate a breaking proof-marker grammar while main already enforces
+it. Merging main into that effort does not make the old first parent disappear: staged
+transition validation loads both universes with the merged binary, so it can reject the
+branch-side tree before examining the correctly migrated result. The glossary integration
+hit this when ADR-0205 required every `invariant:` marker to name its proving unit. Main's
+merge result had named markers, but the branch parent still carried the old spelling, and
+`awf check --staged` stopped on that parent.
+
+Port the compatibility half before merging: first land the parser that accepts both old and
+named markers, then land the mechanical marker-name migration while the branch's own gate
+can still validate each commit. Name branch-only markers in the same preparation. Only then
+merge the enforcing side. Do not bypass the hook or reverse the settled merge direction;
+both hide the invalid first-parent transition rather than making it replayable. This is a
+general stale-branch rule: when a new checker grammar is not backward-readable, inspect what
+the merged checker must load from HEAD, not only whether the result tree has migrated.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 
