@@ -224,6 +224,9 @@ var gatedProbes = map[string][]string{
 	"check drift":      {"awf", "check", "drift"},
 	"check state":      {"awf", "check", "state"},
 	"check invariants": {"awf", "check", "invariants"},
+	"check prose":      {"awf", "check", "prose"},
+	"check memory":     {"awf", "check", "memory"},
+	"check commit":     {"awf", "check", "commit"},
 	"audit":            {"awf", "audit"},
 	"effort":           {"awf", "effort", "list"},
 	"effort new":       {"awf", "effort", "new", "gate probe outcome"},
@@ -250,15 +253,15 @@ var gatedProbes = map[string][]string{
 }
 
 // gatedCommandKeys derives, from clispec alone, the key of every command whose
-// resolved gating is not Ungated.
+// top-level family is not Ungated.
 func gatedCommandKeys() []string {
 	var keys []string
 	for _, c := range clispec.Commands {
 		if c.Gating != clispec.Ungated {
 			keys = append(keys, c.Name)
 		}
-		for _, child := range c.Children {
-			if clispec.ResolvedGating(c, child) != clispec.Ungated {
+		if c.Gating != clispec.Ungated {
+			for _, child := range c.Children {
 				keys = append(keys, c.Name+" "+child.Name)
 			}
 		}

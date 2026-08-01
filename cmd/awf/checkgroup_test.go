@@ -165,29 +165,19 @@ func aheadSchemaGitProject(t *testing.T) string {
 	return root
 }
 
-// The per-child gating property: `check prose` and `check memory` resolve to
-// Ungated under a Gated parent, so they run against a project whose lock is
-// behind this binary where bare `check` refuses. This is the half of the claim
-// the driver owns; the clispec resolver's half is proved in that package.
-// invariant: tooling/cli:group-child-gating-honored (TestCheckUngatedChildrenRunOnSchemaAheadProject)
-func TestCheckUngatedChildrenRunOnSchemaAheadProject(t *testing.T) {
+// The whole check family inherits its gate from the top-level command, so a
+// direct prose invocation refuses before scanning when the project schema is
+// ahead of the binary.
+func TestCheckProseRefusesOnSchemaAheadProject(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	for _, sub := range []string{"prose", "memory"} {
-		t.Run(sub, func(t *testing.T) {
-			root := aheadSchemaGitProject(t)
-			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check", sub}, &out, &errb); code != 0 {
-				t.Fatalf("check %s exit = %d on an ahead-schema project, stderr=%q", sub, code, errb.String())
-			}
-			// Bare check refuses the same tree, which is what makes the child's
-			// exemption meaningful rather than vacuous.
-			out.Reset()
-			errb.Reset()
-			if code := runAt(t, root, []string{"awf", "check"}, &out, &errb); code != 1 {
-				t.Fatalf("bare check exit = %d, want the version-gate refusal", code)
-			}
-		})
+	root := aheadSchemaGitProject(t)
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "check", "prose"}, &out, &errb); code != 1 {
+		t.Fatalf("check prose exit = %d on an ahead-schema project, stderr=%q", code, errb.String())
+	}
+	if all := out.String() + errb.String(); !strings.Contains(all, "update your pinned awf") {
+		t.Fatalf("check prose refused without the version-gate message: %s", all)
 	}
 }
 

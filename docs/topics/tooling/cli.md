@@ -48,15 +48,9 @@ Backing: test
 
 ### `invariant: gated-commands-generated`
 
-The gated-command list rendered into the managed docs is generated from the clispec command table through one generator feeding both the render placeholder and the agent-guide value, with no hand-maintained enumeration in either doc. It is two projections: the top-level commands whose gating classification is not ungated, followed by the separately reported group children whose resolved gating is ungated under a gating parent, rendered as named exclusions.
+The gated-command list rendered into the managed docs is generated from the clispec command table through one generator feeding both the render placeholder and the agent-guide value, with no hand-maintained enumeration in either doc. It is the single projection of top-level commands whose gating classification is not ungated, with no group-child exclusion list.
 Origin: ADR-0094
-Revised-by: ADR-0159
-Backing: test
-
-### `invariant: group-child-gating-honored`
-
-A group child's gating classification resolves from the child when it declares one and from the parent otherwise, so an ungated child under a gated parent is honoured rather than silently gated.
-Origin: ADR-0159
+Revised-by: ADR-0159, ADR-0207
 Backing: test
 
 ### `invariant: group-child-project-guard-exemption`

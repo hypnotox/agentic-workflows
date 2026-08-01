@@ -354,7 +354,7 @@
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:4b49bb07886ec83eb4a6440f944645f03ef9e4abb8a13d99d1d34241be8fe482",
       "configHash": "sha256:4d7ed2337b2bb7572e6f0f25c3555a278cf1032098c030a94c23f2822ccc60c9",
-      "outputHash": "sha256:6bd71abb0a7581cae9256531f8beabad734ff021ec857e50fed4d489744a77ce"
+      "outputHash": "sha256:6b402397a6d219691d7980f597bac8ce8e8a6a35fa87221c04ab0ebed7f634f4"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -391,7 +391,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:fb31d2b92fe04005dd06a5bc2b8c7a4531c027e66aafa5998eaf4542e64a0753",
+      "outputHash": "sha256:c2daaa19ee9ba53ced956fe80e0659cece5532cf97b7fd1ec06ecd8e42f3c36d",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -745,8 +745,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:9a16829edd8365c1e73f937fada0c52e8a01c6d81f552721a9d16430cc0d06f9",
-      "outputHash": "sha256:6690025f6be31c6b33a74c15f7144f34cd1ca3817ea4294ed2881241a8e5473b"
+      "configHash": "sha256:a6eee3a1033c0927e38d63aa0d3ffaefb919f2b5032dbb75bca80b6bb2340aab",
+      "outputHash": "sha256:a0a8ded1e82b5fc7299cd544b7553bcf34bedc2fbcbbee5cd244889a34db8756"
     },
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",

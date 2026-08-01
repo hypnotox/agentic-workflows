@@ -14,8 +14,8 @@ import (
 type Gating int
 
 const (
-	Inherit        Gating = iota // a group child that declares nothing: resolve from the parent
-	Ungated                      // never gates (version, changelog, upgrade, uninstall, init, and the three regrouped hook checks)
+	Inherit        Gating = iota // a group child that declares nothing: inherit from the top-level group
+	Ungated                      // never gates (version, changelog, upgrade, uninstall, and init)
 	Gated                        // the driver gates before the handler
 	GatedInHandler               // the handler gates itself (config/context/topic after their static-fallback check; new after name validation)
 )
@@ -116,7 +116,7 @@ and a test-backed claim's proof-marker sites.
 `},
 			{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking",
 				BoolFlags: []string{"--staged"}, MaxPos: 0,
-				Gating: Ungated, StateExempt: true,
+				StateExempt: true,
 				HelpBody: `Usage: awf check prose
 
 Report every typographic punctuation substitute in the project's tracked text
@@ -129,7 +129,7 @@ artifact is enabled).
 `},
 			{Name: "memory", Summary: "Scan staged decision records for working-memory citations, blocking",
 				BoolFlags: []string{"--staged"}, MaxPos: 0,
-				Gating: Ungated, StateExempt: true,
+				StateExempt: true,
 				HelpBody: `Usage: awf check memory
 
 Report every citation of a specific working-memory file in the staged decisions
@@ -144,7 +144,7 @@ hooks artifact is enabled).
 `},
 			{Name: "commit", Summary: "Validate one commit message and stale-ADR merge authorization, blocking",
 				BoolFlags: []string{"--staged"}, MaxPos: 1,
-				Gating: Ungated, StateExempt: true,
+				StateExempt: true,
 				HelpBody: `Usage: awf check commit [FILE]
 
 Validate one commit message against the Conventional Commits rules and
@@ -482,16 +482,6 @@ func (c Command) Child(name string) (Command, bool) {
 	return Command{}, false
 }
 
-// ResolvedGating returns the child's own gating when it declares one, else the
-// parent's. A child that says nothing inherits; a child that says Ungated under
-// a Gated parent lowers it deliberately (ADR-0159 Decision 4).
-func ResolvedGating(top, cmd Command) Gating {
-	if cmd.Gating != Inherit {
-		return cmd.Gating
-	}
-	return top.Gating
-}
-
 // Names returns every top-level command name in table order.
 func Names() []string {
 	out := make([]string, len(Commands))
@@ -508,33 +498,12 @@ func UsageLine() string { return "awf <" + strings.Join(Names(), "|") + ">" }
 // the binary-version gate - the driver-gated commands plus the ones that gate
 // in-handler (config/context/topic after their static fallback, new after name
 // validation). Ungated commands are excluded; a group contributes only its own
-// token. Together with UngatedGroupChildren it is the source of the
-// doc-published gated-command list.
+// token. It is the source of the doc-published gated-command list.
 func GatedCommandNames() []string {
 	var out []string
 	for _, c := range Commands {
 		if c.Gating != Ungated {
 			out = append(out, c.Name)
-		}
-	}
-	return out
-}
-
-// UngatedGroupChildren returns, in table order, each group child whose resolved
-// gating is Ungated under a parent that gates - the exclusions a reader needs
-// beside the gated set. Spelled "parent child". A child that is not weaker than
-// its parent is simply not an exclusion; the gated list stays top-level-only
-// (ADR-0159 Decision 4).
-func UngatedGroupChildren() []string {
-	var out []string
-	for _, c := range Commands {
-		if c.Gating == Ungated {
-			continue
-		}
-		for _, child := range c.Children {
-			if ResolvedGating(c, child) == Ungated {
-				out = append(out, c.Name+" "+child.Name)
-			}
 		}
 	}
 	return out

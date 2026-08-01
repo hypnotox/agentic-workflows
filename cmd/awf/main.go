@@ -112,11 +112,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	cancel()
 	// The driver gates every Gated command before its handler; config/context/topic/new
 	// self-gate in-handler after their static-fallback / name-validation checks.
-	// Gating resolves from the child, falling back to the parent: a child that
-	// declares nothing inherits, while one that declares Ungated under a Gated
-	// parent lowers it deliberately, which is how `check prose|memory|commit`
-	// stay cheap enough for a hook to invoke unconditionally (ADR-0159).
-	if clispec.ResolvedGating(top, cmd) == clispec.Gated {
+	// Group children inherit the top-level command's classification.
+	if top.Gating == clispec.Gated {
 		gateFn := gate
 		// --staged is bare-check only, so the staged gate can never be selected
 		// by a child; the handler rejects the flag on one outright.
