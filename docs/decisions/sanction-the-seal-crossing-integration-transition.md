@@ -190,7 +190,18 @@ decision does not add one.
    and re-sealing relatives disappear with cutoff authority. This record does not add the
    previously proposed `governed-format-change-bounded` or port-forward-retirement claims.
 
-10. **New authority is test-backed.** All four added claims use `Backing: test`. The
+10. **Shared mechanisms have cohesive owners.** `internal/adr` owns the format-activation
+    registry alongside intrinsic parsing and scaffolding. A new leaf package,
+    `internal/commitmsg`, owns Git-cleaned commit-message normalization, the final trailer
+    block parser, and the parsed authorization-pair model; the existing cleaning logic moves
+    out of `cmd/awf` rather than being copied. `internal/currentstate` owns exact
+    incoming-parent ADR qualification alongside transition pairing. `cmd/awf`,
+    `internal/project`, and `internal/audit` orchestrate their respective live, staged, and
+    historical flows by depending inward on these owners. The owners do not import those
+    callers, and neither commit-message syntax nor parent qualification is reimplemented at
+    a command or audit boundary.
+
+11. **New authority is test-backed.** All four added claims use `Backing: test`. The
     implementation supplies proof markers on `TestParseRecordRoutesByIntrinsicFormat` for
     `intrinsic-format-routing`, `TestFinalUpgradeDiscardsBridgeADRRoutingPayload` for
     `bridge-attestation-cutoff-payload-discarded`,
@@ -200,7 +211,7 @@ decision does not add one.
     or compatibility half; narrower helper tests may supplement but not replace these named
     units.
 
-11. **Every claim mutation uses the checked lifecycle handshake.** The implementation commit
+12. **Every claim mutation uses the checked lifecycle handshake.** The implementation commit
     that records an operation's Applied event also performs exactly its matching claim add,
     update, or removal. Adds name this record as Origin; updates preserve Origin and the
     prior Revised-by prefix before appending this record and make the substantive change
@@ -218,7 +229,7 @@ decision does not add one.
 - remove `tooling/upgrade-runtime:legacy-format-set-is-closed`
 - add `tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded`
 - update `invariants/current-state-authority:merge-transition-ordered-aggregate`
-- add `invariants/current-state-authority:older-format-incoming-parent-sanction`
+- add `adr-system/adr-lifecycle:older-format-incoming-parent-sanction`
 - add `tooling/audit-and-snapshots:stale-merge-trailer-replay`
 
 ## Consequences
