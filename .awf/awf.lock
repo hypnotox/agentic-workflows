@@ -422,7 +422,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:1925d5e3f4423770b4922223867676cb2b55875b6200a8c0ecbbc1520aeae119",
+      "outputHash": "sha256:d87808f1d3d52a713e1013abda0926bb2159808fb9b90ff6268ae73fcfbcf44d",
       "regenChecked": true
     },
     "docs/domains/code-design.md": {

@@ -417,10 +417,11 @@ Flags:
 Migrate the .awf/ config tree to the current schema version, then sync.
 
 When the lock carries a bridge attestation, plain upgrade instead performs the
-final current-state cutover: it verifies only the sealed facts (the prepared
-HEAD and tree digest), then journals the deletion of the migration approval file
-and the permanent lock, promoting the sealed format cutoff and gaps. Attestation
-and readiness reporting live only in the preceding bridge release; this binary
+final current-state cutover: it verifies the complete sealed attestation,
+including the prepared HEAD, tree digest, and historical routing payload, then
+journals deletion of the migration approval file and replacement of the
+permanent lock while discarding the cutoff and gap payload. Attestation and
+readiness reporting live only in the preceding bridge release; this binary
 consumes seals, it never produces them.
 
   --recover              replay the current-state upgrade journal's recovery

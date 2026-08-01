@@ -31,8 +31,8 @@ type ADR struct {
 	DecisionStart int               // raw file byte offset of the Decision heading; 0 when absent
 	DecisionEnd   int               // raw file byte offset immediately after the Decision section; 0 when absent
 
-	// Governed fields are populated only for an ADR at or above one of the
-	// lock's format cutoffs. A legacy-format record leaves them zero.
+	// Governed fields are populated only for a record carrying a recognized
+	// intrinsic format marker. A legacy-format record leaves them zero.
 	Format     Format         // Legacy, CurrentStateV1, CurrentStateV2, or CurrentStateV3
 	NoneState  bool           // State changes section is exactly "None."
 	Operations []Operation    // parsed `## State changes` operations

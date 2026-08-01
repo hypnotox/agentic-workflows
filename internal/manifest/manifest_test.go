@@ -218,9 +218,6 @@ func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
 	}
 }
 
-// The cutoff set is ordered and each boundary is sealed by its own schema
-// generation: schema 29 requires adrFormatV3From, which must be positive and at
-// or above adrFormatV2From (ADR-0202 item 1).
 func TestSaveDirectoryAtPath(t *testing.T) {
 	// A directory squatting on the lock path makes WriteFile fail for all users (incl. root).
 	dir := t.TempDir()

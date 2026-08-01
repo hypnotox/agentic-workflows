@@ -194,6 +194,13 @@ None.
 	if out.String() != wantMissing {
 		t.Fatalf("unstamped refusal = %q, want %q", out.String(), wantMissing)
 	}
+	out.Reset()
+	if err := runCommitGate(testContext(t), root, writeMsg(t, ""), nil, &out); err == nil {
+		t.Fatal("empty-message older-format merge succeeded")
+	}
+	if out.String() != wantMissing {
+		t.Fatalf("empty-message refusal = %q, want %q", out.String(), wantMissing)
+	}
 	indexAfter, _ := os.ReadFile(filepath.Join(root, ".git", "index"))
 	mergeAfter, _ := os.ReadFile(mergeHeadPath)
 	messageAfter, _ := os.ReadFile(unstampedPath)

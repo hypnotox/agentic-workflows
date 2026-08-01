@@ -1052,20 +1052,6 @@ func publicTopicClaims(slugs ...string) string {
 	return b.String()
 }
 
-// The V3 sealing edge admits exactly the schema migration's write: the computed
-// corpus cutoff into an authority that carried none, with every other permanent
-// value unchanged (ADR-0202 item 1).
-// The integration re-seal is the second admitted edge: a cutoff sealed inside an
-// unintegrated branch was computed against a corpus the integration changes, so
-// it is re-derived against the staged tree. The generation must advance, which
-// is what keeps an ordinary commit from moving a published cutoff, and the new
-// value must be the merged corpus's own next identity rather than any number the
-// author likes.
-// The inherited-cutoff edge: a branch forked before the sealing generation
-// merges an integration branch already past it, so the transition crosses
-// generation 29 in one step and the cutoff arrives from the other parent,
-// already computed against a corpus neither of these trees holds.
-
 func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	gitfixture.Stage(t, repo, stagedHeadFiles())

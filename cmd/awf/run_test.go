@@ -397,13 +397,12 @@ func TestInitFirstADRChecksClean(t *testing.T) {
 func testInitFirstADRChecksClean(t *testing.T) {
 	ctx := testContext(t)
 	for _, tc := range []struct {
-		name   string
-		legacy []string
-		cutoff int
-		gaps   []int
+		name       string
+		legacy     []string
+		nextNumber int
 	}{
-		{name: "fresh", cutoff: 1, gaps: []int{}},
-		{name: "brownfield", legacy: []string{"0001-old.md", "0003-old.md"}, cutoff: 4, gaps: []int{2}},
+		{name: "fresh", nextNumber: 1},
+		{name: "brownfield", legacy: []string{"0001-old.md", "0003-old.md"}, nextNumber: 4},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := gitfixture.InitRepo(t)
@@ -430,7 +429,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if err := runNew(ctx, root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
 				t.Fatal(err)
 			}
-			want := fmt.Sprintf("%04d-", tc.cutoff)
+			want := fmt.Sprintf("%04d-", tc.nextNumber)
 			entries, err := os.ReadDir(filepath.Join(root, "docs/decisions"))
 			if err != nil {
 				t.Fatal(err)
@@ -442,18 +441,17 @@ func testInitFirstADRChecksClean(t *testing.T) {
 				}
 			}
 			if created == "" {
-				t.Fatalf("new ADR not created at cutoff %d", tc.cutoff)
+				t.Fatalf("new ADR not created at next number %d", tc.nextNumber)
 			}
 			body, err := os.ReadFile(created)
 			if err != nil {
 				t.Fatal(err)
 			}
 			text := string(body)
-			// Fresh adoption seals the whole ordered cutoff set at the same
-			// boundary, so a scaffolded record is V3 with its slug key
-			// (ADR-0202 items 1 and 2).
+			// Scaffolding uses the activation registry's current format, so a new
+			// record is V3 with its slug key regardless of existing ADR numbers.
 			if !strings.Contains(text, "format: current-state-v3\n") {
-				t.Fatalf("new ADR at cutoff %d is not current-state-v3", tc.cutoff)
+				t.Fatalf("new ADR at next number %d is not current-state-v3", tc.nextNumber)
 			}
 			start, end := strings.Index(text, "## State changes\n"), strings.Index(text, "## Consequences\n")
 			if start < 0 || end < 0 || end <= start {
