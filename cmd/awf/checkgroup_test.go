@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"io"
 	"path/filepath"
 	"strings"
@@ -41,8 +43,39 @@ func TestCheckChildrenCleanLines(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:check-universe-groups (TestCheckStatePathsDispatchDistinctly)
+func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"awf", "check", "repo", "state"}, "awf check repo state: clean"},
+		{[]string{"awf", "check", "staged", "state"}, "awf check staged: clean"},
+	} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, tc.args, &out, &errb); code != 0 {
+			t.Fatalf("%v exited %d: %s", tc.args, code, errb.String())
+		}
+		if !strings.Contains(out.String(), tc.want) {
+			t.Errorf("%v output = %q, want %q", tc.args, out.String(), tc.want)
+		}
+	}
+}
+
 // An unrecognized positional lists the valid subcommands. MaxPos is -1 so the
 // handler owns this message rather than a generic arity error.
+func TestCheckUniverseUnknownSubcommand(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	for _, universe := range []string{"repo", "staged"} {
+		var out, errb bytes.Buffer
+		code := runAt(t, root, []string{"awf", "check", universe, "bogus"}, &out, &errb)
+		if code != 2 || !strings.Contains(errb.String(), `unknown subcommand "bogus"`) {
+			t.Errorf("check %s bogus = code %d, stderr %q", universe, code, errb.String())
+		}
+	}
+}
+
 func TestCheckUnknownSubcommand(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -249,16 +282,19 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("state working-tree error", func(t *testing.T) {
-		// A drift-clean but non-git project fails the working-tree read inside
-		// CheckCurrentState.
+	t.Run("state filesystem fallback", func(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteAwfConfig(t, root, checkYAML)
 		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		if err := runCheckState(ctx, root, io.Discard); err == nil {
-			t.Fatal("expected a working-tree error from CheckCurrentState outside a git repository")
+		if err := runCheckState(ctx, root, io.Discard); err != nil {
+			t.Fatalf("filesystem current-state fallback: %v", err)
+		}
+		canceled, cancel := context.WithCancel(context.Background())
+		cancel()
+		if err := runCheckState(canceled, root, io.Discard); !errors.Is(err, context.Canceled) {
+			t.Fatalf("canceled filesystem current-state fallback = %v", err)
 		}
 	})
 

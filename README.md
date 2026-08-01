@@ -266,7 +266,7 @@ disk.
 |---|---|
 | `awf init` | Scaffold `.awf/`, seal first-adoption version, and render. ADR format is authored by each record rather than selected by lock cutoffs. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
 | `awf render` | Re-render after a config or template change. |
-| `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. Subcommands narrow it to one check: `drift`, `state`, `invariants`, `prose`, `memory`, `commit`. |
+| `awf check` | Run both verification universes. `check repo` aggregates working-tree `drift` and `state` with tracked-corpus `prose` and `memory`; `check staged` runs the HEAD-to-index state transition, while `check staged commit` is direct-only. `check invariants` remains a direct report. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
 | `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
@@ -302,9 +302,9 @@ removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
 yours. With the `hooks` artifact enabled (default on init), four inert payload scripts
-land under `.awf/hooks/`: `pre-commit.sh` (ordinary drift check, staged authority check,
-project gate, then enabled prose gate), `commit-msg.sh` (`awf check staged commit`), `pre-push.sh`,
-and `pre-merge-commit.sh` (the staged evidence available before the final message and parents).
+land under `.awf/hooks/`: `pre-commit.sh` (the configured bare aggregate check followed by
+the project gate), `commit-msg.sh` (`awf check staged commit`), `pre-push.sh`, and
+`pre-merge-commit.sh` (the staged evidence available before the final message and parents).
 Invoke them from wiring you own,
 e.g. an executable `.git/hooks/pre-commit` containing
 `exec bash .awf/hooks/pre-commit.sh "$@"`, or a tracked `core.hooksPath` directory. If

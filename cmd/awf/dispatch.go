@@ -70,6 +70,9 @@ func runCheckGroup(c *cmdCtx) error {
 		}
 		return runCheck(c.ctx, c.root, c.stdout)
 	}
+	if (c.sub == "repo" || c.sub == "staged") && len(c.inv.positionals) > 0 {
+		return &usageErr{fmt.Sprintf("awf check %s: unknown subcommand %q: expected one of %s", c.sub, c.inv.positionals[0], checkSubcommands(c.sub))}
+	}
 	switch c.sub {
 	case "repo":
 		return runCheckRepo(c.ctx, c.root, c.stdout)

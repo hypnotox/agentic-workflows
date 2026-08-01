@@ -100,6 +100,9 @@ type workingState struct {
 // workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
 func (p *Project) workingCurrentState(ctx context.Context) (workingState, error) {
 	tree, err := p.workingTree(ctx)
+	if errors.Is(err, git.ErrNotARepository) {
+		tree, err = snapshot.FilesystemTree(ctx, p.Root)
+	}
 	if err != nil {
 		return workingState{}, err
 	}

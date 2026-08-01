@@ -286,8 +286,8 @@ func TestCheckCurrentStateNoPolicy(t *testing.T) {
 	}
 }
 
-// TestCheckCurrentStateOutsideRepo covers the working-Tree open failure: a
-// scaffolded project that is not a git repository.
+// TestCheckCurrentStateOutsideRepo covers the filesystem working-tree fallback
+// for a scaffolded project that is not a git repository.
 func TestCheckStagedRootOutsideRepo(t *testing.T) {
 	if _, err := CheckStagedRoot(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("CheckStagedRoot accepted a non-repository")
@@ -300,8 +300,8 @@ func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
-		t.Fatal("expected a working-tree error outside a git repository")
+	if _, err := p.CheckCurrentState(testContext(t)); err != nil {
+		t.Fatalf("filesystem current-state fallback: %v", err)
 	}
 }
 

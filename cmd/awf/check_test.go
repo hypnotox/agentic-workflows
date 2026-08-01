@@ -156,10 +156,11 @@ func TestRunCheckNoLock(t *testing.T) {
 	}
 }
 
-// TestRunCheckCurrentStateError covers the CheckCurrentState error path in
-// runCheck, distinct from a coverage finding: a drift-clean but non-git project
-// fails the working-tree read inside CheckCurrentState after Check() succeeds.
-func TestRunCheckCurrentStateError(t *testing.T) {
+// TestRunCheckOutsideGitDegrades covers the stable non-git form: the repo
+// universe uses the filesystem snapshot and the staged universe is reported
+// unavailable.
+// invariant: tooling/cli:check-universe-groups (TestRunCheckOutsideGitDegrades)
+func TestRunCheckOutsideGitDegrades(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := t.TempDir()
@@ -167,8 +168,12 @@ func TestRunCheckCurrentStateError(t *testing.T) {
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
-	if err := runCheck(ctx, root, io.Discard); err == nil {
-		t.Fatal("expected a working-tree error from CheckCurrentState outside a git repository")
+	var out bytes.Buffer
+	if err := runCheck(ctx, root, &out); err != nil {
+		t.Fatalf("bare check outside git: %v", err)
+	}
+	if !strings.Contains(out.String(), "awf check repo state: clean") || !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
+		t.Fatalf("outside-git output omitted repo execution or staged disclosure:\n%s", out.String())
 	}
 }
 
@@ -322,6 +327,20 @@ func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) strin
 		gitfixture.Stage(t, repo, stageOnly)
 	}
 	return dir
+}
+
+// invariant: tooling/cli:check-universe-groups (TestRunCheckRunsStagedAfterRepoFailure)
+func TestRunCheckRunsStagedAfterRepoFailure(t *testing.T) {
+	root := stagedCheckProject(t,
+		map[string]string{".awf/config.yaml": coverageYAML(), ".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"},
+		map[string]string{"internal/bar.go": "package internalx\n"})
+	var out bytes.Buffer
+	if err := runCheck(testContext(t), root, &out); err == nil {
+		t.Fatal("heterogeneous bare-check failures returned nil")
+	}
+	if !strings.Contains(out.String(), "unsynced") || strings.Count(out.String(), "current-state") < 2 {
+		t.Fatalf("bare check did not report repo failure and continue into staged findings:\n%s", out.String())
+	}
 }
 
 // TestRunCheckStagedSurfacesFinding covers the staged route of runCheck: an

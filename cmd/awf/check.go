@@ -12,16 +12,14 @@ import (
 // runCheck runs both check universes. Outside a Git repository the repo universe
 // still applies, while the staged universe is unavailable.
 func runCheck(ctx context.Context, root string, stdout io.Writer) error {
-	if err := runCheckRepo(ctx, root, stdout); err != nil {
-		return err
-	}
+	repoCheckErr := runCheckRepo(ctx, root, stdout)
 	_, _, repoErr := awfgit.OpenContaining(root)
 	if errors.Is(repoErr, awfgit.ErrNotARepository) {
 		fmt.Fprintln(stdout, "note: staged check universe unavailable outside a git repository")
-		return nil
+		return repoCheckErr
 	}
 	if repoErr != nil {
-		return repoErr
+		return errors.Join(repoCheckErr, repoErr)
 	}
-	return runCheckStaged(ctx, root, stdout)
+	return errors.Join(repoCheckErr, runCheckStaged(ctx, root, stdout))
 }
