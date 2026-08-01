@@ -221,8 +221,8 @@ func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
 	}
 }
 
-// The name must actually occur in the file, on a line that is neither a comment
-// nor the marker's own. Each case below is one load-bearing mechanism of that
+// The name must actually occur in the file, on a line that does not itself open
+// with the marker token. Each case below is one load-bearing mechanism of that
 // rule; without any one of them a stranded marker stays green.
 func TestProofNameMustOccurInTheFile(t *testing.T) {
 	build := func(body string) error {

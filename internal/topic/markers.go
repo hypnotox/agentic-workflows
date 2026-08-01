@@ -262,12 +262,18 @@ func resolveMarker(path string, line int, payload string, corpus Corpus, cfg *co
 //
 // Recognition is syntactic and line-local. One condition does the excluding: for
 // a family whose marker token is its comment leader, which covers // and #, it
-// skips comments, and every marker line is a special case of a comment line, so
+// skips WHOLE-LINE comments, and every marker line is a special case of one, so
 // a stack of markers naming one unit cannot satisfy itself and the marker's own
 // line needs no separate case (ADR-0199 item 3). The token is a parameter
-// because the exclusion is per-family; it cannot be hardcoded. A family whose
-// token is a prefixed or block-comment form excludes only the lines opening with
-// that exact token, which is narrower than every comment in the file.
+// because the exclusion is per-family; it cannot be hardcoded.
+//
+// Two forms deliberately stay searchable, because the test is where a line
+// OPENS rather than what it contains. A trailing comment on a code line is
+// searched, so a cross-reference like `continue // see TestFoo` can satisfy a
+// marker naming TestFoo. And a family whose token is a prefixed or block-comment
+// form excludes only lines opening with that exact token. Both are accepted
+// false negatives: narrowing them needs per-language comment parsing, which the
+// check refuses (ADR-0199 item 9).
 func proofNameOccurs(lines []string, name, marker string) bool {
 	for _, line := range lines {
 		if strings.HasPrefix(strings.TrimSpace(line), marker) {

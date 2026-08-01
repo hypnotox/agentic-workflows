@@ -1811,7 +1811,7 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
 	},
-	// invariant: rendering/templates:local-base-publication-safe (TestUnsetFallbackRenders)
+	// invariant: rendering/templates:local-base-publication-safe (skills/_base/SKILL.md.tmpl)
 	{
 		tmpl: "skills/_base/SKILL.md.tmpl",
 		want: []string{
@@ -1829,13 +1829,13 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"<no value>"},
 	},
-	// invariant: rendering/templates:local-doc-base-publication-safe (TestUnsetFallbackRenders)
+	// invariant: rendering/templates:local-doc-base-publication-safe (docs/_base.md.tmpl)
 	{
 		tmpl: "docs/_base.md.tmpl",
 		want: []string{"Project documentation", "Project-local documentation.", "Replace this with the document body"},
 		ban:  []string{"<no value>"},
 	},
-	// invariant: rendering/workflow-skill-templates:reviewers-report-only (TestUnsetFallbackRenders)
+	// invariant: rendering/workflow-skill-templates:reviewers-report-only (agents/adr-reviewer.md.tmpl)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
 		want: []string{"Regen command: `awf render`."},

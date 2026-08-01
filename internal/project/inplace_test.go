@@ -14,7 +14,7 @@ import (
 // and awf's next registered section pointer, verbatim (internal blank lines kept),
 // trimming only the awf-owned leading/trailing framing.
 func TestReadBackInPlaceBody(t *testing.T) {
-	// invariant: rendering/inplace-and-placeholders:in-place-readback (TestReadBackInPlaceBody)
+	// invariant: rendering/inplace-and-placeholders:in-place-readback (exact interior, internal blank preserved)
 	t.Run("exact interior, internal blank preserved", func(t *testing.T) {
 		out := "head\n" +
 			"<!-- awf:edit-in-place body: your edits -->\n" +

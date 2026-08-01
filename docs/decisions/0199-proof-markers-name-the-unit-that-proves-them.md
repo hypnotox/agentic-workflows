@@ -69,9 +69,11 @@ file, or a stack becomes self-satisfying.
    final closing parenthesis rather than the first. A proof marker parsed without a name is an
    error.
 
-2. The name is free text, not an identifier. Its only requirements are that it is non-empty,
-   carries no leading or trailing whitespace, and does not contain the source family's closing
-   token; it may itself contain parentheses, which is why item 1's capture is greedy. This is
+2. The name is free text, not an identifier. Its only enforced requirements are that it is
+   non-empty and carries no leading or trailing whitespace; it may itself contain parentheses,
+   which is why item 1's capture is greedy. A closing token inside the name is not rejected and
+   needs no rule: `markerPayload` strips one trailing close token before the payload is parsed, so
+   what remains is unambiguous. This is
    what keeps the rule portable: a Go or Python adopter names a function, while a JavaScript or
    TypeScript adopter's test is a string literal such as `it('strips the header')` and has no
    identifier to name.
@@ -84,20 +86,23 @@ file, or a stack becomes self-satisfying.
    carry non-ASCII letters gets the same rename protection an ASCII one does.
 
    For a family whose marker token is its comment leader, `//` for Go and `#` for Python, this
-   excludes comments, and every marker line is a special case of a comment line. One condition
+   excludes whole-line comments, and every marker line is a special case of one. One condition
    therefore replaces two, the marker's own line needing no separate case, and it is purely
    syntactic and line-local: recognition tests a line's leading token, never whether that line
    resolves to a valid claim, so it introduces no error of its own and the scan keeps reporting
    the first failure in line order.
 
    The exclusion is exactly "opens with the marker token", which is narrower than "is a comment"
-   for a family whose token is a prefixed or block-comment form. Such a family leaves an ordinary
-   comment line searchable, so a name surviving only in prose could satisfy a stranded marker. A
-   proof marker lives only in a `currentState.testGlobs` file, so the exposure is an adopter that
-   configures a prefixed or block-comment token over its test file set; this repository's own
-   prefixed family (`<!-- awf:comment`) covers config parts and templates, which no proof marker
-   can inhabit. Widening the exclusion to general comment syntax would require per-language
-   knowledge the check deliberately refuses (item 9), so this stays a documented boundary.
+   in two ways, both accepted. A TRAILING comment on a code line is searched, because the test is
+   where a line opens rather than what it contains, so a cross-reference such as
+   `continue // covered by TestFoo` can satisfy a marker naming `TestFoo`. And a family whose token
+   is a prefixed or block-comment form excludes only lines opening with that exact token, leaving
+   ordinary comment lines searchable; a proof marker lives only in a `currentState.testGlobs` file,
+   so that exposure is an adopter configuring such a token over its test file set, and this
+   repository's own prefixed family (`<!-- awf:comment`) covers config parts and templates, which
+   no proof marker can inhabit. Narrowing either form would require per-language comment parsing,
+   which the check deliberately refuses (item 9), so both stay documented boundaries rather than
+   silent gaps.
 
    The single exclusion subsumes two weaker ones, and measurement rather than intuition set the
    boundary. Excluding only the marker's own line lets a stack satisfy itself: twelve markers above one
@@ -196,16 +201,16 @@ such as `TestFoo` deleted while a `t.Run("TestFoo")` string remains elsewhere in
 Closing it would require knowing which occurrence is a declaration, which is the language
 knowledge this decision refuses to take on.
 
-The much larger comment-borne form of that residual is closed rather than accepted for a family
-whose marker token is its comment leader, and it was measured rather than assumed. Naming a test
-in a doc comment above its marker block is this repository's dominant convention, so a rule that
-searched comments would have missed 120 of 425 markers above a test, and the tree already contains
-an instance: `internal/project/example_wiring_test.go`
-carries a doc comment naming `TestSundialCurrentStateMigrated`, a test that no longer exists
-anywhere. Item 3's exclusion catches that today. For such a family the remaining residual needs
-the name to survive on a code line, which is a far narrower accident than surviving in prose; for
-a family whose token is a prefixed or block-comment form, item 3's boundary paragraph records that
-ordinary comments stay searchable and the prose-borne residual is accepted rather than closed.
+The largest comment-borne form of that residual, a whole-line doc comment above the marker block,
+is closed rather than accepted for a family whose marker token is its comment leader, and it was
+measured rather than assumed. Naming a test in such a comment is this repository's dominant
+convention, so a rule that searched them would have missed 120 of 425 markers above a test. Before
+this decision was implemented the tree carried exactly that shape in
+`internal/project/example_wiring_test.go`, a doc comment naming `TestSundialCurrentStateMigrated`,
+a test that no longer existed anywhere; it carried no marker of its own, and the implementation
+removed it along with three sibling stale comments. The two narrower forms item 3 records, a
+trailing comment on a code line and an ordinary comment under a prefixed or block-comment family,
+stay searchable and are accepted.
 
 More fundamentally, the check constrains the *form* of a marker, not the *discrimination* of its
 name. Nothing requires the name to be specific, so a weak or over-general name that happens to

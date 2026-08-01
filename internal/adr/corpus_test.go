@@ -338,12 +338,8 @@ func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Pa
 	return pkgs
 }
 
-// TestCorpusParsedOnce enforces ADR-0130 item 1: one parse per invocation.
-// adr.ParseDir has no production caller outside internal/adr - every consumer
-// enters through Corpus construction - and inside internal/adr only that seam
-// and NextNumber call it. NextNumber is the command-boundary exception that
-// holds no active topic corpus.
-// invariant: adr-system/adr-lifecycle:corpus-parsed-once (parseDirProblems)
+// parseDirProblems reports the ParseDir call sites that fall outside the two
+// approved seams. It only computes; TestCorpusParsedOnce is what asserts.
 func parseDirProblems(callers map[callOwner][]string) []string {
 	want := map[callOwner]bool{
 		{path: "internal/adr/corpus.go", name: "LoadCorpus"}: true,
@@ -375,6 +371,12 @@ func replaceMutationSource(t *testing.T, rel, old, replacement string) string {
 	return strings.Replace(string(body), old, replacement, 1)
 }
 
+// TestCorpusParsedOnce enforces ADR-0130 item 1: one parse per invocation.
+// adr.ParseDir has no production caller outside internal/adr - every consumer
+// enters through Corpus construction - and inside internal/adr only that seam
+// and NextNumber call it. NextNumber is the command-boundary exception that
+// holds no active topic corpus.
+// invariant: adr-system/adr-lifecycle:corpus-parsed-once (TestCorpusParsedOnce)
 func TestCorpusParsedOnce(t *testing.T) {
 	pkgs := loadProductionPackages(t)
 	callers := parseDirCallFindings(pkgs)
