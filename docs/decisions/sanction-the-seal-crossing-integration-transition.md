@@ -77,38 +77,49 @@ decision does not add one.
    retain the current-format identity rules, including the mandatory V3 slug while V3 is the
    current format.
 
-2. **The binary owns the current authoring format.** One code-level value identifies the
-   running binary's current ADR format. The rendered ADR template and `awf new adr` derive
-   from it rather than from lock boundaries. A non-merge staged transition may introduce a
-   new ADR only in that current format. Existing records in any older intrinsic format may
-   continue along that format's legal lifecycle and transition matrix; they are not upgraded
-   merely because a newer binary checks them.
+2. **The binary owns the current authoring format.** One code-level format-activation
+   registry identifies the running binary's current ADR format and the schema generation at
+   which each format became current. The rendered ADR template and `awf new adr` derive from
+   it rather than from lock boundaries. Their derivation remains publication-safe under
+   missingkey=zero and empty render data, with no unresolved or no-value token, and stays on
+   the existing golden-test surface. A staged transition may introduce a new ADR only in the
+   current format. Existing records in any older intrinsic format may continue along that
+   format's legal lifecycle and transition matrix; they are not upgraded merely because a
+   newer binary checks them.
 
 3. **Cutoff and gap authority is retired completely.** Permanent lock fields for the V1,
-   V2, and V3 cutoffs and for legacy ADR gaps are removed. Initialization stops computing
-   them, migrations stop sealing them, staged lock validation stops comparing them, and
-   corpus loading accepts no boundary or gap arguments. The schema migration that removes
-   the fields rewrites no ADR bytes. The first-adoption binary version remains immutable and
-   continues to serve its independent compatibility purpose.
+   V2, and V3 cutoffs and for legacy ADR gaps are removed. Manifest parsing and writing,
+   initialization, project render and sync, corpus loading, schema migrations, staged lock
+   validation, final upgrade, config-reference derivation, and their fixtures stop consuming
+   or producing permanent routing values. The forward schema migration removes those fields
+   without rewriting ADR bytes and stamps the intrinsic-format generation. A pre-migration
+   binary sees that newer schema generation and refuses through the existing binary-version
+   gate rather than misparsing the cutoff-free lock. The first-adoption binary version
+   remains immutable and continues to serve its independent compatibility purpose.
 
 4. **Resident bridge attestations remain consumable.** The compatibility parser continues
    to accept the attestation version that carries `adrFormatV1From` and `legacyADRGaps`, and
    final upgrade verifies the complete resident attestation and its approval artifact before
    committing cutover. The final permanent lock discards those two routing values rather
    than promoting them. Attestation consumption, approval-file deletion, and final lock
-   replacement retain the existing journaled atomicity, and no step rewrites an ADR.
+   replacement retain the existing journaled atomicity, and no step rewrites an ADR. Thus
+   permanent manifest authority is cutoff-free while the one historical bridge input stays
+   readable until it is consumed.
 
 5. **A real merge may carry an incoming older-format ADR.** Relative to the first parent, a
    result record whose format is older than the running binary's current format is admitted
    only when at least one incoming parent already carries the paired record in that same
    format. Pairing uses the same retained-slug, unique slugless digest, and number resolution
-   as the transition checker. The incoming-parent-to-result pair must pass the ordinary
-   format-specific transition and mutation rules apart from the current-format introduction
-   rule. Thus a sanctioned numbering or renumbering may change the filename, heading,
-   number, and governed provenance exactly as its existing claim permits, but the merge may
-   not retrofit the format, invent semantic content, or use a parent record to cover an
-   unrelated evil-merge edit. This rule applies across every incoming parent, including an
-   octopus merge; one qualifying parent is sufficient for a given result record.
+   as the transition checker. After pairing, the incoming artifact and result must be
+   byte-identical except for the exact deterministic number, filename, heading, `Origin:`,
+   and `Revised-by:` substitutions already sanctioned by numbering or renumbering. Legacy
+   records receive the same exactness check with only their applicable number, filename, and
+   heading substitutions; they have no governed provenance exception. No status, history,
+   format, decision content, or other byte may change under this admission. A lifecycle
+   transition or amendment to the incoming record therefore lands in an ordinary later
+   commit, not in the merge that imports it. This rule applies across every incoming parent,
+   including an octopus merge; one qualifying parent is sufficient for a given result
+   record, but no parent record can cover an unrelated evil-merge edit.
 
 6. **Authorization is a paired commit-message trailer.** Each older format a qualifying
    merge needs is authorized by this adjacent trailer pair in the final Git trailer block:
@@ -118,36 +129,57 @@ decision does not add one.
    AWF-Allow-Reason: integrate an ADR authored and implemented on the incoming branch
    ```
 
+   The shared parser first applies the repository's Git-cleaning contract: normalize CRLF,
+   remove lines whose first nonblank character is `#`, stop at the scissors line, and trim
+   trailing blank lines. The final trailer block is the maximal nonempty suffix after a
+   blank separator in which every line is an unindented `Key: value` trailer. Other valid
+   trailers may surround an AWF pair but may not split it. Continuation lines are not legal
+   for either AWF key. Any cleaned line beginning `AWF-Allow-` outside that block, any
+   reserved key other than the two exact case-sensitive spellings, or any malformed pair is
+   a refusal rather than ignored prose.
+
    `AWF-Allow-Version` uses the exact intrinsic format marker, or the literal `legacy` for a
-   markerless record. Its value must name a format known to the binary. The immediately
-   following `AWF-Allow-Reason` belongs to that version and must remain nonempty after ASCII
-   whitespace is trimmed. Keys and version values use the exact case shown. A complete pair
-   authorizes every qualifying incoming-parent ADR of that version in this merge. Pairs may
-   repeat; duplicate pairs and complete pairs for a version that needs no exception are
-   harmless and auditable. An orphan key, reversed pair, unknown version, empty reason, or
-   lookalike outside the final trailer block authorizes nothing and causes the commit gate to
-   refuse when it uses an `AWF-Allow-` key.
+   markerless record. Its value must name a format known to the activation registry. The
+   immediately following `AWF-Allow-Reason` belongs to that version and must remain nonempty
+   after ASCII whitespace is trimmed. A complete pair authorizes every qualifying
+   incoming-parent ADR of that version in this merge. Pairs may repeat; duplicate pairs and
+   complete pairs for a version that needs no exception are harmless and auditable. An
+   orphan key, reversed pair, unknown version, empty reason, interleaved trailer, or body
+   lookalike authorizes nothing. Commit gate and audit consume the same cleaned-message
+   parser and the same parsed pair model.
 
 7. **`commit-msg` is the definitive merge authorization boundary.** The earlier staged gate
-   still performs every message-independent transition check. When an actual merge is in
-   progress and the only unresolved issue is missing stale-format authorization, that gate
-   defers rather than aborting before a message exists. The `commit-msg` payload supplies the
-   message file and merge-parent state to the shared validator, which rechecks qualification
-   and the trailer pairs against the assembled index. Missing or invalid authorization
-   refuses the commit without clearing `MERGE_HEAD` or the staged merge. The agent adds or
-   corrects trailers and runs `git commit` to finish the existing merge. Manual merge flows
-   may call the same validation once their message exists, but no earlier success bypasses
-   `commit-msg`. No allowance file, ledger, receipt, preparation command, or automatic
-   upgrade is introduced.
+   performs every check derivable from HEAD and the index. Because `pre-merge-commit` cannot
+   see merge parents, it treats every otherwise-valid older-format introduction as
+   provisional, whether the eventual commit is a merge or an ordinary commit; it does not
+   pretend to qualify a parent or authorization it cannot observe. `commit-msg` receives the
+   cleaned message, checks whether `MERGE_HEAD` exists, loads every incoming parent, and
+   makes the definitive decision. A non-merge commit with a provisional older-format
+   introduction is refused. A merge must satisfy item 5 and carry every pair item 6 requires.
 
-8. **Audit replays committed authorization.** `awf audit` uses the same trailer parser and
-   merge-qualification validator against the committed merge tree, its first parent, and all
-   incoming parents. It reports an error when a merge admitted an older-format incoming ADR
-   without a matching complete pair or when an `AWF-Allow-` trailer is malformed, and stays
-   silent for valid or redundant complete pairs. Audit does not retroactively compare
-   historical ordinary commits with the auditing binary's current format; transition-time
-   admission was owned by the binary that authored those commits. A true fast-forward has no
-   merge commit or authorization event to replay.
+   Missing or invalid authorization returns an actionable `operation` outcome whose
+   condition names the observed merge and deficient message, reports no validator-caused
+   changed axis, and gives the ordered remedy: correct the message trailers, then run
+   `git commit` to finish the existing merge. The validator does not clear `MERGE_HEAD` or
+   alter the staged merge. Manual merge flows may call the same validation once their
+   message exists, but no earlier success bypasses `commit-msg`. No allowance file, ledger,
+   receipt, preparation command, or automatic upgrade is introduced.
+
+8. **Audit replays committed authorization from an explicit epoch.** The intrinsic-format
+   schema generation is the activation epoch. `awf audit` applies this rule only to a merge
+   whose result tree carries that generation or later, and derives the merge-time current
+   authoring format from the same format-activation registry and the result tree's schema
+   generation. A future format therefore registers its own schema activation without adding
+   a number cutoff. The ordinary version gate ensures staged checking has upgraded the
+   project to the running binary's schema before it can author a commit.
+
+   For an applicable merge, audit uses the shared trailer parser and qualification validator
+   against the committed merge tree, its first parent, and all incoming parents. It reports
+   an error when the merge admitted an older-format incoming ADR without a matching complete
+   pair or when an `AWF-Allow-` trailer is malformed, and stays silent for valid or redundant
+   complete pairs. Pre-epoch merges and historical non-merge commits are not retroactively
+   judged by a later binary's current format. A true fast-forward has no merge commit or
+   authorization event to replay.
 
 9. **The incident relaxations are removed, not generalized.** Intrinsic parsing means a
    renumbered stale ADR keeps its authored format, so no governed-format retrofit is
@@ -156,6 +188,23 @@ decision does not add one.
    and `isRenumberRetrofit` disappear. The V3 inherited-cutoff edge and its earlier sealing
    and re-sealing relatives disappear with cutoff authority. This record does not add the
    previously proposed `governed-format-change-bounded` or port-forward-retirement claims.
+
+10. **New authority is test-backed.** All four added claims use `Backing: test`. The
+    implementation supplies proof markers on `TestParseRecordRoutesByIntrinsicFormat` for
+    `intrinsic-format-routing`, `TestFinalUpgradeDiscardsBridgeADRRoutingPayload` for
+    `bridge-attestation-cutoff-payload-discarded`,
+    `TestCheckCommitAuthorizesOlderFormatIncomingParent` for
+    `older-format-incoming-parent-sanction`, and `TestAuditReplaysStaleMergeTrailers` for
+    `stale-merge-trailer-replay`. Each test covers its refusal half as well as its admission
+    or compatibility half; narrower helper tests may supplement but not replace these named
+    units.
+
+11. **Every claim mutation uses the checked lifecycle handshake.** The implementation commit
+    that records an operation's Applied event also performs exactly its matching claim add,
+    update, or removal. Adds name this record as Origin; updates preserve Origin and the
+    prior Revised-by prefix before appending this record and make the substantive change
+    declared here; removals disappear without reusing their IDs. If implementation is
+    batched, the Applied and Remaining partitions preserve the declaration order below.
 
 ## State changes
 
@@ -210,6 +259,15 @@ solely to carry a stamp would add ceremony without adding transition evidence.
 
 Plans remain unchanged. Their current frontmatter, ADR-link, and commit-fence checks continue
 without a version field or stale-merge exception.
+
+Documentation travels with implementation. The owning `.awf/` inputs and all rendered
+outputs that state ADR parsing and authoring, lock and bridge fields, migration behavior,
+hook timing, commit-message checking, merge integration, audit replay, config reference, and
+future-format procedure change in the same applicable transaction. The implementation sweep
+includes the agent guide, ADR lifecycle and workflow guidance, working-with-awf, architecture,
+domain docs, release and pitfall guidance, repository README, CLI help/spec text, templates,
+and generated config-reference surfaces where they actually state affected behavior; it
+updates sources and re-renders rather than hand-editing generated files.
 
 ## Alternatives Considered
 
