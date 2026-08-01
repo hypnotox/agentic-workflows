@@ -1,0 +1,442 @@
+package testsupport
+
+import (
+	"errors"
+	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func safeTestTempManager(t *testing.T, root string, now time.Time) *testTempManager {
+	t.Helper()
+	m, err := newTestTempManager(root, func() time.Time { return now }, osTestTempFS(), func(_ string, info fs.FileInfo) error {
+		if info.Mode().Perm()&0o077 != 0 {
+			return errors.New("open")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+func mkdirHome(t *testing.T, root, name string, mod time.Time) string {
+	t.Helper()
+	path := filepath.Join(root, name)
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, mod, mod); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestTestTempManagerConstruction(t *testing.T) {
+	files := osTestTempFS()
+	if _, err := newTestTempManager("", time.Now, files, func(string, fs.FileInfo) error { return nil }); err != nil {
+		t.Fatalf("empty root must be validated by ensureRoot: %v", err)
+	}
+	if _, err := newTestTempManager(t.TempDir(), nil, files, func(string, fs.FileInfo) error { return nil }); err == nil {
+		t.Fatal("nil clock accepted")
+	}
+	if _, err := newTestTempManager(t.TempDir(), time.Now, files, nil); err == nil {
+		t.Fatal("nil validator accepted")
+	}
+	files.removeAll = nil
+	if _, err := newTestTempManager(t.TempDir(), time.Now, files, func(string, fs.FileInfo) error { return nil }); err == nil {
+		t.Fatal("nil filesystem operation accepted")
+	}
+}
+
+func TestTestTempEnsureRootRejectsUnsafeRoots(t *testing.T) {
+	base := t.TempDir()
+	now := time.Now()
+	for _, tc := range []struct {
+		name, root string
+		setup      func(string)
+	}{
+		{"empty", "", nil}, {"relative", "relative", nil}, {"unclean", base + string(filepath.Separator) + "child" + string(filepath.Separator) + ".." + string(filepath.Separator) + "root", nil},
+		{"filesystem root", string(filepath.Separator), nil},
+		{"file", filepath.Join(base, "file"), func(p string) { _ = os.WriteFile(p, nil, 0o600) }},
+		{"symlink", filepath.Join(base, "link"), func(p string) { _ = os.Symlink(base, p) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.setup != nil {
+				tc.setup(tc.root)
+			}
+			m := safeTestTempManager(t, tc.root, now)
+			if err := m.ensureRoot(); err == nil {
+				t.Fatal("unsafe root accepted")
+			}
+		})
+	}
+	root := filepath.Join(base, "open")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := safeTestTempManager(t, root, now).ensureRoot(); err == nil {
+		t.Fatal("group-accessible root accepted")
+	}
+	foreign := safeTestTempManager(t, filepath.Join(base, "foreign"), now)
+	foreign.validate = func(string, fs.FileInfo) error { return errors.New("foreign owner") }
+	if err := foreign.ensureRoot(); err == nil {
+		t.Fatal("foreign root accepted")
+	}
+}
+
+func TestTestTempEnsureRootRefusesSymlinkBeforeValidation(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "link")
+	if err := os.Symlink(base, root); err != nil {
+		t.Fatal(err)
+	}
+	m, err := newTestTempManager(root, time.Now, osTestTempFS(), func(string, fs.FileInfo) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.ensureRoot(); err == nil {
+		t.Fatal("root symlink reached validator")
+	}
+}
+
+func TestTestTempEnsureRootAcceptsExistingAndCreateRace(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	m := safeTestTempManager(t, root, time.Now())
+	if err := m.ensureRoot(); err != nil {
+		t.Fatal(err)
+	}
+	files := osTestTempFS()
+	files.mkdir = func(string, fs.FileMode) error { return fs.ErrExist }
+	m, err := newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.ensureRoot(); err != nil {
+		t.Fatalf("ErrExist race: %v", err)
+	}
+}
+
+func TestCanonicalTestHomeRejectsNonDecimalSuffix(t *testing.T) {
+	for _, name := range []string{"home-", "home-abc", "home-12a", "home-12-"} {
+		if canonicalTestHome(name) {
+			t.Fatalf("noncanonical name accepted: %q", name)
+		}
+	}
+	if !canonicalTestHome("home-123") {
+		t.Fatal("decimal name rejected")
+	}
+}
+
+func TestTestTempAllocateDirectCanonicalHome(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	m := safeTestTempManager(t, root, time.Now())
+	home, err := m.allocate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(home) != root || !canonicalTestHome(filepath.Base(home)) {
+		t.Fatalf("home = %q", home)
+	}
+	files := osTestTempFS()
+	files.mkdirTemp = func(string, string) (string, error) { return filepath.Join(t.TempDir(), "home-1"), nil }
+	bad, err := newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bad.allocate(); err == nil {
+		t.Fatal("escaped allocation accepted")
+	}
+}
+
+func TestCleanupStaleBoundaryAndPreservation(t *testing.T) {
+	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	equal := mkdirHome(t, root, "home-1", now.Add(-24*time.Hour))
+	newer := mkdirHome(t, root, "home-2", now.Add(-24*time.Hour+time.Nanosecond))
+	old := mkdirHome(t, root, "home-3", now.Add(-24*time.Hour-time.Nanosecond))
+	for _, name := range []string{"home-", "home-abc", "other"} {
+		if err := os.Mkdir(filepath.Join(root, name), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(old, filepath.Join(root, "home-4")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "other", "home-9"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	result, err := safeTestTempManager(t, root, now).cleanup(cleanupStale)
+	if err == nil {
+		t.Fatal("unsafe canonical symlink must be reported")
+	}
+	if result.homes != 1 {
+		t.Fatalf("removed %d homes, want 1", result.homes)
+	}
+	for _, path := range []string{equal, newer, filepath.Join(root, "home-"), filepath.Join(root, "home-abc"), filepath.Join(root, "home-4"), filepath.Join(root, "other", "home-9")} {
+		if _, err := os.Lstat(path); err != nil {
+			t.Errorf("preserved %s: %v", path, err)
+		}
+	}
+	if _, err := os.Lstat(old); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("old home remains: %v", err)
+	}
+}
+
+func TestCleanupAllAccountsOnlySuccessfulRegularFiles(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	a := mkdirHome(t, root, "home-2", time.Now())
+	b := mkdirHome(t, root, "home-1", time.Now())
+	if err := os.WriteFile(filepath.Join(b, "blocked"), []byte("xx"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(a, "a"), []byte("abc"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(a, "dir"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("a", filepath.Join(a, "link")); err != nil {
+		t.Fatal(err)
+	}
+	files := osTestTempFS()
+	var removed []string
+	files.removeAll = func(path string) error {
+		removed = append(removed, filepath.Base(path))
+		if path == b {
+			return errors.New("blocked")
+		}
+		return os.RemoveAll(path)
+	}
+	m, err := newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := m.cleanup(cleanupAll)
+	if err == nil || !strings.Contains(err.Error(), b) {
+		t.Fatalf("failure = %v", err)
+	}
+	if strings.Join(removed, ",") != "home-1,home-2" {
+		t.Fatalf("removal order %q", removed)
+	}
+	if result.homes != 1 || result.bytes != 3 {
+		t.Fatalf("result = %+v, want one home and 3 bytes", result)
+	}
+	if strings.Contains(err.Error(), a) {
+		t.Fatalf("removed path retained: %v", err)
+	}
+	if got := result.String(); got != "test temp cleanup: removed 1 home(s), 3 logical byte(s)\n" {
+		t.Fatalf("render = %q", got)
+	}
+}
+
+func TestCleanupConcurrentDisappearanceAndRootFailure(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mkdirHome(t, root, "home-1", time.Now().Add(-48*time.Hour))
+	files := osTestTempFS()
+	files.lstat = func(path string) (fs.FileInfo, error) {
+		if filepath.Base(path) == "home-1" {
+			return nil, fmtErrNotExist()
+		}
+		return os.Lstat(path)
+	}
+	m, err := newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := m.cleanup(cleanupAll)
+	if err != nil || result.homes != 0 {
+		t.Fatalf("concurrent result=%+v err=%v", result, err)
+	}
+	files = osTestTempFS()
+	touched := false
+	files.readDir = func(string) ([]fs.DirEntry, error) { touched = true; return nil, errors.New("read") }
+	m, _ = newTestTempManager("relative", time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if _, err := m.cleanup(cleanupAll); err == nil || touched {
+		t.Fatal("invalid root read children")
+	}
+}
+
+func fmtErrNotExist() error { return &os.PathError{Op: "lstat", Path: "gone", Err: fs.ErrNotExist} }
+
+type testTempDirEntry struct {
+	name    string
+	mode    fs.FileMode
+	info    fs.FileInfo
+	infoErr error
+}
+
+func (e testTempDirEntry) Name() string               { return e.name }
+func (e testTempDirEntry) IsDir() bool                { return e.mode.IsDir() }
+func (e testTempDirEntry) Type() fs.FileMode          { return e.mode }
+func (e testTempDirEntry) Info() (fs.FileInfo, error) { return e.info, e.infoErr }
+
+func TestTestTempManagerFaultAndConcurrencyPaths(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	files := osTestTempFS()
+	files.mkdir = func(string, fs.FileMode) error { return errors.New("mkdir") }
+	m, _ := newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if err := m.ensureRoot(); err == nil {
+		t.Fatal("mkdir failure accepted")
+	}
+
+	files = osTestTempFS()
+	files.mkdir = func(string, fs.FileMode) error { return fs.ErrExist }
+	files.lstat = func(string) (fs.FileInfo, error) { return nil, errors.New("lstat") }
+	m, _ = newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if err := m.ensureRoot(); err == nil {
+		t.Fatal("root lstat failure accepted")
+	}
+	if _, err := m.allocate(); err == nil {
+		t.Fatal("allocation continued after unsafe root")
+	}
+
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mkdirHome(t, root, "home-1", time.Now().Add(-48*time.Hour))
+	files = osTestTempFS()
+	files.readDir = func(string) ([]fs.DirEntry, error) { return nil, errors.New("read") }
+	m, _ = newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if _, err := m.cleanup(cleanupAll); err == nil {
+		t.Fatal("root read failure accepted")
+	}
+
+	files = osTestTempFS()
+	files.lstat = func(path string) (fs.FileInfo, error) {
+		if filepath.Base(path) == "home-1" {
+			return nil, errors.New("candidate lstat")
+		}
+		return os.Lstat(path)
+	}
+	m, _ = newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if _, err := m.cleanup(cleanupAll); err == nil {
+		t.Fatal("candidate lstat failure accepted")
+	}
+
+	files = osTestTempFS()
+	files.walkDir = func(string, fs.WalkDirFunc) error { return fmtErrNotExist() }
+	m, _ = newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if result, err := m.cleanup(cleanupAll); err != nil || result.homes != 0 {
+		t.Fatalf("walk disappearance = %+v, %v", result, err)
+	}
+
+	files = osTestTempFS()
+	files.walkDir = func(string, fs.WalkDirFunc) error { return errors.New("walk") }
+	m, _ = newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if _, err := m.cleanup(cleanupAll); err == nil {
+		t.Fatal("walk failure accepted")
+	}
+
+	files = osTestTempFS()
+	files.removeAll = func(string) error { return fmtErrNotExist() }
+	m, _ = newTestTempManager(root, time.Now, files, func(string, fs.FileInfo) error { return nil })
+	if result, err := m.cleanup(cleanupAll); err != nil || result.homes != 0 {
+		t.Fatalf("remove disappearance = %+v, %v", result, err)
+	}
+}
+
+func TestTestTempLogicalBytesWalkFaults(t *testing.T) {
+	m := safeTestTempManager(t, t.TempDir(), time.Now())
+	files := m.fs
+	files.walkDir = func(_ string, walk fs.WalkDirFunc) error { return walk("broken", nil, errors.New("walk entry")) }
+	m.fs = files
+	if _, err := m.logicalBytes("ignored"); err == nil {
+		t.Fatal("walk entry failure accepted")
+	}
+	files = m.fs
+	files.walkDir = func(_ string, walk fs.WalkDirFunc) error {
+		return walk("regular", testTempDirEntry{name: "regular", mode: 0, infoErr: errors.New("info")}, nil)
+	}
+	m.fs = files
+	if _, err := m.logicalBytes("ignored"); err == nil {
+		t.Fatal("regular info failure accepted")
+	}
+}
+
+func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mkdirHome(t, root, "home-1", time.Now().Add(-48*time.Hour))
+	m := safeTestTempManager(t, root, time.Now())
+	m.validate = func(path string, info fs.FileInfo) error {
+		if filepath.Base(path) == "home-1" {
+			return errors.New("unsafe")
+		}
+		return nil
+	}
+	var stderr strings.Builder
+	var sequence []string
+	if got := runIsolated(func() int { sequence = append(sequence, "run"); return 0 }, func(string) error { sequence = append(sequence, "home"); return nil }, m, &stderr); got != 0 {
+		t.Fatalf("code = %d", got)
+	}
+	if strings.Join(sequence, ",") != "home,run" || !strings.Contains(stderr.String(), "stale test-home cleanup") {
+		t.Fatalf("sequence=%q stderr=%q", sequence, stderr.String())
+	}
+
+	for _, tc := range []struct {
+		name    string
+		manager func() *testTempManager
+		setHome func(string) error
+	}{
+		{"root", func() *testTempManager { return safeTestTempManager(t, "relative", time.Now()) }, func(string) error { return nil }},
+		{"allocation", func() *testTempManager {
+			x := safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now())
+			f := x.fs
+			f.mkdirTemp = func(string, string) (string, error) { return "", errors.New("allocate") }
+			x.fs = f
+			return x
+		}, func(string) error { return nil }},
+		{"HOME", func() *testTempManager { return safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now()) }, func(string) error { return errors.New("HOME") }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("expected panic")
+				}
+			}()
+			runIsolated(func() int { return 0 }, tc.setHome, tc.manager(), io.Discard)
+		})
+	}
+}
+
+func TestRunIsolatedCleanupExitMapping(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	m := safeTestTempManager(t, root, time.Now())
+	files := m.fs
+	files.removeAll = func(string) error { return errors.New("remove") }
+	m.fs = files
+	var stderr strings.Builder
+	if got := runIsolated(func() int { return 0 }, func(string) error { return nil }, m, &stderr); got != 1 {
+		t.Fatalf("code = %d", got)
+	}
+	if !strings.Contains(stderr.String(), "remove current test home") {
+		t.Fatalf("warning = %q", stderr.String())
+	}
+	m = safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now())
+	files = m.fs
+	files.removeAll = func(string) error { return errors.New("remove") }
+	m.fs = files
+	if got := runIsolated(func() int { return 7 }, func(string) error { return nil }, m, io.Discard); got != 7 {
+		t.Fatalf("nonzero code = %d", got)
+	}
+}

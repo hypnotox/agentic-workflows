@@ -6,6 +6,7 @@ awf renders tracked workflow guidance from `.awf/`, while its binary owns immuta
 
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
+- `internal/testsupport` owns isolated TestMain-home allocation, conservative stale cleanup, logical-byte accounting, and deterministic human result rendering while remaining a standard-library-only leaf.
 - `internal/effort` owns schema-2 immutable `.awf/efforts/<slug>/state.json` and always-owned `memory.md`, durable publication, and restartable finish tombstones.
 - `internal/worktree` owns stateless add, integrate, and restartable safe removal over `.awf/worktrees/<slug>/` and `awf/<slug>`. It reaches Git only through a narrow consumer-owned contract the composition root binds to the seam, so it holds worktree policy and no Git mechanism.
 - `internal/git` is the one semantic Git seam: every capability the rest of awf needs is an entrypoint on its handle or one of its free functions, and whether an entrypoint uses go-git or the git binary is an internal detail with no consumer-visible trace. It owns the isolated, deadline-refusing runner, the seam error vocabulary, and the tolerant open path. Two repo-walking tests fail on any Git library import or git subprocess constructed outside it.
