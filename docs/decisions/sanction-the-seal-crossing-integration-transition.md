@@ -91,8 +91,9 @@ cost:
 - The same edge requires `before.ADRFormatV2From == after.ADRFormatV2From`. A branch forked
   before generation 15 carries `V2From: 0`, fails that clause, and is refused. There is an
   inherited edge for the V3 cutoff and none for V2 or V1.
-- `isRenumberRetrofit` is `before.IsV2() && after.IsV3()`, with no v1-to-v2 clause, so a
-  slugless record renumbered across cutoff 144 still trips the format-change rule.
+- `isRenumberRetrofit` is `before.IsV2() && after.IsV3() && before.Number != after.Number`,
+  with no v1-to-v2 clause, so a slugless record renumbered across cutoff 144 still trips the
+  format-change rule.
 
 Every one of these reproduces at the next seal. A fourth wall sits behind them in the
 config port-forward: `retiredKeyRemovals` lists four retired keys and omits the top-level
@@ -140,11 +141,19 @@ falsified nothing, because nothing declared it.
    cannot re-derive, so the two are made disjoint by their signal: a transition landing
    exactly on the sealing generation whose published value does not equal the before
    corpus's computed next identity falls through to this edge instead of refusing, because
-   that mismatch is precisely the evidence the migration did not run here. The cost is that
-   a locally sealed cutoff at the sealing generation is no longer required to equal the
-   computed next identity exactly; what holds in its place is item 3's upper bound and the
-   staged reparse below it, which together admit only a value the arriving corpus is
-   consistent with.
+   that mismatch is precisely the evidence the migration did not run here.
+
+   The cost has three parts, and the third is the one worth weighing. A locally sealed cutoff
+   at the sealing generation is no longer required to equal the computed next identity
+   exactly; what holds in its place is item 3's upper bound and the staged reparse below it,
+   which together admit only a value the arriving corpus is consistent with. The sealing
+   edge's own refusal disappears with it, and so does the clearest diagnostic the function
+   has: a genuinely mis-run local migration now reports one layer downstream as a corpus
+   parse failure, or as the terminal immutability message, rather than as the lock-authority
+   violation it is. That is the reporting defect this record names in its own Context, and
+   accepting it here is deliberate rather than overlooked. The error path is not part of the
+   relaxation: a failure to compute the before corpus's next identity still refuses, because
+   an uncomputable comparison is not evidence of anything.
 
 3. The inherited value is bounded above by the staged merged tree's computed next identity,
    the value `nextADRIdentityFromTree(afterTree)` returns, which is derivable from what the
@@ -164,9 +173,12 @@ falsified nothing, because nothing declared it.
    cost rather than an independent edit. The clauses that keep it shut are unchanged in
    kind: an in-place format change keeps its number, a downgrade runs the other direction,
    and a jump across more than one cutoff is not this transition. The claim this item adds
-   is `Backing: test`, proven by the retrofit regression test
-   `TestCheckPairRenumberAcrossTheV3Cutoff` in `internal/currentstate/transition_test.go`,
-   which item 7 gives a proof marker naming it.
+   is `Backing: test`. Its proof covers both arms of the generalisation, not just the one
+   this integration exercised: the existing `TestCheckPairRenumberAcrossTheV3Cutoff` in
+   `internal/currentstate/transition_test.go` for the v2-to-v3 crossing, and a new case for
+   the v1-to-v2 crossing at cutoff 144, which no test reaches today. A claim asserting an
+   adjacency rule whose second arm nothing exercises is the nominal proof this record
+   otherwise indicts.
 
 5. The digest-pairing after-side widening is sanctioned as it currently stands. The before
    side considers only a record carrying no slug, so number immutability stays exactly as
@@ -183,8 +195,9 @@ falsified nothing, because nothing declared it.
    restated as covering every key the current schema no longer declares, whether or not its
    removing migration carries a config-bytes action, in both places that record it: the
    comment beside the backstop in `internal/migrate/forwardport_test.go`, and the prose in
-   `docs/pitfalls.md`, whose `.awf/` source is edited and re-rendered rather than the
-   generated file. The rule becomes a governed claim rather than an obligation recorded only
+   `docs/pitfalls.md`, whose source is the `data.pitfalls` entry in `.awf/docs/pitfalls.yaml`
+   rather than a part under `.awf/docs/parts/pitfalls/`, and which is re-rendered rather than
+   hand-edited. The rule becomes a governed claim rather than an obligation recorded only
    in a comment: `Backing: test`, proven by `TestConfigForCurrentSchemaParsesEveryRetiredKey`.
    Leaving it ungoverned would ship a fourth instance of exactly the defect item 4 exists to
    close, in the record that diagnoses it.
@@ -194,9 +207,37 @@ falsified nothing, because nothing declared it.
    which still says the sole non-identical edge while the body admits several;
    `renumberAliases`', which repeats both wrong clauses of the pairing claim; and
    `isRenumberRetrofit`'s, which calls the retrofit the one sanctioned governed-format
-   change into the v3 range, which item 4 generalises. The four regression tests covering
-   these rules carry proof markers naming the units that prove them, since they carry none
-   today. The five citations in `internal/topic/markers.go` that name ADR-0199 for the
+   change into the v3 range, which item 4 generalises.
+
+   Four regression tests cover these rules and none carries a proof marker today. Each gains
+   one naming the unit that proves it:
+   `TestValidatePermanentLockTransitionInheritsAPublishedV3Cutoff` in
+   `internal/project/staged_test.go` backs `adr-v2-cutoff-atomic-immutable`;
+   `TestCheckPairRenumberAcrossTheV3Cutoff` in `internal/currentstate/transition_test.go`
+   backs `governed-format-change-bounded`; and `TestCheckPairRetainedSlugCannotChange` and
+   `TestCheckPairPendingAdditionCannotLaunderADeletion`, in the same file, back
+   `renumber-digest-paired`, which is where that claim's backing moves from the eight markers
+   in `internal/currentstate/renumber_test.go` that predate the widening.
+
+   Two shipped tests assert what this record removes and must change with it, not after it.
+   `TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff` in
+   `internal/project/staged_test.go` asserts the exact sealing-edge mismatch refusal that
+   item 2's disjointness clause deletes, and it is itself a proof marker for the claim item 2
+   updates; its expectation becomes that the mismatch falls through and is then admitted or
+   refused by the inherited edge and item 3's bound.
+   `TestValidatePermanentLockTransitionInheritsAPublishedV3Cutoff` admits an inherited cutoff
+   of 203 against an after tree whose computed next identity is 3, which item 3's bound now
+   refuses, so its fixture changes and not merely its assertion.
+
+   Two cases this record's own Context indicts as missing are added rather than assumed. The
+   equal-generation transition is pinned on both sides of the disjointness signal: a
+   published value equal to the before corpus's next identity, and one unequal but within
+   item 3's bound. And each additional cutoff the generalised edge claims to cover gets a
+   case, since the 100% statement gate cannot supply this: the fall-through reuses statements
+   the existing inherited-edge test already covers, so the new behaviour would otherwise ship
+   with exactly the coverage shape the Context indicts.
+
+   The five citations in `internal/topic/markers.go` that name ADR-0199 for the
    proof-marker naming rule are corrected to ADR-0205: they are un-substituted residue of
    this very renumber, which substitutes into `Origin:` and `Revised-by:` only, so no check
    sees a citation in a code comment. The roadmap entry this record discharges is replaced
@@ -229,7 +270,12 @@ there; the claim it established changes by the operations above.
 cutoff is sealed by its own schema generation. Item 2 establishes that `adrFormatV1From` is
 not: it is written at adoption or by consuming a bridge attestation. The updated text has
 to say which cutoffs a generation seals rather than asserting it of all of them, alongside
-the third edge and the reparse dependence item 3 assigns to it.
+the third edge and the reparse dependence item 3 assigns to it. A fourth change is owed and
+is easy to miss: the claim currently ends by saying both edges require the new value to
+equal the corpus's computed next identity, the sealing edge against the prior corpus. Item
+2's disjointness clause makes that half false, since a mismatch there is no longer a
+refusal, and the text has to say what bounds the value instead. Updating the claim for the
+three obvious points alone would leave it contradicting the decision that authored it.
 
 `adr-system/adr-lifecycle:renumber-digest-paired` is false in three clauses, not the two
 recorded on the roadmap. Beyond the two already named, it ends by saying such a pair admits
