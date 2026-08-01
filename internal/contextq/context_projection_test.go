@@ -9,8 +9,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// invariant: tooling/context-and-topic:context-summary-projection
-// invariant: tooling/context-and-topic:context-concise-projection
+// invariant: tooling/context-and-topic:context-summary-projection (TestClaimSummaryProjection)
+// invariant: tooling/context-and-topic:context-concise-projection (TestClaimSummaryProjection)
 func TestClaimSummaryProjection(t *testing.T) {
 	parse := func(summary, prose string) topic.Claim {
 		t.Helper()
@@ -69,8 +69,8 @@ func TestProjectionHelpers(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-concise-projection
-// invariant: tooling/context-and-topic:context-path-attribution
+// invariant: tooling/context-and-topic:context-concise-projection (TestContextDirectProjectionDeduplicatesMixedRequests)
+// invariant: tooling/context-and-topic:context-path-attribution (TestContextDirectProjectionDeduplicatesMixedRequests)
 func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 	files := ctxFiles()
 	files["internal/foo/x_test.go"] = "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
@@ -112,8 +112,8 @@ func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-concise-projection
-// invariant: tooling/context-and-topic:context-full-authority-packet
+// invariant: tooling/context-and-topic:context-concise-projection (TestContextRequestTiersAndAuthorityExpansion)
+// invariant: tooling/context-and-topic:context-full-authority-packet (TestContextRequestTiersAndAuthorityExpansion)
 func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 	files := ctxFiles()
 	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `rule: extra`\nExtra.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTested.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect.\n"

@@ -9,7 +9,7 @@ import (
 // bootstrapFile renders a project with the given config and returns the
 // .awf/bootstrap.sh RenderedFile, or nil if none was produced. It also asserts
 // no output lands at the retired repo-root path (ADR-0047).
-// invariant: rendering/singletons-and-payloads:bootstrap-config-tree-path
+// invariant: rendering/singletons-and-payloads:bootstrap-config-tree-path (bootstrapFile)
 func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
@@ -33,7 +33,7 @@ func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	return found
 }
 
-// invariant: rendering/companion-scripts:bootstrap-env-override
+// invariant: rendering/companion-scripts:bootstrap-env-override (TestBootstrapEnvOverrideDefaultsToRenderingVersion)
 func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -56,7 +56,7 @@ func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	}
 }
 
-// invariant: rendering/companion-scripts:bootstrap-checksum
+// invariant: rendering/companion-scripts:bootstrap-checksum (TestBootstrapVerifiesBeforeInstall)
 func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -77,7 +77,7 @@ func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 	}
 }
 
-// invariant: rendering/companion-scripts:bootstrap-stdout-path-only
+// invariant: rendering/companion-scripts:bootstrap-stdout-path-only (TestBootstrapStdoutPathOnly)
 func TestBootstrapStdoutPathOnly(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -95,7 +95,7 @@ func TestBootstrapStdoutPathOnly(t *testing.T) {
 	}
 }
 
-// invariant: rendering/companion-scripts:bootstrap-local-first
+// invariant: rendering/companion-scripts:bootstrap-local-first (TestBootstrapLocalFirstResolution)
 func TestBootstrapLocalFirstResolution(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -172,7 +172,7 @@ func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 	return nil
 }
 
-// invariant: rendering/singletons-and-payloads:bootstrap-two-files
+// invariant: rendering/singletons-and-payloads:bootstrap-two-files (TestBootstrapSingletonRendersBothScripts)
 func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	root := scaffold(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	p, err := Open(testContext(t), root)
@@ -197,7 +197,7 @@ func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	}
 }
 
-// invariant: rendering/companion-scripts:upgrade-exec-final
+// invariant: rendering/companion-scripts:upgrade-exec-final (TestUpgradeScriptExecFinal)
 func TestUpgradeScriptExecFinal(t *testing.T) {
 	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -219,7 +219,7 @@ func TestUpgradeScriptExecFinal(t *testing.T) {
 	}
 }
 
-// invariant: rendering/companion-scripts:upgrade-delegates-fetch
+// invariant: rendering/companion-scripts:upgrade-delegates-fetch (TestUpgradeScriptDelegatesFetch)
 func TestUpgradeScriptDelegatesFetch(t *testing.T) {
 	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {

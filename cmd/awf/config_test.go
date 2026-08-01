@@ -16,7 +16,7 @@ import (
 
 // Outside an adopted tree the command prints the static catalog reference and
 // succeeds - pre-adoption discovery never refuses.
-// invariant: tooling/cli:config-command-static-fallback
+// invariant: tooling/cli:config-command-static-fallback (TestRunConfigStaticFallback)
 func TestRunConfigStaticFallback(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

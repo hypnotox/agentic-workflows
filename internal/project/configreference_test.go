@@ -61,7 +61,7 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 
 // Regeneration is the drift oracle: a hand-edit reports stale, a deletion
 // missing, and a local: opt-out with a leftover lock entry orphaned.
-// invariant: config/configspec-and-reference:config-reference-regen-drift
+// invariant: config/configspec-and-reference:config-reference-regen-drift (TestConfigReferenceRegenDrift)
 func TestConfigReferenceRegenDrift(t *testing.T) {
 	root, p := syncedProject(t, crefYAML, nil)
 	rel := filepath.Join(root, "docs/config-reference.md")
@@ -115,7 +115,7 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 // The reference template consumes only dedicated data keys - a bare .vars or
 // .data range would neutralize the consumption checks project-wide - and no
 // partial references .vars, keeping the raw-source dormancy scan sound.
-// invariant: config/configspec-and-reference:config-reference-no-bare-vars
+// invariant: config/configspec-and-reference:config-reference-no-bare-vars (TestConfigReferenceNoBareVars)
 func TestConfigReferenceNoBareVars(t *testing.T) {
 	_, p := syncedProject(t, crefYAML, nil)
 	files, err := p.RenderAll()
@@ -151,7 +151,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 
 // The config-reference sidecar is sections/local-only: data: and paths: refuse
 // at open, unknown section names refuse, a declared-section drop renders.
-// invariant: config/configspec-and-reference:config-reference-data-rejected
+// invariant: config/configspec-and-reference:config-reference-data-rejected (TestConfigReferenceSidecarRules)
 func TestConfigReferenceSidecarRules(t *testing.T) {
 	for _, tc := range []struct {
 		name, sidecar, wantErr string

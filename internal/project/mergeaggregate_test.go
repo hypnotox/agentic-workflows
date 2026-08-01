@@ -14,7 +14,7 @@ import (
 // to end: one staged pair, refused as an authored commit and accepted as a merge.
 // Without this the aggregate contract could be correct in isolation and never
 // reach the command that needs it.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestCheckStagedMergeUsesTheAggregateContract)
 func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -69,7 +69,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 // its IsMerge onto the aggregate contract. Without it the mapping is executed by
 // the existing merge test but never asserted, so awf audit could silently regress
 // to refusing every legitimate merge.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestAuditTransitionsMergeUsesTheAggregateContract)
 func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()

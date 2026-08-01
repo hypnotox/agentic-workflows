@@ -272,8 +272,8 @@ func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
 // TestUnifiedEffortWorkflowCoverage derives the complete applicable skill set
 // from the enabled catalog and validates both target fanouts rather than a
 // hand-maintained corpus count.
-// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
-// invariant: rendering/workflow-skill-templates:unified-effort-workflow-coverage
+// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestUnifiedEffortWorkflowCoverage)
+// invariant: rendering/workflow-skill-templates:unified-effort-workflow-coverage (TestUnifiedEffortWorkflowCoverage)
 func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	roles := map[string]string{
@@ -440,7 +440,7 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 // TestMandatoryApprovalBoundaries asserts the two approval-boundary skills stop
 // for explicit approval, persist it, and only then continue target-natively,
 // and that the approval stop renders nowhere else (ADR-0152).
-// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMandatoryApprovalBoundaries)
 func TestMandatoryApprovalBoundaries(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")

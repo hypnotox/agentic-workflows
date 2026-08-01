@@ -130,7 +130,7 @@ func TestCheckForward(t *testing.T) {
 	}
 }
 
-// invariant: invariants/current-state-authority:abandoned-remove-pair-attributed
+// invariant: invariants/current-state-authority:abandoned-remove-pair-attributed (TestCheckAbandonedRemoveAttributedByPair)
 func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
 	removeX := op(adr.OpRemove, "d/t:x")
 	removeY := op(adr.OpRemove, "d/t:y")
@@ -317,8 +317,8 @@ func v2batch(operations ...adr.Operation) adr.HistoryEvent {
 	return adr.HistoryEvent{Kind: adr.HistoryApplied, Date: "2026-01-02", Operations: operations}
 }
 
-// invariant: invariants/current-state-authority:implemented-impact-bidirectional
-// invariant: invariants/current-state-authority:removed-claim-id-not-reused
+// invariant: invariants/current-state-authority:implemented-impact-bidirectional (TestCheckV2AppliedAuthority)
+// invariant: invariants/current-state-authority:removed-claim-id-not-reused (TestCheckV2AppliedAuthority)
 func TestCheckV2AppliedAuthority(t *testing.T) {
 	addX := op(adr.OpAdd, "d/t:x")
 	updateX := op(adr.OpUpdate, "d/t:x")
@@ -421,7 +421,7 @@ func TestCheckRejectsInvalidV2Projection(t *testing.T) {
 // once the field is gone, no ordinary test fails if someone adds it back, and a
 // proof marker on such a test would stay green through the exact regression it
 // exists to catch. Reflection does fail, so the marker lives here.
-// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked
+// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked (TestFindingCarriesOnlyMessage)
 func TestFindingCarriesOnlyMessage(t *testing.T) {
 	typ := reflect.TypeFor[currentstate.Finding]()
 	if typ.NumField() != 1 {
@@ -450,8 +450,8 @@ func TestEveryHandshakeFindingIsBlocking(t *testing.T) {
 }
 
 // TestParseRecordRouting covers cutoff-based legacy/V1/V2 routing.
-// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff
-// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff (TestParseRecordRouting)
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestParseRecordRouting)
 func TestParseRecordRouting(t *testing.T) {
 	legacy := []byte("---\nstatus: Implemented\ndate: 2026-01-01\n---\n# ADR-0100: Legacy\n\n## Context\n\nx\n")
 	a, err := adr.ParseRecord("0100-legacy.md", legacy, adr.FormatBoundaries{V1From: 137})
@@ -487,7 +487,7 @@ func TestParseRecordRouting(t *testing.T) {
 // Revised-by entries in ascending ADR-number order, every entry above the
 // Origin's number, with no global counter; and a tolerated legacy
 // state-sequence segment is a blocking finding directing to awf upgrade.
-// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number
+// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number (TestCheckBackwardOrdersRevisedByByADRNumber)
 func TestCheckBackwardOrdersRevisedByByADRNumber(t *testing.T) {
 	add := op(adr.OpAdd, "d/t:c")
 	update := op(adr.OpUpdate, "d/t:c")

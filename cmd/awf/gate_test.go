@@ -65,7 +65,7 @@ func TestGateCorruptLockError(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:version-compat-gate
+// invariant: tooling/cli:version-compat-gate (TestGateAheadSchemaErrors)
 func TestGateAheadSchemaErrors(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -86,7 +86,7 @@ func TestGateBehindVersionErrors(t *testing.T) {
 	// binary (project.Version), so this stays correct across version bumps.
 	root := gateFixture(t, "99.0.0", migrate.Current())
 	err := gate(ctx, root)
-	// invariant: tooling/cli:version-compat-gate
+	// invariant: tooling/cli:version-compat-gate (TestGateBehindVersionErrors)
 	if err == nil {
 		t.Fatal("expected gate error on behind version")
 	}
@@ -95,7 +95,7 @@ func TestGateBehindVersionErrors(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:version-compat-gate
+// invariant: tooling/cli:version-compat-gate (TestGateAtOrAheadVersionPermitted)
 func TestGateAtOrAheadVersionPermitted(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -156,7 +156,7 @@ func TestNewGatesInHandler(t *testing.T) {
 	_ = ctx
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
 	var out bytes.Buffer
-	// invariant: tooling/cli:adr-new-version-gated
+	// invariant: tooling/cli:adr-new-version-gated (TestNewGatesInHandler)
 	if err := runNew(ctx, root, "adr", []string{"x"}, &out); err == nil {
 		t.Error("runNew: expected gate error on ahead schema")
 	}

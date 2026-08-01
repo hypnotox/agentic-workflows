@@ -34,7 +34,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 // rendered output, while a mid-line occurrence and a fenced whole-line demo
 // render verbatim (ADR-0121 Decisions 1-3; the template-source seam is proven
 // by the render-layer unit tests plus the strip call in renderTarget).
-// invariant: rendering/inplace-and-placeholders:authoring-comment-stripped
+// invariant: rendering/inplace-and-placeholders:authoring-comment-stripped (TestAuthoringCommentStrippedFromPart)
 func TestAuthoringCommentStrippedFromPart(t *testing.T) {
 	out := syncedWorkflowDoc(t,
 		"<!-- awf:comment touches-state: demo/topic:demo-slug - an internal tag -->\n"+

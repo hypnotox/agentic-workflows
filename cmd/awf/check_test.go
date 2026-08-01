@@ -160,7 +160,7 @@ func fanoutFiles() map[string]string {
 // TestRunCheckSurfacesCurrentStateFinding covers the CheckCurrentState error path
 // in runCheck: a drift-clean project whose owned path has no scoped topic yields
 // an error-severity coverage finding, which must fail runCheck.
-// invariant: tooling/cli:invariants-in-check
+// invariant: tooling/cli:invariants-in-check (TestRunCheckSurfacesCurrentStateFinding)
 func TestRunCheckSurfacesCurrentStateFinding(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

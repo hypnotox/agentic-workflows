@@ -35,8 +35,8 @@ func TestOutsideContextPathReadsBothPathSpaces(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-path-attribution
-// invariant: tooling/context-and-topic:context-path-classification
+// invariant: tooling/context-and-topic:context-path-attribution (TestContextRequestCensusGroupingAndClassification)
+// invariant: tooling/context-and-topic:context-path-classification (TestContextRequestCensusGroupingAndClassification)
 func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "owned/a.go", Mode: snapshot.Regular}, {Path: "owned/b.go", Mode: snapshot.Regular}, {Path: "owned/c.go", Mode: snapshot.Regular}, {Path: "owned/d.go", Mode: snapshot.Regular}, {Path: "ignored/x", Mode: snapshot.Regular}, {Path: "nested/.awf/config.yaml", Mode: snapshot.Regular}, {Path: "nested/x", Mode: snapshot.Regular}, {Path: "link", Mode: snapshot.Symlink, Bytes: []byte("../x")}, {Path: "inside-link", Mode: snapshot.Symlink, Bytes: []byte("owned/a.go")}, {Path: "absolute-link", Mode: snapshot.Symlink, Bytes: []byte("/x")}, {Path: "unowned", Mode: snapshot.Regular}})
 	if err != nil {
@@ -164,7 +164,7 @@ func TestContextFacetsAndGroupKey(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-full-authority-packet
+// invariant: tooling/context-and-topic:context-full-authority-packet (TestContextDirectoryGroupingUsesOnlyVisibleProjection)
 func TestContextDirectoryGroupingUsesOnlyVisibleProjection(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "dir/a.go", Mode: snapshot.Regular}, {Path: "dir/b.go", Mode: snapshot.Regular}})
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// invariant: rendering/project-output-plan:kind-dispatch-single-table
+// invariant: rendering/project-output-plan:kind-dispatch-single-table (TestKindDescriptorsCoverAllKinds)
 func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 	got := make([]string, len(kindDescriptors))
 	for i, d := range kindDescriptors {
@@ -152,7 +152,7 @@ func kindLiteralFindings(pkgs []*packages.Package, kindNames map[string]bool) []
 // matches equality and switch-case comparisons only - a kind fact smuggled
 // through slices.Contains, a map literal, or a case-folded compare stays
 // invisible to it; extend the operand shapes if one ever appears.
-// invariant: rendering/project-output-plan:kind-dispatch-single-table
+// invariant: rendering/project-output-plan:kind-dispatch-single-table (TestCmdKindFactsResolveThroughTable)
 func TestCmdKindFactsResolveThroughTable(t *testing.T) {
 	kindNames := map[string]bool{}
 	for _, d := range kindDescriptors {
@@ -204,7 +204,7 @@ func fixtureKindSwitch(kind string) int {
 }
 
 func TestKindLookups(t *testing.T) {
-	// invariant: tooling/cli:cli-config-kinds
+	// invariant: tooling/cli:cli-config-kinds (TestKindLookups)
 	if got := Kinds(); !slices.Equal(got, []string{"skill", "agent", "doc", "domain"}) {
 		t.Fatalf("Kinds() = %v", got)
 	}

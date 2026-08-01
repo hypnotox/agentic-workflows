@@ -38,7 +38,7 @@ func openChainProject(t *testing.T) *Project {
 
 // Cascade members are seed-dependent (ADR-0081 Decision 5). Pin names, not
 // corpus sizes, so an unrelated closure addition cannot silently shift scope.
-// invariant: tooling/init-and-enablement:remove-refuses-dependents
+// invariant: tooling/init-and-enablement:remove-refuses-dependents (TestResolveEnableSkipsEnabledRequirements)
 func TestResolveEnableSkipsEnabledRequirements(t *testing.T) {
 	p := &Project{Cfg: &config.Config{Skills: []string{"local", "dep"}}, Cat: &catalog.Catalog{Skills: map[string]catalog.SkillSpec{
 		"local": {RequiresSkills: []string{"dep"}}, "dep": {},
@@ -73,7 +73,7 @@ func TestResolveDisableCascadeSizes(t *testing.T) {
 }
 
 // The add plan on an empty config is the seed's full forward closure.
-// invariant: tooling/init-and-enablement:add-applies-closure-plan
+// invariant: tooling/init-and-enablement:add-applies-closure-plan (TestResolveEnableClosurePlan)
 func TestResolveEnableClosurePlan(t *testing.T) {
 	p, err := Open(testContext(t), scaffold(t, "prefix: example\nskills: []\nagents: []\n"))
 	if err != nil {

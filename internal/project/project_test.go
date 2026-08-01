@@ -199,7 +199,7 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 // the standalone memory root, while the two roots awf still owns keep every
 // dynamic descendant through migration, sync, and render alike.
 //
-// invariant: rendering/singletons-and-payloads:resident-output-preservation
+// invariant: rendering/singletons-and-payloads:resident-output-preservation (TestResidentMigrationsPreserveOwnedRootsThroughProjectSync)
 func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
@@ -291,7 +291,7 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:target-prune-ancestors
+// invariant: rendering/sync-and-drift:target-prune-ancestors (TestSyncPrunesRemovedTargetTree)
 func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
 	p, err := Open(testContext(t), root)
@@ -986,7 +986,7 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	}
 }
 
-// invariant: rendering/doc-outputs:layout-derivation
+// invariant: rendering/doc-outputs:layout-derivation (TestLayoutDerivesFromDocsDir)
 func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
 	l := p.layout()
@@ -994,11 +994,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 		l.IndexMd != "documentation/decisions/INDEX.md" || l.PlansDir != "documentation/plans" {
 		t.Errorf("layout = %+v", l)
 	}
-	// invariant: rendering/doc-outputs:domains-dir-given
+	// invariant: rendering/doc-outputs:domains-dir-given (TestLayoutDerivesFromDocsDir)
 	if l.DomainsDir != "documentation/domains" {
 		t.Errorf("domainsDir = %q", l.DomainsDir)
 	}
-	// invariant: rendering/doc-outputs:layout-docs-enabled-only
+	// invariant: rendering/doc-outputs:layout-docs-enabled-only (TestLayoutDerivesFromDocsDir)
 	wantDocs := map[string]string{
 		"architecture": "documentation/architecture.md",
 	}
@@ -1081,8 +1081,8 @@ func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:sync-always-writes-active-md
-// invariant: rendering/sync-and-drift:check-active-md-stale
+// invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
+// invariant: rendering/sync-and-drift:check-active-md-stale (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	adrDir := filepath.Join(root, "docs", "decisions")
@@ -1136,7 +1136,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:sync-always-writes-active-md
+// invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncRendersPlaceholderIndexMDWithoutADRs)
 func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	p, err := Open(testContext(t), root)
@@ -1158,7 +1158,7 @@ func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:check-invalid-frontmatter
+// invariant: rendering/sync-and-drift:check-invalid-frontmatter (TestCheckDetectsInvalidFrontmatter)
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)
@@ -1197,9 +1197,9 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 }
 
-// invariant: rendering/singletons-and-payloads:adr-system-singletons-rendered
-// invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind
-// invariant: rendering/doc-outputs:working-with-awf-mandatory
+// invariant: rendering/singletons-and-payloads:adr-system-singletons-rendered (TestAdrSingletonsRenderedAndSuppressible)
+// invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind (TestAdrSingletonsRenderedAndSuppressible)
+// invariant: rendering/doc-outputs:working-with-awf-mandatory (TestAdrSingletonsRenderedAndSuppressible)
 func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
@@ -1307,7 +1307,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 			got = &backups[i]
 		}
 	}
-	// invariant: rendering/sync-and-drift:sync-backs-up-foreign
+	// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncReportBacksUpForeignIndexNotManaged)
 	if got == nil {
 		t.Fatalf("foreign INDEX.md not backed up; backups=%#v", backups)
 	}
@@ -1340,7 +1340,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/sync-and-drift:regeneration-checked-attribute
+	// invariant: rendering/sync-and-drift:regeneration-checked-attribute (TestRegenCheckedAttribute)
 	amd := p.generateIndexMD(mustDeriveCorpus(t, p))
 	if !amd.RegenChecked {
 		t.Errorf("INDEX.md must be regeneration-checked")
@@ -1380,7 +1380,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs
+// invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs (TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally)
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(testContext(t), root)
@@ -1421,7 +1421,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 // declared config order, so reviewing-impl's missing code-reviewer is reported
 // rather than executing-plans' missing implementer (ADR-0050, generalized by
 // ADR-0081's closure validation).
-// invariant: rendering/project-output-plan:reviewing-skill-agent-pairing
+// invariant: rendering/project-output-plan:reviewing-skill-agent-pairing (TestOpenRejectsPairedSkillWithoutAgent)
 func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
 	_, err := Open(testContext(t), root)
@@ -1443,7 +1443,7 @@ func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
 
 // Every enabled, non-local artifact's direct catalog requirements must be
 // enabled - a violation fails open with a repair hint (ADR-0081 Decision 3).
-// invariant: rendering/catalog-and-targets:enabled-set-closed
+// invariant: rendering/catalog-and-targets:enabled-set-closed (TestOpenRefusesUnclosedEnabledSet)
 func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	cases := []struct {
 		name, cfg, wantSub string

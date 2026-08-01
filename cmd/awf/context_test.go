@@ -153,7 +153,7 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-terminal-output-cap
+// invariant: tooling/context-and-topic:context-terminal-output-cap (TestRunContextModesShareDeliveryIncludingOversize)
 func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -190,7 +190,7 @@ func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-static-fallback
+// invariant: tooling/context-and-topic:context-static-fallback (TestRunContextStaticAndUsage)
 func TestRunContextStaticAndUsage(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

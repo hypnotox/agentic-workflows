@@ -33,7 +33,7 @@ func TestErrorIsZeroValue(t *testing.T) {
 // imports the two producers and asserts their spelling directly rather than
 // trusting each package's own tests. It lives here because package
 // severity_test may import both without a cycle.
-// invariant: tooling/audit-commands:severity-single-spelling
+// invariant: tooling/audit-commands:severity-single-spelling (TestOneSpellingAcrossEveryRankSurface)
 func TestOneSpellingAcrossEveryRankSurface(t *testing.T) {
 	for _, tc := range []struct {
 		what string

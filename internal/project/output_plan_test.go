@@ -36,8 +36,8 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:output-plan-complete
-// invariant: rendering/pi-workflows:pi-native-workflow-skills
+// invariant: rendering/project-output-plan:output-plan-complete (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
+// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
@@ -107,13 +107,13 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:target-capabilities-closed
-// invariant: rendering/pi-workflows:pi-subagent-progress-rendering
-// invariant: rendering/project-output-plan:cursor-no-bridge
-// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries
-// invariant: rendering/pi-workflows:pi-subagent-progress-bounds
-// invariant: config/migrations-and-locks:close-enabled-set-migration
-// invariant: rendering/workflow-skill-templates:plan-task-detail-modes
+// invariant: rendering/project-output-plan:target-capabilities-closed (TestTargetDescriptorValidation)
+// invariant: rendering/pi-workflows:pi-subagent-progress-rendering (TestTargetDescriptorValidation)
+// invariant: rendering/project-output-plan:cursor-no-bridge (TestTargetDescriptorValidation)
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestTargetDescriptorValidation)
+// invariant: rendering/pi-workflows:pi-subagent-progress-bounds (TestTargetDescriptorValidation)
+// invariant: config/migrations-and-locks:close-enabled-set-migration (TestTargetDescriptorValidation)
+// invariant: rendering/workflow-skill-templates:plan-task-detail-modes (TestTargetDescriptorValidation)
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
 		{Name: "bad", BridgeFile: "X"},
@@ -153,8 +153,8 @@ func TestTargetDescriptorValidation(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:output-policy-explicit
-// invariant: rendering/project-output-plan:shared-output-coalesced
+// invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
+// invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -197,7 +197,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	}
 }
 
-// invariant: rendering/project-output-plan:output-policy-explicit
+// invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPolicyIsExplicit)
 func TestOutputPolicyIsExplicit(t *testing.T) {
 	if got := declaredPolicy("agents", false); !got.ValidateFrontmatter || !got.ScanReferences {
 		t.Fatalf("agent policy = %#v", got)
@@ -213,20 +213,20 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-child-process-safety
-// invariant: rendering/catalog-and-targets:claude-md-bridge
-// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries
-// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow
-// invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation
-// invariant: rendering/pi-workflows:pi-subagent-model-routing
-// invariant: rendering/pi-workflows:pi-subagent-model-preferences
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract
-// invariant: rendering/catalog-and-targets:target-dialect-render
-// invariant: rendering/pi-runtime:pi-implementation-state-boundary
-// invariant: rendering/pi-runtime:pi-extension-target-render
-// invariant: rendering/pi-runtime:pi-minimum-runtime
-// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity
+// invariant: rendering/pi-runtime:pi-child-process-safety (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/catalog-and-targets:claude-md-bridge (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-workflows:pi-subagent-model-routing (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/catalog-and-targets:target-dialect-render (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-runtime:pi-minimum-runtime (TestCurrentStateOutputPlanMatchesTree)
+// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
 	p, err := Open(testContext(t), root)

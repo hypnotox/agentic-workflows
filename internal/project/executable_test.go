@@ -9,7 +9,7 @@ import (
 // A rendered #!-shebang script is written executable (0755); every other rendered
 // file stays 0644. The mode is enforced on every sync - a pre-existing file's mode
 // is corrected, not only set at creation (ADR-0100 Decision 8).
-// invariant: rendering/singletons-and-payloads:shebang-rendered-executable
+// invariant: rendering/singletons-and-payloads:shebang-rendered-executable (TestShebangRenderedExecutable)
 func TestShebangRenderedExecutable(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\ndomains: []\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n")
 	p, err := Open(testContext(t), root)

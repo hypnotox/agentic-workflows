@@ -26,8 +26,8 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:claude-md-bridge
-// invariant: rendering/catalog-and-targets:target-dialect-render
+// invariant: rendering/catalog-and-targets:claude-md-bridge (TestCodexTargetRendersTOMLAgents)
+// invariant: rendering/catalog-and-targets:target-dialect-render (TestCodexTargetRendersTOMLAgents)
 func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	if got := codexTarget.AgentPath("code-reviewer"); got != ".codex/agents/code-reviewer.toml" {
 		t.Fatalf("Codex AgentPath = %q", got)
@@ -71,7 +71,7 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-native-workflow-skills
+// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestNativePiSkillsAreDiscoverableAndPruned)
 func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [tdd, local]\nagents: []\ntargets: [pi]\n", map[string]string{
 		"skills/local.yaml":             "data:\n  description: Local Pi workflow guidance.\n",
@@ -129,7 +129,7 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-extension-target-render
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
 func TestPiRuntimeTargetRender(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -180,7 +180,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-minimum-runtime
+// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiMinimumRuntime)
 func TestPiMinimumRuntime(t *testing.T) {
 	for _, name := range []string{"awf-handoff/index.ts", "awf-subagents/index.ts"} {
 		out := renderPiExtensionFile(t, name)
@@ -192,7 +192,7 @@ func TestPiMinimumRuntime(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
+// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestHandoffLifecycleIndependentOfEffortState)
 func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined"} {
@@ -206,7 +206,7 @@ func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestHandoffPublicOwnedMemoryContract)
 func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", ".awf/efforts/", "/memory.md", "1048576", "TextDecoder", "sameIdentity", "Effort: ${slug}", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
@@ -221,9 +221,9 @@ func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-subagent-model-routing
-// invariant: rendering/pi-workflows:pi-subagent-model-preferences
-// invariant: rendering/pi-workflows:pi-subagent-model-wizard
+// invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
@@ -233,7 +233,7 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow
+// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestHandoffWorkflowUsesOwnedCheckpoint)
 func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{"Continue a validated fresh-session handoff.", "Continue from an optional effort-owned awf checkpoint", "Read ${memoryPath} first.", "Then continue with this immediate action"} {
@@ -292,7 +292,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
@@ -384,8 +384,8 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 	return got
 }
 
-// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch
-// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts
+// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch (TestCrossRuntimeExplorationDispatch)
+// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts (TestCrossRuntimeExplorationDispatch)
 func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 	if !catalog.Standard.Skills["exploring"].Core {
 		t.Fatal("exploring is not a core skill")
@@ -466,7 +466,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting
+// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting (TestBoundedExplorationReporting)
 func TestBoundedExplorationReporting(t *testing.T) {
 	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: [explorer]\ntargets: [pi]\n")
 	guidance := files[".pi/skills/example-exploring/SKILL.md"]
@@ -569,7 +569,7 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 	return ""
 }
 
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestAllTargetPathsAndBridges)
 
 func TestAllTargetPathsAndBridges(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - codex\n  - copilot\n  - cursor\n  - gemini\n  - pi\n")
@@ -652,7 +652,7 @@ func TestMultiTargetRender(t *testing.T) {
 			bridges++
 		}
 	}
-	// invariant: rendering/project-output-plan:multi-target-render
+	// invariant: rendering/project-output-plan:multi-target-render (TestMultiTargetRender)
 	for _, pair := range [][2]string{
 		{".claude/skills/example-tdd/SKILL.md", ".cursor/skills/example-tdd/SKILL.md"},
 		{".claude/agents/code-reviewer.md", ".cursor/agents/code-reviewer.md"},
@@ -668,7 +668,7 @@ func TestMultiTargetRender(t *testing.T) {
 	if agentsMd != 1 {
 		t.Errorf("AGENTS.md rendered %d times, want 1 (neutral)", agentsMd)
 	}
-	// invariant: rendering/project-output-plan:cursor-no-bridge
+	// invariant: rendering/project-output-plan:cursor-no-bridge (TestMultiTargetRender)
 	if bridges != 1 {
 		t.Errorf("bridge files = %d, want 1 (claude only; cursor has none)", bridges)
 	}
@@ -677,7 +677,7 @@ func TestMultiTargetRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract
+// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract (TestMaintainableCodeMultiTargetParity)
 func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills:\n  - subagent-driven-development\nagents: [implementer]\ndocs: []\ntargets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
@@ -741,7 +741,7 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:targets-default-claude
+// invariant: config/configuration:targets-default-claude (TestResolveTargetsRejectsUnknown)
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ntargets:\n  - nope\n")
 	if _, err := Open(testContext(t), root); err == nil {
@@ -784,7 +784,7 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-implement-role-artifact
+// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiImplementRoleArtifact)
 func TestPiImplementRoleArtifact(t *testing.T) {
 	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -810,7 +810,7 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-role-contract-loader
+// invariant: rendering/pi-workflows:pi-role-contract-loader (TestPiRoleContractLoader)
 func TestPiRoleContractLoader(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{

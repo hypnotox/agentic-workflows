@@ -76,7 +76,7 @@ func requireRefusal(t *testing.T, err error, condition, nextAction string) {
 	}
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration
+// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestClassifyLegacyResidentsKnownLeaves)
 func TestClassifyLegacyResidentsKnownLeaves(t *testing.T) {
 	root := residentTree(t)
 	writeLeaf(t, root, legacyEffortsRel+"/.gitignore", []byte("*\n"))
@@ -169,7 +169,7 @@ func TestClassifyLegacyResidentsAbsentAndEmptyRoots(t *testing.T) {
 	})
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration
+// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestClassifyLegacyResidentsUnknownAndMalformedLeaves)
 func TestClassifyLegacyResidentsUnknownAndMalformedLeaves(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
@@ -206,7 +206,7 @@ func TestClassifyLegacyResidentsUnknownAndMalformedLeaves(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration
+// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestClassifyLegacyResidentsUnsafeResidents)
 func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 	t.Run("symlinked-leaf", func(t *testing.T) {
 		root := residentTree(t)
@@ -280,7 +280,7 @@ func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 	})
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration
+// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestClassifyLegacyResidentsRefusesLiveWorktreeFacts)
 func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 	// newRepo builds a committed repository whose primary checkout carries the
 	// legacy record for legacyIDA.
@@ -417,7 +417,7 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 	})
 }
 
-// invariant: config/migrations-and-locks:unified-effort-resident-migration
+// invariant: config/migrations-and-locks:unified-effort-resident-migration (TestClassifyLegacyResidentsPartialEvidenceGitFacts)
 func TestClassifyLegacyResidentsPartialEvidenceGitFacts(t *testing.T) {
 	t.Run("live-declared-checkout-refuses", func(t *testing.T) {
 		root := residentTree(t)

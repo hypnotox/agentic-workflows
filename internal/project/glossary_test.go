@@ -35,7 +35,7 @@ func renderGlossary(t *testing.T, root string) string {
 // The rendered table is ordered case-insensitively by term regardless of the
 // authored order, and two sidecars carrying the same records in a different
 // order render byte-identically.
-// invariant: rendering/guide-and-doc-templates:glossary-terms-sorted
+// invariant: rendering/guide-and-doc-templates:glossary-terms-sorted (TestGlossaryRendersSorted)
 func TestGlossaryRendersSorted(t *testing.T) {
 	a := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
 		"docs/glossary.yaml": "data:\n  terms:\n    - term: zeta\n      meaning: last\n    - term: Alpha\n      meaning: second\n    - term: beta\n      meaning: third\n    - term: aardvark\n      meaning: first\n",
@@ -89,7 +89,7 @@ func TestGlossaryEscapesPipes(t *testing.T) {
 // The table renders from plain template text between the prepend and append
 // framing sections: parts override the framing, never the table, and a part
 // for the retired terms section has no section to claim.
-// invariant: rendering/guide-and-doc-templates:glossary-table-forced
+// invariant: rendering/guide-and-doc-templates:glossary-table-forced (TestGlossaryTableForcedBetweenFraming)
 func TestGlossaryTableForcedBetweenFraming(t *testing.T) {
 	out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
 		"docs/glossary.yaml":             "data:\n  terms:\n    - term: only\n      meaning: entry\n",
@@ -146,7 +146,7 @@ func TestGlossaryTransformUntouchedWithoutEitherLayer(t *testing.T) {
 
 // Content violations fail the render naming the sidecar path, and the offending
 // term wherever the term itself parsed.
-// invariant: rendering/guide-and-doc-templates:glossary-terms-validated
+// invariant: rendering/guide-and-doc-templates:glossary-terms-validated (TestGlossaryContentViolations)
 func TestGlossaryContentViolations(t *testing.T) {
 	for name, tc := range map[string]struct{ yaml, wantErr string }{
 		"terms-not-a-list":    {"data:\n  terms: just a string\n", "must be a list of {term, meaning} records"},
@@ -183,7 +183,7 @@ func TestGlossaryContentViolations(t *testing.T) {
 // Every shipped standard term carries exactly a string term and a string
 // meaning, cites no ADR, and stays under the terseness threshold, so the layer
 // is portable into any adopter tree and cannot fail that tree's own advisory.
-// invariant: rendering/guide-and-doc-templates:glossary-standard-terms-portable
+// invariant: rendering/guide-and-doc-templates:glossary-standard-terms-portable (TestGlossaryStandardTermsPortable)
 func TestGlossaryStandardTermsPortable(t *testing.T) {
 	raw, ok := catalog.Standard.Docs["glossary"].Data["standardTerms"].([]any)
 	if !ok || len(raw) == 0 {
@@ -220,7 +220,7 @@ func TestGlossaryStandardTermsPortable(t *testing.T) {
 // the same case-insensitive name. A project authoring no terms at all still
 // receives the shipped rows rather than the empty-state pointer, which is the
 // fresh-adoption case this layer exists to fix.
-// invariant: rendering/guide-and-doc-templates:glossary-standard-vocabulary
+// invariant: rendering/guide-and-doc-templates:glossary-standard-vocabulary (TestGlossaryMergesStandardVocabulary)
 func TestGlossaryMergesStandardVocabulary(t *testing.T) {
 	t.Run("no authored terms still renders the shipped layer", func(t *testing.T) {
 		out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, nil))

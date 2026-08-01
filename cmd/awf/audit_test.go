@@ -36,7 +36,7 @@ func auditProject(t *testing.T) (gitfixture.Fixture, string) {
 	return repo, gitfixture.Commit(t, repo, "feat(awf): base", nil)
 }
 
-// invariant: tooling/audit-commands:audit-warn-exit-zero
+// invariant: tooling/audit-commands:audit-warn-exit-zero (TestRunAuditWarningsExitZero)
 func TestRunAuditWarningsExitZero(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()
@@ -94,7 +94,7 @@ func TestRunAuditCleanRange(t *testing.T) {
 // A missing range is refused before the project is even opened: an audit that
 // silently reports over nothing is worse than one that refuses (ADR-0127
 // Decision 2).
-// invariant: tooling/audit-commands:audit-requires-explicit-range
+// invariant: tooling/audit-commands:audit-requires-explicit-range (TestRunAuditRequiresARange)
 func TestRunAuditRequiresARange(t *testing.T) {
 	err := runAudit(testContext(t), t.TempDir(), "", out(t))
 	if err == nil {
@@ -108,7 +108,7 @@ func TestRunAuditRequiresARange(t *testing.T) {
 
 // Every verdict names the scope that produced it, so a wrongly-scoped range is
 // visible even when it is non-empty (ADR-0127 Decision 9).
-// invariant: tooling/audit-commands:audit-reports-evaluated-scope
+// invariant: tooling/audit-commands:audit-reports-evaluated-scope (TestRunAuditReportsEvaluatedScope)
 func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()
@@ -126,7 +126,7 @@ func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 // The scope suffix is on every verdict, not just the clean one: a warning or
 // error summary read without its scope is the same ambiguity (ADR-0127
 // Decision 9).
-// invariant: tooling/audit-commands:audit-reports-evaluated-scope
+// invariant: tooling/audit-commands:audit-reports-evaluated-scope (TestRunAuditReportsScopeOnEveryVerdict)
 func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()
@@ -157,7 +157,7 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 
 // An empty range says so instead of reading as clean, and still exits zero, so
 // ADR-0017's audit-empty-range-clean survives (ADR-0127 Decision 10).
-// invariant: tooling/audit-commands:audit-empty-range-announced
+// invariant: tooling/audit-commands:audit-empty-range-announced (TestRunAuditAnnouncesEmptyRange)
 func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
 	fixture, _ := auditProject(t)
 	root := fixture.Root()

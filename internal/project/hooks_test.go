@@ -29,7 +29,7 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 
 // With the singleton enabled, exactly the three payloads render under
 // .awf/hooks/; absent or disabled, none do.
-// invariant: rendering/singletons-and-payloads:hook-payloads-rendered
+// invariant: rendering/singletons-and-payloads:hook-payloads-rendered (TestHookPayloadsRendered)
 func TestHookPayloadsRendered(t *testing.T) {
 	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
 	for _, name := range hookNames {
@@ -55,7 +55,7 @@ func TestHookPayloadsRendered(t *testing.T) {
 // whose awf-verb commands resolve to ./awf forms when the runner singleton is
 // enabled and to the generic awf forms otherwise, with no inline resolution
 // shim and no unresolved-value token (ADR-0156 Decision 4).
-// invariant: rendering/companion-scripts:hook-payloads-fallback-safe
+// invariant: rendering/companion-scripts:hook-payloads-fallback-safe (TestHookPayloadsFallbackSafe)
 func TestHookPayloadsFallbackSafe(t *testing.T) {
 	for _, tc := range []struct {
 		name, config, awf string

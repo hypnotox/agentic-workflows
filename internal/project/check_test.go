@@ -62,8 +62,8 @@ func TestCheckPitfallsDisabled(t *testing.T) {
 
 // An unknown domain yields pitfall-domain drift, a dangling related ADR yields
 // pitfall-adr-link drift, and an entry resolving both yields none.
-// invariant: rendering/doc-outputs:pitfall-domains-resolved
-// invariant: rendering/doc-outputs:pitfall-adr-link-resolved
+// invariant: rendering/doc-outputs:pitfall-domains-resolved (TestCheckPitfallsValidatesDomainsAndLinks)
+// invariant: rendering/doc-outputs:pitfall-adr-link-resolved (TestCheckPitfallsValidatesDomainsAndLinks)
 func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
 		"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +
@@ -187,7 +187,7 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 
 // A non-member tag on an ADR or a pitfall yields tag drift; an empty-meaning
 // member yields tag-vocabulary drift; a fully-conforming corpus yields none.
-// invariant: config/configuration:tag-vocabulary-governed
+// invariant: config/configuration:tag-vocabulary-governed (TestCheckTagVocabulary)
 func TestCheckTagVocabulary(t *testing.T) {
 	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n" +
 		"tags:\n  render-engine: the render engine\n  empty: \"\"\n"
@@ -254,7 +254,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 
 // A dangling ADR related: number yields adr-related-link drift; a resolving one
 // yields none. Unconditional (no vocabulary configured here).
-// invariant: adr-system/adr-lifecycle:adr-related-link-resolved
+// invariant: adr-system/adr-lifecycle:adr-related-link-resolved (TestCheckADRRelatedLinks)
 func TestCheckADRRelatedLinks(t *testing.T) {
 	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
@@ -278,7 +278,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 // separate-loops implementation exists for - a merged loop that aborts the
 // resolution scan at the first descent, or a missing break, each passes a test
 // that only checks the simple case.
-// invariant: adr-system/adr-lifecycle:adr-related-ascending
+// invariant: adr-system/adr-lifecycle:adr-related-ascending (TestCheckADRRelatedAscending)
 func TestCheckADRRelatedAscending(t *testing.T) {
 	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	write := func(name, title string, related ...int) {
@@ -365,8 +365,8 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 // docs/plans/ set: a plan linking a nonexistent ADR yields plan-adr-link drift,
 // a bad status: yields plan-frontmatter drift, a valid plan yields none, and a
 // frontmatter-less (grandfathered) plan is skipped.
-// invariant: adr-system/plan-artifacts:plan-frontmatter-validated
-// invariant: adr-system/plan-artifacts:plan-adr-link-resolved
+// invariant: adr-system/plan-artifacts:plan-frontmatter-validated (TestCheckPlansValidatesFrontmatterAndLinks)
+// invariant: adr-system/plan-artifacts:plan-adr-link-resolved (TestCheckPlansValidatesFrontmatterAndLinks)
 func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
@@ -424,8 +424,8 @@ func TestCheckPlansPropagatesPlanParseError(t *testing.T) {
 
 // TestCheckPlansCommitSubjectDrift covers the ```commit length/type/shape drift and
 // confirms an unknown scope is NOT drift (it is an advisory note instead).
-// invariant: adr-system/plan-artifacts:plan-commit-subject-length-checked
-// invariant: adr-system/plan-artifacts:plan-commit-subject-shape-checked
+// invariant: adr-system/plan-artifacts:plan-commit-subject-length-checked (TestCheckPlansCommitSubjectDrift)
+// invariant: adr-system/plan-artifacts:plan-commit-subject-shape-checked (TestCheckPlansCommitSubjectDrift)
 func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 	root := scaffold(t, commitSubjectCfg)
 	p, err := Open(testContext(t), root)
@@ -469,7 +469,7 @@ func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 // TestPlanCommitScopeNotes covers the scope advisory: a note for an unknown scope,
 // none for an over-length subject (Error, not Warning), a frontmatter-less plan
 // skipped, and the ParseDir error branch.
-// invariant: adr-system/plan-artifacts:plan-commit-subject-scope-advisory
+// invariant: adr-system/plan-artifacts:plan-commit-subject-scope-advisory (TestPlanCommitScopeNotes)
 func TestPlanCommitScopeNotes(t *testing.T) {
 	root := scaffold(t, commitSubjectCfg)
 	p, err := Open(testContext(t), root)
@@ -538,7 +538,7 @@ func TestCheckPropagatesPlanError(t *testing.T) {
 
 // A vocabulary member equal to a configured domain name is the coarse-tag
 // regression, gated exactly; inert when no domains are configured.
-// invariant: config/validation:tag-not-domain-name
+// invariant: config/validation:tag-not-domain-name (TestCheckTagVocabularyDomainCollision)
 func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n"+
 		"tags:\n  rendering: coarse\n  narrow: a narrow topic\n")

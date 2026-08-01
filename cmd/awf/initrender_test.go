@@ -17,8 +17,8 @@ import (
 // non-interactive `awf init` with no answers must render artifacts with no
 // empty inline code spans, no tables without body rows, and no dangling
 // list-introduction sentences.
-// invariant: rendering/templates:empty-init-coherent-render
-// invariant: tooling/init-and-enablement:init-unborn-head-supported
+// invariant: rendering/templates:empty-init-coherent-render (TestEmptyInitChecksOnUnbornHead)
+// invariant: tooling/init-and-enablement:init-unborn-head-supported (TestEmptyInitChecksOnUnbornHead)
 func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -68,7 +68,7 @@ func setScaffoldGateCmd(t *testing.T, root string) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff
+// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff (TestInitFirstADRChecksClean)
 func TestInitFirstADRChecksClean(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -134,7 +134,7 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	// command-wiring error demands), the tree must pass check with notes only
 	// (advisory, exit 0) - in particular zero dead-skill-reference findings on
 	// the curated default.
-	// invariant: rendering/project-output-plan:curated-init-skill-refs-clean
+	// invariant: rendering/project-output-plan:curated-init-skill-refs-clean (TestEmptyInitRendersCoherently)
 	setScaffoldGateCmd(t, root)
 	if err := runSync(ctx, root, io.Discard); err != nil {
 		t.Fatalf("sync after wiring gateCmd: %v", err)
@@ -192,7 +192,7 @@ func isTableSeparator(line string) bool {
 }
 
 // Unset-var notes are advisory: they print and never affect the exit code.
-// invariant: tooling/cli:completeness-advisory-nonfailing
+// invariant: tooling/cli:completeness-advisory-nonfailing (TestCheckUnsetVarNotesAreNonFailing)
 func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -213,7 +213,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 }
 
 // Stub notes are advisory: they print and never affect the exit code.
-// invariant: tooling/cli:stub-advisory-nonfailing
+// invariant: tooling/cli:stub-advisory-nonfailing (TestCheckStubNotesAreNonFailing)
 func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

@@ -273,7 +273,7 @@ func TestCodeReviewerAgent(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:implementer-role-contract
+// invariant: rendering/workflow-skill-templates:implementer-role-contract (TestImplementerAgent)
 func TestImplementerAgent(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -367,7 +367,7 @@ func TestImplementerAgent(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts
+// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts (TestExplorerAgent)
 func TestExplorerAgent(t *testing.T) {
 	out := renderAgentGolden(t, "explorer", map[string]any{
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
@@ -405,7 +405,7 @@ func TestExplorerAgent(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts
+// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts (TestGroundingCheckerAgent)
 func TestGroundingCheckerAgent(t *testing.T) {
 	out := renderAgentGolden(t, "grounding-checker", map[string]any{
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
@@ -448,7 +448,7 @@ func TestGroundingCheckerAgent(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:maintainable-code-review-lenses
+// invariant: rendering/workflow-skill-templates:maintainable-code-review-lenses (TestMaintainableCodeReviewLenses)
 func TestMaintainableCodeReviewLenses(t *testing.T) {
 	outputs := map[string]string{
 		"plan": renderAgentGolden(t, "plan-reviewer", map[string]any{
@@ -515,7 +515,7 @@ func TestExecutingDirectTemplate(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage
+// invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage (TestMaintainableCodeStageCoverage)
 func TestMaintainableCodeStageCoverage(t *testing.T) {
 	allSkills := map[string]bool{
 		"debugging": true, "reviewing-impl": true, "tdd": true,
@@ -583,7 +583,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract
+// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract (TestMaintainableCodeSubagentContract)
 func TestMaintainableCodeSubagentContract(t *testing.T) {
 	renderSection := func(t *testing.T, templateID, section string, data map[string]any) string {
 		t.Helper()
@@ -660,7 +660,7 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:implementer-context-grounding
+// invariant: rendering/workflow-skill-templates:implementer-context-grounding (TestManagedContextCallersChooseProjection)
 func TestManagedContextCallersChooseProjection(t *testing.T) {
 	policies := map[string]string{
 		"adr-lifecycle":               "--show pending",
@@ -810,7 +810,7 @@ func TestConditionalVerifyPass(t *testing.T) {
 // routine and approval checkpoint partials each stay a four-step digest, so a
 // re-expanded fifth step cannot creep back in with the ordered-phrase proofs
 // still green.
-// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
+// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestCheckpointDigestShape)
 func TestCheckpointDigestShape(t *testing.T) {
 	for _, partial := range []string{"partials/checkpoint-routine.md", "partials/checkpoint-approval.md"} {
 		raw, err := fs.ReadFile(templates.FS, partial)
@@ -1137,7 +1137,7 @@ func TestOrientingTemplate(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:orienting-single-home
+// invariant: rendering/workflow-skill-templates:orienting-single-home (TestOrientingSkillContract)
 func TestOrientingSkillContract(t *testing.T) {
 	if !catalog.Standard.Skills["orienting"].Core {
 		t.Fatal("orienting is not a core skill")
@@ -1539,7 +1539,7 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocGuide)
 func TestAgentsDocGuide(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -1592,7 +1592,7 @@ func TestAgentsDocGuide(t *testing.T) {
 
 // TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
 // detailed protocol home while guides and skills carry executable routing.
-// invariant: rendering/guide-and-doc-templates:working-memory-single-home
+// invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestWorkingMemorySingleHomeSurfaces)
 func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
@@ -1647,7 +1647,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage
+// invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage (TestMemoryLogConsumerCoverage)
 func TestMemoryLogConsumerCoverage(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
@@ -1811,7 +1811,7 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
 	},
-	// invariant: rendering/templates:local-base-publication-safe
+	// invariant: rendering/templates:local-base-publication-safe (TestUnsetFallbackRenders)
 	{
 		tmpl: "skills/_base/SKILL.md.tmpl",
 		want: []string{
@@ -1829,13 +1829,13 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"<no value>"},
 	},
-	// invariant: rendering/templates:local-doc-base-publication-safe
+	// invariant: rendering/templates:local-doc-base-publication-safe (TestUnsetFallbackRenders)
 	{
 		tmpl: "docs/_base.md.tmpl",
 		want: []string{"Project documentation", "Project-local documentation.", "Replace this with the document body"},
 		ban:  []string{"<no value>"},
 	},
-	// invariant: rendering/workflow-skill-templates:reviewers-report-only
+	// invariant: rendering/workflow-skill-templates:reviewers-report-only (TestUnsetFallbackRenders)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
 		want: []string{"Regen command: `awf render`."},
@@ -1924,7 +1924,7 @@ var unsetFallbackCases = []fallbackCase{
 
 // The unset-data half of the implementer contract's third sentence: its
 // fallback case above pins the degraded body.
-// invariant: rendering/workflow-skill-templates:implementer-role-contract
+// invariant: rendering/workflow-skill-templates:implementer-role-contract (TestUnsetFallbackRenders)
 func TestUnsetFallbackRenders(t *testing.T) {
 	for _, tc := range unsetFallbackCases {
 		t.Run(tc.tmpl, func(t *testing.T) {
@@ -2029,7 +2029,7 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 // (a hand enumeration could never mention a newer one like
 // refactor-coupling-audit), and disabled ones stay absent (ADR-0046 follow-up
 // sweep; table shape per ADR-0157).
-// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocTaskSkillsGating)
 func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	// brainstorming carries a local sidecar: the guide's chain sentence needs a
 	// chain skill in the effective set, but a non-local one would demand its

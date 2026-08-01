@@ -12,7 +12,7 @@ import (
 // surfaces consume, so it cannot drift from the code. Both parts derive from
 // clispec here too: a literal expectation would pass while the code read from
 // the wrong projection.
-// invariant: tooling/cli:gated-commands-generated
+// invariant: tooling/cli:gated-commands-generated (TestGatedCommandsDisplay)
 func TestGatedCommandsDisplay(t *testing.T) {
 	quote := func(names []string) []string {
 		out := make([]string, len(names))

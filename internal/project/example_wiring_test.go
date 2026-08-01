@@ -21,9 +21,9 @@ import (
 // sweeps never see it; this test pins the wiring so it cannot be silently
 // dropped.
 //
-// invariant: tooling/quality-gates:example-adopter-checked
-// invariant: tooling/quality-gates:example-zero-notes
-// invariant: tooling/quality-gates:example-module-isolated
+// invariant: tooling/quality-gates:example-adopter-checked (TestExampleAdopterWiring)
+// invariant: tooling/quality-gates:example-zero-notes (TestExampleAdopterWiring)
+// invariant: tooling/quality-gates:example-module-isolated (TestExampleAdopterWiring)
 func TestExampleAdopterWiring(t *testing.T) {
 	raw, err := os.ReadFile("../../x")
 	if err != nil {
@@ -51,7 +51,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 }
 
-// invariant: tooling/quality-gates:pi-extension-container-gate
+// invariant: tooling/quality-gates:pi-extension-container-gate (TestExampleAdoptsRunner)
 
 // The sundial example adopts the wrapper split (ADR-0156): the runner singleton
 // renders the pure `awf` forwarder (default bootstrap-then-PATH body, no in-place
@@ -59,7 +59,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 // and its config carries none of the awf-verb command vars, so it dogfoods the
 // rendered defaults a fresh adopter gets.
 //
-// invariant: rendering/companion-scripts:runner-example-adopted
+// invariant: rendering/companion-scripts:runner-example-adopted (TestExampleAdoptsRunner)
 func TestExampleAdoptsRunner(t *testing.T) {
 	cfg, err := os.ReadFile("../../examples/sundial/.awf/config.yaml")
 	if err != nil {
@@ -112,4 +112,4 @@ func TestExampleAdoptsRunner(t *testing.T) {
 // half stands alone: a missing strip leaves the lane green while `tsc` silently
 // skips the file, so only this static assertion enforces the coupling.
 //
-// invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip
+// invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip (TestExampleAdoptsRunner)

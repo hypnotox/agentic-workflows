@@ -47,7 +47,7 @@ func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:closed-config-tree
+// invariant: rendering/sync-and-drift:closed-config-tree (TestSweepFlagsUnclaimedEntries)
 func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"notes.md":                        "stray\n",
@@ -77,7 +77,7 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 		".awf/skills/readme.txt":          unclaimedDetail,
 		".awf/skills/parts/tdd/stray.txt": unclaimedDetail,
 		".awf/skills/parts/tdd/bogus.md":  "convention part for a section not in the target's declared set",
-		// invariant: rendering/sync-and-drift:awf-bak-flagged
+		// invariant: rendering/sync-and-drift:awf-bak-flagged (.awf/config.yaml.awf-bak.2)
 		".awf/config.yaml.awf-bak.2":       bakDetail,
 		".awf/hooks/pre-commit.sh.awf-bak": bakDetail,
 		".awf/skills/debugging.yaml":       "sidecar for an artifact not in the enable list",

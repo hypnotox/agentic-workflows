@@ -76,7 +76,7 @@ func TestMemoryGateClean(t *testing.T) {
 	}
 }
 
-// invariant: tooling/quality-gates:memory-citation-gate
+// invariant: tooling/quality-gates:memory-citation-gate (TestMemoryGateFindings)
 func TestMemoryGateFindings(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

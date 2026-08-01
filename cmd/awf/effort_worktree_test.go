@@ -38,7 +38,7 @@ func TestEffortGrammarIsClosedAndHasNoForceSurface(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:default-worktree-creation
+// invariant: tooling/effort-management:default-worktree-creation (TestEffortNewReportsDefaultAndOptedOutWorktrees)
 func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	root := commandRepo(t)
 	managed := filepath.Join(root, ".awf", "worktrees", "default-cli")
@@ -82,7 +82,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:default-worktree-creation
+// invariant: tooling/effort-management:default-worktree-creation (TestEffortNewBasesTheManagedBranchOnTheNamedRef)
 func TestEffortNewBasesTheManagedBranchOnTheNamedRef(t *testing.T) {
 	root := commandRepo(t)
 	base := gitfixture.NativeRevParse(t, gitfixture.At(root), "HEAD")
@@ -128,7 +128,7 @@ func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:default-worktree-creation
+// invariant: tooling/effort-management:default-worktree-creation (TestEffortNewRejectsBaseWithoutAWorktree)
 func TestEffortNewRejectsBaseWithoutAWorktree(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer

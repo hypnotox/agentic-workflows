@@ -99,7 +99,7 @@ func TestRunCommitGateRejectsNonConventional(t *testing.T) {
 	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	// invariant: tooling/audit-and-snapshots:commit-gate-shared-rule
+	// invariant: tooling/audit-and-snapshots:commit-gate-shared-rule (TestRunCommitGateRejectsNonConventional)
 	if err := runCommitGate(ctx, root, writeMsg(t, "just some words\n"), nil, &out); err == nil {
 		t.Fatal("a non-Conventional-Commits subject must be rejected")
 	}
@@ -177,7 +177,7 @@ func TestCleanCommitLines(t *testing.T) {
 // than written out so this file does not carry the shape the gate rejects.
 func cite() string { return dir + "concrete-effort/memory.md" }
 
-// invariant: tooling/quality-gates:memory-citation-gate
+// invariant: tooling/quality-gates:memory-citation-gate (TestRunCommitGateCitationScan)
 func TestRunCommitGateCitationScan(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

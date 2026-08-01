@@ -206,7 +206,7 @@ func TestProseGateDispatch(t *testing.T) {
 	}
 }
 
-// invariant: tooling/quality-gates:prose-gate-refuses-without-git
+// invariant: tooling/quality-gates:prose-gate-refuses-without-git (TestProseGateRefusesOutsideAGitRepo)
 func TestProseGateRefusesOutsideAGitRepo(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

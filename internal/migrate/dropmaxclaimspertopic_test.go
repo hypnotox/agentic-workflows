@@ -15,7 +15,7 @@ import (
 // this migration from the generation-25 removal it is modelled on: when the
 // retired key is the block's only child the block is dropped outright rather than
 // seeded (ADR-0194, safe because of ADR-0192).
-// invariant: config/migrations-and-locks:claim-budget-key-dropped
+// invariant: config/migrations-and-locks:claim-budget-key-dropped (TestApplyDropMaxClaimsPerTopic)
 func TestApplyDropMaxClaimsPerTopic(t *testing.T) {
 	const announcement = "drop-max-claims-per-topic: removed currentState.maxClaimsPerTopic\n"
 	for _, tc := range []struct {

@@ -7,7 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// invariant: tooling/effort-management:memory-skeleton-purpose-partition
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestOwnedMemorySkeletonIsCoherentAndSlugged)
 func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
 	const want = "Effort: coherent-effort\n" +
 		"Phase: Not started.\n" +

@@ -14,7 +14,7 @@ import (
 // and awf's next registered section pointer, verbatim (internal blank lines kept),
 // trimming only the awf-owned leading/trailing framing.
 func TestReadBackInPlaceBody(t *testing.T) {
-	// invariant: rendering/inplace-and-placeholders:in-place-readback
+	// invariant: rendering/inplace-and-placeholders:in-place-readback (TestReadBackInPlaceBody)
 	t.Run("exact interior, internal blank preserved", func(t *testing.T) {
 		out := "head\n" +
 			"<!-- awf:edit-in-place body: your edits -->\n" +
@@ -44,7 +44,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 		}
 	})
 
-	// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned
+	// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (TestReadBackInPlaceBody)
 	t.Run("leading and trailing blank framing trimmed", func(t *testing.T) {
 		out := "<!-- awf:edit-in-place body: x -->\n\n \nCONTENT\n\n\n<!-- awf:edit next: d -->\ntail\n"
 		got, _ := readBackInPlaceBody(out, "body", []string{"body", "next"}, render.HTMLComment)
@@ -79,7 +79,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 
 // planSections refuses a section that is both in-place-editable and part-backed.
 func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
-	// invariant: rendering/inplace-and-placeholders:section-source-exclusive
+	// invariant: rendering/inplace-and-placeholders:section-source-exclusive (TestPlanSectionsInPlacePartExclusive)
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -198,7 +198,7 @@ func TestAnyInPlace(t *testing.T) {
 // compared to the freshly regenerated content, not the frozen OutputHash. An edit
 // to an awf-owned region surfaces as drift; a matching file does not.
 func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
-	// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift
+	// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift (TestCheckLockedFilesInPlaceRegenDrift)
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -247,8 +247,8 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 // the in-place section's content lines (internal blank line included) survives
 // regeneration and reports clean - sync followed by check is an idempotent
 // fixpoint - while an edit to an awf-owned region reports hand-edited drift.
-// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift
-// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned
+// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift (TestInPlaceComposedSyncCheckFixpoint)
+// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (TestInPlaceComposedSyncCheckFixpoint)
 func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
@@ -359,7 +359,7 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 // authoring-comment strip never touches (ADR-0121 Decision 2): a
 // directive-shaped line an adopter writes inside the region survives
 // re-render byte-for-byte.
-// invariant: rendering/inplace-and-placeholders:authoring-comment-inplace-inert
+// invariant: rendering/inplace-and-placeholders:authoring-comment-inplace-inert (TestInPlaceRegionKeepsAuthoringCommentShapedLine)
 func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)

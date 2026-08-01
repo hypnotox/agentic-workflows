@@ -19,7 +19,7 @@ var validTargets = []string{"", "var", "catalog-skills", "catalog-docs", "audit-
 // names a var absent from every template. Non-var descriptors (catalog trim,
 // audit scopes) are exempt. The referenced set is re-derived from the templates
 // here, independently of any production helper.
-// invariant: rendering/catalog-and-targets:var-descriptor-parity
+// invariant: rendering/catalog-and-targets:var-descriptor-parity (TestVarDescriptorParity)
 func TestVarDescriptorParity(t *testing.T) {
 	cat := catalog.Standard
 
@@ -99,7 +99,7 @@ var functionalVarKeys = []string{
 // re-litigating it: the hook-command resolvability guard treats a
 // present-but-empty var as unset and refuses identically, so a seed would
 // change no behaviour and would buy only the advisory that refusal supersedes.
-// invariant: rendering/catalog-and-targets:var-descriptor-set-pinned
+// invariant: rendering/catalog-and-targets:var-descriptor-set-pinned (TestVarDescriptorSetPinned)
 func TestVarDescriptorSetPinned(t *testing.T) {
 	var got, multiselects []string
 	for _, d := range catalog.Standard.Vars {

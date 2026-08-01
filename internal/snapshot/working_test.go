@@ -115,7 +115,7 @@ func TestWorkingTreeExcludesIgnoredResidentDescendants(t *testing.T) {
 	}
 }
 
-// invariant: tooling/init-and-enablement:init-unborn-head-supported
+// invariant: tooling/init-and-enablement:init-unborn-head-supported (TestWorkingTreeUnborn)
 func TestWorkingTreeUnborn(t *testing.T) {
 	t.Parallel()
 	dir := gitfixture.InitRepo(t).Root()

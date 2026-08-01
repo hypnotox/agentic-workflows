@@ -36,7 +36,7 @@ func countRule(findings []Finding, rule string, sev severity.Rank) int {
 	return n
 }
 
-// invariant: tooling/audit-and-snapshots:audit-conventional-commits
+// invariant: tooling/audit-and-snapshots:audit-conventional-commits (TestRuleConventionalCommits)
 func TestRuleConventionalCommits(t *testing.T) {
 	in := Inputs{Settings: Settings{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []config.ScopeSpec{{Name: "awf"}}, SubjectMaxLength: 20}}
 	cases := []struct {
@@ -134,7 +134,7 @@ func auditV1(t *testing.T, status string) string {
 	return doc("- 2026-07-20: Proposed\n- 2026-07-20: Accepted; content-sha256: " + adr.ContentDigest(proposed.Sections))
 }
 
-// invariant: tooling/audit-and-snapshots:audit-adr-status-cochange
+// invariant: tooling/audit-and-snapshots:audit-adr-status-cochange (TestRuleADRStatusCochange)
 func TestRuleADRStatusCochange(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions", IndexMd: "docs/decisions/INDEX.md"}
 	adrPath := "docs/decisions/0137-x.md"
@@ -192,7 +192,7 @@ func TestRuleADRFrontmatterUnparseable(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-dependency-warn
+// invariant: tooling/audit-and-snapshots:audit-dependency-warn (TestRuleDependencyADR)
 func TestRuleDependencyADR(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: []string{"**/go.mod", "**/*.csproj"}}}
 	defaults := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: defaultDependencyManifests()}}
@@ -223,7 +223,7 @@ func TestRuleDependencyADR(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-plan-threshold-warn
+// invariant: tooling/audit-and-snapshots:audit-plan-threshold-warn (TestRulePlanForLargeChange)
 func TestRulePlanForLargeChange(t *testing.T) {
 	gen := map[string]bool{"gen/out.txt": true}
 	big := FileChange{Path: "src/a.go", Action: Modified, Added: 300, Deleted: 200}
@@ -321,7 +321,7 @@ func TestRuleDomainDocStaleness(t *testing.T) {
 
 	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
 	got := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in)
-	// invariant: tooling/audit-and-snapshots:audit-domain-doc-staleness
+	// invariant: tooling/audit-and-snapshots:audit-domain-doc-staleness (TestRuleDomainDocStaleness)
 	if len(got) != 1 || got[0].Rule != "domain-doc-staleness" || got[0].Commit != "" {
 		t.Fatalf("want 1 branch-level warning, got %v", got)
 	}
@@ -382,7 +382,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 	}
 	// ADR tags an unconfigured domain -> 1 warning.
 	got := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}}, in)
-	// invariant: tooling/audit-and-snapshots:audit-undocumented-domain
+	// invariant: tooling/audit-and-snapshots:audit-undocumented-domain (TestRuleUndocumentedDomain)
 	if len(got) != 1 || got[0].Rule != "undocumented-domain" {
 		t.Fatalf("want 1 warning, got %v", got)
 	}
@@ -405,7 +405,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-domain-code-staleness
+// invariant: tooling/audit-and-snapshots:audit-domain-code-staleness (TestRuleDomainCodeStaleness)
 func TestRuleDomainCodeStaleness(t *testing.T) {
 	in := Inputs{
 		Settings:        Settings{DomainCodeStaleness: true},
@@ -472,7 +472,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 
 	// A rising count warns, naming the file, the codepoint, and the commit.
 	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
-	// invariant: tooling/audit-and-snapshots:audit-plain-punctuation
+	// invariant: tooling/audit-and-snapshots:audit-plain-punctuation (TestRulePlainPunctuation)
 	if len(got) != 1 || got[0].Rule != "plain-punctuation" || got[0].Severity != severity.Warn ||
 		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash (U+2014)") ||
 		!strings.Contains(got[0].Detail, "docs/decisions/0001-x.md") {
@@ -531,7 +531,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 // A range with no commits beyond the base yields zero findings and exits clean.
 // ADR-0127 keeps this contract intact: an empty range is still reachable (a..a),
 // and the new notice reports it without turning it into a finding.
-// invariant: tooling/audit-and-snapshots:audit-empty-range-clean
+// invariant: tooling/audit-and-snapshots:audit-empty-range-clean (TestCollectEmptyRangeIsClean)
 func TestCollectEmptyRangeIsClean(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -560,7 +560,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings, err := ruleUncommittedChanges(testContext(t), handle, Inputs{Settings: Settings{UncommittedChanges: true}})
-	// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
+	// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes (TestRuleUncommittedChanges)
 	if err != nil || len(findings) != 1 || findings[0].Rule != "uncommitted-changes" || findings[0].Severity != severity.Error || findings[0].Commit != "" {
 		t.Fatalf("dirty = %#v, %v", findings, err)
 	}
@@ -650,7 +650,7 @@ func TestRunPropagatesUncommittedStatusError(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
+// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes (TestRuleUncommittedChangesIgnoresManagedWorktreeResidents)
 func TestRuleUncommittedChangesIgnoresManagedWorktreeResidents(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()

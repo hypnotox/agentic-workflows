@@ -21,7 +21,7 @@ func writeConfig(t *testing.T, body string) string {
 	return dir
 }
 
-// invariant: config/validation:duplicate-target-rejected
+// invariant: config/validation:duplicate-target-rejected (TestConfigRejectsDuplicateTargets)
 func TestConfigRejectsDuplicateTargets(t *testing.T) {
 	cfg, err := Load(writeConfig(t, "prefix: awf\nskills: []\nagents: []\ntargets: [claude, claude]\n"))
 	if err != nil {
@@ -94,7 +94,7 @@ func TestLoadRetainsSource(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:enable-arrays
+// invariant: config/configuration:enable-arrays (TestEnableListsAreArrays)
 func TestEnableListsAreArrays(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n  - bugfix\n")
 	c, err := Load(dir)
@@ -118,7 +118,7 @@ func TestEnableListsAreArrays(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:awf-config-root
+// invariant: config/configuration:awf-config-root (TestLoadReadsTreeRoot)
 // TestLoadReadsTreeRoot pins the config root to .awf/config.yaml and
 // co-owns (with the migrate package's TestLegacyReadOnlyInMigrate, ADR-0010
 // inv: legacy-read-isolation) the exemption that ONLY internal/migrate reads the
@@ -218,7 +218,7 @@ func TestSidecarReadsDomainPaths(t *testing.T) {
 	}
 }
 
-// invariant: rendering/render-engine:sidecar-optional
+// invariant: rendering/render-engine:sidecar-optional (TestSidecarAbsentIsEmpty)
 func TestSidecarAbsentIsEmpty(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
 	c, err := Load(dir)
@@ -247,7 +247,7 @@ func TestSidecarRejectsReplaceWith(t *testing.T) {
 	}
 	c, _ := Load(dir)
 	_, err := c.Sidecar("skills", "tdd")
-	// invariant: config/configuration:no-replacewith
+	// invariant: config/configuration:no-replacewith (TestSidecarRejectsReplaceWith)
 	if err == nil || !strings.Contains(err.Error(), "replaceWith") {
 		t.Errorf("expected a strict-decoder error mentioning replaceWith, got: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestLoadMissingConfigErrors(t *testing.T) {
 	}
 }
 
-// invariant: rendering/render-engine:sidecar-optional
+// invariant: rendering/render-engine:sidecar-optional (TestSidecarAgentsDocSingleton)
 func TestSidecarAgentsDocSingleton(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\n")
 	c, err := Load(dir)
@@ -364,7 +364,7 @@ func TestValidateRejectsPathInPrefix(t *testing.T) {
 	}
 }
 
-// invariant: config/validation:domain-name-validated
+// invariant: config/validation:domain-name-validated (TestValidateRejectsBadDomainName)
 func TestValidateRejectsBadDomainName(t *testing.T) {
 	for _, bad := range []string{"", "../evil", "foo/bar", "a\\b"} {
 		c := &Config{Prefix: "x", DocsDir: "docs", Domains: []string{bad}}
@@ -385,7 +385,7 @@ func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:targets-default-claude
+// invariant: config/configuration:targets-default-claude (TestTargetsDefaultAndValidation)
 func TestTargetsDefaultAndValidation(t *testing.T) {
 	// An absent targets: key loads as ["claude"] (the unknown-name check itself
 	// lives in project.Open/resolveTargets - config stays registry-free).
@@ -409,7 +409,7 @@ func TestTargetsDefaultAndValidation(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:docsdir-default
+// invariant: config/configuration:docsdir-default (TestDocsDirDefaultsToDocs)
 func TestDocsDirDefaultsToDocs(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\n")
 	c, err := Load(dir)
@@ -472,8 +472,8 @@ func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 	}
 }
 
-// invariant: config/validation:testglobs-anchored-validated
-// invariant: config/configuration:severity-not-configurable
+// invariant: config/validation:testglobs-anchored-validated (TestCurrentStateStrictValidation)
+// invariant: config/configuration:severity-not-configurable (TestCurrentStateStrictValidation)
 func TestCurrentStateStrictValidation(t *testing.T) {
 	valid := `prefix: x
 currentState:
@@ -682,7 +682,7 @@ func TestValidateArtifactName(t *testing.T) {
 	if err := ValidateArtifactName("skill", "good-name"); err != nil {
 		t.Errorf("valid name rejected: %v", err)
 	}
-	// invariant: config/validation:local-name-validated
+	// invariant: config/validation:local-name-validated (TestValidateArtifactName)
 	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved", "Foo", "foo bar", "foo: bar", "foo.bar", "über"} {
 		if err := ValidateArtifactName("skill", bad); err == nil {
 			t.Errorf("expected %q rejected", bad)
@@ -739,6 +739,6 @@ func TestHasSidecar(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:config-serialization-owned
+// invariant: config/configuration:config-serialization-owned (TestHasSidecar)
 
-// invariant: config/migrations-and-locks:migration-ordering
+// invariant: config/migrations-and-locks:migration-ordering (TestHasSidecar)

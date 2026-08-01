@@ -174,7 +174,7 @@ func residentSingleHomeFindings(pkgs []*packages.Package, names map[string]bool)
 // project open) is carried by internal/project's state-ownership scanner,
 // which pins every Project field, roots included, to construction; this test
 // proves the spelling and shape halves.
-// invariant: rendering/project-output-plan:resident-policy-single-home
+// invariant: rendering/project-output-plan:resident-policy-single-home (TestResidentPolicyHasOneHome)
 func TestResidentPolicyHasOneHome(t *testing.T) {
 	names := map[string]bool{}
 	for _, name := range RootNames() {

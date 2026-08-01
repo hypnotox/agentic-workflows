@@ -12,7 +12,7 @@ import (
 // TestMergeAggregateAcceptsSeveralBatchesFromOneADR covers the per-ADR batch cap
 // relaxing for a merge. The same pair is rejected as an authored commit, which is
 // what keeps the two contracts distinguishable rather than one being dead.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateAcceptsSeveralBatchesFromOneADR)
 func TestMergeAggregateAcceptsSeveralBatchesFromOneADR(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
 	x, y, z := op(adr.OpAdd, "d/t:x"), op(adr.OpAdd, "d/t:y"), op(adr.OpAdd, "d/t:z")
@@ -40,7 +40,7 @@ func TestMergeAggregateAcceptsSeveralBatchesFromOneADR(t *testing.T) {
 // effect of each legal chain, and the chains that stay illegal. add-then-update
 // is the shape a follow-up ADR revising an earlier ADR's claim produces, which is
 // what refused the severity effort's integration.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateFoldsClaimChains)
 func TestMergeAggregateFoldsClaimChains(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
 	baseClaim := claim("d/t:base", "0137")
@@ -153,7 +153,7 @@ func TestMergeAggregateFoldsClaimChains(t *testing.T) {
 // TestMergeAggregateRequiresRevisedByToGrowByEveryUpdater covers the generalized
 // provenance rule: a folded net-update chain must append each updating ADR, so a
 // Revised-by that grew by fewer entries than the chain has updaters is rejected.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateRequiresRevisedByToGrowByEveryUpdater)
 func TestMergeAggregateRequiresRevisedByToGrowByEveryUpdater(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
 	update := op(adr.OpUpdate, "d/t:base")
@@ -175,7 +175,7 @@ func TestMergeAggregateRequiresRevisedByToGrowByEveryUpdater(t *testing.T) {
 // TestMergeAggregateRejectsRepeatedUpdateByOneADR covers the one clause the fold
 // adds beyond ordering: update-requires-substance says an update appends its ADR
 // once, so one ADR may not update a claim twice within one aggregate.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateRejectsRepeatedUpdateByOneADR)
 func TestMergeAggregateRejectsRepeatedUpdateByOneADR(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))
 	update := op(adr.OpUpdate, "d/t:x")
@@ -195,7 +195,7 @@ func TestMergeAggregateRejectsRepeatedUpdateByOneADR(t *testing.T) {
 // An ADR the target already carries advancing Proposed -> Implementing -> Applied
 // -> Implemented appends four events, which the fixed one-or-two-event shape
 // refuses; the aggregate requires only that the prior history is an exact prefix.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateAcceptsMultiStepStatusHistory)
 func TestMergeAggregateAcceptsMultiStepStatusHistory(t *testing.T) {
 	addX := op(adr.OpAdd, "d/t:x")
 	proposed := v2rec("0141", "Proposed", []adr.Operation{addX, op(adr.OpAdd, "d/t:y")}, v2status("Proposed"))
@@ -215,7 +215,7 @@ func TestMergeAggregateAcceptsMultiStepStatusHistory(t *testing.T) {
 
 // TestMergeAggregateStillRequiresAnExactHistoryPrefix covers the obligation the
 // aggregate keeps: rewriting a retained event is not an append, in either mode.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateStillRequiresAnExactHistoryPrefix)
 func TestMergeAggregateStillRequiresAnExactHistoryPrefix(t *testing.T) {
 	addX := op(adr.OpAdd, "d/t:x")
 	before := v2rec("0141", "Implementing", []adr.Operation{addX, op(adr.OpAdd, "d/t:y")},
@@ -236,7 +236,7 @@ func TestMergeAggregateStillRequiresAnExactHistoryPrefix(t *testing.T) {
 // (ADR-0191): cross-ADR batch order is ascending ADR number, so a chain whose
 // add is owned by the higher-numbered ADR is taken update-first and rejected,
 // while the mirrored assignment is legal. No global counter is consulted.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateOrdersBatchesByADRNumber)
 func TestMergeAggregateOrdersBatchesByADRNumber(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
 	baseClaim := claim("d/t:base", "0137")
@@ -277,7 +277,7 @@ func TestMergeAggregateOrdersBatchesByADRNumber(t *testing.T) {
 // explicitly-checked net effect: a chain that both adds and removes a claim must
 // leave it absent on both sides, reported in the chain's own terms rather than as
 // an unmatched mutation that would deny the operations exist.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateNetNoopMustLeaveTheClaimAbsent)
 func TestMergeAggregateNetNoopMustLeaveTheClaimAbsent(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
 	a := v2rec("0141", "Implemented", []adr.Operation{op(adr.OpAdd, "d/t:c")},
@@ -298,7 +298,7 @@ func TestMergeAggregateNetNoopMustLeaveTheClaimAbsent(t *testing.T) {
 // TestMergeAggregateUnionsRevisedBy covers the union rule (ADR-0191 item 5):
 // an updater inserting below an existing higher number is legal, a dropped
 // prior entry is rejected, and an extra entry beyond the union is rejected.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateUnionsRevisedBy)
 func TestMergeAggregateUnionsRevisedBy(t *testing.T) {
 	add := op(adr.OpAdd, "d/t:c")
 	update := op(adr.OpUpdate, "d/t:c")

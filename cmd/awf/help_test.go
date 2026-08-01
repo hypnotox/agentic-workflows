@@ -78,7 +78,7 @@ func TestCliCommandSpecSingleSource(t *testing.T) {
 
 // Every group child is listed in the overview beneath its own parent, so a
 // subcommand is never reachable only by knowing to ask its parent for help.
-// invariant: tooling/cli:help-lists-group-children
+// invariant: tooling/cli:help-lists-group-children (TestHelpListsGroupChildren)
 func TestHelpListsGroupChildren(t *testing.T) {
 	var out, errb bytes.Buffer
 	run([]string{"awf", "help"}, &out, &errb)
