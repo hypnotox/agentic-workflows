@@ -20,7 +20,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "awf-git-test-home")) }
+func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m)) }
 
 func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
 	repo := gitfixture.InitRepo(t)

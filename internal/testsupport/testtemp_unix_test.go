@@ -1,0 +1,94 @@
+//go:build linux || darwin
+
+package testsupport
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"syscall"
+	"testing"
+	"time"
+)
+
+func TestTestTempUnixProductionRoot(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("TMPDIR", base)
+	root, err := testTempRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(base, fmt.Sprintf("awf-test-homes-%d", os.Geteuid()))
+	if root != want {
+		t.Fatalf("root = %q, want %q", root, want)
+	}
+	m, err := productionTestTempManager()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.ensureRoot(); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Lstat(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm()&0o077 != 0 {
+		t.Fatalf("root permissions = %o", info.Mode().Perm())
+	}
+}
+
+type unavailableStatFileInfo struct{ os.FileInfo }
+
+func (unavailableStatFileInfo) Sys() any { return nil }
+
+type foreignStatFileInfo struct {
+	os.FileInfo
+	stat syscall.Stat_t
+}
+
+func (i foreignStatFileInfo) Sys() any { return &i.stat }
+
+func TestTestTempUnixValidatorRejectsSymlinkAndUnavailableOwnership(t *testing.T) {
+	root := t.TempDir()
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(root, link); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateTestTempPath(link, info); err == nil {
+		t.Fatal("symlink accepted")
+	}
+	info, err = os.Lstat(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateTestTempPath(root, unavailableStatFileInfo{info}); err == nil {
+		t.Fatal("unavailable ownership accepted")
+	}
+	foreign := foreignStatFileInfo{FileInfo: info, stat: *info.Sys().(*syscall.Stat_t)}
+	foreign.stat.Uid = uint32(os.Geteuid() + 1)
+	if err := validateTestTempPath(root, foreign); err == nil {
+		t.Fatal("foreign ownership accepted")
+	}
+}
+
+func TestTestTempUnixRejectsOpenRoot(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	m, err := newTestTempManager(root, time.Now, osTestTempFS(), validateTestTempPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.ensureRoot(); err == nil {
+		t.Fatal("chmod-created unsafe root accepted")
+	}
+}

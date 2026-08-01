@@ -415,6 +415,13 @@ commit is made from. And a `pre-commit` hook DOES run when a conflicted merge is
 finished with `git commit`; only a merge that Git resolves and commits by itself skips
 it, which is exactly the hole `pre-merge-commit` exists to cover.
 
+An `EXIT` trap does not survive `exec`: replacing the hook shell with the rendered payload
+bypasses the creator shell's cleanup entirely. Delete a staged slice after its last
+consumer and before `exec`, keep the trap armed until that deletion succeeds, then disarm
+it. A real-hook regression should make the payload observe an empty isolated `TMPDIR` so
+the lifecycle is proved across the replacement boundary rather than inferred from script
+text.
+
 ## A piped gate run reports the pipe's exit code, not the gate's
 
 _Domains: tooling_

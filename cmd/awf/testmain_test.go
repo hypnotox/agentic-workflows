@@ -16,5 +16,5 @@ import (
 // build their state in temp repos and never read or write the developer's
 // machine.
 func TestMain(m *testing.M) {
-	os.Exit(testsupport.RunIsolated(m, "awf-test-home"))
+	os.Exit(testsupport.RunIsolated(m))
 }

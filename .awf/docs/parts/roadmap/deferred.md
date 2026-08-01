@@ -255,14 +255,17 @@ floor, and false-positive risk on citations that do not amend. Worth its own
 focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
 the natural shape of the fix.
 
-## The test suite leaks temp homes on interrupted runs
+## Unmanaged Go `t.TempDir` directories survive abrupt process death
 
-An interrupted `go test` run orphans `awf-project-test-home*` directories in the system temp
-dir (13 stale ones found on 2026-07-31 while diagnosing a full 16G tmpfs; the sibling leak,
-the gate's mktemp coverage profile at ~45MB per interrupted run, was fixed structurally by
-ADR-0196's durable `coverage.out`). `t.TempDir` cannot clean up across a kill. Low priority:
-either a periodic cleanup note or naming the fixture dirs under one parent so a stale sweep
-is one `rm`.
+Managed TestMain homes are bounded below one recoverable root, but arbitrary Go `t.TempDir`
+directories cannot clean up across abrupt process death. The test-temp manager deliberately
+does not select them, so any broader cleanup policy needs a separate safety decision.
+
+## Remove Windows from release and cross-compile policy
+
+A future release-policy change should remove Windows from `.goreleaser.yaml` and the
+cross-compile gate. Test-temp management retains Windows compile compatibility now, but owns
+real behavior only on Linux and macOS; it must not approximate Windows ACL safety.
 
 ## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
 

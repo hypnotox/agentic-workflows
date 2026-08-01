@@ -50,4 +50,6 @@ check_slice "$tmp" "the repository"
 # ADR-0080 flip, the ADR-0121 phase 1) before this check existed.
 check_slice "$tmp/examples/sundial" "examples/sundial"
 bash "$staged_helper" "$repo_root" "$awf_slice"
+rm -rf -- "$tmp"
+trap - EXIT
 exec bash .awf/hooks/pre-commit.sh "$@"
