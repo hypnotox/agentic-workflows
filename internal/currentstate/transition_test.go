@@ -629,10 +629,10 @@ func TestCheckPairRefusesFormatRetrofitDuringRenumber(t *testing.T) {
 	sections := map[string]string{"Decision": "one body, two numbers"}
 	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
 	before := adr.ADR{Number: "0199", Format: adr.CurrentStateV2, Status: "Proposed", Sections: sections, History: history}
-	after := adr.ADR{Number: "0205", Slug: "proof-markers", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
+	after := adr.ADR{Number: "0205", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
 	got := messages(currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), currentstate.AuthoredCommit))
-	if !strings.Contains(got, "was deleted across this transition") {
-		t.Fatalf("a newly slugged format retrofit must not form a renumber pair:\n%s", got)
+	if !strings.Contains(got, "changed governed format across this transition") {
+		t.Fatalf("a slugless digest-paired format retrofit must be refused:\n%s", got)
 	}
 }
 
@@ -647,6 +647,13 @@ func TestOlderIntroductions(t *testing.T) {
 	afterV2.Status = "Implementing"
 	if got := currentstate.OlderIntroductions(uni([]adr.ADR{beforeV2}), uni([]adr.ADR{afterV2}), adr.CurrentStateV3); len(got) != 0 {
 		t.Fatalf("existing older lifecycle transition = %#v, want none", got)
+	}
+
+	renumberedBefore := adr.ADR{Number: "0005", Format: adr.CurrentStateV2, Sections: map[string]string{"Decision": "same record"}}
+	renumberedAfter := renumberedBefore
+	renumberedAfter.Number = "0008"
+	if got := currentstate.OlderIntroductions(uni([]adr.ADR{renumberedBefore}), uni([]adr.ADR{renumberedAfter}), adr.CurrentStateV3); len(got) != 0 {
+		t.Fatalf("existing older slugless renumber = %#v, want none", got)
 	}
 
 	after := uni([]adr.ADR{

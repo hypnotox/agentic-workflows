@@ -173,6 +173,7 @@ func TestCheckStagedTransitionFinding(t *testing.T) {
 	}
 }
 
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings)
 func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)
@@ -182,23 +183,31 @@ func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings
 	head["docs/decisions/0004-aggregate.md"] = publicV2ADR(t, "0004", "Aggregate", "Proposed", "- add `alpha/one:x`\n- add `alpha/one:y`\n- add `alpha/one:z`", "")
 	gitfixture.Stage(t, repo, head)
 	gitfixture.Commit(t, repo, "head", nil)
+
+	gitfixture.Stage(t, repo, map[string]string{"docs/decisions/0002-stale.md": boundaryADR(adr.V2FormatMarker, "Stale")})
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+	clean, err := p.CheckStaged(testContext(t))
+	if err != nil {
+		t.Fatalf("clean CheckStaged: %v", err)
+	}
+	want := []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}}
+	if !reflect.DeepEqual(clean.Provisional, want) || len(clean.Findings()) != 0 {
+		t.Fatalf("clean provisional report = %#v, findings = %#v; want %#v and no findings", clean.Provisional, clean.Findings(), want)
+	}
+
 	aggregate := publicV2ADR(t, "0004", "Aggregate", "Implementing", "- add `alpha/one:x`\n- add `alpha/one:y`\n- add `alpha/one:z`",
 		"- 2026-07-22: Implementing; content-sha256: %s\n- 2026-07-22: Applied; operations: add `alpha/one:x`\n- 2026-07-22: Applied; operations: add `alpha/one:y`")
 	gitfixture.Stage(t, repo, map[string]string{
-		"docs/decisions/0002-stale.md":                 boundaryADR(adr.V2FormatMarker, "Stale"),
 		"docs/decisions/0003-existing.md":              boundaryADR(adr.V2FormatMarker, "Existing"),
 		"docs/decisions/0004-aggregate.md":             aggregate,
 		".awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
 		"internal/bar.go":                              "package internalx\n",
 	})
-	p := openStaged(t, dir)
-	writeLock(t, p, attestedLock())
-
 	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
-		t.Fatalf("CheckStaged: %v", err)
+		t.Fatalf("CheckStaged with unrelated violations: %v", err)
 	}
-	want := []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}}
 	if !reflect.DeepEqual(report.Provisional, want) {
 		t.Fatalf("provisional = %#v, want %#v", report.Provisional, want)
 	}
