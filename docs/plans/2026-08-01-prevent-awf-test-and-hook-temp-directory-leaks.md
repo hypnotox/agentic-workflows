@@ -393,7 +393,10 @@ feat(tooling): manage isolated test homes under a stale-reaped root
   add this recovery command to `gate`, `test`, or hook execution, and do not broaden it to arbitrary
   `/tmp` entries. Run `go test ./cmd/testtmpclean ./internal/testsupport`,
   `./x clean-test-tmp unexpected`, and `./x clean-test-tmp --all unexpected`; the tests must pass
-  and both manual invalid invocations must print the usage and exit 2 without deleting a home.
+  and both manual invalid invocations must print the usage, report the command's underlying
+  `exit status 2`, and exit nonzero without deleting a home. The direct command tests, rather than
+  the `go run` wrapper, pin the command's usage mapping to 2 because the Go tool itself exits 1
+  when the invoked program exits nonzero.
 
 - [ ] **Task 3.4: Document the explicit cleanup command and render.** Edit only the owning
   sources for behavior introduced in this phase:
