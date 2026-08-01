@@ -674,8 +674,10 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   and routes any material seam-shape drift through plan resync instead of silent
   adaptation.
 - This plan's ADR link was authored optimistically as `adrs: [190]`; main claimed
-  0190 first and Task 1.2 renumbered the record to 0194 at merge-in - the last manual
-  renumber this repository should ever need.
+  0190 first and Task 1.2 renumbered the record to 0194 at merge-in. The integration
+  merge renumbered it a second time, 0194 to 0202, under the digest-paired rule
+  ADR-0204 sanctions. Both were manual, and this record is the last one that can need
+  it: a record authored after this plan lands is pending and takes its number once.
 - No adr-lifecycle topic split despite the claim-budget advisory (user ruling
   2026-07-31; the `maxClaimsPerTopic` limit is being removed by a parallel effort). If
   the advisory still fires at execution time it is non-failing noise, not a task.
@@ -838,3 +840,21 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   spent it). Rather than a successor ADR, Phase 5 proves it: Task 5.2 gains a
   plans-byte-identical test and Task 5.4 puts a second `plan-adr-link-resolved` proof
   marker on it. No operation is added - the claim text does not change again.
+- 2026-08-01, largest deviation, recorded here because it lived only in commit bodies:
+  execution needed two successor records that this plan never anticipated, both
+  authored as pending slug records so the mechanism dogfooded itself. ADR-0203
+  (`lock-cutoffs-and-schema-generations-reconcile-at-integration`) exists because
+  schema generations and lock cutoffs collide at integration exactly as ADR numbers do
+  and this plan's record governs neither; two of its own already-applied claim
+  sentences named generation literals that the integration falsified, and a claim
+  carries at most one operation per ADR, so only a successor could fix them. ADR-0204
+  (`pair-a-slugless-record-across-a-renumber-by-content-digest`) exists because
+  renaming this plan's own record was refused by the backstop Phase 6 shipped: a
+  slugless record pairs on its number, and main had taken the old one, so the rename
+  mispaired it with a stranger and produced 37 findings naming no cause.
+- 2026-08-01: the stated non-goal "no renumbering of any already-numbered ADR" is
+  contradicted by the integration, which renumbered this plan's record 0194 to 0202.
+  The non-goal held for the mechanism this plan builds - `awf adr number` still never
+  renumbers an assigned number - and the exception is the hand rename ADR-0204
+  sanctions for a record predating the slug format. Both are deliberate; the sentence
+  is left standing as the scope the implementation was designed against.
