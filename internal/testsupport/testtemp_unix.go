@@ -23,7 +23,7 @@ func validateTestTempPath(_ string, info fs.FileInfo) error {
 	if !ok {
 		return errors.New("ownership representation unavailable")
 	}
-	if int(stat.Uid) != os.Geteuid() { // coverage-ignore: an unprivileged test cannot create a foreign-owned directory
+	if int(stat.Uid) != os.Geteuid() {
 		return fmt.Errorf("owner UID %d does not match effective UID %d", stat.Uid, os.Geteuid())
 	}
 	if info.Mode().Perm()&0o077 != 0 {

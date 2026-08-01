@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -39,6 +40,13 @@ type unavailableStatFileInfo struct{ os.FileInfo }
 
 func (unavailableStatFileInfo) Sys() any { return nil }
 
+type foreignStatFileInfo struct {
+	os.FileInfo
+	stat syscall.Stat_t
+}
+
+func (i foreignStatFileInfo) Sys() any { return &i.stat }
+
 func TestTestTempUnixValidatorRejectsSymlinkAndUnavailableOwnership(t *testing.T) {
 	root := t.TempDir()
 	link := filepath.Join(root, "link")
@@ -58,6 +66,11 @@ func TestTestTempUnixValidatorRejectsSymlinkAndUnavailableOwnership(t *testing.T
 	}
 	if err := validateTestTempPath(root, unavailableStatFileInfo{info}); err == nil {
 		t.Fatal("unavailable ownership accepted")
+	}
+	foreign := foreignStatFileInfo{FileInfo: info, stat: *info.Sys().(*syscall.Stat_t)}
+	foreign.stat.Uid = uint32(os.Geteuid() + 1)
+	if err := validateTestTempPath(root, foreign); err == nil {
+		t.Fatal("foreign ownership accepted")
 	}
 }
 
