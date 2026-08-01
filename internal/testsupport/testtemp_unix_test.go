@@ -12,13 +12,15 @@ import (
 )
 
 func TestTestTempUnixProductionRoot(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("TMPDIR", base)
 	root, err := testTempRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := fmt.Sprintf("awf-test-homes-%d", os.Geteuid())
-	if filepath.Base(root) != want {
-		t.Fatalf("root basename = %q, want %q", filepath.Base(root), want)
+	want := filepath.Join(base, fmt.Sprintf("awf-test-homes-%d", os.Geteuid()))
+	if root != want {
+		t.Fatalf("root = %q, want %q", root, want)
 	}
 	m, err := productionTestTempManager()
 	if err != nil {
