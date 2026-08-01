@@ -151,7 +151,7 @@ feat(rendering): make Pi handoff discretionary
 
 ### Phase 1 post-review settlement
 
-**Execution mode: parent-owned review settlement.** Preserve Phase 1 commit `49c596f8` and the approved ADR amendment commit. This focused independently green transaction resolves all Phase 1 review findings and applies State change 2 only.
+**Execution mode: inline.** This is a parent-owned review settlement. Preserve Phase 1 commit `49c596f8` and the approved ADR amendment commit. This focused independently green transaction resolves all Phase 1 review findings and applies State change 2 only.
 
 - [ ] Require both checkpoint partials' replacement kickoff to say that the fresh session appends the actual boundary as its first memory update before substantive work. Wrap replacement-specific sentences in `templates/agents-doc/AGENTS.md.tmpl` with the target-session-handoff conditional so generic and non-Pi output contains no replacement claim.
 - [ ] In `internal/evals/chain_test.go`, assert the exact first-memory-update instruction in routine and approval output, reject checkpoint-time handoff-log append and stale unconditional handoff prose in both checkpoint classes, and prove a rendered non-Pi guide contains no replacement claim.
@@ -241,4 +241,4 @@ After Phase 5 commits, run `./awf effort worktree remove context-aware-handoffs`
 - The context-usage formatter intentionally remains separate from the subagent display formatter: they implement different presentation contracts and sharing would change the approved one-decimal `k`/`m` output.
 - `ctx.getContextUsage()` exposes the active model window, not Pi's configured auto-compaction threshold. Documentation and messages must continue to call it the model window and must not infer a threshold.
 - Historical ADRs remain frozen. Current-state claims, generated docs, glossary, pitfalls, and changelog correct the retired automatic-handoff and memory-validation contracts forward.
-- The plan and ADR stay Proposed throughout plan review. Implementation begins only after user authorization; the first implementation transaction, not this plan commit, moves the ADR to Implementing.
+- The plan remains Proposed while the ADR remains Implementing through review settlement and the remaining implementation phases. User authorization preceded Phase 1, and commit `49c596f8` performed the ADR transition.
