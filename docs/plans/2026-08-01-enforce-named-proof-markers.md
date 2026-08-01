@@ -473,14 +473,23 @@ with its implementation findings.
   rule 3, naming a function where a finer unique anchor existed: a marker above a row of a
   PACKAGE-LEVEL table (three in `internal/project/spine_test.go`, whose rows are keyed structs, so
   neither the in-body nor the leading-literal condition held), and a marker above a `t.Run` label
-  (`internal/project/inplace_test.go:17`). All four were re-anchored to their own row literal or
-  subtest label and each was mutation-confirmed to fail once that row or label is removed. Two
-  further markers named the wrong declaration outright: `internal/adr/corpus_test.go` carried a
-  doc comment for `TestCorpusParsedOnce` above the pure helper `parseDirProblems`, and
-  `internal/project/docs_sections_test.go` was satisfied by a TRAILING comment on a code line. The
-  correct census for f1397870 is 427 above a test function, 91 in a test body, 2 naming a helper,
-  2 naming a table row; that commit's message says 5 helper-named and 2 row-named, counting the
-  three defective spine markers as helpers.
+  (`internal/project/inplace_test.go:17`, and `:47` in the same function, found by the sweep one
+  round later). All five were re-anchored to their own row literal or subtest label and each was
+  mutation-confirmed to fail once that row or label is removed. One further marker named the wrong
+  declaration outright: `internal/adr/corpus_test.go` carried a doc comment for
+  `TestCorpusParsedOnce` above the pure helper `parseDirProblems`, marker included. A seventh,
+  `internal/project/docs_sections_test.go`, named its own test correctly but was independently
+  satisfied by a TRAILING comment on a code line, which is a boundary of the shipped rule rather
+  than a migration slip; ADR-0199 item 3 now records it. The correct census for f1397870 is 427
+  above a test function, 91 in a test body, 2 naming a helper, 2 naming their own table row, and
+  3 above a package-level table row taking the consuming test's identifier, which is the defect
+  this entry records; that partition closes at 525, where the commit's own message says 5
+  helper-named and 2 row-named, counting those 3 as helpers.
+
+  The sweep that found the last instance was AST-backed, replicated `proofNameOccurs` exactly, and
+  was validated against the pre-settlement tree first, where it reproduced all six known defects
+  before its silence on the rest was trusted. It covered doubly-backed claims too, not only the
+  singly-backed ones the first correction round prioritised.
 
 - **Wording correction at review.** Tasks 4.4 and 4.5 above prescribe "must occur on a non-comment
   line of the marker's own file". The shipped rule skips lines that open with the family's marker

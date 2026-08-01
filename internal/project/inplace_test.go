@@ -44,7 +44,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 		}
 	})
 
-	// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (TestReadBackInPlaceBody)
+	// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (leading and trailing blank framing trimmed)
 	t.Run("leading and trailing blank framing trimmed", func(t *testing.T) {
 		out := "<!-- awf:edit-in-place body: x -->\n\n \nCONTENT\n\n\n<!-- awf:edit next: d -->\ntail\n"
 		got, _ := readBackInPlaceBody(out, "body", []string{"body", "next"}, render.HTMLComment)
