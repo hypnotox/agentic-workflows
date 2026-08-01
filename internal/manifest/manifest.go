@@ -45,7 +45,7 @@ type Lock struct {
 	// 15 and positive at schema 15 and later.
 	ADRFormatV2From int `json:"adrFormatV2From,omitempty"`
 	// ADRFormatV3From is the permanent V3 boundary. It is absent before schema
-	// 28 and positive at schema 28 and later. The cutoff set is ordered:
+	// 29 and positive at schema 29 and later. The cutoff set is ordered:
 	// V1From <= V2From <= V3From (ADR-0202 item 1).
 	ADRFormatV3From int `json:"adrFormatV3From,omitempty"`
 	// LegacyADRGaps is the sorted set of absent lower ADR numbers the final

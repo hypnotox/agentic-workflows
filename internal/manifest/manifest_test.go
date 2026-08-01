@@ -289,8 +289,8 @@ func TestSchema15PermanentAuthorityV2BoundaryMatrix(t *testing.T) {
 // or above adrFormatV2From (ADR-0202 item 1).
 func TestSchema29PermanentAuthorityV3BoundaryMatrix(t *testing.T) {
 	fields := `"awfVersion":"0.30.0","files":{},"adrFormatV1From":4,"adrFormatV2From":6,"legacyAdrGaps":[]`
-	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":27}`)); err != nil {
-		t.Fatalf("schema 27 omission must remain compatible: %v", err)
+	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":28}`)); err != nil {
+		t.Fatalf("schema 28 omission must remain compatible: %v", err)
 	}
 	for _, tc := range []struct {
 		name, v3, want string

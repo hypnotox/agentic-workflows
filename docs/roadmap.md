@@ -140,7 +140,8 @@ key that is required with no in-code default fails the whole before-side load un
 every committed config in range carries it. ADR-0202's `integrationBranch` hit this and
 paid for it with a per-key seeding case in `ConfigForCurrentSchema` (`internal/migrate/
 migrate.go`), the first case in that function to materialize a key rather than remove
-one - which the function's own generation-25 comment argues against.
+one - which the function's own `retiredKeyRemovals` rationale argues against, since that
+table exists precisely to keep the port-forward a pure parse fix.
 
 The shipped fix is correct and mutation-proven, but it makes the function a growing list
 of per-required-key special cases: the next required key repeats the discovery, and until

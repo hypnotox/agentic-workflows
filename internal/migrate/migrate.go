@@ -147,12 +147,6 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 		if migration.To <= from {
 			continue
 		}
-		// Deliberately a pure removal, unlike applyDropSeveritySettings, which also
-		// seeds a default budget when the removals would empty the block. This
-		// function exists so a historical config PARSES under the current strict
-		// decoder; coverage is never evaluated from a before-side config, so
-		// materializing a key the committed bytes never had would put a value into
-		// a historical universe rather than fix a parse.
 		// Unlike the pure removals above, this case materializes a key the
 		// committed bytes never had, and it must. integrationBranch is
 		// required with no in-code default (ADR-0202 Decision 6), so a

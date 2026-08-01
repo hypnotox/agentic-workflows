@@ -20,7 +20,7 @@ func v3MigrationProject(t *testing.T) string {
 	testsupport.WriteAwfConfig(t, root, "prefix: example\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-one.md"), testsupport.ADR("Proposed", testsupport.WithTitle("0001: One")))
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-three.md"), testsupport.ADR("Proposed", testsupport.WithTitle("0003: Three")))
-	lock := &manifest.Lock{AWFVersion: "0.30.0", SchemaVersion: 27, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{AWFVersion: "0.30.0", SchemaVersion: 28, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestApplyADRFormatV3CutoffSavesAtomicAuthorityOnce(t *testing.T) {
 func TestApplyADRFormatV3CutoffStampsNonPermanentAuthority(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\n")
-	lock := &manifest.Lock{AWFVersion: "0.30.0", SchemaVersion: 27, Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: "0.30.0", SchemaVersion: 28, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
