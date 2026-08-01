@@ -3,7 +3,7 @@
 
 The current-state migration, attestation, and journaled cutover runtime.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/upgrade/**`. Both domain and topic selectors must match. Run `awf topic tooling/upgrade-runtime --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/upgrade/**`. Both domain and topic selectors must match. Run `awf topic tooling/upgrade-runtime --coverage` for current matched paths and marker sites.
 
 The upgrade package runs the current-state migration: it verifies the bridge seal, journals the cutover, and writes the permanent lock. The same journal also carries any schema advance that discards resident state, recording each proven resident as a quarantine-by-rename operation alongside the tracked file images, so a resident is restored whole while the transaction can still fail and discarded only once the final lock replacement has committed it. The claims below capture the current upgrade-runtime contracts.
 
@@ -11,8 +11,9 @@ The upgrade package runs the current-state migration: it verifies the bridge sea
 
 ### `invariant: initial-adoption-version-immutable`
 
-The first-adoption version, ADR cutoff, and explicit gap set are sealed once and preserved unchanged by ordinary sync, zero-migration upgrade, staged authority checks, and forced initialization.
+The first-adoption binary version is sealed once and preserved unchanged by ordinary sync, zero-migration upgrade, staged authority checks, and forced initialization. ADR format is authored in each record and no cutoff or legacy-gap set forms permanent lock authority.
 Origin: ADR-0139
+Revised-by: ADR-0206
 Backing: test
 
 ### `invariant: current-state-cutover-is-atomic`
@@ -29,12 +30,11 @@ Origin: ADR-0136
 Backing: unbacked
 Verify: Fixtures with missing, duplicate, unknown, retired-key, malformed, and destination-mismatch approvals, ambiguous or class-changed mappings, exception metadata, rationale-backed distinct claims, and invalid retirement evidence all resolve correctly, mapping is derived before approval, every approval failure reports invariant-approval at .awf/current-state-migration.yaml, and JSON computes approved rather than reading it.
 
-### `invariant: legacy-format-set-is-closed`
+### `invariant: bridge-attestation-cutoff-payload-discarded`
 
-The lock's cutoff plus recorded lower-number gaps exactly close the attested legacy identity set, and every later ADR uses the new format.
-Origin: ADR-0136
-Backing: unbacked
-Verify: Missing-format ADRs attempted at an existing lower identity, a recorded lower gap, the cutoff, and above it are accepted only at the attested existing identity.
+Final upgrade continues to parse and verify a resident version-1 bridge attestation and its approval artifact, including the historical `adrFormatV1From` and `legacyADRGaps` payload, but the journaled cutover discards those routing values instead of promoting them. Approval deletion and final lock replacement retain the existing atomic commit point, and no ADR byte is rewritten.
+Origin: ADR-0206
+Backing: test
 
 ### `invariant: migration-approval-artifact-is-ephemeral`
 

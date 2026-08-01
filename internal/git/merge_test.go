@@ -21,13 +21,20 @@ func TestMergeInProgressPrimaryCheckout(t *testing.T) {
 		t.Error("a checkout with no MERGE_HEAD must report no merge")
 	}
 
-	testsupport.WriteFile(t, filepath.Join(root, ".git", "MERGE_HEAD"), "deadbeef\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".git", "MERGE_HEAD"), " deadbeef \n\ncafebabe\n")
 	got, err = git.MergeInProgress(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !got {
 		t.Error("MERGE_HEAD present must report a merge in progress")
+	}
+	heads, err := git.MergeHeads(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(heads) != 2 || heads[0] != "deadbeef" || heads[1] != "cafebabe" {
+		t.Fatalf("MergeHeads = %q", heads)
 	}
 }
 

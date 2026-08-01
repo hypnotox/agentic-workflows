@@ -449,36 +449,27 @@ func TestEveryHandshakeFindingIsBlocking(t *testing.T) {
 	}
 }
 
-// TestParseRecordRouting covers cutoff-based legacy/V1/V2 routing.
-// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff (TestParseRecordRouting)
+// TestParseRecordRouting covers intrinsic legacy/V1/V2 routing.
 // invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix (TestParseRecordRouting)
 func TestParseRecordRouting(t *testing.T) {
 	legacy := []byte("---\nstatus: Implemented\ndate: 2026-01-01\n---\n# ADR-0100: Legacy\n\n## Context\n\nx\n")
-	a, err := adr.ParseRecord("0100-legacy.md", legacy, adr.FormatBoundaries{V1From: 137})
+	a, err := adr.ParseRecord("0100-legacy.md", legacy)
 	if err != nil || a.IsV1() || a.Number != "0100" {
 		t.Fatalf("legacy routing: %+v err=%v", a, err)
 	}
-	// A below-cutoff ADR that declares the v1 marker is rejected.
-	strayV1 := []byte("---\nformat: current-state-v1\nstatus: Implemented\ndate: 2026-01-01\n---\n# ADR-0100: X\n")
-	if _, err := adr.ParseRecord("0100-x.md", strayV1, adr.FormatBoundaries{V1From: 137}); err == nil || !strings.Contains(err.Error(), "below the format cutoff") {
-		t.Fatalf("stray v1 marker below cutoff: err=%v", err)
-	}
 	governed := []byte("---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-01-01\n---\n# ADR-0137: Governed\n\n## Context\n\nx\n\n## Decision\n\n1. Decide.\n\n## State changes\n\nNone.\n\n## Consequences\n\nx\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-01-01: Proposed\n")
-	v1, err := adr.ParseRecord("0137-governed.md", governed, adr.FormatBoundaries{V1From: 137, V2From: 138})
+	v1, err := adr.ParseRecord("0137-governed.md", governed)
 	if err != nil || !v1.IsV1() || v1.IsV2() {
 		t.Fatalf("V1 routing: %+v err=%v", v1, err)
 	}
 	v2Bytes := []byte(strings.Replace(string(governed), adr.V1FormatMarker, adr.V2FormatMarker, 1))
-	v2, err := adr.ParseRecord("0138-governed.md", v2Bytes, adr.FormatBoundaries{V1From: 137, V2From: 138})
+	v2, err := adr.ParseRecord("0138-governed.md", v2Bytes)
 	if err != nil || !v2.IsV2() || v2.IsV1() {
 		t.Fatalf("V2 routing: %+v err=%v", v2, err)
 	}
-	if _, err := adr.ParseRecord("0138-wrong-v1.md", governed, adr.FormatBoundaries{V1From: 137, V2From: 138}); err == nil || !strings.Contains(err.Error(), adr.V2FormatMarker) {
-		t.Fatalf("V1 record in V2 region accepted: %v", err)
-	}
-	// Cutoff of zero treats everything as legacy.
-	if a, err := adr.ParseRecord("0200-x.md", legacy, adr.FormatBoundaries{}); err != nil || a.IsGoverned() {
-		t.Fatalf("cutoff 0 routing: %+v err=%v", a, err)
+	// Markerless records remain legacy regardless of number.
+	if a, err := adr.ParseRecord("0200-x.md", legacy); err != nil || a.IsGoverned() {
+		t.Fatalf("markerless routing: %+v err=%v", a, err)
 	}
 }
 
@@ -521,5 +512,99 @@ func TestCheckBackwardOrdersRevisedByByADRNumber(t *testing.T) {
 	legacy.History[2].LegacySequence = true
 	if got := messages(currentstate.Check([]adr.ADR{legacy}, topics(claim("d/t:c", "0140")))); !strings.Contains(got, "ADR-0140 carries a retired state-sequence segment; run awf upgrade") {
 		t.Fatalf("a tolerated legacy segment must be a blocking finding:\n%s", got)
+	}
+}
+
+// v3rec builds a pending current-state-v3 record: slug identity, no number.
+func v3rec(slug string, declarations []adr.Operation, events ...adr.HistoryEvent) adr.ADR {
+	return adr.ADR{Slug: slug, Format: adr.CurrentStateV3, Status: "Implemented", Operations: declarations, History: events}
+}
+
+// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number (TestCheckBackwardPlacesPendingSlugEntriesAfterEveryNumber)
+func TestCheckBackwardPlacesPendingSlugEntriesAfterEveryNumber(t *testing.T) {
+	add := op(adr.OpAdd, "d/t:c")
+	update := op(adr.OpUpdate, "d/t:c")
+	origin := v2rec("0140", "Implemented", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	numbered := v2rec("0141", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	pending := v3rec("pending-one", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	other := v3rec("pending-two", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	records := []adr.ADR{origin, numbered, pending, other}
+
+	if got := messages(currentstate.Check(records, topics(claim("d/t:c", "0140", "0141", "pending-one", "pending-two")))); got != "" {
+		t.Fatalf("slug entries after every number must be clean:\n%s", got)
+	}
+	// Authored list order is the only order slug entries compare in, so the
+	// reversed pair stays legal; numbering settles their final numbers.
+	if got := messages(currentstate.Check(records, topics(claim("d/t:c", "0140", "0141", "pending-two", "pending-one")))); got != "" {
+		t.Fatalf("slug entries compare in authored order:\n%s", got)
+	}
+	if got := messages(currentstate.Check(records, topics(claim("d/t:c", "0140", "pending-one", "0141", "pending-two")))); !strings.Contains(got, "lists numbered Revised-by ADR-0141 after a pending entry") {
+		t.Fatalf("a numbered entry after a pending one must be a finding:\n%s", got)
+	}
+
+	// A slug Origin defers its greater-than comparison to numbering, which the
+	// command's add-before-revise refusal guarantees.
+	slugOrigin := v3rec("pending-origin", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	if got := messages(currentstate.Check([]adr.ADR{slugOrigin, pending}, topics(claim("d/t:c", "pending-origin", "pending-one")))); got != "" {
+		t.Fatalf("a slug Origin with slug revisions must be clean:\n%s", got)
+	}
+	// A slug Origin already counts as a pending entry, so a numbered revision
+	// after it is out of order even though no slug revision precedes it.
+	if got := messages(currentstate.Check([]adr.ADR{slugOrigin, numbered}, topics(claim("d/t:c", "pending-origin", "0141")))); !strings.Contains(got, "lists numbered Revised-by ADR-0141 after a pending entry") {
+		t.Fatalf("a numbered revision after a slug Origin must be a finding:\n%s", got)
+	}
+}
+
+// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number (TestCheckBackwardRejectsSlugReferencesWithoutAPendingRecord)
+func TestCheckBackwardRejectsSlugReferencesWithoutAPendingRecord(t *testing.T) {
+	add := op(adr.OpAdd, "d/t:c")
+	update := op(adr.OpUpdate, "d/t:c")
+	origin := v2rec("0140", "Implemented", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	// A numbered record retains its slug forever, but a slug reference resolves
+	// only against a pending record: a leftover reference after numbering is an
+	// error, which is what forces the substitution to be complete.
+	numberedWithSlug := v2rec("0141", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	numberedWithSlug.Slug = "already-numbered"
+
+	got := messages(currentstate.Check([]adr.ADR{origin, numberedWithSlug}, topics(claim("d/t:c", "0140", "already-numbered"))))
+	if !strings.Contains(got, "claim d/t:c cites pending ADR-already-numbered which is not in the corpus") {
+		t.Fatalf("a retained-slug reference must be a finding:\n%s", got)
+	}
+	got = messages(currentstate.Check([]adr.ADR{origin}, topics(claim("d/t:c", "nobody-at-all"))))
+	if !strings.Contains(got, "claim d/t:c cites pending ADR-nobody-at-all which is not in the corpus") {
+		t.Fatalf("an unresolvable slug Origin must be a finding:\n%s", got)
+	}
+}
+
+// A pending record's operations order after every numbered record's, because a
+// pending record takes the corpus's next numbers at integration.
+func TestCheckOperationHistoryOrdersPendingRecordsLast(t *testing.T) {
+	add := op(adr.OpAdd, "d/t:c")
+	update := op(adr.OpUpdate, "d/t:c")
+	numberedAdd := v2rec("0140", "Implemented", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	pendingUpdate := v3rec("later", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	if got := messages(currentstate.Check([]adr.ADR{pendingUpdate, numberedAdd}, topics(claim("d/t:c", "0140", "later")))); got != "" {
+		t.Fatalf("a pending update after a numbered add must be clean:\n%s", got)
+	}
+}
+
+// A pending record names itself by slug in every forward finding, so the
+// message identifies a file that exists.
+func TestCheckForwardNamesPendingRecordsBySlug(t *testing.T) {
+	add := op(adr.OpAdd, "d/t:c")
+	pending := v3rec("pending-one", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	got := messages(currentstate.Check([]adr.ADR{pending}, topics()))
+	if !strings.Contains(got, "ADR-pending-one adds claim d/t:c, which has no active claim") {
+		t.Fatalf("forward finding must name the pending slug:\n%s", got)
 	}
 }

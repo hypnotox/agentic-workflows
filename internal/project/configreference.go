@@ -109,6 +109,8 @@ func (p *Project) currentValue(path string) string {
 	switch path {
 	case "prefix":
 		return "`" + p.Cfg.Prefix + "`"
+	case "integrationBranch":
+		return "`" + p.Cfg.IntegrationBranch + "`"
 	case "docsDir":
 		return "`" + p.Cfg.DocsDir + "`"
 	case "vars":

@@ -6,6 +6,7 @@ paths:
   - internal/changelog/**
   - internal/evals/**
   - internal/clispec/**
+  - internal/commitmsg/**
   - internal/contextq/**
   - internal/contextdelivery/**
   - internal/contextspill/**

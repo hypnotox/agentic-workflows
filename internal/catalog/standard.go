@@ -219,7 +219,7 @@ var Standard = &Catalog{
 		// The glossary's table is computed from sidecar data.terms, always
 		// sorted (ADR-0089); prepend/append are empty-default framing slots.
 		// standardTerms is the vocabulary awf ships into every adopter tree
-		// (ADR-0198): the transform merges it under data.terms and deletes it,
+		// (ADR-0207): the transform merges it under data.terms and deletes it,
 		// so it is never adopter-settable and carries no configspec descriptor.
 		// A project term of the same case-insensitive name overrides one.
 		"glossary": {Title: "Glossary", Desc: "project jargon and the awf vocabulary it ships", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl", Data: map[string]any{
@@ -252,7 +252,7 @@ var Standard = &Catalog{
 		"adr-template":             {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
 		"plans-readme":             {Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
 		"plans-template":           {Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},
-		"maintainable-code-design": {Mandatory: true, DocumentMap: true, Title: "Maintainable Code Design", Desc: "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design", Path: "maintainable-code-design.md", TemplateKey: "maintainableCodeDesign", TID: "docs/maintainable-code-design.md.tmpl", Sections: []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}},
+		"maintainable-code-design": {Mandatory: true, DocumentMap: true, Title: "Maintainable Code Design", Desc: "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design", Path: "maintainable-code-design.md", TemplateKey: "maintainableCodeDesign", TID: "docs/maintainable-code-design.md.tmpl", Sections: []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "readability", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}},
 		"workflow": {Mandatory: true, DocumentMap: true, Title: "Workflow", Desc: "principles, the brainstorm/ADR/plan chain, commit discipline", Path: "workflow.md", TemplateKey: "workflowRef", TID: "docs/workflow.md.tmpl", Sections: []string{
 			"principles", "chain", "working-memory", "commit-discipline", "doc-currency", "composing-the-gate", "local-hooks", "ci",
 		}},

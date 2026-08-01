@@ -18,15 +18,15 @@ func testArtifactAuthorities(docsDir string, corpus adr.Corpus) artifactAuthorit
 // invariant: rendering/sync-and-drift:managed-output-attribution (TestArtifactRecordsFollowDeclarations)
 func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	decls := []project.OutputDeclaration{{Path: "docs/out.md", TemplateID: "docs/out.md.tmpl", Declarers: []string{"out"}, Inputs: []project.OutputInput{{Path: ".awf/docs/parts/out/content.md", Role: project.ArtifactConventionPart}}}}
-	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
+	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
 	if len(generated) != 1 || generated[0].Role != project.ArtifactManagedOutput || len(generated[0].Sources) != 1 {
 		t.Fatalf("generated=%#v", generated)
 	}
-	source := artifactRecords(".awf/docs/parts/out/content.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
+	source := artifactRecords(".awf/docs/parts/out/content.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
 	if len(source) != 1 || source[0].Role != project.ArtifactConventionPart || len(source[0].Outputs) != 1 || source[0].Outputs[0].Path != "docs/out.md" {
 		t.Fatalf("source=%#v", source)
 	}
-	unmanaged := artifactRecords("docs/lookalike.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
+	unmanaged := artifactRecords("docs/lookalike.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
 	if unmanaged == nil || len(unmanaged) != 0 {
 		t.Fatalf("unmanaged=%#v", unmanaged)
 	}
@@ -40,7 +40,13 @@ func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 
 // invariant: tooling/context-and-topic:context-known-artifact-navigation (TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes)
 func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) {
-	parsed := adr.NewCorpus([]adr.ADR{{Number: "0007", Filename: "0007-real.md"}})
+	// The corpus is deliberately mixed: a pending record is reachable only
+	// through its slug identity, so a number-keyed lookup or a number-valued
+	// identity would drop it from artifact navigation entirely.
+	parsed := mustCorpus([]adr.ADR{
+		{Number: "0007", Filename: "0007-real.md"},
+		{Slug: "a-pending-record", Filename: "a-pending-record.md", Format: adr.CurrentStateV3},
+	})
 	decls := []project.OutputDeclaration{
 		{Path: "documentation/config-reference.md", TemplateID: "docs/config-reference.md.tmpl", Declarers: []string{"config-reference"}},
 		{Path: "documentation/domains/d.md", TemplateID: "domains/domain.md.tmpl", Declarers: []string{"generated-domain"}},
@@ -74,6 +80,7 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 		{".awf/topics/metadata/d/t.yaml", project.ArtifactTopicMetadata, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
 		{".awf/topics/parts/d/t/current-state.md", project.ArtifactClaimPart, "d/t", []artifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
 		{"documentation/decisions/0007-real.md", project.ArtifactDecisionRecord, "0007", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
+		{"documentation/decisions/a-pending-record.md", project.ArtifactDecisionRecord, "a-pending-record", []artifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
 		{"generated.md", project.ArtifactManagedOutput, "docs/out.tmpl", []artifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: ".awf/docs/out.yaml", Label: "authored data"}, {Path: ".awf/docs/parts/out/content.md", Label: "convention part"}, {Path: ".awf/topics/metadata/d/t.yaml", Label: "topic metadata"}, {Path: ".awf/topics/parts/d/t/current-state.md", Label: "claim part"}, {Path: "documentation/decisions/0007-real.md", Label: "decision record"}}},
 	}
 	for _, tc := range cases {

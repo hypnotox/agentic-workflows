@@ -20,7 +20,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "awf-git-test-home")) }
+func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m)) }
 
 func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
@@ -143,13 +143,6 @@ func TestWorkingPaths(t *testing.T) {
 	}
 }
 
-// TestWorktreeStatusInjectsGlobalExcludes fails if a production file calls
-// go-git's Worktree Status() without referencing GlobalExcludePatterns, so a
-// new status-derived path universe cannot silently revert to go-git's
-// repo-local-only ignore semantics (docs/pitfalls.md: "go-git status ignores
-// the global and system gitignore"; the limitation bit audit first and
-// WorkingPaths second). A future staged-only status consumer that never reads
-// untracked entries earns an explicit path exemption here instead.
 func TestWorkingPathsExcludesNestedFileBelowIgnoredManagedWorktreeRoot(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -786,6 +779,60 @@ func TestObjectReadContracts(t *testing.T) {
 	}
 	if base == head {
 		t.Fatal("fixture transition did not create a new commit")
+	}
+}
+
+func TestCommitEvidenceReads(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
+	head := gitfixture.Commit(t, repo, "feat: subject\n\nbody\n", map[string]string{"b.txt": "b"})
+	handle := gitRepo(t, repo.Root())
+	parents, err := handle.CommitParents(testsupport.Context(t), head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parents) != 1 || parents[0] != base {
+		t.Fatalf("CommitParents = %q, want [%s]", parents, base)
+	}
+	message, err := handle.CommitMessage(testsupport.Context(t), head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if message != "feat: subject\n\nbody\n" {
+		t.Fatalf("CommitMessage = %q", message)
+	}
+	if _, err := handle.CommitParents(testsupport.Context(t), "missing"); err == nil {
+		t.Fatal("missing revision succeeded")
+	}
+	if _, err := handle.CommitMessage(testsupport.Context(t), "missing"); err == nil {
+		t.Fatal("missing message revision succeeded")
+	}
+	backend, err := gogit.PlainOpen(repo.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	commit, err := backend.CommitObject(plumbing.NewHash(head))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, err := commit.Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := tree.File("a.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handle.CommitMessage(testsupport.Context(t), file.Hash.String()); err == nil {
+		t.Fatal("resolvable blob accepted as a commit")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := handle.CommitParents(canceled, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled CommitParents = %v", err)
+	}
+	if _, err := handle.CommitMessage(canceled, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled CommitMessage = %v", err)
 	}
 }
 

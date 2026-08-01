@@ -20,13 +20,28 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+func TestCommitAuthorizationResultString(t *testing.T) {
+	success := CommitAuthorizationResult{Category: "operation", Condition: "stale merge authorization satisfied"}
+	if got, want := success.String(), "operation: stale merge authorization satisfied; changed index: no; changed message: no; changed merge state: no; next actions: none"; got != want {
+		t.Fatalf("success String = %q, want %q", got, want)
+	}
+	changed := CommitAuthorizationResult{Category: "operation", Condition: "test", ChangedIndex: true, ChangedMessage: true, ChangedMergeState: true}
+	if got := changed.String(); !strings.Contains(got, "changed index: yes; changed message: yes; changed merge state: yes") {
+		t.Fatalf("changed String = %q", got)
+	}
+	refusal := CommitAuthorizationResult{Category: "operation", Condition: "non-merge: provisional older-format introduction without merge parents", NextActions: []string{"correct the message trailers", "run git commit to finish the existing merge"}}
+	if got, want := refusal.String(), "operation: non-merge: provisional older-format introduction without merge parents; changed index: no; changed message: no; changed merge state: no; next actions: 1. correct the message trailers 2. run git commit to finish the existing merge"; got != want {
+		t.Fatalf("refusal String = %q, want %q", got, want)
+	}
+}
+
 func TestLoadTreeCurrentStateRejectsFutureSchema(t *testing.T) {
-	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\n")}})
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\nintegrationBranch: main\n")}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	lock := &manifest.Lock{SchemaVersion: migrate.Current() + 1}
-	if _, _, err := loadTreeCurrentState(".", tree, lock, adr.FormatBoundaries{}, nil); err == nil || !strings.Contains(err.Error(), "ahead of current") {
+	if _, _, err := loadTreeCurrentState(".", tree, lock); err == nil || !strings.Contains(err.Error(), "ahead of current") {
 		t.Fatalf("future schema current-state load error = %v", err)
 	}
 }
@@ -46,16 +61,20 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := loadTreeCurrentState(".", configTree, nil, adr.FormatBoundaries{}, nil); err == nil {
+	if _, _, err := loadTreeCurrentState(".", configTree, nil); err == nil {
 		t.Fatal("symlink config accepted")
 	}
-	if _, err := nextADRIdentityFromTree(configTree); err == nil {
-		t.Fatal("symlink cutoff config accepted")
+	// A config today's schema cannot parse for a reason the retired-key
+	// port-forward does not fix. That pass strips keys whose struct field is
+	// gone, so only a key that was never declared still reaches the parser.
+	unknownKey, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\nnoSuchKey: 1\n")}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
-	if next, err := nextADRIdentityFromTree(ordinary); err != nil || next != 1 {
-		t.Fatalf("next=%d err=%v", next, err)
+	if _, _, err := loadTreeCurrentState(".", unknownKey, nil); err == nil {
+		t.Fatal("unknown config key accepted")
 	}
+	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
 	if got := eligiblePaths(configTree, nil, nil); len(got) != 0 {
 		t.Fatalf("eligible symlink=%v", got)
 	}
@@ -80,7 +99,7 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 	const adversarial = ".awf/efforts/e/.awf/config.yaml"
 	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: adversarial, Mode: snapshot.Regular, Bytes: []byte("prefix: nested\n")},
+		{Path: adversarial, Mode: snapshot.Regular, Bytes: []byte("prefix: nested\nintegrationBranch: main\n")},
 		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
 	})
 	if err != nil {
@@ -107,7 +126,8 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 // invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked (TestCurrentStateReportRouting)
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
-		Static: []currentstate.Finding{{Message: "handshake broke"}},
+		Static:      []currentstate.Finding{{Message: "handshake broke"}},
+		Provisional: []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}, {Identity: "0003", Format: adr.Legacy}},
 		Coverage: []topic.CoverageFinding{
 			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
 			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},
@@ -118,7 +138,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 		t.Fatalf("findings = %#v", findings)
 	}
 	notes := r.Notes()
-	if len(notes) != 1 || !strings.Contains(notes[0], "internal/b.go is matched by 3 path-scoped topics") {
+	if len(notes) != 3 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "internal/b.go is matched by 3 path-scoped topics") {
 		t.Fatalf("notes = %#v", notes)
 	}
 }
@@ -130,6 +150,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 // wrong shape, and phase 2 puts a proof marker on exactly those tests. Deriving
 // in this direction has no pattern to fall out of sync.
 const csNoPolicyYAML = `prefix: example
+integrationBranch: main
 skills:
   - tdd
 agents:
@@ -233,7 +254,7 @@ func TestCheckCurrentState(t *testing.T) {
 // invariant: rendering/sync-and-drift:coverage-evaluation-unconditional (TestCheckCurrentStateNoPolicy)
 // invariant: config/configuration:severity-not-configurable (TestCheckCurrentStateNoPolicy)
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
-	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - internal/**\n",
 		"internal/bar.go":         "package internalx\n",
@@ -274,7 +295,7 @@ func TestCheckStagedRootOutsideRepo(t *testing.T) {
 }
 
 func TestCheckCurrentStateOutsideRepo(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -309,6 +330,7 @@ func TestCheckCurrentStateLoadError(t *testing.T) {
 // invYAML declares a marker source over internal/** and a test-backing glob so a
 // test-backed invariant claim can carry its required proof marker.
 const invYAML = `prefix: example
+integrationBranch: main
 skills:
   - tdd
 agents:
@@ -334,7 +356,7 @@ func TestCurrentStateInvariants(t *testing.T) {
 			"### `invariant: backed`\nBacked one.\nOrigin: ADR-0001\nBacking: test\n\n" +
 			"### `invariant: reasoned`\nReasoned one.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect by hand.\n",
 		"internal/foo.go":      "package foo\n",
-		"internal/foo_test.go": "package foo\n// invariant: alpha/one:backed\n",
+		"internal/foo_test.go": "package foo\n// invariant: alpha/one:backed (TestBacked)\nfunc TestBacked() {}\n",
 	})
 	invs, err := p.CurrentStateInvariants(testContext(t))
 	if err != nil {
@@ -357,7 +379,7 @@ func TestCurrentStateInvariants(t *testing.T) {
 // reports none without error.
 // invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCurrentStateInvariantsEmpty)
 func TestCurrentStateInvariantsEmpty(t *testing.T) {
-	p := csRepo(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
+	p := csRepo(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
 	invs, err := p.CurrentStateInvariants(testContext(t))
 	if err != nil {
 		t.Fatalf("CurrentStateInvariants: %v", err)

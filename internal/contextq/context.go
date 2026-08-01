@@ -62,7 +62,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 	}
 	slices.Sort(nested)
 	set := contextPathSet{tree: state.Tree, nested: nested, outputs: outputs, ignores: state.Cfg.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]contextPathImpact{}}
-	selectedADRs := adr.NewCorpus(state.Loaded.ADRs)
+	selectedADRs := state.Loaded.Corpus
 	lay := state.Layout
 	markerSitesByPath := map[string][]topic.MarkerSite{}
 	for _, site := range state.Loaded.Topics.Markers.All() {
@@ -140,7 +140,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 	globallyVisible := contextVisibleClaimIDs(applicable, projectedSources, options.Facets)
 	referencedSeen := map[string]bool{}
 	for _, id := range slices.Sorted(maps.Keys(applicable)) {
-		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, projectedSources, globallyVisible, referencedSeen, currentPaths, pendingChanges(state.Loaded.ADRs, map[string]bool{id: true}), options.Facets))
+		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, projectedSources, globallyVisible, referencedSeen, currentPaths, pendingChanges(state.Loaded.Corpus, map[string]bool{id: true}), options.Facets))
 	}
 	return result
 }
@@ -198,23 +198,29 @@ func contextRelationshipSources(in map[string]map[int]map[string]bool) map[strin
 	return out
 }
 
-func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []pendingChange {
+func pendingChanges(corpus adr.Corpus, matchedTopics map[string]bool) []pendingChange {
 	var out []pendingChange
-	corpus := adr.NewCorpus(adrs)
 	ordered := slices.Clone(corpus.All())
-	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].Number < ordered[j].Number })
+	// A pending V3 record answers to its slug, so every lookup and every
+	// presented reference here is the identity, not the number: keying on the
+	// number would resolve nothing and sort the record before 0001 (ADR-0202
+	// item 10 places a pending record after every numbered one).
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return adr.IdentityOrder(ordered[i].Identity()) < adr.IdentityOrder(ordered[j].Identity())
+	})
 	for _, a := range ordered {
 		if !a.IsAccepted() && !a.IsImplementing() {
 			continue
 		}
-		progress, _, err := corpus.OperationProgress(a.Number)
+		identity := a.Identity()
+		progress, _, err := corpus.OperationProgress(identity)
 		if err != nil {
 			continue
 		}
 		declared := len(progress.Applied) + len(progress.Remaining) + len(progress.Canceled)
 		for _, op := range progress.Remaining {
 			if matchedTopics[topicOfClaim(op.ID)] {
-				out = append(out, pendingChange{ADR: a.Number, Title: strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "), Status: a.Status, Applied: len(progress.Applied), Declared: declared, Op: string(op.Verb), Claim: op.ID, Progress: "remaining"})
+				out = append(out, pendingChange{ADR: identity, Title: strings.TrimPrefix(a.Title, "ADR-"+identity+": "), Status: a.Status, Applied: len(progress.Applied), Declared: declared, Op: string(op.Verb), Claim: op.ID, Progress: "remaining"})
 			}
 		}
 	}

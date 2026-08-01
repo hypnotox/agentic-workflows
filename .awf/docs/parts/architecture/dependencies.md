@@ -36,3 +36,5 @@
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`
   runs it under the deterministic `.gremlins.yaml` config and `cmd/mutants` reports survived mutants
   (ADR-0066). Advisory only; never part of the gate. This repo only, not part of the rendered standard.
+
+`internal/manifest` owns schema-sensitive lock decoding, while `internal/migrate` owns generation-31 removal of retired ADR routing payload.

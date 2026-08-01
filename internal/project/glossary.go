@@ -42,7 +42,7 @@ type glossaryRecord struct {
 var glossaryRecordKeys = map[string]bool{"term": true, "meaning": true, "domains": true}
 
 // glossaryMeaningMax bounds a meaning at roughly two sentences of ordinary
-// prose, counted in runes (ADR-0198 decision 9). It is a fixed constant rather
+// prose, counted in runes (ADR-0207 decision 9). It is a fixed constant rather
 // than a config key on purpose: an adopter-raisable threshold is a suppressing
 // value, which this project's severity model does not have. The advisory
 // evaluates the merged set, so this bounds the shipped standard vocabulary as
@@ -51,7 +51,7 @@ var glossaryRecordKeys = map[string]bool{"term": true, "meaning": true, "domains
 const glossaryMeaningMax = 280
 
 // glossaryTransform replaces data.terms with the finished, always-sorted
-// markdown table rows for the merged two-layer set (ADR-0089, ADR-0198). It
+// markdown table rows for the merged two-layer set (ADR-0089, ADR-0207). It
 // returns untouched only when neither layer is present at all; a null or empty
 // layer yields "", so the template's else branch renders the coherent
 // placeholder. standardTerms is consumed here and deleted, so the template sees

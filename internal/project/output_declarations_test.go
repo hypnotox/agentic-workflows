@@ -99,7 +99,7 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 		t.Run("site"+strconv.Itoa(site), func(t *testing.T) {
 			calls := 0
 			faulting := failingPathsReader{memoryProjectReader: read, failAt: site, calls: &calls}
-			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, adr.NewCorpus(nil)); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
+			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, mustCorpus(nil)); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
 				t.Fatalf("site %d: error = %v, want the enumeration fault", site, err)
 			}
 		})
@@ -120,7 +120,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	// carries them through verbatim (target validation rejects the shape later,
 	// so only this pass ever sees them).
 	withInputs := Target{Name: "three", SkillDir: ".three/skills", Outputs: []TargetOutput{{Path: "declared-inputs", TemplateID: "target.tmpl", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: ".awf/extension.json", Role: ArtifactProtocolDescriptor}}}}}
-	parsedADRs := adr.NewCorpus([]adr.ADR{{Number: "0001", Filename: "0001-real.md"}})
+	parsedADRs := mustCorpus([]adr.ADR{{Number: "0001", Filename: "0001-real.md"}})
 	decls, err := BuildOutputDeclarations(cfg, cat, []Target{target, other, withInputs}, read, parsedADRs)
 	if err != nil {
 		t.Fatal(err)
@@ -139,23 +139,23 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 		body string
 	}{{memoryProjectReader{".awf/agents-doc.yaml": []byte("local: [bad")}, "prefix: p\n"}, {memoryProjectReader{".awf/docs/enabled.yaml": []byte("local: [bad")}, "prefix: p\ndocs: [enabled]\n"}} {
 		badCfg, _ := config.ParseTree(".awf", []byte(tc.body), configReaderAdapter{tc.read})
-		if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, tc.read, adr.NewCorpus(nil)); err == nil {
+		if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, tc.read, mustCorpus(nil)); err == nil {
 			t.Fatal("malformed document declaration accepted")
 		}
 	}
 	badSkillRead := memoryProjectReader{".awf/skills/bad.yaml": []byte("local: [bad")}
 	badSkillCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nskills: [bad]\n"), configReaderAdapter{badSkillRead})
-	if _, err := BuildOutputDeclarations(badSkillCfg, cat, []Target{target}, badSkillRead, adr.NewCorpus(nil)); err == nil {
+	if _, err := BuildOutputDeclarations(badSkillCfg, cat, []Target{target}, badSkillRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed skill declaration accepted")
 	}
 	badRead := memoryProjectReader{".awf/agents/bad.yaml": []byte("local: [bad")}
 	badCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nagents: [bad]\n"), configReaderAdapter{badRead})
-	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, adr.NewCorpus(nil)); err == nil {
+	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed agent declaration accepted")
 	}
 	badDomainRead := memoryProjectReader{".awf/domains/d.yaml": []byte("paths: [bad")}
 	badDomainCfg, _ := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter{badDomainRead})
-	if _, err := BuildOutputDeclarations(badDomainCfg, cat, []Target{target}, badDomainRead, adr.NewCorpus(nil)); err == nil {
+	if _, err := BuildOutputDeclarations(badDomainCfg, cat, []Target{target}, badDomainRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed domain declaration accepted")
 	}
 	if !byPath[".one/skills/p-local/SKILL.md"].Reservation || !reflect.DeepEqual(byPath["shared"].Declarers, []string{"one", "two"}) {
@@ -249,7 +249,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 }
 
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\n"+debuggingVars+"skills: [debugging, exploring]\nagents: [explorer]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"skills: [debugging, exploring]\nagents: [explorer]\n", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})
@@ -326,3 +326,13 @@ func (r configReaderAdapter) ReadFile(p string) ([]byte, bool) {
 	return r.memoryProjectReader.ReadFile(".awf/" + p)
 }
 func (r configReaderAdapter) Paths(prefix string) []string { return nil }
+
+// mustCorpus builds a corpus from fixture records that carry no duplicate
+// identity, so the construction error the seam returns cannot occur here.
+func mustCorpus(records []adr.ADR) adr.Corpus {
+	c, err := adr.NewCorpus(records)
+	if err != nil { // coverage-ignore: fixture records are duplicate-free by construction
+		panic(err)
+	}
+	return c
+}

@@ -81,6 +81,11 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
+		Path: "integrationBranch", Type: "string", Default: "none: required; the schema migration writes integrationBranch: main",
+		Description:  "The branch effort work integrates into. `awf new adr` scaffolds a numbered decision record on this branch and a pending slug-identified one anywhere else, and the check refuses a pending record while the checkout is positively identified as being on it. Must be non-empty and free of whitespace, must not start with `-`; slashes are legal, so `release/1.0` is accepted. There is no in-code default, and audit range resolution never reads it.",
+		Availability: "Always.",
+	},
+	{
 		Path: "docsDir", Type: "string", Default: "docs",
 		Description:  "Root directory for rendered documentation: managed docs render to `<docsDir>/<name>.md`, decisions to `<docsDir>/decisions/`, plans to `<docsDir>/plans/`, domain docs to `<docsDir>/domains/`. Relative, without `..`.",
 		Availability: "Always.",
@@ -222,7 +227,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "hooks.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
-		Description:  "Renders the three inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push). awf never activates hooks or touches git config. Wiring the payloads into your hook setup is yours.",
+		Description:  "Renders the four inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push, pre-merge-commit). awf never activates hooks or touches git config. Wiring the payloads into your hook setup is yours.",
 		Availability: "Always.",
 	},
 	{

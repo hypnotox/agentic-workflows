@@ -100,14 +100,14 @@ func TestCheckSubcommandAfterFlag(t *testing.T) {
 	// lock that satisfies it for the handler's diagnostic to be the one reached.
 	lock := &manifest.Lock{
 		AWFVersion: project.Version, SchemaVersion: migrate.Current(),
-		Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{},
+		Files: map[string]manifest.Entry{},
 	}
 	b, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
 	root := stagedCheckProject(t, map[string]string{
-		".awf/config.yaml": "prefix: example\nskills: [tdd]\nagents: []\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n",
 		".awf/awf.lock":    string(b),
 	}, nil)
 	var out, errb bytes.Buffer
@@ -158,7 +158,7 @@ func aheadSchemaGitProject(t *testing.T) string {
 		t.Fatal(err)
 	}
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: ex\n",
+		".awf/config.yaml": "prefix: ex\nintegrationBranch: main\n",
 		".awf/awf.lock":    string(b),
 	})
 	gitfixture.Commit(t, repo, "head", nil)
@@ -204,10 +204,6 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 		if attested {
 			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}}
-		} else {
-			lock.ADRFormatV1From = 1
-			lock.ADRFormatV2From = 1
-			lock.LegacyADRGaps = []int{}
 		}
 		b, err := lock.Marshal()
 		if err != nil {
@@ -216,7 +212,7 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 		return string(b)
 	}
 	const journal = `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`
-	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+	configText := "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"
 
 	// guarded builds a git-backed project in the named guarded state.
 	guarded := func(t *testing.T, journaled bool) string {
@@ -339,7 +335,7 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		// A data value spelling the no-value token makes the in-memory re-render
 		// fail, so p.Check() returns an error rather than a drift list.
 		root := t.TempDir()
-		testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n")
+		testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n")
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 			"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 		if err := runCheckDrift(ctx, root, io.Discard); err == nil {

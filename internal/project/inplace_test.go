@@ -14,7 +14,7 @@ import (
 // and awf's next registered section pointer, verbatim (internal blank lines kept),
 // trimming only the awf-owned leading/trailing framing.
 func TestReadBackInPlaceBody(t *testing.T) {
-	// invariant: rendering/inplace-and-placeholders:in-place-readback (TestReadBackInPlaceBody)
+	// invariant: rendering/inplace-and-placeholders:in-place-readback (exact interior, internal blank preserved)
 	t.Run("exact interior, internal blank preserved", func(t *testing.T) {
 		out := "head\n" +
 			"<!-- awf:edit-in-place body: your edits -->\n" +
@@ -44,7 +44,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 		}
 	})
 
-	// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (TestReadBackInPlaceBody)
+	// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (leading and trailing blank framing trimmed)
 	t.Run("leading and trailing blank framing trimmed", func(t *testing.T) {
 		out := "<!-- awf:edit-in-place body: x -->\n\n \nCONTENT\n\n\n<!-- awf:edit next: d -->\ntail\n"
 		got, _ := readBackInPlaceBody(out, "body", []string{"body", "next"}, render.HTMLComment)

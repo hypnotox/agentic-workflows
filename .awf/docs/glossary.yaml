@@ -154,3 +154,36 @@ data:
     - term: single home
       meaning: "A policy or mechanism consumed from more than one package has exactly one implementation, in the package that owns the concern. A second is a defect, not a variant, and is never forked to avoid an uncovered branch."
       domains: [code-design]
+    - term: actionable outcome protocol
+      meaning: "A closed result model that states observed state, records which retry-sensitive axes changed, and gives ordered executable remedies. It carries a cause exactly when observation itself failed."
+      domains: [code-design]
+    - term: grab-bag home
+      meaning: "A production package or file named for a topical pile rather than one owned concern, such as util, common, helpers, or misc. New production code and deliberate conversions may not create one."
+      domains: [code-design]
+    - term: global test seam
+      meaning: "A package-level variable reassigned by tests. New seams of this form are banned; existing census entries remain bounded conversion candidates until constructor or parameter injection replaces them."
+      domains: [code-design]
+    - term: export earns its consumer
+      meaning: "A new or deliberately converted exported symbol ships with an outside-package production consumer in the same transaction. Narrow documented exceptions cover test exports, composition boundaries, and error identities."
+      domains: [code-design]
+    - term: routine checkpoint
+      meaning: "The autonomous boundary that validates effort ownership, updates its memory, classifies whether user attention is required, then raises a check-in or continues with a continuity notice."
+      domains: [rendering]
+    - term: check-in
+      meaning: "A deliberate stop that names the issue, options, recommendation, and blocked next action, then waits for the user. Distinct from a continuity notice and from mandatory design approval."
+      domains: [rendering]
+    - term: continuity notice
+      meaning: "A routine checkpoint's informational one-line summary of the completed phase and immediate next action. It is never an intervention point and does not stop autonomous continuation."
+      domains: [rendering]
+    - term: memory-backed effort
+      meaning: "Retired term for split effort ownership. Every current effort owns its memory file; a minimal simple fix has no effort, and standalone memory does not exist."
+      domains: [tooling]
+    - term: pending ADR
+      meaning: "A full decision record identified by a retained slug before integration assigns its number. It is reviewable and implementable while pending; the integration branch refuses it until numbering runs."
+      domains: [adr-system]
+    - term: integration branch
+      meaning: "The explicitly configured branch onto which finished work integrates. ADR authoring there allocates a number immediately; authoring elsewhere produces a pending slug record numbered during integration."
+      domains: [config, adr-system]
+    - term: retrospective
+      meaning: "The terminal workflow step after settled review and managed-topology removal: reflect on the work, record durable lessons, promote recurring findings toward deterministic checks, and finish the effort last."
+      domains: [rendering]

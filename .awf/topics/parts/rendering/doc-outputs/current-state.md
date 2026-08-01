@@ -42,13 +42,13 @@ Backing: test
 
 check fails a pitfall entry whose domains list names a domain not configured in the project; an entry with no domains is valid.
 Origin: ADR-0148
-Revised-by: ADR-0198
+Revised-by: ADR-0207
 Backing: test
 
 ### `invariant: glossary-domains-resolved`
 
 check fails a glossary record whose domains list names a domain not configured in the project; a record with no domains is valid.
-Origin: ADR-0198
+Origin: ADR-0207
 Backing: test
 
 ### `invariant: skill-ref-dead-fails`

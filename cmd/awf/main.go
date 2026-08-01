@@ -220,8 +220,6 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 			return errors.New("no current-state upgrade journal to recover")
 		}
 		return nil
-	case manifest.AuthorityPreTracking:
-		return errors.New("pre-tracking authority: use the bridge release to attest before continuing")
 	default: // coverage-ignore: AuthorityState returns only the closed enum values
 		return errors.New("invalid authority: restore .awf/awf.lock from version control")
 	}

@@ -1,16 +1,16 @@
 ---
 date: 2026-07-31
-adrs: [0198]
+adrs: [0207]
 status: Proposed
 ---
 # Plan: Two-layer glossary with record-model terms
 
 ## Goal
 
-Implement ADR-0198: give the glossary two layers (a catalog-shipped awf vocabulary merged with
+Implement ADR-0207: give the glossary two layers (a catalog-shipped awf vocabulary merged with
 project-authored terms), move `data.terms` to a list of records, add a non-failing terseness
 advisory, and clean the corpus. Non-goals: contextual surfacing of terms through `awf context`,
-and any term-lookup command; both are left to their own decisions by ADR-0198.
+and any term-lookup command; both are left to their own decisions by ADR-0207.
 
 ## Architecture summary
 
@@ -29,7 +29,7 @@ The merge is owned by one helper, `mergedGlossaryRecords`, introduced in phase 3
 both `glossaryTransform` and phase 4's advisory producer, so the two-layer merge has a single
 home (`code-design/single-home`).
 
-ADR-0198 applies in four batches. Declaration order is enforced within a batch and not across
+ADR-0207 applies in four batches. Declaration order is enforced within a batch and not across
 batches (`internal/adr/history.go`, `parseAppliedOperations` declares its position cursor as a
 per-call local and runs once per Applied event), so each batch lists its own operations in
 ascending declaration index and no reordering of the ADR's State changes is required.
@@ -98,11 +98,11 @@ its replacement `context-surfaces-tiered-pitfalls` was retired by ADR-0134. A pi
   check fails a pitfall entry whose domains list names a domain not configured in the project; an entry with no domains is valid.
   ```
 
-  Add `Revised-by: ADR-0198` to the claim's metadata block, in canonical order (after `Origin:`,
+  Add `Revised-by: ADR-0207` to the claim's metadata block, in canonical order (after `Origin:`,
   before `Backing:`). The claim keeps `Backing: test` and its existing proof marker: the live
   property is unchanged, only the false trailing clause is removed.
 
-- [ ] **Task 1.3: Advance ADR-0198 to Implementing and record the first Applied batch in one
+- [ ] **Task 1.3: Advance ADR-0207 to Implementing and record the first Applied batch in one
   step.** These cannot be separated: `internal/adr/format.go` requires an Implementing status
   event to be immediately followed by an Applied event, so an intermediate state with Implementing
   alone is red and its error aborts validation before the digest comparison runs.
@@ -168,7 +168,7 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
   - Two records whose `term` values are case-insensitive duplicates fail naming both terms.
   - Rendering is unchanged in output: rows sorted case-insensitively by term, pipes escaped.
 
-  Forbidden: accepting the legacy map shape as a fallback. ADR-0198 decision 11 ships the break
+  Forbidden: accepting the legacy map shape as a fallback. ADR-0207 decision 11 ships the break
   deliberately, and a silent fallback would leave adopters on the old shape indefinitely.
 
 - [ ] **Task 2.2: Update the glossary tests.** In `internal/project/glossary_test.go`, convert the
@@ -249,21 +249,21 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
   case-insensitive duplicate term **within a single layer** fails the render, naming the sidecar
   path and the offending term.
 
-  The layer qualifier is load-bearing even though only one layer exists at phase 2. ADR-0198
+  The layer qualifier is load-bearing even though only one layer exists at phase 2. ADR-0207
   declares exactly one `update` for this claim and phase 2 spends it, so an unqualified body would
   freeze permanently false the moment task 3.3 makes a cross-layer duplicate the legal override.
   Moving the update into batch 3 instead is wrong: that would leave the map-shaped body live
   through the very commit that breaks it.
 
-  Add `Revised-by: ADR-0198` to both claims' metadata blocks in canonical order.
+  Add `Revised-by: ADR-0207` to both claims' metadata blocks in canonical order.
 
   In `.awf/topics/parts/rendering/doc-outputs/current-state.md`, add the new claim
-  `glossary-domains-resolved` with `Origin: ADR-0198`, `Backing: test`, and a body stating that
+  `glossary-domains-resolved` with `Origin: ADR-0207`, `Backing: test`, and a body stating that
   `check` fails a glossary record whose domains list names a domain not configured in the project,
   and that a record with no domains is valid. Place the proof marker
   `invariant: rendering/doc-outputs:glossary-domains-resolved` on the task 2.3 test.
 
-- [ ] **Task 2.9: Record the second Applied batch.** Append to ADR-0198's `## Status history`:
+- [ ] **Task 2.9: Record the second Applied batch.** Append to ADR-0207's `## Status history`:
 
   ```
   - 2026-07-31: Applied; operations: add `rendering/doc-outputs:glossary-domains-resolved`, update `rendering/guide-and-doc-templates:glossary-terms-sorted`, update `rendering/guide-and-doc-templates:glossary-terms-validated`
@@ -300,10 +300,10 @@ feat(rendering): model glossary terms as records
 
 - [ ] **Task 3.1: Define the terseness threshold constant.** In `internal/project/glossary.go`, add
   an unexported constant for the meaning-length threshold with the value `280` and a comment giving
-  ADR-0198 decision 9 as its ground. Its only consumer in this phase is task 3.5's portability test;
+  ADR-0207 decision 9 as its ground. Its only consumer in this phase is task 3.5's portability test;
   phase 4's advisory consumes the same constant. This is a deliberate exception to landing a
   definition with its first production consumer, recorded here so the phase does not read as a
-  doctrine violation: ADR-0198 decision 7 makes the portability bound a required phase-3
+  doctrine violation: ADR-0207 decision 7 makes the portability bound a required phase-3
   deliverable, and the gate permits it (the dead-code gate is function-scoped and the unused linter
   counts test usage). Do not add the advisory here.
 
@@ -346,7 +346,7 @@ feat(rendering): model glossary terms as records
 - [ ] **Task 3.4: Rewire the transform onto the helper.** `glossaryTransform` currently opens with
   `raw, ok := sc.Data["terms"]; if !ok { return sc, nil }`, which would short-circuit before any
   merge and leave a project that authors no terms rendering the empty-state pointer. Since
-  `internal/initspec` seeds no terms, that is exactly the fresh adoption ADR-0198 exists to fix.
+  `internal/initspec` seeds no terms, that is exactly the fresh adoption ADR-0207 exists to fix.
 
   Replace the guard: return early only when BOTH `terms` and `standardTerms` are absent. Otherwise
   call `mergedGlossaryRecords`, pass its result to `glossaryRows`, write the rows to
@@ -379,7 +379,7 @@ feat(rendering): model glossary terms as records
   Leave the two structural exemptions where they are; this adds a third mechanism member without
   migrating them.
 
-  Do NOT add a `configspec` descriptor for `standardTerms`; ADR-0198 decision 3 forbids publishing
+  Do NOT add a `configspec` descriptor for `standardTerms`; ADR-0207 decision 3 forbids publishing
   it as a key an adopter may write.
 
 - [ ] **Task 3.7: Correct the glossary document description.** In `internal/catalog/standard.go`,
@@ -399,12 +399,12 @@ feat(rendering): model glossary terms as records
   `.awf/topics/parts/config/configspec-and-reference/current-state.md`, extend the claim's final
   sentence so the exemption set names the third member: the domain template's injected pair, the
   generated config reference's injected collections, and the glossary's shipped standard
-  vocabulary. Add `Revised-by: ADR-0198` in canonical order.
+  vocabulary. Add `Revised-by: ADR-0207` in canonical order.
 
 - [ ] **Task 3.10: Add the two new guide-and-doc-templates claims.** In
   `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`, add:
 
-  `glossary-standard-vocabulary` (`Origin: ADR-0198`, `Backing: test`): the rendered glossary merges
+  `glossary-standard-vocabulary` (`Origin: ADR-0207`, `Backing: test`): the rendered glossary merges
   the catalog's shipped standard vocabulary with the project's authored terms into one sorted table,
   a project term overriding a shipped term of the same case-insensitive name.
 
@@ -413,12 +413,12 @@ feat(rendering): model glossary terms as records
   the same property in two claims of one topic, and task 3.5 specifies no test asserting a duplicate
   inside the shipped layer, so the restatement would be the unbacked half.
 
-  `glossary-standard-terms-portable` (`Origin: ADR-0198`, `Backing: test`): every shipped standard
+  `glossary-standard-terms-portable` (`Origin: ADR-0207`, `Backing: test`): every shipped standard
   term carries exactly a string term and a string meaning, with no domains key, no ADR reference,
   and no meaning exceeding the terseness threshold, so the shipped layer is portable into any
   adopter tree.
 
-- [ ] **Task 3.11: Record the third Applied batch.** Append to ADR-0198's `## Status history`:
+- [ ] **Task 3.11: Record the third Applied batch.** Append to ADR-0207's `## Status history`:
 
   ```
   - 2026-07-31: Applied; operations: add `rendering/guide-and-doc-templates:glossary-standard-vocabulary`, add `rendering/guide-and-doc-templates:glossary-standard-terms-portable`, update `config/configspec-and-reference:configspec-data-parity`
@@ -446,13 +446,13 @@ feat(rendering): model glossary terms as records
   term.
 
   Add a clause stating that a term here overrides a shipped standard term of the same
-  case-insensitive name. Per ADR-0198 decisions 2 and 3 that override is the *only* way to remove
+  case-insensitive name. Per ADR-0207 decisions 2 and 3 that override is the *only* way to remove
   an unwanted shipped term, so an adopter who does not read it has no mechanism at all.
 
   Name the shipped layer descriptively ("the standard vocabulary awf ships"), never as the
   `standardTerms` key. The residue check bans only ADR citations and repo identity, so naming the
   key would pass the gate and still publish, in the adopter's config reference, a key that
-  ADR-0198 decisions 3 and 4 make `unused-data` drift the moment an adopter authors it.
+  ADR-0207 decisions 3 and 4 make `unused-data` drift the moment an adopter authors it.
 
   Keep both free of ADR citations and repo identity (`configspec-description-residue`). Docs travel
   with the change: this belongs in the phase that ships the layer, not phase 4.
@@ -489,7 +489,7 @@ terminal transaction described in Notes.
     mirroring what `internal/project/render.go` does upstream of the transform. This step is
     load-bearing: `p.Cfg.Sidecar("docs", "glossary")` returns the on-disk file only and never
     carries `standardTerms`, so without the wrap the advisory would evaluate authored terms alone
-    and the shipped layer would escape the threshold entirely, defeating ADR-0198 decision 10 and
+    and the shipped layer would escape the threshold entirely, defeating ADR-0207 decision 10 and
     contradicting the claim body task 4.3 authors.
   - It obtains its records by calling `mergedGlossaryRecords` (task 3.3), never by re-merging.
   - It emits one note per term whose merged meaning exceeds the phase 3 threshold, naming the term
@@ -573,7 +573,7 @@ terminal transaction described in Notes.
   task 4.9 so a failing check cannot masquerade as a clean corpus: `./x check` exits zero AND its
   output contains no glossary terseness note.
 
-- [ ] **Task 4.7: Leave ADR-0198 at Implementing.** Another deliberate non-action. Do not append an
+- [ ] **Task 4.7: Leave ADR-0207 at Implementing.** Another deliberate non-action. Do not append an
   Applied event and do not touch the frontmatter status. After phase 3 the ADR carries seven of its
   nine operations applied, which keeps `Implementing` legal (that status requires at least one
   applied and at least one remaining). The final batch and the flip land in the terminal
@@ -600,7 +600,7 @@ feat(rendering): add the terseness advisory and clean the glossary
 
 - `./x render && ./x check` exits zero reporting `awf check: clean`, with no glossary advisory note.
 - `./x gate` passes, including the 100% statement coverage floor and the dead-code gate.
-- `./awf check invariants` resolves every ADR-0198 claim to its proof marker.
+- `./awf check invariants` resolves every ADR-0207 claim to its proof marker.
 - The shipped set in `internal/catalog/standard.go` contains exactly the fifteen terms task 3.2
   names, no more and no fewer.
 - `git diff --stat` over `examples/sundial/docs/glossary.md` between the phase 2 and phase 3 commits
@@ -609,13 +609,13 @@ feat(rendering): add the terseness advisory and clean the glossary
 - `docs/config-reference.md` documents `terms` in its record shape and does not list
   `standardTerms` as an adopter-settable key.
 - `docs/glossary.md` defines no term twice: the prepend part and the merged table do not overlap.
-- At the end of phase 4, ADR-0198 is at `status: Implementing` with three Applied events covering
+- At the end of phase 4, ADR-0207 is at `status: Implementing` with three Applied events covering
   seven of its nine operations. After the terminal transaction it is at `status: Implemented` with
   four Applied events whose operations union to exactly its nine, no operation applied twice.
 
 ## Notes
 
-- Contextual surfacing of glossary terms is out of scope by ADR-0198. The `domains` assigned in
+- Contextual surfacing of glossary terms is out of scope by ADR-0207. The `domains` assigned in
   task 4.6 are the data that decision will consume; nothing reads them beyond the task 2.3 drift
   check until then. That later decision should carry pitfall entries too, whose surfacing is
   equally absent today.
@@ -624,7 +624,7 @@ feat(rendering): add the terseness advisory and clean the glossary
 - The corpus rewrite in task 4.6 is the largest single work item in this plan and is judgement work,
   not mechanical: it is deliberately separated from the phase 2 encoding change so each is
   reviewable on its own terms.
-- **Deviation, out of plan.** ADR-0198 decision 13 enumerates four surfaces carrying the false
+- **Deviation, out of plan.** ADR-0207 decision 13 enumerates four surfaces carrying the false
   pitfall-surfacing statement. Execution found a fifth: `pitfallEntry`'s doc comment in
   `internal/project/pitfalls.go`, which also named `ContextFor` as a consumer that reads no pitfall
   entries (the symbol is now `ContextForOptions`, and nothing under `internal/contextq` or
@@ -632,19 +632,19 @@ feat(rendering): add the terseness advisory and clean the glossary
   phase 2 transaction, because it is a phase 1 concern rather than a glossary one.
 - **Record, within task 4.6's authorization.** The corpus rewrite dropped five entries: `check-in`,
   `continuity notice`, `retrospective`, and `routine checkpoint`, each now defined at least as well
-  by the shipped standard vocabulary, plus `memory-backed effort` per ADR-0198 decision 12. Seven
+  by the shipped standard vocabulary, plus `memory-backed effort` per ADR-0207 decision 12. Seven
   further project terms deliberately survive as overrides of shipped ones, because each carries
   repo-specific detail the generic shipped wording does not.
 - **Terminal transaction, owned by `awf-reviewing-impl` after terminal review settles.** It is one
   commit carrying four things that cannot be separated:
 
   1. `glossary-terseness-advisory` in `.awf/topics/parts/rendering/doc-outputs/current-state.md`
-     (`Origin: ADR-0198`, `Backing: test`): the advisory reports one note per glossary term whose
+     (`Origin: ADR-0207`, `Backing: test`): the advisory reports one note per glossary term whose
      meaning exceeds the threshold, over the merged shipped-and-authored set. Its proof marker
      `invariant: rendering/doc-outputs:glossary-terseness-advisory` is added here, on the task 4.1
      producer test `TestGlossaryTersenessNotes` in `internal/project/notes_test.go`.
   2. `terseness-advisory-nonfailing` in `.awf/topics/parts/tooling/cli/current-state.md`
-     (`Origin: ADR-0198`, `Backing: test`), worded to match `completeness-advisory-nonfailing` and
+     (`Origin: ADR-0207`, `Backing: test`), worded to match `completeness-advisory-nonfailing` and
      `stub-advisory-nonfailing`: the glossary terseness notes `awf check` prints are informational
      only and never change the command's exit code. Its proof marker
      `invariant: tooling/cli:terseness-advisory-nonfailing` is added here, on the task 4.2 test

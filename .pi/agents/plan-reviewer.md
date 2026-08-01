@@ -114,6 +114,15 @@ Apply all lenses to every plan:
 **presentation-ownership-authority**: when a plan moves or adds the rendering of a result model, consult code-design/presentation-ownership and flag a task that places the rendering outside the package owning the model or crosses a package boundary with a loosely-typed map
 
 
+**outcome-modeling-authority**: when a plan changes how an outcome is surfaced, matched, or asserted, consult code-design/outcome-modeling and flag a task that branches on message substrings, uses a shallow os.Is* predicate, adds an error identity without naming its branching consumer, or shapes a repository-state refusal outside the actionable outcome protocol
+
+
+**package-composition-authority**: when a plan adds a package or exported surface, consult code-design/package-composition and flag a task that creates a package without a one-sentence ownership statement, names a grab-bag home, exports a symbol without naming its outside-package production consumer, or leaves a new exported declaration undocumented
+
+
+**test-design-authority**: when a plan shapes tests or test seams, consult code-design/test-design and flag a task that introduces an assertion library or mints a new package-level swap variable instead of constructor or parameter injection
+
+
 **quoted-claim-body-quantifies-verified-reality**: a plan task that quotes a claim body verbatim states a future truth the executor will land unexamined: read each universal in the quoted sentence ("every consumer", "alone", "derived by the operation") against the repository at plan time and against what the plan's own tasks actually make true, and flag any quantifier that outruns both. The decompose plan shipped three such bodies in one plan - a module-wide kind-dispatch universal falsified by in-core sites its tasks never touched, a two-table derivation claim when the tasks sanctioned four files, and a derive-and-thread lifecycle asserted for a value its own design fixed at construction - each caught only at execution review, each forcing a phase-commit rewrite because applied claim prose cannot change without its operation
 
 

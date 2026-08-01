@@ -15,7 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-const topicProjectConfig = "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\n"
+const topicProjectConfig = "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [rendering]\n"
 
 func writeProjectTopic(t *testing.T, root, slug, title, applies string) {
 	t.Helper()
@@ -381,7 +381,7 @@ func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
 		".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
 		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove legacy claim", "- remove `"+claimID+"`"),
 	})
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(lockFile(p.Root)); err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +433,7 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 				files[path] = content
 			}
 			p := csRepo(t, topicProjectConfig, files)
-			lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
+			lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
 			if err := lock.Save(lockFile(p.Root)); err != nil {
 				t.Fatal(err)
 			}
@@ -445,7 +445,7 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 }
 
 func TestQueryTopicLoadErrors(t *testing.T) {
-	badADRRoot := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: []\n", nil)
+	badADRRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: []\n", nil)
 	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
 	p, err := Open(testContext(t), badADRRoot)
 	if err != nil {
@@ -455,7 +455,7 @@ func TestQueryTopicLoadErrors(t *testing.T) {
 		t.Fatal("QueryTopic accepted malformed ADR corpus")
 	}
 
-	badTopicRoot := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
+	badTopicRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
 	writeADR(t, badTopicRoot, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule")))
 	testsupport.WriteFile(t, filepath.Join(badTopicRoot, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Contracts\n")
 	p, err = Open(testContext(t), badTopicRoot)
@@ -469,6 +469,7 @@ func TestQueryTopicLoadErrors(t *testing.T) {
 
 func TestTopicSubstrateEndToEnd(t *testing.T) {
 	root := scaffoldFiles(t, `prefix: example
+integrationBranch: main
 skills: []
 agents: []
 domains: [schedule]
@@ -512,7 +513,7 @@ Origin: ADR-0001
 Backing: test
 `)
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// state: schedule/contracts:deterministic-order\n")
-	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule_test.go"), "package schedule\n// invariant: schedule/contracts:stable-output\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule_test.go"), "package schedule\n// invariant: schedule/contracts:stable-output (TestStableOutput)\nfunc TestStableOutput() {}\n")
 
 	p, err = Open(testContext(t), root)
 	if err != nil {

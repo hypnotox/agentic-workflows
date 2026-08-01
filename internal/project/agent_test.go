@@ -83,7 +83,7 @@ func TestValidateTOMLAgentRejectsInvalidProfiles(t *testing.T) {
 }
 
 func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
-	root := scaffold(t, "prefix: example\nagents:\n  - code-reviewer\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nagents:\n  - code-reviewer\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

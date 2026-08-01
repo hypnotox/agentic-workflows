@@ -91,7 +91,7 @@ func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 
 func TestLoaderOpenResolvesTargetsBeforeResidentRoot(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\ntargets: [unknown]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [unknown]\n")
 	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(context.Context, string) string {
 		t.Fatal("resident resolver called before target resolution")
 		return ""
@@ -105,7 +105,7 @@ func TestLoaderOpenResolvesTargetsBeforeResidentRoot(t *testing.T) {
 // invariant: code-design/dependency-composition:sync-project-loader-wiring (TestLoaderOpenUsesSemanticResidentRoot)
 func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\ntargets: [claude]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n")
 	resident := filepath.Join(root, "resident")
 	var resolved string
 	injectedStandard := catalog.Standard
@@ -133,7 +133,7 @@ func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
 
 func TestLoaderOpenReturnsEffectiveCatalogError(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [local]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "local.yaml"), "local: [bad\n")
 	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
 	_, err := loader.Open(testContext(t), root)
@@ -144,7 +144,7 @@ func TestLoaderOpenReturnsEffectiveCatalogError(t *testing.T) {
 
 func TestLoaderOpenUsesInjectedStandardCatalog(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	delete(injectedValue.Skills, "tdd")
@@ -162,7 +162,7 @@ func TestLoaderOpenUsesInjectedStandardCatalog(t *testing.T) {
 // invariant: code-design/dependency-composition:sync-project-loader-wiring (TestLoaderOpenValidatesInjectedStandardWorkflowProfiles)
 func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	broken := injectedValue.Skills["tdd"]
@@ -177,7 +177,7 @@ func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
 
 func TestLoaderOpenReturnsConformanceError(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [unknown]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [unknown]\nagents: []\n")
 	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
 	_, err := loader.Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "unknown") {
@@ -191,7 +191,7 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nskills: []\nagents: []\n")
+	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -203,7 +203,7 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 
 func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	injectedValue.Agents = maps.Clone(catalog.Standard.Agents)

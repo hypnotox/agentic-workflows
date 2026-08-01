@@ -3,7 +3,7 @@ format: current-state-v2
 status: Implementing
 date: 2026-07-31
 ---
-# ADR-0198: Two-layer glossary with record-model terms
+# ADR-0207: Two-layer glossary with record-model terms
 
 ## Context
 

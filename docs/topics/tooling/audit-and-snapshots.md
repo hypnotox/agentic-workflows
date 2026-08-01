@@ -3,9 +3,9 @@
 
 Workflow-conformance auditing and the immutable git snapshot layer.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/severity/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/severity/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
 
-These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. The claims below capture the current audit and snapshot contracts.
+These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. From schema generation 31, audit replays the shared cleaned-message authorization parser and exact incoming-parent qualification for committed merges, while pre-epoch merges and non-merges remain outside that replay. The claims below capture the current audit and snapshot contracts.
 
 ## Claims
 
@@ -81,4 +81,10 @@ Backing: test
 
 The repo-local audit tool exits non-zero only when it reports at least one error finding. An infrastructure failure such as a failing merge-base lookup produces an error finding and exit code 1, while warning-only and clean runs exit zero.
 Origin: ADR-0073
+Backing: test
+
+### `invariant: stale-merge-trailer-replay`
+
+For a merge whose result tree is at or after the intrinsic-format schema generation, `awf audit` derives the merge-time current authoring format from the shared activation registry and replays the shared cleaned-message parser and incoming-parent qualification against the result, first parent, and every incoming parent. It reports an Error for malformed reserved trailers or an older-format import lacking its complete authorization pair, while pre-epoch merges, historical non-merges, valid or redundant pairs, and true fast-forwards produce no stale-merge authorization finding.
+Origin: ADR-0206
 Backing: test

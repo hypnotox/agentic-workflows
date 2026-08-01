@@ -49,8 +49,8 @@ func Verify(ctx context.Context, root string, att *manifest.BridgeAttestation) e
 // FinalUpgrade consumes a sealed bridge attestation. It verifies only the sealed
 // facts, then journals the cutover output plan: the single deletion of the
 // migration approval file and the lock replacement last, which drops the
-// consumed attestation and promotes the sealed cutoff/gaps into permanent lock
-// fields. The lock replacement is the transaction commit point; a pre-commit
+// consumed attestation and discards its historical routing payload. The lock
+// replacement is the transaction commit point; a pre-commit
 // failure rolls back, a post-commit failure leaves a recoverable journal.
 func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock, log io.Writer) error {
 	state, err := lock.AuthorityState()
@@ -64,7 +64,7 @@ func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock, log io.
 	if err := Verify(ctx, root, att); err != nil {
 		return err
 	}
-	ops, err := cutoverOperations(root, lock, att)
+	ops, err := cutoverOperations(root, lock)
 	if err != nil { // coverage-ignore: Verify already required the approval file present via the sealed digest, so cutoverOperations' only reachable error branch cannot fire here
 		return err
 	}
@@ -136,14 +136,12 @@ func quarantinePath(resident string) string {
 
 // cutoverOperations builds the two-operation cutover plan: delete the sealed
 // migration approval file, then replace the lock last. The replacement lock
-// drops the attestation and stores the sealed cutoff/gaps permanently. The
-// approval file must be present so the transaction journals exactly one
+// drops the attestation and its historical routing payload. The approval file
+// must be present so the transaction journals exactly one
 // deletion of it.
-func cutoverOperations(root string, lock *manifest.Lock, att *manifest.BridgeAttestation) ([]Operation, error) {
+func cutoverOperations(root string, lock *manifest.Lock) ([]Operation, error) {
 	final := *lock
 	final.BridgeAttestation = nil
-	final.ADRFormatV1From = att.ADRFormatV1From
-	final.LegacyADRGaps = att.LegacyADRGaps
 	finalBytes, err := final.Marshal()
 	if err != nil { // coverage-ignore: the lock marshals cleanly; see manifest.Marshal
 		return nil, err

@@ -1,11 +1,123 @@
 package adr_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+// invariant: adr-system/adr-lifecycle:intrinsic-format-routing (TestParseRecordRoutesByIntrinsicFormat)
+func TestParseRecordRoutesByIntrinsicFormat(t *testing.T) {
+	_, body, found := strings.Cut(adrTemplateFixture, "---\n")
+	if !found {
+		t.Fatal("fixture frontmatter delimiter missing")
+	}
+	v1 := strings.Replace("---\n"+body, "YYYY-MM-DD", "2026-07-21", 2)
+	v1 = strings.Replace(v1, "ADR-NNNN", "ADR-0005", 1)
+	v2 := strings.Replace(v1, adr.V1FormatMarker, adr.V2FormatMarker, 1)
+	legacy := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Legacy"))
+	for _, tc := range []struct {
+		name, file, doc string
+		want            adr.Format
+	}{
+		{"markerless before former cutoffs", "0001-legacy.md", legacy, adr.Legacy},
+		{"V1 after former cutoffs", "9999-v1.md", strings.Replace(v1, "ADR-0005", "ADR-9999", 1), adr.CurrentStateV1},
+		{"V2 before former cutoffs", "0001-v2.md", strings.Replace(v2, "ADR-0005", "ADR-0001", 1), adr.CurrentStateV2},
+		{"V3 after former cutoffs", "9999-v3.md", buildV3("9999", "v3"), adr.CurrentStateV3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, err := adr.ParseRecord(tc.file, []byte(tc.doc))
+			if err != nil || a.Format != tc.want {
+				t.Fatalf("record=%#v err=%v", a, err)
+			}
+		})
+	}
+	if pending, err := adr.ParseRecord("pending.md", []byte(pendingFixture("pending"))); err != nil || pending.Format != adr.CurrentFormat() {
+		t.Fatalf("pending current format = %#v err=%v", pending, err)
+	}
+	for _, tc := range []struct{ name, doc string }{
+		{"unknown", strings.Replace(v1, adr.V1FormatMarker, "current-state-v99", 1)},
+		{"duplicate", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: "+adr.V1FormatMarker+"\nformat: "+adr.V1FormatMarker, 1)},
+		{"malformed YAML", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: [", 1)},
+		{"unterminated frontmatter", "---\nformat: current-state-v1\nstatus: Proposed\n"},
+		{"non-mapping frontmatter", "---\nscalar\n---\n# ADR-0001: Invalid\n"},
+		{"non-scalar marker", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: []", 1)},
+		{"empty", strings.Replace(v1, "format: "+adr.V1FormatMarker, "format: ", 1)},
+		{"strict V3 frontmatter", strings.Replace(buildV3("0001", "invalid"), "status: Proposed", "extra: nope\nstatus: Proposed", 1)},
+		{"invalid legacy frontmatter value", "---\nstatus: Accepted\nrelated: nope\n---\n# ADR-0001: Invalid\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := adr.ParseRecord("0001-invalid.md", []byte(tc.doc)); err == nil {
+				t.Fatal("expected routing refusal")
+			}
+		})
+	}
+	for _, tc := range []struct{ name, doc string }{
+		{"markerless", legacy},
+		{"V1", v1},
+		{"V2", v2},
+	} {
+		t.Run("pending "+tc.name, func(t *testing.T) {
+			if _, err := adr.ParseRecord("pending.md", []byte(tc.doc)); err == nil {
+				t.Fatal("expected pending refusal")
+			}
+		})
+	}
+
+	dir := t.TempDir()
+	writeTemplateFixture(t, dir)
+	swapNow(t, fixedNow)
+	for _, tc := range []struct {
+		name     string
+		scaffold func(string, string) (string, error)
+	}{
+		{"numbered", adr.NewFile},
+		{"pending", adr.NewPendingFile},
+	} {
+		t.Run("registry scaffold "+tc.name, func(t *testing.T) {
+			path, err := tc.scaffold(dir, "Registry "+tc.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(data), "format: "+adr.CurrentFormatMarker()) {
+				t.Fatalf("scaffold marker:\n%s", data)
+			}
+			record, err := adr.ParseRecord(filepath.Base(path), data)
+			if err != nil || record.Format != adr.CurrentFormat() {
+				t.Fatalf("scaffold record = %#v err=%v", record, err)
+			}
+		})
+	}
+}
+
+func TestFormatAtGeneration(t *testing.T) {
+	cases := []struct {
+		generation int
+		want       adr.Format
+		ok         bool
+	}{
+		{13, adr.Legacy, false},
+		{14, adr.CurrentStateV1, true},
+		{15, adr.CurrentStateV2, true},
+		{28, adr.CurrentStateV2, true},
+		{29, adr.CurrentStateV3, true},
+		{31, adr.CurrentStateV3, true},
+	}
+	for _, tc := range cases {
+		got, ok := adr.FormatAtGeneration(tc.generation)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("FormatAtGeneration(%d) = %v, %t; want %v, %t", tc.generation, got, ok, tc.want, tc.ok)
+		}
+	}
+}
 
 // build assembles a current-state-v1 ADR document from its varying parts. The
 // Context, Consequences, and Alternatives Considered bodies are fixed; only the

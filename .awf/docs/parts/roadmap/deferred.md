@@ -1,3 +1,61 @@
+## Historical stale-branch seal-crossing incident
+
+The former cutoff-based integration incident is superseded by intrinsic ADR formats and stale-merge authorization. Schema generation 31 retires permanent format cutoffs; a real merge may instead import an exact older-format incoming-parent ADR when its final message has the shared authorization trailer pair. `awf audit` replays that authorization for committed schema-31-and-later merges. The historical account below is retained as the incident record that motivated the successor decision.
+
+Three separate enforcement rules refused a legal integration, and the 2026-08-01
+named-proof-markers integration had to relax all three inline to land. They needed one
+decision record covering the class, against the ADR-0202/0203/0204 lineage.
+
+The shape: an effort branch forked before schema generation 29 merges an integration
+branch already past it. ADR-0202's hand-rename path for a slugless record whose number
+was taken assumes a free number below the v3 cutoff, but the numbering was dense through
+0202 with the cutoff at 203 and `legacyAdrGaps` empty, so the record could only be
+renumbered INTO the v3 range. Living there forces the v3 encoding, and that retrofit is
+what the three rules refuse.
+
+What was relaxed. `validatePermanentLockTransition` gained an inherited-cutoff edge: the
+transition crosses generation 29 in one step, so the cutoff arrives from the other parent
+already computed against a corpus neither tree holds, and re-deriving it would lower it
+under records already sealed above it. `renumberAliases` keeps its before side
+slugless-only, exactly as ADR-0204 item 5 wrote it, and admits one further record on the
+after side: a NUMBERED record whose slug is new in the transition, which is what a record
+renumbered across the cutoff becomes when it takes the v3 encoding. Requiring a number is
+what keeps the opening shut, since a pending record can only ever be an addition. And the
+governed-format-change rule admits exactly a v2 record renumbered to a v3 one.
+
+A first attempt at that middle relaxation admitted any record whose slug was new on its own
+side, and terminal review found it accepted four transitions the rule had refused: a
+numbered record losing its number, a retained v3 slug changed at one number, a
+frozen-content amendment escaping through an unrelated pending twin, and a genuine deletion
+laundered into a rename. That is the strongest argument for writing the decision rather
+than leaving these three as inline relaxations.
+
+Two current-state sentences are FALSE as written until that decision lands, both authored
+by terminal records so neither can be corrected without one. `config/migrations-and-locks:
+adr-v2-cutoff-atomic-immutable` says the transition admits exactly two edges and that
+"Both edges require the new value to equal the corpus's computed next identity"; the
+inherited-cutoff edge is a third and derives nothing, taking the published value on trust.
+`adr-system/adr-lifecycle:renumber-digest-paired` is false in two independent clauses: it
+says "The digest step considers only a record carrying no slug", where it now also
+considers a numbered record whose slug is new in the transition, and it says the step
+"re-keys only where the two ends hold different numbers", which the code has never done
+since a slugged after end keys on its slug and the numbers are never compared. The second
+clause predates this work; the first sentence of `renumberAliases` carries the same
+inaccuracy. The neighbouring `adr-number-immutable` and `adr-slug-frontmatter-mandatory`
+were briefly falsified by a first, too-broad version of the pairing change and are true
+again under the shipped rule.
+
+What the decision should settle: whether these three belong together as one sanctioned
+"stale branch crosses the seal" transition or are three independent edges; whether the
+inherited cutoff can be verified against anything rather than taken on trust, which is
+the weakest of the three; and whether a fourth rule is waiting behind them for the next
+branch older than this one.
+
+The review that caught the first version is the argument for writing it soon. That version
+read correctly and silently accepted four transitions the rule had refused, including
+laundering a genuine deletion plus an unrelated pending addition into a rename, which is
+the fail-closed promise ADR-0204 item 4 makes explicitly.
+
 ## Pi and shared Agent Skills discovery
 
 Resolve Pi's collision between its `.pi/skills/` output and the shared
@@ -24,6 +82,7 @@ exercised it stays green. What is unresolved is the cost - a full run is slow
 and advisory-only today - and whether a scoped, gate-wired subset can be made
 fast and deterministic enough to block a commit. Worth an ADR if it can, since
 a proof marker that cannot fail is worse than no marker at all.
+
 ## The rationale site a token cannot address
 
 `docs/decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md`
@@ -196,14 +255,17 @@ floor, and false-positive risk on citations that do not amend. Worth its own
 focused effort, and the ADR-0188 amendable-lifecycle machinery may have changed
 the natural shape of the fix.
 
-## The test suite leaks temp homes on interrupted runs
+## Unmanaged Go `t.TempDir` directories survive abrupt process death
 
-An interrupted `go test` run orphans `awf-project-test-home*` directories in the system temp
-dir (13 stale ones found on 2026-07-31 while diagnosing a full 16G tmpfs; the sibling leak,
-the gate's mktemp coverage profile at ~45MB per interrupted run, was fixed structurally by
-ADR-0196's durable `coverage.out`). `t.TempDir` cannot clean up across a kill. Low priority:
-either a periodic cleanup note or naming the fixture dirs under one parent so a stale sweep
-is one `rm`.
+Managed TestMain homes are bounded below one recoverable root, but arbitrary Go `t.TempDir`
+directories cannot clean up across abrupt process death. The test-temp manager deliberately
+does not select them, so any broader cleanup policy needs a separate safety decision.
+
+## Remove Windows from release and cross-compile policy
+
+A future release-policy change should remove Windows from `.goreleaser.yaml` and the
+cross-compile gate. Test-temp management retains Windows compile compatibility now, but owns
+real behavior only on Linux and macOS; it must not approximate Windows ACL safety.
 
 ## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
 

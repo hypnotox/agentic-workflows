@@ -56,7 +56,8 @@ the local pre-tag rehearsal.
 
    All three must pass (`audit` is advisory but should be clean for a release). The audit
    range is required and has no default (ADR-0127): use the previous release tag as the base,
-   so the audit covers exactly the commits this release ships.
+   so the audit covers exactly the commits this release ships, including stale-ADR authorization
+   replay for schema-31-and-later merge commits.
 
 2. **Verify `project.Version` equals the target version and promote the changelog.** A
    schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already
@@ -148,7 +149,7 @@ Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later
   the prepared tree into a `bridgeAttestation` lock block; this release's plain `awf upgrade` then
   consumes that seal, verifying only the sealed HEAD and post-normalization tree digest, journaling the
   migration approval-file deletion and permanent lock at `.awf/current-state-upgrade.journal`, and
-  committing the cutover last with the ADR format cutoff and gaps promoted. It runs no project tests or
+  committing the cutover last while discarding the attestation's historical ADR routing payload. It runs no project tests or
   gate, and this binary consumes seals rather than producing them. If a transaction is interrupted,
   `awf upgrade --recover` rolls it back or cleans it up; if the journal is unusable, restore the working
   tree from Git and reinstall the bridge release before retrying.

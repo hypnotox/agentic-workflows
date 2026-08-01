@@ -19,7 +19,7 @@ import (
 // rendered file at rel.
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPolicyRoutesMisleadingPathsEndToEnd)
 func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -89,10 +89,10 @@ func configHashOf(t *testing.T, root, rel string) string {
 
 func TestTopicMaximumDriftIsLimitedToConsumingGuidance(t *testing.T) {
 	const unrelated = ".claude/skills/example-tdd/SKILL.md"
-	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 20\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 20\n")
 	beforeHash := configHashOf(t, root, unrelated)
 	beforeReference := renderedContentOf(t, root, "docs/config-reference.md")
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 21\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 21\n")
 	if after := configHashOf(t, root, unrelated); after != beforeHash {
 		t.Fatal("maxTopicsPerPath drifted unrelated skill guidance")
 	}
@@ -127,7 +127,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 		B = ".claude/skills/example-bugfix/SKILL.md"
 	)
 	cfg := func(pitfalls string) string {
-		return "prefix: example\n" + sprintfVars(pitfalls) + "skills:\n  - tdd\n  - bugfix\nagents: []\n"
+		return "prefix: example\nintegrationBranch: main\n" + sprintfVars(pitfalls) + "skills:\n  - tdd\n  - bugfix\nagents: []\n"
 	}
 	root := scaffoldFiles(t, cfg(""), map[string]string{
 		"skills/tdd.yaml":           "data:\n  testSurfaces:\n    - {name: One, location: a, kind: b}\n",
@@ -204,7 +204,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 // from disk.
 func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 	cfg := func(agents string) string {
-		return "prefix: example\nskills:\n  - tdd\nagents:" + agents + "\n"
+		return "prefix: example\nintegrationBranch: main\nskills:\n  - tdd\nagents:" + agents + "\n"
 	}
 	root := scaffold(t, cfg(" []"))
 	p, err := Open(testContext(t), root)
@@ -236,7 +236,7 @@ func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 // the repo root must be skipped, not deleted out-of-tree (and the ancestor
 // walk must terminate).
 func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	victim := filepath.Join(root, "..", "victim.txt")
 	testsupport.WriteFile(t, victim, "keep me\n")
 	p, err := Open(testContext(t), root)
@@ -270,7 +270,7 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 // the same orphan scan as per-artifact parts: a typo'd section or an unknown
 // kind must be flagged instead of silently never rendering.
 func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n", map[string]string{
 		"parts/workflow/typo-section.md": "stray\n",
 		"parts/nonsense/x.md":            "stray\n",
 		"parts/workflow/principles.md":   "## Principles\n\nLegit override.\n",
@@ -310,7 +310,7 @@ func sprintfVars(pitfalls string) string {
 
 // invariant: config/migrations-and-locks:schema-version-lock (TestSyncStampsSchemaVersion)
 func TestSyncStampsSchemaVersion(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -353,7 +353,7 @@ func chainClosureConfig(scope string) string {
 	sort.Strings(skills)
 	sort.Strings(agentList)
 	var b strings.Builder
-	b.WriteString("prefix: example\nvars: {}\nskills:\n")
+	b.WriteString("prefix: example\nintegrationBranch: main\nvars: {}\nskills:\n")
 	for _, s := range skills {
 		b.WriteString("  - " + s + "\n")
 	}
@@ -414,7 +414,7 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 // array changes (ADR-0046), mirroring the scopes fold above.
 func TestSkillsEditReflagsReferencingArtifact(t *testing.T) {
 	cfg := func(skills string) string {
-		return "prefix: example\nskills:" + skills + "\nagents: []\n"
+		return "prefix: example\nintegrationBranch: main\nskills:" + skills + "\nagents: []\n"
 	}
 	root := scaffold(t, cfg("\n  - tdd\n  - bugfix"))
 	h0 := configHashOf(t, root, "AGENTS.md")
@@ -433,7 +433,7 @@ func TestSkillsEditReflagsReferencingArtifact(t *testing.T) {
 // invariant: rendering/sync-and-drift:part-scopes-in-confighash (TestScopesEditReflagsPlaceholderPart)
 func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
+		return "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
@@ -558,7 +558,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 // TestScopesEditReflagsPlaceholderPart).
 func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	cfg := func(meaning string) string {
-		return "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
+		return "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n" +
 			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
 	}
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{

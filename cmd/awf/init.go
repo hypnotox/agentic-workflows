@@ -36,8 +36,8 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	_, lockStatErr := os.Stat(lockPath)
 	lockExists := lockStatErr == nil
 	if !configExists && !lockExists {
-		if _, _, err := adr.AdoptionBoundary(filepath.Join(root, "docs", "decisions")); err != nil {
-			return fmt.Errorf("seal first-adoption ADR authority: %w", err)
+		if _, err := adr.LoadCorpus(filepath.Join(root, "docs", "decisions")); err != nil {
+			return fmt.Errorf("validate first-adoption ADR corpus: %w", err)
 		}
 	}
 	answers := map[string]string{}

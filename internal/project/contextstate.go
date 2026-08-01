@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -60,7 +59,7 @@ func (p *Project) ContextState(ctx context.Context) (ContextState, error) {
 	if err != nil {
 		return ContextState{}, err
 	}
-	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, adr.NewCorpus(ws.Loaded.ADRs))
+	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
@@ -88,7 +87,7 @@ func StagedContextState(ctx context.Context, root string) (ContextState, error) 
 	if err != nil {
 		return ContextState{}, err
 	}
-	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, adr.NewCorpus(state.Loaded.ADRs))
+	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextState{}, err
 	}
@@ -114,8 +113,7 @@ func (p *Project) indexCurrentState(ctx context.Context) (indexState, error) {
 	if err != nil {
 		return indexState{}, err
 	}
-	boundaries, gaps := attestationBoundaries(lock)
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, boundaries, gaps)
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
 	if err != nil {
 		return indexState{}, err
 	}

@@ -17,7 +17,7 @@ import (
 func auditProject(t *testing.T) (gitfixture.Fixture, string) {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
 	// Sync writes the lock so Project.Audit's generated-path set is populated.
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)

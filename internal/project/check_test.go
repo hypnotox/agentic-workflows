@@ -1,6 +1,8 @@
 package project
 
 import (
+	"bytes"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -9,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -44,13 +47,13 @@ func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
 	return eff
 }
 
-const pitfallsCheckCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n"
+const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n"
 
-const commitSubjectCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
+const commitSubjectCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
 
 // A disabled pitfalls doc yields no drift and never reads the sidecar.
 func TestCheckPitfallsDisabled(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,11 +107,11 @@ func TestCheckPitfallsStructuralError(t *testing.T) {
 	}
 }
 
-const glossaryCheckCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: [rendering]\n"
+const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: [rendering]\n"
 
 // A disabled glossary doc is never read, so it can yield no drift.
 func TestCheckGlossaryDisabled(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +192,7 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 // member yields tag-vocabulary drift; a fully-conforming corpus yields none.
 // invariant: config/configuration:tag-vocabulary-governed (TestCheckTagVocabulary)
 func TestCheckTagVocabulary(t *testing.T) {
-	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n" +
+	cfg := "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n" +
 		"tags:\n  render-engine: the render engine\n  empty: \"\"\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: P\n      tags: [render-engine, ghost]\n      body: ok\n",
@@ -218,7 +221,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 
 // An empty/absent vocabulary makes the membership rule inert.
 func TestCheckTagVocabularyInert(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("anything"), testsupport.WithTitle("0001: A"),
@@ -237,7 +240,7 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 // proceeds past the ADR loop and pitfallTagEntries short-circuits to no entries;
 // a conforming ADR yields no drift.
 func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: the render engine\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: the render engine\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("rendering"), testsupport.WithTitle("0001: A"),
@@ -256,7 +259,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 // yields none. Unconditional (no vocabulary configured here).
 // invariant: adr-system/adr-lifecycle:adr-related-link-resolved (TestCheckADRRelatedLinks)
 func TestCheckADRRelatedLinks(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithRelated(1, 42), testsupport.WithTitle("0001: A"),
@@ -280,7 +283,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 // that only checks the simple case.
 // invariant: adr-system/adr-lifecycle:adr-related-ascending (TestCheckADRRelatedAscending)
 func TestCheckADRRelatedAscending(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	write := func(name, title string, related ...int) {
 		opts := []testsupport.ADROption{testsupport.WithDate("2026-07-13"),
 			testsupport.WithTitle(title), testsupport.WithBody("## Context\nx\n")}
@@ -347,7 +350,7 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 // sidecar (valid ADRs so ParseDir succeeds first; non-empty vocabulary so the
 // method proceeds past the len==0 guard) - reachable, tested not ignored.
 func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  rendering: x\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  rendering: x\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
@@ -364,7 +367,8 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 // TestCheckPlansValidatesFrontmatterAndLinks exercises checkPlans over a
 // docs/plans/ set: a plan linking a nonexistent ADR yields plan-adr-link drift,
 // a bad status: yields plan-frontmatter drift, a valid plan yields none, and a
-// frontmatter-less (grandfathered) plan is skipped.
+// frontmatter-less (grandfathered) plan is skipped. A slug entry resolves
+// against a pending record and drifts when it names none (ADR-0202 item 14).
 // invariant: adr-system/plan-artifacts:plan-frontmatter-validated (TestCheckPlansValidatesFrontmatterAndLinks)
 // invariant: adr-system/plan-artifacts:plan-adr-link-resolved (TestCheckPlansValidatesFrontmatterAndLinks)
 func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
@@ -381,9 +385,18 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	write := func(name, content string) {
 		testsupport.WriteFile(t, filepath.Join(root, "docs/plans", name), content)
 	}
+	// One pending record and one already-numbered record that retained its slug,
+	// so both slug resolution paths the claim names are exercised.
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-was-pending.md"),
+		strings.Replace(pendingADRFixture("was-pending"), "# ADR-was-pending:", "# ADR-0002:", 1))
+
 	write("2026-07-12-good.md", "---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Good\n")
 	write("2026-07-12-bad-link.md", "---\ndate: 2026-07-12\nadrs: [42]\nstatus: Proposed\n---\n# Plan: Bad Link\n")
 	write("2026-07-12-bad-status.md", "---\ndate: 2026-07-12\nadrs: [1]\nstatus: Draft\n---\n# Plan: Bad Status\n")
+	write("2026-07-12-slug-link.md", "---\ndate: 2026-07-12\nadrs: [still-pending]\nstatus: Proposed\n---\n# Plan: Slug Link\n")
+	write("2026-07-12-retained-slug-link.md", "---\ndate: 2026-07-12\nadrs: [was-pending]\nstatus: Proposed\n---\n# Plan: Retained Slug Link\n")
+	write("2026-07-12-bad-slug-link.md", "---\ndate: 2026-07-12\nadrs: [never-authored]\nstatus: Proposed\n---\n# Plan: Bad Slug Link\n")
 	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
 	drift, err := p.checkPlans(mustDeriveCorpus(t, p))
@@ -395,14 +408,170 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	for _, d := range drift {
 		got[d.Kind+"@"+filepath.Base(d.Path)] = d.Detail
 	}
-	if len(drift) != 2 {
-		t.Fatalf("expected exactly 2 drifts (bad-link, bad-status), got %d: %#v", len(drift), drift)
+	if len(drift) != 3 {
+		t.Fatalf("expected exactly 3 drifts (bad-link, bad-slug-link, bad-status), got %d: %#v", len(drift), drift)
 	}
 	if d, ok := got["plan-adr-link@2026-07-12-bad-link.md"]; !ok || d != "ADR-0042" {
 		t.Errorf("expected plan-adr-link ADR-0042 drift, got %#v", drift)
 	}
+	if d, ok := got["plan-adr-link@2026-07-12-bad-slug-link.md"]; !ok || d != "ADR-never-authored" {
+		t.Errorf("expected plan-adr-link ADR-never-authored drift, got %#v", drift)
+	}
+	if _, ok := got["plan-adr-link@2026-07-12-slug-link.md"]; ok {
+		t.Errorf("slug link to a pending record must resolve, got %#v", drift)
+	}
+	if _, ok := got["plan-adr-link@2026-07-12-retained-slug-link.md"]; ok {
+		t.Errorf("slug link to a numbered record's retained slug must resolve, got %#v", drift)
+	}
 	if _, ok := got["plan-frontmatter@2026-07-12-bad-status.md"]; !ok {
 		t.Errorf("expected plan-frontmatter drift for bad status, got %#v", drift)
+	}
+}
+
+// pendingADRFixture is a valid Proposed pending current-state-v3 record: slug
+// identity, no number, and the slug-form heading.
+func pendingADRFixture(slug string) string {
+	return "---\nformat: current-state-v3\nslug: " + slug + "\nstatus: Proposed\ndate: 2026-07-31\n---\n" +
+		"# ADR-" + slug + ": A decision\n\n" +
+		"## Context\n\nBackground prose.\n\n" +
+		"## Decision\n\n1. The only decision.\n\n" +
+		"## State changes\n\nNone.\n\n" +
+		"## Consequences\n\nConsequence prose.\n\n" +
+		"## Alternatives Considered\n\nNone considered.\n\n" +
+		"## Status history\n\n- 2026-07-31: Proposed\n"
+}
+
+// The pending-record block fires on a positive integration-branch
+// identification and on nothing else: another branch, a detached HEAD, and a
+// tree with no readable repository all pass, because an indeterminate answer is
+// not evidence that the record is in the wrong place (ADR-0202 item 7).
+// invariant: adr-system/adr-lifecycle:pending-blocked-from-integration-branch (TestCheckPendingADRsFiresOnlyOnPositiveIdentification)
+func TestCheckPendingADRsFiresOnlyOnPositiveIdentification(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		wantDrift bool
+		setup     func(t *testing.T) string
+	}{
+		{
+			name: "on the integration branch blocks", wantDrift: true,
+			setup: func(t *testing.T) string { return gitScaffold(t, defaultFixtureBranch) },
+		},
+		{
+			name:  "another branch passes",
+			setup: func(t *testing.T) string { return gitScaffold(t, "effort/side") },
+		},
+		{
+			name: "detached HEAD passes",
+			setup: func(t *testing.T) string {
+				root := gitScaffold(t, defaultFixtureBranch)
+				repo := gitfixture.At(root)
+				gitfixture.NativeCheckout(t, repo, gitfixture.NativeRevParse(t, repo, "HEAD"))
+				return root
+			},
+		},
+		{
+			name:  "an unreadable repository passes",
+			setup: func(t *testing.T) string { return scaffold(t, gitSampleYAML) },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := tc.setup(t)
+			testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			drift := p.checkPendingADRs(testContext(t), mustDeriveCorpus(t, p))
+			if !tc.wantDrift {
+				if len(drift) != 0 {
+					t.Fatalf("expected no drift, got %#v", drift)
+				}
+				return
+			}
+			if len(drift) != 1 {
+				t.Fatalf("expected exactly one pending-record drift, got %#v", drift)
+			}
+			if drift[0].Kind != "pending-adr-on-integration-branch" || drift[0].Detail != "still-pending" || drift[0].Path != "docs/decisions/still-pending.md" {
+				t.Errorf("drift = %#v", drift[0])
+			}
+		})
+	}
+}
+
+// The block reaches awf check, not just its own helper. Without this the whole
+// check could be unwired from Check and every helper-level test above would
+// still pass.
+// invariant: adr-system/adr-lifecycle:pending-blocked-from-integration-branch (TestCheckReportsPendingADROnIntegrationBranch)
+func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
+	root := gitScaffold(t, defaultFixtureBranch)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	// Two records, because the claim quantifies over EVERY pending record: a
+	// worktree that authored several is the case ADR-0202 item 8 orders by
+	// argument, and reporting only the first would leave the rest to be
+	// discovered one integration attempt at a time.
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/also-pending.md"), pendingADRFixture("also-pending"))
+	drift, err := p.Check(testContext(t))
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	reported := map[string]bool{}
+	for _, d := range drift {
+		if d.Kind == "pending-adr-on-integration-branch" {
+			reported[d.Detail] = true
+		}
+	}
+	if !reported["still-pending"] || !reported["also-pending"] {
+		t.Fatalf("awf check did not report every pending record, got %v in %#v", reported, drift)
+	}
+}
+
+// A branch probe that fails outright is the fourth indeterminate outcome, and
+// it is distinct from the no-repository one: the handle exists, the git call
+// itself errors. Removing the control directory under a live handle is the way
+// to produce it; the block must stay silent rather than report a record it has
+// no evidence is misplaced.
+// invariant: adr-system/adr-lifecycle:pending-blocked-from-integration-branch (TestCheckPendingADRsSilentOnProbeFailure)
+func TestCheckPendingADRsSilentOnProbeFailure(t *testing.T) {
+	root := gitScaffold(t, defaultFixtureBranch)
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus := mustDeriveCorpus(t, p)
+	// Sanity: with the repository intact this same corpus is blocked, so a
+	// silent result below is the probe failure and not an empty corpus.
+	if drift := p.checkPendingADRs(testContext(t), corpus); len(drift) != 1 {
+		t.Fatalf("fixture does not block before the probe breaks: %#v", drift)
+	}
+	if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	if drift := p.checkPendingADRs(testContext(t), corpus); len(drift) != 0 {
+		t.Fatalf("a failed branch probe must emit nothing, got %#v", drift)
+	}
+}
+
+// A numbered corpus on the integration branch produces no block: the check
+// reports the pending records, not every record.
+func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
+	root := gitScaffold(t, defaultFixtureBranch)
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-real.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-12"),
+			testsupport.WithTitle("0001: Real"), testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if drift := p.checkPendingADRs(testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
+		t.Fatalf("a numbered corpus must not be blocked, got %#v", drift)
 	}
 }
 
@@ -506,7 +675,7 @@ func TestPlanCommitScopeNotes(t *testing.T) {
 // propagation wired into AdvisoryNotes. Empty tags keep tagHealthNotes inert (so it
 // does not error first); a malformed plan makes planCommitScopeNotes' ParseDir fail.
 func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
 	p, err := Open(testContext(t), root)
@@ -540,7 +709,7 @@ func TestCheckPropagatesPlanError(t *testing.T) {
 // regression, gated exactly; inert when no domains are configured.
 // invariant: config/validation:tag-not-domain-name (TestCheckTagVocabularyDomainCollision)
 func TestCheckTagVocabularyDomainCollision(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n"+
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n"+
 		"tags:\n  rendering: coarse\n  narrow: a narrow topic\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -560,7 +729,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 		t.Fatalf("want tag-domain-collision for rendering, got %+v", drift)
 	}
 	// No domains configured: the collision rule is inert.
-	root2 := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
+	root2 := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
 		"tags:\n  rendering: fine when no domains\n")
 	p2, err := Open(testContext(t), root2)
 	if err != nil {
@@ -582,7 +751,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 // runs, so a structurally invalid record list reaches Check's checkGlossary
 // wiring branch rather than failing earlier in the render.
 func TestCheckPropagatesLocalGlossaryError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: []\n",
 		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -606,7 +775,7 @@ func TestCheckPropagatesLocalGlossaryError(t *testing.T) {
 // structurally invalid entry list reaches Check's wiring branch rather than
 // failing earlier in the render.
 func TestCheckPropagatesLocalPitfallsError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n      body: B\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -643,8 +812,9 @@ func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
 	}
 }
 
-// A first adoption whose decisions dir parses but carries two ADRs with the
-// same number fails authority sealing after the entry derivation succeeded.
+// A first adoption whose decisions dir carries two ADRs with the same number
+// fails at corpus load: duplicate identity has one home (ADR-0202 item 4), so
+// the refusal precedes every consumer rather than being re-derived by each.
 func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	for _, name := range []string{"0001-alpha.md", "0001-beta.md"} {
@@ -657,7 +827,33 @@ func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
-		!strings.Contains(err.Error(), "seal first-adoption ADR authority") {
-		t.Fatalf("expected duplicate ADR identity to fail authority sealing, got %v", err)
+		!strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
+		t.Fatalf("expected duplicate ADR identity to fail the corpus load, got %v", err)
+	}
+}
+
+// A first adoption accepts an existing intrinsically governed record without
+// rewriting it or using its number to select a parser.
+func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", "0001-governed.md"),
+		"---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-07-13\n---\n# ADR-0001: Governed\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-13: Proposed\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(filepath.Join(root, "docs/decisions", "0001-governed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatalf("initialize governed brownfield: %v", err)
+	}
+	after, err := os.ReadFile(filepath.Join(root, "docs/decisions", "0001-governed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("initialization rewrote the existing ADR")
 	}
 }

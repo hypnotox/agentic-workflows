@@ -110,11 +110,11 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions, curren
 					continue
 				}
 			}
-			origin, _ := adrs.ByNumber(claim.Origin)
+			origin, _ := adrs.ByIdentity(claim.Origin)
 			originHistory := historyADR(origin)
 			h := ClaimHistory{ClaimID: claim.ID, Origin: &originHistory, RevisedBy: []ADRHistory{}}
-			for _, number := range claim.RevisedBy {
-				revision, _ := adrs.ByNumber(number)
+			for _, reference := range claim.RevisedBy {
+				revision, _ := adrs.ByIdentity(reference)
 				h.RevisedBy = append(h.RevisedBy, historyADR(revision))
 			}
 			result.History = append(result.History, h)
@@ -155,7 +155,8 @@ func ParseSelector(selector string) (topicID, claimID string, err error) {
 }
 
 func historyADR(a adr.ADR) ADRHistory {
-	return ADRHistory{Number: a.Number, Title: strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "), Status: a.Status}
+	identity := a.Identity()
+	return ADRHistory{Number: identity, Title: strings.TrimPrefix(a.Title, "ADR-"+identity+": "), Status: a.Status}
 }
 
 func presentationHistory(claimID string, history adr.ClaimOperationHistory) (ClaimHistory, bool) {
@@ -178,7 +179,7 @@ func presentationHistory(claimID string, history adr.ClaimOperationHistory) (Cla
 
 func operationADR(record adr.OperationRecord) ADRHistory {
 	return ADRHistory{
-		Number: record.Number, Title: strings.TrimPrefix(record.Title, "ADR-"+record.Number+": "),
+		Number: record.Identity, Title: strings.TrimPrefix(record.Title, "ADR-"+record.Identity+": "),
 		Status: record.Status,
 	}
 }

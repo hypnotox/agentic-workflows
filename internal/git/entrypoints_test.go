@@ -34,14 +34,16 @@ type suite struct {
 // would satisfy the table without anything pinning the entrypoint's semantics.
 var entrypointSuites = map[string]suite{
 	// Object reads.
-	"Root":         {"internal/git", "TestWorkingPaths"},
-	"WorkingPaths": {"internal/git", "TestWorkingPaths"},
-	"IndexBlobs":   {"internal/git", "TestIndexBlobs"},
-	"CommitBlobs":  {"internal/git", "TestObjectReadContracts"},
-	"RangeBlobs":   {"internal/git", "TestObjectReadContracts"},
-	"FileText":     {"internal/git", "TestRangeCommitsLinearRangeCarriesChangesAndText"},
-	"HeadExists":   {"internal/git", "TestHeadExists"},
-	"HeadHash":     {"internal/git", "TestHeadHash"},
+	"Root":          {"internal/git", "TestWorkingPaths"},
+	"WorkingPaths":  {"internal/git", "TestWorkingPaths"},
+	"IndexBlobs":    {"internal/git", "TestIndexBlobs"},
+	"CommitBlobs":   {"internal/git", "TestObjectReadContracts"},
+	"CommitParents": {"internal/git", "TestCommitEvidenceReads"},
+	"CommitMessage": {"internal/git", "TestCommitEvidenceReads"},
+	"RangeBlobs":    {"internal/git", "TestObjectReadContracts"},
+	"FileText":      {"internal/git", "TestRangeCommitsLinearRangeCarriesChangesAndText"},
+	"HeadExists":    {"internal/git", "TestHeadExists"},
+	"HeadHash":      {"internal/git", "TestHeadHash"},
 
 	// Working-tree truth.
 	"ChangeCounts": {"internal/git", "TestChangeCountsSeparatesEveryDirtyTreeState"},
@@ -79,6 +81,7 @@ var entrypointSuites = map[string]suite{
 	"ResolveControlRoots":       {"internal/git", "TestControlRootsAgreeWithRegisteredTopology"},
 	"ListWorktreeRegistrations": {"internal/git", "TestListWorktreeRegistrationsReportsEveryRegisteredCheckout"},
 	"MergeInProgress":           {"internal/git", "TestMergeInProgressPrimaryCheckout"},
+	"MergeHeads":                {"internal/git", "TestMergeInProgressPrimaryCheckout"},
 	"ParseRange":                {"internal/git", "TestParseRangeTable"},
 	"ProjectResidentRoot":       {"cmd/awf", "TestResolveProjectResidentRoot"},
 }

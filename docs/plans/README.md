@@ -22,7 +22,9 @@ where the date is the day the plan is written (ISO-8601). Example:
 <!-- awf:edit structure: default; create .awf/parts/plans-readme/structure.md to override -->
 ## What a plan contains
 
-- Frontmatter: `date`, `adrs: []` (the linked ADR numbers), and a two-state `status`.
+- Frontmatter: `date`, `adrs: []` (the linked ADRs, each entry either a number or the slug of a
+  record still awaiting its number, so a link survives numbering without the plan being rewritten),
+  and a two-state `status`.
 - A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical
   header sections: Goal, Architecture summary, and File structure (created / modified /
   deleted).

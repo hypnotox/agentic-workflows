@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -21,7 +20,7 @@ import (
 )
 
 // QueryTopic assembles one read-only topic or claim projection from one
-// cutoff-aware working snapshot. Active state and v1 operation history therefore
+// intrinsically routed working snapshot. Active state and operation history therefore
 // cannot come from different worktree universes.
 func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
 	ws, err := p.workingCurrentState(ctx)
@@ -36,7 +35,7 @@ func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.Qu
 		}
 		return topic.QueryResult{}, fmt.Errorf("current-state validation failed: %s", strings.Join(messages, "; "))
 	}
-	return topic.Query(ws.Loaded.Topics, adr.NewCorpus(ws.Loaded.ADRs), selector, opts, safelyMatchablePaths(ws.Tree))
+	return topic.Query(ws.Loaded.Topics, ws.Loaded.Corpus, selector, opts, safelyMatchablePaths(ws.Tree))
 }
 
 func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {

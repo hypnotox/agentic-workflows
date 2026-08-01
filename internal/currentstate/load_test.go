@@ -34,14 +34,13 @@ func loadCfg(t *testing.T) *config.Config {
 	return cfg
 }
 
-// legacyADR is a minimal below-cutoff Implemented ADR: frontmatter status/date
+// legacyADR is a minimal markerless Implemented ADR: frontmatter status/date
 // and a title.
 func legacyADR() string {
 	return "---\nstatus: Implemented\ndate: 2026-07-20\n---\n# Legacy decision\n"
 }
 
-// v1Scaffold is a valid Proposed current-state-v1 ADR with a None state change,
-// the simplest at-or-above-cutoff record (no digest needed for the scaffold).
+// v1Scaffold is a valid Proposed current-state-v1 ADR with a None state change.
 func v1Scaffold() string {
 	return "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-20\n---\n" +
 		"# A decision\n\n" +
@@ -70,7 +69,7 @@ func TestLoadFromTreeSkipsSymlinkADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +88,7 @@ func TestLoadFromTreeAssembles(t *testing.T) {
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
 	})
-	got, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: 2, V2From: 3}, nil)
+	got, err := currentstate.LoadFromTree(tree, loadCfg(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +110,7 @@ func TestLoadFromTreeAssembles(t *testing.T) {
 // clean empty view rather than a contiguity failure.
 func TestLoadFromTreeEmpty(t *testing.T) {
 	tree := treeFrom(t, map[string]string{"docs/decisions/README.md": "# Index\n"})
-	got, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	got, err := currentstate.LoadFromTree(tree, loadCfg(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,85 +119,28 @@ func TestLoadFromTreeEmpty(t *testing.T) {
 	}
 }
 
-// TestLoadFromTreeContiguity covers the corpus-level number checks a per-file
-// parse cannot see: tolerated recorded gaps, an unrecorded gap, a duplicate
-// number, and a gap recorded at or above the cutoff.
-func TestLoadFromTreeContiguity(t *testing.T) {
-	cases := []struct {
-		name    string
-		files   map[string]string
-		cutoff  int
-		gaps    []int
-		wantErr string
-	}{
-		{
-			name: "recorded gap tolerated",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0003-c.md": legacyADR(),
-			},
-			gaps: []int{2},
-		},
-		{
-			name: "unrecorded gap",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0003-c.md": legacyADR(),
-			},
-			wantErr: "not contiguous",
-		},
-		{
-			name: "recorded gaps mismatch actual absences",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0004-d.md": legacyADR(),
-			},
-			gaps:    []int{2, 5},
-			wantErr: "not contiguous",
-		},
-		{
-			name: "duplicate number",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0001-b.md": legacyADR(),
-			},
-			wantErr: "more than one file",
-		},
-		{
-			name: "gap at or above cutoff",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0003-c.md": v1Scaffold(),
-			},
-			cutoff:  2,
-			gaps:    []int{2},
-			wantErr: "at or above the format cutoff",
-		},
+// TestLoadFromTreeDoesNotRequireContiguousNumbers proves format routing no
+// longer needs a lock-recorded gap set.
+func TestLoadFromTreeDoesNotRequireContiguousNumbers(t *testing.T) {
+	tree := treeFrom(t, map[string]string{
+		"docs/decisions/0001-first.md": legacyADR(),
+		"docs/decisions/0003-third.md": legacyADR(),
+	})
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t))
+	if err != nil {
+		t.Fatalf("LoadFromTree: %v", err)
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			tree := treeFrom(t, tc.files)
-			_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: tc.cutoff}, tc.gaps)
-			if tc.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-				return
-			}
-			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
-				t.Fatalf("error = %v, want containing %q", err, tc.wantErr)
-			}
-		})
+	if len(loaded.ADRs) != 2 {
+		t.Fatalf("ADRs = %d, want 2", len(loaded.ADRs))
 	}
 }
 
-// TestLoadFromTreeADRParseError propagates a per-file parse failure: an
-// at-or-above-cutoff ADR that is not valid current-state-v1.
+// TestLoadFromTreeADRParseError propagates a malformed authored format.
 func TestLoadFromTreeADRParseError(t *testing.T) {
-	tree := treeFrom(t, map[string]string{"docs/decisions/0001-a.md": legacyADR()})
-	_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: 1}, nil)
+	tree := treeFrom(t, map[string]string{"docs/decisions/0001-a.md": "---\nformat: unknown\n---\n# ADR-0001: Invalid\n"})
+	_, err := currentstate.LoadFromTree(tree, loadCfg(t))
 	if err == nil {
-		t.Fatal("expected a parse error for a legacy body above the cutoff")
+		t.Fatal("expected a parse error for an unknown authored format")
 	}
 }
 
@@ -209,8 +151,59 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 		"docs/decisions/0001-a.md":            legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml": "title: [unterminated\n",
 	})
-	_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	_, err := currentstate.LoadFromTree(tree, loadCfg(t))
 	if err == nil {
 		t.Fatal("expected a topic metadata parse error")
+	}
+}
+
+// v3Pending is a valid Proposed pending current-state-v3 record: slug identity,
+// no number, and the slug-form heading.
+func v3Pending(slug string) string {
+	return "---\nformat: current-state-v3\nslug: " + slug + "\nstatus: Proposed\ndate: 2026-07-31\n---\n" +
+		"# ADR-" + slug + ": A decision\n\n" +
+		"## Context\n\nBackground prose.\n\n" +
+		"## Decision\n\n1. The only decision.\n\n" +
+		"## State changes\n\nNone.\n\n" +
+		"## Consequences\n\nConsequence prose.\n\n" +
+		"## Alternatives Considered\n\nNone considered.\n\n" +
+		"## Status history\n\n- 2026-07-31: Proposed\n"
+}
+
+// A pending record joins the corpus without joining the number contiguity set,
+// and a stray file under the decisions directory is a corpus error.
+func TestLoadFromTreeCarriesPendingRecordsOutsideContiguity(t *testing.T) {
+	tree := treeFrom(t, map[string]string{
+		"docs/decisions/0001-first.md": legacyADR(),
+		"docs/decisions/pending-x.md":  v3Pending("pending-x"),
+		"docs/decisions/README.md":     "# Decisions\n",
+		"docs/decisions/INDEX.md":      "# Index\n",
+		"docs/decisions/template.md":   "# Template\n",
+		"docs/decisions/diagram.png":   "not markdown\n",
+	})
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.ADRs) != 2 {
+		t.Fatalf("records = %#v", loaded.ADRs)
+	}
+	if _, ok := loaded.Corpus.BySlug("pending-x"); !ok || !loaded.Corpus.Has("0001") {
+		t.Fatal("loaded corpus indexes")
+	}
+
+	stray := treeFrom(t, map[string]string{"docs/decisions/notes.md": "# Notes\n"})
+	if _, err := currentstate.LoadFromTree(stray, loadCfg(t)); err == nil ||
+		!strings.Contains(err.Error(), "not an ADR record") {
+		t.Fatalf("stray decisions file = %v", err)
+	}
+
+	duplicate := treeFrom(t, map[string]string{
+		"docs/decisions/dupe.md":      v3Pending("dupe"),
+		"docs/decisions/0001-dupe.md": strings.Replace(v3Pending("dupe"), "# ADR-dupe:", "# ADR-0001:", 1),
+	})
+	if _, err := currentstate.LoadFromTree(duplicate, loadCfg(t)); err == nil ||
+		!strings.Contains(err.Error(), `ADR slug "dupe" is declared by more than one file`) {
+		t.Fatalf("duplicate slug = %v", err)
 	}
 }

@@ -8,14 +8,50 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- `awf check` now reports a non-failing advisory for glossary meanings longer than the terseness guideline, naming the term and its length. It evaluates the merged set, so shipped and project-authored vocabulary follow the same rule.
+
+- The glossary now renders one sorted table from two layers: awf's shipped standard vocabulary and project-authored `data.terms`. A project record overrides a shipped term with the same case-insensitive name, including to reword or retire it locally.
+
+- `awf audit` now replays stale-ADR merge authorization for committed schema-31-and-later merges, using the same cleaned-message trailers and exact incoming-parent qualification as `awf check commit`. It reports malformed reserved trailers and unauthorized older-format imports while leaving pre-epoch merges, non-merges, and fast-forwards outside the rule.
+
+- `awf check commit` now definitively authorizes exact incoming-parent older-format ADRs in real merges through adjacent `AWF-Allow-Version` and nonempty `AWF-Allow-Reason` trailers. Malformed syntax or an unqualified import refuses without changing the staged index or merge state, so an agent can correct the message and finish the existing merge.
+
+- Schema generation 31 removes permanent ADR format cutoff and gap fields from new locks. Older schema-30 lock snapshots remain readable during upgrade, while version-1 bridge attestations retain their frozen payload solely until final cutover verifies and discards it.
+
+- ADR parsing now follows each record's authored format marker rather than its number. Markerless
+  numbered records remain legacy, governed V1, V2, and V3 records select their matching frozen
+  parser at any number, and unknown or malformed markers are refused. New numbered and pending
+  ADRs derive the binary's current authoring format from one activation registry.
+
+- The shipped Maintainable Code Design guide gains a Readability section between semantic
+  modeling and boundaries (ADR-0200): language-agnostic decision-framework guidance on naming
+  for meaning, straight-line common paths, boring-over-clever constructs, comments stating
+  what code cannot say, and restructuring until a passage argues its own correctness. The
+  section name is a permanent override surface; adopters re-render `docs/maintainable-code-design.md`
+  on upgrade.
+
 ### Breaking changes
 
-- `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of
-  `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts
-  it, following the precedent set for this same key. Convert by hand: each
-  `"<term>": "<meaning>"` pair becomes a `- term: <term>` / `  meaning: <meaning>` record, and
-  the optional `domains` list names configured domains. An unconverted tree fails the render
-  naming the sidecar, with `data.terms: must be a list of {term, meaning} records`.
+- `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts it. Convert each pair by hand; an unconverted tree fails render with `data.terms: must be a list of {term, meaning} records`.
+
+- Every `invariant:` proof marker must now name the unit that proves it,
+  `<marker> invariant: <domain>/<topic>:<slug> (<name>)`, and that text must occur verbatim on a
+  line of the marker's own file that does not itself open with that family's marker token,
+  unflanked by a letter, digit, or underscore (ADR-0205). A
+  marker whose test was deleted, renamed, or moved now fails `awf check` instead of satisfying
+  `Backing: test` while proving nothing. The name is free text, not an identifier, so an adopter
+  whose tests are string literals rather than named functions can name the literal. No schema bump
+  or `awf upgrade` step signals this break, because marker syntax is not part of the config schema;
+  the first `awf check` after upgrading reports each unnamed marker with its file and line.
+  Adopters migrate their own markers: deriving a name from a test file needs language knowledge
+  awf does not have, and the shipped check deliberately has none. One knock-on: `awf audit`'s
+  `current-state-transition` rule reads each commit's tree through the same loader, so over a range
+  reaching back before the migration it reports a warning per pre-migration commit instead of
+  evaluating that rule. The rule was already bounded this way by any tree the current binary cannot
+  load; exempting the loader instead would have disabled the name requirement inside
+  `awf check --staged`, which the pre-commit hook runs.
 
 - Remove the `currentState.maxClaimsPerTopic` config key and the non-failing topic claim-count
   note `awf check` emitted from it. Schema generation 28 removes the key from an existing tree;
@@ -46,6 +82,34 @@ query a single version or a range.
   before committing is instructed only for a clone without wired hooks. The unconditional
   "run both commands manually, the hook repeats the staged check as defense in depth" model no
   longer renders (ADR-0196).
+
+- A zero-padded `adrs:` entry in a plan is now always read as a decimal ADR number. The YAML
+  decoder previously read one whose digits are all octal-valid as octal, so `adrs: [0153]`
+  silently resolved against ADR-0107 and `adrs: [0012]` against ADR-0010, while a spelling
+  containing an 8 or a 9 (`adrs: [0186]`) was already decimal. Such an entry now names the record
+  its digits spell. Two plans in this repository were pointing at the wrong record and now point
+  at the right one; if an adopter's zero-padded entry named a record that does not exist, a
+  previously-clean `awf check` reports `plan-adr-link` drift. An entry outside 1 to 9999, and an
+  empty entry, are now refused outright instead of decoding to an unusable number.
+
+- Add the `current-state-v3` ADR format and its `adrFormatV3From` lock cutoff, sealed by schema
+  generation 29. V3 is `current-state-v2` plus a mandatory `slug:` frontmatter key that is
+  retained forever, and a record carrying no number routes into the corpus by that format marker
+  instead of by a cutoff. Two adopter-visible consequences land with it. A file under
+  `docs/decisions/` that is neither a reserved basename (`README.md`, `INDEX.md`, `template.md`)
+  nor a parseable record is now a corpus error, where it was silently ignored; move any such file
+  out of the decisions directory before upgrading. A duplicate ADR number, or a duplicate slug
+  across pending and numbered records, is now a hard error from one place rather than a silent
+  last-wins parse. Run `awf upgrade` to seal the cutoff; a fresh adoption seals V3 alongside V2.
+
+- Add the required `integrationBranch` config key, written visibly into `config.yaml` by schema
+  generation 30. It is the first key awf requires explicitly with no in-code default: it decides
+  whether `awf new adr` writes a numbered or a pending record, and a silently defaulted branch
+  name would silently change which. `awf upgrade` seeds `integrationBranch: main`; a config that
+  reaches validation without the key is refused. A pending ADR checked out on that branch now
+  fails `awf check` with `pending-adr-on-integration-branch`, which is what forces numbering to
+  happen at integration; a detached HEAD passes, since the block fires only on positive branch
+  identification.
 
 - Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
   every enabled skill, not only task skills). A local override of
@@ -191,18 +255,46 @@ query a single version or a range.
   uncommitted work included.
 
 ### Features
-- `awf check` now reports a non-failing advisory for any glossary meaning longer than the
-  terseness guideline, naming the term and its length. It evaluates the merged set, so the
-  vocabulary awf ships is bound by the same guideline as your own terms. The rule itself is
-  stated in the documentation standard: one sentence saying what the thing is, a second only
-  when a contrast or boundary is load-bearing.
-- The glossary now renders two layers: a standard vocabulary awf ships, merged with the
-  project's own `data.terms` into one sorted table. A project term overrides a shipped term of
-  the same case-insensitive name, which is the supported way to reword or retire one; the
-  shipped layer itself is not disableable. Upgrade effect: the shipped vocabulary participates
-  in the artifact config hash, so a release that changes a standard term surfaces as `stale`
-  drift on your rendered glossary and is resolved by `awf render`, exactly like any other
-  catalog or template change.
+
+- Add `awf adr number [<slug>...]`, which assigns numbers to pending ADRs at integration.
+  `awf new adr` is now branch-aware: on the `integrationBranch` it writes `NNNN-<slug>.md` as
+  before, and on any other branch (so in every managed worktree) it writes a pending
+  `<slug>.md` headed `# ADR-<slug>: Title`. Run the command in the worktree after merging the
+  integration branch in and before merging back: it renames the file, rewrites the heading,
+  substitutes `ADR-<slug>` in authored `Origin:` and `Revised-by:` lines, canonicalizes each
+  touched list, re-renders, and prints one `<slug> -> NNNN` line for the integration commit
+  message. It touches no status-history event, no already-numbered record, and no plan. Bare
+  invocation numbers a single pending record; several require an explicit list naming every one
+  in an order that numbers a record before any record revising what it adds. A number once
+  assigned never changes: a numbering that raced another integration is unmade by
+  `git reset --hard HEAD~1`, re-merged, and remade, and the command refuses a duplicate-number
+  corpus with that recipe rather than guessing. It deliberately does not precondition on a green
+  check, so an unrelated finding cannot deadlock it.
+- Staged transition validation now pairs a record predating the slug format across a rename, by
+  its canonical content digest. Such a record is paired on its number, so when the integration
+  branch has taken that number meanwhile, renaming the local one used to pair it with the
+  stranger that took it and fail with a cascade of unrelated findings. The pairing key is now
+  resolved in three steps, retained slug, then content digest, then number, and the digest step
+  applies only to a record carrying no slug, only on a digest carried by exactly one such record
+  on each side, and only where the two ends hold different numbers. An unchanged or amended
+  record therefore pairs on its number exactly as before. Such a pair admits the number,
+  filename, and heading change and nothing else: status and Status history must be byte
+  identical, no application batch may be appended or dropped, and the old number substitutes
+  into `Origin:` and `Revised-by:` under the numbering substitution's rules. Because the digest
+  is the key, a rename and a content amendment cannot share a commit.
+
+- Render a fourth git-hook payload, `.awf/hooks/pre-merge-commit.sh`, running the staged
+  current-state check. Git runs no `pre-commit` hook for a true merge commit, so a conflict-free
+  automerge could otherwise land two records on one ADR identity, or a transition neither branch
+  authored, on the integration branch unchecked. Like the other three the payload is inert: awf
+  never activates hooks, so wire it yourself with a `.git/hooks/pre-merge-commit` stub that execs
+  it. Adopters with the hooks singleton enabled will see the new file as drift until they render.
+- A plan's `adrs:` frontmatter entry may now name a decision record by slug as well as by number.
+  A slug entry resolves against a pending record's file or a numbered record's retained `slug:`
+  key, so a plan written beside a record that has no number yet keeps a valid link once
+  integration numbers it, and numbering never rewrites plan files. A numeric entry parses as
+  before, except for the zero-padded octal case recorded under breaking changes.
+
 - Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
   the writing-plans scaffold command resolves the awf binary instead of the skill prefix,
   reviewer-lens enumerations are count-free, the resync skill names both invokers and carries
@@ -299,6 +391,16 @@ query a single version or a range.
   awf-verb vars already carry.
 
 ### Bug fixes
+
+- `awf check` no longer refuses an integration whose effort branch was forked before schema
+  generation 29. Merging an integration branch that has already sealed the ADR v3 cutoff crosses
+  that generation in one step, and the record being renumbered may land above the cutoff, which
+  forces it to take the v3 encoding. Three transition rules refused that shape: the permanent lock
+  now admits a cutoff inherited from the other parent when the generation advances across the seal,
+  the renumber digest index admits a numbered record whose slug is new in the transition, and one
+  governed-format change is sanctioned, a v2 record renumbered to a v3 one. A pending record is
+  still never paired, so a deletion beside an unrelated addition is still refused, and a retained
+  slug still cannot change. `docs/roadmap.md` records the decision this class still owes.
 
 - Managed-worktree refusals no longer direct an agent to resolve or discard work that may belong
   to a concurrent effort. A checkout mid-merge is now refused with "finish or abort this merge

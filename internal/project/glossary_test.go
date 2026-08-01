@@ -10,7 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-const glossaryCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n"
+const glossaryCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n"
 
 // renderGlossary opens root and returns the rendered glossary doc's content.
 func renderGlossary(t *testing.T, root string) string {
@@ -106,7 +106,7 @@ func TestGlossaryTableForcedBetweenFraming(t *testing.T) {
 
 // With both layers empty the doc degrades to the coherent placeholder line
 // naming the authoring surface - never a zero-row table (ADR-0045 via ADR-0089
-// Decision 4). Since ADR-0198 the shipped layer normally supplies rows, so the
+// Decision 4). Since ADR-0207 the shipped layer normally supplies rows, so the
 // scaffolds here null standardTerms to empty it; a real tree that authored that
 // key would be unused-data drift, which is why per-term override, not this, is
 // the supported way to drop a shipped term.
