@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: context-aware-discretionary-pi-handoffs
-status: Proposed
+status: Implementing
 date: 2026-08-02
 ---
 # ADR-context-aware-discretionary-pi-handoffs: Context-aware discretionary Pi handoffs
@@ -206,3 +206,5 @@ when automatic kickoff submission fails.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-02: Implementing; content-sha256: 5e5a4c336cf6c9948c51e44bd7003555f0cfecc731c4cffda9f6f5fa076e76a6
+- 2026-08-02: Applied; operations: update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`

@@ -372,10 +372,11 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			ordered := append([]string{}, routineOrdered...)
 			if target == "pi" {
 				ordered = append(ordered,
-					"invoke `handoff_session` alone",
-					"continue automatically in the fresh session",
-					"unless the user cancels during the five-second window",
-					"A failed handoff leaves the checkpoint valid and becomes a check-in",
+					"safe resumable point whose immediate successor can start independently",
+					"judge retained-context relevance and successor work from currently available context and compaction evidence",
+					"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
+					"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` before substantive work",
+					"Cancellation or failure that leaves the old session active appends no handoff log",
 				)
 			} else {
 				ordered = append(ordered, "Continue through the target-native successor without claiming session replacement")
@@ -464,9 +465,10 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	for _, name := range approvalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
-			"invoke `handoff_session` alone",
-			"unless the user cancels during the five-second window",
-			"A failed handoff leaves the checkpoint valid and becomes a check-in",
+			"judge retained-context relevance and successor work from currently available context and compaction evidence",
+			"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
+			"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` before substantive work",
+			"Cancellation or failure that leaves the old session active appends no handoff log",
 			"the workflow doc's working-memory section",
 		))
 		if handoff, approval := strings.Index(piBody, "handoff_session"), strings.Index(piBody, "explicitly request approval"); handoff >= 0 && handoff < approval {
