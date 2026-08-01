@@ -34,14 +34,13 @@ func loadCfg(t *testing.T) *config.Config {
 	return cfg
 }
 
-// legacyADR is a minimal below-cutoff Implemented ADR: frontmatter status/date
+// legacyADR is a minimal markerless Implemented ADR: frontmatter status/date
 // and a title.
 func legacyADR() string {
 	return "---\nstatus: Implemented\ndate: 2026-07-20\n---\n# Legacy decision\n"
 }
 
-// v1Scaffold is a valid Proposed current-state-v1 ADR with a None state change,
-// the simplest at-or-above-cutoff record (no digest needed for the scaffold).
+// v1Scaffold is a valid Proposed current-state-v1 ADR with a None state change.
 func v1Scaffold() string {
 	return "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-20\n---\n" +
 		"# A decision\n\n" +
@@ -120,65 +119,19 @@ func TestLoadFromTreeEmpty(t *testing.T) {
 	}
 }
 
-// TestLoadFromTreeContiguity covers the corpus-level number checks a per-file
-// parse cannot see: tolerated recorded gaps, an unrecorded gap, a duplicate
-// number, and a gap recorded at or above the cutoff.
-func TestLoadFromTreeContiguity(t *testing.T) {
-	cases := []struct {
-		name    string
-		files   map[string]string
-		cutoff  int
-		gaps    []int
-		wantErr string
-	}{
-		{
-			name: "recorded gap tolerated",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0003-c.md": legacyADR(),
-			},
-			gaps: []int{2},
-		},
-		{
-			name: "unrecorded gap",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0003-c.md": legacyADR(),
-			},
-			wantErr: "not contiguous",
-		},
-		{
-			name: "recorded gaps mismatch actual absences",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0004-d.md": legacyADR(),
-			},
-			gaps:    []int{2, 5},
-			wantErr: "not contiguous",
-		},
-		{
-			name: "duplicate number",
-			files: map[string]string{
-				"docs/decisions/0001-a.md": legacyADR(),
-				"docs/decisions/0001-b.md": legacyADR(),
-			},
-			wantErr: "more than one file",
-		},
+// TestLoadFromTreeDoesNotRequireContiguousNumbers proves format routing no
+// longer needs a lock-recorded gap set.
+func TestLoadFromTreeDoesNotRequireContiguousNumbers(t *testing.T) {
+	tree := treeFrom(t, map[string]string{
+		"docs/decisions/0001-first.md": legacyADR(),
+		"docs/decisions/0003-third.md": legacyADR(),
+	})
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t))
+	if err != nil {
+		t.Fatalf("LoadFromTree: %v", err)
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			tree := treeFrom(t, tc.files)
-			_, err := currentstate.LoadFromTree(tree, loadCfg(t), tc.gaps)
-			if tc.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-				return
-			}
-			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
-				t.Fatalf("error = %v, want containing %q", err, tc.wantErr)
-			}
-		})
+	if len(loaded.ADRs) != 2 {
+		t.Fatalf("ADRs = %d, want 2", len(loaded.ADRs))
 	}
 }
 

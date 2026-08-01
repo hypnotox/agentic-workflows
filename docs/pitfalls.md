@@ -293,6 +293,12 @@ blocked until the Applied line exists. `awf check` reports that claim-provenance
 ahead of any drift, which also means the documented digest probe only becomes reachable
 once the batch line is present, even with a placeholder digest.
 
+## Retired ADR routing keys are compatibility input, not lock authority
+
+Schema-30 lock snapshots may carry historical ADR cutoff and gap keys. Parse them only to
+read old snapshots, then let generation 31 write a current lock without those keys. Do not
+reintroduce fields on manifest.Lock or promote bridge-attestation payload into final state.
+
 ## Parallel efforts collide on ADR numbers and schema generations at integration
 
 _Domains: adr-system, config_

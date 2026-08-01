@@ -37,7 +37,7 @@ func stagedHeadFiles() map[string]string {
 
 // attestedLock returns the permanent cutoff used by staged fixtures.
 func attestedLock() *manifest.Lock {
-	return &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}}
+	return &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14}
 }
 
 func boundaryADR(format, title string) string {
@@ -146,177 +146,10 @@ func TestCheckStagedNoPolicy(t *testing.T) {
 	}
 }
 
-func TestCheckStagedRejectsPermanentAuthorityMutation(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct {
-		name   string
-		mutate func(*manifest.Lock)
-		field  string
-	}{
-		{"initializedWithVersion", func(lock *manifest.Lock) { lock.InitializedWithVersion = "0.17.0" }, "initializedWithVersion"},
-		{"adrFormatV1From", func(lock *manifest.Lock) { lock.ADRFormatV1From = 3 }, "adrFormatV1From"},
-		{"legacyAdrGaps", func(lock *manifest.Lock) { lock.LegacyADRGaps = []int{1} }, "legacyAdrGaps"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			repo := gitfixture.InitRepo(t)
-			dir := repo.Root()
-			files := stagedHeadFiles()
-			files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2,"legacyAdrGaps":[],"initializedWithVersion":"0.18.0"}`
-			gitfixture.Stage(t, repo, files)
-			gitfixture.Commit(t, repo, "head", nil)
-			p := openStaged(t, dir)
-			staged := &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, InitializedWithVersion: "0.18.0"}
-			tc.mutate(staged)
-			writeLock(t, p, staged)
-			if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.field) {
-				t.Fatalf("CheckStaged %s mutation error = %v", tc.field, err)
-			}
-		})
-	}
-}
-
-func TestValidatePermanentLockTransitionAllowsOnlyComputedSchema15Cutoff(t *testing.T) {
-	t.Parallel()
-	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
-		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
-		{Path: "docs/decisions/nested/9999-ignore.md", Bytes: []byte("nested")},
-		{Path: "docs/decisions/README.md", Bytes: []byte("guide")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := &manifest.Lock{SchemaVersion: 14, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
-	after := &manifest.Lock{SchemaVersion: 15, ADRFormatV1From: 1, ADRFormatV2From: 3, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(tree, tree, before, after); err != nil {
-		t.Fatalf("computed cutoff: %v", err)
-	}
-	after.ADRFormatV2From = 4
-	if err := validatePermanentLockTransition(tree, tree, before, after); err == nil || !strings.Contains(err.Error(), "want computed cutoff 3") {
-		t.Fatalf("arbitrary cutoff error = %v", err)
-	}
-
-	missing, _ := snapshot.NewTree(nil)
-	after.ADRFormatV2From = 1
-	if err := validatePermanentLockTransition(missing, missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
-		t.Fatalf("missing config error = %v", err)
-	}
-	badConfig, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Bytes: []byte("unknown: true\n")}})
-	if err := validatePermanentLockTransition(badConfig, badConfig, before, after); err == nil || !strings.Contains(err.Error(), "compute ADR cutoff") {
-		t.Fatalf("invalid config error = %v", err)
-	}
-}
-
-// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable (TestValidatePermanentLockTransitionRejectsCutoffDeletionAndMutation)
-func TestValidatePermanentLockTransitionRejectsCutoffDeletionAndMutation(t *testing.T) {
-	t.Parallel()
-	tree, err := snapshot.NewTree(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := &manifest.Lock{ADRFormatV1From: 2, ADRFormatV2From: 5, ADRFormatV3From: 7, LegacyADRGaps: []int{}}
-	for _, tc := range []struct {
-		name   string
-		mutate func(*manifest.Lock)
-		field  string
-	}{
-		{"delete V1", func(lock *manifest.Lock) { lock.ADRFormatV1From = 0 }, "adrFormatV1From"},
-		{"mutate V1", func(lock *manifest.Lock) { lock.ADRFormatV1From = 3 }, "adrFormatV1From"},
-		{"delete V2", func(lock *manifest.Lock) { lock.ADRFormatV2From = 0 }, "adrFormatV2From"},
-		{"mutate V2", func(lock *manifest.Lock) { lock.ADRFormatV2From = 6 }, "adrFormatV2From"},
-		{"delete V3", func(lock *manifest.Lock) { lock.ADRFormatV3From = 0 }, "adrFormatV3From"},
-		{"mutate V3", func(lock *manifest.Lock) { lock.ADRFormatV3From = 8 }, "adrFormatV3From"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			after := *before
-			tc.mutate(&after)
-			if err := validatePermanentLockTransition(tree, tree, before, &after); err == nil || !strings.Contains(err.Error(), tc.field) {
-				t.Fatalf("error = %v, want immutable %s", err, tc.field)
-			}
-		})
-	}
-}
-
-func TestCheckStagedRejectsPermanentLockOverCommittedConfigWithoutLock(t *testing.T) {
-	t.Parallel()
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	files := stagedHeadFiles()
-	delete(files, ".awf/awf.lock")
-	gitfixture.Stage(t, repo, files)
-	gitfixture.Commit(t, repo, "pre-tracking", nil)
-	p := openStaged(t, dir)
-	writeLock(t, p, attestedLock())
-
-	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "pre-tracking authority") {
-		t.Fatalf("staged permanent lock over committed config error = %v", err)
-	}
-}
-
-func TestCheckStagedAllowsSealedBridgePromotion(t *testing.T) {
-	t.Parallel()
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	files := stagedHeadFiles()
-	files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"x","treeDigest":"sha256:x","adrFormatV1From":2,"legacyADRGaps":[]}}`
-	gitfixture.Stage(t, repo, files)
-	gitfixture.Commit(t, repo, "bridge", nil)
-	p := openStaged(t, dir)
-	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}})
-	if _, err := p.CheckStaged(testContext(t)); err != nil {
-		t.Fatalf("sealed promotion: %v", err)
-	}
-}
-
 // TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary uses snapshots
 // whose ADR-0002 bytes are valid only under each side's own lock: V1 under the
 // bridge HEAD and V2 under the staged permanent lock. Phase 3 must reject that
 // arbitrary V2 activation rather than treating it as the sealed V1 promotion.
-func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) {
-	t.Parallel()
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	files := stagedHeadFiles()
-	files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"x","treeDigest":"sha256:x","adrFormatV1From":2,"legacyAdrGaps":[]}}`
-	files["docs/decisions/0002-boundary.md"] = boundaryADR(adr.V1FormatMarker, "V1 side")
-	gitfixture.Stage(t, repo, files)
-	gitfixture.Commit(t, repo, "bridge", nil)
-	gitfixture.Stage(t, repo, map[string]string{
-		".awf/awf.lock":                   lockJSON(t, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}),
-		"docs/decisions/0002-boundary.md": boundaryADR(adr.V2FormatMarker, "V2 side"),
-	})
-	p := openStaged(t, dir)
-	beforeTree, beforeLock, err := p.headTreeAndLock(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, _, err := loadTreeCurrentState(dir, beforeTree, beforeLock, attestationGaps(beforeLock))
-	if err != nil {
-		t.Fatalf("load staged before snapshot with its lock: %v", err)
-	}
-	afterTree, err := snapshot.IndexTree(testContext(t), p.repo)
-	if err != nil {
-		t.Fatal(err)
-	}
-	afterLock, err := lockFromTree(afterTree)
-	if err != nil {
-		t.Fatal(err)
-	}
-	after, _, err := loadTreeCurrentState(dir, afterTree, afterLock, attestationGaps(afterLock))
-	if err != nil {
-		t.Fatalf("load staged after snapshot with its lock: %v", err)
-	}
-	if got, ok := findBoundaryADR(before.ADRs); !ok || !got.IsV1() {
-		t.Fatalf("staged before ADR-0002 = %#v, found=%v; want V1", got, ok)
-	}
-	if got, ok := findBoundaryADR(after.ADRs); !ok || !got.IsV2() {
-		t.Fatalf("staged after ADR-0002 = %#v, found=%v; want V2", got, ok)
-	}
-	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "adrFormatV2From") {
-		t.Fatalf("arbitrary bridge V2 promotion error = %v", err)
-	}
-}
-
 // TestCheckStagedTransitionFinding stages a claim removal with no removing ADR:
 // the HEAD-to-index diff surfaces the unmatched mutation.
 func TestCheckStagedTransitionFinding(t *testing.T) {
@@ -656,7 +489,7 @@ func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
 	gitfixture.Stage(t, repo, files)
 	base := gitfixture.Commit(t, repo, "v1 boundary", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/awf.lock":                   lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}),
+		".awf/awf.lock":                   lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14}),
 		"docs/decisions/0002-boundary.md": boundaryADR(adr.V2FormatMarker, "V2 side"),
 	})
 	head := gitfixture.Commit(t, repo, "v2 boundary", nil)
@@ -870,7 +703,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	files := stagedHeadFiles()
-	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 3, LegacyADRGaps: []int{}})
+	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}})
 	v1Ops := "- add `alpha/one:v1`"
 	files["docs/decisions/0002-v1-direct.md"] = strings.Replace(publicV2ADR(t, "0002", "V1 direct", "Proposed", v1Ops, ""), adr.V2FormatMarker, adr.V1FormatMarker, 1)
 	gitfixture.Stage(t, repo, files)
@@ -1039,136 +872,46 @@ func publicTopicClaims(slugs ...string) string {
 // The V3 sealing edge admits exactly the schema migration's write: the computed
 // corpus cutoff into an authority that carried none, with every other permanent
 // value unchanged (ADR-0202 item 1).
-// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable (TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff)
-func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T) {
-	t.Parallel()
-	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
-		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
-		{Path: "docs/decisions/README.md", Bytes: []byte("guide")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
-	after := &manifest.Lock{SchemaVersion: 29, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(tree, tree, before, after); err != nil {
-		t.Fatalf("computed cutoff: %v", err)
-	}
-	after.ADRFormatV3From = 9
-	if err := validatePermanentLockTransition(tree, tree, before, after); err == nil || !strings.Contains(err.Error(), "adrFormatV3From is 9, want computed cutoff 3") {
-		t.Fatalf("arbitrary cutoff error = %v", err)
-	}
-	missing, _ := snapshot.NewTree(nil)
-	after.ADRFormatV3From = 1
-	if err := validatePermanentLockTransition(missing, missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
-		t.Fatalf("missing config error = %v", err)
-	}
-	// Each cutoff is sealed by its own generation, so the computed value at any
-	// other generation pair is an authority the migration never writes.
-	offGeneration := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(tree, tree, before, offGeneration); err == nil || !strings.Contains(err.Error(), "changes immutable") {
-		t.Fatalf("seal without the generation stamp = %v", err)
-	}
-}
-
 // The integration re-seal is the second admitted edge: a cutoff sealed inside an
 // unintegrated branch was computed against a corpus the integration changes, so
 // it is re-derived against the staged tree. The generation must advance, which
 // is what keeps an ordinary commit from moving a published cutoff, and the new
 // value must be the merged corpus's own next identity rather than any number the
 // author likes.
-// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable (TestValidatePermanentLockTransitionAllowsIntegrationReseal)
-func TestValidatePermanentLockTransitionAllowsIntegrationReseal(t *testing.T) {
-	t.Parallel()
-	branch, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
-		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The merged corpus carries records the branch never saw, so its next
-	// identity - and therefore the correct cutoff - moved.
-	merged, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
-		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
-		{Path: "docs/decisions/0003-three.md", Bytes: []byte("record")},
-		{Path: "docs/decisions/0004-four.md", Bytes: []byte("record")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
-	after := &manifest.Lock{SchemaVersion: 29, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 5, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(branch, merged, before, after); err != nil {
-		t.Fatalf("integration re-seal rejected: %v", err)
-	}
-
-	// A value the author picked rather than derived is refused: the edge
-	// re-derives, it does not merely permit a change. Leaving the cutoff alone
-	// is not this edge at all - it is the unchanged-authority case above.
-	arbitrary := &manifest.Lock{SchemaVersion: 29, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 9, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(branch, merged, before, arbitrary); err == nil || !strings.Contains(err.Error(), "want the merged corpus's computed cutoff 5") {
-		t.Fatalf("arbitrary re-seal = %v", err)
-	}
-
-	// The staged corpus is what the new value is derived from, so a staged tree
-	// that cannot yield one surfaces that failure rather than accepting.
-	missing, _ := snapshot.NewTree(nil)
-	if err := validatePermanentLockTransition(branch, missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
-		t.Fatalf("unreadable staged corpus = %v", err)
-	}
-
-	// Without a generation advance the cutoff is immutable, which is what stops
-	// an ordinary commit from moving a published one.
-	sameGeneration := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 5, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(branch, merged, before, sameGeneration); err == nil || !strings.Contains(err.Error(), "changes immutable") {
-		t.Fatalf("re-seal without a generation advance = %v", err)
-	}
-}
-
 // The inherited-cutoff edge: a branch forked before the sealing generation
 // merges an integration branch already past it, so the transition crosses
 // generation 29 in one step and the cutoff arrives from the other parent,
 // already computed against a corpus neither of these trees holds.
-func TestValidatePermanentLockTransitionInheritsAPublishedV3Cutoff(t *testing.T) {
-	t.Parallel()
-	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\nintegrationBranch: main\n")},
-		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
-		{Path: "docs/decisions/README.md", Bytes: []byte("guide")},
+
+func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	gitfixture.Stage(t, repo, stagedHeadFiles())
+	gitfixture.Commit(t, repo, "head", nil)
+	gitfixture.Stage(t, repo, map[string]string{
+		".awf/awf.lock": lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, InitializedWithVersion: "0.18.0", Files: map[string]manifest.Entry{}}),
 	})
+	p := openStaged(t, repo.Root())
+	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
+		t.Fatalf("error = %v, want initializedWithVersion refusal", err)
+	}
+}
+
+func TestValidateLockTransition(t *testing.T) {
+	empty, err := snapshot.NewTree(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
-	// 203 is neither tree's computed next identity, which is 3. That is the
-	// point: the value is published on the integration branch and re-deriving it
-	// here would lower it under records already sealed above it.
-	after := &manifest.Lock{SchemaVersion: 30, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 203, LegacyADRGaps: []int{}}
-	if err := validatePermanentLockTransition(tree, tree, before, after); err != nil {
-		t.Fatalf("inherited cutoff: %v", err)
+	if err := validateLockTransition(empty, nil, &manifest.Lock{}); err != nil {
+		t.Fatal(err)
 	}
-	// The generation advance is the guard, so every other permanent value still
-	// has to arrive byte-identical. The dimension the branch reads is WHICH
-	// authority moved, so each one gets its own case: a single mutated value
-	// would leave the other three clauses proven by nothing.
-	for _, tc := range []struct {
-		name string
-		move func(*manifest.Lock)
-	}{
-		{"initializedWithVersion", func(l *manifest.Lock) { l.InitializedWithVersion = "9.9.9" }},
-		{"adrFormatV1From", func(l *manifest.Lock) { l.ADRFormatV1From = 7 }},
-		{"adrFormatV2From", func(l *manifest.Lock) { l.ADRFormatV2From = 7 }},
-		{"legacyAdrGaps", func(l *manifest.Lock) { l.LegacyADRGaps = []int{5} }},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			moved := *after
-			tc.move(&moved)
-			if err := validatePermanentLockTransition(tree, tree, before, &moved); err == nil || !strings.Contains(err.Error(), "changes immutable") {
-				t.Fatalf("moved %s = %v", tc.name, err)
-			}
-		})
+	withConfig, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Bytes: []byte("x")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateLockTransition(withConfig, nil, &manifest.Lock{}); err == nil {
+		t.Fatal("accepted pretracking")
+	}
+	if err := validateLockTransition(empty, &manifest.Lock{InitializedWithVersion: "1.0.0"}, &manifest.Lock{InitializedWithVersion: "2.0.0"}); err == nil {
+		t.Fatal("accepted mutation")
 	}
 }

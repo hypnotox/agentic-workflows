@@ -47,7 +47,6 @@ var registry = []Migration{
 	{To: 12, Name: "supersession-keys", Apply: treeOnly(applySupersessionKeys)},
 	{To: 13, Name: "exploring-skill-closure", Apply: treeOnly(applyCloseEnabledSet)},
 	{To: 14, Name: "current-state-topic-substrate", Apply: treeOnly(applyCurrentStateTopicSubstrate)},
-	{To: 15, Name: "adr-format-v2-cutoff", Apply: treeOnly(applyADRFormatV2Cutoff), OwnsSchemaStamp: true},
 	{To: 16, Name: "topic-claim-budget", Apply: treeOnly(applyTopicClaimBudget)},
 	{To: 17, Name: "workflow-telemetry", Apply: treeOnly(applyWorkflowTelemetry)},
 	{To: 18, Name: "enable-runner", Apply: treeOnly(applyEnableRunner)},
@@ -68,8 +67,8 @@ var registry = []Migration{
 	// is removed rather than tolerated: config.yaml is strict-parsed and a
 	// survivor would hard-fail the new binary.
 	{To: 28, Name: "drop-max-claims-per-topic", Apply: treeOnly(applyDropMaxClaimsPerTopic)},
-	{To: adrFormatV3Generation, Name: "adr-format-v3-cutoff", Apply: treeOnly(applyADRFormatV3Cutoff), OwnsSchemaStamp: true},
 	{To: integrationBranchGeneration, Name: "integration-branch-explicit", Apply: treeOnly(applyIntegrationBranch)},
+	{To: intrinsicADRFormatGeneration, Name: "intrinsic-adr-format", Apply: applyIntrinsicADRFormat, OwnsSchemaStamp: true},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the

@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Schema generation 31 removes permanent ADR format cutoff and gap fields from new locks. Older schema-30 lock snapshots remain readable during upgrade, while version-1 bridge attestations retain their frozen payload solely until final cutover verifies and discards it.
+
 - ADR parsing now follows each record's authored format marker rather than its number. Markerless
   numbered records remain legacy, governed V1, V2, and V3 records select their matching frozen
   parser at any number, and unknown or malformed markers are refused. New numbered and pending

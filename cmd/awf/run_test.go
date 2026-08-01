@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -305,131 +304,8 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	}
 }
 
-// invariant: tooling/upgrade-runtime:initial-adoption-version-immutable (TestInitialAdoptionAuthorityImmutableAcrossCommands)
-func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
-	ctx := testContext(t)
-	repo := gitfixture.InitRepo(t)
-	root := repo.Root()
-	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	gitfixture.Stage(t, repo, map[string]string{"docs/decisions/0001-existing.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Existing"))})
-	gitfixture.Commit(t, repo, "existing ADR", nil)
-	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-	// The gateCmd answer keeps the scaffold's enabled hooks singleton valid
-	// for the ordinary syncs below (ADR-0156 Decision 5).
-	if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	initial, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertAuthority := func(step string) {
-		t.Helper()
-		got, err := manifest.Load(config.LockPath(root))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got.InitializedWithVersion != initial.InitializedWithVersion || got.ADRFormatV1From != initial.ADRFormatV1From || got.ADRFormatV2From != initial.ADRFormatV2From || got.ADRFormatV3From != initial.ADRFormatV3From || !slices.Equal(got.LegacyADRGaps, initial.LegacyADRGaps) {
-			t.Fatalf("%s changed authority: initial=%#v got=%#v", step, initial, got)
-		}
-	}
-	if err := runSync(ctx, root, io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	assertAuthority("ordinary sync")
-	if err := runUpgrade(ctx, root, io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	assertAuthority("zero-migration upgrade")
-	if err := runInit(ctx, root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	assertAuthority("forced init")
-
-	gitfixture.AddAll(t, repo)
-	gitfixture.Commit(t, repo, "initialize", nil)
-	for _, tc := range []struct {
-		name   string
-		mutate func(*manifest.Lock)
-	}{
-		{"initializedWithVersion", func(lock *manifest.Lock) {
-			lock.InitializedWithVersion = "0.18.0"
-			if lock.InitializedWithVersion == initial.InitializedWithVersion {
-				lock.InitializedWithVersion = "0.17.0"
-			}
-		}},
-		{"adrFormatV1From", func(lock *manifest.Lock) {
-			lock.ADRFormatV1From++
-			lock.ADRFormatV2From++
-			lock.ADRFormatV3From++
-		}},
-		{"adrFormatV2From", func(lock *manifest.Lock) { lock.ADRFormatV2From++; lock.ADRFormatV3From++ }},
-		{"adrFormatV3From", func(lock *manifest.Lock) { lock.ADRFormatV3From++ }},
-		{"legacyAdrGaps", func(lock *manifest.Lock) { lock.LegacyADRGaps = []int{1} }},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			mutated := *initial
-			mutated.LegacyADRGaps = slices.Clone(initial.LegacyADRGaps)
-			tc.mutate(&mutated)
-			if err := mutated.Save(config.LockPath(root)); err != nil {
-				t.Fatal(err)
-			}
-			gitfixture.Add(t, repo, ".awf/awf.lock")
-			if err := runCheck(ctx, root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.name) {
-				t.Fatalf("staged %s mutation error = %v", tc.name, err)
-			}
-			if err := initial.Save(config.LockPath(root)); err != nil {
-				t.Fatal(err)
-			}
-			gitfixture.Add(t, repo, ".awf/awf.lock")
-		})
-	}
-}
-
-func TestInitSeedsEmptyAuthority(t *testing.T) {
-	ctx := testContext(t)
-	root := t.TempDir()
-	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	lock, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if lock.InitializedWithVersion != project.Version || lock.ADRFormatV1From != 1 || lock.ADRFormatV2From != 1 || lock.ADRFormatV3From != 1 || lock.LegacyADRGaps == nil || len(lock.LegacyADRGaps) != 0 {
-		t.Fatalf("authority = version %q cutoffs %d/%d/%d gaps %v", lock.InitializedWithVersion, lock.ADRFormatV1From, lock.ADRFormatV2From, lock.ADRFormatV3From, lock.LegacyADRGaps)
-	}
-}
-
-func TestInitSealsBrownfieldAuthority(t *testing.T) {
-	ctx := testContext(t)
-	root := t.TempDir()
-	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-	one := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: One"))
-	three := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0003: Three"))
-	onePath := filepath.Join(root, "docs/decisions/0001-one.md")
-	threePath := filepath.Join(root, "docs/decisions/0003-three.md")
-	testsupport.WriteFile(t, onePath, one)
-	testsupport.WriteFile(t, threePath, three)
-	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	lock, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if lock.ADRFormatV1From != 4 || lock.ADRFormatV2From != 4 || lock.ADRFormatV3From != 4 || len(lock.LegacyADRGaps) != 1 || lock.LegacyADRGaps[0] != 2 {
-		t.Fatalf("cutoffs/gaps = %d/%d/%d/%v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.ADRFormatV3From, lock.LegacyADRGaps)
-	}
-	for path, want := range map[string]string{onePath: one, threePath: three} {
-		got, err := os.ReadFile(path)
-		if err != nil || string(got) != want {
-			t.Fatalf("brownfield ADR changed: %s err=%v", path, err)
-		}
-	}
-}
-
+// invariant: tooling/upgrade-runtime:initial-adoption-version-immutable (TestInitFirstADRChecksClean)
+// TestInitFirstADRChecksClean exercises this first-adoption flow in initrender_test.go.
 func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 	ctx := testContext(t)
 	for _, tc := range []struct {
@@ -463,58 +339,8 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 	}
 }
 
-func TestInitForcePreservesAuthority(t *testing.T) {
-	ctx := testContext(t)
-	root := t.TempDir()
-	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-	// A forced re-init over an existing config runs an ordinary sync, so the
-	// gateCmd answer keeps its enabled hooks singleton valid (ADR-0156).
-	if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	before, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := runInit(ctx, root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	after, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if before.InitializedWithVersion != after.InitializedWithVersion || before.ADRFormatV1From != after.ADRFormatV1From || before.ADRFormatV2From != after.ADRFormatV2From || before.ADRFormatV3From != after.ADRFormatV3From || !slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		t.Fatalf("authority changed: before=%#v after=%#v", before, after)
-	}
-}
-
-func TestInitForceRefusesMissingAuthority(t *testing.T) {
-	ctx := testContext(t)
-	for _, tc := range []struct{ name, lock, want string }{
-		{"missing", "", "use the bridge release to attest"},
-		{"bridge", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"x","treeDigest":"sha256:x","adrFormatV1From":1,"legacyADRGaps":[]}}`, "use the bridge release to attest"},
-		{"invalid", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"adrFormatV1From":1}`, "restore .awf/awf.lock from version control"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			testsupport.WriteAwfConfig(t, root, minimalYAML)
-			if tc.lock != "" {
-				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
-			}
-			before := snapshotTree(t, root)
-			var out bytes.Buffer
-			err := runInit(ctx, root, true, false, nil, "", &out)
-			if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("error=%v, want %q", err, tc.want)
-			}
-			if after := snapshotTree(t, root); after != before {
-				t.Fatal("forced init authority refusal mutated the repository tree")
-			}
-			if out.Len() != 0 {
-				t.Fatalf("forced init authority refusal wrote output: %q", out.String())
-			}
-		})
-	}
+func TestInitFirstADRChecksClean(t *testing.T) {
+	testInitFirstADRChecksClean(t)
 }
 
 func testInitFirstADRChecksClean(t *testing.T) {
@@ -541,13 +367,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 				t.Fatal(err)
 			}
-			lock, err := manifest.Load(config.LockPath(root))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if lock.ADRFormatV1From != tc.cutoff || lock.ADRFormatV2From != tc.cutoff || lock.ADRFormatV3From != tc.cutoff || !slices.Equal(lock.LegacyADRGaps, tc.gaps) {
-				t.Fatalf("initial authority = cutoffs %d/%d/%d gaps %v, want %d gaps %v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.ADRFormatV3From, lock.LegacyADRGaps, tc.cutoff, tc.gaps)
-			}
+
 			gitfixture.AddAll(t, repo)
 			gitfixture.Commit(t, repo, "initialize", nil)
 			// The scaffold writes integrationBranch: main while a go-git
@@ -949,7 +769,7 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(legacy), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}).Save(filepath.Join(claude, "awf.lock")); err != nil {
+	if err := (&manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}}).Save(filepath.Join(claude, "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
@@ -970,7 +790,7 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: []\n")
-	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
@@ -999,7 +819,7 @@ func TestRunUpgradeMigrationError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(": : not valid : :\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	lock := &manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{AWFVersion: "0.1.0", Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(claude, "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
@@ -1243,7 +1063,7 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("bogusField: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
@@ -1265,7 +1085,7 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	// the probe so runInit's own p.InitCollisions call forwards that deterministic
 	// planning error.
 	testsupport.WriteAwfConfig(t, root, minimalYAML)
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 	dd := filepath.Join(root, "docs", "decisions")
@@ -1299,7 +1119,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(adrDir, "INDEX.md"), []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, ADRFormatV3From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -1365,5 +1185,30 @@ func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
 		t.Error("scaffolded config should have been rolled back")
+	}
+}
+
+func TestInitAndUpgradeRefusePreTrackingAuthority(t *testing.T) {
+	ctx := testContext(t)
+	for _, tc := range []struct{ name, lock, want string }{
+		{"missing", "", "bridge release"},
+		{"invalid", `{`, "restore .awf/awf.lock"},
+		{"bridge", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"h","treeDigest":"sha256:x","adrFormatV1From":1,"legacyADRGaps":[]}}`, "bridge release"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			testsupport.WriteAwfConfig(t, root, minimalYAML)
+			if tc.lock != "" {
+				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
+			}
+			if err := runInit(ctx, root, true, false, nil, "", io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("init=%v", err)
+			}
+			if tc.name == "missing" {
+				if err := runUpgrade(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("upgrade=%v", err)
+				}
+			}
+		})
 	}
 }

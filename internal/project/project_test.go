@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -122,30 +121,6 @@ agents:
   - code-reviewer
 `
 
-func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "pre-tracking") {
-		t.Fatalf("missing-lock sync error=%v", err)
-	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "absent lock") {
-		t.Fatalf("repeat initialize error=%v", err)
-	}
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
-	if err := lock.Save(lockFile(root)); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "permanent") {
-		t.Fatalf("pre-tracking sync error=%v", err)
-	}
-}
-
 func TestNewADRErrors(t *testing.T) {
 	root := gitScaffold(t, defaultFixtureBranch)
 	p, err := Open(testContext(t), root)
@@ -221,93 +196,6 @@ func TestNewADRIsBranchAware(t *testing.T) {
 	}
 }
 
-func TestLegacyAuthorityCompatibilityIgnoresPendingIdentity(t *testing.T) {
-	corpus, err := adr.NewCorpus([]adr.ADR{{Filename: "pending.md", Slug: "pending", Format: adr.CurrentStateV3}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	cutoff, gaps := legacyAuthorityCompatibility(corpus)
-	if cutoff != 1 || len(gaps) != 0 {
-		t.Fatalf("compatibility = cutoff %d gaps %v", cutoff, gaps)
-	}
-}
-
-func TestNewADRUsesCurrentFormatIndependentOfCutoffs(t *testing.T) {
-	root := gitScaffold(t, defaultFixtureBranch)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	lock, err := manifest.Load(p.lockPath())
-	if err != nil {
-		t.Fatal(err)
-	}
-	lock.ADRFormatV1From = 1
-	lock.ADRFormatV2From = 1
-	lock.ADRFormatV3From = 9999
-	lock.LegacyADRGaps = []int{}
-	if err := lock.Save(p.lockPath()); err != nil {
-		t.Fatal(err)
-	}
-	path, err := p.NewADR(testContext(t), "V2 Boundary")
-	if err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), "format: "+adr.CurrentFormatMarker()) {
-		t.Fatalf("registry current-format scaffold:\n%s", data)
-	}
-}
-
-func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
-	for _, initializedWithVersion := range []string{"0.18.0", ""} {
-		name := "initialized"
-		if initializedWithVersion == "" {
-			name = "migrated"
-		}
-		t.Run(name, func(t *testing.T) {
-			root := scaffold(t, sampleYAML)
-			prior := &manifest.Lock{
-				AWFVersion:             "0.18.0",
-				SchemaVersion:          14,
-				Files:                  map[string]manifest.Entry{},
-				ADRFormatV1From:        137,
-				ADRFormatV2From:        200,
-				ADRFormatV3From:        300,
-				LegacyADRGaps:          []int{2, 9},
-				InitializedWithVersion: initializedWithVersion,
-			}
-			raw, err := prior.Marshal()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(lockFile(root), raw, 0o644); err != nil {
-				t.Fatal(err)
-			}
-			p, err := Open(testContext(t), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := p.Sync(); err != nil {
-				t.Fatal(err)
-			}
-			got, err := manifest.Load(lockFile(root))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.InitializedWithVersion != initializedWithVersion || got.ADRFormatV1From != 137 || got.ADRFormatV2From != 200 || got.ADRFormatV3From != 300 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
-				t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoffs=%d/%d/%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.ADRFormatV2From, got.ADRFormatV3From, got.LegacyADRGaps)
-			}
-		})
-	}
-}
-
 // Generation 21 removes the obsolete workflow roots and generation 22 resets
 // the standalone memory root, while the two roots awf still owns keep every
 // dynamic descendant through migration, sync, and render alike.
@@ -321,7 +209,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	lock := &manifest.Lock{AWFVersion: "0.24.0", SchemaVersion: 20, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}, InitializedWithVersion: "0.24.0"}
+	lock := &manifest.Lock{AWFVersion: "0.24.0", SchemaVersion: 20, Files: map[string]manifest.Entry{}, InitializedWithVersion: "0.24.0"}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
@@ -1613,5 +1501,29 @@ func TestSyncRecordsTopicOutputsInManifest(t *testing.T) {
 	}
 	if _, ok := lock.Files["docs/topics/rendering/contracts.md"]; !ok {
 		t.Fatal("topic output missing from manifest")
+	}
+}
+
+func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "pre-tracking") {
+		t.Fatalf("missing lock: %v", err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "absent lock") {
+		t.Fatalf("repeat init: %v", err)
+	}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 31, Files: map[string]manifest.Entry{}, BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "h", TreeDigest: "sha256:x", ADRFormatV1From: 1, LegacyADRGaps: []int{}}}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "permanent") {
+		t.Fatalf("bridge sync: %v", err)
 	}
 }

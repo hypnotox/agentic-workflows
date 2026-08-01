@@ -4,6 +4,8 @@
 <!-- awf:edit current-state: from .awf/domains/parts/config/current-state.md -->
 Configuration is strict tracked authority under `.awf/`. Schema generation 21 removes obsolete local metrics and assignment residents from the primary control root during upgrade, and generation 22 resets protocol-1 effort records and the standalone memory root in one journaled transaction whose lock replacement is the commit point, refusing beforehand while any legacy managed worktree fact or unprovable resident remains. Generation 30 writes `integrationBranch: main` visibly into `config.yaml`: it is the first key the configuration has ever required explicitly, with no in-code default, because a silent default for the branch that decides whether a record scaffolds numbered or pending is the silent-failure shape ADR-0127 removed from `audit.baseBranch`. Rendering configuration remains separate from the two repository-local resident roots, effort and worktree state.
 
+Schema generation 31 removes permanent ADR routing cutoffs and gap sets. A schema-30 snapshot is compatibility-decoded during migration, then the current lock omits those retired fields.
+
 
 ## Topics
 

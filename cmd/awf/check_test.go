@@ -269,13 +269,7 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 	_ = ctx
 	lockText := func(version string, generation int) string {
 		t.Helper()
-		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
-		if generation >= 15 {
-			lock.ADRFormatV2From = 1
-		}
-		if generation >= 28 {
-			lock.ADRFormatV3From = 1
-		}
+		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}}
 		b, err := lock.Marshal()
 		if err != nil {
 			t.Fatal(err)
@@ -328,11 +322,6 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 		if attested {
 			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}}
-		} else {
-			lock.ADRFormatV1From = 1
-			lock.ADRFormatV2From = 1
-			lock.ADRFormatV3From = 1
-			lock.LegacyADRGaps = []int{}
 		}
 		b, err := lock.Marshal()
 		if err != nil {
@@ -473,7 +462,7 @@ func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *tes
 	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, ADRFormatV3From: 2, LegacyADRGaps: []int{}}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)

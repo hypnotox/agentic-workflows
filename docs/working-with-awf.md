@@ -58,6 +58,8 @@ Treat any other output as the context packet itself; do not interpret a near-mat
 spill notice. This subsection is the contract's single rendered home; skills and agent
 bodies point here.
 
+Schema generation 31 is the ADR routing retirement migration. It accepts the retired cutoff and gap keys only while reading a schema-30-or-earlier lock, writes no replacement routing fields, and leaves ADR bytes untouched. A version-1 bridge attestation remains a frozen final-upgrade input; its payload is verified and discarded at the journaled lock replacement.
+
 
 <!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->
 Rendering recognizes exactly two repository-wide resident roots, `.awf/efforts` and `.awf/worktrees`, matching the only state protocol 2 keeps: `.awf/efforts/<slug>/` and `.awf/worktrees/<slug>/`. There is no standalone memory root; an effort's memory lives inside the effort that owns it. Rendering governs only each root's self-ignoring `.gitignore`; dynamic descendants are local state that render, drift checks, sweep, and uninstall preserve without recursing into. Schema generation 21 removes obsolete metrics and assignment residents during upgrade, and generation 22 resets protocol-1 effort records and standalone `.awf/memory/` content rather than migrating them. That reset is journaled with the lock replacement as its commit point, so it refuses beforehand, and changes nothing, while any legacy managed worktree path, registration, or branch remains.

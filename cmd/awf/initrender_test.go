@@ -68,7 +68,7 @@ func setScaffoldGateCmd(t *testing.T, root string) {
 	}
 }
 
-func TestInitFirstADRChecksClean(t *testing.T) {
+func TestInitFirstADRChecksCleanRender(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	testInitFirstADRChecksClean(t)

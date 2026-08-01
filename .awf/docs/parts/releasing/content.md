@@ -144,7 +144,7 @@ Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later
   the prepared tree into a `bridgeAttestation` lock block; this release's plain `awf upgrade` then
   consumes that seal, verifying only the sealed HEAD and post-normalization tree digest, journaling the
   migration approval-file deletion and permanent lock at `.awf/current-state-upgrade.journal`, and
-  committing the cutover last with the ADR format cutoff and gaps promoted. It runs no project tests or
+  committing the cutover last while discarding the attestation's historical ADR routing payload. It runs no project tests or
   gate, and this binary consumes seals rather than producing them. If a transaction is interrupted,
   `awf upgrade --recover` rolls it back or cleans it up; if the journal is unusable, restore the working
   tree from Git and reinstall the bridge release before retrying.

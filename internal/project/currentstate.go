@@ -7,10 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -97,7 +95,7 @@ func (p *Project) workingCurrentState(ctx context.Context) (workingState, error)
 	if err != nil {
 		return workingState{}, err
 	}
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, attestationGaps(lock))
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
 	if err != nil {
 		return workingState{}, err
 	}
@@ -105,21 +103,6 @@ func (p *Project) workingCurrentState(ctx context.Context) (workingState, error)
 		return workingState{}, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
 	}
 	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
-}
-
-// attestationGaps returns the historical recorded gaps while their lock
-// compatibility representation remains supported.
-func attestationGaps(lock *manifest.Lock) []int {
-	if lock == nil {
-		return nil
-	}
-	if lock.ADRFormatV1From != 0 {
-		return lock.LegacyADRGaps
-	}
-	if lock.BridgeAttestation != nil {
-		return lock.BridgeAttestation.LegacyADRGaps
-	}
-	return nil
 }
 
 // CheckCurrentState loads the working-tree current-state view and runs the
@@ -172,14 +155,14 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	if err := validatePermanentLockTransition(beforeTree, afterTree, beforeLock, afterLock); err != nil {
+	if err := validateLockTransition(beforeTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
-	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, attestationGaps(beforeLock))
+	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock, attestationGaps(afterLock))
+	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -265,155 +248,27 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	return lock, true, nil
 }
 
-// validatePermanentLockTransition makes the promoted format identity immutable.
-// The sole non-identical edge consumes a HEAD bridge attestation into exactly
-// those same permanent values. Initial adoption is valid only when HEAD has
-// neither config nor lock; committed config without a lock is pre-tracking.
-func validatePermanentLockTransition(beforeTree, afterTree *snapshot.Tree, before, after *manifest.Lock) error {
+// validateLockTransition preserves the remaining first-adoption identity. A
+// schema-31 migration is the only accepted lock-shape change: compatibility
+// routing input is parsed from the old side and discarded in the new lock.
+func validateLockTransition(beforeTree *snapshot.Tree, before, after *manifest.Lock) error {
 	if before == nil {
 		if _, hasConfig := beforeTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
-			if _, hasLock := beforeTree.Lookup(config.DirName + "/awf.lock"); !hasLock {
-				return nil
-			}
-		}
-		return errors.New("pre-tracking authority: staged permanent lock requires an empty pre-adoption HEAD without .awf/config.yaml or .awf/awf.lock")
-	}
-	if before.InitializedWithVersion == after.InitializedWithVersion &&
-		before.ADRFormatV1From == after.ADRFormatV1From &&
-		before.ADRFormatV2From == after.ADRFormatV2From &&
-		before.ADRFormatV3From == after.ADRFormatV3From &&
-		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		return nil
-	}
-	// The V3 sealing edge: the adr-format-v3-cutoff migration (generation 29)
-	// writes the computed cutoff into an authority that carried none, leaving
-	// every other permanent value alone (ADR-0202 item 1). It mirrors the V2
-	// sealing edge below it, generation pin included: each cutoff is sealed by
-	// its own generation, so a seal at any other generation is an authority the
-	// migration never writes.
-	if before.SchemaVersion == 28 && after.SchemaVersion == 29 &&
-		before.ADRFormatV3From == 0 && after.ADRFormatV3From > 0 &&
-		before.InitializedWithVersion == after.InitializedWithVersion &&
-		before.ADRFormatV1From == after.ADRFormatV1From &&
-		before.ADRFormatV2From == after.ADRFormatV2From &&
-		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		next, err := nextADRIdentityFromTree(beforeTree)
-		if err != nil {
-			return err
-		}
-		if after.ADRFormatV3From == next {
 			return nil
 		}
-		return fmt.Errorf("staged .awf/awf.lock adrFormatV3From is %d, want computed cutoff %d", after.ADRFormatV3From, next)
+		return errors.New("pre-tracking authority: staged lock requires an empty pre-adoption HEAD without .awf/config.yaml")
 	}
-	// The inherited-cutoff edge: a branch forked before the sealing generation
-	// merges an integration branch that has already sealed, so the transition
-	// crosses generation 29 in one step and the cutoff arrives from the other
-	// parent rather than from a migration run here. The value cannot be
-	// recomputed from either side and must be taken as published: the before
-	// tree yields the branch's own pre-merge next identity, and the after tree
-	// yields a next identity the merge has already moved past. Re-deriving it
-	// would be actively wrong, since a cutoff lowered below an already-published
-	// v3 record reparses that record as v2 and refuses it. The guard is that
-	// every other permanent value stays byte-identical and that the generation
-	// advanced across the seal, which an ordinary commit cannot do.
-	if before.SchemaVersion < 29 && after.SchemaVersion > 29 &&
-		before.ADRFormatV3From == 0 && after.ADRFormatV3From > 0 &&
-		before.InitializedWithVersion == after.InitializedWithVersion &&
-		before.ADRFormatV1From == after.ADRFormatV1From &&
-		before.ADRFormatV2From == after.ADRFormatV2From &&
-		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		return nil
+	if before.InitializedWithVersion != after.InitializedWithVersion {
+		return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion authority")
 	}
-	// The integration re-seal: a cutoff sealed inside an unintegrated branch was
-	// computed against a corpus the integration is about to change, so it is
-	// provisional in the same way a worktree-allocated ADR number is. It may
-	// take a new value when the transition also advances the schema generation -
-	// a migration commit and nothing else, so an ordinary commit still cannot
-	// move a published cutoff - and the new value must be the merged corpus's
-	// computed next identity, which is what makes this a re-derivation rather
-	// than a free edit. Every other permanent value stays byte-identical.
-	if after.SchemaVersion > before.SchemaVersion &&
-		before.ADRFormatV3From > 0 && after.ADRFormatV3From != before.ADRFormatV3From &&
-		before.InitializedWithVersion == after.InitializedWithVersion &&
-		before.ADRFormatV1From == after.ADRFormatV1From &&
-		before.ADRFormatV2From == after.ADRFormatV2From &&
-		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		next, err := nextADRIdentityFromTree(afterTree)
-		if err != nil {
-			return err
-		}
-		if after.ADRFormatV3From == next {
-			return nil
-		}
-		return fmt.Errorf("staged .awf/awf.lock re-seals adrFormatV3From to %d, want the merged corpus's computed cutoff %d", after.ADRFormatV3From, next)
-	}
-	if before.SchemaVersion == 14 && before.ADRFormatV2From == 0 &&
-		after.SchemaVersion == 15 && after.ADRFormatV2From > 0 &&
-		before.InitializedWithVersion == after.InitializedWithVersion &&
-		before.ADRFormatV1From == after.ADRFormatV1From &&
-		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
-		next, err := nextADRIdentityFromTree(beforeTree)
-		if err != nil {
-			return err
-		}
-		if after.ADRFormatV2From == next {
-			return nil
-		}
-		return fmt.Errorf("staged .awf/awf.lock adrFormatV2From is %d, want computed cutoff %d", after.ADRFormatV2From, next)
-	}
-	if before.InitializedWithVersion == "" && after.InitializedWithVersion == "" &&
-		before.ADRFormatV1From == 0 && before.BridgeAttestation != nil &&
-		after.BridgeAttestation == nil && after.ADRFormatV2From == 0 &&
-		after.ADRFormatV1From == before.BridgeAttestation.ADRFormatV1From &&
-		slices.Equal(after.LegacyADRGaps, before.BridgeAttestation.LegacyADRGaps) {
-		return nil
-	}
-	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/adrFormatV2From/adrFormatV3From/legacyAdrGaps authority")
-}
-
-func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
-	file, ok := tree.Lookup(config.DirName + "/config.yaml")
-	if !ok {
-		return 0, errors.New("compute ADR cutoff: snapshot has no .awf/config.yaml")
-	}
-	if !file.Scannable() {
-		return 0, errors.New("compute ADR cutoff: snapshot .awf/config.yaml is not scannable")
-	}
-	cfg, err := config.Parse(".", file.Bytes)
-	if err != nil {
-		return 0, fmt.Errorf("compute ADR cutoff: %w", err)
-	}
-	prefix := strings.Trim(cfg.DocsDir, "/") + "/decisions/"
-	max := 0
-	for _, f := range tree.List() {
-		if !f.Scannable() || !strings.HasPrefix(f.Path, prefix) {
-			continue
-		}
-		name := strings.TrimPrefix(f.Path, prefix)
-		if strings.Contains(name, "/") {
-			continue
-		}
-		match := adr.FilenameRe.FindStringSubmatch(name)
-		if match == nil {
-			continue // a reserved file or a pending record, neither of which holds a number
-		}
-		n, err := strconv.Atoi(match[1])
-		if err != nil { // coverage-ignore: FilenameRe captures exactly four decimal digits
-			return 0, err
-		}
-		if n > max {
-			max = n
-		}
-	}
-	return max + 1, nil
+	return nil
 }
 
 // loadTreeCurrentState loads the current-state view from tree, parsing config
 // from that same tree so the load is single-universe (ADR-0135). The returned
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
-func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock, gaps []int) (currentstate.Loaded, *config.Config, error) {
+func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock) (currentstate.Loaded, *config.Config, error) {
 	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {
 		return currentstate.Loaded{}, nil, nil
@@ -436,7 +291,7 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock,
 	if err := cfg.Validate(); err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
-	loaded, err := currentstate.LoadFromTree(tree, cfg, gaps)
+	loaded, err := currentstate.LoadFromTree(tree, cfg)
 	if err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
@@ -515,7 +370,7 @@ func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, a
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, attestationGaps(beforeLock))
+	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
@@ -523,7 +378,7 @@ func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, a
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock, attestationGaps(afterLock))
+	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}

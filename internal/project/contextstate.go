@@ -113,7 +113,7 @@ func (p *Project) indexCurrentState(ctx context.Context) (indexState, error) {
 	if err != nil {
 		return indexState{}, err
 	}
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, attestationGaps(lock))
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock)
 	if err != nil {
 		return indexState{}, err
 	}

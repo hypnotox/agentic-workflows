@@ -100,7 +100,7 @@ func TestCheckSubcommandAfterFlag(t *testing.T) {
 	// lock that satisfies it for the handler's diagnostic to be the one reached.
 	lock := &manifest.Lock{
 		AWFVersion: project.Version, SchemaVersion: migrate.Current(),
-		Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, ADRFormatV3From: 1, LegacyADRGaps: []int{},
+		Files: map[string]manifest.Entry{},
 	}
 	b, err := lock.Marshal()
 	if err != nil {
@@ -204,11 +204,6 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 		if attested {
 			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}}
-		} else {
-			lock.ADRFormatV1From = 1
-			lock.ADRFormatV2From = 1
-			lock.ADRFormatV3From = 1
-			lock.LegacyADRGaps = []int{}
 		}
 		b, err := lock.Marshal()
 		if err != nil {

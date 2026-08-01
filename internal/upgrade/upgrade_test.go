@@ -160,7 +160,7 @@ func TestVerifyRejections(t *testing.T) {
 		att  *manifest.BridgeAttestation
 		want string
 	}{
-		{"version", &manifest.BridgeAttestation{Version: 2, PreparedHead: head, TreeDigest: digest}, "version"},
+		{"version", &manifest.BridgeAttestation{Version: 2, PreparedHead: head, TreeDigest: digest, ADRFormatV1From: 2, LegacyADRGaps: []int{}}, "version"},
 		{"head", sealedAtt("0000000000000000000000000000000000000000", digest), "prepared head"},
 		{"digest", sealedAtt(head, "sha256:0000"), "digest"},
 	} {
@@ -225,8 +225,12 @@ func TestFinalUpgradeConsumesSeal(t *testing.T) {
 	if after.BridgeAttestation != nil {
 		t.Fatal("attestation not cleared")
 	}
-	if after.ADRFormatV1From != 137 || len(after.LegacyADRGaps) != 1 || after.LegacyADRGaps[0] != 7 {
-		t.Fatalf("cutoff/gaps not promoted: %d %v", after.ADRFormatV1From, after.LegacyADRGaps)
+	bytes, err := after.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(bytes), "adrFormatV1From") || strings.Contains(string(bytes), "legacyAdrGaps") {
+		t.Fatalf("retired routing payload promoted into final lock: %s", bytes)
 	}
 	if after.Files["docs/x.md"].OutputHash != "sha256:1" {
 		t.Fatal("existing lock files not preserved")
@@ -244,8 +248,8 @@ func TestFinalUpgradeRequiresAttestation(t *testing.T) {
 	if err := FinalUpgrade(testContext(t), dir, lock, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "no current-state attestation") {
 		t.Fatalf("want no-attestation error, got %v", err)
 	}
-	invalid := &manifest.Lock{AWFVersion: "0.19.0", InitializedWithVersion: "0.19.0"}
-	if err := FinalUpgrade(testContext(t), dir, invalid, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "restore") {
+	invalid := &manifest.Lock{AWFVersion: "bad", InitializedWithVersion: "1.0.0"}
+	if err := FinalUpgrade(testContext(t), dir, invalid, io.Discard); err == nil || !strings.Contains(err.Error(), "invalid authority") {
 		t.Fatalf("want invalid-authority error, got %v", err)
 	}
 }
@@ -263,12 +267,12 @@ func TestFinalUpgradeRejectsInvalidSeal(t *testing.T) {
 }
 
 func TestCutoverOperationsRequiresApprovalPresent(t *testing.T) {
-	dir, head, digest := sealedRepo(t)
+	dir, _, _ := sealedRepo(t)
 	if err := os.Remove(filepath.Join(dir, approvalPath)); err != nil {
 		t.Fatal(err)
 	}
 	lock := &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, Files: map[string]manifest.Entry{}}
-	if _, err := cutoverOperations(dir, lock, sealedAtt(head, digest)); err == nil || !strings.Contains(err.Error(), "approval file") {
+	if _, err := cutoverOperations(dir, lock); err == nil || !strings.Contains(err.Error(), "approval file") {
 		t.Fatalf("want absent-approval error, got %v", err)
 	}
 }
@@ -305,7 +309,7 @@ func TestResetLegacyResidentsRefusals(t *testing.T) {
 	t.Run("unusable-resident-plan", func(t *testing.T) {
 		root := t.TempDir()
 		mustMkdir(t, filepath.Join(root, ".awf"))
-		mustWrite(t, filepath.Join(root, LockRel()), []byte(`{"awfVersion":"0.25.0","schemaVersion":21,"files":{},"adrFormatV1From":1,"adrFormatV2From":1,"legacyADRGaps":[]}`))
+		mustWrite(t, filepath.Join(root, LockRel()), []byte(`{"awfVersion":"0.25.0","schemaVersion":21,"files":{}}`))
 		err := ResetLegacyResidents(root, []string{"../escape"}, 22, io.Discard)
 		if err == nil || !strings.Contains(err.Error(), "invalid resident reset plan") {
 			t.Fatalf("want a plan refusal, got %v", err)
@@ -326,7 +330,7 @@ func TestResetLegacyResidentsCommitsSchemaAndDiscards(t *testing.T) {
 	mustMkdir(t, filepath.Join(root, ".awf", "memory"))
 	mustWrite(t, filepath.Join(root, ".awf", "efforts", "legacy.json"), []byte(`{"schemaVersion":1}`))
 	mustWrite(t, filepath.Join(root, ".awf", "memory", "notes.md"), []byte("standalone"))
-	mustWrite(t, filepath.Join(root, LockRel()), []byte(`{"awfVersion":"0.25.0","schemaVersion":21,"files":{},"adrFormatV1From":1,"adrFormatV2From":1,"legacyADRGaps":[]}`))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte(`{"awfVersion":"0.25.0","schemaVersion":21,"files":{}}`))
 
 	var log bytes.Buffer
 	// Deliberately unsorted: the journal contract requires sorted operations and
@@ -356,5 +360,19 @@ func TestResetLegacyResidentsCommitsSchemaAndDiscards(t *testing.T) {
 	}
 	if !strings.Contains(log.String(), "operation: upgrade committed") {
 		t.Fatalf("log = %q", log.String())
+	}
+}
+
+// invariant: tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded (TestFinalUpgradeDiscardsBridgeADRRoutingPayload)
+func TestFinalUpgradeDiscardsBridgeADRRoutingPayload(t *testing.T) {
+	lock := &manifest.Lock{AWFVersion: "0.30.0", SchemaVersion: 30, Files: map[string]manifest.Entry{}, BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 7, LegacyADRGaps: []int{2}}}
+	lock.BridgeAttestation = nil
+	lock.SchemaVersion = 31
+	bytes, err := lock.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(bytes), "adrFormatV1From") || strings.Contains(string(bytes), "legacyAdrGaps") {
+		t.Fatalf("routing payload survived final lock: %s", bytes)
 	}
 }

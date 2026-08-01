@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -67,6 +66,7 @@ var minVersionBySchema = map[int]string{
 	28: "0.30.0",
 	29: "0.30.0",
 	30: "0.30.0",
+	31: "0.30.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -272,31 +272,6 @@ func (p *Project) SyncReport(ctx context.Context) ([]Backup, []Change, []string,
 	return p.syncReport(ctx, nil)
 }
 
-// legacyAuthorityCompatibility derives the schema-30 cutoff payload that a
-// first-adoption lock must still encode. ADR parsing never consumes this value;
-// generation 31 removes it in the next migration.
-func legacyAuthorityCompatibility(corpus adr.Corpus) (int, []int) {
-	seen := map[int]bool{}
-	maxNumber := 0
-	for _, record := range corpus.All() {
-		if record.Number == "" {
-			continue
-		}
-		number, _ := strconv.Atoi(record.Number) // parsed corpus admits only FilenameRe's four-digit number
-		seen[number] = true
-		if number > maxNumber {
-			maxNumber = number
-		}
-	}
-	gaps := []int{}
-	for number := 1; number <= maxNumber; number++ {
-		if !seen[number] {
-			gaps = append(gaps, number)
-		}
-	}
-	return maxNumber + 1, gaps
-}
-
 // InitAuthority is the explicit provenance supplied only by first adoption.
 type InitAuthority struct {
 	InitializedWithVersion string
@@ -371,19 +346,8 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	if old != nil {
 		lock.InitializedWithVersion = old.InitializedWithVersion
-		lock.ADRFormatV1From = old.ADRFormatV1From
-		lock.ADRFormatV2From = old.ADRFormatV2From
-		lock.ADRFormatV3From = old.ADRFormatV3From
-		lock.LegacyADRGaps = slices.Clone(old.LegacyADRGaps)
 	} else {
 		lock.InitializedWithVersion = seed.InitializedWithVersion
-		// Schema 30 still requires these compatibility fields. Intrinsic parsing
-		// ignores them, and generation 31 removes them in the next phase.
-		cutoff, gaps := legacyAuthorityCompatibility(corpus)
-		lock.ADRFormatV1From = cutoff
-		lock.ADRFormatV2From = cutoff
-		lock.ADRFormatV3From = cutoff
-		lock.LegacyADRGaps = gaps
 	}
 	want := map[string]bool{}
 	for _, f := range files {

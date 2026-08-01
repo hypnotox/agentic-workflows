@@ -298,3 +298,4 @@ updates sources and re-renders rather than hand-editing generated files.
 - 2026-08-01: Proposed
 - 2026-08-01: Implementing; content-sha256: 723cd9410d4d09ff285031655c441f9b4187a5209fc31ecc25fe653b1545d3a4
 - 2026-08-01: Applied; operations: remove `adr-system/adr-lifecycle:fresh-adoption-v1-cutoff`, add `adr-system/adr-lifecycle:intrinsic-format-routing`, update `adr-system/adr-lifecycle:adr-amendable-until-terminal`, update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`
+- 2026-08-01: Applied; operations: remove `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`, update `tooling/upgrade-runtime:initial-adoption-version-immutable`, remove `tooling/upgrade-runtime:legacy-format-set-is-closed`, add `tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded`

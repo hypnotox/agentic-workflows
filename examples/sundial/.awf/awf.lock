@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.30.0",
-  "schemaVersion": 30,
+  "schemaVersion": 31,
   "files": {
     ".agents/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -1146,9 +1146,5 @@
       "configHash": "sha256:ef8342ab0ac6b40eeff56fcbb3f03ff792367e222551f73f137c9eb2a7b8d3c2",
       "outputHash": "sha256:72e863e9b2140fe1043e61ff35f3a2cfaf67eacd35729e02fe418746cbecf96d"
     }
-  },
-  "adrFormatV1From": 4,
-  "adrFormatV2From": 4,
-  "adrFormatV3From": 4,
-  "legacyAdrGaps": []
+  }
 }

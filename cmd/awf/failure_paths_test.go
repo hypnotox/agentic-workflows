@@ -133,7 +133,6 @@ func TestUpgradeReportsBinaryBehind(t *testing.T) {
 		t.Fatal(err)
 	}
 	l.SchemaVersion = migrate.Current() + 1
-	l.ADRFormatV2From = l.ADRFormatV1From
 	if err := l.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}

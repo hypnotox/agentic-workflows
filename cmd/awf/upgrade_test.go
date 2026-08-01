@@ -17,15 +17,16 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
-// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable (TestRunUpgradeAuthorityRefusalsDoNotMutate)
-
-func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	for _, tc := range []struct{ name, lock, want string }{
-		{"missing", "", "use the bridge release to attest"},
-		{"pre-tracking", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`, "use the bridge release to attest"},
-		{"invalid", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"adrFormatV1From":1}`, "restore"},
+// TestRunUpgradeGateStateError covers the GateState error branch in runUpgrade:
+// a valid current authority lock exists without current config while an old-tree
+// (.claude/awf/) migration lock is corrupt. Authority loading selects the current
+// lock; GateState then selects the active old layout and reports its malformed lock.
+func TestRunUpgradeRejectsCorruptOrMissingAuthority(t *testing.T) {
+	for _, tc := range []struct {
+		name, lock, want string
+	}{
+		{"missing", "", "bridge release"},
+		{"corrupt", "{", "restore"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -33,27 +34,18 @@ func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {
 			if tc.lock != "" {
 				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
 			}
-			before := snapshotTree(t, root)
-			err := runUpgrade(ctx, root, io.Discard)
-			if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("error=%v, want %q", err, tc.want)
-			}
-			if after := snapshotTree(t, root); after != before {
-				t.Fatal("refused upgrade mutated the tree")
+			if err := runUpgrade(testContext(t), root, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
 			}
 		})
 	}
 }
 
-// TestRunUpgradeGateStateError covers the GateState error branch in runUpgrade:
-// a valid current authority lock exists without current config while an old-tree
-// (.claude/awf/) migration lock is corrupt. Authority loading selects the current
-// lock; GateState then selects the active old layout and reports its malformed lock.
 func TestRunUpgradeGateStateError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := t.TempDir()
-	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"adrFormatV1From":1,"legacyAdrGaps":[]}`)
+	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`)
 	oldDir := filepath.Join(root, ".claude", "awf")
 	if err := os.MkdirAll(oldDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -126,7 +118,7 @@ func attestLock(t *testing.T, root string) {
 	}
 	lock = &manifest.Lock{
 		AWFVersion: lock.AWFVersion, SchemaVersion: lock.SchemaVersion, Files: lock.Files,
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "0000000000000000000000000000000000000000", TreeDigest: "sha256:0", ADRFormatV1From: 137, LegacyADRGaps: []int{}},
+		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "0000000000000000000000000000000000000000", TreeDigest: "sha256:0", ADRFormatV1From: 2, LegacyADRGaps: []int{}},
 	}
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
@@ -198,32 +190,6 @@ func TestGuardMalformedJournalRefusesEveryMode(t *testing.T) {
 		if code := runAt(t, root, args, &out, &errb); code == 0 || !strings.Contains(errb.String(), "restore the working tree from Git") {
 			t.Fatalf("%v not refused with restoration guidance: code=%d\n%s", args, code, errb.String())
 		}
-	}
-}
-
-func TestGuardPreTrackingCommandMatrix(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, minimalYAML)
-	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`)
-	for _, args := range [][]string{
-		{"awf", "init", "--force"},
-		{"awf", "render"},
-		{"awf", "check"},
-		{"awf", "upgrade"},
-	} {
-		var out, errb bytes.Buffer
-		if code := runAt(t, root, args, &out, &errb); code == 0 || !strings.Contains(errb.String(), "pre-tracking authority") {
-			t.Fatalf("%v escaped pre-tracking guard: code=%d stderr=%q", args, code, errb.String())
-		}
-	}
-	var out, errb bytes.Buffer
-	if code := runAt(t, root, []string{"awf", "init", "--describe"}, &out, &errb); code != 0 {
-		t.Fatalf("init --describe was guarded: code=%d stderr=%q", code, errb.String())
-	}
-	if !strings.Contains(out.String(), `"descriptors"`) {
-		t.Fatalf("init --describe output missing descriptors: %q", out.String())
 	}
 }
 

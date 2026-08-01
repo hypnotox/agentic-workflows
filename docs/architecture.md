@@ -4,6 +4,8 @@
 <!-- awf:edit overview: from .awf/docs/parts/architecture/overview.md -->
 awf renders tracked workflow guidance from `.awf/`, while its binary owns immutable schema-2 effort residents and stateless optional managed-worktree operations at the repository primary control root. A concrete non-minimal workflow carries one slug and owned memory; Git remains the worktree topology authority. Generated Pi handoff accepts only the confined owned memory path and never selects an effort or mutates lifecycle state.
 
+Schema-31 migration retires lock-resident ADR routing values; authored ADR format remains the parser authority.
+
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 - `internal/effort` owns schema-2 immutable `.awf/efforts/<slug>/state.json` and always-owned `memory.md`, durable publication, and restartable finish tombstones.
@@ -17,10 +19,13 @@ awf renders tracked workflow guidance from `.awf/`, while its binary owns immuta
 - `internal/project.Loader` owns project-opening policy: configuration validation, target resolution, effective-catalog derivation, and catalog conformance over explicitly supplied dependencies. The wider `internal/project` package is the sync core: render pipeline, output plan, drift check, current-state and topics, sweep, validate, the kind and target tables, layout, config reference, scaffold, and sync orchestration. For context it keeps only the loading half, exposed as one assembled context-state value with two core-side constructors, one over an opened project and one over a staged tree.
 - `internal/contextq` owns the context query above the sync core: request-sensitive assembly from that one state value, tier-0 directory orientation, actual marker-kind file and directory relationships, topic-level authority expansion, artifact-sensitive grouping, the context and uncovered result vocabulary, and the human rendering of both reports. A structural test fails if the core's exported surface carries context result vocabulary or if this package reaches past the state seam.
 - `cmd/awf` is the composition root for top-level and post-mutation render: the `runSync` family selects the production config loader, standard catalog, and semantic resident-root resolver before constructing `internal/project.Loader`. It also exposes protocol-2 effort JSON and line-oriented mutation diagnostics, and routes bounded project checks; for context it parses flags, selects the renderer, and maps exits while the owning package renders the report. `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide the repo-owned supporting checks.
+- `internal/manifest` accepts retired ADR routing keys only for schema-30-and-earlier compatibility decoding; `internal/migrate` generation 31 removes them without rewriting ADRs, while `internal/upgrade` discards the frozen bridge payload at its existing journal commit point.
 
 
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
 The invoking checkout supplies tracked configuration and native workflow skills. For render and post-mutation render, `runSync` selects config-tree loading, the immutable standard catalog, and semantic resident-root resolution at the executable boundary, then injects them into `internal/project.Loader`; the Loader validates configuration, resolves targets, derives the effective catalog, and checks conformance. Native Git resolves one primary control root. Effort creation derives and exclusively reserves a slug directory, publishes `memory.md` before static `state.json`, syncs each boundary, and then by default orchestrates the standalone managed-worktree Add, rolling back through restartable finish only on proven-absent topology; enumeration ignores unpublished directories but preserves foreign bytes. Managed worktree commands derive path and branch from the slug and re-read actual Git path, registration, branch, cleanliness, operation, identity, and ancestry facts before each mutation. Pi handoff independently revalidates the exact owned memory file without parsing state. `internal/resident` holds the one table naming the resident roots the primary control root owns, `.awf/efforts` and `.awf/worktrees`, and output planning, render, drift, backup detection, current-state and context discovery, sweep, nested-adopter filtering, install, and uninstall all read it through that package; each root contributes exactly one governed self-ignoring `.gitignore`, and no consumer recurses into or deletes a dynamic descendant. Retiring a root is a schema migration: generation 22 classifies every legacy leaf read-only, refuses while any legacy managed worktree fact or unprovable resident remains, and otherwise quarantines the proven residents in one journaled transaction whose final lock replacement is the commit point. For context requests, the project snapshot classifies selected paths, preserves actual `State`, `Touches`, and `Proofs` relationships, expands authority only through the requested tier or facets, and delivers direct or secure spill output unchanged.
+
+A schema-30 lock crosses generation 31 through compatibility parsing: migration writes a lock without retired ADR routing keys and does not rewrite ADR files.
 
 
 <!-- awf:edit dependencies: from .awf/docs/parts/architecture/dependencies.md -->
@@ -62,4 +67,6 @@ The invoking checkout supplies tracked configuration and native workflow skills.
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`
   runs it under the deterministic `.gremlins.yaml` config and `cmd/mutants` reports survived mutants
   (ADR-0066). Advisory only; never part of the gate. This repo only, not part of the rendered standard.
+
+`internal/manifest` owns schema-sensitive lock decoding, while `internal/migrate` owns generation-31 removal of retired ADR routing payload.
 

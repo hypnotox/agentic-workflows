@@ -37,3 +37,5 @@ Best-effort delete the named file after packet use, whether packet use succeeds 
 Treat any other output as the context packet itself; do not interpret a near-match as a
 spill notice. This subsection is the contract's single rendered home; skills and agent
 bodies point here.
+
+Schema generation 31 is the ADR routing retirement migration. It accepts the retired cutoff and gap keys only while reading a schema-30-or-earlier lock, writes no replacement routing fields, and leaves ADR bytes untouched. A version-1 bridge attestation remains a frozen final-upgrade input; its payload is verified and discarded at the journaled lock replacement.
