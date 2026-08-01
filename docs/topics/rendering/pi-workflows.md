@@ -43,9 +43,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
-Pi checkpoint guidance invokes handoff alone after persistence at a settled phase boundary, carrying the same effort slug and exact owned memory path for non-minimal work. It never creates standalone memory, requires selection or telemetry lifecycle state, adopts a checkpoint, or treats checkbox tasks and helper returns as routine handoff boundaries; repository authority remains primary and report-only children do not edit memory.
+Pi workflow guidance keeps checkpoint persistence mandatory and permits session replacement only after a completed formal phase checkpoint, after explicit approval and its next action are persisted, or after an additional safe resumable checkpoint. At each eligible point the agent chooses continuation or handoff from currently available context and compaction evidence, retained-context relevance, and upcoming work, with no fixed threshold; declining handoff is autonomous continuation, not a check-in. A replacement session appends the handoff-log boundary as its first memory update before substantive continuation, while cancellation or failure that leaves the old session active appends none. Callers carry any effort-memory reorientation instruction across the replacement boundary; workflow guidance remains the owner of checkpoint eligibility, reorientation, and boundary logging.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0166, ADR-0167, ADR-0175
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-context-aware-discretionary-pi-handoffs
 Backing: test
 
 ### `invariant: pi-native-workflow-skills`

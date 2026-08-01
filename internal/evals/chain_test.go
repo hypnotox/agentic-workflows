@@ -310,6 +310,18 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	}
 	for _, target := range []string{"pi", "claude"} {
 		root := syncFullCatalogForTarget(t, cat, target)
+		guide := read(t, filepath.Join(root, "AGENTS.md"))
+		if target == "pi" {
+			if !strings.Contains(guide, "discretionary eligible session-replacement choice") {
+				t.Errorf("Pi guide omits discretionary session replacement")
+			}
+		} else {
+			for _, banned := range []string{"session-replacement choice", "new session logs an actual replacement boundary"} {
+				if strings.Contains(strings.ToLower(guide), banned) {
+					t.Errorf("%s guide publishes unsupported replacement claim %q", target, banned)
+				}
+			}
+		}
 		for name, role := range roles {
 			path := skillPath(root, name)
 			if target == "pi" {
@@ -375,7 +387,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 					"safe resumable point whose immediate successor can start independently",
 					"judge retained-context relevance and successor work from currently available context and compaction evidence",
 					"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
-					"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` before substantive work",
+					"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work",
 					"Cancellation or failure that leaves the old session active appends no handoff log",
 				)
 			} else {
@@ -386,6 +398,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 				"the workflow doc's working-memory section",
 			)
 			assertOrderedBody(t, target+"/"+name+" routine checkpoint", body, ordered)
+			assertNoCheckpointTimeHandoffLog(t, target+"/"+name, body)
 			// Only the two phase skills carry exactly one. executing-direct also
 			// checkpoints per resumable change, so it legitimately renders more.
 			if phaseCheckpointSkills[name] {
@@ -417,6 +430,20 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 // are checkpoints. Its absence, or any sentence adding a task or helper
 // trigger, breaks the claim.
 const checkpointBoundarySentence = "checkbox tasks and helper returns are not checkpoint boundaries"
+
+func assertNoCheckpointTimeHandoffLog(t *testing.T, label, body string) {
+	t.Helper()
+	lower := strings.ToLower(body)
+	for _, banned := range []string{
+		"append one `## handoff log` line",
+		"updates phase, next action, time, and handoff log",
+		"invoke `handoff_session` alone with the exact",
+	} {
+		if strings.Contains(lower, banned) {
+			t.Errorf("%s retains checkpoint-time or unconditional handoff contract %q", label, banned)
+		}
+	}
+}
 
 func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	t.Helper()
@@ -467,13 +494,14 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
 			"judge retained-context relevance and successor work from currently available context and compaction evidence",
 			"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
-			"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` before substantive work",
+			"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work",
 			"Cancellation or failure that leaves the old session active appends no handoff log",
 			"the workflow doc's working-memory section",
 		))
 		if handoff, approval := strings.Index(piBody, "handoff_session"), strings.Index(piBody, "explicitly request approval"); handoff >= 0 && handoff < approval {
 			t.Errorf("pi/%s names handoff_session before the approval request", name)
 		}
+		assertNoCheckpointTimeHandoffLog(t, "pi/"+name, piBody)
 		claudeBody := read(t, skillPath(nonPiRoot, name))
 		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
 			"Then continue through the target-native successor without claiming session replacement",

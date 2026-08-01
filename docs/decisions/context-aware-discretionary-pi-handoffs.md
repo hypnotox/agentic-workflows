@@ -209,3 +209,4 @@ when automatic kickoff submission fails.
 - 2026-08-02: Implementing; content-sha256: 5e5a4c336cf6c9948c51e44bd7003555f0cfecc731c4cffda9f6f5fa076e76a6
 - 2026-08-02: Applied; operations: update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
 - 2026-08-02: Amended; content-sha256: 03f0a8150b3a0467dcb0dd01ea809c91ef80a06d95a534b58b88a7428224a254
+- 2026-08-02: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-workflow`
