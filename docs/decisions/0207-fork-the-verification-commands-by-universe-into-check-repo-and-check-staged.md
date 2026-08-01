@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-07-31
 ---
 # ADR-0207: Fork the verification commands by universe into check repo and check staged
@@ -373,3 +373,4 @@ prevent.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-08-01: Accepted; content-sha256: 984a70036cd01f5853a54ec52f071992b11075e0c5057232e2f66b0fee40fc9c
