@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 func writeMsg(t *testing.T, content string) string {
@@ -45,8 +48,8 @@ func TestCleanCommitSubject(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := cleanCommitSubject(c.in); got != c.want {
-				t.Errorf("cleanCommitSubject(%q) = %q, want %q", c.in, got, c.want)
+			if got := commitmsg.Clean([]byte(c.in)).Subject; got != c.want {
+				t.Errorf("Clean(%q).Subject = %q, want %q", c.in, got, c.want)
 			}
 		})
 	}
@@ -76,6 +79,129 @@ func TestRunCommitGateAccepts(t *testing.T) {
 	var out bytes.Buffer
 	if err := runCommitGate(ctx, root, writeMsg(t, "feat: a clean subject\n"), nil, &out); err != nil {
 		t.Fatalf("conforming subject must pass: %v (out=%q)", err, out.String())
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:older-format-incoming-parent-sanction (TestCheckCommitAuthorizesOlderFormatIncomingParent)
+func TestCheckCommitAuthorizesOlderFormatIncomingParent(t *testing.T) {
+	root := scaffoldProject(t)
+	fixture := gitfixture.At(root)
+	gitfixture.AddAll(t, fixture)
+	base := gitfixture.Commit(t, fixture, "chore: scaffold", nil)
+	v2Body := []byte(`---
+format: current-state-v2
+status: Proposed
+date: 2026-01-01
+---
+# ADR-0190: Old format
+
+## Context
+
+Original context.
+
+## Decision
+
+1. Keep V2.
+
+## State changes
+
+None.
+
+## Consequences
+
+The format stays authored.
+
+## Alternatives Considered
+
+None.
+
+## Status history
+
+- 2026-01-01: Proposed
+`)
+	legacyBody, err := os.ReadFile(filepath.Join("..", "..", "docs", "decisions", "0001-template-overlay-rendering-engine.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v2Path := "docs/decisions/0190-compress-governed-dispatch-guidance-with-reference-and-shared-partials.md"
+	legacyPath := "docs/decisions/0001-template-overlay-rendering-engine.md"
+	gitfixture.CheckoutNewBranch(t, fixture, "old-v2", base)
+	v2Head := gitfixture.Commit(t, fixture, "docs: old v2", map[string]string{v2Path: string(v2Body)})
+	gitfixture.CheckoutNewBranch(t, fixture, "old-legacy", base)
+	legacyHead := gitfixture.Commit(t, fixture, "docs: old legacy", map[string]string{legacyPath: string(legacyBody)})
+	gitfixture.CheckoutNewBranch(t, fixture, "integration", base)
+	gitfixture.Stage(t, fixture, map[string]string{v2Path: string(v2Body), legacyPath: string(legacyBody)})
+	mergeHeadPath := filepath.Join(root, ".git", "MERGE_HEAD")
+	testsupport.WriteFile(t, mergeHeadPath, v2Head+"\n"+legacyHead+"\n")
+
+	indexBefore, err := os.ReadFile(filepath.Join(root, ".git", "index"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mergeBefore, err := os.ReadFile(mergeHeadPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runCommitGate(testContext(t), root, writeMsg(t, "Merge old branches\n"), nil, &out); err == nil {
+		t.Fatal("unstamped older-format merge succeeded")
+	}
+	indexAfter, _ := os.ReadFile(filepath.Join(root, ".git", "index"))
+	mergeAfter, _ := os.ReadFile(mergeHeadPath)
+	if !bytes.Equal(indexBefore, indexAfter) || !bytes.Equal(mergeBefore, mergeAfter) {
+		t.Fatal("refusal changed the staged index or MERGE_HEAD")
+	}
+
+	valid := "Merge old branches\n\nAWF-Allow-Version: current-state-v2\nAWF-Allow-Reason: preserve reviewed V2 history\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: preserve reviewed legacy history\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: redundant but harmless\n"
+	out.Reset()
+	if err := runCommitGate(testContext(t), root, writeMsg(t, valid), nil, &out); err != nil {
+		t.Fatalf("qualified octopus merge refused: %v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "stale merge authorization satisfied") {
+		t.Fatalf("success outcome = %q", out.String())
+	}
+
+	evilV2 := strings.Replace(string(v2Body), "Original context.", "Evil merge context.", 1)
+	gitfixture.Stage(t, fixture, map[string]string{v2Path: evilV2})
+	out.Reset()
+	if err := runCommitGate(testContext(t), root, writeMsg(t, valid), nil, &out); err == nil || !strings.Contains(out.String(), "unqualified incoming-parent record ADR-0190") {
+		t.Fatalf("evil merge edit = %v, %q", err, out.String())
+	}
+	gitfixture.Stage(t, fixture, map[string]string{v2Path: string(v2Body)})
+
+	out.Reset()
+	malformed := "Merge old branches\n\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: \n"
+	err = runCommitGate(testContext(t), root, writeMsg(t, malformed), nil, &out)
+	var syntax *commitmsg.SyntaxError
+	if !errors.As(err, &syntax) {
+		t.Fatalf("malformed error = %#v", err)
+	}
+
+	if err := os.Remove(mergeHeadPath); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if err := runCommitGate(testContext(t), root, writeMsg(t, "feat: ordinary stale import\n\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: not a merge\n"), nil, &out); err == nil || !strings.Contains(out.String(), "non-merge") {
+		t.Fatalf("non-merge provisional import = %v, %q", err, out.String())
+	}
+}
+
+func TestRunCommitGateRejectsMalformedAuthorizationByIdentity(t *testing.T) {
+	root := scaffoldProject(t)
+	var out bytes.Buffer
+	err := runCommitGate(testContext(t), root, writeMsg(t, "feat: x\n\nAWF-Allow-Version: legacy\n"), nil, &out)
+	var syntax *commitmsg.SyntaxError
+	if !errors.As(err, &syntax) {
+		t.Fatalf("error = %#v, want SyntaxError; output=%q", err, out.String())
+	}
+	if !strings.Contains(out.String(), "changed index: no; changed message: no; changed merge state: no") {
+		t.Fatalf("missing non-mutation outcome: %q", out.String())
+	}
+	gitfixture.StageUnmerged(t, gitfixture.At(root), "conflict.md")
+	out.Reset()
+	err = runCommitGate(testContext(t), root, writeMsg(t, "feat: x\n"), nil, &out)
+	if err == nil || errors.As(err, &syntax) {
+		t.Fatalf("infrastructure error = %#v, want non-SyntaxError", err)
 	}
 }
 
@@ -161,10 +287,10 @@ func TestCleanCommitLines(t *testing.T) {
 	// The extraction must preserve blank lines and leave every surviving line
 	// untrimmed, which is what keeps cleanCommitSubject's existing behaviour and
 	// makes body line numbers match what the author sees.
-	got := cleanCommitLines("feat: x  \r\n\n# a comment\nbody\n# ---- >8 ----\ndiff\n")
+	got := strings.Split(commitmsg.Clean([]byte("feat: x  \r\n\n# a comment\nbody\n# ---- >8 ----\ndiff\n")).Text, "\n")
 	want := []string{"feat: x  ", "", "body"}
 	if len(got) != len(want) {
-		t.Fatalf("cleanCommitLines = %q, want %q", got, want)
+		t.Fatalf("Clean lines = %q, want %q", got, want)
 	}
 	for i := range want {
 		if got[i] != want[i] {

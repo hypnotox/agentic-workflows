@@ -300,3 +300,4 @@ updates sources and re-renders rather than hand-editing generated files.
 - 2026-08-01: Applied; operations: remove `adr-system/adr-lifecycle:fresh-adoption-v1-cutoff`, add `adr-system/adr-lifecycle:intrinsic-format-routing`, update `adr-system/adr-lifecycle:adr-amendable-until-terminal`, update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`
 - 2026-08-01: Applied; operations: remove `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`, update `tooling/upgrade-runtime:initial-adoption-version-immutable`, remove `tooling/upgrade-runtime:legacy-format-set-is-closed`, add `tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded`
 - 2026-08-01: Applied; operations: update `invariants/current-state-authority:merge-transition-ordered-aggregate`
+- 2026-08-01: Applied; operations: add `adr-system/adr-lifecycle:older-format-incoming-parent-sanction`

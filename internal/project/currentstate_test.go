@@ -20,6 +20,21 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+func TestCommitAuthorizationResultString(t *testing.T) {
+	success := CommitAuthorizationResult{Category: "operation", Condition: "stale merge authorization satisfied"}
+	if got, want := success.String(), "operation: stale merge authorization satisfied; changed index: no; changed message: no; changed merge state: no; next actions: none"; got != want {
+		t.Fatalf("success String = %q, want %q", got, want)
+	}
+	changed := CommitAuthorizationResult{Category: "operation", Condition: "test", ChangedIndex: true, ChangedMessage: true, ChangedMergeState: true}
+	if got := changed.String(); !strings.Contains(got, "changed index: yes; changed message: yes; changed merge state: yes") {
+		t.Fatalf("changed String = %q", got)
+	}
+	refusal := CommitAuthorizationResult{Category: "operation", Condition: "non-merge: provisional older-format introduction without merge parents", NextActions: []string{"correct the message trailers", "run git commit to finish the existing merge"}}
+	if got, want := refusal.String(), "operation: non-merge: provisional older-format introduction without merge parents; changed index: no; changed message: no; changed merge state: no; next actions: 1. correct the message trailers 2. run git commit to finish the existing merge"; got != want {
+		t.Fatalf("refusal String = %q, want %q", got, want)
+	}
+}
+
 func TestLoadTreeCurrentStateRejectsFutureSchema(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: example\nintegrationBranch: main\n")}})
 	if err != nil {

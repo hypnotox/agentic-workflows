@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- `awf check commit` now definitively authorizes exact incoming-parent older-format ADRs in real merges through adjacent `AWF-Allow-Version` and nonempty `AWF-Allow-Reason` trailers. Malformed syntax or an unqualified import refuses without changing the staged index or merge state, so an agent can correct the message and finish the existing merge.
+
 - Schema generation 31 removes permanent ADR format cutoff and gap fields from new locks. Older schema-30 lock snapshots remain readable during upgrade, while version-1 bridge attestations retain their frozen payload solely until final cutover verifies and discards it.
 
 - ADR parsing now follows each record's authored format marker rather than its number. Markerless

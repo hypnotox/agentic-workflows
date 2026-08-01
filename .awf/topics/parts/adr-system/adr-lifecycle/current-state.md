@@ -8,6 +8,12 @@ A numbered ADR is parsed by its authored format marker, independent of its numbe
 Origin: ADR-sanction-the-seal-crossing-integration-transition
 Backing: test
 
+### `invariant: older-format-incoming-parent-sanction`
+
+An ordinary commit may introduce only the running binary's current ADR format. A real merge may introduce an older-format result ADR only when an incoming parent carries the paired record in that same format, the result differs only by the deterministic numbering or renumbering substitutions sanctioned for that format, and the cleaned final commit-message trailer block carries an adjacent complete `AWF-Allow-Version` and nonempty `AWF-Allow-Reason` pair for that format. `commit-msg` is definitive, a refusal preserves the staged merge for retry, redundant complete pairs are harmless, and malformed reserved trailers refuse.
+Origin: ADR-sanction-the-seal-crossing-integration-transition
+Backing: test
+
 ### `invariant: adr-amendable-until-terminal`
 
 A current-state-v2 or current-state-v3 ADR has digest-covered content that is amendable while Proposed, Accepted, or Implementing and freezes permanently at a terminal status, independent of its assigned number. Post-Accepted amendment is recorded as a stamp chain: only an Amended event introduces a new digest, which must differ from the preceding stamp; a status event repeats the preceding stamp or establishes the first; the latest stamp must equal the computed content digest; and an amendment never alters or removes an operation already referenced by an Applied event.

@@ -1,6 +1,7 @@
 package currentstate
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -15,6 +16,9 @@ import (
 // the static handshake and coverage read a single consistent universe.
 type Loaded struct {
 	ADRs []adr.ADR
+	// Sources owns the parsed ADR bytes keyed by identity for operation-local
+	// qualification against merge-parent evidence.
+	Sources map[string][]byte
 	// Corpus is the identity-indexed view over ADRs, built and validated once
 	// here. Consumers take it rather than rebuilding one, so the corpus-wide
 	// duplicate-identity refusal (ADR-0202 item 4) has a single evaluation point
@@ -30,7 +34,7 @@ type Loaded struct {
 // single-universe load. It does not run Check or EvaluateCoverage; the command
 // layer applies eligibility filters and routes findings.
 func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
-	records, err := adrsFromTree(tree, cfg.DocsDir)
+	records, sources, err := adrsFromTree(tree, cfg.DocsDir)
 	if err != nil {
 		return Loaded{}, err
 	}
@@ -42,7 +46,7 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 	if err != nil {
 		return Loaded{}, err
 	}
-	return Loaded{ADRs: records, Corpus: corpus, Topics: topics}, nil
+	return Loaded{ADRs: records, Sources: sources, Corpus: corpus, Topics: topics}, nil
 }
 
 // adrsFromTree parses every top-level ADR decision file in the snapshot with the
@@ -50,9 +54,10 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 // uniqueness that a per-file parse cannot see. Per-file legacy and governed
 // routing is enforced by adr.ParseRecord, which also rejects a non-reserved file
 // that is neither form.
-func adrsFromTree(tree *snapshot.Tree, docsDir string) ([]adr.ADR, error) {
+func adrsFromTree(tree *snapshot.Tree, docsDir string) ([]adr.ADR, map[string][]byte, error) {
 	prefix := docsDir + "/decisions/"
 	var records []adr.ADR
+	sources := map[string][]byte{}
 	for _, f := range tree.List() {
 		if !f.Scannable() {
 			continue
@@ -63,9 +68,10 @@ func adrsFromTree(tree *snapshot.Tree, docsDir string) ([]adr.ADR, error) {
 		}
 		rec, err := adr.ParseRecord(rel, f.Bytes)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		records = append(records, rec)
+		sources[rec.Identity()] = slices.Clone(f.Bytes)
 	}
-	return records, nil
+	return records, sources, nil
 }

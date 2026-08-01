@@ -9,6 +9,8 @@ repository. Read it before taking any action; keep it current as decisions evolv
 This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one. Change the config, a var, or a convention part, then run `awf render` and `awf check`, and commit the rendered files with the config change. Toggle artifacts and adapters with `awf enable <kind> <name>` / `awf disable <kind> <name>`.
 
 See [{{ .layout.workingWithAwf }}]({{ .layout.workingWithAwf }}) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
+
+When a real merge imports an older-format ADR, `commit-msg` is definitive. If it refuses an unstamped conflict-free merge, preserve the staged index and `MERGE_HEAD`, add adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers, then run `git commit`; optionally begin proactively with `git merge --no-commit --no-ff`. Never retrofit the ADR or create allowance state, and do not stamp a true fast-forward.
 <!-- awf:end -->
 
 <!-- awf:section you-and-this-project -->

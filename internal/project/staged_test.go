@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -518,6 +519,79 @@ func TestRangePairUniversesErrors(t *testing.T) {
 	if _, _, err := p.rangePairUniverses(testContext(t), lockChild); err == nil {
 		t.Fatal("expected a before-side lock parse error")
 	}
+}
+
+func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
+	msg := commitmsg.Message{}
+	openRoot := func(t *testing.T, root string) *Project {
+		t.Helper()
+		p, err := openRootProject(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	t.Run("no checkout", func(t *testing.T) {
+		if _, err := (&Project{Root: t.TempDir()}).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("missing checkout succeeded")
+		}
+	})
+	t.Run("malformed repository", func(t *testing.T) {
+		root := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(root, ".git", "HEAD"), "broken\n")
+		if _, err := (&Project{Root: root}).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("malformed repository succeeded")
+		}
+	})
+	t.Run("unborn HEAD", func(t *testing.T) {
+		root := gitfixture.InitRepo(t).Root()
+		if _, err := openRoot(t, root).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("unborn HEAD succeeded")
+		}
+	})
+	t.Run("unmerged index", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, "base", stagedHeadFiles())
+		gitfixture.StageUnmerged(t, repo, "conflict.md")
+		if _, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("unmerged index succeeded")
+		}
+	})
+	t.Run("missing incoming object", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, "base", stagedHeadFiles())
+		testsupport.WriteFile(t, filepath.Join(repo.Root(), ".git", "MERGE_HEAD"), "0123456789012345678901234567890123456789\n")
+		if _, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("missing incoming object succeeded")
+		}
+	})
+	t.Run("malformed first-parent lock", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, "base", stagedHeadFiles())
+		gitfixture.Commit(t, repo, "bad lock", map[string]string{".awf/awf.lock": "{"})
+		if _, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("malformed first-parent lock succeeded")
+		}
+	})
+	t.Run("malformed result lock", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, "base", stagedHeadFiles())
+		gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": "{"})
+		if _, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("malformed result lock succeeded")
+		}
+	})
+	t.Run("malformed incoming lock", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		base := gitfixture.Commit(t, repo, "base", stagedHeadFiles())
+		gitfixture.CheckoutNewBranch(t, repo, "bad-parent", base)
+		bad := gitfixture.Commit(t, repo, "bad lock", map[string]string{".awf/awf.lock": "{"})
+		gitfixture.CheckoutNewBranch(t, repo, "integration", base)
+		testsupport.WriteFile(t, filepath.Join(repo.Root(), ".git", "MERGE_HEAD"), bad+"\n")
+		if _, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg); err == nil {
+			t.Fatal("malformed incoming lock succeeded")
+		}
+	})
 }
 
 // openStaged opens a project whose config is on disk (staged or untracked),

@@ -90,7 +90,7 @@ Subcommands:
   invariants   report each invariant claim's backing and proof sites
   prose        scan tracked text files for typographic punctuation, blocking
   memory       scan staged decision records for working-memory citations, blocking
-  commit       validate one commit message (Conventional Commits), blocking
+  commit       validate one commit message and stale-ADR merge authorization, blocking
 `,
 		Children: []Command{
 			{Name: "drift", Summary: "Report stale or hand-edited rendered output",
@@ -142,17 +142,22 @@ one with memoryCite.exemptions. awf installs no hook; wire this into your own
 pre-commit hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the
 hooks artifact is enabled).
 `},
-			{Name: "commit", Summary: "Validate one commit message (Conventional Commits), blocking",
+			{Name: "commit", Summary: "Validate one commit message and stale-ADR merge authorization, blocking",
 				BoolFlags: []string{"--staged"}, MaxPos: 1,
 				Gating: Ungated, StateExempt: true,
 				HelpBody: `Usage: awf check commit [FILE]
 
-Validate one commit message against the Conventional Commits rules (type, scope,
-72-char subject) and exit non-zero on a violation. Reads FILE (the path a
-commit-msg hook passes as $1) or stdin; cleans the message git-style and exempts
-merge/autosquash subjects. awf installs no hook; wire this into your own
-commit-msg hook (the rendered .awf/hooks/commit-msg.sh payload runs it when the
-hooks artifact is enabled).
+Validate one commit message against the Conventional Commits rules and
+definitively validate stale-format ADR merge authorization. Reads FILE (the
+path a commit-msg hook passes as $1) or stdin and cleans it git-style. Merge and
+autosquash subjects are exempt only from Conventional Commits. An older-format
+ADR introduced by a real merge must qualify against an incoming MERGE_HEAD
+parent and carry an adjacent AWF-Allow-Version / nonempty AWF-Allow-Reason pair
+in the final trailer block; malformed reserved trailers refuse. Refusal leaves
+the staged index, message, and merge state unchanged so correcting the trailers
+and rerunning git commit finishes the existing merge. awf installs no hook; wire
+this into your own commit-msg hook (the rendered .awf/hooks/commit-msg.sh payload
+runs it when the hooks artifact is enabled).
 `},
 		},
 	},

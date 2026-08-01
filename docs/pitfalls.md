@@ -2000,5 +2000,21 @@ with an `assert pattern in source` before the replace. One more trap in the same
 undoing a mutation with `git checkout -- <file>` also discards any UNCOMMITTED real edit
 to that file, so a comment written minutes earlier vanishes with the mutation.
 
+## An unstamped stale-ADR merge is recoverable at commit-msg
+
+_Domains: adr-system, tooling_
+
+A conflict-free merge can assemble an older-format ADR before Git exposes its final
+message and `MERGE_HEAD` parents to awf. The earlier `pre-merge-commit` hook therefore
+cannot decide the exception. `commit-msg` is definitive: the result must match a paired
+incoming-parent record except for sanctioned numbering substitutions, and the final
+trailer block must carry adjacent `AWF-Allow-Version: <marker-or-legacy>` and
+`AWF-Allow-Reason: <nonempty reason>` lines. If that check refuses, do not repeat the
+merge or retrofit the ADR. Git preserves the index and `MERGE_HEAD`; correct the message
+trailers and run `git commit` to finish the existing merge. Malformed `AWF-Allow-`
+syntax refuses rather than becoming inert prose. A proactive agent may use
+`git merge --no-commit --no-ff`, while a true fast-forward has no merge commit and needs
+no authorization.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

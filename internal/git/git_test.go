@@ -782,6 +782,41 @@ func TestObjectReadContracts(t *testing.T) {
 	}
 }
 
+func TestCommitEvidenceReads(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "a"})
+	head := gitfixture.Commit(t, repo, "feat: subject\n\nbody\n", map[string]string{"b.txt": "b"})
+	handle := gitRepo(t, repo.Root())
+	parents, err := handle.CommitParents(testsupport.Context(t), head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parents) != 1 || parents[0] != base {
+		t.Fatalf("CommitParents = %q, want [%s]", parents, base)
+	}
+	message, err := handle.CommitMessage(testsupport.Context(t), head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if message != "feat: subject\n\nbody\n" {
+		t.Fatalf("CommitMessage = %q", message)
+	}
+	if _, err := handle.CommitParents(testsupport.Context(t), "missing"); err == nil {
+		t.Fatal("missing revision succeeded")
+	}
+	if _, err := handle.CommitMessage(testsupport.Context(t), "missing"); err == nil {
+		t.Fatal("missing message revision succeeded")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := handle.CommitParents(canceled, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled CommitParents = %v", err)
+	}
+	if _, err := handle.CommitMessage(canceled, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled CommitMessage = %v", err)
+	}
+}
+
 func TestIndexBlobs(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()

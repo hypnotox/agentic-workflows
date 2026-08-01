@@ -11,6 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/git"
@@ -203,6 +204,130 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	return report, nil
+}
+
+// CommitAuthorizationResult is the non-mutating outcome of definitive
+// commit-message stale-merge authorization.
+type CommitAuthorizationResult struct {
+	Category          string
+	Condition         string
+	ChangedIndex      bool
+	ChangedMessage    bool
+	ChangedMergeState bool
+	NextActions       []string
+}
+
+// String renders the complete operation outcome for people and hooks.
+func (r CommitAuthorizationResult) String() string {
+	yesNo := func(changed bool) string {
+		if changed {
+			return "yes"
+		}
+		return "no"
+	}
+	next := "none"
+	if len(r.NextActions) > 0 {
+		parts := make([]string, len(r.NextActions))
+		for i, action := range r.NextActions {
+			parts[i] = fmt.Sprintf("%d. %s", i+1, action)
+		}
+		next = strings.Join(parts, " ")
+	}
+	return fmt.Sprintf("%s: %s; changed index: %s; changed message: %s; changed merge state: %s; next actions: %s", r.Category, r.Condition, yesNo(r.ChangedIndex), yesNo(r.ChangedMessage), yesNo(r.ChangedMergeState), next)
+}
+
+// CheckCommitAuthorization validates the index, first parent, every incoming
+// MERGE_HEAD parent, and the cleaned final message without mutating any axis.
+func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Message) (CommitAuthorizationResult, error) {
+	success := CommitAuthorizationResult{Category: "operation", Condition: "stale merge authorization satisfied"}
+	refusal := func(observed, deficiency string) CommitAuthorizationResult {
+		return CommitAuthorizationResult{
+			Category:    "operation",
+			Condition:   observed + ": " + deficiency,
+			NextActions: []string{"correct the message trailers", "run git commit to finish the existing merge"},
+		}
+	}
+	heads, err := git.MergeHeads(p.Root)
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	observed := "non-merge"
+	if len(heads) > 0 {
+		observed = "merge with MERGE_HEAD " + strings.Join(heads, ",")
+	}
+	authorizations, parseErr := commitmsg.ParseAuthorizations(msg, func(value string) bool {
+		return value == "legacy" || adr.KnownFormatMarker(value)
+	})
+	if parseErr != nil {
+		var syntax *commitmsg.SyntaxError
+		if errors.As(parseErr, &syntax) {
+			return refusal(observed, fmt.Sprintf("malformed reserved trailer at cleaned line %d: %s", syntax.Line, syntax.Reason)), parseErr
+		}
+		return CommitAuthorizationResult{}, parseErr // coverage-ignore: commitmsg exposes only SyntaxError refusals
+	}
+	repo, err := p.gitRepo()
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	resultTree, err := snapshot.IndexTree(ctx, repo)
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	firstTree, err := snapshot.CommitTree(ctx, repo, "HEAD")
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	incomingTrees, err := snapshot.CommitTrees(ctx, repo, heads)
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	load := func(tree *snapshot.Tree) (currentstate.Universe, error) {
+		lock, _, err := optionalLockFromTree(tree)
+		if err != nil {
+			return currentstate.Universe{}, err
+		}
+		loaded, _, err := loadTreeCurrentState(p.Root, tree, lock)
+		return loaded.Universe(), err
+	}
+	first, err := load(firstTree)
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	result, err := load(resultTree)
+	if err != nil {
+		return CommitAuthorizationResult{}, err
+	}
+	incoming := make([]currentstate.Universe, len(incomingTrees))
+	for i, tree := range incomingTrees {
+		incoming[i], err = load(tree)
+		if err != nil {
+			return CommitAuthorizationResult{}, err
+		}
+	}
+	qualifications := currentstate.QualifyIncoming(first, result, incoming, adr.CurrentFormat())
+	if len(qualifications) == 0 {
+		return success, nil
+	}
+	if len(heads) == 0 {
+		return refusal(observed, "provisional older-format introduction without merge parents"), nil
+	}
+	allowed := map[string]bool{}
+	for _, authorization := range authorizations {
+		allowed[authorization.Version] = true
+	}
+	for _, qualification := range qualifications {
+		if !qualification.Qualified {
+			return refusal(observed, "unqualified incoming-parent record ADR-"+qualification.Introduction.Identity), nil
+		}
+		version := adr.FormatMarker(qualification.Introduction.Format)
+		if version == "" {
+			version = "legacy"
+		}
+		if !allowed[version] {
+			return refusal(observed, "missing authorization version "+version+" for ADR-"+qualification.Introduction.Identity), nil
+		}
+	}
+	return success, nil
 }
 
 func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {

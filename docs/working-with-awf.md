@@ -11,6 +11,8 @@ First adoption seals only `initializedWithVersion` in the lock. Each ADR declare
 
 awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf/worktrees/`. The tracked root rule is the only rendered artifact; dynamic descendants are repository-local resident state. Render, drift, nested-adopter discovery, and uninstall preserve these roots without recursively deleting worktrees.
 
+The rendered `commit-msg` payload makes older-format ADR merge authorization definitive only after Git exposes the assembled index, incoming parents, and final message. A refusal preserves the merge for trailer correction and `git commit` retry; `pre-merge-commit` continues to check only its earlier staged evidence.
+
 A complete worked example lives at
 [`examples/sundial/`](../examples/sundial/README.md): a fictional adopter with the
 full catalog enabled and every rendered file committed, kept in sync from source
@@ -57,6 +59,8 @@ Best-effort delete the named file after packet use, whether packet use succeeds 
 Treat any other output as the context packet itself; do not interpret a near-match as a
 spill notice. This subsection is the contract's single rendered home; skills and agent
 bodies point here.
+
+`awf check commit [FILE]` is also the definitive stale-format ADR merge gate. A real merge importing an older-format ADR needs a final trailer block with adjacent `AWF-Allow-Version: <current-state-vN-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` lines, and the record must match an incoming parent except for sanctioned numbering substitutions. Malformed reserved trailers and ordinary commits introducing old formats refuse. A refusal mutates neither the index, message, nor `MERGE_HEAD`: correct the trailers and run `git commit` to finish the existing merge. Agents may proactively use `git merge --no-commit --no-ff`; true fast-forwards need no stamp. Do not retrofit an ADR or create allowance state.
 
 Schema generation 31 is the ADR routing retirement migration. It accepts the retired cutoff and gap keys only while reading a schema-30-or-earlier lock, writes no replacement routing fields, and leaves ADR bytes untouched. A version-1 bridge attestation remains a frozen final-upgrade input; its payload is verified and discarded at the journaled lock replacement.
 

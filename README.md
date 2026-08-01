@@ -282,7 +282,7 @@ disk.
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf check prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf check memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
-| `awf check commit [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
+| `awf check commit [FILE]` | Validate Conventional Commits and definitively qualify and authorize older-format ADRs imported by a real merge; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
 | `awf uninstall` | Remove awf's generated files while keeping authored configuration and optional local residents. |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
@@ -301,15 +301,18 @@ basename; change it via `prefix` in `.awf/config.yaml`. You can back out anytime
 removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
-yours. With the `hooks` artifact enabled (default on init), three inert payload scripts
+yours. With the `hooks` artifact enabled (default on init), four inert payload scripts
 land under `.awf/hooks/`: `pre-commit.sh` (ordinary drift check, staged authority check,
-project gate, then enabled prose gate), `commit-msg.sh` (`awf check commit`), and `pre-push.sh`.
+project gate, then enabled prose gate), `commit-msg.sh` (`awf check commit`), `pre-push.sh`,
+and `pre-merge-commit.sh` (the staged evidence available before the final message and parents).
 Invoke them from wiring you own,
 e.g. an executable `.git/hooks/pre-commit` containing
 `exec bash .awf/hooks/pre-commit.sh "$@"`, or a tracked `core.hooksPath` directory. If
 you adopted an earlier awf that ran `awf setup`, your repo's `core.hooksPath` may still
 point at the no-longer-rendered `.githooks/`; run `git config --unset core.hooksPath`
 after upgrading.
+
+The `commit-msg` check is definitive for stale-format ADR imports. A real merge must carry the exact incoming-parent record, apart from sanctioned numbering substitutions, plus adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers. Malformed reserved syntax refuses. The index and `MERGE_HEAD` remain intact, so correct the message and run `git commit`; optionally start with `git merge --no-commit --no-ff`. True fast-forwards need no authorization, and an ADR must never be retrofitted or backed by allowance state.
 
 Local hooks are per-clone, so back them with CI. A minimal GitHub Actions job, kept on
 the exact awf version the repo was rendered with by the bootstrap:

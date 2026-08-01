@@ -3,7 +3,7 @@
 
 Command dispatch and the behaviour of the awf command surfaces.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
 
 The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. Effort commands manage optional durable coordination, memory, and managed worktrees.
 

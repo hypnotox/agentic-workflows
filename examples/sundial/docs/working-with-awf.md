@@ -32,7 +32,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 - `awf check drift`: report only the stale or hand-edited rendered output, including the config-tree hygiene sweep, without the current-state evaluation bare `awf check` runs with it.
 - `awf check state`: report only the current-state authority findings over the working tree. The staged transition stays `awf check --staged`, which applies to the bare form alone.
 - `awf check invariants`: report the current-state topic invariant claims and their backing state.
-- `awf check commit <file>`: validate one commit message (used by a commit-msg hook).
+- `awf check commit [FILE]`: validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers (used by a commit-msg hook).
 - `awf check prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
 - `awf check memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off; used by a pre-commit hook).
 - `awf changelog`: query the changelog by version or range.
@@ -67,6 +67,8 @@ artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under
 `.awf/hooks/`, inert scripts you wire into hook setups you own; awf never touches git config.
+The `commit-msg` payload is the definitive stale-format ADR merge boundary. An older-format import must match an incoming parent except for sanctioned numbering substitutions and carry adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers. Malformed reserved trailers refuse. The refusal preserves the index and `MERGE_HEAD`, so correct the message and run `git commit` instead of repeating the merge; `git merge --no-commit --no-ff` is an optional proactive flow. A true fast-forward needs no stamp, and neither ADR retrofit nor allowance state is permitted.
+
 `runner` toggles the rendered pure awf wrapper `awf` at the repo root, a fully awf-owned forwarder
 that execs the configured (`awfInvokeCmd`) or bootstrap-resolved awf with every argument forwarded
 verbatim; your project verbs stay in your own runner.

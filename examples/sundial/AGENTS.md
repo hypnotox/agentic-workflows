@@ -11,6 +11,8 @@ This project's rendered skills, agents, and docs (and this guide) are produced b
 
 See [docs/working-with-awf.md](docs/working-with-awf.md) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
 
+When a real merge imports an older-format ADR, `commit-msg` is definitive. If it refuses an unstamped conflict-free merge, preserve the staged index and `MERGE_HEAD`, add adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers, then run `git commit`; optionally begin proactively with `git merge --no-commit --no-ff`. Never retrofit the ADR or create allowance state, and do not stamp a true fast-forward.
+
 <!-- awf:edit you-and-this-project: default; create .awf/parts/agents-doc/you-and-this-project.md to override -->
 ## You and this project
 

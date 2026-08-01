@@ -130,9 +130,9 @@
     },
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
-      "templateHash": "sha256:29aec3a75135d989d86d0d8ba01d195ddf2081627a01e2533448bb2b4b0f66bf",
+      "templateHash": "sha256:f86047b5234d59aafb11b9fe4e2b996af98637b6b7706bd30a8f610f64518e9a",
       "configHash": "sha256:7cc2fb46a37c3dcec794e719ca1668f289cbe119247962e6dcf3d19857731d06",
-      "outputHash": "sha256:4d10596859ea23ad230647aea32a2c0c1d916f94835fd5681f26935019a76f8c"
+      "outputHash": "sha256:1ed0f5405f687c2bd4e12f708e3c2a91e08f41ee08634e6e1bffd3a57bb3cc3d"
     },
     ".awf/hooks/pre-commit.sh": {
       "templateId": "hooks/pre-commit.sh.tmpl",
@@ -142,9 +142,9 @@
     },
     ".awf/hooks/pre-merge-commit.sh": {
       "templateId": "hooks/pre-merge-commit.sh.tmpl",
-      "templateHash": "sha256:aea41e6031ebe4641d29237a001eb89613023c303d20f08dbcec7b685768e458",
+      "templateHash": "sha256:4da6f786c639c2e0f71c0f48783b34504fa27cb81a758e6a05ca24b0637bc189",
       "configHash": "sha256:9523f83926c462b64e500752d3ae10f475391651b4147a58463a83356584922a",
-      "outputHash": "sha256:e4e0ae20725c8c10a1349836ab7f9cb75bd84821130a9b0976c54c33fd66e725"
+      "outputHash": "sha256:7c63f078d72e2befcd4684c463e164737181272c7c5ccf483cd935e8ea6d2398"
     },
     ".awf/hooks/pre-push.sh": {
       "templateId": "hooks/pre-push.sh.tmpl",
@@ -976,9 +976,9 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:e43a2f8404ac8724e475145e426e702e66a19c61b6d77d4b081e9da58e5a5d2f",
+      "templateHash": "sha256:4b49bb07886ec83eb4a6440f944645f03ef9e4abb8a13d99d1d34241be8fe482",
       "configHash": "sha256:06efb74f057b22bed3c627ce97be2ed477121fbca402e0120402f2de26787365",
-      "outputHash": "sha256:28f6e0d6192f7ddd219d87fcb3043b6fcf3fb0b8be777e9835f93be0baf45fb4"
+      "outputHash": "sha256:982a438cf0ac47b724c299baefad4c61d7eb5abc17d3f8f5e9214db5234c537b"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -1136,15 +1136,15 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:61e28094e8971801387019e57551d48db56ec2a9ff77974f3fbb71aa0187c5bc",
+      "templateHash": "sha256:748ba24a3bcb40217c42bbb998d4512265888ebb59839348121bdcb1e92251bb",
       "configHash": "sha256:e943d8e863297d63dc212e72a05c847f20c631d77fd5c7ea71a9ba1f146e2f2b",
-      "outputHash": "sha256:530fceffd4c769eeb49ac548a9e54598a46aa46a82b7bf609a71529897ea5e28"
+      "outputHash": "sha256:1558dc9a5edf18a00f80c8974826975f5ade38ca8d29dc34439862796f3911cb"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:dc86e05d918bee4339c4828ad062cac810c2559b8244bba64490c10902d2cfcd",
+      "templateHash": "sha256:47df2556e5d841c3cc0d5069cfee5d0b2694fb9ef8f05431404d304e1ece2e59",
       "configHash": "sha256:ef8342ab0ac6b40eeff56fcbb3f03ff792367e222551f73f137c9eb2a7b8d3c2",
-      "outputHash": "sha256:f5876a116b75206641c37f24753632807fd6cca8a83a13e9828432b47d73190a"
+      "outputHash": "sha256:ea096f53717be17f5885d8d537c71ff6764459eda6d71aefd04d34feb79a2280"
     }
   }
 }

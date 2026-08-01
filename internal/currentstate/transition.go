@@ -16,13 +16,14 @@ import (
 // collapse to, mirroring Check's parsed-input contract so CheckPair reads a Git
 // diff without knowing how either side was loaded. Loaded.Universe builds one.
 type Universe struct {
-	ADRs   []adr.ADR
-	Topics []topic.Topic
+	ADRs    []adr.ADR
+	Topics  []topic.Topic
+	Sources map[string][]byte
 }
 
 // Universe reduces a Loaded view to the before/after inputs CheckPair compares.
 func (l Loaded) Universe() Universe {
-	return Universe{ADRs: l.ADRs, Topics: l.Topics.All()}
+	return Universe{ADRs: l.ADRs, Topics: l.Topics.All(), Sources: l.Sources}
 }
 
 // TransitionMode selects which contract CheckPair applies to a pair.
