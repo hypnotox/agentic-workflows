@@ -176,6 +176,7 @@ func TestMarkerPayloadClosingToken(t *testing.T) {
 // A proof marker must carry a trailing name; a state marker may not. The accepted
 // bodies pin that the name is free text rather than an identifier, which keeps the
 // rule portable to an adopter whose tests are string literals, not named functions.
+// invariant: invariants/topics-and-markers:proof-marker-names-its-unit (TestBuildMarkerIndexRequiresAProofName)
 func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
 	for _, body := range []string{
 		"// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n",
@@ -224,6 +225,7 @@ func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
 // The name must actually occur in the file, on a line that does not itself open
 // with the marker token. Each case below is one load-bearing mechanism of that
 // rule; without any one of them a stranded marker stays green.
+// invariant: invariants/topics-and-markers:proof-marker-names-its-unit (TestProofNameMustOccurInTheFile)
 func TestProofNameMustOccurInTheFile(t *testing.T) {
 	build := func(body string) error {
 		t.Helper()

@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0199: Proof markers name the unit that proves them
@@ -284,3 +284,4 @@ rather than exhaustive.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-08-01: Implemented; content-sha256: a34c88b78d1c597f93fa8d1096f5cb20201b68ebdb87e01adedb20a5da7a0bbf

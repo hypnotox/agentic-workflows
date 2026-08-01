@@ -1,7 +1,7 @@
 ---
 date: 2026-08-01
 adrs: [199]
-status: Proposed
+status: Implemented
 ---
 # Plan: Enforce named proof markers
 
