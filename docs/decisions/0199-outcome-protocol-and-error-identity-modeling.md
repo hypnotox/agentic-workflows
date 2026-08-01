@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0199: Outcome protocol and error identity modeling
@@ -191,3 +191,5 @@ this decision.
 - 2026-08-01: Accepted; content-sha256: 30f44fef4616e7315c60d7a8a4504f3960c3c898f22a76a1e845b037ce2d657a
 - 2026-08-01: Implementing; content-sha256: 30f44fef4616e7315c60d7a8a4504f3960c3c898f22a76a1e845b037ce2d657a
 - 2026-08-01: Applied; operations: add `code-design/outcome-modeling:actionable-outcome-protocol`, add `code-design/outcome-modeling:typed-outcome-for-caller-branching`, add `code-design/outcome-modeling:errors-is-over-os-predicates`, add `code-design/outcome-modeling:test-identity-assertions`
+- 2026-08-01: Applied; operations: add `code-design/outcome-modeling:consumed-identity`
+- 2026-08-01: Implemented; content-sha256: 30f44fef4616e7315c60d7a8a4504f3960c3c898f22a76a1e845b037ce2d657a

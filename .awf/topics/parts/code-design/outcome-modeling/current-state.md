@@ -49,6 +49,17 @@ Origin: ADR-0199
 Backing: unbacked
 Verify: Search the changed files for os.IsNotExist, os.IsExist, and os.IsPermission; any occurrence in a new or deliberately converted site fails.
 
+### `invariant: consumed-identity`
+
+A new or deliberately converted exported error identity arrives in the same green
+transaction as at least one consumer that branches on it through `errors.Is` or
+`errors.As`; it may land without an in-repo branching consumer only when its consuming
+caller is named and documented in the same transaction. This specializes
+`code-design/dependency-composition:concrete-first-consumer` to error identity.
+Origin: ADR-0199
+Backing: unbacked
+Verify: For each newly exported error type or sentinel in the diff, find the errors.Is or errors.As consumer in the same commit, or the named and documented consuming caller; absent both, the identity fails.
+
 ### `invariant: test-identity-assertions`
 
 A new or deliberately converted test asserts a produced error's identity through
