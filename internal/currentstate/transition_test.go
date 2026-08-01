@@ -1,6 +1,7 @@
 package currentstate_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -621,53 +622,46 @@ func TestRevisedByCanonicalReorderIsNotAMutation(t *testing.T) {
 	}
 }
 
-// A slugless record whose number was taken is renumbered into the v3 range,
-// where the cutoff decides format by number, so it must acquire the v3 encoding
-// and a slug in the same transition. The canonical digest excludes frontmatter
-// and the heading, so it is unmoved, and that is what pairs the two ends as a
-// rename rather than as an unrelated deletion and addition.
-func TestCheckPairRenumberAcrossTheV3Cutoff(t *testing.T) {
+// A renumbered intrinsically formatted ADR keeps the format in which it was
+// authored. Changing V2 to V3 while moving it is therefore a format change, not
+// part of the sanctioned slugless digest-paired rename.
+func TestCheckPairRefusesFormatRetrofitDuringRenumber(t *testing.T) {
 	sections := map[string]string{"Decision": "one body, two numbers"}
 	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
 	before := adr.ADR{Number: "0199", Format: adr.CurrentStateV2, Status: "Proposed", Sections: sections, History: history}
 	after := adr.ADR{Number: "0205", Slug: "proof-markers", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
-	if f := currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), currentstate.AuthoredCommit); len(f) != 0 {
-		t.Fatalf("renumber across the v3 cutoff must be finding-free:\n%s", messages(f))
+	got := messages(currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), currentstate.AuthoredCommit))
+	if !strings.Contains(got, "was deleted across this transition") {
+		t.Fatalf("a newly slugged format retrofit must not form a renumber pair:\n%s", got)
+	}
+}
+
+func TestOlderIntroductions(t *testing.T) {
+	current := adr.ADR{Slug: "current", Format: adr.CurrentStateV3}
+	if got := currentstate.OlderIntroductions(uni(nil), uni([]adr.ADR{current}), adr.CurrentStateV3); len(got) != 0 {
+		t.Fatalf("current-format introduction = %#v, want none", got)
 	}
 
-	// One case per predicate clause, each naming the refusal it expects: an
-	// assertion that only demands SOME finding cannot tell the intended refusal
-	// from an incidental one, and two of these refuse for different reasons.
-	sameNumber := after
-	sameNumber.Number = before.Number
+	beforeV2 := adr.ADR{Number: "0004", Format: adr.CurrentStateV2, Status: "Accepted"}
+	afterV2 := beforeV2
+	afterV2.Status = "Implementing"
+	if got := currentstate.OlderIntroductions(uni([]adr.ADR{beforeV2}), uni([]adr.ADR{afterV2}), adr.CurrentStateV3); len(got) != 0 {
+		t.Fatalf("existing older lifecycle transition = %#v, want none", got)
+	}
 
-	unNumbered := after
-	unNumbered.Number = ""
-
-	v1Before := before
-	v1Before.Format = adr.CurrentStateV1
-
-	for _, tc := range []struct {
-		name          string
-		before, after adr.ADR
-		want          string
-	}{
-		{"format edit keeping the number", before, sameNumber, "changed governed format"},
-		{"v1 record skipping straight to v3", v1Before, after, "changed governed format"},
-		{"renumber into a non-v3 format", before,
-			adr.ADR{Number: "0205", Slug: "proof-markers", Format: adr.CurrentStateV1, Status: "Proposed", Sections: sections, History: history},
-			"changed governed format"},
-		// This one never reaches the predicate: a pending far end is not indexed,
-		// so the pair never forms and the record reads as deleted. It belongs here
-		// as the boundary of the sanctioned shape, not as a fourth clause.
-		{"numbered record losing its number", before, unNumbered, "was deleted across this transition"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := messages(currentstate.CheckPair(uni([]adr.ADR{tc.before}), uni([]adr.ADR{tc.after}), currentstate.AuthoredCommit))
-			if !strings.Contains(got, tc.want) {
-				t.Fatalf("%s: want %q in:\n%s", tc.name, tc.want, got)
-			}
-		})
+	after := uni([]adr.ADR{
+		{Number: "0002", Format: adr.CurrentStateV1},
+		{Number: "0001", Format: adr.Legacy},
+		{Number: "0003", Format: adr.CurrentStateV2},
+		current,
+	})
+	want := []currentstate.Introduction{
+		{Identity: "0001", Format: adr.Legacy},
+		{Identity: "0002", Format: adr.CurrentStateV1},
+		{Identity: "0003", Format: adr.CurrentStateV2},
+	}
+	if got := currentstate.OlderIntroductions(uni(nil), after, adr.CurrentStateV3); !reflect.DeepEqual(got, want) {
+		t.Fatalf("older introductions = %#v, want %#v", got, want)
 	}
 }
 

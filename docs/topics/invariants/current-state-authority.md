@@ -32,9 +32,9 @@ Verify: A fixture with an Accepted update conflicting with its current claim kee
 
 ### `invariant: merge-transition-ordered-aggregate`
 
-A merge transition is validated as an ordered aggregate rather than one authoring step: several application batches are legal in ascending ADR-number and intra-ADR history order, a claim's operations across the pair must form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates, and an appended Status history must preserve the prior history as an exact prefix. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation per claim, and the fixed status-event shape.
+A merge transition is validated as an ordered aggregate rather than one authoring step: several application batches are legal in ascending ADR-number and intra-ADR history order, a claim's operations across the pair must form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates, and an appended Status history must preserve the prior history as an exact prefix. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation per claim, and the fixed status-event shape. A newly introduced ADR in an older intrinsic format is provisional at the staged boundary that lacks merge-parent and message evidence; every other derivable transition check remains blocking, and definitive admission requires exact incoming-parent qualification at commit-msg.
 Origin: ADR-0182
-Revised-by: ADR-0191
+Revised-by: ADR-0191, ADR-sanction-the-seal-crossing-integration-transition
 Backing: test
 
 ### `invariant: current-state-sole-active-authority`

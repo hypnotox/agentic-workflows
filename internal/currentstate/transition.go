@@ -11,7 +11,7 @@ import (
 )
 
 // Universe is one parsed current-state view reduced to the two inputs the
-// transition check compares: the cutoff-aware ADR records and the topic set. It
+// transition check compares: the intrinsically formatted ADR records and the topic set. It
 // is the loader-agnostic shape the working, index, and commit loaders each
 // collapse to, mirroring Check's parsed-input contract so CheckPair reads a Git
 // diff without knowing how either side was loaded. Loaded.Universe builds one.
@@ -65,6 +65,33 @@ func CheckPair(before, after Universe, mode TransitionMode) []Finding {
 	return findings
 }
 
+// Introduction identifies an ADR that exists only in the result universe and
+// carries a format older than the current authoring format.
+type Introduction struct {
+	Identity string
+	Format   adr.Format
+}
+
+// OlderIntroductions returns provisional older-format ADR introductions in
+// identity order. It consumes the same pairing resolution as CheckPair so a
+// retained record, numbered pending record, or sanctioned slugless renumber is
+// never misclassified as a new result record.
+func OlderIntroductions(before, after Universe, current adr.Format) []Introduction {
+	pairs := newPairing(before.ADRs, after.ADRs)
+	var out []Introduction
+	for _, record := range after.ADRs {
+		if record.Format >= current {
+			continue
+		}
+		if _, paired := pairs.before(record); paired {
+			continue
+		}
+		out = append(out, Introduction{Identity: record.Identity(), Format: record.Format})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Identity < out[j].Identity })
+	return out
+}
+
 // checkTransitions enforces frozen content, stable-history prefix preservation,
 // and the format-specific event shape for every governed record pair.
 func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMode) []Finding {
@@ -84,7 +111,7 @@ func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMod
 		if !ok || !b.IsGoverned() {
 			continue
 		}
-		if b.Format != a.Format && !isRenumberRetrofit(b, a) {
+		if b.Format != a.Format {
 			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed governed format across this transition", a.Identity())})
 			continue
 		}
@@ -646,28 +673,18 @@ func (p pairing) renumbers() map[string]string {
 }
 
 // renumberAliases resolves the digest step. A governed slugless record whose
-// canonical digest is carried by exactly one record on each side, where the two
-// ends hold different numbers, is one record renumbered, and both ends take one
-// shared key. A digest repeated on either side aliases nothing, so an ambiguous
-// match leaves every record holding it on its number and the transition refuses
-// the rename rather than guessing. A digest matching at the same number aliases
-// nothing either, so an ordinary transition pairs exactly as it did before.
-// The before side stays slugless-only, exactly as ADR-0204 item 5 wrote it:
-// passing its own slugs makes the exclusion self-referential, so a slug-carrying
-// record there never reaches the digest step and number immutability stays as
-// strong for it as before.
-//
-// The after side admits one further record: a NUMBERED record whose slug is new
-// in this transition. A slugless record renumbered across the v3 cutoff must take
-// the v3 encoding to live at its new number, so it acquires its slug in the very
-// transition that renumbers it and would otherwise be unpairable. Requiring a
-// number is what keeps the opening shut: a pending record carries none, so an
-// unrelated pending addition can neither launder a genuine deletion into a rename
-// nor make a legitimate rename's digest ambiguous, which are the two failures
-// ADR-0204 items 4 and 5 close.
+// canonical digest is carried by exactly one slugless record on each side,
+// where the two ends hold different numbers, is one record renumbered, and both
+// ends take one shared key. A digest repeated on either side aliases nothing,
+// so an ambiguous match leaves every record holding it on its number and the
+// transition refuses the rename rather than guessing. A digest matching at the
+// same number aliases nothing either, so an ordinary transition pairs exactly
+// as it did before. A slug on either end excludes the record from this step;
+// retained-slug pairing already owns those records, and a newly added slug must
+// not widen the renumbering exception.
 func renumberAliases(before, after []adr.ADR) (map[string]string, map[string]string) {
-	beforeDigests := uniqueDigests(before, slugSet(before))
-	afterDigests := uniqueDigests(after, slugSet(before))
+	beforeDigests := uniqueSluglessDigests(before)
+	afterDigests := uniqueSluglessDigests(after)
 	beforeAlias, afterAlias := map[string]string{}, map[string]string{}
 	for digest, beforeKey := range beforeDigests {
 		afterKey, matched := afterDigests[digest]
@@ -680,45 +697,14 @@ func renumberAliases(before, after []adr.ADR) (map[string]string, map[string]str
 	return beforeAlias, afterAlias
 }
 
-// isRenumberRetrofit reports the one sanctioned governed-format change: a
-// slugless record renumbered into the v3 range. It cannot stay v2 there, because
-// the cutoff decides a record's format by its number and a v2 record at or above
-// it is refused for want of a slug, so taking the v3 encoding is what the
-// renumber costs rather than an independent edit. The retrofit is
-// meaning-preserving and leaves the canonical digest untouched, which is what let
-// the two ends pair as a rename at all. Each clause refuses a different edit: an
-// in-place format change keeps its number, a downgrade runs the other direction,
-// and a jump from any other format is not this transition. A pending far end
-// needs no clause of its own, and both of its routes here are closed: the digest
-// index refuses to index a pending record, and the slug route cannot present a
-// V2 before side, because pre-V3 frontmatter is strict-parsed with no slug: key.
-// That second half is why before.Slug and after.Slug need no clauses either.
-func isRenumberRetrofit(before, after adr.ADR) bool {
-	return before.IsV2() && after.IsV3() && before.Number != after.Number
-}
-
-// slugSet collects the slugs one universe carries, which is what tells the other
-// universe which of its own slugged records already pair directly.
-func slugSet(records []adr.ADR) map[string]bool {
-	out := map[string]bool{}
-	for _, a := range records {
-		if a.Slug != "" {
-			out[a.Slug] = true
-		}
-	}
-	return out
-}
-
-// uniqueDigests indexes one universe's governed records by canonical content
-// digest, dropping every digest more than one record carries. A slug-carrying
-// record is skipped when its slug appears in pairedSlugs, because it pairs on
-// that slug already, and a pending one is skipped outright: with no number it can
-// only be an addition, never the far end of a renumber.
-func uniqueDigests(records []adr.ADR, pairedSlugs map[string]bool) map[string]string {
+// uniqueSluglessDigests indexes one universe's governed slugless records by
+// canonical content digest, dropping every digest more than one record carries.
+// A slug-carrying record is never the far end of a digest-paired renumber.
+func uniqueSluglessDigests(records []adr.ADR) map[string]string {
 	keys := map[string]string{}
 	ambiguous := map[string]bool{}
 	for _, a := range records {
-		if !a.IsGoverned() || (a.Slug != "" && (pairedSlugs[a.Slug] || a.Number == "")) {
+		if !a.IsGoverned() || a.Slug != "" {
 			continue
 		}
 		digest := a.CanonicalDigest()

@@ -20,7 +20,7 @@ import (
 )
 
 // QueryTopic assembles one read-only topic or claim projection from one
-// cutoff-aware working snapshot. Active state and v1 operation history therefore
+// intrinsically routed working snapshot. Active state and operation history therefore
 // cannot come from different worktree universes.
 func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
 	ws, err := p.workingCurrentState(ctx)

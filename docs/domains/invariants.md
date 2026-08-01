@@ -12,6 +12,8 @@ Backing is a ledger, not a proof (ADR-0114). The scan is a textual line match: i
 
 ADR-0121 widens the scan surface to prose: a `currentState.sources` entry may declare a `close:` token (`-->`, `*/`) stripped once from a matched marker line's end before tag parsing, so block-comment markers yield clean touches notes. awf's own config points a `<!-- awf:comment` marker at `.awf/**/parts/**/*.md` and `templates/**`, so parts and templates can carry `touches-state:` tags that `awf context` surfaces and the render strip keeps out of output. The standalone `awf check invariants` report reads the same qualified topic claims, listing each invariant claim with its backing state and proof sites.
 
+Staged current-state checking reports an ADR newly introduced in an older intrinsic format as provisional because HEAD and the index provide neither incoming-parent nor final commit-message evidence. The transition checker still blocks every independently derivable static, lifecycle, claim-handshake, coverage, and aggregate violation. The later `commit-msg` boundary must compare the result with its first parent and incoming parents and validate the final message before the introduction can land.
+
 
 ## Topics
 

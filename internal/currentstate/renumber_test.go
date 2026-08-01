@@ -210,16 +210,9 @@ func TestUnchangedSluglessRecordsPairOnTheirNumbers(t *testing.T) {
 // invariant: adr-system/adr-lifecycle:renumber-digest-paired (TestRenumberIgnoresASlugCarryingTwin)
 //
 // TestRenumberIgnoresASlugCarryingTwin bounds the digest step. A record whose
-// slug is present on BOTH sides always pairs on that slug and never reaches the
-// digest step, so it must not enter the digest index either: if it did, a record
-// that happens to share the renamed record's canonical body would make the
-// digest ambiguous on both sides, the guard would withhold the alias, and the
-// rename would be refused. That is the integration deadlock this rule exists to
-// remove, reintroduced by an unrelated record's body. The one record admitted
-// despite carrying a slug is a NUMBERED record whose slug is new in this
-// transition, which is the v3 retrofit a renumber across the cutoff forces; a
-// pending twin still carries no number and stays out (see
-// TestCheckPairPendingAdditionCannotLaunderADeletion).
+// slug is present on either side is outside slugless digest pairing, so an
+// unrelated slug-carrying record with the same body cannot make the digest
+// ambiguous.
 func TestRenumberIgnoresASlugCarryingTwin(t *testing.T) {
 	twin := bodied(v2rec("", "Proposed", nil, v2status("Proposed")), renumberedBody)
 	twin.Slug = "an-unrelated-pending-record"
@@ -229,6 +222,22 @@ func TestRenumberIgnoresASlugCarryingTwin(t *testing.T) {
 	after.ADRs = append(after.ADRs, twin)
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("a slug-carrying twin must not make the digest ambiguous, got:\n%s", messages(f))
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:renumber-digest-paired (TestRenumberRefusesNewlySluggedAfterSide)
+func TestRenumberRefusesNewlySluggedAfterSide(t *testing.T) {
+	before := renumberBefore()
+	after := renumberAfter()
+	for i := range after.ADRs {
+		if after.ADRs[i].Number == "0202" {
+			after.ADRs[i].Slug = "newly-added-slug"
+			after.ADRs[i].Format = adr.CurrentStateV3
+		}
+	}
+	got := messages(currentstate.CheckPair(before, after, currentstate.AuthoredCommit))
+	if !strings.Contains(got, "ADR-0202 adds claim d/t:x, which already existed") {
+		t.Fatalf("a newly slugged after-side record must not form a digest pair:\n%s", got)
 	}
 }
 

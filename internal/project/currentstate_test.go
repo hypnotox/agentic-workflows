@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -110,7 +111,8 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 // invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked (TestCurrentStateReportRouting)
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
-		Static: []currentstate.Finding{{Message: "handshake broke"}},
+		Static:      []currentstate.Finding{{Message: "handshake broke"}},
+		Provisional: []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}, {Identity: "0003", Format: adr.Legacy}},
 		Coverage: []topic.CoverageFinding{
 			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
 			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},
@@ -121,7 +123,7 @@ func TestCurrentStateReportRouting(t *testing.T) {
 		t.Fatalf("findings = %#v", findings)
 	}
 	notes := r.Notes()
-	if len(notes) != 1 || !strings.Contains(notes[0], "internal/b.go is matched by 3 path-scoped topics") {
+	if len(notes) != 3 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "internal/b.go is matched by 3 path-scoped topics") {
 		t.Fatalf("notes = %#v", notes)
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -169,6 +170,51 @@ func TestCheckStagedTransitionFinding(t *testing.T) {
 	}
 	if len(report.Static) == 0 || !strings.Contains(report.Static[0].Message, "was removed with no ADR remove operation") {
 		t.Fatalf("static = %#v; want the unmatched-removal finding", report.Static)
+	}
+}
+
+func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	head := stagedHeadFiles()
+	head["docs/decisions/0003-existing.md"] = boundaryADR(adr.V1FormatMarker, "Existing")
+	head["docs/decisions/0004-aggregate.md"] = publicV2ADR(t, "0004", "Aggregate", "Proposed", "- add `alpha/one:x`\n- add `alpha/one:y`\n- add `alpha/one:z`", "")
+	gitfixture.Stage(t, repo, head)
+	gitfixture.Commit(t, repo, "head", nil)
+	aggregate := publicV2ADR(t, "0004", "Aggregate", "Implementing", "- add `alpha/one:x`\n- add `alpha/one:y`\n- add `alpha/one:z`",
+		"- 2026-07-22: Implementing; content-sha256: %s\n- 2026-07-22: Applied; operations: add `alpha/one:x`\n- 2026-07-22: Applied; operations: add `alpha/one:y`")
+	gitfixture.Stage(t, repo, map[string]string{
+		"docs/decisions/0002-stale.md":                 boundaryADR(adr.V2FormatMarker, "Stale"),
+		"docs/decisions/0003-existing.md":              boundaryADR(adr.V2FormatMarker, "Existing"),
+		"docs/decisions/0004-aggregate.md":             aggregate,
+		".awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
+		"internal/bar.go":                              "package internalx\n",
+	})
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+
+	report, err := p.CheckStaged(testContext(t))
+	if err != nil {
+		t.Fatalf("CheckStaged: %v", err)
+	}
+	want := []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}}
+	if !reflect.DeepEqual(report.Provisional, want) {
+		t.Fatalf("provisional = %#v, want %#v", report.Provisional, want)
+	}
+	findings := strings.Join(report.Findings(), "\n")
+	for _, wantFinding := range []string{
+		"was removed with no ADR remove operation",
+		"internal/bar.go",
+		"changed governed format across this transition",
+		"appends 2 application batches",
+	} {
+		if !strings.Contains(findings, wantFinding) {
+			t.Fatalf("unrelated blocking finding %q was suppressed:\n%s", wantFinding, findings)
+		}
+	}
+	if notes := strings.Join(report.Notes(), "\n"); !strings.Contains(notes, "provisional older-format ADR-0002") {
+		t.Fatalf("provisional note missing:\n%s", notes)
 	}
 }
 

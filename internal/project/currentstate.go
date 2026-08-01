@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -26,14 +27,16 @@ import (
 const currentStateTransitionRule = "current-state-transition"
 
 // CurrentStateReport is the routed outcome of a current-state check over one
-// snapshot: the static ADR-to-claim handshake findings (all blocking) and the
+// snapshot: the static ADR-to-claim handshake findings (all blocking), staged
+// older-format introductions awaiting commit-message evidence, and the
 // coverage/fan-out findings, which carry ranks fixed in code rather than
 // configured - coverage at error, fan-out at warn (ADR-0183). Findings and Notes
 // split the report into blocking lines and non-failing note lines so the command
 // layer never re-derives the routing.
 type CurrentStateReport struct {
-	Static   []currentstate.Finding
-	Coverage []topic.CoverageFinding
+	Static      []currentstate.Finding
+	Provisional []currentstate.Introduction
+	Coverage    []topic.CoverageFinding
 }
 
 // Findings returns the blocking lines: every static handshake finding and every
@@ -51,11 +54,19 @@ func (r CurrentStateReport) Findings() []string {
 	return out
 }
 
-// Notes returns the non-failing lines: coverage/fan-out findings at warn. There
-// is no suppressing rank, so every finding the evaluator emits is routed here or
-// to Findings, never dropped.
+// Notes returns the non-failing lines: provisional older-format introductions
+// and coverage/fan-out findings at warn. Provisional introductions are not
+// findings because the staged boundary lacks definitive merge-parent and
+// message evidence; every independently derivable finding remains blocking.
 func (r CurrentStateReport) Notes() []string {
-	out := []string{}
+	out := make([]string, 0, len(r.Provisional))
+	for _, introduction := range r.Provisional {
+		marker := adr.FormatMarker(introduction.Format)
+		if marker == "" {
+			marker = "legacy"
+		}
+		out = append(out, fmt.Sprintf("provisional older-format ADR-%s (%s) requires commit-msg qualification", introduction.Identity, marker))
+	}
 	for _, c := range r.Coverage {
 		if c.Severity == severity.Warn {
 			out = append(out, coverageLine(c))
@@ -186,7 +197,10 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 	if merging {
 		mode = currentstate.MergeAggregate
 	}
-	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), mode)}
+	report := CurrentStateReport{
+		Static:      currentstate.CheckPair(before.Universe(), after.Universe(), mode),
+		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
+	}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	return report, nil
 }
