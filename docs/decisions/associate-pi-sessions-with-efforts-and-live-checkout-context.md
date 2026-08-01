@@ -41,14 +41,15 @@ The runtime behavior crosses three ownership boundaries:
 - Remote Pi owns peer identity, capability negotiation, replay, and publication of the
   atomically replaced `awf` metadata namespace.
 
-Pi's prerequisite design provides a command-context-only `changeCwd` operation. It replaces
-the same session runtime, writes the destination into the session header, relocates the
-configured default directory when applicable, gives extensions a fresh replacement context,
-trusts the caller-selected destination, and is detected by API presence. Remote Pi's
-prerequisite design provides an awf-only transient peer-name override, capability
-negotiation and replay requests, serialized identity reconciliation, and continued atomic
-replacement of the existing `awf` metadata namespace. awf must consume those owner-provided
-contracts rather than duplicate them or depend on an unlanded shape.
+Pi's accepted but not-yet-released prerequisite design provides command-context-only
+`ExtensionCommandContext.changeCwd(targetCwd, options)`. It replaces the same session
+runtime, writes the destination into the session header, relocates default session storage
+when applicable, gives extensions a fresh `ReplacedSessionContext`, runs destination trust,
+and is detected by `typeof ctx.changeCwd === "function"`. Remote Pi's accepted but
+not-yet-released prerequisite design provides an awf-only process-local peer-name override,
+capability negotiation and replay requests, serialized identity reconciliation, and
+continued atomic replacement of the existing `awf` metadata namespace. awf must consume
+those owner-provided contracts rather than duplicate them or depend on an unlanded shape.
 
 Activity is stored beside the effort that owns it. This makes the ownership boundary
 cohesive but intentionally creates a one-way compatibility boundary: after
@@ -78,8 +79,9 @@ Downgrade compatibility is not a goal.
 3. Add optional mutable `.awf/efforts/<slug>/activity.json` beside immutable `state.json`
    and owned `memory.md`. The awf binary alone creates, atomically replaces, reads, and
    removes it. Its versioned bounded record contains the session owner, `attachedAt`,
-   `heartbeatAt`, committed absolute CWD, and checkout role (`managed` or `receiving`),
-   with no redundant `active` flag, workflow phase, or copied memory text. Attach/takeover,
+   `heartbeatAt`, committed absolute CWD, recorded absolute receiving-checkout CWD, and
+   checkout role (`managed` or `receiving`), with no redundant `active` flag, workflow
+   phase, or copied memory text. Attach/takeover,
    heartbeat, checkout-update, and detach are explicit binary-owned operations; the latter
    three require the current owner. Missing activity means no attachment claim. Every
    transition reports a structured outcome suitable for extension action and human
@@ -130,14 +132,26 @@ Downgrade compatibility is not a goal.
 
 9. Publish one advisory Remote Pi `awf` metadata snapshot containing the effort slug and
    title, validated memory Phase/Next/Updated, activity heartbeat, committed live CWD, and
-   checkout role. While attached, request a transient peer-name override equal to the
-   effort slug; on detach, missing ownership, shutdown, or restart, remove the override and
-   reconcile to the configured base name. Use Remote Pi capability negotiation, replay
-   requests, and serialized identity reconciliation so extension load order and reconnects
-   converge. Metadata and name publication failures never roll back the local awf
-   association or CWD, never grant authority, and never become locks. Other peers may use
-   the snapshot to hold a risky receiving-checkout mutation and contact the named peer, but
-   that behavior remains voluntary.
+   checkout role through the existing complete-replacement `remote-pi:metadata:set`
+   contract. While attached, emit `remote-pi:name-override:set` with namespace `awf` and the
+   effort slug; detach clears that namespace with a null value. The persisted `agent_name`
+   remains the base identity, and the effective requested name is the awf override, then
+   configured base, then CWD default. The title never enters the peer name.
+
+   Detect `nameOverride.version === 1` and its `awf` namespace from
+   `remote-pi:capabilities`, request capabilities when needed, and silently retain
+   metadata-only behavior when override support is absent. On Remote Pi's metadata or name
+   replay request, re-emit the complete current snapshot or still-active override. Consume
+   `remote-pi:name-override:assigned` only for diagnostics; assigned names and addresses are
+   mutable opaque values, never routing or lock inputs. Remote Pi serializes identity
+   reconciliation so extension load order, reconnects, relay state, base-name changes, and
+   broker collision suffixes converge. A process restart initially restores the base name
+   unless and until awf replays a still-active association; this extension deliberately
+   starts locally detached and does not infer one from a resident alone. Metadata and name
+   publication failures never roll back the local awf association or CWD, never grant
+   authority, and never become locks. Other peers may use the snapshot to hold a risky
+   receiving-checkout mutation and contact the named peer, but that behavior remains
+   voluntary.
 
 10. Keep dependency direction explicit. The generated TypeScript extension orchestrates Pi
     and Remote Pi runtime APIs but does not write effort residents directly. It invokes the
@@ -148,14 +162,23 @@ Downgrade compatibility is not a goal.
     same-session CWD behavior, advisory Remote Pi contract, downgrade boundary, and recovery
     paths.
 
-11. Land prerequisites in owner order before awf's end-to-end runtime integration: first
-    Pi accepts, implements, tests, and releases the live `changeCwd` contract; independently,
-    Remote Pi accepts, implements, tests, and releases transient awf peer-name override plus
-    capability/replay support; only after both published contracts are available does awf
-    update its pinned Pi test/runtime floor and Remote Pi integration expectation, render the
-    extension, and add real-runtime smoke coverage. The two prerequisite repositories may
-    land in either order, but awf does not ship a private compatibility shim or guess their
-    final APIs.
+11. Land prerequisites in owner order before awf advertises end-to-end runtime support.
+    Pi first implements and merges SessionManager persistence/relocation, runtime and
+    extension types, lifecycle, official TUI/RPC/print host bindings, tests, documentation,
+    and changelog, then publishes them in one lockstep Pi/coding-agent patch release. Remote
+    Pi independently implements and merges the process-local override, capability, replay,
+    status, identity-reconciliation, unit/end-to-end tests, and README contract, then
+    publishes a release whose authoritative signal is `nameOverride.version === 1` with the
+    `awf` namespace. Exact minimum versions are filled in from the first releases that
+    contain those capabilities, never guessed in advance.
+
+    After the owning releases exist, awf updates its pinned Pi test/runtime floor and Remote
+    Pi integration expectation, renders the extension, and adds real-runtime smoke coverage.
+    Guarded awf code may merge earlier only when missing `ctx.changeCwd` leaves committed
+    association/location unchanged and missing override support degrades to metadata-only;
+    awf does not advertise live rebinding before Pi ships it or create a private compatibility
+    shim for either owner contract. The two prerequisite repositories may land in either
+    order.
 
 12. Catalog a `using-effort` support skill for new adopters and explicitly enable it in this
     repository. Existing adopters receive the capability through normal catalog availability
