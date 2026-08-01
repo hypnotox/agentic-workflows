@@ -148,6 +148,44 @@ func TestRangeCommitsNestedScopeFiltersAndReroots(t *testing.T) {
 	}
 }
 
+func TestRangeCommitsNestedScopeKeepsRelevantMerges(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/base.txt": "base\n", "outside.txt": "base\n"})
+	main := gitfixture.Commit(t, repo, "main", map[string]string{"outside.txt": "main\n"})
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feature", map[string]string{"nested/feature.txt": "feature\n"})
+	gitfixture.StageFile(t, repo, "outside.txt", "main\n", 0o644)
+	gitfixture.Merge(t, repo, "Merge feature", main, feature)
+
+	commits, err := walkRepo(t, filepath.Join(dir, "nested")).RangeCommits(testContext(t), "master", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(commits) != 2 || !commits[0].IsMerge || commits[0].Subject != "Merge feature" || commits[1].Subject != "feature" {
+		t.Fatalf("nested merge range = %#v", commits)
+	}
+	if len(commits[0].Changes) != 0 {
+		t.Fatalf("nested merge changes = %#v", commits[0].Changes)
+	}
+
+	outsideRepo := gitfixture.InitRepo(t)
+	outsideDir := outsideRepo.Root()
+	outsideBase := gitfixture.Commit(t, outsideRepo, "base", map[string]string{"nested/base.txt": "base\n", "outside.txt": "base\n"})
+	outsideMain := gitfixture.Commit(t, outsideRepo, "main", map[string]string{"outside.txt": "main\n"})
+	gitfixture.CheckoutNewBranch(t, outsideRepo, "feature", outsideBase)
+	outsideFeature := gitfixture.Commit(t, outsideRepo, "feature", map[string]string{"feature.txt": "feature\n"})
+	gitfixture.StageFile(t, outsideRepo, "outside.txt", "main\n", 0o644)
+	gitfixture.Merge(t, outsideRepo, "Merge outside", outsideMain, outsideFeature)
+	commits, err = walkRepo(t, filepath.Join(outsideDir, "nested")).RangeCommits(testContext(t), "master", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(commits) != 0 {
+		t.Fatalf("outside-only nested range = %#v", commits)
+	}
+}
+
 func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()

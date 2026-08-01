@@ -97,7 +97,14 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		if err != nil { // coverage-ignore: every branch toCommit can fail on is itself unreachable from a walk that already enumerated this commit's ancestry (see its own ignored branches)
 			return err
 		}
-		if r.prefix == "" || len(nc.Changes) != 0 {
+		include := r.prefix == "" || len(nc.Changes) != 0
+		if r.prefix != "" && nc.IsMerge {
+			include, err = mergeTouchesPrefix(c, r.prefix)
+			if err != nil { // coverage-ignore: range iteration already resolved this merge and its first parent trees
+				return err
+			}
+		}
+		if include {
 			commits = append(commits, nc)
 		}
 		return nil
@@ -226,6 +233,33 @@ func toCommit(c *object.Commit, prefix string) (Commit, error) {
 		}
 	}
 	return nc, nil
+}
+
+func mergeTouchesPrefix(c *object.Commit, prefix string) (bool, error) {
+	curTree, err := c.Tree()
+	if err != nil { // coverage-ignore: range iteration already resolved the merge commit tree
+		return false, err
+	}
+	parent, err := c.Parent(0)
+	if err != nil { // coverage-ignore: range iteration already traversed the merge's first parent
+		return false, err
+	}
+	parentTree, err := parent.Tree()
+	if err != nil { // coverage-ignore: range iteration already resolved the first-parent commit tree
+		return false, err
+	}
+	changes, err := object.DiffTree(parentTree, curTree)
+	if err != nil { // coverage-ignore: diffing two resolved trees does not fail
+		return false, err
+	}
+	for _, change := range changes {
+		_, oldInside := scopedPath(change.From.Name, prefix)
+		_, newInside := scopedPath(change.To.Name, prefix)
+		if oldInside || newInside {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map[string]object.FileStat, prefix string) (FileChange, bool, error) {

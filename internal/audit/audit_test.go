@@ -613,6 +613,29 @@ func TestAuditReplaysStaleMergeTrailers(t *testing.T) {
 		}
 	})
 
+	t.Run("nested adopter", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
+			"nested/.awf/awf.lock":    `{"awfVersion":"v0.18.0","schemaVersion":31,"files":{}}`,
+			"nested/.awf/config.yaml": "prefix: test\nintegrationBranch: master\ntargets: [claude]\n",
+		})
+		main := gitfixture.Commit(t, repo, "feat(awf): main", map[string]string{"nested/main.txt": "main\n"})
+		gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+		path := "nested/docs/decisions/0001-old.md"
+		record := staleADR(adr.CurrentStateV1, "0001")
+		feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{path: record})
+		gitfixture.Stage(t, repo, map[string]string{"nested/main.txt": "main\n", path: record})
+		gitfixture.Merge(t, repo, "Merge feature", main, feature)
+
+		findings, _, err := Run(testContext(t), filepath.Join(repo.Root(), "nested"), "master", "HEAD", Inputs{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(findings) != 1 || findings[0].Rule != "stale-merge-authorization" || !strings.Contains(findings[0].Detail, "missing authorization version") {
+			t.Fatalf("nested findings = %#v", findings)
+		}
+	})
+
 	t.Run("generation 31 non merge and fast forward", func(t *testing.T) {
 		repo, base := staleAuditRepo(t, 31)
 		gitfixture.Commit(t, repo, "feat(awf): old record", map[string]string{"docs/decisions/0001-old.md": staleADR(adr.CurrentStateV1, "0001")})
