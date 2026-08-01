@@ -4,7 +4,7 @@ slug: narrow-the-glossary-terms-validated-claim-to-the-implementation
 status: Proposed
 date: 2026-08-01
 ---
-# ADR-narrow-the-glossary-terms-validated-claim-to-the-implementation: Narrow the glossary-terms-validated claim to the implementation
+# ADR-0208: Narrow the glossary-terms-validated claim to the implementation
 
 ## Context
 

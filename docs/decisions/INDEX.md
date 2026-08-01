@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-0207: Two-layer glossary with record-model terms](0207-two-layer-glossary-with-record-model-terms.md) (Implementing)
-- [ADR-narrow-the-glossary-terms-validated-claim-to-the-implementation: Narrow the glossary-terms-validated claim to the implementation](narrow-the-glossary-terms-validated-claim-to-the-implementation.md) (Proposed)
+- [ADR-0208: Narrow the glossary-terms-validated claim to the implementation](0208-narrow-the-glossary-terms-validated-claim-to-the-implementation.md) (Proposed)
 
 ## History
 
