@@ -366,6 +366,16 @@ query a single version or a range.
 
 ### Bug fixes
 
+- `awf check` no longer refuses an integration whose effort branch was forked before schema
+  generation 29. Merging an integration branch that has already sealed the ADR v3 cutoff crosses
+  that generation in one step, and the record being renumbered may land above the cutoff, which
+  forces it to take the v3 encoding. Three transition rules refused that shape: the permanent lock
+  now admits a cutoff inherited from the other parent when the generation advances across the seal,
+  the renumber digest index admits a numbered record whose slug is new in the transition, and one
+  governed-format change is sanctioned, a v2 record renumbered to a v3 one. A pending record is
+  still never paired, so a deletion beside an unrelated addition is still refused, and a retained
+  slug still cannot change. `docs/roadmap.md` records the decision this class still owes.
+
 - Managed-worktree refusals no longer direct an agent to resolve or discard work that may belong
   to a concurrent effort. A checkout mid-merge is now refused with "finish or abort this merge
   only if you started it; otherwise wait until this checkout is clean, then retry", and the
