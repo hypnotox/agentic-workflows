@@ -280,9 +280,9 @@ disk.
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report tier-0 directory orientation and tier-1 exact/staged/range file relationships (`State`, `Touches`, `Proofs`), with per-topic counts and eight named `--show` facets. Only `artifacts` refines groups; `--full` is the facet union. Human output is capped at 8 KiB with secure caller-owned spill delivery above it; `--uncovered` shares the cap. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
-| `awf check prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
-| `awf check memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
-| `awf check commit [FILE]` | Validate Conventional Commits and definitively qualify and authorize older-format ADRs imported by a real merge; built for a `commit-msg` hook. |
+| `awf check repo prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
+| `awf check repo memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
+| `awf check staged commit [FILE]` | Validate Conventional Commits and definitively qualify and authorize older-format ADRs imported by a real merge; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
 | `awf uninstall` | Remove awf's generated files while keeping authored configuration and optional local residents. |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
@@ -303,7 +303,7 @@ removes everything awf generated, leaving your config in place.
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
 yours. With the `hooks` artifact enabled (default on init), four inert payload scripts
 land under `.awf/hooks/`: `pre-commit.sh` (ordinary drift check, staged authority check,
-project gate, then enabled prose gate), `commit-msg.sh` (`awf check commit`), `pre-push.sh`,
+project gate, then enabled prose gate), `commit-msg.sh` (`awf check staged commit`), `pre-push.sh`,
 and `pre-merge-commit.sh` (the staged evidence available before the final message and parents).
 Invoke them from wiring you own,
 e.g. an executable `.git/hooks/pre-commit` containing

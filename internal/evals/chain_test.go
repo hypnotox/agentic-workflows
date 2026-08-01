@@ -221,7 +221,7 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			body := read(t, path)
 			position := 0
-			for _, phrase := range []string{"the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks"} {
+			for _, phrase := range []string{"the complete transaction", "`awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks"} {
 				next := strings.Index(body[position:], phrase)
 				if next < 0 {
 					t.Fatalf("%s missing ordered authority step %q after byte %d", name, phrase, position)
@@ -353,7 +353,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			"Route settled terminal review", "If no managed", "continue to the deferred flip",
 			"awf effort integrate <slug>",
 			"Integration never implies review, removal, retrospective, or finish",
-			"divergent merge", "awf check --staged", "project gate", "merge commit",
+			"divergent merge", "awf check staged", "project gate", "merge commit",
 			"terminal implementation review again", "deferred flip transaction",
 			"If managed topology exists", "awf effort worktree remove <slug>", "retrospective",
 		})

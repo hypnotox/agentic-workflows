@@ -14,26 +14,22 @@ import (
 // punctuation substitutes (ADR-0119). It returns nil without scanning when the
 // knob is off, so a hook or a runner may invoke it unconditionally.
 func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
-	tree, err := stagedTree(ctx, root)
-	if err != nil {
-		return fmt.Errorf("check prose: cannot read staged files: %w", err)
-	}
-	stagedConfig, ok := tree.Lookup(".awf/config.yaml")
-	if !ok {
-		return errors.New("check prose: staged snapshot has no .awf/config.yaml")
-	}
-	cfg, err := config.Parse(config.RootDir(root), stagedConfig.Bytes)
+	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
 		return err
 	}
 	if cfg.ProseGate == nil || !cfg.ProseGate.Enabled {
 		return nil
 	}
+	tree, err := stagedTree(ctx, root)
+	if err != nil {
+		return fmt.Errorf("check repo prose: cannot read staged files: %w", err)
+	}
 	exemptions := make([]prosegate.Exemption, 0, len(cfg.ProseGate.Exemptions))
 	for _, e := range cfg.ProseGate.Exemptions {
 		r, perr := prosegate.ParseCodepoint(e.Codepoint)
 		if perr != nil {
-			return fmt.Errorf("check prose: exemption for %s: %w", e.Path, perr)
+			return fmt.Errorf("check repo prose: exemption for %s: %w", e.Path, perr)
 		}
 		exemptions = append(exemptions, prosegate.Exemption{Path: e.Path, Codepoint: r, Count: e.Count})
 	}
@@ -44,7 +40,7 @@ func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
 	}
 	findings, skipped, err := prosegate.Scan(files, exemptions)
 	if err != nil { // coverage-ignore: Scan receives in-memory staged bytes and has no fallible operation
-		return fmt.Errorf("check prose: %w", err)
+		return fmt.Errorf("check repo prose: %w", err)
 	}
 	for _, path := range skipped {
 		fmt.Fprintf(stdout, "skipped binary: %s\n", path)
@@ -53,8 +49,8 @@ func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
 		fmt.Fprintln(stdout, prosegate.Format(f))
 	}
 	if len(findings) > 0 {
-		return errors.New("check prose: use plain punctuation, or exempt the path in proseGate.exemptions")
+		return errors.New("check repo prose: use plain punctuation, or exempt the path in proseGate.exemptions")
 	}
-	fmt.Fprintln(stdout, "check prose: clean")
+	fmt.Fprintln(stdout, "check repo prose: clean")
 	return nil
 }

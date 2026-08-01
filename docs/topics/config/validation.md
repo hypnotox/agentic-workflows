@@ -29,9 +29,9 @@ Backing: test
 
 ### `invariant: hooks-commands-resolvable`
 
-Config validation for sync and check fails when the hooks singleton is enabled and `vars.gateCmd` is unset, and when the hooks singleton is enabled, the runner singleton is disabled, and any of `vars.checkCmd`, `vars.commitGateCmd`, `vars.proseGateCmd`, or `vars.memoryGateCmd` is unset; each error names the exact var to set.
+Config validation for sync and check fails when the hooks singleton is enabled and `vars.gateCmd` is unset, and when the hooks singleton is enabled, the runner singleton is disabled, and either `vars.checkCmd` or `vars.commitGateCmd` is unset; each error names the exact var to set.
 Origin: ADR-0156
-Revised-by: ADR-0158
+Revised-by: ADR-0158, ADR-0207
 Backing: test
 
 ### `invariant: local-doc-name-path-validated`

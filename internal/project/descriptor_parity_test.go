@@ -75,14 +75,12 @@ func TestVarDescriptorParity(t *testing.T) {
 }
 
 // functionalVarKeys pins the catalog's value-carrying descriptor set to the
-// eleven functional keys the ADR-0084 set plus ADR-0119's proseGateCmd,
-// ADR-0156's awfInvokeCmd, and ADR-0158's memoryGateCmd enumerate. Extending
+// eleven functional keys the ADR-0084 set and ADR-0156's awfInvokeCmd enumerate. Extending
 // this list is a successor-ADR act: a descriptor exists only for a value the
 // rendered artifacts or the tooling execute or enforce, never to tune prose
 // wording.
 var functionalVarKeys = []string{
-	"gateCmd", "gateCmdFull", "checkCmd", "commitGateCmd", "proseGateCmd",
-	"memoryGateCmd", "testCmd", "commitScopes", "activeMdRegenCmd", "awfInvokeCmd",
+	"gateCmd", "gateCmdFull", "checkCmd", "commitGateCmd", "testCmd", "commitScopes", "activeMdRegenCmd", "awfInvokeCmd",
 	"invariantTestPath",
 }
 
@@ -93,12 +91,7 @@ var functionalVarKeys = []string{
 // Extending this pin is also where ADR-0087's seed-on-introduction contract
 // bites: the release adding a catalog var must ship a one-time schema-migration
 // seed (`<key>: ""` where absent), or absent-key acknowledgement silently
-// swallows the new var's advisory for every existing adopter. ADR-0158's
-// memoryGateCmd deliberately ships no seed, and the reason is recorded here so
-// the next person to extend this set finds the decision rather than
-// re-litigating it: the hook-command resolvability guard treats a
-// present-but-empty var as unset and refuses identically, so a seed would
-// change no behaviour and would buy only the advisory that refusal supersedes.
+// swallows the new var's advisory for every existing adopter.
 // invariant: rendering/catalog-and-targets:var-descriptor-set-pinned (TestVarDescriptorSetPinned)
 func TestVarDescriptorSetPinned(t *testing.T) {
 	var got, multiselects []string

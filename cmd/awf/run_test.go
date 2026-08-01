@@ -269,9 +269,9 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "upgrade.go", owner: "runUpgrade", name: "runSync"}:                   1,
 		{file: "adr.go", owner: "runADR", name: "project.Open"}:                      1,
 		{file: "audit.go", owner: "runAudit", name: "project.Open"}:                  1,
-		{file: "check.go", owner: "runCheck", name: "project.Open"}:                  1,
-		{file: "check.go", owner: "runCheckDrift", name: "project.Open"}:             1,
-		{file: "check.go", owner: "runCheckState", name: "project.Open"}:             1,
+		{file: "checkrepo.go", owner: "runCheckRepo", name: "project.Open"}:          1,
+		{file: "checkrepo.go", owner: "runCheckDrift", name: "project.Open"}:         1,
+		{file: "checkrepo.go", owner: "runCheckState", name: "project.Open"}:         1,
 		{file: "commitgate.go", owner: "runCommitGate", name: "project.Open"}:        1,
 		{file: "config.go", owner: "runConfig", name: "project.Open"}:                1,
 		{file: "context.go", owner: "runContext", name: "project.Open"}:              1,
@@ -385,7 +385,7 @@ func TestInitialAdoptionVersionImmutableAcrossCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitfixture.Add(t, repo, ".awf/awf.lock")
-	if err := runCheck(ctx, root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable initializedWithVersion") {
+	if err := runCheckStaged(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable initializedWithVersion") {
 		t.Fatalf("staged initializedWithVersion mutation error = %v", err)
 	}
 }
@@ -469,8 +469,8 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if err := runSync(ctx, root, io.Discard); err != nil {
 				t.Fatal(err)
 			}
-			if err := runCheck(ctx, root, false, io.Discard); err != nil {
-				t.Fatalf("check: %v", err)
+			if err := runCheckRepo(ctx, root, io.Discard); err != nil {
+				t.Fatalf("repo check: %v", err)
 			}
 		})
 	}
@@ -625,9 +625,8 @@ func TestRunDispatchArms(t *testing.T) {
 		args []string
 	}{
 		{"render", []string{"awf", "render"}},
-		{"check", []string{"awf", "check"}},
-		{"check drift", []string{"awf", "check", "drift"}},
-		{"check state", []string{"awf", "check", "state"}},
+		{"check repo drift", []string{"awf", "check", "repo", "drift"}},
+		{"check repo state", []string{"awf", "check", "repo", "state"}},
 		{"check invariants", []string{"awf", "check", "invariants"}},
 		{"list", []string{"awf", "list"}},
 		{"upgrade", []string{"awf", "upgrade"}},
@@ -676,7 +675,7 @@ func TestHandlersOnBareDirError(t *testing.T) {
 	ctx := testContext(t)
 	bare := func(t *testing.T) string { return t.TempDir() }
 	t.Run("check", func(t *testing.T) {
-		if err := runCheck(ctx, bare(t), false, io.Discard); err == nil {
+		if err := runCheck(ctx, bare(t), io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
@@ -750,7 +749,7 @@ func TestRunCheckErrorPaths(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte("---\n: : bad yaml : :\n---\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := runCheck(ctx, root, false, io.Discard); err == nil {
+		if err := runCheck(ctx, root, io.Discard); err == nil {
 			t.Error("expected check error on a malformed ADR")
 		}
 	})
@@ -843,7 +842,7 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCheck(ctx, root, false, io.Discard); err == nil {
+	if err := runCheck(ctx, root, io.Discard); err == nil {
 		t.Fatal("pre-upgrade check should refuse (schema gate)")
 	}
 	var out bytes.Buffer

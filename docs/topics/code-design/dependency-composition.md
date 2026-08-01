@@ -48,9 +48,9 @@ Verify: For each newly exported or shared composition symbol, trace its producti
 
 Code-design authority and cross-package code-structure work uses the `code-design` scope, and a structural change uses the existing `refactor` type rather than a `refactor` scope.
 Origin: ADR-0178
-Revised-by: ADR-0180
+Revised-by: ADR-0180, ADR-0207
 Backing: unbacked
-Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check commit` against the planned code-design subjects.
+Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check staged commit` against the planned code-design subjects.
 
 ### `invariant: sync-project-loader-wiring`
 

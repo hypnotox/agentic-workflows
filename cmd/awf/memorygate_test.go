@@ -21,7 +21,7 @@ const dir = ".awf/efforts/"
 func memoryGateRepo(t *testing.T, memoryCiteYAML string, stage map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n"+memoryCiteYAML)
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"+memoryCiteYAML)
 	repo := gitfixture.InitRepoAt(t, root)
 	gitfixture.Add(t, repo, ".awf/config.yaml")
 	gitfixture.Stage(t, repo, stage)
@@ -46,17 +46,17 @@ func TestMemoryGateKnobOff(t *testing.T) {
 	}
 }
 
-func TestMemoryGateRefusesMissingOrInvalidStagedConfig(t *testing.T) {
+func TestMemoryGateRefusesMissingOrInvalidWorkingConfig(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := gitfixture.InitRepo(t).Root()
-	if err := runMemoryGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "staged snapshot has no") {
-		t.Fatalf("missing staged config: %v", err)
+	if err := runMemoryGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "not an awf project") {
+		t.Fatalf("missing working config: %v", err)
 	}
 
 	root = memoryGateRepo(t, "memoryCite: [\n", nil)
 	if err := runMemoryGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "parse config") {
-		t.Fatalf("invalid staged config: %v", err)
+		t.Fatalf("invalid working config: %v", err)
 	}
 }
 
@@ -71,7 +71,7 @@ func TestMemoryGateClean(t *testing.T) {
 	if err := runMemoryGate(ctx, root, &out); err != nil {
 		t.Fatalf("clean: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check memory: clean") {
+	if !strings.Contains(out.String(), "check repo memory: clean") {
 		t.Errorf("clean: output %q", out.String())
 	}
 }
@@ -105,7 +105,7 @@ func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 	if err := runMemoryGate(ctx, root, &out); err != nil {
 		t.Fatalf("a citation outside the scanned prefixes must be ignored: %v", err)
 	}
-	if !strings.Contains(out.String(), "check memory: clean") {
+	if !strings.Contains(out.String(), "check repo memory: clean") {
 		t.Errorf("output %q", out.String())
 	}
 }
@@ -137,7 +137,7 @@ func TestMemoryGateExemptionPermits(t *testing.T) {
 	if err := runMemoryGate(ctx, root, &out); err != nil {
 		t.Fatalf("exempt path: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check memory: clean") {
+	if !strings.Contains(out.String(), "check repo memory: clean") {
 		t.Errorf("exempt path: output %q", out.String())
 	}
 }
@@ -183,14 +183,13 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	})
 }
 
-func TestMemoryGateUsesStagedConfig(t *testing.T) {
+func TestMemoryGateUsesWorkingConfigKnob(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
 		map[string]string{"docs/plans/p.md": cite() + "\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nmemoryCite:\n  enabled: false\n")
-	if err := runMemoryGate(ctx, root, io.Discard); err == nil {
-		t.Fatal("worktree disabled knob must not override staged enabled config")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nmemoryCite:\n  enabled: false\n")
+	if err := runMemoryGate(ctx, root, io.Discard); err != nil {
+		t.Fatalf("worktree-disabled knob must return before reading the staged corpus: %v", err)
 	}
 }
 
@@ -201,25 +200,31 @@ func TestMemoryGateDispatch(t *testing.T) {
 	// exercised, not just runMemoryGate directly.
 	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
 		map[string]string{"docs/plans/p.md": "clean\n"})
+	if err := initializeProject(ctx, root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, gitfixture.At(root))
+	gitfixture.Commit(t, gitfixture.At(root), "fixture", nil)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb strings.Builder
-	if code := run([]string{"awf", "check", "memory"}, &out, &errb); code != 0 {
-		t.Fatalf("check memory exited %d: %s", code, errb.String())
+	if code := run([]string{"awf", "check", "repo", "memory"}, &out, &errb); code != 0 {
+		t.Fatalf("check repo memory exited %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "check memory: clean") {
+	if !strings.Contains(out.String(), "check repo memory: clean") {
 		t.Errorf("dispatch: output %q", out.String())
 	}
 }
 
 func TestMemoryGateRefusesOutsideAGitRepo(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
-	// An adopted tree outside a git repository has no staged snapshot, so the
-	// command refuses rather than reporting a clean tree it could not see.
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nmemoryCite:\n  enabled: true\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nmemoryCite:\n  enabled: false\n")
+	if err := runMemoryGate(ctx, root, io.Discard); err != nil {
+		t.Fatalf("disabled outside git must return before reading the index: %v", err)
+	}
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nmemoryCite:\n  enabled: true\n")
 	err := runMemoryGate(ctx, root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
-		t.Fatalf("outside git: want a refusal naming the enumeration failure, got %v", err)
+		t.Fatalf("enabled outside git: want a refusal naming the enumeration failure, got %v", err)
 	}
 }

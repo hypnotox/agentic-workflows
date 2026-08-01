@@ -40,5 +40,10 @@ func syncedGitProjectFiles(t *testing.T, configYAML string, files map[string]str
 	if err := initializeProject(testContext(t), dir, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
+	// Bare check includes the staged universe, so its fixture must give that
+	// universe an index snapshot of the rendered project as well.
+	f := gitfixture.At(dir)
+	gitfixture.AddAll(t, f)
+	gitfixture.Commit(t, f, "rendered", nil)
 	return dir
 }

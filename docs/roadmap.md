@@ -39,7 +39,7 @@
   config-domain ADR.
 - Design a structured context result only when a demonstrated consumer can define its contract;
   ADR-0165 deliberately removed speculative JSON rather than preserving a hidden path census.
-- Enforce the plan freeze mechanically: `awf check --staged` could refuse a diff that edits a
+- Enforce the plan freeze mechanically: `awf check staged` could refuse a diff that edits a
   `docs/plans/` file whose HEAD `status:` is `Implemented`. The recorded "record implementation
   deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151
   session from appending Notes to a frozen plan at review's direction; a prose rule that failed
@@ -114,7 +114,7 @@
 
 - Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
-  merge the target in the managed worktree, run `awf check --staged`, run the gate, commit,
+  merge the target in the managed worktree, run `awf check staged`, run the gate, commit,
   renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
   path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
   and a renewed terminal review, blocking every other finishing effort for that whole window,

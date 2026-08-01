@@ -46,7 +46,7 @@ and green starting baseline.
   sequential and commit-disabled, helper subsets are path-disjoint, shared files remain parent-owned, and
   each helper's focused mutating commands stay confined to its assigned subset.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
-  phase-closing commit; it requires `awf check --staged` and `./x gate` to pass,
+  phase-closing commit; it requires `awf check staged` and `./x gate` to pass,
   enforced by a wired pre-commit hook or run manually first in a clone without one (checkable with `git config core.hooksPath`):
 
 ```commit

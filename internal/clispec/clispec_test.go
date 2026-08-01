@@ -10,9 +10,13 @@ func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
 	if !ok {
 		t.Fatal("missing check")
 	}
-	commit, ok := check.Child("commit")
+	staged, ok := check.Child("staged")
 	if !ok {
-		t.Fatal("missing check commit")
+		t.Fatal("missing check staged")
+	}
+	commit, ok := staged.Child("commit")
+	if !ok {
+		t.Fatal("missing check staged commit")
 	}
 	if !strings.Contains(commit.Summary, "stale-ADR merge authorization") {
 		t.Fatalf("summary = %q", commit.Summary)
@@ -54,11 +58,16 @@ func TestCommandsWellFormed(t *testing.T) {
 		if !strings.Contains(c.HelpBody, "Usage: awf "+c.Name) {
 			t.Errorf("command %q help missing its usage line", c.Name)
 		}
-		for _, ch := range c.Children {
-			if ch.Name == "" || ch.Summary == "" || ch.HelpBody == "" {
-				t.Errorf("child %s/%s has empty metadata", c.Name, ch.Name)
+		var walk func(parent string, children []Command)
+		walk = func(parent string, children []Command) {
+			for _, ch := range children {
+				if ch.Name == "" || ch.Summary == "" || ch.HelpBody == "" {
+					t.Errorf("child %s/%s has empty metadata", parent, ch.Name)
+				}
+				walk(parent+"/"+ch.Name, ch.Children)
 			}
 		}
+		walk(c.Name, c.Children)
 	}
 }
 

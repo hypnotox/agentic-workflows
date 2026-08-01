@@ -10,4 +10,4 @@
 # .git/hooks/pre-merge-commit stub containing:
 #   exec bash .awf/hooks/pre-merge-commit.sh "$@"
 set -euo pipefail
-./awf check --staged
+./awf check staged

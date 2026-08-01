@@ -38,7 +38,7 @@ type cmdCtx struct {
 type handler func(*cmdCtx) error
 
 // firstPos returns the first positional or "" - the optional-argument shape of
-// list, config, and `check commit`.
+// list, config, and `check staged commit`.
 func firstPos(pos []string) string {
 	if len(pos) > 0 {
 		return pos[0]
@@ -46,10 +46,16 @@ func firstPos(pos []string) string {
 	return ""
 }
 
-// checkSubcommands lists the check group's children for its usage messages, in
-// clispec table order so the message can never drift from the spec.
-func checkSubcommands() string {
+// checkSubcommands lists the immediate children of the group addressed by path.
+func checkSubcommands(path string) string {
 	spec, _ := clispec.Lookup("check")
+	for _, name := range strings.Fields(path) {
+		child, ok := spec.Child(name)
+		if !ok {
+			break
+		}
+		spec = child
+	}
 	names := make([]string, len(spec.Children))
 	for i, child := range spec.Children {
 		names[i] = child.Name
@@ -57,41 +63,32 @@ func checkSubcommands() string {
 	return strings.Join(names, ", ")
 }
 
-// runCheckGroup dispatches the check group. The empty sub runs bare check
-// unchanged, including --staged; every child rejects --staged, which is the only
-// reason each declares the flag in clispec (an undeclared flag dies in parseArgs
-// with a generic unknown-flag error before this handler is reached).
 func runCheckGroup(c *cmdCtx) error {
 	if c.sub == "" {
-		// resolve only tests args[1] for a child name, so `awf check --staged drift`
-		// arrives here with drift as a positional rather than as a subcommand.
 		if pos := firstPos(c.inv.positionals); pos != "" {
-			spec, _ := clispec.Lookup("check")
-			if _, isChild := spec.Child(pos); isChild {
-				return &usageErr{"awf check: the subcommand must come first: awf check " + pos}
-			}
-			return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", pos, checkSubcommands())}
+			return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", pos, checkSubcommands(""))}
 		}
-		return runCheck(c.ctx, c.root, c.inv.bools["--staged"], c.stdout)
-	}
-	if c.inv.bools["--staged"] {
-		return &usageErr{fmt.Sprintf("awf check %s: --staged applies to the bare form only: awf check --staged", c.sub)}
+		return runCheck(c.ctx, c.root, c.stdout)
 	}
 	switch c.sub {
-	case "drift":
+	case "repo":
+		return runCheckRepo(c.ctx, c.root, c.stdout)
+	case "repo drift":
 		return runCheckDrift(c.ctx, c.root, c.stdout)
-	case "state":
+	case "repo state":
 		return runCheckState(c.ctx, c.root, c.stdout)
+	case "repo prose":
+		return runProseGate(c.ctx, c.root, c.stdout)
+	case "repo memory":
+		return runMemoryGate(c.ctx, c.root, c.stdout)
+	case "staged", "staged state":
+		return runCheckStaged(c.ctx, c.root, c.stdout)
+	case "staged commit":
+		return runCommitGate(c.ctx, c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
 	case "invariants":
 		return runInvariants(c.ctx, c.root, c.stdout)
-	case "prose":
-		return runProseGate(c.ctx, c.root, c.stdout)
-	case "memory":
-		return runMemoryGate(c.ctx, c.root, c.stdout)
-	case "commit":
-		return runCommitGate(c.ctx, c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
-	default: // coverage-ignore: resolve admits only a declared child, so an unhandled name means a new clispec entry shipped without a dispatch arm
-		return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", c.sub, checkSubcommands())}
+	default:
+		return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", c.sub, checkSubcommands(""))}
 	}
 }
 
@@ -193,27 +190,27 @@ func isKindToken(s string) bool {
 	return ok
 }
 
-// resolve looks up args[0] as a top-level command. For a group command (new)
-// whose next token names a child, it returns the child as cmd (so parseArgs
-// validates against the child's flag spec and --help prints the child help),
-// with sub set to the child token and rest the tokens after it. A leaf, or a
-// group with no or an unknown child, returns itself as cmd with sub "" and rest
-// args[1:] - the group's handler then owns the missing/unknown-child messages.
-// top is always the top-level command (== cmd for a leaf, the group for a
-// resolved child). The handler key stays a top-level property, but gating and
-// the current-state exemption are read from cmd (falling back to top for
-// gating), so a child can carry its own.
+// resolve descends through named children, returning the deepest leaf and its
+// joined child path. Unknown child tokens remain positional arguments for the
+// addressed group's handler to diagnose.
 func resolve(args []string) (cmd, top clispec.Command, sub string, rest []string, ok bool) {
-	top, found := clispec.Lookup(args[0])
-	if !found {
+	top, ok = clispec.Lookup(args[0])
+	if !ok {
 		return clispec.Command{}, clispec.Command{}, "", nil, false
 	}
-	if len(top.Children) > 0 && len(args) > 1 {
-		if child, childOK := top.Child(args[1]); childOK {
-			return child, top, args[1], args[2:], true
+	cmd = top
+	i := 1
+	var path []string
+	for i < len(args) {
+		child, found := cmd.Child(args[i])
+		if !found {
+			break
 		}
+		cmd = child
+		path = append(path, args[i])
+		i++
 	}
-	return top, top, "", args[1:], true
+	return cmd, top, strings.Join(path, " "), args[i:], true
 }
 
 // wantsHelp reports whether a --help or -h token appears among a command's args,

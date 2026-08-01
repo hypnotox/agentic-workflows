@@ -70,82 +70,45 @@ Re-render every enabled target after a template or config change and update .awf
 `,
 	},
 	{
-		Name: "check", Summary: "Verify the project: drift, current state, and the opt-in scans",
-		BoolFlags: []string{"--staged"}, MaxPos: -1, Gating: Gated,
-		HelpBody: `Usage: awf check [--staged]
-       awf check <subcommand>
+		Name: "check", Summary: "Verify the repository and staged universes",
+		MaxPos: -1, Gating: Gated,
+		HelpBody: `Usage: awf check
+       awf check repo [subcommand]
+       awf check staged [subcommand]
 
-With no subcommand, re-render in memory and fail if any rendered file is stale or
-hand-edited (drift), then check current-state authority over the working tree.
-
-With --staged, skip the drift check and instead validate the staged transition:
-the HEAD-to-index ADR status changes and claim add/update/remove mutations must
-correspond, and the index is checked for topic coverage. It reads only committed
-and staged content, never the working tree, so a pre-commit hook can invoke it.
---staged applies to the bare form only; a subcommand rejects it.
-
-Subcommands:
-  drift        report stale or hand-edited rendered output
-  state        report current-state authority findings
-  invariants   report each invariant claim's backing and proof sites
-  prose        scan tracked text files for typographic punctuation, blocking
-  memory       scan staged decision records for working-memory citations, blocking
-  commit       validate one commit message and stale-ADR merge authorization, blocking
+Bare check runs both universes. The repo universe checks drift, current state,
+and the opt-in scans; the staged universe validates the HEAD-to-index transition.
+Outside a Git repository bare check runs the repo universe and reports that the
+staged universe is unavailable.
 `,
 		Children: []Command{
-			{Name: "drift", Summary: "Report stale or hand-edited rendered output",
-				BoolFlags: []string{"--staged"}, MaxPos: 0,
-				HelpBody: `Usage: awf check drift
+			{Name: "repo", Summary: "Verify repository properties", MaxPos: -1,
+				HelpBody: `Usage: awf check repo [subcommand]
 
-Re-render in memory and report every rendered file that is stale or hand-edited,
-including the config-tree hygiene sweep. Does not accept --staged.
-`},
-			{Name: "state", Summary: "Report current-state authority findings",
-				BoolFlags: []string{"--staged"}, MaxPos: 0,
-				HelpBody: `Usage: awf check state
+Run the repository universe: drift, current-state, prose, and memory checks.
+`,
+				Children: []Command{
+					{Name: "drift", Summary: "Report stale or hand-edited rendered output", MaxPos: 0,
+						HelpBody: "Usage: awf check repo drift\n\nRe-render in memory and report stale or hand-edited output.\n"},
+					{Name: "state", Summary: "Report current-state authority findings", MaxPos: 0,
+						HelpBody: "Usage: awf check repo state\n\nCheck current-state authority over the working tree.\n"},
+					{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking", MaxPos: 0,
+						HelpBody: "Usage: awf check repo prose\n\nScan the project's tracked text files when proseGate.enabled is true.\n"},
+					{Name: "memory", Summary: "Scan staged decision records for working-memory citations, blocking", MaxPos: 0,
+						HelpBody: "Usage: awf check repo memory\n\nScan tracked decision records when memoryCite.enabled is true.\n"},
+				},
+			},
+			{Name: "staged", Summary: "Verify staged transition properties", MaxPos: -1,
+				HelpBody: `Usage: awf check staged [subcommand]
 
-Check current-state authority over the working tree. Does not accept --staged;
-the staged transition is awf check --staged.
-`},
-			{Name: "invariants", Summary: "Report each invariant claim's backing and proof sites",
-				BoolFlags: []string{"--staged"}, MaxPos: 0,
-				HelpBody: `Usage: awf check invariants
-
-Report each invariant claim's backing mode, an unbacked claim's Verify guidance,
-and a test-backed claim's proof-marker sites.
-`},
-			{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking",
-				BoolFlags: []string{"--staged"}, MaxPos: 0,
-				StateExempt: true,
-				HelpBody: `Usage: awf check prose
-
-Report every typographic punctuation substitute in the project's tracked text
-files and exit non-zero on any finding. Exits zero without scanning unless
-proseGate.enabled is true, so a hook or a runner may invoke it unconditionally.
-Permit a character that is genuinely being written about with
-proseGate.exemptions. awf installs no hook; wire this into your own pre-commit
-hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the hooks
-artifact is enabled).
-`},
-			{Name: "memory", Summary: "Scan staged decision records for working-memory citations, blocking",
-				BoolFlags: []string{"--staged"}, MaxPos: 0,
-				StateExempt: true,
-				HelpBody: `Usage: awf check memory
-
-Report every citation of a specific working-memory file in the staged decisions
-and plans directories and exit non-zero on any finding: the convention says a
-decision record may name the directory or a placeholder, never an actual file.
-Exits zero without scanning unless memoryCite.enabled is true, so a hook or a
-runner may invoke it unconditionally; the same knob makes awf check commit scan
-the commit-message body for the same thing. Permit a path that genuinely needs
-one with memoryCite.exemptions. awf installs no hook; wire this into your own
-pre-commit hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the
-hooks artifact is enabled).
-`},
-			{Name: "commit", Summary: "Validate one commit message and stale-ADR merge authorization, blocking",
-				BoolFlags: []string{"--staged"}, MaxPos: 1,
-				StateExempt: true,
-				HelpBody: `Usage: awf check commit [FILE]
+Run the staged transition check. The commit child is directly invoked by a
+commit-msg hook and is not part of the aggregate.
+`,
+				Children: []Command{
+					{Name: "state", Summary: "Report staged current-state transition findings", MaxPos: 0,
+						HelpBody: "Usage: awf check staged state\n\nValidate the HEAD-to-index current-state transition.\n"},
+					{Name: "commit", Summary: "Validate one commit message and stale-ADR merge authorization, blocking", MaxPos: 1, StateExempt: true,
+						HelpBody: `Usage: awf check staged commit [FILE]
 
 Validate one commit message against the Conventional Commits rules and
 definitively validate stale-format ADR merge authorization. Reads FILE (the
@@ -159,8 +122,13 @@ and rerunning git commit finishes the existing merge. awf installs no hook; wire
 this into your own commit-msg hook (the rendered .awf/hooks/commit-msg.sh payload
 runs it when the hooks artifact is enabled).
 `},
+				},
+			},
+			{Name: "invariants", Summary: "Report each invariant claim's backing and proof sites", MaxPos: 0,
+				HelpBody: "Usage: awf check invariants\n\nReport each invariant claim's backing mode and proof-marker sites.\n"},
 		},
 	},
+
 	{
 		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)",
 		MaxPos: 1, Gating: Gated,

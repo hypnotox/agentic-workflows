@@ -24,8 +24,9 @@ Backing: test
 
 ### `invariant: help-lists-group-children`
 
-The awf help overview lists every group command's children beneath their parent at a deeper indent, so no command is reachable only by knowing to ask a parent for help.
+The awf help overview lists every group command's descendants at every depth beneath their parent with successively deeper indentation, so no command is reachable only by knowing to ask a parent for help.
 Origin: ADR-0159
+Revised-by: ADR-0207
 Backing: test
 
 ### `invariant: cli-config-kinds`
@@ -55,14 +56,22 @@ Backing: test
 
 ### `invariant: group-child-project-guard-exemption`
 
-The current-state journal and attestation guard reads the resolved command's exemption property, so `awf check prose`, `awf check memory`, and `awf check commit` stay runnable in the states where a hook must still function.
+The current-state journal and attestation guard reads the deepest resolved command's exemption property, so `awf check staged commit` stays runnable in the states where its commit-msg hook must still function while the repo scan children remain guarded.
 Origin: ADR-0159
+Revised-by: ADR-0207
 Backing: test
 
 ### `invariant: invariants-in-check`
 
-Running `awf check` evaluates the current-state topic corpus and exits non-zero, printing the finding, whenever that evaluation reports an error-severity issue, and stays clean when it reports none.
+Running `awf check` evaluates the current-state topic corpus; that evaluation contributes a non-zero result and prints its finding whenever it reports an error-severity issue, and contributes a clean result when it reports none.
 Origin: ADR-0007
+Revised-by: ADR-0207
+Backing: test
+
+### `invariant: check-universe-groups`
+
+The check command groups checks by subject: repo aggregates drift, state, prose, and memory, while staged aggregates its HEAD-to-index state check and excludes the directly-invoked commit-message check. Bare awf check runs both aggregates, repo state and staged state dispatch to distinct handlers, and outside a git repository the bare form runs only repo and reports staged unavailable.
+Origin: ADR-0207
 Backing: test
 
 ### `invariant: single-os-exit`

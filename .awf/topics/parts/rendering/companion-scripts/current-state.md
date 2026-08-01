@@ -28,9 +28,9 @@ Backing: test
 
 ### `invariant: hook-payloads-fallback-safe`
 
-With checkCmd, gateCmd, gateCmdFull, commitGateCmd, proseGateCmd, and memoryGateCmd all unset, every rendered hook payload is a runnable script whose awf-verb commands resolve to `./awf` forms when the runner singleton is enabled and to the generic `awf` forms otherwise, carrying no inline resolution shim and no unresolved-value token.
+With checkCmd, gateCmd, gateCmdFull, and commitGateCmd all unset, every rendered hook payload is a runnable script whose awf-verb commands resolve to `./awf` forms when the runner singleton is enabled and to the generic `awf` forms otherwise, carrying no inline resolution shim and no unresolved-value token; the pre-commit payload consumes only the configured aggregate check and project gate.
 Origin: ADR-0148
-Revised-by: ADR-0156, ADR-0158
+Revised-by: ADR-0156, ADR-0158, ADR-0207
 Backing: test
 
 ### `invariant: runner-example-adopted`

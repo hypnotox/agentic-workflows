@@ -30,11 +30,11 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf effort new <outcome-title> [--json] [--no-worktree] [--base <ref>]`: derive an immutable slug, publish schema-2 state with owned `.awf/efforts/<slug>/memory.md`, and create the managed `.awf/worktrees/<slug>/` checkout on `awf/<slug>` by default, reporting the path to continue in; `--no-worktree` keeps the invoking checkout, and `integrate`, `worktree remove`, and final `finish` stay separate operations.
 - `awf check drift`: report only the stale or hand-edited rendered output, including the config-tree hygiene sweep, without the current-state evaluation bare `awf check` runs with it.
-- `awf check state`: report only the current-state authority findings over the working tree. The staged transition stays `awf check --staged`, which applies to the bare form alone.
+- `awf check state`: report only the current-state authority findings over the working tree. The staged transition stays `awf check staged`, which applies to the bare form alone.
 - `awf check invariants`: report the current-state topic invariant claims and their backing state.
-- `awf check commit [FILE]`: validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers (used by a commit-msg hook).
-- `awf check prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
-- `awf check memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off; used by a pre-commit hook).
+- `awf check staged commit [FILE]`: validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers (used by a commit-msg hook).
+- `awf check repo prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
+- `awf check repo memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off; used by a pre-commit hook).
 - `awf changelog`: query the changelog by version or range.
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place while optional effort and worktree residents remain local.
 - `awf version`: print the binary's version.

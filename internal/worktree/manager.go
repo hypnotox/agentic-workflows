@@ -377,9 +377,9 @@ func (m *Manager) Integrate(ctx context.Context, slug, gateCommand string) (Resu
 	}
 	gateStep := integrationGateStep(gateCommand)
 	if err := m.git.MergeNoCommit(ctx, branch(slug)); err != nil {
-		return Result{}, refusalCause("merge-conflict", "divergent integration stopped with visible conflict state", true, "resolve or abort the merge; after resolution run `./awf check --staged`, "+gateStep+", commit, and renew terminal review", err)
+		return Result{}, refusalCause("merge-conflict", "divergent integration stopped with visible conflict state", true, "resolve or abort the merge; after resolution run `./awf check staged`, "+gateStep+", commit, and renew terminal review", err)
 	}
-	return Result{Condition: "divergent integration is staged without a commit", ChangedTopology: true, NextAction: "run `./awf check --staged`, " + gateStep + ", commit the merge, and renew terminal implementation review"}, nil
+	return Result{Condition: "divergent integration is staged without a commit", ChangedTopology: true, NextAction: "run `./awf check staged`, " + gateStep + ", commit the merge, and renew terminal implementation review"}, nil
 }
 
 func integrationGateStep(command string) string {
