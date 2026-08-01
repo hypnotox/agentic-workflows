@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-08-01
 ---
 # ADR-0200: Package composition and export discipline
@@ -178,3 +178,5 @@ receives, and later renaming would break adopter overrides keyed to it.
 - 2026-08-01: Accepted; content-sha256: 459cb85be4140d180fc1a0354ae04fcd70fd26e6d340a92656ec2979bff1c590
 - 2026-08-01: Implementing; content-sha256: 459cb85be4140d180fc1a0354ae04fcd70fd26e6d340a92656ec2979bff1c590
 - 2026-08-01: Applied; operations: add `code-design/package-composition:package-owns-one-sentence`, add `code-design/package-composition:no-grab-bag-homes`, add `code-design/package-composition:export-earns-consumer`, add `code-design/package-composition:exported-symbols-documented`
+- 2026-08-01: Applied; operations: update `rendering/guide-and-doc-templates:maintainable-code-design-guide`
+- 2026-08-01: Implemented; content-sha256: 459cb85be4140d180fc1a0354ae04fcd70fd26e6d340a92656ec2979bff1c590

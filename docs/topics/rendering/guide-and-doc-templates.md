@@ -79,6 +79,7 @@ Backing: test
 
 ### `invariant: maintainable-code-design-guide`
 
-The standard catalog renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with ordered convention-part sections for decision posture, contextual heuristics, semantic modeling, boundaries and dependencies, an illustrative pattern toolbox, preparatory refactoring, and failure modes; empty project data remains coherent, adopter-neutral, language-agnostic, and free of repository-specific content.
+The standard catalog renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with ordered convention-part sections for decision posture, contextual heuristics, semantic modeling, readability, boundaries and dependencies, an illustrative pattern toolbox, preparatory refactoring, and failure modes; empty project data remains coherent, adopter-neutral, language-agnostic, and free of repository-specific content.
 Origin: ADR-0168
+Revised-by: ADR-0200
 Backing: test

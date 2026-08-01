@@ -8,6 +8,15 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- The shipped Maintainable Code Design guide gains a Readability section between semantic
+  modeling and boundaries (ADR-0200): language-agnostic decision-framework guidance on naming
+  for meaning, straight-line common paths, boring-over-clever constructs, comments stating
+  what code cannot say, and restructuring until a passage argues its own correctness. The
+  section name is a permanent override surface; adopters re-render `docs/maintainable-code-design.md`
+  on upgrade.
+
 ### Breaking changes
 
 - Every `invariant:` proof marker must now name the unit that proves it,

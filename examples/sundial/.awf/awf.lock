@@ -1076,9 +1076,9 @@
     },
     "docs/maintainable-code-design.md": {
       "templateId": "docs/maintainable-code-design.md.tmpl",
-      "templateHash": "sha256:2b46d3a4d584135229318dfac3464502507e53c52b50605f8ef689380ed348cb",
+      "templateHash": "sha256:6012c0952bf6f5dc6ad4184c21d5a8a2f1ef6b4a4c690d22dfa839b7b1d85d93",
       "configHash": "sha256:791d1dd578f34e347a9f29eb65ae6814b7e95bc8be656e935e15b9839faa8155",
-      "outputHash": "sha256:a992aaf575d3f6465e938699e8ae795dece565f68c503b86d1f47c12165351fc"
+      "outputHash": "sha256:508db2dad0cef5bd2eb28b6404867ed4195fa2d87ffa424dfb0c46c826a74a16"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
