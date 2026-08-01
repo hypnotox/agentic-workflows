@@ -807,6 +807,25 @@ func TestCommitEvidenceReads(t *testing.T) {
 	if _, err := handle.CommitMessage(testsupport.Context(t), "missing"); err == nil {
 		t.Fatal("missing message revision succeeded")
 	}
+	backend, err := gogit.PlainOpen(repo.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	commit, err := backend.CommitObject(plumbing.NewHash(head))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, err := commit.Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := tree.File("a.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handle.CommitMessage(testsupport.Context(t), file.Hash.String()); err == nil {
+		t.Fatal("resolvable blob accepted as a commit")
+	}
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := handle.CommitParents(canceled, head); !errors.Is(err, context.Canceled) {

@@ -419,7 +419,7 @@ func (r *Repo) resolveCommit(rev string) (*object.Commit, error) {
 		return nil, opaqueWrap(fmt.Sprintf("resolve %q", rev), err)
 	}
 	commit, err := r.repo.CommitObject(*hash)
-	if err != nil { // coverage-ignore: ResolveRevision verified this object; failure requires concurrent object removal or corruption
+	if err != nil { // coverage-ignore: ResolveRevision accepts only commitish revisions; the non-commit-object test proves blobs refuse before this lookup
 		return nil, opaqueWrap(fmt.Sprintf("commit %q", rev), err)
 	}
 	return commit, nil

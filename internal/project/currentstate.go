@@ -249,7 +249,7 @@ func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Me
 	}
 	heads, err := git.MergeHeads(p.Root)
 	if err != nil {
-		return CommitAuthorizationResult{}, err
+		return CommitAuthorizationResult{}, fmt.Errorf("read merge heads: %w", err)
 	}
 	observed := "non-merge"
 	if len(heads) > 0 {
@@ -267,39 +267,51 @@ func (p *Project) CheckCommitAuthorization(ctx context.Context, msg commitmsg.Me
 	}
 	repo, err := p.gitRepo()
 	if err != nil {
-		return CommitAuthorizationResult{}, err
+		return CommitAuthorizationResult{}, fmt.Errorf("open authorization repository: %w", err)
 	}
 	resultTree, err := snapshot.IndexTree(ctx, repo)
 	if err != nil {
-		return CommitAuthorizationResult{}, err
+		return CommitAuthorizationResult{}, fmt.Errorf("load result index tree: %w", err)
 	}
-	firstTree, err := snapshot.CommitTree(ctx, repo, "HEAD")
+	hasHead, err := repo.HeadExists(ctx)
 	if err != nil {
-		return CommitAuthorizationResult{}, err
+		return CommitAuthorizationResult{}, fmt.Errorf("resolve first-parent HEAD: %w", err)
+	}
+	var firstTree *snapshot.Tree
+	if hasHead {
+		firstTree, err = snapshot.CommitTree(ctx, repo, "HEAD")
+	} else {
+		firstTree, err = snapshot.NewTree(nil)
+	}
+	if err != nil { // coverage-ignore: NewTree(nil) cannot fail, and HeadExists resolved the same HEAD immediately before CommitTree; only a concurrent repository fault reaches this
+		return CommitAuthorizationResult{}, fmt.Errorf("load first-parent HEAD tree: %w", err)
 	}
 	incomingTrees, err := snapshot.CommitTrees(ctx, repo, heads)
 	if err != nil {
-		return CommitAuthorizationResult{}, err
+		return CommitAuthorizationResult{}, fmt.Errorf("load incoming parent trees %s: %w", strings.Join(heads, ","), err)
 	}
-	load := func(tree *snapshot.Tree) (currentstate.Universe, error) {
+	load := func(label string, tree *snapshot.Tree) (currentstate.Universe, error) {
 		lock, _, err := optionalLockFromTree(tree)
 		if err != nil {
-			return currentstate.Universe{}, err
+			return currentstate.Universe{}, fmt.Errorf("load %s lock: %w", label, err)
 		}
 		loaded, _, err := loadTreeCurrentState(p.Root, tree, lock)
-		return loaded.Universe(), err
+		if err != nil {
+			return currentstate.Universe{}, fmt.Errorf("load %s current state: %w", label, err)
+		}
+		return loaded.Universe(), nil
 	}
-	first, err := load(firstTree)
+	first, err := load("first-parent HEAD", firstTree)
 	if err != nil {
 		return CommitAuthorizationResult{}, err
 	}
-	result, err := load(resultTree)
+	result, err := load("result index", resultTree)
 	if err != nil {
 		return CommitAuthorizationResult{}, err
 	}
 	incoming := make([]currentstate.Universe, len(incomingTrees))
 	for i, tree := range incomingTrees {
-		incoming[i], err = load(tree)
+		incoming[i], err = load("incoming parent "+heads[i], tree)
 		if err != nil {
 			return CommitAuthorizationResult{}, err
 		}

@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
+	check, ok := Lookup("check")
+	if !ok {
+		t.Fatal("missing check")
+	}
+	commit, ok := check.Child("commit")
+	if !ok {
+		t.Fatal("missing check commit")
+	}
+	if !strings.Contains(commit.Summary, "stale-ADR merge authorization") {
+		t.Fatalf("summary = %q", commit.Summary)
+	}
+	for _, text := range []string{"MERGE_HEAD", "AWF-Allow-Version", "AWF-Allow-Reason", "unchanged", "git commit"} {
+		if !strings.Contains(commit.HelpBody, text) {
+			t.Errorf("help missing %q", text)
+		}
+	}
+}
+
 func TestContextHumanOnlyFacetSpec(t *testing.T) {
 	context, ok := Lookup("context")
 	if !ok {

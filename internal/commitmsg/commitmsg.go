@@ -41,7 +41,7 @@ func Clean(raw []byte) Message {
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "#") {
-			if strings.Contains(trimmed, ">8") {
+			if trimmed == "# ------------------------ >8 ------------------------" {
 				break
 			}
 			continue
@@ -120,8 +120,8 @@ func ParseAuthorizations(msg Message, validVersion func(string) bool) ([]Authori
 		if i+1 >= len(trailers) || trailers[i+1].key != reasonKey {
 			return nil, &SyntaxError{Line: t.line, Reason: "AWF-Allow-Version must be immediately followed by AWF-Allow-Reason"}
 		}
-		version := strings.Trim(trailers[i].value, " \t")
-		reason := strings.Trim(trailers[i+1].value, " \t")
+		version := strings.Trim(trailers[i].value, " \t\v\f\r")
+		reason := strings.Trim(trailers[i+1].value, " \t\v\f\r")
 		if version == "" || !validVersion(version) {
 			return nil, &SyntaxError{Line: t.line, Reason: fmt.Sprintf("unknown authorization version %q", version)}
 		}

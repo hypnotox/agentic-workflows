@@ -543,10 +543,56 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 			t.Fatal("malformed repository succeeded")
 		}
 	})
-	t.Run("unborn HEAD", func(t *testing.T) {
-		root := gitfixture.InitRepo(t).Root()
-		if _, err := openRoot(t, root).CheckCommitAuthorization(testContext(t), msg); err == nil {
-			t.Fatal("unborn HEAD succeeded")
+	t.Run("unborn adopted HEAD", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Stage(t, repo, map[string]string{
+			".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n",
+			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":31,"files":{}}`,
+			"docs/decisions/0001-first.md": `---
+format: current-state-v3
+slug: first
+status: Proposed
+date: 2026-01-01
+---
+# ADR-0001: First
+
+## Context
+
+First commit.
+
+## Decision
+
+1. Adopt current format.
+
+## State changes
+
+None.
+
+## Consequences
+
+Current format is admitted.
+
+## Alternatives Considered
+
+None.
+
+## Status history
+
+- 2026-01-01: Proposed
+`,
+		})
+		result, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg)
+		if err != nil || len(result.NextActions) != 0 {
+			t.Fatalf("unborn current-format admission = %#v, %v", result, err)
+		}
+	})
+	t.Run("HEAD fails after repository open", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, "base", stagedHeadFiles())
+		p := openRoot(t, repo.Root())
+		testsupport.WriteFile(t, filepath.Join(repo.Root(), ".git", "HEAD"), "broken\n")
+		if _, err := p.CheckCommitAuthorization(testContext(t), msg); err == nil || !strings.Contains(err.Error(), "resolve first-parent HEAD") {
+			t.Fatalf("broken HEAD error = %v", err)
 		}
 	})
 	t.Run("unmerged index", func(t *testing.T) {
@@ -579,6 +625,14 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 		gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": "{"})
 		if _, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg); err == nil {
 			t.Fatal("malformed result lock succeeded")
+		}
+	})
+	t.Run("malformed result config", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, "base", stagedHeadFiles())
+		gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "["})
+		if _, err := openRoot(t, repo.Root()).CheckCommitAuthorization(testContext(t), msg); err == nil || !strings.Contains(err.Error(), "load result index current state") {
+			t.Fatalf("malformed result config error = %v", err)
 		}
 	})
 	t.Run("malformed incoming lock", func(t *testing.T) {

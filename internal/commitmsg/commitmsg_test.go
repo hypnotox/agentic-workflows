@@ -7,7 +7,7 @@ import (
 )
 
 func TestCleanCommitMessage(t *testing.T) {
-	raw := []byte("\r\n  # comment\r\nfeat: subject  \r\n\r\nbody  \r\n# ------------------------ >8 ------------------------\r\ndiff\r\n")
+	raw := []byte("\r\n  # threshold >8 is only a comment\r\nfeat: subject  \r\n\r\nbody  \r\n# ------------------------ >8 ------------------------\r\ndiff\r\n")
 	got := Clean(raw)
 	if got.Subject != "feat: subject" {
 		t.Fatalf("Subject = %q", got.Subject)
@@ -48,6 +48,7 @@ func TestParseAuthorizationsRefusesMalformedReservedSyntax(t *testing.T) {
 		"feat: x\n\nAWF-Allow-Reason: why\nAWF-Allow-Version: legacy\n",
 		"feat: x\n\nAWF-Allow-Version: legacy\nOther: x\nAWF-Allow-Reason: why\n",
 		"feat: x\n\nAWF-Allow-Version: legacy\nAWF-Allow-Reason:   \n",
+		"feat: x\n\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: \v\f\n",
 		"feat: x\n\nAWF-Allow-Version: legacy\n continuation\nAWF-Allow-Reason: why\n",
 		"feat: x\n\nAWF-Allow-Version: legacy\n",
 	}
