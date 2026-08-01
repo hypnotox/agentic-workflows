@@ -87,8 +87,15 @@ cohesive owner.
    `ctx.getContextUsage()`, the denominator is explicitly the active model window rather than an
    auto-compaction threshold, and the compaction count is the number of `compaction` entries on
    `ctx.sessionManager.getBranch()`, never the count from abandoned branches or the whole session
-   tree. Formatting stays bounded and concise, uses compact token units and a rounded percentage,
-   and reports an unavailable token value neutrally when Pi temporarily cannot estimate usage.
+   tree. A finite token or window value below 1,000 renders as its rounded integer; a value from
+   1,000 renders in base-1,000 `k` units, and a value from 1,000,000 renders in base-1,000,000 `m`
+   units, in both cases with one decimal rounded by JavaScript `toFixed(1)` and a trailing `.0`
+   removed. Percentage is `Math.round(tokens / contextWindow * 100)`. When tokens are unavailable
+   but the window is known, the complete line is
+   `[session context] unknown/272k; compactions=0`; when no positive window is available it is
+   `[session context] unavailable; compactions=0`. The local formatter intentionally differs from
+   the subagent display formatter, which coarsens values from 100,000; sharing it would violate the
+   approved one-decimal context example and couple independent extension presentation contracts.
 
 8. Context facts are observational only. The context-usage extension never triggers compaction,
    handoff, a warning, or a model turn and never recommends a pressure threshold. Supported
@@ -120,20 +127,26 @@ cohesive owner.
 12. Add the context-usage entrypoint to the Pi target's governed outputs and to every output-plan,
     descriptor, manifest, cleanup, drift, target-sensitive hash, generated checkout, Sundial,
     editor-quiet strip, and container-coverage assertion that enumerates Pi extension files. A
-    target set without Pi renders none of these outputs.
+    target set without Pi renders none of these outputs. The new template remains coherent under
+    missingkey=zero rendering with empty project variables and cannot emit a no-value token.
 
-13. Deterministic TypeScript tests cover per-model-call injection, tool-follow-up refresh, compact
-    formatting, unavailable usage, active-branch-only compaction counting, model-window changes,
-    non-persistence, absence of warnings and side effects, and the shared compatibility guard.
-    Handoff tests replace memory-validation coverage with the one-property schema, exact prose
-    propagation, UTF-16 bound, and retained queue, exclusivity, countdown, cancellation, lineage,
-    cleanup, and recovery behavior. The pinned real-runtime smoke proves transient delivery into
-    actual model requests and refresh after compaction without a persisted context-usage message.
+13. Add `rendering/pi-runtime:pi-context-usage-injection` as an invariant with `Backing: test`.
+    Deterministic TypeScript tests cover per-model-call injection, tool-follow-up refresh, exact
+    formatting including unavailable usage, active-branch-only compaction counting, model-window
+    changes, non-persistence, absence of warnings and side effects, and the shared compatibility
+    guard. Its implementation batch adds the required proof annotation in an `internal/...` test
+    file and names the test unit that proves the claim. Handoff tests replace memory-validation
+    coverage with the one-property schema, exact prose propagation, UTF-16 bound, and retained
+    queue, exclusivity, countdown, cancellation, lineage, cleanup, and recovery behavior. The
+    pinned real-runtime smoke proves transient delivery into actual model requests and refresh
+    after compaction without a persisted context-usage message.
 
-14. Update the workflow and checkpoint partials, architecture, workflow, working-with-awf,
-    glossary, testing, rendering-domain, output-plan, pruning, release-smoke, and generated adopter
-    documentation in the same checked implementation batches as the behavior they describe.
-    Historical ADRs remain frozen; this record corrects their current-state claims forward.
+14. Update the workflow and checkpoint partials, AGENTS.md, architecture, workflow,
+    working-with-awf, glossary, testing, rendering-domain, output-plan, pruning, release-smoke, and
+    generated adopter documentation in the same checked implementation batches as the behavior
+    they describe. Every lifecycle transition runs `./x render` and stages the regenerated
+    `docs/decisions/INDEX.md` and lock output in the same commit. Historical ADRs remain frozen;
+    this record corrects their current-state claims forward.
 
 ## State changes
 
