@@ -228,22 +228,32 @@ what the three rules refuse.
 What was relaxed. `validatePermanentLockTransition` gained an inherited-cutoff edge: the
 transition crosses generation 29 in one step, so the cutoff arrives from the other parent
 already computed against a corpus neither tree holds, and re-deriving it would lower it
-under records already sealed above it. `renumberAliases` now skips a record only when its
-slug appears on the OTHER side, rather than whenever it carries one at all: a record
-renumbered across the cutoff acquires its slug in the very transition that renumbers it,
-so a slugless-only index leaves it unpairable, while a slug present on both sides still
-pairs directly and stays out of the digest step, which is what keeps an unrelated pending
-record with a matching body from deadlocking the rename. And the governed-format-change
-rule admits exactly the slugless-to-slugged renumber, both halves required.
+under records already sealed above it. `renumberAliases` keeps its before side
+slugless-only, exactly as ADR-0204 item 5 wrote it, and admits one further record on the
+after side: a NUMBERED record whose slug is new in the transition, which is what a record
+renumbered across the cutoff becomes when it takes the v3 encoding. Requiring a number is
+what keeps the opening shut, since a pending record can only ever be an addition. And the
+governed-format-change rule admits exactly a v2 record renumbered to a v3 one.
+
+A first attempt at that middle relaxation admitted any record whose slug was new on its own
+side, and terminal review found it accepted four transitions the rule had refused: a
+numbered record losing its number, a retained v3 slug changed at one number, a
+frozen-content amendment escaping through an unrelated pending twin, and a genuine deletion
+laundered into a rename. That is the strongest argument for writing the decision rather
+than leaving these three as inline relaxations.
 
 Two current-state sentences are FALSE as written until that decision lands, both authored
 by terminal records so neither can be corrected without one. `config/migrations-and-locks:
 adr-v2-cutoff-atomic-immutable` says the transition admits exactly two edges and that
 "Both edges require the new value to equal the corpus's computed next identity"; the
 inherited-cutoff edge is a third and derives nothing, taking the published value on trust.
-`adr-system/adr-lifecycle:renumber-digest-paired` says "The digest step considers only a
-record carrying no slug"; it now also considers a numbered record whose slug is new in the
-transition. The neighbouring `adr-number-immutable` and `adr-slug-frontmatter-mandatory`
+`adr-system/adr-lifecycle:renumber-digest-paired` is false in two independent clauses: it
+says "The digest step considers only a record carrying no slug", where it now also
+considers a numbered record whose slug is new in the transition, and it says the step
+"re-keys only where the two ends hold different numbers", which the code has never done
+since a slugged after end keys on its slug and the numbers are never compared. The second
+clause predates this work; the first sentence of `renumberAliases` carries the same
+inaccuracy. The neighbouring `adr-number-immutable` and `adr-slug-frontmatter-mandatory`
 were briefly falsified by a first, too-broad version of the pairing change and are true
 again under the shipped rule.
 

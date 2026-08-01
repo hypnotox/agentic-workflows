@@ -689,8 +689,10 @@ func renumberAliases(before, after []adr.ADR) (map[string]string, map[string]str
 // the two ends pair as a rename at all. Each clause refuses a different edit: an
 // in-place format change keeps its number, a downgrade runs the other direction,
 // and a jump from any other format is not this transition. A pending far end
-// needs no clause of its own, because uniqueDigests refuses to pair one, so an
-// un-numbering never reaches here.
+// needs no clause of its own, and both of its routes here are closed: the digest
+// index refuses to index a pending record, and the slug route cannot present a
+// V2 before side, because pre-V3 frontmatter is strict-parsed with no slug: key.
+// That second half is why before.Slug and after.Slug need no clauses either.
 func isRenumberRetrofit(before, after adr.ADR) bool {
 	return before.IsV2() && after.IsV3() && before.Number != after.Number
 }

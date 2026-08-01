@@ -635,14 +635,11 @@ func TestCheckPairRenumberAcrossTheV3Cutoff(t *testing.T) {
 		t.Fatalf("renumber across the v3 cutoff must be finding-free:\n%s", messages(f))
 	}
 
-	// Every clause is required, or the exception would license an ordinary format
-	// edit. Each case below moves exactly one of them away from the sanctioned
-	// shape, so a clause deleted from the predicate leaves one of them green.
+	// One case per predicate clause, each naming the refusal it expects: an
+	// assertion that only demands SOME finding cannot tell the intended refusal
+	// from an incidental one, and two of these refuse for different reasons.
 	sameNumber := after
 	sameNumber.Number = before.Number
-
-	downgrade := adr.ADR{Number: "0205", Format: adr.CurrentStateV2, Status: "Proposed", Sections: sections, History: history}
-	v3Before := adr.ADR{Number: "0199", Slug: "proof-markers", Format: adr.CurrentStateV3, Status: "Proposed", Sections: sections, History: history}
 
 	unNumbered := after
 	unNumbered.Number = ""
@@ -653,27 +650,27 @@ func TestCheckPairRenumberAcrossTheV3Cutoff(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
 		before, after adr.ADR
+		want          string
 	}{
-		{"format edit keeping the number", before, sameNumber},
-		{"v3 downgraded to v2 across a renumber", v3Before, downgrade},
-		{"numbered record losing its number", before, unNumbered},
-		{"v1 record skipping straight to v3", v1Before, after},
-		{"renumber into a non-v3 format", before, adr.ADR{Number: "0205", Slug: "proof-markers", Format: adr.CurrentStateV1, Status: "Proposed", Sections: sections, History: history}},
+		{"format edit keeping the number", before, sameNumber, "changed governed format"},
+		{"v1 record skipping straight to v3", v1Before, after, "changed governed format"},
+		{"renumber into a non-v3 format", before,
+			adr.ADR{Number: "0205", Slug: "proof-markers", Format: adr.CurrentStateV1, Status: "Proposed", Sections: sections, History: history},
+			"changed governed format"},
+		// This one never reaches the predicate: a pending far end is not indexed,
+		// so the pair never forms and the record reads as deleted. It belongs here
+		// as the boundary of the sanctioned shape, not as a fourth clause.
+		{"numbered record losing its number", before, unNumbered, "was deleted across this transition"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := messages(currentstate.CheckPair(uni([]adr.ADR{tc.before}), uni([]adr.ADR{tc.after}), currentstate.AuthoredCommit))
-			if got == "" {
-				t.Fatalf("%s must not be finding-free", tc.name)
+			if !strings.Contains(got, tc.want) {
+				t.Fatalf("%s: want %q in:\n%s", tc.name, tc.want, got)
 			}
 		})
 	}
 }
 
-// A pending record carries no number, so it can only be an addition and must
-// never become the far end of a renumber. Without that clause a genuine deletion
-// standing beside an unrelated pending addition whose canonical body coincides
-// is laundered into a rename, which is the fail-closed promise ADR-0204 item 4
-// makes and the widening for the v3 retrofit could otherwise have broken.
 // A V3 record's slug is retained forever, so changing it at the same number is
 // not a rename to be paired but a violation to be reported. The before side of
 // the digest index stays slugless-only for exactly this reason: admitting a
@@ -690,6 +687,11 @@ func TestCheckPairRetainedSlugCannotChange(t *testing.T) {
 	}
 }
 
+// A pending record carries no number, so it can only be an addition and must
+// never become the far end of a renumber. Without that exclusion a genuine
+// deletion standing beside an unrelated pending addition whose canonical body
+// coincides is laundered into a rename, which is the fail-closed promise
+// ADR-0204 item 4 makes and the widening for the v3 retrofit could have broken.
 func TestCheckPairPendingAdditionCannotLaunderADeletion(t *testing.T) {
 	sections := map[string]string{"Decision": "a body two records happen to share"}
 	history := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
