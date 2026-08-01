@@ -52,6 +52,9 @@ func recordByIdentity(records []adr.ADR, identity string) (adr.ADR, bool) {
 }
 
 func sourcesQualify(parent, result adr.ADR, parentSource, resultSource []byte) bool {
+	if !filenamesQualify(parent, result) {
+		return false
+	}
 	if parentSource == nil || resultSource == nil {
 		return false
 	}
@@ -78,4 +81,21 @@ func sourcesQualify(parent, result adr.ADR, parentSource, resultSource []byte) b
 		lines[i] = body + ending
 	}
 	return bytes.Equal([]byte(strings.Join(lines, "")), resultSource)
+}
+
+func filenamesQualify(parent, result adr.ADR) bool {
+	if parent.Filename == result.Filename {
+		return true
+	}
+	if parent.Identity() == result.Identity() {
+		return false
+	}
+	if parent.Slug != "" || result.Slug != "" {
+		return parent.Slug != "" && parent.Slug == result.Slug && parent.Number == "" && result.Number != "" &&
+			parent.Filename == parent.Slug+".md" && result.Filename == result.Number+"-"+result.Slug+".md"
+	}
+	if parent.Number == "" || result.Number == "" || !strings.HasPrefix(parent.Filename, parent.Number) {
+		return false
+	}
+	return result.Filename == result.Number+strings.TrimPrefix(parent.Filename, parent.Number)
 }

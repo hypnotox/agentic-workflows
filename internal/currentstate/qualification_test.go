@@ -40,8 +40,8 @@ func TestQualifyIncomingRequiresSourcesAndRejectsSameIdentityEdits(t *testing.T)
 
 func TestQualifyIncomingAllowsOnlyDeterministicRenumberSubstitutions(t *testing.T) {
 	sections := map[string]string{"Context": "same", "Decision": "same"}
-	parentRecord := adr.ADR{Number: "0200", Format: adr.CurrentStateV2, Status: "Implemented", Sections: sections}
-	resultRecord := adr.ADR{Number: "0201", Format: adr.CurrentStateV2, Status: "Implemented", Sections: sections}
+	parentRecord := adr.ADR{Number: "0200", Filename: "0200-old.md", Format: adr.CurrentStateV2, Status: "Implemented", Sections: sections}
+	resultRecord := adr.ADR{Number: "0201", Filename: "0201-old.md", Format: adr.CurrentStateV2, Status: "Implemented", Sections: sections}
 	parentBody := []byte("# ADR-0200: Old\nOrigin: ADR-0200\nRevised-by: ADR-0200\n")
 	resultBody := []byte("# ADR-0201: Old\nOrigin: ADR-0201\nRevised-by: ADR-0201\n")
 	result := currentstate.Universe{ADRs: []adr.ADR{resultRecord}, Sources: map[string][]byte{"0201": resultBody}}
@@ -50,8 +50,14 @@ func TestQualifyIncomingAllowsOnlyDeterministicRenumberSubstitutions(t *testing.
 	if len(got) != 1 || !got[0].Qualified {
 		t.Fatalf("renumber qualification = %#v", got)
 	}
-	legacyParent := adr.ADR{Number: "0100", Format: adr.Legacy, Sections: sections}
-	legacyResult := adr.ADR{Number: "0101", Format: adr.Legacy, Sections: sections}
+	resultRecord.Filename = "0201-unrelated.md"
+	result.ADRs = []adr.ADR{resultRecord}
+	got = currentstate.QualifyIncoming(currentstate.Universe{}, result, []currentstate.Universe{incoming}, adr.CurrentStateV3)
+	if len(got) != 1 || got[0].Qualified {
+		t.Fatalf("unrelated filename qualification = %#v", got)
+	}
+	legacyParent := adr.ADR{Number: "0100", Filename: "0100-old.md", Format: adr.Legacy, Sections: sections}
+	legacyResult := adr.ADR{Number: "0101", Filename: "0101-old.md", Format: adr.Legacy, Sections: sections}
 	incoming = currentstate.Universe{ADRs: []adr.ADR{legacyParent}, Sources: map[string][]byte{"0100": []byte("# ADR-0100: Old\nOrigin: ADR-0100\n")}}
 	result = currentstate.Universe{ADRs: []adr.ADR{legacyResult}, Sources: map[string][]byte{"0101": []byte("# ADR-0101: Old\nOrigin: ADR-0101\n")}}
 	got = currentstate.QualifyIncoming(currentstate.Universe{}, result, []currentstate.Universe{incoming}, adr.CurrentStateV3)

@@ -233,6 +233,19 @@ None.
 	}
 	gitfixture.Stage(t, fixture, map[string]string{v2ResultPath: v2Result})
 
+	unrelatedPath := "docs/decisions/0191-unrelated.md"
+	gitfixture.StageRemoval(t, fixture, v2ResultPath)
+	gitfixture.Stage(t, fixture, map[string]string{unrelatedPath: v2Result})
+	out.Reset()
+	if err := runCommitGate(testContext(t), root, writeMsg(t, valid), nil, &out); err == nil {
+		t.Fatal("unrelated filename substitution succeeded")
+	}
+	if out.String() != wantEvil {
+		t.Fatalf("filename refusal = %q, want %q", out.String(), wantEvil)
+	}
+	gitfixture.StageRemoval(t, fixture, unrelatedPath)
+	gitfixture.Stage(t, fixture, map[string]string{v2ResultPath: v2Result})
+
 	out.Reset()
 	malformed := "Merge old branches\n\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: \n"
 	err = runCommitGate(testContext(t), root, writeMsg(t, malformed), nil, &out)
