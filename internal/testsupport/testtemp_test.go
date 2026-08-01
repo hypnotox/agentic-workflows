@@ -209,6 +209,28 @@ func TestCleanupStaleBoundaryAndPreservation(t *testing.T) {
 	}
 }
 
+func TestCleanupRejectsCanonicalRegularFile(t *testing.T) {
+	now := time.Now()
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "home-5")
+	if err := os.WriteFile(path, []byte("not a home directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, now.Add(-48*time.Hour), now.Add(-48*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	result, err := safeTestTempManager(t, root, now).cleanup(cleanupStale)
+	if err == nil || !strings.Contains(err.Error(), path) || result.homes != 0 {
+		t.Fatalf("cleanup result=%+v err=%v", result, err)
+	}
+	if _, err := os.Lstat(path); err != nil {
+		t.Fatalf("canonical regular file was not preserved: %v", err)
+	}
+}
+
 func TestCleanupAllPreservesNoncanonicalEntries(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "root")
 	if err := os.Mkdir(root, 0o700); err != nil {
