@@ -544,6 +544,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:stale-merge-trailer-replay (TestAuditReplaysStaleMergeTrailers)
 func TestAuditReplaysStaleMergeTrailers(t *testing.T) {
 	cases := []struct {
 		name    string

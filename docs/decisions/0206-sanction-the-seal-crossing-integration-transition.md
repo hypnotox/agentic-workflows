@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: sanction-the-seal-crossing-integration-transition
-status: Implementing
+status: Implemented
 date: 2026-08-01
 ---
 # ADR-0206: Make ADR format intrinsic and authorize stale-format merges at commit-msg
@@ -301,3 +301,5 @@ updates sources and re-renders rather than hand-editing generated files.
 - 2026-08-01: Applied; operations: remove `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`, update `tooling/upgrade-runtime:initial-adoption-version-immutable`, remove `tooling/upgrade-runtime:legacy-format-set-is-closed`, add `tooling/upgrade-runtime:bridge-attestation-cutoff-payload-discarded`
 - 2026-08-01: Applied; operations: update `invariants/current-state-authority:merge-transition-ordered-aggregate`
 - 2026-08-01: Applied; operations: add `adr-system/adr-lifecycle:older-format-incoming-parent-sanction`
+- 2026-08-01: Applied; operations: add `tooling/audit-and-snapshots:stale-merge-trailer-replay`
+- 2026-08-01: Implemented; content-sha256: 723cd9410d4d09ff285031655c441f9b4187a5209fc31ecc25fe653b1545d3a4
