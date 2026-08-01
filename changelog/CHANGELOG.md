@@ -12,7 +12,8 @@ query a single version or a range.
 
 - Every `invariant:` proof marker must now name the unit that proves it,
   `<marker> invariant: <domain>/<topic>:<slug> (<name>)`, and that text must occur verbatim on a
-  non-comment line of the marker's own file, unflanked by an identifier character (ADR-0199). A
+  line of the marker's own file that does not itself open with that family's marker token,
+  unflanked by a letter, digit, or underscore (ADR-0199). A
   marker whose test was deleted, renamed, or moved now fails `awf check` instead of satisfying
   `Backing: test` while proving nothing. The name is free text, not an identifier, so an adopter
   whose tests are string literals rather than named functions can name the literal. No schema bump

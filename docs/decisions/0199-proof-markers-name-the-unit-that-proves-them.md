@@ -78,17 +78,29 @@ file, or a stack becomes self-satisfying.
 
 3. The check is a string search over the marker's own file. The named text must occur verbatim on
    at least one line of that file whose trimmed form does not begin with the source family's
-   marker token, and the occurrence must not be flanked on either side by a character in
-   `[A-Za-z0-9_]`.
+   marker token, and the occurrence must not be flanked on either side by a rune that is a
+   letter, a digit, or an underscore. Flanking is tested over runes rather than ASCII bytes
+   because item 2 defines the name as free text: an adopter whose identifiers or test labels
+   carry non-ASCII letters gets the same rename protection an ASCII one does.
 
-   Because a family's marker token is its comment leader by construction, `//` for Go and `#` for
-   Python, this excludes comments, and every marker line is a special case of a comment line. One
-   condition therefore replaces two, and it is purely syntactic and line-local: recognition tests
-   a line's leading token, never whether that line resolves to a valid claim, so it introduces no
-   error of its own and the scan keeps reporting the first failure in line order.
+   For a family whose marker token is its comment leader, `//` for Go and `#` for Python, this
+   excludes comments, and every marker line is a special case of a comment line. One condition
+   therefore replaces two, the marker's own line needing no separate case, and it is purely
+   syntactic and line-local: recognition tests a line's leading token, never whether that line
+   resolves to a valid claim, so it introduces no error of its own and the scan keeps reporting
+   the first failure in line order.
 
-   Both exclusions are load-bearing, and measurement rather than intuition set the boundary.
-   Excluding only the marker's own line lets a stack satisfy itself: twelve markers above one
+   The exclusion is exactly "opens with the marker token", which is narrower than "is a comment"
+   for a family whose token is a prefixed or block-comment form. Such a family leaves an ordinary
+   comment line searchable, so a name surviving only in prose could satisfy a stranded marker. A
+   proof marker lives only in a `currentState.testGlobs` file, so the exposure is an adopter that
+   configures a prefixed or block-comment token over its test file set; this repository's own
+   prefixed family (`<!-- awf:comment`) covers config parts and templates, which no proof marker
+   can inhabit. Widening the exclusion to general comment syntax would require per-language
+   knowledge the check deliberately refuses (item 9), so this stays a documented boundary.
+
+   The single exclusion subsumes two weaker ones, and measurement rather than intuition set the
+   boundary. Excluding only the marker's own line lets a stack satisfy itself: twelve markers above one
    function in `internal/contextq/adapter_outputs_test.go` all name that function, so each is
    satisfied by its eleven neighbours and deleting the function strands twelve claims silently.
    Excluding marker lines alone is still not enough, because this repository's convention places a
@@ -97,10 +109,13 @@ file, or a stack becomes self-satisfying.
    28% false-negative rate that includes that same twelve-marker stack. Excluding comments closes
    all 120 at no measured cost, since every anchor the migration writes is a code line.
 
-   The flanking condition is load-bearing in both directions: without it a marker naming `TestFoo`
-   would be satisfied by a surviving `TestFooBar`, missing exactly the rename this decision exists
-   to catch, while with it a free-text phrase flanked by quotes or parentheses still matches,
-   because neither is an identifier character.
+   The flanking condition is load-bearing on both sides: without its trailing half a marker naming
+   `TestFoo` would be satisfied by a surviving `TestFooBar`, and without its leading half by a
+   surviving `XTestFoo`, missing exactly the rename this decision exists to catch. With it a
+   free-text phrase flanked by quotes or parentheses still matches, because neither is an
+   identifier character. A flanked hit does not abandon the line: the same name can occur twice on
+   one line, once inside a longer identifier and once alone, as in a wrapper that calls the test,
+   so the search continues past a rejected occurrence rather than reporting a live test deleted.
 
 4. `state:` and `touches-state:` markers are unchanged, and neither gains an error of its own.
    Because the name capture is scoped to the `invariant:` alternative, a `state:` marker carrying

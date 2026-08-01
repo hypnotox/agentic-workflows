@@ -248,18 +248,42 @@ func TestProofNameMustOccurInTheFile(t *testing.T) {
 		t.Fatalf("comment-only name: err = %v", err)
 	}
 
-	// Flanking. A rename leaves a longer identifier behind; without the flanking
-	// condition it would satisfy the marker, and a rename is exactly the drift
-	// this check exists to catch.
+	// Flanking, trailing side. A rename leaves a longer identifier behind; without
+	// the flanking condition it would satisfy the marker, and a rename is exactly
+	// the drift this check exists to catch.
 	err = build("// invariant: alpha/contracts:stable (TestStable)\nfunc TestStableAndMore() {}\n")
 	if err == nil || !strings.Contains(err.Error(), "does not occur in this file") {
-		t.Fatalf("flanked name: err = %v", err)
+		t.Fatalf("trailing-flanked name: err = %v", err)
+	}
+
+	// Flanking, leading side. Both halves of the condition are load-bearing, so a
+	// prefix rename must fail too; testing only the trailing half lets the leading
+	// half be deleted with the suite green.
+	err = build("// invariant: alpha/contracts:stable (TestStable)\nfunc XTestStable() {}\n")
+	if err == nil || !strings.Contains(err.Error(), "does not occur in this file") {
+		t.Fatalf("leading-flanked name: err = %v", err)
+	}
+
+	// Flanking is over runes, not bytes: a non-ASCII letter abutting the name is an
+	// identifier character too, or an adopter whose labels carry accented letters
+	// loses the rename protection an ASCII one gets.
+	err = build("// invariant: alpha/contracts:stable (TestStable)\nfunc TestStableé() {}\n")
+	if err == nil || !strings.Contains(err.Error(), "does not occur in this file") {
+		t.Fatalf("rune-flanked name: err = %v", err)
+	}
+
+	// A flanked hit must not abandon the line: the same name can occur twice on one
+	// line, once inside a longer identifier and once on its own. Scanning only the
+	// first occurrence would reject this live test as deleted.
+	if err = build("// invariant: alpha/contracts:stable (TestStable)\nfunc TestStableWrapper() { TestStable() }\n"); err != nil {
+		t.Fatalf("second unflanked occurrence on the same line rejected: %v", err)
 	}
 
 	// Stacked markers naming the same absent unit do not satisfy each other, and
 	// the first one is what fails. They must name the SAME unit: two different
-	// absent names would fail on the marker-line exclusion alone and would merely
-	// duplicate the first case. The second marker is unreachable in this run by
+	// absent names would fail because neither name occurs at all and would merely
+	// duplicate the first case, whereas this pins that the sibling marker LINE is
+	// excluded from the search. The second marker is unreachable in this run by
 	// design, since the scan returns on its first error.
 	err = build("// invariant: alpha/contracts:stable (TestStable)\n// invariant: alpha/contracts:stable (TestStable)\nfunc TestOther() {}\n")
 	if err == nil || !strings.Contains(err.Error(), "a_test.go:1:") {

@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
@@ -155,7 +157,7 @@ func scanMarkerBytes(idx MarkerIndex, rel string, b []byte, sources []config.Cur
 			// the loop: deferring would report every resolve error in the file
 			// ahead of every occurrence error, and the scan must keep reporting
 			// the first failure in line order (ADR-0199 item 3).
-			if site.Kind == ProofMarker && !proofNameOccurs(lines, name, src.Marker, n+1) {
+			if site.Kind == ProofMarker && !proofNameOccurs(lines, name, src.Marker) {
 				return fmt.Errorf("%s:%d: proof marker for %s names %q, which does not occur in this file; the test was deleted, renamed, or moved", rel, n+1, site.ClaimID, name)
 			}
 			idx.sites[site.ClaimID] = append(idx.sites[site.ClaimID], site)
@@ -252,19 +254,23 @@ func resolveMarker(path string, line int, payload string, corpus Corpus, cfg *co
 	return s, name, nil
 }
 
-// proofNameOccurs reports whether name appears verbatim on some line other than
-// the marker's own, outside comments, and not as part of a longer identifier.
-// The flanking condition is what catches a rename: a marker naming TestFoo is
-// not satisfied by a surviving TestFooBar.
+// proofNameOccurs reports whether name appears verbatim on some line whose
+// trimmed form does not open with the family's marker token, and not as part of
+// a longer identifier. The flanking condition is what catches a rename, in both
+// directions: a marker naming TestFoo is satisfied by neither a surviving
+// TestFooBar nor a surviving XTestFoo.
 //
-// Recognition is syntactic and line-local. A line is excluded when its trimmed
-// form begins with the family's marker token, which is that family's comment
-// leader by construction, so this excludes comments and every marker line is a
-// special case of a comment line (ADR-0199 item 3). The token is a parameter
-// because the exclusion is per-family; it cannot be hardcoded.
-func proofNameOccurs(lines []string, name, marker string, markerLine int) bool {
-	for i, line := range lines {
-		if i+1 == markerLine || strings.HasPrefix(strings.TrimSpace(line), marker) {
+// Recognition is syntactic and line-local. One condition does the excluding: for
+// a family whose marker token is its comment leader, which covers // and #, it
+// skips comments, and every marker line is a special case of a comment line, so
+// a stack of markers naming one unit cannot satisfy itself and the marker's own
+// line needs no separate case (ADR-0199 item 3). The token is a parameter
+// because the exclusion is per-family; it cannot be hardcoded. A family whose
+// token is a prefixed or block-comment form excludes only the lines opening with
+// that exact token, which is narrower than every comment in the file.
+func proofNameOccurs(lines []string, name, marker string) bool {
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), marker) {
 			continue
 		}
 		// Padding removes the bounds cases from the flanking test: a match can
@@ -276,7 +282,10 @@ func proofNameOccurs(lines []string, name, marker string, markerLine int) bool {
 				break
 			}
 			start := off + j
-			if !identByte(padded[start-1]) && !identByte(padded[start+len(name)]) {
+			// Continue past a flanked hit rather than giving up on the line: the
+			// same name can occur twice on one line, once as part of a longer
+			// identifier and once on its own, as in a wrapper calling the test.
+			if !identBefore(padded[:start]) && !identAt(padded[start+len(name):]) {
 				return true
 			}
 			off = start + 1
@@ -285,8 +294,22 @@ func proofNameOccurs(lines []string, name, marker string, markerLine int) bool {
 	return false
 }
 
-func identByte(c byte) bool {
-	return c == '_' || '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'
+// identBefore and identAt decode a whole rune rather than testing a byte, so an
+// adopter whose identifiers or test labels carry non-ASCII letters gets the same
+// rename protection as an ASCII one (ADR-0199 item 2 defines the name as free
+// text, not a Go identifier).
+func identBefore(s string) bool {
+	r, size := utf8.DecodeLastRuneInString(s)
+	return size > 0 && identRune(r)
+}
+
+func identAt(s string) bool {
+	r, size := utf8.DecodeRuneInString(s)
+	return size > 0 && identRune(r)
+}
+
+func identRune(r rune) bool {
+	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 func topicMatchesPath(t Topic, domainPaths []string, path string) bool {
 	if t.Metadata.Applies == "global" {

@@ -433,8 +433,9 @@ Whole-effort acceptance, beyond each phase's gate:
   the twelve stacked markers. Reporting that first marker is what proves the neighbours no longer
   satisfy each other. Do not expect twelve reported failures: `scanMarkerBytes` returns on its
   first error, so one failure per run is the designed behaviour. Restore afterwards.
-- `./x gate` is clean at every phase boundary, and `git log --oneline` shows four commits whose
-  order matches the four phases.
+- `./x gate` is clean at every phase boundary, and `git log --oneline` shows six commits: the four
+  phase commits in order, plus the two repair commits execution surfaced and the user authorised
+  before Phase 3 (see Notes).
 
 Not part of this plan, and owned by the deferred post-review transaction after terminal review
 settles: authoring the claim `invariants/topics-and-markers:proof-marker-names-its-unit` with its
@@ -451,4 +452,27 @@ with its implementation findings.
   adopter-facing argument of ADR-0199, and a committed migration tool would blur it.
 - If Phase 4 reveals a fixture that cannot satisfy the name rule without contorting the test it
   belongs to, that is a finding worth recording here rather than working around silently, because
-  it would be evidence the rule is harder to satisfy than the corpus census suggested.
+  it would be evidence the rule is harder to satisfy than the corpus census suggested. No such
+  fixture appeared: all nine took a name and a matching declaration without changing what they
+  assert.
+
+- **Execution deviation, two authorised repair commits.** Phase 3's migration surfaced thirteen
+  orphaned proof markers in `internal/project/target_test.go:519-549`, stranded by the same commit
+  4c61356a this plan already names, bringing that commit's total to seventeen rather than four.
+  The plan anticipated only anchorless orphans, which the script reports and skips; these had a
+  following function, so the naming rules would have handed each the plausible name of the helper
+  `renderPiExtensionFile` and frozen a known stranding green forever. The user chose deletion in
+  its own commit before the sweep (6f69c9f6): every affected claim retains another proof marker,
+  so no claim lost backing. A repo-wide sweep for comments naming an absent test found four more
+  cases carrying no marker, fixed separately in 14706ee3.
+
+- **Residual the rule does not close, recorded deliberately.** The check proves a marker names a
+  live unit; it cannot judge whether that unit is topical. Six claims now hold exactly one proof
+  marker each, all inside broad stacks above `TestCurrentStateOutputPlanMatchesTree` or
+  `TestTargetDescriptorValidation` in `internal/project/output_plan_test.go`, whose subjects are
+  unrelated to what the claims assert: `pi-child-process-safety`,
+  `pi-implementation-state-boundary`, `pi-subagent-progress-context-isolation`,
+  `pi-implementation-batch-exclusivity`, `pi-subagent-progress-rendering`, and
+  `pi-subagent-progress-bounds`. For each, the substantive proof was among the thirteen deleted
+  tests. They are ledger-backed by a structural test and are candidates for the mutation-testing
+  rung the roadmap's retained nominal-proof entry describes.

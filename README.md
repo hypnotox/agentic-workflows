@@ -180,9 +180,10 @@ ignored owner-only `.awf/local/context-spills.log`; logging failures only warn. 
 while the log is nonempty, and the operator resolves or promotes the recurring issue and removes it.
 
 **Invariants are enforced, not just documented.** An invariant claim declares its backing:
-`Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug>`) on a
-real test, while `Backing: unbacked` is a reasoned contract that must carry a `Verify:` line and
-no marker. `awf check` and its `invariants` subcommand enforce this symmetrically, so an invariant with no
+`Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug> (<name>)`)
+on a real test, where `<name>` names the unit that proves it and must occur in that same file, so a
+marker outlives neither its test nor a rename. `Backing: unbacked` is a reasoned contract that must
+carry a `Verify:` line and no marker. `awf check` and its `invariants` subcommand enforce this symmetrically, so an invariant with no
 backing in source fails loudly instead of rotting. Rules carry no backing.
 
 Adopting this release from an older awf is a one-time sealed cutover handled by plain `awf
