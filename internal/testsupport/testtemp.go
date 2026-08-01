@@ -239,7 +239,9 @@ func runIsolated(run func() int, setHome func(string) error, manager *testTempMa
 		panic(err)
 	}
 	if _, err := manager.cleanup(CleanupStale); err != nil {
-		fmt.Fprintf(stderr, "testsupport: stale test-home cleanup: %v\n", err)
+		if _, writeErr := fmt.Fprintf(stderr, "testsupport: stale test-home cleanup: %v\n", err); writeErr != nil {
+			panic(fmt.Errorf("write stale test-home cleanup warning: %w", writeErr))
+		}
 	}
 	home, err := manager.allocate()
 	if err != nil {
@@ -250,10 +252,12 @@ func runIsolated(run func() int, setHome func(string) error, manager *testTempMa
 	}
 	code := run()
 	if err := manager.fs.removeAll(home); err != nil {
-		fmt.Fprintf(stderr, "testsupport: remove current test home %s: %v\n", home, err)
+		_, writeErr := fmt.Fprintf(stderr, "testsupport: remove current test home %s: %v\n", home, err)
 		if code == 0 {
 			return 1
 		}
+		// Preserve the suite's nonzero result; stderr has no fallback diagnostic channel.
+		_ = writeErr
 	}
 	return code
 }

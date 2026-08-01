@@ -75,16 +75,18 @@ func TestTestTempEnsureRootRejectsUnsafeRoots(t *testing.T) {
 	now := time.Now()
 	for _, tc := range []struct {
 		name, root string
-		setup      func(string)
+		setup      func(string) error
 	}{
 		{"empty", "", nil}, {"relative", "relative", nil}, {"unclean", base + string(filepath.Separator) + "child" + string(filepath.Separator) + ".." + string(filepath.Separator) + "root", nil},
 		{"filesystem root", string(filepath.Separator), nil},
-		{"file", filepath.Join(base, "file"), func(p string) { _ = os.WriteFile(p, nil, 0o600) }},
-		{"symlink", filepath.Join(base, "link"), func(p string) { _ = os.Symlink(base, p) }},
+		{"file", filepath.Join(base, "file"), func(p string) error { return os.WriteFile(p, nil, 0o600) }},
+		{"symlink", filepath.Join(base, "link"), func(p string) error { return os.Symlink(base, p) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.setup != nil {
-				tc.setup(tc.root)
+				if err := tc.setup(tc.root); err != nil {
+					t.Fatal(err)
+				}
 			}
 			m := safeTestTempManager(t, tc.root, now)
 			if err := m.ensureRoot(); err == nil {
@@ -553,6 +555,34 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 	}
 	if strings.Join(sequence, ",") != "root,root,cleanup,root,allocate,home,run,remove" || !strings.Contains(stderr.String(), "stale test-home cleanup") {
 		t.Fatalf("sequence=%q stderr=%q", sequence, stderr.String())
+	}
+
+	warningManager := func() *testTempManager {
+		warningRoot := filepath.Join(t.TempDir(), "root")
+		if err := os.Mkdir(warningRoot, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		mkdirHome(t, warningRoot, "home-1", time.Now().Add(-48*time.Hour))
+		manager := safeTestTempManager(t, warningRoot, time.Now())
+		manager.validate = func(path string, info fs.FileInfo) error {
+			if filepath.Base(path) == "home-1" {
+				return errors.New("unsafe")
+			}
+			return nil
+		}
+		return manager
+	}
+	ran := false
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("expected warning write panic")
+			}
+		}()
+		runIsolated(func() int { ran = true; return 0 }, func(string) error { return nil }, warningManager(), testTempErrorWriter{errors.New("write warning")})
+	}()
+	if ran {
+		t.Fatal("suite ran after warning write failure")
 	}
 
 	for _, tc := range []struct {

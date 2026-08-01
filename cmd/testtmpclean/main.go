@@ -23,10 +23,12 @@ func run(args []string, stdout, stderr io.Writer, clean cleanerFunc) int {
 			return 1
 		}
 	default:
+		// The usage exit remains the failure signal when stderr itself is unwritable.
 		_, _ = fmt.Fprintln(stderr, "usage: testtmpclean [--all]")
 		return 2
 	}
 	if err := clean(mode, stdout); err != nil {
+		// The cleanup exit remains the failure signal when stderr itself is unwritable.
 		_, _ = fmt.Fprintf(stderr, "testtmpclean: %v\n", err)
 		return 1
 	}
