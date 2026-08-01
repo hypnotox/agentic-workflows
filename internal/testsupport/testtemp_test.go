@@ -215,6 +215,20 @@ func TestCleanupAllAccountsOnlySuccessfulRegularFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := osTestTempFS()
+	files.readDir = func(path string) ([]fs.DirEntry, error) {
+		entries, err := os.ReadDir(path)
+		for left, right := 0, len(entries)-1; left < right; left, right = left+1, right-1 {
+			entries[left], entries[right] = entries[right], entries[left]
+		}
+		return entries, err
+	}
+	var inspected []string
+	files.lstat = func(path string) (fs.FileInfo, error) {
+		if path != root {
+			inspected = append(inspected, filepath.Base(path))
+		}
+		return os.Lstat(path)
+	}
 	var removed []string
 	blockedB := errors.New("blocked home-1")
 	blockedC := errors.New("blocked home-2")
@@ -239,6 +253,9 @@ func TestCleanupAllAccountsOnlySuccessfulRegularFiles(t *testing.T) {
 	}
 	if first, second := strings.Index(err.Error(), b), strings.Index(err.Error(), c); first < 0 || second <= first {
 		t.Fatalf("failure order = %v", err)
+	}
+	if strings.Join(inspected, ",") != "home-1,home-2,home-3" {
+		t.Fatalf("inspection order %q", inspected)
 	}
 	if strings.Join(removed, ",") != "home-1,home-2,home-3" {
 		t.Fatalf("removal order %q", removed)
@@ -434,10 +451,29 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 	}
 	var stderr strings.Builder
 	var sequence []string
+	files := m.fs
+	files.mkdir = func(path string, mode fs.FileMode) error {
+		sequence = append(sequence, "root")
+		return os.Mkdir(path, mode)
+	}
+	files.readDir = func(path string) ([]fs.DirEntry, error) {
+		sequence = append(sequence, "cleanup")
+		return os.ReadDir(path)
+	}
+	mkdirTemp := files.mkdirTemp
+	files.mkdirTemp = func(path, pattern string) (string, error) {
+		sequence = append(sequence, "allocate")
+		return mkdirTemp(path, pattern)
+	}
+	files.removeAll = func(path string) error {
+		sequence = append(sequence, "remove")
+		return os.RemoveAll(path)
+	}
+	m.fs = files
 	if got := runIsolated(func() int { sequence = append(sequence, "run"); return 0 }, func(string) error { sequence = append(sequence, "home"); return nil }, m, &stderr); got != 0 {
 		t.Fatalf("code = %d", got)
 	}
-	if strings.Join(sequence, ",") != "home,run" || !strings.Contains(stderr.String(), "stale test-home cleanup") {
+	if strings.Join(sequence, ",") != "root,root,cleanup,root,allocate,home,run,remove" || !strings.Contains(stderr.String(), "stale test-home cleanup") {
 		t.Fatalf("sequence=%q stderr=%q", sequence, stderr.String())
 	}
 
@@ -457,12 +493,16 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 		{"HOME", func() *testTempManager { return safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now()) }, func(string) error { return errors.New("HOME") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			ran := false
 			defer func() {
 				if recover() == nil {
 					t.Fatal("expected panic")
 				}
+				if ran {
+					t.Fatal("suite ran after pre-run failure")
+				}
 			}()
-			runIsolated(func() int { return 0 }, tc.setHome, tc.manager(), io.Discard)
+			runIsolated(func() int { ran = true; return 0 }, tc.setHome, tc.manager(), io.Discard)
 		})
 	}
 }
