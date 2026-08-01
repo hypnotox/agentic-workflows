@@ -381,6 +381,26 @@ commit is made from. And a `pre-commit` hook DOES run when a conflicted merge is
 finished with `git commit`; only a merge that Git resolves and commits by itself skips
 it, which is exactly the hole `pre-merge-commit` exists to cover.
 
+## A piped gate run reports the pipe's exit code, not the gate's
+
+_Domains: tooling_
+
+_Related: ADR-0202_
+
+`./x gate 2>&1 | tail -60` exits with `tail`'s status, which is 0 whatever the gate did,
+and the failing line is usually far enough up the output to have scrolled past the
+window anyway. Both halves fail in the same direction: the run reads as green. This has
+bitten more than once, in different sessions, including one where the same agent had
+recorded the trap earlier the same day. Run `./x gate > /tmp/gate.log 2>&1; echo $?` and
+grep the log. The same applies to any long verification command whose exit code decides
+whether work continues.
+
+The gate is not the only place a false green comes from a shell habit. `sed` with `|` as
+its delimiter silently fails to apply a substitution whose pattern contains `||`, which
+is how a mutation test can report "mutation survived" when the mutation was never
+written to the file. Confirm a mutation actually landed, by grepping the file, before
+trusting a green run to mean anything about it.
+
 ## Retiring a concept needs paraphrase sweeps, not just identifier greps
 
 _Domains: rendering, adr-system_
