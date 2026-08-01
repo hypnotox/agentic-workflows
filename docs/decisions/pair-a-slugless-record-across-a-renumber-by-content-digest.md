@@ -137,7 +137,8 @@ byte, and on applied batch count, so a mispair still has to look exactly like a 
 respect other than the number. Two distinct decisions with identical Context, Decision, State
 changes, Consequences and Alternatives are not a shape the corpus produces.
 
-A duplicated digest does not mispair; it makes the renumber unavailable. The uniqueness guard
+A digest repeated on one side, as opposed to the paragraph above's digest matching once on each,
+does not mispair; it makes the renumber unavailable. The uniqueness guard
 withholds the pair, so the rename is refused with the wording it has today, and the operator's
 remedy is to distinguish the two bodies before renaming. That is the safe direction to fail, but
 the refusal does not say so, which is worth knowing before reading it.
