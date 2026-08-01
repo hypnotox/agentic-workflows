@@ -120,7 +120,7 @@ func TestCheckGlossaryDisabled(t *testing.T) {
 
 // A record naming an unconfigured domain yields glossary-domain drift; records
 // resolving their domains, and records carrying none, yield nothing.
-// invariant: rendering/doc-outputs:glossary-domains-resolved
+// invariant: rendering/doc-outputs:glossary-domains-resolved (TestCheckGlossaryValidatesDomains)
 func TestCheckGlossaryValidatesDomains(t *testing.T) {
 	p, err := Open(testContext(t), scaffoldFiles(t, glossaryCheckCfg, map[string]string{
 		"docs/glossary.yaml": "data:\n  terms:\n" +
