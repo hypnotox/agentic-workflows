@@ -110,10 +110,13 @@ the append-only column records what the commands were called when those decision
    adopter `checkCmd` that already carried a flag would have rendered an invocation the group
    handler rejects for subcommand order. No new adopter-visible var is introduced.
 
-   `proseGateCmd` and `memoryGateCmd` are retired from the catalog with their only consumers. Keeping
-   either descriptor after deleting its payload line would publish a configurable command that no
-   rendered artifact invokes. `checkCmd` now owns both scans through the bare aggregate, while
-   `commitGateCmd` remains live in the separate commit-msg payload.
+   `proseGateCmd` and `memoryGateCmd` are retired from the catalog and config-spec availability map
+   with their payload consumers. Keeping either descriptor after deleting its payload line would
+   publish a configurable command that no rendered artifact invokes. The runner-disabled hook
+   validation drops both keys from its required set as well: `checkCmd` now owns both scans through
+   the bare aggregate, while `commitGateCmd` remains live in the separate commit-msg payload. Its
+   requirement therefore narrows to `checkCmd` and `commitGateCmd`, in addition to the independently
+   required `gateCmd`.
 
    It also completes ADR-0196 Decision 3 rather than regressing it. That decision made the payload's
    standalone scan lines the single local enforcement point; item 4 makes `checkCmd` cover them, so
@@ -233,11 +236,11 @@ the append-only column records what the commands were called when those decision
     the one flattened level `checkSubcommands()` produces today (`cmd/awf/dispatch.go:51-58`).
 
 11. A new schema migration covers every var this decision invalidates. It clears the retired
-    `proseGateCmd` and `memoryGateCmd` keys themselves, whatever values they hold. In every other var,
-    it retargets `check prose` to `check repo prose` and `check memory` to `check repo memory` where
-    those live commands remain meaningful. It retargets `check commit` to `check staged commit` for
-    the still-live `commitGateCmd`, and it clears any var invoking the removed command in its
-    `check invariants` spelling. The pre-ADR-0159 bare `invariants` spelling is deliberately not
+    `proseGateCmd` and `memoryGateCmd` keys themselves before inspecting values, whatever values they
+    hold. In every other var, it retargets `check prose` to `check repo prose`, `check memory` to
+    `check repo memory`, and `check commit` to `check staged commit`, preserving any trailing
+    arguments. Those live commands remain meaningful regardless of which var composes their awf
+    invocation. It clears any var invoking the removed command in its `check invariants` spelling. The pre-ADR-0159 bare `invariants` spelling is deliberately not
     matched: an awf-invoked value was already rewritten to `check invariants` by the 18-to-19
     migration and so never reaches this one, and the values that still spell it bare are the
     non-awf-runner values ADR-0159 declined to own on the stated ground that awf does not own another
@@ -255,7 +258,12 @@ the append-only column records what the commands were called when those decision
     would desync it from the ADR that shipped it.
 
 12. The authored inputs behind the roadmap and the affected domain summaries update in the same
-    commit as the change they describe. the superseded follow-on entry at `.awf/docs/parts/roadmap/deferred.md:101` is removed and its
+    commit as the change they describe. Every authored live invocation of the three moved commands is
+    swept rather than relying on the older affected-site inventory. This explicitly includes
+    `.awf/parts/working-with-awf/commands.md`, the workflow parts, `templates/docs/workflow.md.tmpl`,
+    `templates/docs/working-with-awf.md.tmpl`, `README.md`, and command-related config-spec prose;
+    `awf render` carries those edits into every rendered document. The superseded follow-on entry at
+    `.awf/docs/parts/roadmap/deferred.md:101` is removed and its
     carried-forward remainder lands in `.awf/docs/parts/roadmap/ideas.md`, recording that three of its four contracts are discharged here and carrying
     forward the two deferred halves of item 5 as a check-architecture cleanup; the deferred entry at
     `.awf/docs/parts/roadmap/deferred.md:235` ("`awf check drift` and `awf check state`: deliberately
@@ -301,6 +309,8 @@ the append-only column records what the commands were called when those decision
 - update `tooling/cli:invariants-in-check`
 - add `tooling/cli:check-universe-groups`
 - update `rendering/catalog-and-targets:var-descriptor-set-pinned`
+- update `config/validation:hooks-commands-resolvable`
+- update `rendering/companion-scripts:hook-payloads-fallback-safe`
 - update `tooling/quality-gates:memory-citation-gate`
 - update `tooling/audit-and-snapshots:commit-gate-shared-rule`
 - update `code-design/dependency-composition:dependency-composition-commit-classification`
