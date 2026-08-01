@@ -58,6 +58,12 @@ check fails a glossary record whose domains list names a domain not configured i
 Origin: ADR-0207
 Backing: test
 
+### `invariant: glossary-terseness-advisory`
+
+check reports one non-failing note per glossary term whose meaning exceeds the terseness threshold, naming the sidecar path, the term, and its length. The evaluated set is the merged one, so the shipped standard vocabulary is bound by the threshold alongside the project's authored terms.
+Origin: ADR-0207
+Backing: test
+
 ### `invariant: skill-ref-dead-fails`
 
 awf check fails when a managed rendered artifact references a known skill name via its prefix-anchored token while that skill is not in the effective rendered set.

@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: narrow-the-glossary-terms-validated-claim-to-the-implementation
-status: Proposed
+status: Implemented
 date: 2026-08-01
 ---
 # ADR-0208: Narrow the glossary-terms-validated claim to the implementation
@@ -86,3 +86,4 @@ wording.
 ## Status history
 
 - 2026-08-01: Proposed
+- 2026-08-01: Implemented; content-sha256: ea6748992565fc731f12c6b343b57ca3181488e3cb2819db39e2add3116df738

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [0207, narrow-the-glossary-terms-validated-claim-to-the-implementation]
-status: Proposed
+status: Implemented
 ---
 # Plan: Two-layer glossary with record-model terms
 
@@ -41,8 +41,8 @@ and the status flip after terminal review settles. Two mechanics force them toge
 into phase 4: `internal/adr/format.go` rejects an `Implementing` status once every declared
 operation is applied and requires the final Applied event immediately before an explicit
 `Implemented` transition, while `checkMutations` reports a claim mutation that arrives without its
-operation. Phase 4 therefore lands its code, tests, and proof markers only; the ADR rests at
-`Implementing` with seven of nine operations applied, which is legal.
+operation. Phase 4 therefore lands its code and tests only, without the two proof markers (see
+task 4.3); the ADR rests at `Implementing` with seven of nine operations applied, which is legal.
 
 ## File structure
 

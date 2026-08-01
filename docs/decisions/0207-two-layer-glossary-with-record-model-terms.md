@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0207: Two-layer glossary with record-model terms
@@ -244,3 +244,5 @@ template or catalog change does.
 - 2026-07-31: Applied; operations: update `rendering/doc-outputs:pitfall-domains-resolved`
 - 2026-08-01: Applied; operations: add `rendering/doc-outputs:glossary-domains-resolved`, update `rendering/guide-and-doc-templates:glossary-terms-sorted`, update `rendering/guide-and-doc-templates:glossary-terms-validated`
 - 2026-08-01: Applied; operations: add `rendering/guide-and-doc-templates:glossary-standard-vocabulary`, add `rendering/guide-and-doc-templates:glossary-standard-terms-portable`, update `config/configspec-and-reference:configspec-data-parity`
+- 2026-08-01: Applied; operations: add `rendering/doc-outputs:glossary-terseness-advisory`, add `tooling/cli:terseness-advisory-nonfailing`
+- 2026-08-01: Implemented; content-sha256: 62f5db438f6908d63c53e4d36759f6fcf38827383befec7620f0ad9a78111472

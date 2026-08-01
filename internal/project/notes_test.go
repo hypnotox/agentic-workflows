@@ -500,6 +500,7 @@ func TestAdvisoryNotesSurfacesTagHealthError(t *testing.T) {
 // the term and its length, and stays silent for a meaning at or under the
 // threshold. It evaluates the merged set, so a shipped standard term is bound
 // by the same guideline as an authored one.
+// invariant: rendering/doc-outputs:glossary-terseness-advisory (TestGlossaryTersenessNotes)
 func TestGlossaryTersenessNotes(t *testing.T) {
 	long := strings.Repeat("x", glossaryMeaningMax+1)
 	atLimit := strings.Repeat("y", glossaryMeaningMax)

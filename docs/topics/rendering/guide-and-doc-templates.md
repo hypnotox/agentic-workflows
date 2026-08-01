@@ -48,9 +48,9 @@ Backing: test
 
 ### `invariant: glossary-terms-validated`
 
-An empty term, an empty, null, or non-string meaning, an interior newline in a term or meaning, a malformed record, an unknown record key, or a case-insensitive duplicate term within a single layer of the glossary sidecar fails the render, naming the sidecar path and the offending term.
+An empty, missing, or non-string term, an empty, null, or non-string meaning, an interior newline in a term or meaning, a malformed record, an unknown record key, or a case-insensitive duplicate term within a single layer of the glossary sidecar fails the render, naming the sidecar path, and the offending term where the term itself parsed.
 Origin: ADR-0148
-Revised-by: ADR-0207
+Revised-by: ADR-0207, ADR-0208
 Backing: test
 
 ### `invariant: glossary-standard-vocabulary`
