@@ -232,9 +232,9 @@
     },
     ".pi/extensions/awf-effort/index.ts": {
       "templateId": "pi/awf-effort/index.ts.tmpl",
-      "templateHash": "sha256:347c4f920897cccfc0fb2aa63241bbf9bf8466fce8637672e7dca285c0ac4086",
+      "templateHash": "sha256:e416848c0d4bfa87f92e017f31b7ce3a1e199dfb6bc1995fd66e44b461f340d8",
       "configHash": "sha256:721a0da20bd1586332ba690a50f227534edd32269498a430d7f6dd43d5645257",
-      "outputHash": "sha256:1187950699e4585d0730d46eb957b24efd20b2a0a7b2f8a5c68713f60bca7195"
+      "outputHash": "sha256:5e90042fbf31ede904316d9101fbd68ae85b1d9adf012ddf1e06d92556400cc3"
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",

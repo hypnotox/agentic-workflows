@@ -56,14 +56,14 @@ export type RemotePiMetadata = Readonly<{
   activity: Readonly<{ heartbeatAt: string; cwd: string; role: CheckoutRole }>;
 }>;
 export type RemotePiMetadataSetPayload = Readonly<{ namespace: "awf"; value: RemotePiMetadata | null }>;
-export type RemotePiMetadataReplayRequestPayload = Readonly<Record<string, never>>;
+export type RemotePiMetadataReplayRequestPayload = undefined;
 export type RemotePiCapabilitiesRequestPayload = undefined;
 export type RemotePiCapabilitiesReplyPayload = Readonly<{
   metadata?: Readonly<{ version?: unknown }>;
   nameOverride?: Readonly<{ version?: unknown; namespaces?: unknown }>;
 }>;
 export type RemotePiNameOverrideSetPayload = Readonly<{ namespace: "awf"; value: string | null }>;
-export type RemotePiNameOverrideReplayRequestPayload = Readonly<Record<string, never>>;
+export type RemotePiNameOverrideReplayRequestPayload = undefined;
 export type RemotePiAssignedNameDiagnosticPayload = Readonly<{
   namespace?: unknown; requested?: unknown; assigned?: unknown; active?: unknown; changed?: unknown;
 }>;

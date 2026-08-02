@@ -17,23 +17,11 @@ const T0 = "2026-08-02T00:00:00Z";
 const T1 = "2026-08-02T01:00:00.123456789Z";
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const PRIOR = "00000000-0000-4000-8000-000000000099";
-const remotePiStructuralFixtures: Readonly<{
-  metadataSet: RemotePiMetadataSetPayload;
-  metadataReplay: RemotePiMetadataReplayRequestPayload;
-  capabilityRequest: RemotePiCapabilitiesRequestPayload;
-  capabilityReply: RemotePiCapabilitiesReplyPayload;
-  nameOverrideSet: RemotePiNameOverrideSetPayload;
-  nameOverrideReplay: RemotePiNameOverrideReplayRequestPayload;
-  assignedDiagnostic: RemotePiAssignedNameDiagnosticPayload;
-}> = {
-  metadataSet: { namespace: "awf", value: null },
-  metadataReplay: {},
-  capabilityRequest: undefined,
-  capabilityReply: { metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } },
-  nameOverrideSet: { namespace: "awf", value: "demo" },
-  nameOverrideReplay: {},
-  assignedDiagnostic: { namespace: "awf", requested: "demo", assigned: "demo#2", active: true, changed: true },
-};
+const metadataReplay: RemotePiMetadataReplayRequestPayload = undefined;
+const capabilityRequest: RemotePiCapabilitiesRequestPayload = undefined;
+const capabilityReply: RemotePiCapabilitiesReplyPayload = { metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } };
+const nameOverrideReplay: RemotePiNameOverrideReplayRequestPayload = undefined;
+const assignedDiagnostic: RemotePiAssignedNameDiagnosticPayload = { namespace: "awf", requested: "demo", assigned: "demo#2", active: true, changed: true };
 
 function fact(owner = OWNER, cwd = "/repo", role: "managed" | "receiving" = "managed", heartbeatAt = T1) {
   return { schemaVersion: 1, owner, attachedAt: T0, heartbeatAt, cwd, receivingCheckout: "/repo", role } as const;
@@ -239,25 +227,22 @@ test("using_effort validates explicit inputs, queues only a private command, and
   assert.match(h.notices.join(" "), /no longer current/);
 });
 
-test("named awf-owned Remote Pi structural fixtures require no Remote Pi import", () => {
-  assert.equal(remotePiStructuralFixtures.metadataSet.namespace, "awf");
-  assert.equal(remotePiStructuralFixtures.capabilityReply.nameOverride?.version, 1);
-  assert.equal(remotePiStructuralFixtures.nameOverrideSet.value, "demo");
-});
-
 test("same-checkout attach, heartbeat, replay, collision diagnostics, and explicit detach use advisory publication", async () => {
   const h = makeHarness();
-  h.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } }, h.ctx);
+  assert.equal(emitted(h, "remote-pi:capabilities:request")[0] as RemotePiCapabilitiesRequestPayload, capabilityRequest);
+  h.listeners.get("remote-pi:capabilities")(capabilityReply, h.ctx);
   await attachSameCwd(h);
   assert.deepEqual(h.calls.slice(0, 2).map((argv) => argv[2]), ["resolve", "attach"]);
   assert.equal(flag(h.calls[1]!, "--receiving-checkout"), "/repo");
-  assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value.effort.slug, "demo");
-  assert.equal(emitted(h, "remote-pi:name-override:set").at(-1).value, "demo");
-  h.listeners.get("remote-pi:metadata:request")({}, h.ctx);
-  h.listeners.get("remote-pi:metadata:request")({});
-  h.listeners.get("remote-pi:name-override:request")({}, h.ctx);
-  h.listeners.get("remote-pi:name-override:request")({});
-  h.listeners.get("remote-pi:name-override:assigned")({ namespace: "awf", requested: "demo", assigned: "demo#2", active: true, changed: true }, h.ctx);
+  const metadataSet = emitted(h, "remote-pi:metadata:set").at(-1) as RemotePiMetadataSetPayload;
+  const nameOverrideSet = emitted(h, "remote-pi:name-override:set").at(-1) as RemotePiNameOverrideSetPayload;
+  assert.equal(metadataSet.value?.effort.slug, "demo");
+  assert.equal(nameOverrideSet.value, "demo");
+  h.listeners.get("remote-pi:metadata:request")(metadataReplay, h.ctx);
+  h.listeners.get("remote-pi:metadata:request")(metadataReplay);
+  h.listeners.get("remote-pi:name-override:request")(nameOverrideReplay, h.ctx);
+  h.listeners.get("remote-pi:name-override:request")(nameOverrideReplay);
+  h.listeners.get("remote-pi:name-override:assigned")(assignedDiagnostic, h.ctx);
   h.listeners.get("remote-pi:name-override:assigned")({ namespace: "awf", requested: "demo", assigned: "demo#3", active: true, changed: true });
   h.listeners.get("remote-pi:name-override:assigned")({ namespace: "other", active: true, changed: true, assigned: "ignored" }, h.ctx);
   assert.match(h.notices.join(" "), /collision-assigned/);
@@ -275,17 +260,49 @@ test("same-checkout attach, heartbeat, replay, collision diagnostics, and explic
 });
 
 test("complete Remote Pi absence preserves local resolve, switching, heartbeat, and detach", async () => {
-  const h = makeHarness({ events: false });
-  await request(h, { effort: "demo", destination: "receiving", receivingCheckout: "/repo" });
-  await continueRequest(h);
-  await request(h, { effort: "demo", destination: "managed" });
-  await continueRequest(h);
-  await h.hooks.get("turn_end")({}, h.ctx);
-  await request(h, { detach: true });
-  await continueRequest(h);
-  assert.deepEqual(h.calls.map((argv) => argv[2]), ["resolve", "attach", "resolve", "checkout", "heartbeat", "detach"]);
-  assert.equal(h.events.length, 0);
-  assert.equal(h.listeners.size, 0);
+  const shared: EffortTransferCoordinator = {};
+  const source = makeHarness({ shared, cwd: "/receiving", events: false });
+  source.overrides.set("resolve", [envelope("ready", { cwd: "/managed", role: "managed" })]);
+  let managed: Harness | undefined;
+  source.ctx.changeCwd = async (cwd: string, options: any) => {
+    await source.hooks.get("session_shutdown")({ reason: "cwd", targetCwd: cwd }, source.ctx);
+    managed = makeHarness({ shared, cwd, events: false, uuid: makeUUIDSource(100) });
+    await managed.hooks.get("session_start")({ reason: "cwd" }, managed.ctx);
+    await options.withSession(managed.ctx);
+    return { changed: true, cwd };
+  };
+  await request(source, { effort: "demo", destination: "managed" });
+  await continueRequest(source);
+  assert.ok(managed);
+  assert.equal(managed.ctx.cwd, "/managed");
+
+  managed.overrides.set("resolve", [envelope("ready", { cwd: "/receiving", role: "receiving" })]);
+  let receiving: Harness | undefined;
+  managed.ctx.changeCwd = async (cwd: string, options: any) => {
+    await managed!.hooks.get("session_shutdown")({ reason: "cwd", targetCwd: cwd }, managed!.ctx);
+    receiving = makeHarness({ shared, cwd, events: false, uuid: makeUUIDSource(200) });
+    await receiving.hooks.get("session_start")({ reason: "cwd" }, receiving.ctx);
+    await options.withSession(receiving.ctx);
+    return { changed: true, cwd };
+  };
+  await request(managed, { effort: "demo", destination: "receiving" });
+  await continueRequest(managed);
+  assert.ok(receiving);
+  assert.equal(receiving.ctx.cwd, "/receiving");
+  await receiving.hooks.get("turn_end")({}, receiving.ctx);
+  await request(receiving, { detach: true });
+  await continueRequest(receiving);
+
+  const calls = [...source.calls, ...managed.calls, ...receiving.calls];
+  assert.deepEqual(calls.map((argv) => argv[2]), ["resolve", "attach", "resolve", "checkout", "heartbeat", "detach"]);
+  assert.equal(flag(calls[1]!, "--cwd"), "/managed");
+  assert.equal(flag(calls[1]!, "--role"), "managed");
+  assert.equal(flag(calls[3]!, "--cwd"), "/receiving");
+  assert.equal(flag(calls[3]!, "--role"), "receiving");
+  for (const h of [source, managed, receiving]) {
+    assert.equal(h.events.length, 0);
+    assert.equal(h.listeners.size, 0);
+  }
 });
 
 test("receiving attach, same-effort checkout, and different-effort switch use resolved facts and ordered owner operations", async () => {
