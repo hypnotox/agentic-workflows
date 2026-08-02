@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -51,6 +52,37 @@ func TestClosedStepSelection(t *testing.T) {
 	if got, want := prepared.steps, []StepID{"later", "first"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("selected order = %v, want %v", got, want)
 	}
+
+	secondaryPrepared, bound := false, false
+	prepared, err = Prepare(context.Background(), System{
+		Requirements: []Requirement{{ID: "secondary", Prepare: func(context.Context) error { secondaryPrepared = true; return nil }}},
+		Steps:        []Step{{ID: "selected", Requirements: requirements("missing")}},
+		Bind:         func([]StepID) ([]BoundAction, error) { bound = true; return nil, nil },
+	}, []StepID{"selected"})
+	if prepared != nil {
+		t.Fatal("unknown resolved requirement returned a prepared execution")
+	}
+	assertDefinitionKind(t, err, definitionUnknownResolved)
+	if secondaryPrepared || bound {
+		t.Fatalf("unknown resolved requirement prepared secondary = %v, bound = %v", secondaryPrepared, bound)
+	}
+
+	var bindingEvents []string
+	prepared, err = Prepare(context.Background(), System{
+		Requirements: []Requirement{{ID: "secondary", Prepare: record(&bindingEvents, "prepare")}},
+		Steps:        []Step{{ID: "selected", Requirements: requirements("secondary")}},
+		Bind: func([]StepID) ([]BoundAction, error) {
+			bindingEvents = append(bindingEvents, "bind")
+			return []BoundAction{{Step: "wrong", Run: noAction}}, nil
+		},
+	}, []StepID{"selected"})
+	if prepared != nil {
+		t.Fatal("wrong binding identity returned a prepared execution")
+	}
+	assertDefinitionKind(t, err, definitionInvalidBinding)
+	if want := []string{"prepare", "bind"}; !reflect.DeepEqual(bindingEvents, want) {
+		t.Fatalf("binding events = %v, want %v", bindingEvents, want)
+	}
 }
 
 // invariant: code-design/execution-planning:requirements-prepared-once (TestRequirementsPreparedOnce)
@@ -79,20 +111,34 @@ func TestRequirementsPreparedOnce(t *testing.T) {
 	}
 
 	stages := []struct {
-		name string
-		sys  System
+		name           string
+		sys            System
+		bindingFailure bool
 	}{
-		{"foundation", System{Requirements: []Requirement{{ID: "f", Prepare: failing("foundation")}}, Foundations: []RequirementID{"f"}, Steps: []Step{{ID: "s"}}, Bind: bindActions(nil)}},
-		{"resolution", System{Steps: []Step{{ID: "s", Requirements: failingRequirements("resolution")}}, Bind: bindActions(nil)}},
-		{"resolved identity", System{Steps: []Step{{ID: "s", Requirements: requirements("missing")}}, Bind: bindActions(nil)}},
-		{"secondary", System{Requirements: []Requirement{{ID: "r", Prepare: failing("secondary")}}, Steps: []Step{{ID: "s", Requirements: requirements("r")}}, Bind: bindActions(nil)}},
-		{"binding", System{Steps: []Step{{ID: "s"}}, Bind: func([]StepID) ([]BoundAction, error) { return nil, errors.New("binding") }}},
+		{"validation", System{Requirements: []Requirement{{ID: "r"}, {ID: "r"}}, Steps: []Step{{ID: "s"}}}, false},
+		{"foundation", System{Requirements: []Requirement{{ID: "f", Prepare: failing("foundation")}}, Foundations: []RequirementID{"f"}, Steps: []Step{{ID: "s"}}}, false},
+		{"resolution", System{Steps: []Step{{ID: "s", Requirements: failingRequirements("resolution")}}}, false},
+		{"resolved identity", System{Steps: []Step{{ID: "s", Requirements: requirements("missing")}}}, false},
+		{"secondary", System{Requirements: []Requirement{{ID: "r", Prepare: failing("secondary")}}, Steps: []Step{{ID: "s", Requirements: requirements("r")}}}, false},
+		{"binding", System{Steps: []Step{{ID: "s"}}, Bind: func([]StepID) ([]BoundAction, error) { return nil, errors.New("binding") }}, true},
 	}
 	for _, tc := range stages {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := Prepare(context.Background(), tc.sys, []StepID{"s"})
+			actionRan := false
+			if !tc.bindingFailure {
+				tc.sys.Bind = func([]StepID) ([]BoundAction, error) {
+					return []BoundAction{{Step: "s", Run: func(context.Context) error { actionRan = true; return nil }}}, nil
+				}
+			}
+			prepared, err := Prepare(context.Background(), tc.sys, []StepID{"s"})
 			if err == nil {
 				t.Fatal("Prepare succeeded")
+			}
+			if prepared != nil {
+				t.Fatal("failed readiness returned a prepared execution")
+			}
+			if actionRan {
+				t.Fatal("failed readiness executed an action")
 			}
 		})
 	}
@@ -120,6 +166,15 @@ func TestBindingValidation(t *testing.T) {
 			_, err := Prepare(context.Background(), system, []StepID{"one", "two"})
 			assertDefinitionKind(t, err, definitionInvalidBinding)
 		})
+	}
+
+	bindErr := errors.New("binder failed")
+	_, err = Prepare(context.Background(), System{
+		Steps: []Step{{ID: "one"}},
+		Bind:  func([]StepID) ([]BoundAction, error) { return nil, bindErr },
+	}, []StepID{"one"})
+	if !errors.Is(err, bindErr) || !strings.Contains(err.Error(), "[one]") {
+		t.Fatalf("binding error = %v, want selected identity and wrapped cause", err)
 	}
 }
 
@@ -152,9 +207,12 @@ func TestExplicitStepFailurePolicy(t *testing.T) {
 	if _, err := prepared.Run(context.Background(), FailurePolicy(99)); err == nil {
 		t.Fatal("unsupported policy succeeded")
 	}
+
+	assertRunCancellation(t)
 }
 
-func TestRunCancellation(t *testing.T) {
+func assertRunCancellation(t *testing.T) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	prepared := mustPrepare(t, System{Steps: []Step{{ID: "one"}}, Bind: bindActions(map[StepID]Action{"one": noAction})}, []StepID{"one"})
@@ -170,6 +228,16 @@ func TestRunCancellation(t *testing.T) {
 	outcomes, err = prepared.Run(ctx, ContinueOnFailure)
 	if got := outcomeSteps(outcomes); !reflect.DeepEqual(got, []StepID{"one"}) || !errors.Is(err, context.Canceled) {
 		t.Fatalf("between-action outcomes = %v, error = %v", outcomes, err)
+	}
+
+	boom := errors.New("action failed")
+	ctx, cancel = context.WithCancel(context.Background())
+	prepared = mustPrepare(t, System{Steps: []Step{{ID: "one"}}, Bind: bindActions(map[StepID]Action{
+		"one": func(context.Context) error { cancel(); return boom },
+	})}, []StepID{"one"})
+	outcomes, err = prepared.Run(ctx, ContinueOnFailure)
+	if len(outcomes) != 1 || !errors.Is(outcomes[0].Err, boom) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("failing cancellation outcomes = %v, error = %v", outcomes, err)
 	}
 }
 

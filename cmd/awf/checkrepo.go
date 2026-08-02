@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -46,6 +47,11 @@ type repoCheckDependencies struct {
 	indexTree    func(context.Context, string) (*snapshot.Tree, error)
 }
 
+type repoIndexPreparationError struct{ err error }
+
+func (e *repoIndexPreparationError) Error() string { return e.err.Error() }
+func (e *repoIndexPreparationError) Unwrap() error { return e.err }
+
 func productionRepoCheckDependencies() repoCheckDependencies {
 	return repoCheckDependencies{
 		loadConfig: config.Load,
@@ -76,7 +82,7 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 		indexTree: func(ctx context.Context, root string) (*snapshot.Tree, error) {
 			tree, err := stagedTree(ctx, root)
 			if err != nil {
-				return nil, fmt.Errorf("cannot read staged files: %w", err)
+				return nil, &repoIndexPreparationError{err: fmt.Errorf("cannot read staged files: %w", err)}
 			}
 			return tree, nil
 		},
@@ -169,6 +175,10 @@ func runRepoCheckSelection(ctx context.Context, root string, stdout io.Writer, s
 	inputs := &repoCheckInputs{}
 	prepared, err := execution.Prepare(ctx, repoCheckSystem(root, stdout, aggregate, inputs, deps), selected)
 	if err != nil {
+		var indexErr *repoIndexPreparationError
+		if errors.As(err, &indexErr) {
+			return fmt.Errorf("%s: %w", repoScannerErrorPrefix(selected, inputs.config), indexErr)
+		}
 		return err
 	}
 	outcomes, err := prepared.Run(ctx, policy)
@@ -181,6 +191,21 @@ func runRepoCheckSelection(ctx context.Context, root string, stdout io.Writer, s
 		}
 	}
 	return nil
+}
+
+func repoScannerErrorPrefix(selected []execution.StepID, cfg *config.Config) string {
+	for _, step := range []execution.StepID{repoStepProse, repoStepMemory} {
+		if !slices.Contains(selected, step) {
+			continue
+		}
+		if step == repoStepProse && cfg.ProseGate != nil && cfg.ProseGate.Enabled {
+			return "check repo prose"
+		}
+		if step == repoStepMemory && cfg.MemoryCite != nil && cfg.MemoryCite.Enabled {
+			return "check repo memory"
+		}
+	}
+	panic("repo index preparation without a selected enabled scanner") // coverage-ignore: only enabled scanner resolvers request the index requirement
 }
 
 // runCheckRepo runs the repository-universe aggregate and owns its version note.
@@ -196,6 +221,9 @@ func runCheckRepo(ctx context.Context, root string, stdout io.Writer) error {
 }
 func runCheckDrift(ctx context.Context, root string, stdout io.Writer) error {
 	deps := productionRepoCheckDependencies()
+	// Preserve Project.Check as the production compatibility projection. It
+	// still derives one complete CheckReport; this adapter discards only notes
+	// before the shared direct action, which has no advisory presentation role.
 	deps.checkReport = func(ctx context.Context, p *project.Project) (project.CheckReport, error) {
 		drift, err := p.Check(ctx)
 		return project.CheckReport{Drift: drift}, err

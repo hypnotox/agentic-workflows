@@ -154,7 +154,7 @@ func Prepare(ctx context.Context, system System, requested []StepID) (*Prepared,
 	selectedIDs := stepIDs(selected)
 	actions, bindErr := system.Bind(selectedIDs)
 	if bindErr != nil {
-		return nil, fmt.Errorf("bind selected actions: %w", bindErr)
+		return nil, fmt.Errorf("bind selected actions %v: %w", selectedIDs, bindErr)
 	}
 	if err := validateBinding(selectedIDs, actions); err != nil {
 		return nil, err

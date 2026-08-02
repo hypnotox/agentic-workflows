@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"go/ast"
+	"go/format"
+	"go/parser"
+	"go/token"
+	"io"
 	"strings"
 	"testing"
 
@@ -179,6 +185,60 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 	})
 
+	t.Run("disabled aggregate scanners prepare no index", func(t *testing.T) {
+		cfg := &config.Config{}
+		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+		tree, err := snapshot.NewTree(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		counts := &repoCheckCounters{}
+		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, project.CurrentStateReport{}, tree, counts)
+		var out bytes.Buffer
+		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, deps); err != nil {
+			t.Fatal(err)
+		}
+		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1}); got != want {
+			t.Fatalf("capability counts = %+v, want %+v", got, want)
+		}
+		if !strings.Contains(out.String(), "note: prose: disabled") || !strings.Contains(out.String(), "note: memory: disabled") {
+			t.Fatalf("disabled aggregate output = %q", out.String())
+		}
+	})
+
+	t.Run("index preparation retains scanner error prefixes", func(t *testing.T) {
+		cause := errors.New("index unavailable")
+		cases := []struct {
+			name     string
+			cfg      *config.Config
+			selected []execution.StepID
+			prefix   string
+		}{
+			{"direct prose", &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, []execution.StepID{repoStepProse}, "check repo prose: cannot read staged files"},
+			{"direct memory", &config.Config{MemoryCite: &config.MemoryCiteConfig{Enabled: true}}, []execution.StepID{repoStepMemory}, "check repo memory: cannot read staged files"},
+			{"aggregate scanners", &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}, MemoryCite: &config.MemoryCiteConfig{Enabled: true}}, []execution.StepID{repoStepMemory, repoStepProse}, "check repo prose: cannot read staged files"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				p := &project.Project{Root: "working-project-sentinel", Cfg: tc.cfg}
+				tree, err := snapshot.NewTree(nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				counts := &repoCheckCounters{}
+				deps := repoCheckTestDependencies(t, tc.cfg, p, project.CheckReport{}, project.CurrentStateReport{}, tree, counts)
+				deps.indexTree = func(context.Context, string) (*snapshot.Tree, error) {
+					counts.indexes++
+					return nil, &repoIndexPreparationError{err: fmt.Errorf("cannot read staged files: %w", cause)}
+				}
+				err = runRepoCheckSelection(context.Background(), t.TempDir(), io.Discard, tc.selected, execution.StopOnFailure, false, deps)
+				if !errors.Is(err, cause) || !strings.Contains(err.Error(), tc.prefix) {
+					t.Fatalf("error = %v, want prefix %q and wrapped cause", err, tc.prefix)
+				}
+			})
+		}
+	})
+
 	t.Run("execution cancellation remains separate from outcomes", func(t *testing.T) {
 		cfg := &config.Config{}
 		p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
@@ -195,6 +255,66 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 			t.Fatalf("error = %v, want context cancellation", err)
 		}
 	})
+
+	assertRepoCheckProductionWiring(t)
+}
+
+func assertRepoCheckProductionWiring(t *testing.T) {
+	t.Helper()
+	cases := []struct {
+		file     string
+		function string
+		contains []string
+	}{
+		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "p.CheckReport("}},
+		{"checkrepo.go", "runCheckRepo", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
+		{"checkrepo.go", "runCheckDrift", []string{"repoStepDrift", "execution.StopOnFailure", "false", "p.Check("}},
+		{"checkrepo.go", "runCheckState", []string{"repoStepState", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
+		{"prosegate.go", "runProseGate", []string{"repoStepProse", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
+		{"memorygate.go", "runMemoryGate", []string{"repoStepMemory", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
+	}
+	for _, tc := range cases {
+		t.Run("wiring/"+tc.function, func(t *testing.T) {
+			body := formattedFunctionBody(t, tc.file, tc.function)
+			for _, fragment := range tc.contains {
+				if !strings.Contains(body, fragment) {
+					t.Fatalf("%s %s body does not contain %q:\n%s", tc.file, tc.function, fragment, body)
+				}
+			}
+			if tc.function != "productionRepoCheckDependencies" && strings.Count(body, "runRepoCheckSelection(") != 1 {
+				t.Fatalf("%s %s must call runRepoCheckSelection exactly once:\n%s", tc.file, tc.function, body)
+			}
+		})
+	}
+
+	aggregate := formattedFunctionBody(t, "checkrepo.go", "runCheckRepo")
+	versionOutput := strings.Index(aggregate, "fmt.Fprintf")
+	executionCall := strings.Index(aggregate, "runRepoCheckSelection")
+	if versionOutput < 0 || executionCall < 0 || versionOutput >= executionCall {
+		t.Fatalf("aggregate version output must precede execution:\n%s", aggregate)
+	}
+}
+
+func formattedFunctionBody(t *testing.T, path, name string) string {
+	t.Helper()
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Name.Name != name {
+			continue
+		}
+		var out bytes.Buffer
+		if err := format.Node(&out, fset, function.Body); err != nil {
+			t.Fatal(err)
+		}
+		return out.String()
+	}
+	t.Fatalf("function %s not found in %s", name, path)
+	return ""
 }
 
 type cancelOnWrite struct {

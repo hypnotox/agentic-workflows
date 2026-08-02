@@ -239,10 +239,17 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 				}
 			case *ast.SelectorExpr:
 				recv, ok := fun.X.(*ast.Ident)
-				if ok && recv.Name == "project" && (fun.Sel.Name == "NewLoader" || fun.Sel.Name == "Open") {
+				if ok && recv.Name == "project" && (fun.Sel.Name == "NewLoader" || fun.Sel.Name == "NewLoaderWithoutRepository" || fun.Sel.Name == "Open") {
 					name = "project." + fun.Sel.Name
 				} else if ok && recv.Name == "loader" && fun.Sel.Name == "Open" {
 					name = "loader.Open"
+				} else if call, ok := fun.X.(*ast.CallExpr); ok && fun.Sel.Name == "Open" {
+					if constructor, ok := call.Fun.(*ast.SelectorExpr); ok {
+						constructorRecv, recvOK := constructor.X.(*ast.Ident)
+						if recvOK && constructorRecv.Name == "project" && (constructor.Sel.Name == "NewLoader" || constructor.Sel.Name == "NewLoaderWithoutRepository") {
+							name = "project." + constructor.Sel.Name + ".Open"
+						}
+					}
 				}
 			}
 			if name != "" {
@@ -253,39 +260,43 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	}
 
 	want := map[call]int{
-		{file: "sync.go", owner: "runSync", name: "newProjectLoader"}:                               1,
-		{file: "sync.go", owner: "runSync", name: "runSyncPrinting"}:                                1,
-		{file: "sync.go", owner: "runSyncInitialized", name: "newProjectLoader"}:                    1,
-		{file: "sync.go", owner: "runSyncInitialized", name: "runSyncPrinting"}:                     1,
-		{file: "sync.go", owner: "runSyncPrinting", name: "loader.Open"}:                            1,
-		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoader"}:                     1,
-		{file: "dispatch.go", owner: "", name: "runSync"}:                                           1,
-		{file: "init.go", owner: "runInit", name: "runSync"}:                                        1,
-		{file: "init.go", owner: "runInit", name: "runSyncInitialized"}:                             1,
-		{file: "list_add.go", owner: "enableDisableSingleton", name: "runSync"}:                     1,
-		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:                        1,
-		{file: "list_add.go", owner: "toggle", name: "runSync"}:                                     2,
-		{file: "new.go", owner: "newLocal", name: "runSync"}:                                        1,
-		{file: "upgrade.go", owner: "runUpgrade", name: "runSync"}:                                  1,
-		{file: "adr.go", owner: "runADR", name: "project.Open"}:                                     1,
-		{file: "audit.go", owner: "runAudit", name: "project.Open"}:                                 1,
-		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader"}: 1,
-		{file: "commitgate.go", owner: "runCommitGate", name: "project.Open"}:                       1,
-		{file: "config.go", owner: "runConfig", name: "project.Open"}:                               1,
-		{file: "context.go", owner: "runContext", name: "project.Open"}:                             1,
-		{file: "context.go", owner: "runUncovered", name: "project.Open"}:                           1,
-		{file: "init.go", owner: "probeCollisions", name: "project.Open"}:                           2,
-		{file: "init.go", owner: "runInit", name: "project.Open"}:                                   2,
-		{file: "list_add.go", owner: "enableDisableSingleton", name: "project.Open"}:                1,
-		{file: "list_add.go", owner: "enableDisableTarget", name: "project.Open"}:                   1,
-		{file: "list_add.go", owner: "runList", name: "project.Open"}:                               1,
-		{file: "list_add.go", owner: "toggle", name: "project.Open"}:                                1,
-		{file: "new.go", owner: "newADR", name: "project.Open"}:                                     1,
-		{file: "new.go", owner: "newLocal", name: "project.Open"}:                                   1,
-		{file: "new.go", owner: "newPlan", name: "project.Open"}:                                    1,
-		{file: "new.go", owner: "newTopic", name: "project.Open"}:                                   1,
-		{file: "read.go", owner: "runReadPlan", name: "project.Open"}:                               1,
-		{file: "topic.go", owner: "runTopic", name: "project.Open"}:                                 1,
+		{file: "sync.go", owner: "runSync", name: "newProjectLoader"}:                                                     1,
+		{file: "sync.go", owner: "runSync", name: "runSyncPrinting"}:                                                      1,
+		{file: "sync.go", owner: "runSyncInitialized", name: "newProjectLoader"}:                                          1,
+		{file: "sync.go", owner: "runSyncInitialized", name: "runSyncPrinting"}:                                           1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "loader.Open"}:                                                  1,
+		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoader"}:                                           1,
+		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoaderWithoutRepository"}:                          1,
+		{file: "dispatch.go", owner: "", name: "runSync"}:                                                                 1,
+		{file: "init.go", owner: "runInit", name: "runSync"}:                                                              1,
+		{file: "init.go", owner: "runInit", name: "runSyncInitialized"}:                                                   1,
+		{file: "list_add.go", owner: "enableDisableSingleton", name: "runSync"}:                                           1,
+		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:                                              1,
+		{file: "list_add.go", owner: "toggle", name: "runSync"}:                                                           2,
+		{file: "new.go", owner: "newLocal", name: "runSync"}:                                                              1,
+		{file: "upgrade.go", owner: "runUpgrade", name: "runSync"}:                                                        1,
+		{file: "adr.go", owner: "runADR", name: "project.Open"}:                                                           1,
+		{file: "audit.go", owner: "runAudit", name: "project.Open"}:                                                       1,
+		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader"}:                       1,
+		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader.Open"}:                  1,
+		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository"}:      1,
+		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository.Open"}: 1,
+		{file: "commitgate.go", owner: "runCommitGate", name: "project.Open"}:                                             1,
+		{file: "config.go", owner: "runConfig", name: "project.Open"}:                                                     1,
+		{file: "context.go", owner: "runContext", name: "project.Open"}:                                                   1,
+		{file: "context.go", owner: "runUncovered", name: "project.Open"}:                                                 1,
+		{file: "init.go", owner: "probeCollisions", name: "project.Open"}:                                                 2,
+		{file: "init.go", owner: "runInit", name: "project.Open"}:                                                         2,
+		{file: "list_add.go", owner: "enableDisableSingleton", name: "project.Open"}:                                      1,
+		{file: "list_add.go", owner: "enableDisableTarget", name: "project.Open"}:                                         1,
+		{file: "list_add.go", owner: "runList", name: "project.Open"}:                                                     1,
+		{file: "list_add.go", owner: "toggle", name: "project.Open"}:                                                      1,
+		{file: "new.go", owner: "newADR", name: "project.Open"}:                                                           1,
+		{file: "new.go", owner: "newLocal", name: "project.Open"}:                                                         1,
+		{file: "new.go", owner: "newPlan", name: "project.Open"}:                                                          1,
+		{file: "new.go", owner: "newTopic", name: "project.Open"}:                                                         1,
+		{file: "read.go", owner: "runReadPlan", name: "project.Open"}:                                                     1,
+		{file: "topic.go", owner: "runTopic", name: "project.Open"}:                                                       1,
 	}
 	got := map[call]int{}
 	for _, site := range calls {
