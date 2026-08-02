@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -425,7 +426,8 @@ func TestGroundingCheckerAgent(t *testing.T) {
 		"domain docs under `docs/domains`",
 		"Current-state documentation is what binds",
 		"only when current state leaves what you are seeing unexplained",
-		"For managed context calls, start bare",
+		"For managed context calls, provide one or more explicit paths",
+		"omit `--show` and `--full` detail flags on the initial query",
 		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
 		"Assess whether the work needs a decision record",
@@ -677,6 +679,14 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		"tdd":                         "",
 		"writing-plans":               "",
 	}
+	clarifiedOrientationCallers := map[string]bool{
+		"bugfix":                  true,
+		"debugging":               true,
+		"refactor-coupling-audit": true,
+		"tdd":                     true,
+		"writing-plans":           true,
+	}
+	const clarifiedOrientation = "Start by querying the explicit paths named above without `--show` or `--full` detail flags"
 	spillBytes, err := fs.ReadFile(templates.FS, "partials/context-spill.md")
 	if err != nil {
 		t.Fatalf("read context spill partial: %v", err)
@@ -693,6 +703,9 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expand %s: %v", templateID, err)
 		}
+		if clarifiedOrientationCallers[name] && !strings.Contains(expanded, clarifiedOrientation) {
+			t.Errorf("%s lacks clarified explicit-path orientation", templateID)
+		}
 		callCount := 0
 		for lineNumber, line := range strings.Split(expanded, "\n") {
 			if !strings.Contains(line, "awf context") && !strings.Contains(line, "./x context") {
@@ -708,9 +721,18 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 			if strings.Contains(line, "--full") || strings.Contains(line, "--json") {
 				t.Errorf("%s:%d prescribes a retired context form: %s", templateID, lineNumber+1, line)
 			}
+			commandName := "awf context"
+			if strings.Contains(line, "./x context") {
+				commandName = "./x context"
+			}
+			commandTail := strings.SplitN(line, commandName, 2)[1]
+			commandTail = strings.SplitN(commandTail, "`", 2)[0]
+			if !strings.Contains(commandTail, "paths>") && !strings.Contains(commandTail, "$(") {
+				t.Errorf("%s:%d context invocation must select explicit paths or Git-selected files: %s", templateID, lineNumber+1, line)
+			}
 			if policy == "" {
 				if strings.Contains(line, "--show") {
-					t.Errorf("%s:%d orientation invocation must use bare context: %s", templateID, lineNumber+1, line)
+					t.Errorf("%s:%d orientation invocation must omit detail facets: %s", templateID, lineNumber+1, line)
 				}
 			} else if !strings.Contains(line, "awf context "+policy) {
 				t.Errorf("%s:%d invocation lacks policy %q: %s", templateID, lineNumber+1, policy, line)
@@ -817,8 +839,9 @@ func TestCheckpointDigestShape(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", partial, err)
 		}
+		body := string(raw)
 		steps := 0
-		for _, line := range strings.Split(string(raw), "\n") {
+		for _, line := range strings.Split(body, "\n") {
 			trimmed := strings.TrimSpace(line)
 			if len(trimmed) > 1 && trimmed[0] >= '1' && trimmed[0] <= '9' && strings.HasPrefix(trimmed[1:], ". ") {
 				steps++
@@ -826,6 +849,66 @@ func TestCheckpointDigestShape(t *testing.T) {
 		}
 		if steps != 4 {
 			t.Errorf("%s renders %d numbered steps, want the four-step digest", partial, steps)
+		}
+		if strings.Contains(body, "awf effort new") {
+			t.Errorf("%s creates missing effort ownership", partial)
+		}
+		if got := strings.Count(body, "./awf effort memory update"); got != 1 {
+			t.Errorf("%s has %d structured memory updates, want exactly one", partial, got)
+		}
+		for _, phrase := range []string{
+			"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+			"canonical form is YAML",
+			"legacy form is deprecated",
+			"until active efforts finish",
+			"sole writer of phase, next action, and time",
+			"executable `awf read plan` projection never creates a checkpoint or handoff boundary",
+			"## Handoff log",
+		} {
+			if !strings.Contains(body, phrase) {
+				t.Errorf("%s missing checkpoint contract %q", partial, phrase)
+			}
+		}
+		for _, direct := range []string{"set `Phase:`", "set `Next:`", "refresh `Updated:`"} {
+			if strings.Contains(body, direct) {
+				t.Errorf("%s directly edits checkpoint metadata with %q", partial, direct)
+			}
+		}
+	}
+
+	confirmation, err := fs.ReadFile(templates.FS, "partials/outcome-confirmation.md")
+	if err != nil {
+		t.Fatalf("read outcome confirmation partial: %v", err)
+	}
+	body := string(confirmation)
+	if strings.Count(body, "**Mandatory first-creation confirmation.**") != 1 {
+		t.Error("outcome confirmation partial must carry exactly one boundary header")
+	}
+	for _, want := range []string{"`Outcome: <concrete non-minimal outcome>`", "`Effort title: <proposed title>`", "clear response in a later turn", "awf effort new \"<confirmed title>\""} {
+		if !strings.Contains(body, want) {
+			t.Errorf("outcome confirmation partial missing %q", want)
+		}
+	}
+
+	executingPlans, err := fs.ReadFile(templates.FS, "skills/executing-plans/SKILL.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	executionBody := string(executingPlans)
+	if got := strings.Count(executionBody, "Resolve the mutable plan"); got != 1 {
+		t.Errorf("executing-plans has %d plan-resolution steps, want exactly one", got)
+	}
+	for _, phrase := range []string{
+		"awf read plan <plan> <P[.T]>",
+		"generated task scope notice",
+		"phase-owned Advances and Completes outcomes",
+		"projection changes neither phase ownership nor checkpoint boundaries",
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+		"legacy form is deprecated",
+		"until active efforts finish",
+	} {
+		if !strings.Contains(executionBody, phrase) {
+			t.Errorf("executing-plans missing checkpoint contract %q", phrase)
 		}
 	}
 }
@@ -857,6 +940,9 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"batch task",
 		"path-disjoint",
 		"dead-code escape",
+		"nonempty JSON `Applying:` or `Context:` array",
+		"stable `dod: <slug>` bullets",
+		"frozen `#N` only for pre-V4 Decision prose",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -942,6 +1028,9 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"commit-disabled helpers",
 		"report-only phase review",
 		"example-reviewing-impl",
+		"generated task scope notice",
+		"phase-owner context only",
+		"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -978,6 +1067,8 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"example-reviewing-impl",
 		"example-executing-plans",
 		"dirty-state inventory",
+		"generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
+		"never transfer commit, review, checkpoint, handoff, helper, or outcome authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1178,7 +1269,7 @@ func TestOrientingSkillContract(t *testing.T) {
 				}
 			}
 			agent := files[adapter.AgentPath("grounding-checker")]
-			for _, want := range []string{"Ground guide-first, in order", "For managed context calls, start bare", "never prescribe `--full`", "AWF_CONTEXT_SPILL_V1"} {
+			for _, want := range []string{"Ground guide-first, in order", "For managed context calls, provide one or more explicit paths", "omit `--show` and `--full` detail flags on the initial query", "never prescribe `--full`", "AWF_CONTEXT_SPILL_V1"} {
 				if !strings.Contains(agent, want) {
 					t.Errorf("%s grounding-checker missing %q", target, want)
 				}
@@ -1299,6 +1390,8 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"status transition",
 		"regenerate",
 		"Append-only",
+		"V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker",
+		"use canonical `#N` only after their authored-format lifecycle freezes the record",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1373,6 +1466,9 @@ func TestReviewingPlanTemplate(t *testing.T) {
 		"all universal lenses",
 		"per-phase ownership",
 		"helper partitions",
+		"V4 stable `decision:` selectors",
+		"Proposed coverage notes are advisory",
+		"historical Decision prose never replaces current-state authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1404,6 +1500,9 @@ func TestReviewingPlanResyncTemplate(t *testing.T) {
 		"doc-currency",
 		"per-phase ownership",
 		"helper partitions",
+		"V4 `decision:` selectors",
+		"final DoD Completes ownership",
+		"historical prose do not replace current-state authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1604,6 +1703,16 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	routine := renderSkillGolden(t, "executing-plans", data)
 	approval := renderSkillGolden(t, "brainstorming", data)
+	genericWorkingMemory := strings.Index(workflow, "## Working memory")
+	if genericWorkingMemory < 0 {
+		t.Fatal("generic workflow lost the Working memory boundary")
+	}
+	genericChain := workflow[:genericWorkingMemory]
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(genericChain, want) {
+			t.Errorf("generic workflow chain confirmation route missing %q", want)
+		}
+	}
 	for label, body := range map[string]string{"workflow": workflow, "guide": guide, "routine": routine, "approval": approval} {
 		if !strings.Contains(body, ".awf/efforts/<slug>/memory.md") {
 			t.Errorf("%s missing unified owned-memory path", label)
@@ -1612,7 +1721,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("%s retains standalone memory path", label)
 		}
 	}
-	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
+	for _, detailed := range []string{"`phase`", "`next`", "`updated`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
 		if !strings.Contains(workflow, detailed) {
 			t.Errorf("workflow protocol missing %q", detailed)
 		}
@@ -1625,6 +1734,55 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	for _, worktreeDefault := range []string{"managed worktree is the default execution location", "`--no-worktree` is the explicit exception", "stays under the primary checkout"} {
 		if !strings.Contains(guide, worktreeDefault) {
 			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
+		}
+	}
+	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm the pair again before retrying creation"} {
+		if !strings.Contains(workflow, want) {
+			t.Errorf("workflow confirmation contract missing %q", want)
+		}
+	}
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("guide confirmation route missing %q", want)
+		}
+	}
+	readProjectSurface := func(path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join("../..", path))
+		if err != nil {
+			t.Fatalf("read committed project surface %s: %v", path, err)
+		}
+		return string(raw)
+	}
+	projectGuide := readProjectSurface("AGENTS.md")
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(projectGuide, want) {
+			t.Errorf("committed project guide confirmation route missing %q", want)
+		}
+	}
+	projectWorkflow := readProjectSurface("docs/workflow.md")
+	workingMemory := strings.Index(projectWorkflow, "## Working memory")
+	if workingMemory < 0 {
+		t.Fatal("committed project workflow lost the Working memory boundary")
+	}
+	projectChain := projectWorkflow[:workingMemory]
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(projectChain, want) {
+			t.Errorf("committed project workflow chain confirmation route missing %q", want)
+		}
+	}
+	for label, body := range map[string]string{"routine": routine, "approval": approval} {
+		boundary := "**Routine checkpoint.**"
+		if label == "approval" {
+			boundary = "**Mandatory approval check-in.**"
+		}
+		start := strings.Index(body, boundary)
+		if start < 0 {
+			t.Errorf("%s checkpoint missing boundary %q", label, boundary)
+			continue
+		}
+		if strings.Contains(body[start:], "awf effort new") {
+			t.Errorf("%s checkpoint creates missing ownership", label)
 		}
 	}
 	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
@@ -1993,6 +2151,67 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 				t.Errorf("empty-data render is not coherent:\n%s", out)
 			}
 		})
+	}
+}
+
+func TestEffortWorkflowTemplate(t *testing.T) { TestEffortWorkflowSkillContract(t) }
+
+// invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
+func TestEffortWorkflowSkillContract(t *testing.T) {
+	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
+	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "native persistent checkout or context tooling", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("effort-workflow missing %q", phrase)
+		}
+	}
+	for _, forbidden := range []string{"using_effort", "Pi", "`example effort"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("target-neutral effort workflow leaks %q", forbidden)
+		}
+	}
+	full, _, err := ScaffoldConfig("example", nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(full), "  - effort-workflow\n") {
+		t.Error("new untrimmed scaffold does not select effort-workflow")
+	}
+	trimmed := []string{"tdd"}
+	trim, _, err := ScaffoldConfig("example", nil, &config.CatalogTrim{Skills: &trimmed}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(trim), "effort-workflow") {
+		t.Error("explicit skill trim does not replace the core selection")
+	}
+
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	before, err := os.ReadFile(configPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(configPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("existing config selection changed during sync:\n%s", after)
+	}
+	for _, rel := range []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
+		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
+			t.Errorf("existing config without explicit enablement rendered %s: %v", rel, err)
+		}
+	}
+	plan := p.ResolveEnable("skill", "effort-workflow")
+	if len(plan) != 1 || plan[0].Node.Name != "effort-workflow" {
+		t.Fatalf("explicit effort-workflow enablement plan = %#v", plan)
 	}
 }
 

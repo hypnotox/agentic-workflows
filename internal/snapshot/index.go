@@ -21,12 +21,31 @@ func IndexTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 	return treeFromBlobs(blobs)
 }
 
-// treeFromBlobs converts git regular-file blobs into an immutable Tree,
-// mapping the executable bit onto the Tree's Mode.
+// NewSelectionFromBlobs converts Git blobs into an immutable Selection. It
+// preserves Git's regular, executable, and symlink modes and rejects any mode
+// outside that closed set; Selection performs the clone, sort, and path
+// validation.
+func NewSelectionFromBlobs(blobs []git.IndexBlob) (*Selection, error) {
+	files, err := filesFromBlobs(blobs)
+	if err != nil {
+		return nil, err
+	}
+	return NewSelection(files)
+}
+
+// treeFromBlobs converts Git blobs into an immutable Tree.
 func treeFromBlobs(blobs []git.IndexBlob) (*Tree, error) {
+	files, err := filesFromBlobs(blobs)
+	if err != nil { // coverage-ignore: Repo.IndexBlobs emits only the closed BlobMode set translated by filesFromBlobs
+		return nil, err
+	}
+	return NewTree(files)
+}
+
+func filesFromBlobs(blobs []git.IndexBlob) ([]File, error) {
 	files := make([]File, len(blobs))
 	for i, b := range blobs {
-		mode := Regular
+		var mode Mode
 		switch b.Mode {
 		case git.BlobRegular:
 			mode = Regular
@@ -34,8 +53,10 @@ func treeFromBlobs(blobs []git.IndexBlob) (*Tree, error) {
 			mode = Executable
 		case git.BlobSymlink:
 			mode = Symlink
+		default:
+			return nil, fmt.Errorf("snapshot blob %q: unsupported Git mode %d", b.Path, b.Mode)
 		}
 		files[i] = File{Path: b.Path, Mode: mode, Bytes: b.Bytes}
 	}
-	return NewTree(files)
+	return files, nil
 }

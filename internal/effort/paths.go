@@ -66,9 +66,12 @@ func (p paths) validate(root string) error {
 	return nil
 }
 
-func (p paths) effort(slug string) string          { return filepath.Join(p.efforts, slug) }
-func (p paths) stateFile(slug string) string       { return filepath.Join(p.effort(slug), "state.json") }
-func (p paths) memoryFile(slug string) string      { return filepath.Join(p.effort(slug), "memory.md") }
+func (p paths) effort(slug string) string     { return filepath.Join(p.efforts, slug) }
+func (p paths) stateFile(slug string) string  { return filepath.Join(p.effort(slug), "state.json") }
+func (p paths) memoryFile(slug string) string { return filepath.Join(p.effort(slug), "memory.md") }
+func (p paths) activityFile(slug string) string {
+	return filepath.Join(p.effort(slug), "activity.json")
+}
 func (p paths) managedWorktree(slug string) string { return filepath.Join(p.worktrees, slug) }
 func memoryPublicPath(slug string) string {
 	return filepath.ToSlash(filepath.Join(".awf", "efforts", slug, "memory.md"))

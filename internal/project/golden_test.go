@@ -47,7 +47,7 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 
-	// The plans-template singleton renders plan-v1: its intrinsic marker,
+	// The plans-template singleton renders plan-v2: its intrinsic marker,
 	// narrative spine, heading-identified phase and task, Phase close commit
 	// fence, Definition of done, optional Notes, no retired sections or task
 	// checkboxes, stripped section-assembly markers, and no unresolved value.
@@ -66,7 +66,7 @@ func TestEndToEndGolden(t *testing.T) {
 	}
 	parsed, err := plan.ParseDir(parseDir)
 	if err != nil || len(parsed) != 1 || strings.TrimSpace(parsed[0].Goal) == "" || strings.TrimSpace(parsed[0].ArchitectureSummary) == "" || !strings.Contains(parsed[0].DefinitionOfDone, "- ") {
-		t.Fatalf("rendered plan-v1 scaffold is not substantively parseable: plans=%#v err=%v", parsed, err)
+		t.Fatalf("rendered plan-v2 scaffold is not substantively parseable: plans=%#v err=%v", parsed, err)
 	}
 	for _, bad := range []string{"awf:section", "awf:end", "{{", "}}"} {
 		if strings.Contains(string(plansTemplate), bad) {
@@ -92,7 +92,7 @@ func planTemplateTaxonomyProblems(text string) []string {
 	var problems []string
 	previous := -1
 	for _, token := range []string{
-		"format: plan-v1", "date:", "adrs:", "status:", "# Plan:", "## Goal",
+		"format: plan-v2", "date:", "adrs:", "status:", "# Plan:", "## Goal",
 		"## Architecture summary", "## Phase 1:", "**Execution mode: inline.**",
 		"### Task 1.1:", "### Phase close", "```commit", "## Definition of done", "## Notes",
 	} {
@@ -111,14 +111,17 @@ func planTemplateTaxonomyProblems(text string) []string {
 			problems = append(problems, "retired plan-v1 declaration remains: "+retired)
 		}
 	}
-	const vocabulary = "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`"
+	const vocabulary = "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`"
 	if !strings.Contains(text, vocabulary) {
 		problems = append(problems, "missing exact task field vocabulary")
+	}
+	if !strings.Contains(text, "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`") {
+		problems = append(problems, "missing Decision-array omission contract")
 	}
 	for name, substance := range map[string]string{
 		"Goal":                 "State the outcome and, in one line, its non-goals.",
 		"Architecture summary": "State the execution structure and dependency direction without repeating ADR rationale.",
-		"Definition of done":   "- State at least one concrete observable whole-plan end condition.",
+		"Definition of done":   "- `dod: plan-outcome` State at least one concrete observable whole-plan end condition.",
 	} {
 		if !strings.Contains(text, substance) {
 			problems = append(problems, "missing nonempty "+name+" substance")
@@ -134,7 +137,7 @@ func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
 	for _, mutation := range []struct {
 		name, from, to string
 	}{
-		{"frontmatter format", "format: plan-v1", "format: legacy"},
+		{"frontmatter format", "format: plan-v2", "format: legacy"},
 		{"frontmatter date", "date:", "written:"},
 		{"frontmatter adrs", "adrs:", "decisions:"},
 		{"frontmatter status", "status:", "state:"},
@@ -147,10 +150,11 @@ func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
 		{"phase close", "### Phase close", "### Finish"},
 		{"commit fence", "```commit", "```text"},
 		{"definition", "## Definition of done", "## Verification"},
-		{"field vocabulary", "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"field vocabulary", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"decision array omission", "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`", "`Applying` and `Context` may be empty arrays"},
 		{"goal substance", "State the outcome and, in one line, its non-goals.", ""},
 		{"architecture substance", "State the execution structure and dependency direction without repeating ADR rationale.", ""},
-		{"definition bullet", "- State at least one concrete observable whole-plan end condition.", ""},
+		{"definition bullet", "- `dod: plan-outcome` State at least one concrete observable whole-plan end condition.", ""},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			if !strings.Contains(text, mutation.from) {
@@ -172,8 +176,8 @@ func assertV3ADRTemplatePublicationSafe(t *testing.T) {
 	implementing := strings.Index(out, "Implementing; content-sha256")
 	applied := strings.Index(out, "Applied; operations")
 	history := strings.Index(out, "## Status history\n")
-	if !strings.Contains(out, "format: current-state-v3") || implementing < 0 || applied < implementing || history < applied {
-		t.Fatalf("V3 lifecycle example is not publication-safe:\n%s", out)
+	if !strings.Contains(out, "format: current-state-v4") || implementing < 0 || applied < implementing || history < applied {
+		t.Fatalf("V4 lifecycle example is not publication-safe:\n%s", out)
 	}
 	tail := out[history:]
 	if strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {

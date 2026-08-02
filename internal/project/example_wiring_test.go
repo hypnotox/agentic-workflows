@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -123,6 +124,151 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 }
 
+func TestSundialConfirmedEffortBoundary(t *testing.T) {
+	readExample := func(path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join("../../examples/sundial", path))
+		if err != nil {
+			t.Fatalf("read sundial %s: %v", path, err)
+		}
+		return string(raw)
+	}
+	assertOrdered := func(label, body string, wants ...string) {
+		t.Helper()
+		position := 0
+		for _, want := range wants {
+			next := strings.Index(body[position:], want)
+			if next < 0 {
+				t.Errorf("%s missing ordered phrase %q", label, want)
+				return
+			}
+			position += next + len(want)
+		}
+	}
+	assertBoundaryDoesNotCreate := func(label, body, boundary string) {
+		t.Helper()
+		start := strings.Index(body, boundary)
+		if start < 0 {
+			t.Errorf("%s lost boundary %q", label, boundary)
+			return
+		}
+		if strings.Contains(body[start:], "awf effort new") {
+			t.Errorf("%s creates missing ownership after %q", label, boundary)
+		}
+	}
+	assertDiscoveryOwner := func(label, body, mutationBoundary string) {
+		t.Helper()
+		assertOrdered(label, body,
+			"**Mandatory first-creation confirmation.**",
+			"Discovery creates no effort",
+			"`Outcome: <concrete non-minimal outcome>`",
+			"`Effort title: <proposed title>`",
+			"Ask the user to confirm creation",
+			"end the turn without creating an effort",
+			"clear response in a later turn",
+			"awf effort new \"<confirmed title>\"",
+		)
+		if !strings.Contains(body, "fixed identity") || !strings.Contains(body, "without title reconfirmation") {
+			t.Errorf("%s does not preserve fixed-identity resume without reconfirmation", label)
+		}
+		creation := strings.Index(body, "awf effort new \"<confirmed title>\"")
+		mutation := strings.Index(body, mutationBoundary)
+		if mutationBoundary == "" || mutation < 0 || creation < 0 || creation >= mutation {
+			t.Errorf("%s must complete confirmed creation before mutation boundary %q", label, mutationBoundary)
+		}
+	}
+	assertDownstream := func(label, body, boundary string) {
+		t.Helper()
+		if strings.Contains(body, "awf effort new") {
+			t.Errorf("%s creates an effort instead of requiring confirmed ownership", label)
+		}
+		end := strings.Index(body, boundary)
+		if end < 0 {
+			t.Errorf("%s lost pre-mutation boundary %q", label, boundary)
+			return
+		}
+		preMutation := strings.ToLower(body[:end])
+		if !strings.Contains(preMutation, "already-confirmed") && !strings.Contains(preMutation, "existing confirmed effort") {
+			t.Errorf("%s pre-mutation contract does not establish confirmed ownership", label)
+		}
+		for _, want := range []string{"mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
+			if !strings.Contains(preMutation, want) {
+				t.Errorf("%s pre-mutation ownership contract is missing %q", label, want)
+			}
+		}
+		if !strings.Contains(preMutation, "fixed identity") || !strings.Contains(preMutation, "without title reconfirmation") {
+			t.Errorf("%s pre-mutation contract does not preserve fixed-identity resume without reconfirmation", label)
+		}
+	}
+	for _, target := range []string{".pi", ".claude"} {
+		readSkill := func(name string) string {
+			return readExample(filepath.Join(target, "skills", "sundial-"+name, "SKILL.md"))
+		}
+		brainstorming := readSkill("brainstorming")
+		assertDiscoveryOwner(target+" brainstorming", brainstorming, "5. **Present the design in sections")
+		assertBoundaryDoesNotCreate(target+" brainstorming final approval", brainstorming, "**Mandatory approval check-in.**")
+		reviewingADR := readSkill("reviewing-adr")
+		assertBoundaryDoesNotCreate(target+" ADR final approval", reviewingADR, "**Mandatory approval check-in.**")
+		writingPlans := readSkill("writing-plans")
+		assertBoundaryDoesNotCreate(target+" routine checkpoint", writingPlans, "**Routine checkpoint.**")
+
+		discoveryBoundaries := map[string]string{
+			"debugging":          "5. **Isolate with a failing test",
+			"roadmap-graduation": "### 4. Graduate in a single commit",
+		}
+		for name, boundary := range discoveryBoundaries {
+			assertDiscoveryOwner(target+" "+name, readSkill(name), boundary)
+		}
+		downstreamBoundaries := map[string]string{
+			"tdd":           "1. Run `awf context",
+			"proposing-adr": "1. **Scaffold the file",
+			"writing-plans": "1. **Confirm scope with the user",
+		}
+		for name, boundary := range downstreamBoundaries {
+			assertDownstream(target+" "+name, readSkill(name), boundary)
+		}
+		orienting := readSkill("orienting")
+		if strings.Contains(orienting, "awf effort new") || !strings.Contains(orienting, "never creates an effort") || !strings.Contains(orienting, "fixed identity") {
+			t.Errorf("%s orienting must never create and must validate fixed-identity resume", target)
+		}
+		exploring := readSkill("exploring")
+		if strings.Contains(exploring, "awf effort new") || !strings.Contains(exploring, "never creates an effort") || !strings.Contains(exploring, "report-only") {
+			t.Errorf("%s exploring must never create and must remain report-only", target)
+		}
+
+		entries, err := os.ReadDir(filepath.Join("../../examples/sundial", target, "skills"))
+		if err != nil {
+			t.Fatalf("list sundial %s skills: %v", target, err)
+		}
+		for _, entry := range entries {
+			body := readExample(filepath.Join(target, "skills", entry.Name(), "SKILL.md"))
+			if strings.Contains(body, "<no value>") {
+				t.Errorf("%s/%s contains an unresolved-value token", target, entry.Name())
+			}
+		}
+	}
+	for _, target := range []string{".pi", ".claude"} {
+		path := filepath.Join("../..", target, "skills", "awf-retrospective", "SKILL.md")
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read project retrospective %s: %v", target, err)
+		}
+		assertDownstream("project "+target+" retrospective", string(raw), "2. **Reflect and record worthy observations")
+	}
+	workflow := readExample("docs/workflow.md")
+	for _, want := range []string{"Discovery creates no effort", "existing effort resumes under its fixed identity", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(workflow, want) {
+			t.Errorf("sundial workflow missing %q", want)
+		}
+	}
+	guide := readExample("AGENTS.md")
+	for _, want := range []string{"proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("sundial guide missing %q", want)
+		}
+	}
+}
+
 // ADR-0198: the Pi-extension gate lane runs the extension suite inside a
 // content-fingerprinted ephemeral Docker environment, so a contributor needs no
 // host Node or npm, and it keeps an explicit reset cleanup command. Every
@@ -139,8 +285,30 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 		t.Fatalf("read x: %v", err)
 	}
 	script := string(rawX)
-	if !strings.Contains(script, "tools/pi-extension-test/container.sh run") {
-		t.Error("./x gate must wire the pi-extension lane (ADR-0198)")
+	gateStart := strings.Index(script, "  gate)")
+	if gateStart < 0 {
+		t.Fatal("./x must retain a gate arm")
+	}
+	gateEnd := strings.Index(script[gateStart:], "\n    ;;")
+	if gateEnd < 0 {
+		t.Fatal("./x must retain a closed gate arm")
+	}
+	gateArm := script[gateStart : gateStart+gateEnd]
+	const smoke = "run_gate_step pi-runtime-smoke run_pi_runtime_smoke"
+	if strings.Count(gateArm, smoke) != 1 {
+		t.Errorf("./x gate must wire one explicit uncached pi-extension smoke, count=%d", strings.Count(gateArm, smoke))
+	}
+	for _, want := range []string{
+		"env -u AWF_PI_RUNTIME_SMOKE go test ./...",
+		"env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1",
+		`"Action":"pass".*"Test":"TestPiRealRuntimeSmoke"`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("./x Pi runtime ownership lost %q", want)
+		}
+	}
+	if strings.Contains(gateArm, "tools/pi-extension-test/container.sh run") {
+		t.Error("./x gate must not invoke the Pi container beside the explicit runtime smoke")
 	}
 	if !strings.Contains(script, "usage: ./x pi-test <run|reset>") {
 		t.Error("./x pi-test must offer exactly run and reset (ADR-0198)")
@@ -258,6 +426,61 @@ func TestExampleAdoptsRunner(t *testing.T) {
 	if strings.Contains(string(x), "GENERATED by awf") {
 		t.Error("examples/sundial/x must be hand-written, outside the render set")
 	}
+
+	runnerRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(runnerRoot, "x"), x, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeBin := filepath.Join(runnerRoot, "bin")
+	if err := os.Mkdir(fakeBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	logPath := filepath.Join(runnerRoot, "go.log")
+	fakeGo := "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >>\"$GO_LOG\"\n"
+	if err := os.WriteFile(filepath.Join(fakeBin, "go"), []byte(fakeGo), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) (int, string) {
+		t.Helper()
+		if err := os.WriteFile(logPath, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("bash", append([]string{"./x"}, args...)...)
+		cmd.Dir = runnerRoot
+		cmd.Env = append(os.Environ(), "PATH="+fakeBin+":"+os.Getenv("PATH"), "GO_LOG="+logPath)
+		stderr := new(strings.Builder)
+		cmd.Stderr = stderr
+		err := cmd.Run()
+		if err == nil {
+			return 0, stderr.String()
+		}
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			return exit.ExitCode(), stderr.String()
+		}
+		t.Fatalf("run Sundial x: %v", err)
+		return 0, ""
+	}
+	for _, args := range [][]string{{"gate", "full"}, {"gate", "unknown"}, {"gate", "extra", "arg"}} {
+		status, stderr := run(args...)
+		logged, err := os.ReadFile(logPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if status != 2 || !strings.Contains(stderr, "usage:") || len(logged) != 0 {
+			t.Errorf("Sundial x %v: status=%d stderr=%q log=%q", args, status, stderr, logged)
+		}
+	}
+	if status, stderr := run("test", "-run", "TestOne"); status != 0 || stderr != "" {
+		t.Errorf("Sundial x test forwarding: status=%d stderr=%q", status, stderr)
+	}
+	logged, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(logged) != "test ./... -run TestOne\n" {
+		t.Errorf("Sundial x test log=%q", logged)
+	}
 }
 
 // The generated Pi extension carries `// @ts-nocheck` on the line after its
@@ -290,6 +513,9 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 			path := root + "/" + rel
 			raw, err := os.ReadFile(path)
 			if err != nil {
+				if root != "../.." && errors.Is(err, fs.ErrNotExist) {
+					continue
+				}
 				t.Fatalf("read governed extension %s: %v", path, err)
 			}
 			lines := strings.Split(string(raw), "\n")

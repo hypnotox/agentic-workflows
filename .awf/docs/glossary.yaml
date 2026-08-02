@@ -34,7 +34,7 @@ data:
       meaning: "The transient model-facing line reporting current tokens against the active model window and the active-branch compaction count."
       domains: [rendering]
     - term: mandatory approval check-in
-      meaning: "The chain's two hard stops: the end of brainstorming, and the settled ADR review. The agent persists memory, presents the summary, requests approval, and ends the turn; a rejection loops revise-and-re-present."
+      meaning: "The chain's three hard stops: first-creation outcome/title confirmation, final grounded brainstorming approval, and settled ADR approval. Each stops for a later explicit user response; only the two final approvals persist a completed-phase summary."
     - term: anchored glob
       meaning: "awf's single glob dialect: a pattern matches a file's full slash-separated repo-relative path. `*.go` is top-level only, `**/*.go` any depth, `cmd/**` a subtree. No basename mode, deliberately stricter than gitignore."
       domains: [config]

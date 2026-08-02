@@ -16,14 +16,14 @@ Four moments call for orientation:
 3. **Handoff takeover:** receiving work another session checkpointed.
 4. **Mid-chain re-orientation:** the working set widens into unexamined files or domains, or a durable artifact (an ADR's Context or State changes, a plan's tasks) is about to cite repository facts not verified in the current session.
 
-This is a support skill: single-pass and advisory, never a chain gate or prerequisite. It never creates an effort, never commits, and never edits shared working memory unless this session is the effort's one user-managed writer. Repository sources and current-state documentation remain authoritative over checkpoint prose, and standalone memory is forbidden.
+This is a support skill: single-pass and advisory, never a chain gate or prerequisite. Orienting never creates an effort, never commits. When resuming an existing confirmed effort, validate its fixed identity and owned memory; it resumes without title reconfirmation only while work remains within its confirmed outcome. Only the effort's one user-managed writer may correct stale checkpoint prose, and children never edit shared working memory. Repository sources and current-state documentation remain authoritative over checkpoint prose, and standalone memory is forbidden.
 
 <!-- awf:edit guide-ladder: default; create .awf/skills/parts/orienting/guide-ladder.md to override -->
 ## Grounding ladder
 
 Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs under `docs/domains`. Current-state documentation is what binds. Consult the recent history of the touched paths (`git log --oneline -20 <path>`) only when current state leaves what you are seeing unexplained.
 
-For managed context calls, start bare: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
+For managed context calls, provide one or more explicit paths (or a staged/range file selection) and omit `--show` and `--full` detail flags on the initial query: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
 
 When a needed fact's location is unknown and inline search would pollute the parent context, invoke `awf-exploring` and dispatch one or more exploration subagents as fitting: each carries exactly one information need with a chosen breadth and report detail, independent needs may run in parallel, and every child is report-only. Keep an exact-known-file read or genuinely trivial lookup inline.
 

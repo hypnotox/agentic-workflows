@@ -20,7 +20,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 ## Procedure
 
-Validate and carry the same effort slug and exact `.awf/efforts/<slug>/memory.md` path through resync. Repository sources, ADRs, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
+This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity and carry the same effort slug and exact `.awf/efforts/<slug>/memory.md` path through resync. Repository sources, ADRs, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
 
 <!-- awf:section dispatch-subagent-narrowed -->
 Identify the plan path first: it is named in the just-settled ADR(s), or it is the most recently-modified file under `{{ .layout.plansDir }}/` matching `YYYY-MM-DD-*.md`.
@@ -64,7 +64,7 @@ Identify the plan path first: it is named in the just-settled ADR(s), or it is t
 
 <!-- awf:section notes -->
 - Resync fixes never edit the repository beyond the plan file; ADR-implicating findings route through the ADR amendment + review skills instead (return edge, step 2).
-- Scope completeness includes every declared V2 operation and its intended direct, first, middle, final, or cancellation outcome; resync any batch partition or ADR-number and intra-ADR position ordering changed by ADR review.
+- Scope completeness includes every declared V2 operation and its intended direct, first, middle, final, or cancellation outcome; resync any batch partition or ADR-number and intra-ADR position ordering changed by ADR review. For plan-v2, retain pending ADR slugs, V4 `decision:` selectors, frozen pre-V4 `#N` selectors, Applying/Context omission semantics, substantive Applying coverage, and final DoD Completes ownership; Context and historical prose do not replace current-state authority.
 - The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The remaining lenses ran during `{{ .prefix }}-reviewing-plan` and need not re-run.
 - The `plan-reviewer` is report-only, one lens-diverse subagent; this skill owns fix application and the single verify pass, and does not fan out per-lens subagents or specify per-lens model routing.
 - If the user asks to skip resync review, comply but warn that a chain step is being skipped.

@@ -1,5 +1,5 @@
 ---
-format: plan-v1
+format: plan-v2
 date: YYYY-MM-DD
 adrs: []
 status: Proposed
@@ -21,9 +21,11 @@ State the execution structure and dependency direction without repeating ADR rat
 
 **Execution mode: inline.**
 
+Completes: ["plan-outcome"]
+
 ### Task 1.1: <what>
 
-Supply qualifying implementation-ready instructions. Immediately below a task heading, the recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`. Use `Latitude: exact` for a contract-bearing task; `Kind: spike` requires `Question`, no body, and an answer in Notes; `Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`; ambiguous scope requires `Paths`; and any batch, glob, or pathspec scope requires `Post-check`. Omit fields whose contracts do not apply.
+Supply qualifying implementation-ready instructions. Add nonempty JSON `Applying` or `Context` arrays only when an ADR applies; each reference has inert form `<adr-number-or-retained-slug>:<decision-slug-or-#N>`. Immediately below a task heading, the recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`. `Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`. Use `Latitude: exact` for a contract-bearing task; `Kind: spike` requires `Question`, no body, and an answer in Notes; `Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`; ambiguous scope requires `Paths`; and any batch, glob, or pathspec scope requires `Post-check`. Omit fields whose contracts do not apply.
 
 ### Phase close
 
@@ -36,7 +38,7 @@ feat(scope): describe phase outcome
 <!-- awf:edit verification: default; create .awf/parts/plans-template/verification.md to override -->
 ## Definition of done
 
-- State at least one concrete observable whole-plan end condition.
+- `dod: plan-outcome` State at least one concrete observable whole-plan end condition.
 
 <!-- awf:edit notes: default; create .awf/parts/plans-template/notes.md to override -->
 ## Notes

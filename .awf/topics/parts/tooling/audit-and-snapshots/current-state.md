@@ -2,6 +2,30 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 ## Claims
 
+### `invariant: audit-history-operation-owned`
+
+One `awf audit` invocation collects its requested commit range exactly once and owns one immutable historical operation for that range. Transition replay and stale-merge replay share the operation's revision states and cached load errors, each required revision is derived at most once, and no cache survives the invocation or lives on Project.
+Origin: ADR-0221
+Backing: test
+
+### `invariant: audit-history-policy-projection`
+
+Historical transition and stale-merge replay derive only committed configuration and schema boundaries, ADR records and source bytes, and topic definitions and claims. Marker indexes, test-glob backing, coverage paths, and domain ownership sidecars stay owned by repository and staged checks; malformed bytes exclusive to those omitted projections do not create historical findings or failures. An in-range revision proven not to change this authority reuses its first-parent state, with merge relevance derived separately from first-parent paths and ambiguous evidence forcing a reload.
+Origin: ADR-0221
+Backing: test
+
+### `invariant: audit-cancellation-propagates`
+
+When range collection, committed evidence, revision derivation, transition replay, stale-merge replay, or the live cleanliness read returns context cancellation or deadline expiry, `awf audit` aborts and preserves that error identity. It never converts context termination into a finding, retries the canceled derivation, or continues to later audit work; non-context transition load failures remain advisory.
+Origin: ADR-0221
+Backing: test
+
+### `invariant: sparse-snapshot-explicit-selection`
+
+Historical audit enumerates committed path and mode metadata without reading blob contents, then reads only its exact authority selection into an immutable snapshot Selection that is type-distinct from a complete snapshot Tree. Selected reads fail on an unsafe, duplicate, missing, outside-project, or unsupported requested path; full-tree consumers cannot treat an unselected path as repository absence, and current and staged checks retain complete snapshots.
+Origin: ADR-0221
+Backing: test
+
 ### `invariant: audit-adr-status-cochange`
 
 awf audit raises an Error finding when a range commit adds a current-state-v1 ADR or changes its status without also changing `docs/decisions/INDEX.md`, and raises none when the same change co-changes the index. Legacy-format ADR transitions are outside this rule.

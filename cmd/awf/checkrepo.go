@@ -91,7 +91,7 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 
 // repoCheckSystem defines one operation-local capability graph. It freezes typed
 // prepared inputs into output actions only after all selected requirements work.
-func repoCheckSystem(root string, stdout io.Writer, aggregate bool, inputs *repoCheckInputs, deps repoCheckDependencies) execution.System {
+func repoCheckSystem(root string, stdout io.Writer, aggregate bool, planNotes planNoteSink, inputs *repoCheckInputs, deps repoCheckDependencies) execution.System {
 	return execution.System{
 		Requirements: []execution.Requirement{
 			{ID: repoRequirementConfig, Prepare: func(context.Context) error {
@@ -152,6 +152,7 @@ func repoCheckSystem(root string, stdout io.Writer, aggregate bool, inputs *repo
 							for _, n := range report.Notes {
 								fmt.Fprintf(stdout, "note: %s\n", n)
 							}
+							planNotes.write(stdout, report.PlanNotes)
 						}
 						return printDrift(stdout, report.Drift)
 					}})
@@ -172,8 +173,12 @@ func repoCheckSystem(root string, stdout io.Writer, aggregate bool, inputs *repo
 }
 
 func runRepoCheckSelection(ctx context.Context, root string, stdout io.Writer, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, deps repoCheckDependencies) error {
+	return runRepoCheckSelectionWithPlanNotes(ctx, root, stdout, selected, policy, aggregate, planNoteSink{}, deps)
+}
+
+func runRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, stdout io.Writer, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, planNotes planNoteSink, deps repoCheckDependencies) error {
 	inputs := &repoCheckInputs{}
-	prepared, err := execution.Prepare(ctx, repoCheckSystem(root, stdout, aggregate, inputs, deps), selected)
+	prepared, err := execution.Prepare(ctx, repoCheckSystem(root, stdout, aggregate, planNotes, inputs, deps), selected)
 	if err != nil {
 		var indexErr *repoIndexPreparationError
 		if errors.As(err, &indexErr) {
@@ -210,6 +215,10 @@ func repoScannerErrorPrefix(selected []execution.StepID, cfg *config.Config) str
 
 // runCheckRepo runs the repository-universe aggregate and owns its version note.
 func runCheckRepo(ctx context.Context, root string, stdout io.Writer) error {
+	return runCheckRepoWithPlanNotes(ctx, root, stdout, planNoteSink{})
+}
+
+func runCheckRepoWithPlanNotes(ctx context.Context, root string, stdout io.Writer, planNotes planNoteSink) error {
 	lockV, binV, ok, err := checkLockVsBinary(root)
 	if err != nil {
 		return err
@@ -217,7 +226,7 @@ func runCheckRepo(ctx context.Context, root string, stdout io.Writer) error {
 	if ok && semver.Compare(binV, lockV) > 0 {
 		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf render to re-pin\n", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
 	}
-	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, productionRepoCheckDependencies())
+	return runRepoCheckSelectionWithPlanNotes(ctx, root, stdout, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, planNotes, productionRepoCheckDependencies())
 }
 func runCheckDrift(ctx context.Context, root string, stdout io.Writer) error {
 	deps := productionRepoCheckDependencies()

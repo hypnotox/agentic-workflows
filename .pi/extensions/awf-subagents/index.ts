@@ -53,6 +53,7 @@ import {
   type SubagentModelPreferences,
 } from "./model-routing.ts";
 
+// Retained subagent and handoff entrypoints use this floor. The optional using_effort companion instead treats structural changeCwd and Remote-event capability presence as final authority, with no foreign package publication, installation topology, or version floor.
 export const MIN_PI_VERSION = "0.81.1";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
 export interface MinimumRuntimeDependencies { packageVersion: string; }

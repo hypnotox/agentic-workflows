@@ -11,6 +11,7 @@ import (
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -301,6 +302,12 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 	if _, _, err := handle.FileText(ctx, "HEAD", "a.go"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("FileText cancellation = %v", err)
 	}
+	if _, err := handle.CommitEntries(ctx, "HEAD"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("CommitEntries cancellation = %v", err)
+	}
+	if _, err := handle.CommitBlobsAt(ctx, "HEAD", []string{"a.go"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("CommitBlobsAt cancellation = %v", err)
+	}
 	t.Run("base walk", func(t *testing.T) {
 		midWalk := &cancelAfterContext{Context: testContext(t), remaining: 2}
 		if _, err := handle.RangeCommits(midWalk, "HEAD", "HEAD"); !errors.Is(err, context.Canceled) {
@@ -394,6 +401,188 @@ func TestRangeNativeReadOperations(t *testing.T) {
 	}
 }
 
+func TestFirstParentChangedPathsContracts(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "base", map[string]string{
+		"changed.txt": "before\n", "deleted.txt": "gone\n", "renamed.txt": "rename\n", "nested/inside.txt": "old\n", "outside.txt": "old\n",
+	})
+	head := gitfixture.Commit(t, repo, "change", map[string]string{
+		"changed.txt": "after\n", "added.txt": "added\n", "renamed-new.txt": "rename\n", "nested/inside.txt": "new\n", "outside.txt": "new\n",
+	}, "deleted.txt", "renamed.txt")
+	handle := walkRepo(t, dir)
+	paths, err := handle.FirstParentChangedPaths(testContext(t), head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(paths, ","), "added.txt,changed.txt,deleted.txt,nested/inside.txt,outside.txt,renamed-new.txt,renamed.txt"; got != want {
+		t.Fatalf("first-parent paths = %q, want %q", got, want)
+	}
+	rootPaths, err := handle.FirstParentChangedPaths(testContext(t), base)
+	if err != nil || strings.Join(rootPaths, ",") != "changed.txt,deleted.txt,nested/inside.txt,outside.txt,renamed.txt" {
+		t.Fatalf("root first-parent paths = %v, %v", rootPaths, err)
+	}
+	nested, err := walkRepo(t, filepath.Join(dir, "nested")).FirstParentChangedPaths(testContext(t), head)
+	if err != nil || strings.Join(nested, ",") != "inside.txt" {
+		t.Fatalf("nested first-parent paths = %v, %v", nested, err)
+	}
+
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feature", map[string]string{"feature.txt": "feature\n"})
+	lifecycleGit(t, dir, "checkout", "master")
+	gitfixture.Stage(t, repo, map[string]string{"feature.txt": "feature\n"})
+	merge := gitfixture.Merge(t, repo, "Merge feature", head, feature)
+	mergePaths, err := handle.FirstParentChangedPaths(testContext(t), merge)
+	if err != nil || strings.Join(mergePaths, ",") != "feature.txt" {
+		t.Fatalf("merge first-parent paths = %v, %v", mergePaths, err)
+	}
+	commits, err := handle.RangeCommits(testContext(t), head, merge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mergeCommit *Commit
+	for i := range commits {
+		if commits[i].Revision == merge {
+			mergeCommit = &commits[i]
+		}
+	}
+	if mergeCommit == nil || !mergeCommit.IsMerge || len(mergeCommit.Changes) != 0 {
+		t.Fatalf("range commits exposed merge changes: %#v", commits)
+	}
+
+	cancelled, cancel := context.WithCancel(testContext(t))
+	cancel()
+	if _, err := handle.FirstParentChangedPaths(cancelled, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled first-parent paths = %v", err)
+	}
+	if _, err := handle.FirstParentChangedPaths(testContext(t), "missing-revision"); err == nil {
+		t.Fatal("first-parent paths accepted a missing revision")
+	}
+}
+
+func TestFirstParentChangedPathsPropagatesCancellationDuringDiff(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "base\n"})
+	head := gitfixture.Commit(t, repo, "head", map[string]string{"a.txt": "head\n"})
+	parent, cancel := context.WithCancel(testContext(t))
+	ctx := &cancelAtDiffContext{Context: parent, remaining: 3, cancel: cancel}
+	if _, err := walkRepo(t, repo.Root()).FirstParentChangedPaths(ctx, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("first-parent diff cancellation = %v, want context.Canceled; base=%s", err, base)
+	}
+	if !ctx.diffObserved {
+		t.Fatal("first-parent diff did not observe the caller context")
+	}
+}
+
+func TestFirstParentChangedPathsReportsCorruptTreeEvidence(t *testing.T) {
+	for _, target := range []string{"current tree", "parent tree", "parent subtree", "changed subtree", "unsafe path"} {
+		t.Run(target, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			dir := repo.Root()
+			base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/base.txt": "base\n"})
+			head := gitfixture.Commit(t, repo, "head", map[string]string{"nested/head.txt": "head\n"})
+			var removeHash string
+			switch target {
+			case "current tree":
+				removeHash = gitfixture.TreeHash(t, repo, head)
+			case "parent tree":
+				removeHash = gitfixture.TreeHash(t, repo, base)
+			case "parent subtree":
+				commit := walkCommitObject(t, dir, base)
+				tree, err := commit.Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				subtree, err := tree.Tree("nested")
+				if err != nil {
+					t.Fatal(err)
+				}
+				removeHash = subtree.Hash.String()
+			case "changed subtree":
+				backend := openWalkRepo(t, dir)
+				top := &object.Tree{Entries: []object.TreeEntry{{Name: "nested", Mode: filemode.Dir, Hash: plumbing.NewHash(strings.Repeat("1", 40))}}}
+				encodedTree := backend.Storer.NewEncodedObject()
+				if err := top.Encode(encodedTree); err != nil {
+					t.Fatal(err)
+				}
+				treeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "corrupt subtree\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(base)}}
+				encodedCommit := backend.Storer.NewEncodedObject()
+				if err := commit.Encode(encodedCommit); err != nil {
+					t.Fatal(err)
+				}
+				commitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head = commitHash.String()
+			case "unsafe path":
+				backend := openWalkRepo(t, dir)
+				baseCommit, err := backend.CommitObject(plumbing.NewHash(base))
+				if err != nil {
+					t.Fatal(err)
+				}
+				baseTree, err := baseCommit.Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				file, err := baseTree.File("nested/base.txt")
+				if err != nil {
+					t.Fatal(err)
+				}
+				top := &object.Tree{Entries: []object.TreeEntry{{Name: "..", Mode: filemode.Regular, Hash: file.Hash}}}
+				encodedTree := backend.Storer.NewEncodedObject()
+				if err := top.Encode(encodedTree); err != nil {
+					t.Fatal(err)
+				}
+				treeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "unsafe path\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(base)}}
+				encodedCommit := backend.Storer.NewEncodedObject()
+				if err := commit.Encode(encodedCommit); err != nil {
+					t.Fatal(err)
+				}
+				commitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head = commitHash.String()
+			}
+			if removeHash != "" {
+				if err := os.Remove(filepath.Join(dir, ".git", "objects", removeHash[:2], removeHash[2:])); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if paths, err := walkRepo(t, dir).FirstParentChangedPaths(testContext(t), head); err == nil {
+				t.Fatalf("first-parent paths accepted missing tree evidence: %#v", paths)
+			} else if errors.Is(err, plumbing.ErrObjectNotFound) {
+				t.Fatalf("first-parent paths leaked backend error identity: %v", err)
+			}
+		})
+	}
+}
+
+func TestFirstParentChangedPathsReportsShallowMissingParent(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	for _, n := range []string{"one", "two", "three"} {
+		gitfixture.Commit(t, repo, n, map[string]string{"a.txt": n + "\n"})
+	}
+	shallow := filepath.Join(t.TempDir(), "shallow")
+	if out, err := exec.CommandContext(t.Context(), "git", "clone", "--depth", "1", "file://"+dir, shallow).CombinedOutput(); err != nil {
+		t.Skipf("shallow clone unavailable: %v: %s", err, out)
+	}
+	head := gitfixture.NativeRevParse(t, gitfixture.At(shallow), "HEAD")
+	if _, err := walkRepo(t, shallow).FirstParentChangedPaths(testContext(t), head); err == nil {
+		t.Fatal("first-parent paths accepted a missing shallow parent")
+	}
+}
+
 func TestSplitWalkMessage(t *testing.T) {
 	if subject, body := splitMessage("subject  \n\nbody\n"); subject != "subject" || body != "body" {
 		t.Fatalf("split = %q / %q", subject, body)
@@ -401,6 +590,27 @@ func TestSplitWalkMessage(t *testing.T) {
 	if subject, body := splitMessage("subject"); subject != "subject" || body != "" {
 		t.Fatalf("single line = %q / %q", subject, body)
 	}
+}
+
+type cancelAtDiffContext struct {
+	context.Context
+	remaining    int
+	cancel       context.CancelFunc
+	diffObserved bool
+}
+
+func (c *cancelAtDiffContext) Done() <-chan struct{} {
+	c.diffObserved = true
+	return c.Context.Done()
+}
+
+func (c *cancelAtDiffContext) Err() error {
+	c.remaining--
+	if c.remaining == 0 {
+		c.cancel()
+		return nil
+	}
+	return c.Context.Err()
 }
 
 type cancelAfterContext struct {

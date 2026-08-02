@@ -14,6 +14,8 @@ ADR-0121 widens the scan surface to prose: a `currentState.sources` entry may de
 
 Staged current-state checking reports an ADR newly introduced in an older intrinsic format as provisional because HEAD and the index provide neither incoming-parent nor final commit-message evidence. The transition checker still blocks every independently derivable static, lifecycle, claim-handshake, coverage, and aggregate violation. The later `commit-msg` boundary must compare the result with its first parent and incoming parents and validate the final message before the introduction can land.
 
+Historical transition and stale-merge replay use a reduced committed projection from `internal/currentstate` and `internal/topic`: configuration and schema boundaries, ADR records and source bytes, and topic definitions and claims. They do not construct marker indexes or domain ownership paths. Repository and staged checks continue to load the full projection and validate marker backing, test globs, coverage paths, and domain sidecars.
+
 
 ## Topics
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -24,12 +25,13 @@ import (
 // answers. Each is bound to the checkout the service was opened against, so
 // none of them names a root.
 type Dependencies struct {
-	Clock        func() time.Time
-	UUID         func() (string, error)
-	Worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
-	BranchExists func(context.Context, string) (bool, error)
-	ValidateRef  func(context.Context, string) (bool, error)
-	RemoveTree   func(string) error
+	Clock           func() time.Time
+	UUID            func() (string, error)
+	Worktrees       func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	BranchExists    func(context.Context, string) (bool, error)
+	ValidateRef     func(context.Context, string) (bool, error)
+	RemoveTree      func(string) error
+	ResolveCheckout func(context.Context, string) (CheckoutFacts, error)
 	// Fault is the durability-boundary hook the restartable-finish tests
 	// interrupt the service at. It is the one optional member: a nil Fault
 	// injects nothing, which is what production wants and what "no fault
@@ -39,14 +41,15 @@ type Dependencies struct {
 
 // Service owns immutable effort residents and restartable finish.
 type Service struct {
-	paths        paths
-	store        store
-	clock        func() time.Time
-	uuid         func() (string, error)
-	worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
-	branchExists func(context.Context, string) (bool, error)
-	validateRef  func(context.Context, string) (bool, error)
-	removeTree   func(string) error
+	paths            paths
+	store            store
+	clock            func() time.Time
+	uuid             func() (string, error)
+	worktrees        func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	branchExists     func(context.Context, string) (bool, error)
+	validateRef      func(context.Context, string) (bool, error)
+	removeTree       func(string) error
+	checkoutResolver func(context.Context, string) (CheckoutFacts, error)
 }
 
 // Open resolves the resident paths owned by roots and composes the service over
@@ -67,6 +70,8 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 		panic("effort Service: missing reference validation dependency")
 	case deps.RemoveTree == nil:
 		panic("effort Service: missing tree removal dependency")
+	case deps.ResolveCheckout == nil:
+		panic("effort Service: missing checkout resolution dependency")
 	}
 	resolved, err := resolvePaths(roots)
 	if err != nil {
@@ -75,7 +80,7 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 	return &Service{
 		paths: resolved, store: store{paths: resolved, fault: deps.Fault},
 		clock: deps.Clock, uuid: deps.UUID, worktrees: deps.Worktrees,
-		branchExists: deps.BranchExists, validateRef: deps.ValidateRef, removeTree: deps.RemoveTree,
+		branchExists: deps.BranchExists, validateRef: deps.ValidateRef, removeTree: deps.RemoveTree, checkoutResolver: deps.ResolveCheckout,
 	}, nil
 }
 
@@ -123,6 +128,91 @@ func (s *Service) InvokingRoot() string { return s.paths.roots.InvokingRoot }
 func (s *Service) List() ([]Record, error) { return s.store.list() }
 
 func (s *Service) Show(slug string) (Record, error) { return s.store.load(slug) }
+
+// UpdateMemory changes selected checkpoint fields and migrates a safe legacy
+// header to the canonical closed metadata representation on its first write.
+func (s *Service) UpdateMemory(slug string, update MemoryUpdate) error {
+	if update.Phase == nil && update.Next == nil {
+		return errors.New("memory update requires --phase or --next; changed bytes: no; next action: supply at least one replacement field")
+	}
+	if err := validateSlug(slug); err != nil {
+		return fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
+	}
+	if update.Phase != nil {
+		if err := validateMemoryMutable(*update.Phase); err != nil {
+			return fmt.Errorf("invalid memory phase: %w; changed bytes: no", err)
+		}
+	}
+	if update.Next != nil {
+		if err := validateMemoryMutable(*update.Next); err != nil {
+			return fmt.Errorf("invalid memory next: %w; changed bytes: no", err)
+		}
+	}
+	// Load state separately from memory metadata: an invalid mutable memory is
+	// precisely the repair case, but its resident and immutable identity remain
+	// subject to the normal ownership checks.
+	if _, err := s.store.loadDirectory(s.paths.effort(slug), slug, false); err != nil {
+		return err
+	}
+	path := s.paths.memoryFile(slug)
+	raw, err := readRegularNoFollowBounded(path, maxMemoryBytes)
+	if err != nil {
+		return &CorruptError{Path: path, Err: err}
+	}
+	doc := inspectMemory(raw, slug)
+	if !doc.boundary || doc.identity != slug {
+		return &InvalidMemoryError{Slug: slug, Err: doc.err, NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
+	}
+	if doc.err != nil {
+		if doc.invalid["phase"] && update.Phase == nil || doc.invalid["next"] && update.Next == nil {
+			return &InvalidMemoryError{Slug: slug, Err: doc.err, NextAction: memoryUpdateCommand(slug, doc.invalid)}
+		}
+		// A recognized header with only mutable validation failures is safe to
+		// replace. Unknown syntax and identity failures were rejected above.
+		if len(doc.invalid) == 0 { // coverage-ignore: every boundary-preserving parse error with matching identity either marks a mutable field invalid or was rejected before this repair path
+			return &InvalidMemoryError{Slug: slug, Err: doc.err, NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
+		}
+	}
+	metadata := doc.metadata
+	metadata.Effort = slug
+	if update.Phase != nil {
+		metadata.Phase = *update.Phase
+	}
+	if update.Next != nil {
+		metadata.Next = *update.Next
+	}
+	metadata.Updated = formatMemoryTime(s.now())
+	if err := validateMemoryMutable(metadata.Phase); err != nil || validateMemoryMutable(metadata.Next) != nil { // coverage-ignore: supplied replacements are validated and any unrepaired invalid mutable field returned above
+		return &InvalidMemoryError{Slug: slug, Err: errors.New("missing invalid mutable replacement"), NextAction: memoryUpdateCommand(slug, doc.invalid)}
+	}
+	encoded, err := encodeMemory(metadata, doc.body)
+	if err != nil { // coverage-ignore: encodeMemory marshals a fixed YAML node of already-valid strings
+		return fmt.Errorf("encode updated memory: %w", err)
+	}
+	return s.store.replaceMemory(path, encoded)
+}
+
+func memoryUpdateCommand(slug string, invalid map[string]bool) string {
+	command := "./awf effort memory update " + slug
+	if invalid["phase"] {
+		command += " --phase <replacement-phase>"
+	}
+	if invalid["next"] {
+		command += " --next <replacement-next>"
+	}
+	return command
+}
+
+func memoryRepairCommand(slug string, doc memoryDocument) string {
+	if doc.invalid["phase"] || doc.invalid["next"] {
+		return memoryUpdateCommand(slug, doc.invalid)
+	}
+	return "./awf effort memory update " + slug + " --phase " + shellQuote(doc.metadata.Phase)
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
+}
 
 func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error) {
 	if err := validateSlug(slug); err != nil {

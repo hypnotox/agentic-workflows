@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -113,6 +114,79 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		return nil, opaqueError(err)
 	}
 	return commits, nil
+}
+
+// FirstParentChangedPaths returns sorted, unique paths changed by rev relative
+// to its first parent. Roots compare against the empty tree and merges compare
+// only against their first parent. Paths are rerooted to the handle root.
+func (r *Repo) FirstParentChangedPaths(ctx context.Context, rev string) ([]string, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	commit, err := r.resolveCommit(rev)
+	if err != nil {
+		return nil, err
+	}
+	current, err := commit.Tree()
+	if err != nil {
+		return nil, opaqueError(err)
+	}
+	if err := validateChangedPathTree(ctx, current); err != nil {
+		return nil, opaqueError(err)
+	}
+	var parent *object.Tree
+	if commit.NumParents() > 0 {
+		first, err := commit.Parent(0)
+		if err != nil {
+			return nil, opaqueError(err)
+		}
+		parent, err = first.Tree()
+		if err != nil {
+			return nil, opaqueError(err)
+		}
+		if err := validateChangedPathTree(ctx, parent); err != nil {
+			return nil, opaqueError(err)
+		}
+	}
+	changes, err := object.DiffTreeContext(ctx, parent, current)
+	if err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return nil, contextErr
+		}
+		return nil, opaqueError(err)
+	}
+	paths := map[string]bool{}
+	for _, change := range changes {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
+		if path, ok := rerootPath(change.From.Name, r.prefix); ok && path != "" {
+			paths[path] = true
+		}
+		if path, ok := rerootPath(change.To.Name, r.prefix); ok && path != "" {
+			paths[path] = true
+		}
+	}
+	return sortedPaths(paths), nil
+}
+
+func validateChangedPathTree(ctx context.Context, tree *object.Tree) error {
+	for _, entry := range tree.Entries {
+		if err := checkContext(ctx); err != nil {
+			return err
+		}
+		if entry.Mode != filemode.Dir {
+			continue
+		}
+		child, err := tree.Tree(entry.Name)
+		if err != nil {
+			return err
+		}
+		if err := validateChangedPathTree(ctx, child); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // FileText reads path from rev. path is relative to the handle root. A missing

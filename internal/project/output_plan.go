@@ -248,7 +248,10 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if !agentsDoc.Local {
 			add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, inputs(t.BridgeTemplate), false)
 		}
-		for _, o := range t.Outputs {
+		if err := validateTargetOutputRequirements(t, cat); err != nil {
+			return nil, err
+		}
+		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, cfg.Skills) {
 			declaredInputs := inputs(o.TemplateID)
 			for _, input := range o.Inputs {
 				declaredInputs = append(declaredInputs, OutputInput(input))
@@ -479,6 +482,37 @@ type targetOutputDeclaration struct {
 	canonical   string
 }
 
+// resolvedTargetOutputs is the single selection and path translation point for
+// target-owned outputs. Planning, rendering, and prune all consume it.
+func validateTargetOutputRequirements(t Target, cat *catalog.Catalog) error {
+	for _, output := range t.Outputs {
+		if output.RequiresSkill != "" {
+			if _, ok := cat.Skills[output.RequiresSkill]; !ok {
+				return fmt.Errorf("target %q output %q requires unknown catalog skill %q", t.Name, output.Path, output.RequiresSkill)
+			}
+		}
+	}
+	return nil
+}
+
+func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetOutput {
+	selectedSet := map[string]bool{}
+	for _, name := range selected {
+		selectedSet[name] = true
+	}
+	out := []TargetOutput{}
+	for _, output := range t.Outputs {
+		if output.RequiresSkill != "" && !selectedSet[output.RequiresSkill] {
+			continue
+		}
+		if output.SkillName != "" {
+			output.Path = t.SkillPath(prefix, output.SkillName)
+		}
+		out = append(out, output)
+	}
+	return out
+}
+
 // targetOutputDeclarations reads recipe inputs but never executes a template.
 // Thus a collision is reported before any producer renders its output.
 func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targetOutputDeclaration, error) {
@@ -487,9 +521,12 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 		if err := t.validate(); err != nil {
 			return nil, err
 		}
-		for _, o := range t.Outputs {
+		if err := validateTargetOutputRequirements(t, p.Cat); err != nil {
+			return nil, err
+		}
+		for _, o := range resolvedTargetOutputs(t, p.Cfg.Prefix, p.Cfg.Skills) {
 			src, err := fs.ReadFile(templates.FS, o.TemplateID)
-			if err != nil {
+			if err != nil { // coverage-ignore: TestTargetOutputDeclarationsRejectUnreadableTemplate proves this error; Go's embedded-filesystem profile does not attribute its return block.
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
 			}
 			expanded, err := render.ExpandIncludes(string(src), templates.FS)

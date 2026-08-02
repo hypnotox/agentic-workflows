@@ -68,6 +68,7 @@ var minVersionBySchema = map[int]string{
 	30: "0.30.0",
 	31: "0.30.0",
 	32: "0.30.0",
+	33: "0.30.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -561,7 +562,7 @@ func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding
 			domainPaths[d] = sc.Paths
 		}
 	}
-	findings, commits, err := audit.Run(ctx, p.Root, base, head, audit.Inputs{
+	return audit.Run(ctx, p.Root, base, head, audit.Inputs{
 		Settings:          s,
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,
@@ -572,17 +573,6 @@ func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding
 		DomainsPartsDir:   config.DirName + "/domains/parts",
 		DomainPaths:       domainPaths,
 	})
-	if err != nil {
-		return nil, 0, err
-	}
-	// The snapshot-diff transition check rides the same range (ADR-0135): each
-	// commit's ADR/claim mutations must match its ADR operations. It is advisory
-	// like the rest of the audit and derives boundaries from each commit snapshot.
-	trans, err := p.auditTransitions(ctx, base, head)
-	if err != nil { // coverage-ignore: audit.Run above validated this exact range through its own Collect, so auditTransitions' only error source (a re-Collect of base..head) cannot newly fail here
-		return nil, 0, err
-	}
-	return append(findings, trans...), commits, nil
 }
 
 // onIntegrationBranch reports whether this checkout is positively identified as

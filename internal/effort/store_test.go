@@ -80,7 +80,7 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, phrase := range []string{"Effort: zeta-result\n", "Phase:", "Next:", "Updated:", "## Brief", "## Decision log", "## Observations", "## Handoff log"} {
+	for _, phrase := range []string{"---\n", "effort: zeta-result\n", "phase:", "next:", "updated:", "## Brief", "## Decision log", "## Observations", "## Handoff log"} {
 		if !strings.Contains(string(memory), phrase) {
 			t.Fatalf("memory skeleton missing %q:\n%s", phrase, memory)
 		}
@@ -149,6 +149,32 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 				t.Fatalf("recreation error = %v, want condition %q", retryErr, wantCondition)
 			}
 		})
+	}
+}
+
+func TestMemoryUpdatePostRenameFaultReportsChangedBytes(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.Fault = func(stage string) error {
+			if stage == "memory-update.directory-fsync" {
+				return errors.New("durability interrupted")
+			}
+			return nil
+		}
+	})
+	if _, err := service.New(testContext(t), "Durable update"); err != nil {
+		t.Fatal(err)
+	}
+	phase := "Published before directory sync"
+	if err := service.UpdateMemory("durable-update", MemoryUpdate{Phase: &phase}); err == nil || !strings.Contains(err.Error(), "durability interrupted") {
+		t.Fatalf("post-rename fault = %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", "durable-update", "memory.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "phase: Published before directory sync\n") {
+		t.Fatalf("post-rename fault did not retain published memory:\n%s", raw)
 	}
 }
 

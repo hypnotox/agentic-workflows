@@ -38,6 +38,8 @@ var entrypointSuites = map[string]suite{
 	"WorkingPaths":  {"internal/git", "TestWorkingPaths"},
 	"IndexBlobs":    {"internal/git", "TestIndexBlobs"},
 	"CommitBlobs":   {"internal/git", "TestObjectReadContracts"},
+	"CommitEntries": {"internal/git", "TestCommitEntriesAndBlobsAtContracts"},
+	"CommitBlobsAt": {"internal/git", "TestCommitEntriesAndBlobsAtContracts"},
 	"CommitParents": {"internal/git", "TestCommitEvidenceReads"},
 	"CommitMessage": {"internal/git", "TestCommitEvidenceReads"},
 	"RangeBlobs":    {"internal/git", "TestObjectReadContracts"},
@@ -70,10 +72,11 @@ var entrypointSuites = map[string]suite{
 	"MergeNoCommit":    {"internal/git", "TestMergeEntrypointsAdvanceAndStageWithoutCommitting"},
 
 	// Commit-range walking.
-	"RangeCommits":      {"internal/git", "TestRangeCommitsLinearRangeCarriesChangesAndText"},
-	"RangeChangedPaths": {"internal/git", "TestRangeNativeReadOperations"},
-	"RangeDiffText":     {"internal/git", "TestRangeNativeReadOperations"},
-	"ChangedPaths":      {"internal/git", "TestChangedPathsStaged"},
+	"RangeCommits":            {"internal/git", "TestRangeCommitsLinearRangeCarriesChangesAndText"},
+	"FirstParentChangedPaths": {"internal/git", "TestFirstParentChangedPathsContracts"},
+	"RangeChangedPaths":       {"internal/git", "TestRangeNativeReadOperations"},
+	"RangeDiffText":           {"internal/git", "TestRangeNativeReadOperations"},
+	"ChangedPaths":            {"internal/git", "TestChangedPathsStaged"},
 
 	// Free entrypoints: each precedes an opened repository or does without one.
 	"Open":                      {"internal/git", "TestOpenRepo"},

@@ -20,7 +20,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 
 ## Procedure
 
-Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
+This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
 
 <!-- awf:section procedure -->
 1. **Identify the plan path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .layout.plansDir }}/` matching the `YYYY-MM-DD-*.md` pattern.
@@ -73,6 +73,7 @@ Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memor
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `{{ .layout.workflowRef }}` for full plan lifecycle rules and the canonical workflow chain.
 - For V2 ADR work, require tasks to assign declared operations to pair-atomic batches and account for Applied, Remaining, and Canceled partitions.
+- For plan-v2, require retained pending ADR slugs, V4 stable `decision:` selectors, and frozen `#N` selectors only for pre-V4 records. Check Applying and Context omission-not-empty semantics, every plan-level Decision's substantive Applying assignment, and every DoD item's final Completes owner; Proposed coverage notes are advisory and historical Decision prose never replaces current-state authority.
 - The `plan-reviewer` is one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.
 - The plan-resync pass (post-ADR-review drift check) is a separate skill: `{{ .prefix }}-reviewing-plan-resync`.
 <!-- awf:end -->

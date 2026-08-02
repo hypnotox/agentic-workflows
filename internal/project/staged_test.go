@@ -58,15 +58,6 @@ func lockJSON(t *testing.T, lock *manifest.Lock) string {
 	return string(data)
 }
 
-func findBoundaryADR(records []adr.ADR) (adr.ADR, bool) {
-	for _, record := range records {
-		if record.Number == "0002" {
-			return record, true
-		}
-	}
-	return adr.ADR{}, false
-}
-
 // writeLock writes and stages the project's awf.lock.
 func writeLock(t *testing.T, p *Project, lock *manifest.Lock) {
 	t.Helper()
@@ -82,6 +73,34 @@ func writeLock(t *testing.T, p *Project, lock *manifest.Lock) {
 // unchanged HEAD topic set: the transition is clean while the index coverage
 // reports the uncovered path, proving both sides load and the HEAD-to-index diff
 // runs.
+func TestPlansFromTreeUsesOnlySnapshotSources(t *testing.T) {
+	valid := strings.Replace(projectPlanV1, "format: plan-v1", "format: plan-v2", 1)
+	valid = strings.Replace(valid, "- The configured plan reads exactly.", "- `dod: complete` Done.", 1)
+	valid = strings.Replace(valid, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nCompletes: [\"complete\"]", 1)
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: "guide/plans/2026-08-02-v2.md", Mode: snapshot.Regular, Bytes: []byte(valid)}, {Path: "guide/plans/not-a-plan.md", Mode: snapshot.Regular, Bytes: []byte("ignored")}, {Path: "guide/plans/2026-08-03-broken.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: plan-v2\n---\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plans, drift, err := plansFromTree(tree, "guide")
+	if err != nil || len(plans) != 1 || plans[0].Filename != "2026-08-02-v2.md" || len(drift) != 1 || drift[0].Kind != "plan-structure" {
+		t.Fatalf("plansFromTree = %#v %#v %v", plans, drift, err)
+	}
+}
+
+func TestPlansFromTreeSkipsUnscannableAndNestedSources(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "guide/plans/2026-08-02-link.md", Mode: snapshot.Symlink, Bytes: []byte("outside")},
+		{Path: "guide/plans/nested/2026-08-02-nested.md", Mode: snapshot.Regular, Bytes: []byte("ignored")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plans, drift, err := plansFromTree(tree, "guide")
+	if err != nil || plans != nil || drift != nil {
+		t.Fatalf("plansFromTree ignored snapshot sources = %#v %#v %v", plans, drift, err)
+	}
+}
+
 func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)
@@ -491,36 +510,6 @@ func TestCheckStagedHeadConfigParseError(t *testing.T) {
 	}
 }
 
-// TestRangePairUniversesErrors covers the two error branches: an unresolvable rev
-// (RangePair fails) and a commit whose first-parent tree cannot load.
-func TestRangePairUniversesErrors(t *testing.T) {
-	t.Parallel()
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n")
-	p := openStaged(t, dir)
-	if _, _, err := p.rangePairUniverses(testContext(t), "does-not-exist"); err == nil {
-		t.Fatal("expected an unresolvable-rev error")
-	}
-	// A child whose first-parent commit carries a malformed config.
-	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd\n"})
-	gitfixture.Commit(t, repo, "bad parent", nil)
-	child := gitfixture.Commit(t, repo, "child", map[string]string{"note.txt": "x"})
-	if _, _, err := p.rangePairUniverses(testContext(t), child); err == nil {
-		t.Fatal("expected a before-side load error from the malformed parent")
-	}
-	gitfixture.Commit(t, repo, "restore config", map[string]string{".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n"})
-	badLock := gitfixture.Commit(t, repo, "bad lock", map[string]string{".awf/awf.lock": "{"})
-	if _, _, err := p.rangePairUniverses(testContext(t), badLock); err == nil {
-		t.Fatal("expected an after-side lock parse error")
-	}
-	lockChild := gitfixture.Commit(t, repo, "bad lock child", map[string]string{"note.txt": "y"})
-	if _, _, err := p.rangePairUniverses(testContext(t), lockChild); err == nil {
-		t.Fatal("expected a before-side lock parse error")
-	}
-}
-
 func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 	msg := commitmsg.Message{}
 	openRoot := func(t *testing.T, root string) *Project {
@@ -549,7 +538,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 			".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n",
 			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":31,"files":{}}`,
 			"docs/decisions/0001-first.md": `---
-format: current-state-v3
+format: current-state-v4
 slug: first
 status: Proposed
 date: 2026-01-01
@@ -562,7 +551,7 @@ First commit.
 
 ## Decision
 
-1. Adopt current format.
+1. ` + "`decision: adopt-current-format`" + ` Adopt current format.
 
 ## State changes
 
@@ -677,21 +666,17 @@ func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
 	})
 	head := gitfixture.Commit(t, repo, "v2 boundary", nil)
 	p := openStaged(t, dir)
-	before, after, err := p.rangePairUniverses(testContext(t), head)
+	findings, _, err := p.Audit(testContext(t), base, head)
 	if err != nil {
-		t.Fatalf("rangePairUniverses: %v", err)
+		t.Fatalf("Audit: %v", err)
 	}
-	if got, ok := findBoundaryADR(before.ADRs); !ok || !got.IsV1() {
-		t.Fatalf("before ADR-0002 = %#v, found=%v; want V1", got, ok)
+	var transitions []audit.Finding
+	for _, finding := range findings {
+		if finding.Rule == "current-state-transition" {
+			transitions = append(transitions, finding)
+		}
 	}
-	if got, ok := findBoundaryADR(after.ADRs); !ok || !got.IsV2() {
-		t.Fatalf("after ADR-0002 = %#v, found=%v; want V2", got, ok)
-	}
-	findings, err := p.auditTransitions(testContext(t), base, head)
-	if err != nil {
-		t.Fatalf("auditTransitions: %v", err)
-	}
-	if len(findings) != 1 || findings[0].Severity != severity.Error || !strings.Contains(findings[0].Detail, "changed governed format") {
+	if len(transitions) != 1 || transitions[0].Severity != severity.Error || !strings.Contains(transitions[0].Detail, "changed governed format") {
 		t.Fatalf("audit transitions findings=%#v; want the parsed format-transition error, not a snapshot-load warning", findings)
 	}
 }
@@ -708,12 +693,14 @@ func TestAuditTransitionsClean(t *testing.T) {
 	gitfixture.Commit(t, repo, "cutover", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(testContext(t), base, "HEAD")
+	findings, _, err := p.Audit(testContext(t), base, "HEAD")
 	if err != nil {
-		t.Fatalf("auditTransitions: %v", err)
+		t.Fatalf("Audit: %v", err)
 	}
-	if len(findings) != 0 {
-		t.Fatalf("findings = %#v; want none", findings)
+	for _, finding := range findings {
+		if finding.Rule == "current-state-transition" {
+			t.Fatalf("transition findings = %#v; want none", findings)
+		}
 	}
 }
 
@@ -730,14 +717,17 @@ func TestAuditTransitionsFinding(t *testing.T) {
 	gitfixture.Commit(t, repo, "drop claim", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(testContext(t), base, "HEAD")
+	findings, _, err := p.Audit(testContext(t), base, "HEAD")
 	if err != nil {
-		t.Fatalf("auditTransitions: %v", err)
+		t.Fatalf("Audit: %v", err)
 	}
 	var errs []audit.Finding
 	for _, f := range findings {
-		if f.Severity != severity.Error || f.Rule != "current-state-transition" {
-			t.Fatalf("unexpected finding %#v", f)
+		if f.Rule != "current-state-transition" {
+			continue
+		}
+		if f.Severity != severity.Error {
+			t.Fatalf("unexpected transition finding %#v", f)
 		}
 		errs = append(errs, f)
 	}
@@ -759,9 +749,9 @@ func TestAuditTransitionsWarning(t *testing.T) {
 	gitfixture.Commit(t, repo, "bad adr", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(testContext(t), base, "HEAD")
+	findings, _, err := p.Audit(testContext(t), base, "HEAD")
 	if err != nil {
-		t.Fatalf("auditTransitions: %v", err)
+		t.Fatalf("Audit: %v", err)
 	}
 	var warned bool
 	for _, f := range findings {
@@ -774,14 +764,6 @@ func TestAuditTransitionsWarning(t *testing.T) {
 	}
 }
 
-func TestAuditTransitionsRequiresComposedRepository(t *testing.T) {
-	t.Parallel()
-	p := &Project{Root: t.TempDir()}
-	if _, err := p.auditTransitions(testContext(t), "base", "HEAD"); err == nil {
-		t.Fatal("project without a composed repository accepted an audit range")
-	}
-}
-
 // TestAuditTransitionsCollectError propagates an unresolvable range.
 func TestAuditTransitionsCollectError(t *testing.T) {
 	t.Parallel()
@@ -790,7 +772,7 @@ func TestAuditTransitionsCollectError(t *testing.T) {
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n")
 	p := openStaged(t, dir)
-	if _, err := p.auditTransitions(testContext(t), "does-not-exist", "HEAD"); err == nil {
+	if _, _, err := p.Audit(testContext(t), "does-not-exist", "HEAD"); err == nil {
 		t.Fatal("expected an unresolvable-range error")
 	}
 }
@@ -834,9 +816,9 @@ func TestAuditTransitionsMerge(t *testing.T) {
 	merge := gitfixture.Merge(t, repo, "merge", b0, f1)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(testContext(t), b0, merge)
+	findings, _, err := p.Audit(testContext(t), b0, merge)
 	if err != nil {
-		t.Fatalf("auditTransitions: %v", err)
+		t.Fatalf("Audit: %v", err)
 	}
 	var mergeReported bool
 	for _, f := range findings {
@@ -996,7 +978,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	}
 	var transitionFindings int
 	for _, finding := range findings {
-		if finding.Rule == currentStateTransitionRule {
+		if finding.Rule == "current-state-transition" {
 			transitionFindings++
 		}
 	}

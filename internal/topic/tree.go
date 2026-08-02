@@ -19,41 +19,14 @@ const (
 	treePartSuffix     = "/current-state.md"
 )
 
-// LoadCorpusFromTree parses the current-state topic corpus from an immutable
-// snapshot instead of the live filesystem, so a working-tree, index, or commit
-// universe yields exactly the corpus that tree encodes. Topic metadata, parts,
-// domain ownership, and marker sources are all read from tree; cfg supplies the
-// configured domains and marker-source families (parse it from the same tree
-// for a single-universe load). It shares assembleCorpus and the marker
-// scan/validate core with the filesystem LoadCorpus, so both loaders enforce
-// identical rules over identically shaped bytes.
+// LoadCorpusFromTree parses the complete current-state topic corpus from an
+// immutable snapshot. It retains domain ownership and marker validation for
+// callers that need the complete repository projection.
 func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
-	allFiles := tree.List()
-	files := make([]snapshot.File, 0, len(allFiles))
-	for _, f := range allFiles {
-		if f.Scannable() {
-			files = append(files, f)
-		}
-	}
-	metadata := map[string]metaEntry{}
-	parts := map[string]partEntry{}
-	for _, f := range files {
-		switch {
-		case strings.HasPrefix(f.Path, treeMetadataPrefix) && strings.HasSuffix(f.Path, ".yaml"):
-			id, m, err := ParseMetadata(treeMetadataRoot, f.Path, f.Bytes)
-			if err != nil {
-				return Corpus{}, err
-			}
-			if err := recordMeta(metadata, id, metaEntry{meta: m, path: f.Path}); err != nil { // coverage-ignore: distinct snapshot paths yield distinct topic IDs; recordMeta duplicate is unit-tested directly
-				return Corpus{}, err
-			}
-		case strings.HasPrefix(f.Path, treePartsPrefix) && strings.HasSuffix(f.Path, treePartSuffix):
-			seg := strings.Split(strings.TrimPrefix(f.Path, treePartsPrefix), "/")
-			if len(seg) != 3 || !kebabRE.MatchString(seg[0]) || !kebabRE.MatchString(seg[1]) {
-				return Corpus{}, fmt.Errorf("invalid topic part path %q", f.Path)
-			}
-			parts[(TopicID{seg[0], seg[1]}).String()] = partEntry{data: f.Bytes, path: f.Path}
-		}
+	files := scannableTreeFiles(tree)
+	metadata, parts, err := authorityEntriesFromTreeFiles(files)
+	if err != nil {
+		return Corpus{}, err
 	}
 	domainPaths := map[string][]string{}
 	for _, d := range cfg.Domains {
@@ -73,6 +46,52 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 	}
 	c.Markers = markers
 	return c, nil
+}
+
+// LoadAuthorityCorpusFromFiles parses the reduced topic authority from the
+// supplied snapshot files. Historical selections use this exact byte-fed core
+// without materializing a complete Tree.
+func LoadAuthorityCorpusFromFiles(files []snapshot.File, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+	metadata, parts, err := authorityEntriesFromTreeFiles(files)
+	if err != nil {
+		return Corpus{}, err
+	}
+	return assembleCorpus(metadata, parts, cfg.Domains, nil, adrs)
+}
+
+func scannableTreeFiles(tree *snapshot.Tree) []snapshot.File {
+	allFiles := tree.List()
+	files := make([]snapshot.File, 0, len(allFiles))
+	for _, f := range allFiles {
+		if f.Scannable() {
+			files = append(files, f)
+		}
+	}
+	return files
+}
+
+func authorityEntriesFromTreeFiles(files []snapshot.File) (map[string]metaEntry, map[string]partEntry, error) {
+	metadata := map[string]metaEntry{}
+	parts := map[string]partEntry{}
+	for _, f := range files {
+		switch {
+		case strings.HasPrefix(f.Path, treeMetadataPrefix) && strings.HasSuffix(f.Path, ".yaml"):
+			id, m, err := ParseMetadata(treeMetadataRoot, f.Path, f.Bytes)
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := recordMeta(metadata, id, metaEntry{meta: m, path: f.Path}); err != nil { // coverage-ignore: distinct snapshot paths yield distinct topic IDs; recordMeta duplicate is unit-tested directly
+				return nil, nil, err
+			}
+		case strings.HasPrefix(f.Path, treePartsPrefix) && strings.HasSuffix(f.Path, treePartSuffix):
+			seg := strings.Split(strings.TrimPrefix(f.Path, treePartsPrefix), "/")
+			if len(seg) != 3 || !kebabRE.MatchString(seg[0]) || !kebabRE.MatchString(seg[1]) {
+				return nil, nil, fmt.Errorf("invalid topic part path %q", f.Path)
+			}
+			parts[(TopicID{seg[0], seg[1]}).String()] = partEntry{data: f.Bytes, path: f.Path}
+		}
+	}
+	return metadata, parts, nil
 }
 
 // domainPathsFromTree reads one domain sidecar's ownership globs from the

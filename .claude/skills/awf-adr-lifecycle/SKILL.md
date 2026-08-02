@@ -48,7 +48,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 
 ## Procedure
 
-Pick the status transition, then carry the same verified effort slug and exact `.awf/efforts/<slug>/memory.md` path. A lifecycle child or reviewer never edits shared memory; repository and current-state authority outrank it, one user-managed writer remains responsible, and standalone memory is forbidden.
+This skill requires the one existing already-confirmed effort and its exact owned memory path before durable authoring or lifecycle mutation. It never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Pick the status transition, validate the fixed identity, then carry the same verified effort slug and exact `.awf/efforts/<slug>/memory.md` path. A lifecycle child or reviewer never edits shared memory; repository and current-state authority outrank it, one user-managed writer remains responsible, and standalone memory is forbidden.
 
 <!-- awf:edit procedure-status-edit: default; create .awf/skills/parts/adr-lifecycle/procedure-status-edit.md to override -->
 1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; for a middle batch append one Applied event without changing status; for the final batch append Applied then Implemented status; for abandonment append only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; operations: <operation-list>`. If an already-applied add or update needs another material correction while a different operation remains, append `- YYYY-MM-DD: Reapplied; operations: <operation-list>` without changing status. Reapplied operations must have an earlier Applied occurrence, may repeat, and do not change progress; removes and events after the final Applied batch are refused. Repeat the latest stamp on status events; an amendment instead appends its own `- YYYY-MM-DD: Amended; content-sha256: <digest of the amended content>` event in its own commit.
@@ -96,6 +96,10 @@ schema retrofit may migrate its machine-readable encoding.
 - Commit as `docs(adr): amend NNNN <what changed>`. Deferral (scope shrink) stays a Context
   amendment recorded the same way.
 - current-state-v1 records keep the prior rule: frozen once they leave Proposed.
+
+## Decision references
+
+V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker. Use that stable slug with the ADR number or retained pending ADR slug in plan references. Pre-V4 Decision items have no stable marker: use canonical `#N` only after their authored-format lifecycle freezes the record; never treat a legacy ordinal as a current-authority or supersession anchor.
 
 ## Notes
 

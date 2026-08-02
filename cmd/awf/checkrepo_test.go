@@ -70,7 +70,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 			t.Fatal(err)
 		}
 		counts := &repoCheckCounters{}
-		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"project-advisory-sentinel"}}, project.CurrentStateReport{}, tree, counts)
+		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"project-advisory-sentinel"}, PlanNotes: []string{"working-plan-note-sentinel"}}, project.CurrentStateReport{}, tree, counts)
 		var out bytes.Buffer
 		err = runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepMemory, repoStepProse, repoStepState, repoStepDrift}, execution.ContinueOnFailure, true, deps)
 		if err != nil {
@@ -79,7 +79,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		want := "note: project-advisory-sentinel\nawf check repo drift: clean\nawf check repo state: clean\ncheck repo prose: clean\ncheck repo memory: clean\n"
+		want := "note: project-advisory-sentinel\nnote: working-plan-note-sentinel\nawf check repo drift: clean\nawf check repo state: clean\ncheck repo prose: clean\ncheck repo memory: clean\n"
 		if got := out.String(); got != want {
 			t.Fatalf("output = %q, want %q", got, want)
 		}
@@ -267,7 +267,8 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 		contains []string
 	}{
 		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "p.CheckReport("}},
-		{"checkrepo.go", "runCheckRepo", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
+		{"checkrepo.go", "runCheckRepo", []string{"runCheckRepoWithPlanNotes", "planNoteSink{}"}},
+		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
 		{"checkrepo.go", "runCheckDrift", []string{"repoStepDrift", "execution.StopOnFailure", "false", "p.Check("}},
 		{"checkrepo.go", "runCheckState", []string{"repoStepState", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
 		{"prosegate.go", "runProseGate", []string{"repoStepProse", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
@@ -281,15 +282,24 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 					t.Fatalf("%s %s body does not contain %q:\n%s", tc.file, tc.function, fragment, body)
 				}
 			}
-			if tc.function != "productionRepoCheckDependencies" && strings.Count(body, "runRepoCheckSelection(") != 1 {
-				t.Fatalf("%s %s must call runRepoCheckSelection exactly once:\n%s", tc.file, tc.function, body)
+			callee := "runRepoCheckSelection("
+			switch tc.function {
+			case "productionRepoCheckDependencies":
+				callee = ""
+			case "runCheckRepo":
+				callee = "runCheckRepoWithPlanNotes("
+			case "runCheckRepoWithPlanNotes":
+				callee = "runRepoCheckSelectionWithPlanNotes("
+			}
+			if callee != "" && strings.Count(body, callee) != 1 {
+				t.Fatalf("%s %s must call %s exactly once:\n%s", tc.file, tc.function, callee, body)
 			}
 		})
 	}
 
-	aggregate := formattedFunctionBody(t, "checkrepo.go", "runCheckRepo")
+	aggregate := formattedFunctionBody(t, "checkrepo.go", "runCheckRepoWithPlanNotes")
 	versionOutput := strings.Index(aggregate, "fmt.Fprintf")
-	executionCall := strings.Index(aggregate, "runRepoCheckSelection")
+	executionCall := strings.Index(aggregate, "runRepoCheckSelectionWithPlanNotes")
 	if versionOutput < 0 || executionCall < 0 || versionOutput >= executionCall {
 		t.Fatalf("aggregate version output must precede execution:\n%s", aggregate)
 	}

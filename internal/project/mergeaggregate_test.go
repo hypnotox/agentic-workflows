@@ -97,9 +97,9 @@ func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 	merge := gitfixture.Merge(t, repo, "merge", b0, f1)
 
 	p := openStaged(t, dir)
-	findings, err := p.auditTransitions(testContext(t), b0, merge)
+	findings, _, err := p.Audit(testContext(t), b0, merge)
 	if err != nil {
-		t.Fatalf("auditTransitions: %v", err)
+		t.Fatalf("Audit: %v", err)
 	}
 	for _, f := range findings {
 		if f.Subject == "merge" {

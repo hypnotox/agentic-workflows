@@ -21,7 +21,6 @@ Every parsed rule and invariant has the unique identity <domain>/<topic>:<local-
 Origin: ADR-0134
 Backing: unbacked
 Verify: Topic corpus tests exercise duplicate local slugs across different and identical topics plus valid and dangling claim and ADR references.
-
 ### `invariant: coverage-evaluation-selects-checks`
 
 A coverage evaluation caller selects which checks run: coverage and fan-out are requested independently, an unrequested check produces none of its findings, no rank value suppresses a requested one, and the uncovered report requests coverage only.
@@ -83,28 +82,24 @@ A relevance marker selects claims only from an already applicable topic and neve
 Origin: ADR-0134
 Backing: unbacked
 Verify: The same qualified marker inside topic scope narrows output while outside scope it fails and the path remains uncovered.
-
 ### `invariant: topic-identity-path-derived`
 
 A topic has one path-derived domain and topic identity that no second registry can contradict.
 Origin: ADR-0134
 Backing: unbacked
 Verify: Renaming an unreferenced fixture topic changes its identity and output paths deterministically, and a retained reference to the old identity fails the rename with a dangling-reference diagnostic.
-
 ### `invariant: topic-scope-cannot-expand-domain`
 
 A path-scoped topic applies only where its selectors and its parent domain both match; only applies: global bypasses path bounding.
 Origin: ADR-0134
 Backing: unbacked
 Verify: Queries inside and outside the domain intersection match only the intersection, and a global topic stored under the same domain applies to both.
-
 ### `invariant: topic-scope-is-domain-bounded`
 
 Every topic has one owning domain; a path-scoped topic is bounded by that domain, and an explicit globally applicable topic remains stored under its owner as the only exception.
 Origin: ADR-0133
 Backing: unbacked
 Verify: A path-scoped selector that also matches outside its parent domain yields context only for the domain-owned match, and an applies: global topic under the same domain applies repository-wide without changing its rendered domain path.
-
 ### `invariant: touches-marker-advisory`
 
 A touches-state marker records a related code site for a claim but never counts toward a test-backed invariant claim's proof requirement.

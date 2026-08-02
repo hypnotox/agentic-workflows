@@ -429,8 +429,9 @@ func (p *Project) declaredSections(kind, name string) []string {
 // CheckReport is the ordinary check operation's blocking drift and advisory
 // notes, derived from one operation-owned plan parse.
 type CheckReport struct {
-	Drift []manifest.Drift
-	Notes []string
+	Drift     []manifest.Drift
+	Notes     []string
+	PlanNotes []string
 }
 
 // CheckReport performs one ordinary project check. Plans are parsed once and
@@ -465,11 +466,13 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
+	contextDrift, contextNotes := planArtifactReport(plans, corpus)
+	planDrift = append(planDrift, contextDrift...)
 	notes, err := p.advisoryNotesWithState(corpus, plans, op)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	return CheckReport{Drift: append(drift, planDrift...), Notes: notes}, nil
+	return CheckReport{Drift: append(drift, planDrift...), Notes: notes, PlanNotes: contextNotes}, nil
 }
 
 // Check is the compatibility projection of CheckReport's blocking drift.

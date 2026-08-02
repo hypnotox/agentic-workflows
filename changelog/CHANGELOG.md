@@ -12,6 +12,18 @@ query a single version or a range.
 
 - Repository checks now use capability-planned execution: direct and aggregate checks share prepared config, project reports, and enabled scanner index inputs while preserving successful output order. Any readiness failure occurs before step output.
 
+- Discovery now remains effort-free until the agent presents a labeled concrete outcome and proposed effort title, stops without mutation, and receives clear confirmation in a later user response; existing efforts resume under their fixed identity without reconfirmation only inside their confirmed outcome, a new outcome cannot silently reuse or replace an active effort, and no CLI or schema migration occurs. Adopters with full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this first-creation boundary because default-template projection tests cannot inspect replacement prose.
+
+- `awf audit` now enumerates committed metadata without eager blob reads, then loads only its exact configuration, ADR, and topic authority into a type-distinct immutable selection. Repository and staged checks retain complete snapshots and the full marker, coverage, and domain-sidecar validation boundary, while revisions outside historical authority can reuse their first-parent state. Context cancellation and deadline expiry abort immediately with preserved error identity instead of becoming transition warnings.
+
+- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata, and protocol-1 advisory activity commands resolve, attach, heartbeat, update checkout, or detach Pi session activity without locking effort work. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the capability-gated `using_effort` skill and extension. Effort memories retain dual-format identity during migration; activity remains advisory and non-locking.
+
+- Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
+
+- New plans use `plan-v2`: task-scoped Applying and Context Decision references, slugged Definition-of-done outcomes, and phase Advances and Completes assignments are validated in working and staged universes. `awf read plan` orders only selected resolved Decisions and owning-phase outcomes, excludes whole-plan Definition of done, and adds task scope safety; plan-v1 remains byte-compatible.
+
+- The repository gate now offers opt-in per-stage timings, keeps ordinary Go tests Docker-free with actionable Pi-lane guidance, and runs the uncached Pi runtime smoke exactly once. The awf and Sundial runners also remove their no-op `gate full` aliases while generic extended-tier support remains available to adopters that have a real second tier.
+
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
@@ -419,6 +431,8 @@ query a single version or a range.
   awf-verb vars already carry.
 
 ### Bug fixes
+
+- Managed context instructions now require explicit paths (or a staged/range selection) and describe the initial query as omitting detail flags, avoiding the ambiguous "start bare" wording that could lead agents to invoke `awf context` without its required selection.
 
 - Pi `handoff_session` now emits Remote Pi's optional continuation disposition after it successfully queues the replacement command. Compatible push integrations no longer report the intermediate parent run as a terminal completion, while listener failures remain isolated from handoff execution.
 
