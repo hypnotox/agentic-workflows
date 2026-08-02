@@ -185,12 +185,17 @@ func parsePlanV1(path string, source, body string, p *Plan) error {
 		return structuralError(path, "structure", "expected ## Definition of done after final phase")
 	}
 	dodEnd := len(lines)
+	var dodFence markdownFence
 	for i := idx + 1; i < len(lines); i++ {
-		if lineText(lines[i]) == "## Notes" {
+		text := lineText(lines[i])
+		if dodFence.consume(text) {
+			continue
+		}
+		if text == "## Notes" {
 			dodEnd = i
 			break
 		}
-		if isReservedTopHeading(lineText(lines[i])) {
+		if isReservedTopHeading(text) {
 			return structuralError(path, "structure", "unexpected top-level section before Notes")
 		}
 	}
@@ -246,15 +251,57 @@ func sectionBodyNonempty(lines []string, start, end int) bool {
 	return strings.TrimSpace(strings.Join(lines[start:end], "")) != ""
 }
 
+// markdownFence tracks CommonMark-style backtick and tilde fences for the
+// structural scanner. A closing run must use the opening marker, be at least
+// as long, and carry no info string.
+type markdownFence struct {
+	marker byte
+	length int
+}
+
+// consume reports whether line is structurally opaque, including the opener,
+// every line inside the fence, and a qualifying closer.
+func (f *markdownFence) consume(line string) bool {
+	marker, length, ok := structuralFenceMarker(line)
+	if f.marker == 0 {
+		if !ok {
+			return false
+		}
+		f.marker, f.length = marker, length
+		return true
+	}
+	if ok && marker == f.marker && length >= f.length && structuralFenceCloser(line, length) {
+		f.marker, f.length = 0, 0
+	}
+	return true
+}
+
+func structuralFenceMarker(line string) (byte, int, bool) {
+	indent := len(line) - len(strings.TrimLeft(line, " "))
+	if indent > 3 || indent == len(line) {
+		return 0, 0, false
+	}
+	marker := line[indent]
+	if marker != '`' && marker != '~' {
+		return 0, 0, false
+	}
+	length := 0
+	for indent+length < len(line) && line[indent+length] == marker {
+		length++
+	}
+	return marker, length, length >= 3
+}
+
+func structuralFenceCloser(line string, markerLength int) bool {
+	indent := len(line) - len(strings.TrimLeft(line, " "))
+	return strings.TrimSpace(line[indent+markerLength:]) == ""
+}
+
 func findRequiredBoundary(path string, lines []string, start int, section string, expected func(string) bool) (int, error) {
-	inFence := false
+	var fence markdownFence
 	for i := start; i < len(lines); i++ {
 		text := lineText(lines[i])
-		if strings.HasPrefix(strings.TrimSpace(text), "```") {
-			inFence = !inFence
-			continue
-		}
-		if inFence {
+		if fence.consume(text) {
 			continue
 		}
 		if expected(text) {
@@ -273,14 +320,13 @@ func isReservedTopHeading(s string) bool {
 }
 
 func rejectRetiredSections(path string, lines []string) error {
-	inFence := false
+	var fence markdownFence
 	for _, line := range lines {
 		text := lineText(line)
-		if strings.HasPrefix(strings.TrimSpace(text), "```") {
-			inFence = !inFence
+		if fence.consume(text) {
 			continue
 		}
-		if !inFence && (text == "## File structure" || text == "## Verification") {
+		if text == "## File structure" || text == "## Verification" {
 			return structuralError(path, "structure", "File structure and Verification are not plan-v1 sections")
 		}
 	}
@@ -288,14 +334,17 @@ func rejectRetiredSections(path string, lines []string) error {
 }
 
 func hasPlainBullet(lines []string) bool {
-	inFence := false
+	var fence markdownFence
 	for _, line := range lines {
 		text := lineText(line)
-		if strings.HasPrefix(strings.TrimSpace(text), "```") {
-			inFence = !inFence
+		if fence.consume(text) {
 			continue
 		}
-		if !inFence && strings.HasPrefix(text, "- ") && !strings.HasPrefix(text, "- [") && strings.TrimSpace(strings.TrimPrefix(text, "- ")) != "" {
+		if len(text) < 3 || !strings.ContainsRune("-*+", rune(text[0])) || text[1] != ' ' {
+			continue
+		}
+		body := strings.TrimSpace(text[2:])
+		if body != "" && !strings.HasPrefix(strings.ToLower(body), "[ ]") && !strings.HasPrefix(strings.ToLower(body), "[x]") {
 			return true
 		}
 	}
@@ -303,14 +352,13 @@ func hasPlainBullet(lines []string) bool {
 }
 
 func hasCheckbox(lines []string) bool {
-	inFence := false
+	var fence markdownFence
 	for _, line := range lines {
 		text := strings.ToLower(strings.TrimSpace(lineText(line)))
-		if strings.HasPrefix(text, "```") {
-			inFence = !inFence
+		if fence.consume(text) {
 			continue
 		}
-		if !inFence && len(text) >= 5 && strings.ContainsRune("-*+", rune(text[0])) && (strings.HasPrefix(text[1:], " [ ]") || strings.HasPrefix(text[1:], " [x]")) {
+		if len(text) >= 5 && strings.ContainsRune("-*+", rune(text[0])) && (strings.HasPrefix(text[1:], " [ ]") || strings.HasPrefix(text[1:], " [x]")) {
 			return true
 		}
 	}
@@ -380,8 +428,12 @@ func parsePhase(path string, lines []string, start, want int) (Phase, int, error
 		return ph, start, structuralError(path, "structure", fmt.Sprintf("phase %d requires one final Phase close", n))
 	}
 	end := len(lines)
+	var closeFence markdownFence
 	for j := i + 1; j < len(lines); j++ {
 		text := lineText(lines[j])
+		if closeFence.consume(text) {
+			continue
+		}
 		if strings.HasPrefix(text, "## Phase ") || text == "## Definition of done" {
 			end = j
 			break
@@ -444,8 +496,12 @@ func parseTask(path string, lines []string, start, phase, want int) (Task, int, 
 		i++
 	}
 	end := len(lines)
+	var taskFence markdownFence
 	for j := i; j < len(lines); j++ {
 		text := lineText(lines[j])
+		if taskFence.consume(text) {
+			continue
+		}
 		if strings.HasPrefix(text, "### Task ") || text == "### Phase close" || strings.HasPrefix(text, "## Phase ") || text == "## Definition of done" {
 			end = j
 			break
@@ -703,15 +759,13 @@ func recognizedPathspecMagic(word string) bool {
 }
 
 func countExecutionModeDeclarations(content string) int {
-	inFence := false
+	var fence markdownFence
 	count := 0
 	for _, line := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "```") {
-			inFence = !inFence
+		if fence.consume(line) {
 			continue
 		}
-		if !inFence && strings.HasPrefix(trimmed, "**Execution mode:") {
+		if strings.HasPrefix(strings.TrimSpace(line), "**Execution mode:") {
 			count++
 		}
 	}
@@ -719,24 +773,37 @@ func countExecutionModeDeclarations(content string) int {
 }
 
 func countCompleteCommitFences(content string) int {
-	inFence := false
+	var fence markdownFence
 	counted := false
 	count := 0
 	for _, line := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "```") {
-			continue
-		}
-		if inFence {
-			if counted {
-				count++
+		marker, length, ok := structuralFenceMarker(line)
+		if fence.marker == 0 {
+			if !ok {
+				continue
 			}
-			inFence = false
-			counted = false
+			fence.marker, fence.length = marker, length
+			indent := len(line) - len(strings.TrimLeft(line, " "))
+			counted = marker == '`' && isCommitInfo(line[indent+length:])
 			continue
 		}
-		inFence = true
-		counted = isCommitInfo(trimmed[3:])
+		if ok && marker == fence.marker && length >= fence.length {
+			if structuralFenceCloser(line, length) {
+				if counted {
+					count++
+				}
+				fence.marker, fence.length = 0, 0
+				counted = false
+				continue
+			}
+			indent := len(line) - len(strings.TrimLeft(line, " "))
+			if counted && marker == '`' && isCommitInfo(line[indent+length:]) {
+				// A second commit opener before a closer cannot complete the
+				// required single Phase-close fence, even if a later closer
+				// would end the surrounding Markdown fence.
+				counted = false
+			}
+		}
 	}
 	return count
 }

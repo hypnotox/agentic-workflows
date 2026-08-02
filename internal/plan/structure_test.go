@@ -108,6 +108,8 @@ func TestPlanV1StructureValidated(t *testing.T) {
 	t.Run("diagnostics", TestPlanV1Diagnostics)
 	t.Run("path grammar", TestPlanV1PathGrammar)
 	t.Run("fenced list syntax", TestPlanV1FencedListSyntaxIsOpaque)
+	t.Run("fence grammar", TestPlanV1FenceGrammarIsOpaque)
+	t.Run("definition bullet markers", TestPlanV1DefinitionBulletMarkers)
 	t.Run("legacy boundary", TestPlanV1AbsentFormatRemainsLegacy)
 	t.Run("fenced headings", TestPlanV1RetiredHeadingInsideFenceIsOpaque)
 }
@@ -278,6 +280,30 @@ func TestPlanV1FencedListSyntaxIsOpaque(t *testing.T) {
 	writePlan(t, dir, "2026-08-02-fenced-lists.md", body)
 	if _, err := plan.ParseDir(dir); err != nil {
 		t.Fatalf("ParseDir: %v", err)
+	}
+}
+
+func TestPlanV1FenceGrammarIsOpaque(t *testing.T) {
+	body := replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n~~~markdown\n### Task 9.9: Optional fenced task\n- [ ] Fenced work.\n## Verification\n~~~")
+	body = replaceOnceForTest(body, "Run the staged check and gate.", "~~~markdown\n```commit\nfix(plans): fenced example\n```\n~~~\n\nRun the staged check and gate.")
+	body = replaceOnceForTest(body, "- A valid plan parses and projects.", "````markdown\n- A fenced example is not completion.\n```\n+ Still fenced after the shorter run.\n````\n\n* A real completion condition.")
+	dir := t.TempDir()
+	writePlan(t, dir, "2026-08-02-fence-grammar.md", body)
+	if _, err := plan.ParseDir(dir); err != nil {
+		t.Fatalf("ParseDir: %v", err)
+	}
+}
+
+func TestPlanV1DefinitionBulletMarkers(t *testing.T) {
+	for _, bullet := range []string{"* Asterisk completion condition.", "+ Plus completion condition."} {
+		t.Run(bullet[:1], func(t *testing.T) {
+			body := replaceOnceForTest(v1Plan, "- A valid plan parses and projects.", bullet)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-bullet.md", body)
+			if _, err := plan.ParseDir(dir); err != nil {
+				t.Fatalf("ParseDir: %v", err)
+			}
+		})
 	}
 }
 

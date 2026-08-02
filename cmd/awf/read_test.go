@@ -114,17 +114,21 @@ func TestReadPlanCommandFailuresKeepStdoutEmpty(t *testing.T) {
 	root := syncedGitProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-08-02-read-command.md"), readCommandPlan)
 	t.Chdir(root)
-	for _, args := range [][]string{
-		{"awf", "read", "plan", "missing", "1"},
-		{"awf", "read", "plan", "2026-08-02-read-command", "01"},
-		{"awf", "read", "plan", "2026-08-02-read-command"},
-	} {
+	cases := []struct {
+		args           []string
+		availableValue string
+	}{
+		{[]string{"awf", "read", "plan", "missing", "1"}, "2026-08-02-read-command"},
+		{[]string{"awf", "read", "plan", "2026-08-02-read-command", "01"}, "1.1"},
+		{[]string{"awf", "read", "plan", "2026-08-02-read-command"}, ""},
+	}
+	for _, tc := range cases {
 		var stdout, stderr bytes.Buffer
-		if code := run(args, &stdout, &stderr); code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
-			t.Errorf("run(%v) exit=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
+		if code := run(tc.args, &stdout, &stderr); code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
+			t.Errorf("run(%v) exit=%d stdout=%q stderr=%q", tc.args, code, stdout.String(), stderr.String())
 		}
-		if len(args) == 6 && (!strings.Contains(stderr.String(), "available:") || !strings.Contains(stderr.String(), "2026-08-02-read-command")) {
-			t.Errorf("run(%v) did not list exact available values: %q", args, stderr.String())
+		if tc.availableValue != "" && (!strings.Contains(stderr.String(), "available:") || !strings.Contains(stderr.String(), tc.availableValue)) {
+			t.Errorf("run(%v) did not list exact available value %q: %q", tc.args, tc.availableValue, stderr.String())
 		}
 	}
 }
