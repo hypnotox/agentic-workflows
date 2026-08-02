@@ -383,8 +383,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:a2b1848f31d80835fc6303bb9bd6e1df9c171bcebd947ec1bfc809d74af9d7dc",
-      "outputHash": "sha256:8482bbbe71c8a433c27c14702460dc2513e088f086606dc3a728ef53c549938b"
+      "configHash": "sha256:bfd0775b973d0bbcf13ca0f86f6a704b684ced63eec497543cf33e4c8202ce0a",
+      "outputHash": "sha256:daeb34a2d5ec11bc818102f1ef4ea6394347ddbbe2927fb937af168b61aa31f8"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -463,7 +463,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:ef1647dae2207ea0ce8677c833aaee278c94aa7632d019d68b5b07a1d1fea554",
+      "outputHash": "sha256:ee0cde8184e731a16d347049e0398838bf6b44922fa4b81f2a4a8022b781acc0",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -733,8 +733,8 @@
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:ad3bf9f188fa30bc210238d770e855c3f2bb04a49fb82a81a13d433e953b2c26",
-      "outputHash": "sha256:c2bdabfcc57cc6d9f72e4562d06f6c608d25f5ce569e29406fe5d8a6d19f5aad"
+      "configHash": "sha256:c702c298a6753af635c45812816a6e0a8728719509a16f9496bc5bc493750793",
+      "outputHash": "sha256:29f80c3cc886dbda8336fe8607b61f5764cae64181bb8444d0609a9c571fd6a9"
     },
     "docs/topics/tooling/audit-commands.md": {
       "templateId": "topics/topic.md.tmpl",

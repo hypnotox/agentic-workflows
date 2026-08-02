@@ -21,6 +21,12 @@ Historical transition and stale-merge replay derive only committed configuration
 Origin: ADR-revision-aware-historical-audit-pipeline
 Backing: test
 
+### `invariant: audit-cancellation-propagates`
+
+When range collection, committed evidence, revision derivation, transition replay, stale-merge replay, or the live cleanliness read returns context cancellation or deadline expiry, `awf audit` aborts and preserves that error identity. It never converts context termination into a finding, retries the canceled derivation, or continues to later audit work; non-context transition load failures remain advisory.
+Origin: ADR-revision-aware-historical-audit-pipeline
+Backing: test
+
 ### `invariant: audit-adr-status-cochange`
 
 awf audit raises an Error finding when a range commit adds a current-state-v1 ADR or changes its status without also changing `docs/decisions/INDEX.md`, and raises none when the same change co-changes the index. Legacy-format ADR transitions are outside this rule.

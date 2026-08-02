@@ -69,7 +69,7 @@ type revisionState struct {
 func newHistoryOperation(ctx context.Context, base, head string, in Inputs, collect rangeCollector, load revisionLoader, paths firstParentPaths, live liveEvaluator) (*historyOperation, error) {
 	commits, err := collect(ctx, base, head)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collect audit range: %w", err)
 	}
 	return newHistoryOperationWithRelevance(commits, in, load, paths, live), nil
 }
@@ -94,10 +94,14 @@ func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
 	findings = append(findings, stale...)
 	live, err := h.live(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("evaluate live cleanliness: %w", err)
 	}
 	findings = append(findings, live...)
-	return append(findings, h.transitionFindings(ctx)...), nil
+	transitions, err := h.transitionFindings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return append(findings, transitions...), nil
 }
 
 func (h *historyOperation) state(ctx context.Context, revision string) (*revisionState, error) {
@@ -123,10 +127,16 @@ func (h *historyOperation) stateForCommit(ctx context.Context, commit awfgit.Com
 	}
 	parent, parentErr := h.state(ctx, commit.Parents[0])
 	if parentErr != nil {
+		if contextTermination(parentErr) {
+			return nil, fmt.Errorf("derive first-parent state for %s: %w", commit.Hash, parentErr)
+		}
 		return h.state(ctx, commit.Revision)
 	}
 	docsDir, err := parent.committedDocsDir()
 	if err != nil {
+		if contextTermination(err) {
+			return nil, fmt.Errorf("derive first-parent configuration for %s: %w", commit.Hash, err)
+		}
 		return h.state(ctx, commit.Revision)
 	}
 	var paths []string
@@ -135,7 +145,13 @@ func (h *historyOperation) stateForCommit(ctx context.Context, commit awfgit.Com
 	} else {
 		paths = changedPaths(commit.Changes)
 	}
-	if err != nil || policyRelevant(paths, docsDir) {
+	if err != nil {
+		if contextTermination(err) {
+			return nil, fmt.Errorf("derive first-parent changed paths for %s: %w", commit.Hash, err)
+		}
+		return h.state(ctx, commit.Revision)
+	}
+	if policyRelevant(paths, docsDir) {
 		return h.state(ctx, commit.Revision)
 	}
 	// Alias the immutable parent result, including a previously cached error;
@@ -238,16 +254,22 @@ func revisionStateFromTree(root string, tree *snapshot.Tree) *revisionState {
 	return state
 }
 
-func (h *historyOperation) transitionFindings(ctx context.Context) []Finding {
+func (h *historyOperation) transitionFindings(ctx context.Context) ([]Finding, error) {
 	var out []Finding
 	for _, commit := range h.commits {
 		afterState, err := h.stateForCommit(ctx, commit)
 		if err != nil {
+			if contextTermination(err) {
+				return nil, fmt.Errorf("derive transition result %s: %w", commit.Hash, err)
+			}
 			out = append(out, transitionLoadWarning(commit, err))
 			continue
 		}
 		after, err := afterState.currentState()
 		if err != nil {
+			if contextTermination(err) {
+				return nil, fmt.Errorf("derive transition result current state %s: %w", commit.Hash, err)
+			}
 			out = append(out, transitionLoadWarning(commit, err))
 			continue
 		}
@@ -255,11 +277,17 @@ func (h *historyOperation) transitionFindings(ctx context.Context) []Finding {
 		if len(commit.Parents) > 0 {
 			beforeState, loadErr := h.state(ctx, commit.Parents[0])
 			if loadErr != nil {
+				if contextTermination(loadErr) {
+					return nil, fmt.Errorf("derive transition first parent %s: %w", commit.Hash, loadErr)
+				}
 				out = append(out, transitionLoadWarning(commit, loadErr))
 				continue
 			}
 			before, err = beforeState.currentState()
 			if err != nil {
+				if contextTermination(err) {
+					return nil, fmt.Errorf("derive transition first-parent current state %s: %w", commit.Hash, err)
+				}
 				out = append(out, transitionLoadWarning(commit, err))
 				continue
 			}
@@ -272,7 +300,11 @@ func (h *historyOperation) transitionFindings(ctx context.Context) []Finding {
 			out = append(out, finding(severity.Error, currentStateTransitionRule, commit, transition.Message))
 		}
 	}
-	return out
+	return out, nil
+}
+
+func contextTermination(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
 func transitionLoadWarning(commit awfgit.Commit, err error) Finding {

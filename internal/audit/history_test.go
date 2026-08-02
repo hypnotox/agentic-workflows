@@ -3,6 +3,7 @@ package audit
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -51,8 +52,8 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if findings := op.transitionFindings(ctx); len(findings) != 0 {
-		t.Fatalf("boundary transition findings = %#v", findings)
+	if findings, err := op.transitionFindings(ctx); err != nil || len(findings) != 0 {
+		t.Fatalf("boundary transition findings = %#v, %v", findings, err)
 	}
 	if got := strings.Join(requested, ","); got != "child-revision,outside-revision" {
 		t.Fatalf("boundary requests = %s, want direct child and first parent only", got)
@@ -103,7 +104,10 @@ func TestHistoryOperationRootTransitionUsesEmptyUniverse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := op.transitionFindings(testContext(t))
+	findings, err := op.transitionFindings(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if loads != 1 {
 		t.Fatalf("root revision loads = %d, want 1", loads)
 	}
@@ -113,6 +117,252 @@ func TestHistoryOperationRootTransitionUsesEmptyUniverse(t *testing.T) {
 	}
 	if !observed {
 		t.Fatalf("root transition did not compare against the empty universe: %#v", findings)
+	}
+}
+
+// invariant: tooling/audit-and-snapshots:audit-cancellation-propagates (TestAuditPropagatesHistoricalCancellation)
+func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
+	type runCase func(*testing.T, error) ([]Finding, []string, error)
+	cases := map[string]runCase{
+		"range collection": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			_, err := newHistoryOperation(testContext(t), "base", "head", Inputs{},
+				func(context.Context, string, string) ([]awfgit.Commit, error) {
+					events = append(events, "termination")
+					return nil, termination
+				},
+				func(context.Context, string) (*revisionState, error) {
+					events = append(events, "later revision")
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				}, nil,
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "later live")
+					return nil, nil
+				})
+			return nil, events, err
+		},
+		"transition result derivation": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			state := &revisionState{
+				lockReady: true,
+				loadUniverse: func() (currentstate.Universe, error) {
+					events = append(events, "termination")
+					return currentstate.Universe{}, termination
+				},
+			}
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "first", Revision: "first"}, {Hash: "later", Revision: "later"}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					if revision == "later" {
+						events = append(events, "later revision")
+					}
+					return state, nil
+				}, nil,
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "live before termination")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+		"first-parent derivation": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "child", Revision: "child", Parents: []string{"parent"}, Changes: []awfgit.FileChange{{Path: "code.go"}}}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					if revision == "parent" {
+						events = append(events, "termination")
+						return nil, termination
+					}
+					events = append(events, "later child revision")
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				}, func(context.Context, string) ([]string, error) { return nil, nil },
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "live before termination")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+		"first-parent configuration derivation": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			parent := &revisionState{
+				lockReady: true,
+				loadConfig: func() (*config.Config, error) {
+					events = append(events, "termination")
+					return nil, termination
+				},
+			}
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "child", Revision: "child", Parents: []string{"parent"}, Changes: []awfgit.FileChange{{Path: "code.go"}}}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					if revision == "parent" {
+						return parent, nil
+					}
+					events = append(events, "later child revision")
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				}, func(context.Context, string) ([]string, error) { return nil, nil },
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "live before termination")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+		"transition first-parent load": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "child", Revision: "child", Parents: []string{"parent"}}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					if revision == "parent" {
+						events = append(events, "termination")
+						return nil, termination
+					}
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				}, nil,
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "live before termination")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+		"transition first-parent current state": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			parent := &revisionState{
+				lockReady: true,
+				loadUniverse: func() (currentstate.Universe, error) {
+					events = append(events, "termination")
+					return currentstate.Universe{}, termination
+				},
+			}
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "child", Revision: "child", Parents: []string{"parent"}}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					if revision == "parent" {
+						return parent, nil
+					}
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				}, nil,
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "live before termination")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+		"merge changed paths": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			parent := fixedRevisionState(nil, false, currentstate.Universe{})
+			parent.configReady = true
+			parent.config = &config.Config{DocsDir: "docs"}
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "merge", Revision: "merge", Parents: []string{"parent", "incoming"}, IsMerge: true}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					if revision == "parent" {
+						return parent, nil
+					}
+					events = append(events, "later "+revision+" revision")
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				},
+				func(context.Context, string) ([]string, error) {
+					events = append(events, "termination")
+					return nil, termination
+				},
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "later live")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+		"state shared with stale-merge replay": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "merge", Revision: "shared", Parents: []string{"first", "incoming"}, IsMerge: true}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					if revision == "shared" {
+						events = append(events, "termination")
+						return nil, termination
+					}
+					events = append(events, "later "+revision+" revision")
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				}, nil,
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "later live")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			if _, cachedErr := op.state(testContext(t), "shared"); !errors.Is(cachedErr, termination) {
+				t.Fatalf("cached termination = %v", cachedErr)
+			}
+			return findings, events, err
+		},
+		"stale-merge-only evidence": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			result := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
+			incoming := &revisionState{
+				lockReady: true,
+				loadUniverse: func() (currentstate.Universe, error) {
+					events = append(events, "termination")
+					return currentstate.Universe{}, termination
+				},
+			}
+			op := newHistoryOperationWithRelevance(
+				[]awfgit.Commit{{Hash: "merge", Revision: "result", Parents: []string{"first", "incoming"}, IsMerge: true}}, Inputs{},
+				func(_ context.Context, revision string) (*revisionState, error) {
+					switch revision {
+					case "result":
+						return result, nil
+					case "first":
+						return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+					case "incoming":
+						return incoming, nil
+					default:
+						events = append(events, "later revision")
+						return nil, errors.New("unexpected revision")
+					}
+				}, nil,
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "later live")
+					return nil, nil
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+		"live cleanliness": func(t *testing.T, termination error) ([]Finding, []string, error) {
+			var events []string
+			op := newHistoryOperationWithRelevance(nil, Inputs{},
+				func(context.Context, string) (*revisionState, error) {
+					events = append(events, "later revision")
+					return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+				}, nil,
+				func(context.Context) ([]Finding, error) {
+					events = append(events, "termination")
+					return nil, termination
+				})
+			findings, err := op.run(testContext(t))
+			return findings, events, err
+		},
+	}
+
+	for _, termination := range []error{context.Canceled, context.DeadlineExceeded} {
+		termination := termination
+		for name, run := range cases {
+			t.Run(termination.Error()+"/"+name, func(t *testing.T) {
+				findings, events, err := run(t, termination)
+				if !errors.Is(err, termination) {
+					t.Fatalf("error = %v, want identity %v; findings=%#v events=%v", err, termination, findings, events)
+				}
+				if countRule(findings, currentStateTransitionRule, severity.Warn) != 0 {
+					t.Fatalf("termination became a transition warning: %#v", findings)
+				}
+				terminationAt := slices.Index(events, "termination")
+				if terminationAt < 0 || terminationAt != len(events)-1 {
+					t.Fatalf("work continued after termination: %v", events)
+				}
+			})
+		}
 	}
 }
 
@@ -288,9 +538,9 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := op.transitionFindings(ctx)
-			if len(findings) != 1 || findings[0].Severity != severity.Warn || !strings.Contains(findings[0].Detail, boom.Error()) {
-				t.Fatalf("transition findings = %#v", findings)
+			findings, err := op.transitionFindings(ctx)
+			if err != nil || len(findings) != 1 || findings[0].Severity != severity.Warn || !strings.Contains(findings[0].Detail, boom.Error()) {
+				t.Fatalf("transition findings = %#v, %v", findings, err)
 			}
 		})
 	}
