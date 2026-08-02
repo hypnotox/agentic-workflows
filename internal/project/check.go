@@ -48,10 +48,7 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 // prepared output plan.
 func (p *Project) advisoryNotesWithState(corpus adr.Corpus, plans []plan.Plan, op *OutputPlan) ([]string, error) {
 	files := op.writeFiles()
-	// Generated domain documents and the config reference are already write
-	// nodes in the operation plan, so the stub and marker scans consume that
-	// complete set without reconstructing either producer.
-	all := files
+	all := advisoryCompatibilityFiles(op)
 	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
 	notes = append(notes, markerNotes(all)...)
 	th, err := p.tagHealthNotes(corpus)
@@ -67,6 +64,26 @@ func (p *Project) advisoryNotesWithState(corpus adr.Corpus, plans []plan.Plan, o
 	}
 	notes = append(notes, gt...)
 	return notes, nil
+}
+
+// advisoryCompatibilityFiles preserves the established stub-note multiplicity
+// without reconstructing output producers. Before CheckReport shared one plan,
+// advisory preparation appended a second generated domain and config-reference
+// set to the plan's write files. Successful command output keeps that cardinality
+// by reusing those immutable plan nodes while every artifact is still produced
+// exactly once.
+func advisoryCompatibilityFiles(op *OutputPlan) []RenderedFile {
+	files := op.writeFiles()
+	all := slices.Clone(files)
+	for _, node := range op.Nodes {
+		if node.Reservation || node.file == nil {
+			continue
+		}
+		if slices.Contains(node.Declarers, "generated-domain") || slices.Contains(node.Declarers, "generated-config-reference") {
+			all = append(all, *node.file)
+		}
+	}
+	return all
 }
 
 // glossaryTersenessNotes returns advisory (non-failing) notes for each glossary

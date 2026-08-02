@@ -753,7 +753,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	root := scaffoldFiles(t,
 		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n",
 		map[string]string{
-			"parts/config-reference/intro.md": "Config intro.\n<!-- awf:section bogus -->\n",
+			"parts/config-reference/intro.md": "<!-- awf:stub -->\nConfig intro.\n<!-- awf:section bogus -->\n",
 		})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -769,11 +769,15 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	joined := strings.Join(reportValue.Notes, "\n")
 	for _, want := range []string{
 		"docs/domains/config.md has unauthored stub content",
-		"part .awf/parts/config-reference/intro.md contains a marker-shaped line",
+		"docs/config-reference.md has unauthored stub content: stub-marked parts: intro",
 	} {
-		if !strings.Contains(joined, want) {
-			t.Errorf("CheckReport notes omit planned write node %q:\n%s", want, joined)
+		if got := strings.Count(joined, want); got != 2 {
+			t.Errorf("CheckReport notes contain planned write node %q %d times, want compatibility multiplicity 2:\n%s", want, got, joined)
 		}
+	}
+	marker := "part .awf/parts/config-reference/intro.md contains a marker-shaped line"
+	if got := strings.Count(joined, marker); got != 1 {
+		t.Errorf("CheckReport marker note multiplicity = %d, want deduplicated 1:\n%s", got, joined)
 	}
 }
 
