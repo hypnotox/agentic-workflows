@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -38,6 +39,14 @@ func TestCheckStagedDriftErrorPaths(t *testing.T) {
 		return p
 	}
 
+	t.Run("malformed local sidecar", func(t *testing.T) {
+		p := fixture(t, "prefix: example\nintegrationBranch: main\nskills: [local]\nagents: []\n", map[string]string{
+			".awf/skills/local.yaml": "local: [bad\n",
+		})
+		if _, err := p.CheckStagedDrift(testContext(t)); err == nil {
+			t.Fatal("staged drift erased a local catalog synthesis error")
+		}
+	})
 	t.Run("unknown target", func(t *testing.T) {
 		p := fixture(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [unknown]\n", nil)
 		if _, err := p.CheckStagedDrift(testContext(t)); err == nil {
@@ -60,9 +69,10 @@ func TestCheckStagedDriftErrorPaths(t *testing.T) {
 	})
 }
 
-// invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestCheckStagedRenderedFilesKindsAndScope)
-func TestCheckStagedRenderedFilesKindsAndScope(t *testing.T) {
+// invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
+func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: ".awf/efforts/.gitignore", Mode: snapshot.Regular, Bytes: []byte("resident edit")},
 		{Path: "regen-stale", Mode: snapshot.Regular, Bytes: []byte("old")},
 		{Path: "regen-edit", Mode: snapshot.Regular, Bytes: []byte("old")},
 		{Path: "regen-clean", Mode: snapshot.Regular, Bytes: []byte("same")},
@@ -84,13 +94,14 @@ func TestCheckStagedRenderedFilesKindsAndScope(t *testing.T) {
 		"ordinary-missing":        {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
 	}}
 	rendered := map[string]RenderedFile{
-		"regen-stale":      {Path: "regen-stale", Content: "new", Policy: OutputPolicy{Regenerate: true}},
-		"regen-edit":       {Path: "regen-edit", Content: "new", TemplateID: "template", Policy: OutputPolicy{Regenerate: true}},
-		"regen-clean":      {Path: "regen-clean", Content: "same", Policy: OutputPolicy{Regenerate: true}},
-		"ordinary-stale":   {Path: "ordinary-stale", TemplateHash: "new-template", ConfigHash: "config"},
-		"ordinary-edit":    {Path: "ordinary-edit", TemplateHash: "template", ConfigHash: "config"},
-		"ordinary-clean":   {Path: "ordinary-clean", TemplateHash: "template", ConfigHash: "config"},
-		"ordinary-missing": {Path: "ordinary-missing", TemplateHash: "template", ConfigHash: "config"},
+		".awf/efforts/.gitignore": {Path: ".awf/efforts/.gitignore", TemplateHash: "new-template", ConfigHash: "config"},
+		"regen-stale":             {Path: "regen-stale", Content: "new", Policy: OutputPolicy{Regenerate: true}},
+		"regen-edit":              {Path: "regen-edit", Content: "new", TemplateID: "template", Policy: OutputPolicy{Regenerate: true}},
+		"regen-clean":             {Path: "regen-clean", Content: "same", Policy: OutputPolicy{Regenerate: true}},
+		"ordinary-stale":          {Path: "ordinary-stale", TemplateHash: "new-template", ConfigHash: "config"},
+		"ordinary-edit":           {Path: "ordinary-edit", TemplateHash: "template", ConfigHash: "config"},
+		"ordinary-clean":          {Path: "ordinary-clean", TemplateHash: "template", ConfigHash: "config"},
+		"ordinary-missing":        {Path: "ordinary-missing", TemplateHash: "template", ConfigHash: "config"},
 	}
 
 	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, false)
@@ -115,5 +126,40 @@ func TestCheckStagedRenderedFilesKindsAndScope(t *testing.T) {
 	faultRendered := map[string]RenderedFile{"fault": {Path: "fault"}}
 	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, filesystemProjectReader{root: root}, true); err == nil {
 		t.Fatal("staged comparison erased an output read fault")
+	}
+
+	// A dirty working output must not contaminate the staged comparison.
+	projectRoot := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	repo := gitfixture.InitRepoAt(t, projectRoot)
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "config", nil)
+	p, err := Open(testContext(t), projectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "rendered baseline", nil)
+	lockOnDisk, err := manifest.Load(filepath.Join(projectRoot, ".awf", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output string
+	for path := range lockOnDisk.Files {
+		if !resident.IsResidentPath(path) {
+			output = path
+			break
+		}
+	}
+	if output == "" {
+		t.Fatal("fixture has no tracked rendered output")
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, filepath.FromSlash(output)), []byte("dirty working output\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if drift, err := CheckStagedDriftRoot(testContext(t), projectRoot); err != nil || len(drift) != 0 {
+		t.Fatalf("working output contaminated staged drift: drift=%v err=%v", drift, err)
 	}
 }

@@ -36,7 +36,7 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 		standard: p.standard, read: read, nested: p.nested, repo: p.repo,
 	}
 	universe.Cat, err = universe.effectiveCatalog()
-	if err != nil { // coverage-ignore: indexCurrentState already validated every catalog-synthesis sidecar and artifact name from this immutable snapshot
+	if err != nil {
 		return nil, err
 	}
 	if err := universe.validateAgainstCatalog(); err != nil {
