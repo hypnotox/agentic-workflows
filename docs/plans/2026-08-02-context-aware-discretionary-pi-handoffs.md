@@ -2,13 +2,13 @@
 date: 2026-08-02
 adrs:
   - context-aware-discretionary-pi-handoffs
-status: Proposed
+status: Implemented
 ---
 # Plan: Context-Aware Discretionary Pi Handoffs
 
 ## Goal
 
-Implement [ADR-context-aware-discretionary-pi-handoffs](../decisions/context-aware-discretionary-pi-handoffs.md): keep durable checkpoints mandatory, let Pi choose session replacement only at safe resumable boundaries, reduce `handoff_session` to bounded prose, and inject current model-window and active-branch compaction facts before every Pi model request.
+Implement [ADR-0209](../decisions/0209-context-aware-discretionary-pi-handoffs.md): keep durable checkpoints mandatory, let Pi choose session replacement only at safe resumable boundaries, reduce `handoff_session` to bounded prose, and inject current model-window and active-branch compaction facts before every Pi model request.
 
 This plan does not add a pressure threshold, trigger compaction or handoff automatically, persist context-usage telemetry, alter non-Pi continuation semantics, or move effort-memory policy back into the handoff runtime.
 
@@ -241,4 +241,5 @@ After Phase 5 commits, run `./awf effort worktree remove context-aware-handoffs`
 - The context-usage formatter intentionally remains separate from the subagent display formatter: they implement different presentation contracts and sharing would change the approved one-decimal `k`/`m` output.
 - `ctx.getContextUsage()` exposes the active model window, not Pi's configured auto-compaction threshold. Documentation and messages must continue to call it the model window and must not infer a threshold.
 - Historical ADRs remain frozen. Current-state claims, generated docs, glossary, pitfalls, and changelog correct the retired automatic-handoff and memory-validation contracts forward.
-- The plan remains Proposed while the ADR remains Implementing through review settlement and the remaining implementation phases. User authorization preceded Phase 1, and commit `49c596f8` performed the ADR transition.
+- The plan remained Proposed while the ADR remained Implementing through review settlement and the remaining implementation phases. User authorization preceded Phase 1, and commit `49c596f8` performed the ADR transition.
+- Actual implementation deviations preserved the approved design: Phase 1 review moved the workflow operation beside its behavior; review settlements added focused proof corrections and baseline-preservation commits; and the required main merge adapted Remote Pi's continuation disposition plus the two-layer glossary model to the prose-only handoff contract before ADR numbering.

@@ -43,8 +43,8 @@ Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, effort-independent handoff, and before-agent-start routing-card delivery into the model request without a persisted session message, and verifies telemetry, router, and selection surfaces are absent.
+Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, prose-only effort-independent handoff, before-agent-start routing-card delivery, and transient context-usage delivery into actual model requests with refresh after an active-branch compaction. Routing and context facts do not persist as session messages, and telemetry, workflow-router, selection, context-usage UI, and automatic pressure-action surfaces remain absent.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209
 Backing: unbacked
-Verify: Run `./x pi-test run` to exercise native Pi skill discovery, effort-independent handoff, and routing-card delivery into a real pinned Pi model request without session-message persistence, with no telemetry, router, or selection.
+Verify: Run `./x pi-test run` to exercise native Pi skill discovery, prose-only effort-independent handoff, routing-card delivery, and per-request context-usage refresh after compaction in the pinned Pi runtime without persisted routing or context messages, telemetry, workflow routing, selection, context-usage UI, or automatic pressure actions.

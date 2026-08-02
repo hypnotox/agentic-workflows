@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: context-aware-discretionary-pi-handoffs
-status: Implementing
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-0209: Context-aware discretionary Pi handoffs
@@ -212,3 +212,5 @@ when automatic kickoff submission fails.
 - 2026-08-02: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-workflow`
 - 2026-08-02: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - 2026-08-02: Applied; operations: add `rendering/pi-runtime:pi-context-usage-injection`, update `rendering/pi-runtime:pi-extension-target-render`, update `rendering/pi-runtime:pi-minimum-runtime`
+- 2026-08-02: Applied; operations: update `rendering/pi-runtime:pi-real-runtime-smoke`
+- 2026-08-02: Implemented; content-sha256: 03f0a8150b3a0467dcb0dd01ea809c91ef80a06d95a534b58b88a7428224a254
