@@ -24,6 +24,7 @@ Dependencies point from `cmd/awf` to `internal/execution` and existing domain pa
 **Execution mode: inline.**
 
 ### Task 1.1: Pin the single-plan project-check boundary
+Latitude: exact
 Paths: ["internal/project/check_test.go", "internal/project/stateownership_test.go"]
 
 Add a focused source-structure regression in `internal/project/check_test.go` that locates `CheckReport`, `checkWithState`, and `advisoryNotesWithState` through the Go AST rather than unconstrained text counts. Require `CheckReport` to construct exactly one output plan, require both private consumers to receive that plan rather than call `outputPlan`, and require the advisory path not to call `generateDomainDocs` or `generateConfigReference`. Exercise an ordinary check fixture whose notes depend on generated domain and config-reference write nodes so the structural assertion is paired with behavior, not only syntax.
@@ -33,6 +34,7 @@ Keep `TestProjectDerivedStateOwnership` in `internal/project/stateownership_test
 Run `go test ./internal/project -run 'TestCheckReport.*OutputPlan|TestProjectDerivedStateOwnership' -count=1`. The new single-plan assertion must fail before Task 1.2 and the existing state-ownership test must remain green.
 
 ### Task 1.2: Thread one OutputPlan through drift and advisories
+Latitude: exact
 Paths: ["internal/project/check.go"]
 
 In `Project.CheckReport`, preserve command-wiring validation, one `deriveOperationState`, one plan-directory parse, and diagnostic-to-drift mapping. After operation state and plans are available, call `p.outputPlan(ctx, corpus, topics, eff)` once and pass the returned `*OutputPlan` to both `checkWithState` and `advisoryNotesWithState`.
@@ -42,13 +44,14 @@ Change both private helpers to accept the prepared plan. `checkWithState` must c
 `Project.AdvisoryNotes` remains a standalone compatibility operation: it derives state and parses plans for its own invocation, constructs one output plan, and passes it to the advisory helper. `Project.Check` remains the drift projection of `CheckReport`. Do not cache the plan on `Project`, add a global seam, change output ordering, or change drift and advisory contents.
 
 ### Task 1.3: Verify the preparatory transaction
+Latitude: exact
 Paths: ["internal/project/check.go", "internal/project/check_test.go", "internal/project/stateownership_test.go"]
 
 Run `gofmt -w internal/project/check.go internal/project/check_test.go internal/project/stateownership_test.go`, `go test ./internal/project -count=1`, `go test ./cmd/awf -count=1`, `git diff --check`, `./x render`, `./x check`, and `./x gate`. Every command must succeed; render must introduce no unexplained generated change; the ADR and plan must remain Proposed; and `rg -n 'check-report-single-plan' .awf/topics internal/project` must return no newly activated claim or proof marker.
 
 ### Phase close
 
-Stage only the complete preparatory transaction after `./awf check staged` and `./x gate` pass, then create:
+Stage the complete preparatory transaction, run `./awf check staged` and `./x gate`, and create the commit only after both checks pass:
 
 ```commit
 refactor(rendering): construct one check output plan
@@ -77,15 +80,19 @@ Cover cancellation before the first action and between actions as execution-leve
 The test design must not require a package global, runtime registry, reflection, `any`, a consumer-value bag, panic recovery, parallelism, retry, rollback, or a test-only production option.
 
 ### Task 2.2: Implement the standard-library-only execution package
+Latitude: exact
 Paths: ["internal/execution/execution.go", "internal/execution/execution_test.go"]
 
-Create `internal/execution` with one package comment stating that it selects closed operation steps, prepares their requirement closure once, and executes prepared actions in deterministic order. Give step and requirement identities distinct exported types. Expose closed caller-supplied requirement definitions with dependency identities and operation-local preparation functions, step definitions with post-foundation conditional requirement resolution, foundation selection, an operation-local binder, explicit stop and continue policies, immutable prepared execution, actions, and structured attempted-step outcomes. Keep the exported surface to declarations used by `cmd/awf` in this phase and document every export.
+Create `internal/execution` with one package comment stating that it selects closed operation steps, prepares their requirement closure once, and executes prepared actions in deterministic order. Implement the concrete exported boundary as `RequirementID string`, `StepID string`, `Requirement{ID RequirementID, Dependencies []RequirementID, Prepare func(context.Context) error}`, `Step{ID StepID, Requirements func(context.Context) ([]RequirementID, error)}`, `Action func(context.Context) error`, `BoundAction{Step StepID, Run Action}`, `Binder func([]StepID) ([]BoundAction, error)`, and `System{Requirements []Requirement, Steps []Step, Foundations []RequirementID, Bind Binder}`. Add `Prepare(context.Context, System, []StepID) (*Prepared, error)`, the `FailurePolicy` constants `StopOnFailure` and `ContinueOnFailure`, `Outcome{Step StepID, Err error}`, and `(*Prepared).Run(context.Context, FailurePolicy) ([]Outcome, error)`. Document every export and map each one to the Phase 2 command consumer; add no constructor, option, or declaration unused by `cmd/awf`.
 
-Validate the complete static graph before any preparation. Use declaration order for selection, topological ties, preparation, action execution, and outcomes; maps may index identities but must never determine observable order. Prepare the foundation dependency closure, resolve selected step requirements, validate every resolved identity, compute the union and dependency closure, and prepare every unique requirement at most once. Invoke the binder only after the full closure succeeds and require its action identities to match selected steps exactly. `Prepared.Run` must accept the explicit failure policy, return outcomes for attempted actions only, and return cancellation separately as specified in Task 2.1.
+Use a package-private typed `definitionError` with stable kind, step, requirement, and referenced-identity fields for graph, selection, resolved-identity, and binding-shape failures so package tests assert structure without exporting a speculative caller protocol. Wrap consumer preparation, resolution, binding, and action errors with stage and identity context using `%w`; callers that own those errors must retain `errors.Is` and `errors.As`. Reject an unsupported `FailurePolicy` before running an action.
+
+Validate the complete static graph before any preparation. Use declaration order for selection, topological ties, preparation, action execution, and outcomes; maps may index identities but must never determine observable order. Prepare the foundation dependency closure, resolve selected step requirements, validate every resolved identity, compute the union and dependency closure, and prepare every unique requirement at most once. Invoke `System.Bind` only after the full closure succeeds and require its ordered `[]BoundAction` identities to match selected steps exactly. `Prepared.Run` must return outcomes for attempted actions only and return cancellation separately as specified in Task 2.1.
 
 The package must import only the Go standard library. It must not know about config, projects, Git, snapshots, scanners, writers, command output, or exit codes, and must not expose speculative step dependencies, registration, adapters, hooks, concurrency, retries, or rollback. Run `go test ./internal/execution -count=1`; all Task 2.1 cases must pass.
 
 ### Task 2.3: Specify one command-side capability plan
+Latitude: exact
 Paths: ["cmd/awf/checkrepo_test.go", "cmd/awf/checkgroup_test.go", "cmd/awf/prosegate_test.go", "cmd/awf/memorygate_test.go", "cmd/awf/run_test.go"]
 
 Create `cmd/awf/checkrepo_test.go` around an operation-local dependency set whose functions can count config loads, project opens, report derivations, current-state derivations, and index captures without mutating package globals. Test direct selection of drift, state, prose, and memory and aggregate selection of all four in drift-state-prose-memory declaration order. Prove the aggregate loads working config once, opens at most one Project from that exact prepared config, prepares one complete `Project.CheckReport`, prepares one `CurrentStateReport`, and captures the stage-0 index once when both scanners are enabled. Prove scanner-only selections never open a Project, disabled scanners request no index and still print their established knob note, and a direct enabled scanner captures only the index capability it needs.
@@ -97,17 +104,23 @@ Retain and extend the public dispatch coverage in `checkgroup_test.go`, `prosega
 Run `go test ./cmd/awf -run 'TestRepoCheckCapabilityPlan|TestCheckDisabledChildDisclosure|TestProseGate|TestMemoryGate|TestProjectOpenCallSites' -count=1`. The new capability tests must fail before Task 2.4 while the retained compatibility tests continue to describe the required endpoint.
 
 ### Task 2.4: Route aggregate and direct checks through one prepared operation
+Latitude: exact
 Paths: ["cmd/awf/checkrepo.go", "cmd/awf/prosegate.go", "cmd/awf/memorygate.go", "cmd/awf/gate.go", "cmd/awf/sync.go"]
 
-Define the closed drift, state, prose, and memory step and requirement identities in the command package, plus an operation-local preparation builder holding typed fields for the loaded `*config.Config`, opened `*project.Project`, complete `project.CheckReport`, current-state report, and `*snapshot.Tree`. Keep working config and scanner enablement in the foundation. Resolve Project plus CheckReport only for drift, Project plus current-state report only for state, and the index only for an enabled prose or memory step. A disabled scanner resolves no index requirement and binds its established disabled-note action.
+Define command-local `execution.StepID` constants `repoStepDrift`, `repoStepState`, `repoStepProse`, and `repoStepMemory` and `execution.RequirementID` constants `repoRequirementConfig`, `repoRequirementProject`, `repoRequirementCheckReport`, `repoRequirementCurrentState`, and `repoRequirementIndex`. Add `repoCheckInputs` with typed config, Project, CheckReport, CurrentStateReport, and index fields. Add `repoCheckDependencies` with exact function fields `loadConfig(string) (*config.Config, error)`, `openProject(context.Context, string, *config.Config) (*project.Project, error)`, `checkReport(context.Context, *project.Project) (project.CheckReport, error)`, `currentState(context.Context, *project.Project) (project.CurrentStateReport, error)`, and `indexTree(context.Context, string) (*snapshot.Tree, error)`. Production wrappers construct that value locally; tests pass a value directly, and no package variable stores it.
+
+Implement `repoCheckSystem(string, io.Writer, bool, *repoCheckInputs, repoCheckDependencies) execution.System` to declare requirements, conditional resolvers, and the binder; the boolean is the aggregate presentation mode. Implement `runRepoCheckSelection(context.Context, string, io.Writer, []execution.StepID, execution.FailurePolicy, bool, repoCheckDependencies) error` as the one prepare-run-outcome adapter. `runCheckRepo` and the four direct child functions are thin production wrappers that supply selected IDs, policy, aggregate mode, and freshly composed dependencies. Keep working config and scanner enablement in the foundation. Resolve Project plus CheckReport only for drift, Project plus current-state report only for state, and the index only for an enabled prose or memory step. A disabled scanner resolves no index requirement and binds its established disabled-note action.
 
 Compose the project requirement with a `project.Loader` whose invocation-local `LoadConfigTree` returns the already prepared config only for `config.RootDir(root)`. Preserve `Loader.Open` as the owner of config validation, target and effective-catalog derivation, catalog conformance, resident-root resolution, and Project construction. Compose the same Git handle and standard catalog dependencies used by ordinary project opening, without re-reading config bytes, caching on `Project`, or creating a second project-opening implementation. Keep `stagedTree` as the one index snapshot mechanism; the shared index requirement calls it once and the existing staged-gate consumers remain valid.
 
 Refactor prose and memory code into typed actions that consume prepared config and, when enabled, the prepared index tree. Their direct entry points must select the same step definitions rather than load config or Git independently. Preserve exemption parsing, staged-file filtering, binary and symlink behavior, output text, and error prefixes.
 
+Preserve existing model-owner presentation boundaries while changing only acquisition and ordering: prose findings continue through `prosegate.Format`, memory findings through `memorycite.Format`, and current-state lines through `project.CurrentStateReport.Notes` and `Findings`. The command retains renderer selection, established drift-line layout, clean and disabled lines, writer routing, ordering, and exit mapping; neither `internal/execution` nor a new command-side result model renders domain output.
+
 Make `runCheckDrift`, `runCheckState`, `runProseGate`, and `runMemoryGate` select one step with stop-on-failure. Make `runCheckRepo` select all four with continue-on-failure. Bind aggregate drift output from the complete `CheckReport`: emit its advisory notes before drift output, while the direct drift action ignores notes. Keep the aggregate version-ahead note in its established leading position and retain first-step-error exit mapping. Preparation and binding errors return before any action or advisory output; no shared package code writes output or chooses an exit result.
 
 ### Task 2.5: Close command and structural compatibility coverage
+Latitude: exact
 Paths: ["cmd/awf/checkrepo_test.go", "cmd/awf/checkgroup_test.go", "cmd/awf/check_test.go", "cmd/awf/prosegate_test.go", "cmd/awf/memorygate_test.go", "cmd/awf/run_test.go", "internal/project/stateownership_test.go"]
 
 Make all Task 2.3 tests pass and update existing exact structural expectations rather than weakening them. `TestProjectDerivedStateOwnership` must continue to show that project operation state is derived by its owning entry and threaded downward. The `cmd/awf/run_test.go` AST census must establish the new single composition path rather than deleting the baseline. No test may swap a package-global function or rely on execution order between tests.
@@ -163,9 +176,10 @@ Origin: ADR-capability-planned-execution-for-multi-step-systems
 Backing: test
 ```
 
-Transition the ADR from Proposed to Implementing in this same transaction. Compute its canonical content stamp after every permitted body edit is complete, change frontmatter to `status: Implementing`, append the stamped `Implementing` history event, then append exactly one Applied event naming the first four declared operations in declaration order. Do not apply or mention the fifth operation in that event. Stage the ADR lifecycle edit, four claim mutations, their four proof markers, production behavior, and domain ownership together.
+Transition the ADR from Proposed to Implementing in this same transaction. Compute its canonical content stamp after every permitted body edit is complete, change frontmatter to `status: Implementing`, append the stamped `Implementing` history event, then append exactly one Applied event naming the first four declared operations in declaration order. Do not apply or mention the fifth operation in that event. The Phase close must stage the ADR lifecycle edit, four claim mutations, their four proof markers, production behavior, and domain ownership as one pair-atomic transaction.
 
 ### Task 2.7: Update authored architecture, roadmap, and release notes
+Latitude: exact
 Paths: [".awf/docs/parts/architecture/components.md", ".awf/docs/parts/architecture/data-flow.md", ".awf/docs/parts/roadmap/ideas.md", "changelog/CHANGELOG.md"]
 
 Add `internal/execution` to the architecture component list with its closed selection, preparation, binding, and outcome ownership and standard-library-only dependency boundary. Update the project and command component text to state that `Project.CheckReport` constructs one operation-owned output plan and that `cmd/awf` composes typed repository-check capabilities through `internal/execution`. Extend the data flow with config foundation, conditional Project and index preparation, typed action binding, and stable direct or aggregate execution while naming the three distinct source universes.
@@ -173,18 +187,23 @@ Add `internal/execution` to the architecture component list with its closed sele
 Rewrite the roadmap's explicit snapshot-capability check item to remove the now-implemented orchestration work. Retain only the separate future question about whether staged drift can acquire semantics for directory entries, untracked files, config-tree hygiene, and dead-reference probing; do not imply that this phase broadens staged drift. Add an Unreleased changelog entry for capability-planned repository checks and the successful-output compatibility plus readiness-before-output failure boundary.
 
 ### Task 2.8: Render and verify the activation transaction
-Paths: ["AGENTS.md", ".awf/awf.lock", "docs/architecture.md", "docs/roadmap.md", "docs/domains/code-design.md", "docs/topics/code-design/execution-planning.md", "docs/topics/tooling/cli.md", "docs/decisions/INDEX.md"]
+Kind: batch
+Latitude: exact
+Paths: [".awf/awf.lock", "docs/architecture.md", "docs/roadmap.md", "docs/domains/code-design.md", "docs/topics/code-design/execution-planning.md", "docs/topics/tooling/cli.md", "docs/decisions/INDEX.md"]
+Representative: `.awf/docs/parts/architecture/components.md` renders the updated `internal/execution` ownership into `docs/architecture.md`, and the lifecycle edit renders the ADR's Implementing entry into `docs/decisions/INDEX.md`.
+Edge: The domain path sidecar and first claims render `docs/domains/code-design.md` and the two named topic documents; `.awf/awf.lock` records their generated bytes, while no unrelated target or example output changes.
+Post-check: After `./x render`, `git status --short` contains only the phase's explicitly named authored, production, test, ADR, changelog, plan, and generated paths; `./x check` finishes clean; any additional generated path is authority drift to resolve before Phase close, not an open-ended staging instruction.
 
 Run `gofmt -w internal/execution/*.go internal/project/check.go internal/project/check_test.go internal/project/stateownership_test.go cmd/awf/checkrepo.go cmd/awf/checkrepo_test.go cmd/awf/checkgroup_test.go cmd/awf/check_test.go cmd/awf/prosegate.go cmd/awf/prosegate_test.go cmd/awf/memorygate.go cmd/awf/memorygate_test.go cmd/awf/gate.go cmd/awf/run_test.go cmd/awf/sync.go`, then `go test ./internal/execution ./internal/project ./cmd/awf -count=1`, `./x render`, `./x check`, `git diff --check`, and `./x gate`. Every command must succeed.
 
-Inspect `git status --short` and stage every generated file selected by `./x render`, never hand-editing a generated output. Require `./awf check staged` to report the four Applied operations with matching claim and proof mutations, the fifth operation Remaining, the code-design production path covered by its scoped topic, and no unbacked marker. Require the ADR to be Implementing, the plan to remain Proposed, and `rg -n 'check-report-single-plan' .awf/topics internal/project` to show no activated fifth claim or proof marker.
+Inspect `git status --short` against the exact batch closure and never hand-edit a generated output. Before staging, require the ADR to be Implementing, the plan to remain Proposed, and `rg -n 'check-report-single-plan' .awf/topics internal/project` to show no activated fifth claim or proof marker. Phase close owns the only staging and staged verdict for this transaction.
 
 ### Phase close
 
-Stage the complete implementation, first-application, authored documentation, release-note, and generated-output transaction. After `./awf check staged` and `./x gate` pass, create:
+Stage the complete implementation, first-application, authored documentation, release-note, and exact generated-output transaction. Run `./awf check staged` and require it to report the four Applied operations with matching claim and proof mutations, the fifth operation Remaining, the code-design production path covered by its scoped topic, and no unbacked marker. Run `./x gate`, and create the commit only after both checks pass:
 
 ```commit
-refactor(tooling): plan repository check capabilities
+refactor(code-design): plan repository check capabilities
 ```
 
 ## Definition of done
