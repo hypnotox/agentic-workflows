@@ -113,9 +113,9 @@ commit `fb1f392d`, so the claim has contradicted its proof since migration.
 7. A `Paths:` field may hold a pathspec or glob in place of an enumeration. `Post-check:`
    names the deterministic post-check the batch convention already requires, and this
    decision extends its trigger: it is carried by a batch task, and by any task whose
-   `Paths:` field holds a pathspec. One field, one home, two triggers. A pathspec without a
-   post-check asserts breadth without proving it; with one it is stronger than an
-   enumeration, because an enumeration cannot detect its own staleness.
+   `Paths:` field holds a pathspec or glob. One field, one home, two triggers. A pathspec or
+   glob without a post-check asserts breadth without proving it; with one it is stronger
+   than an enumeration, because an enumeration cannot detect its own staleness.
 
 8. The field in item 7 is named `Post-check:`. It is not named `Verify:`, which already
    names the manual confirmation line a `Backing: unbacked` invariant claim carries, and
@@ -158,7 +158,7 @@ The honest net on ceremony: one whole-plan section is retired and five per-task 
 added, of which a typical implementation task carries zero or one. `Latitude:` is written
 only to claim the exception, `Kind:` only for a spike or a batch, `Question:` only on a
 spike, `Paths:` wherever the affected set is ambiguous, which is always true of a batch
-task, and `Post-check:` on a batch task or any task whose `Paths:` holds a pathspec. A
+task, and `Post-check:` on a batch task or any task whose `Paths:` holds a pathspec or glob. A
 batch task already owed both declarations under different names. The argument for accepting this is that
 marked-exception fields on a minority of tasks cost less than a hand-maintained section on
 every plan, and that two of the five fields are renames of existing obligations rather than
