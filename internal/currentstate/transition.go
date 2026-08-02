@@ -367,7 +367,7 @@ func historyTransitionValid(before, after adr.ADR, mode TransitionMode) bool {
 func foldChain(chain []pairOp) (pairOp, string) {
 	var updaters []string
 	var removeADR, addADR string
-	hasAdd, hasRemove, correctiveAddOnly := false, false, false
+	hasAdd, hasFreshAdd, hasRemove := false, false, false
 	for i, step := range chain {
 		switch step.verb {
 		case adr.OpAdd:
@@ -375,7 +375,7 @@ func foldChain(chain []pairOp) (pairOp, string) {
 				if i != 0 && !step.corrective {
 					return pairOp{}, "an add must be the first operation"
 				}
-				hasAdd, addADR, correctiveAddOnly = true, step.adr, step.corrective
+				hasAdd, hasFreshAdd, addADR = true, !step.corrective, step.adr
 				continue
 			}
 			if !step.corrective || step.adr != addADR {
@@ -405,13 +405,17 @@ func foldChain(chain []pairOp) (pairOp, string) {
 	}
 	last := chain[len(chain)-1]
 	switch {
-	case hasAdd && hasRemove:
+	case hasFreshAdd && hasRemove:
 		return pairOp{verb: opNetNoop, adr: removeADR}, ""
-	case hasAdd:
-		return pairOp{verb: adr.OpAdd, adr: addADR, corrective: correctiveAddOnly}, ""
 	case hasRemove:
 		return pairOp{verb: adr.OpRemove, adr: removeADR}, ""
-	default:
+	case hasFreshAdd:
+		return pairOp{verb: adr.OpAdd, adr: addADR}, ""
+	case len(updaters) != 0:
+		return pairOp{verb: adr.OpUpdate, adr: last.adr, updaters: updaters}, ""
+	case hasAdd:
+		return pairOp{verb: adr.OpAdd, adr: addADR, corrective: true}, ""
+	default: // coverage-ignore: every parsed nonempty chain contains an add, remove, or update
 		return pairOp{verb: adr.OpUpdate, adr: last.adr, updaters: updaters}, ""
 	}
 }

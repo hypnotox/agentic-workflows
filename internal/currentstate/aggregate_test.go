@@ -220,6 +220,59 @@ func TestAggregateCorrectiveReapplication(t *testing.T) {
 			t.Fatalf("aggregate corrective adds rejected:\n%s", messages(f))
 		}
 	})
+
+	t.Run("correction-only repeated adds require a material endpoint", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		originBefore := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add))
+		originAfter := originBefore
+		originAfter.History = append(append([]adr.HistoryEvent(nil), originBefore.History...), v2reapplied(add), v2reapplied(add))
+		beforeClaim := prosed(claim("d/t:new", "0141"), "original")
+		afterClaim := prosed(claim("d/t:new", "0141"), "corrected twice")
+		if f := currentstate.CheckPair(
+			uni([]adr.ADR{originBefore}, beforeClaim),
+			uni([]adr.ADR{originAfter}, afterClaim),
+			currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("correction-only repeated adds rejected:\n%s", messages(f))
+		}
+	})
+
+	t.Run("correction-only add composes with a later update", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		update := op(adr.OpUpdate, "d/t:new")
+		originBefore := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add))
+		originAfter := originBefore
+		originAfter.History = append(append([]adr.HistoryEvent(nil), originBefore.History...), v2reapplied(add))
+		updater := v2rec("0142", "Implemented", []adr.Operation{update},
+			v2status("Proposed"), v2status("Implemented"))
+		updater.History = []adr.HistoryEvent{v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented")}
+		beforeClaim := prosed(claim("d/t:new", "0141"), "original")
+		afterClaim := prosed(claim("d/t:new", "0141", "0142"), "corrected then revised")
+		if f := currentstate.CheckPair(
+			uni([]adr.ADR{originBefore}, beforeClaim),
+			uni([]adr.ADR{originAfter, updater}, afterClaim),
+			currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("correction-only add plus update rejected:\n%s", messages(f))
+		}
+	})
+
+	t.Run("correction-only add composes with a later remove", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		remove := op(adr.OpRemove, "d/t:new")
+		originBefore := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add))
+		originAfter := originBefore
+		originAfter.History = append(append([]adr.HistoryEvent(nil), originBefore.History...), v2reapplied(add))
+		remover := v2rec("0142", "Implemented", []adr.Operation{remove},
+			v2status("Proposed"), v2status("Implementing"), v2batch(remove), v2status("Implemented"))
+		if f := currentstate.CheckPair(
+			uni([]adr.ADR{originBefore}, prosed(claim("d/t:new", "0141"), "original")),
+			uni([]adr.ADR{originAfter, remover}),
+			currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("correction-only add plus remove rejected:\n%s", messages(f))
+		}
+	})
 }
 
 // TestMergeAggregateAcceptsMultiStepStatusHistory covers the third relaxed rule.

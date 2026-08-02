@@ -346,5 +346,7 @@ After the commit, require the effort worktree and branch to be absent through th
 ## Notes
 
 - Phase 2 preserves ADR-0206 in the `adr-status-enum-and-matrix` Revised-by endpoint. The reviewed endpoint omitted that already-applied provenance entry; repository authority and the user-approved execution correction require retaining it before appending ADR-0210.
+- Phase 2 needed no byte change in `internal/currentstate/check.go`: that static authority path deliberately projects only the first Applied occurrence through `OperationProgress`, while corrective event kind and occurrence identity belong to the pair-transition boundary in `transition.go`. Counting Reapplied there would violate the progress-once contract.
+- Phase 2 needed no byte change in `.awf/parts/adr-readme/index.md` or `.awf/parts/adr-template/frontmatter.md`. Those overrides own only INDEX guidance and scaffold frontmatter, neither of which carries operation-route prose; the applicable lifecycle and template-body sources changed and rendered instead. Adding Reapplied prose to either override would pollute an unrelated section.
 
 The gamma activation is intentionally one large transaction: its eight operations interlock parser admission, scaffold output, projection reachability, CLI documentation, and current-state truth, so an apparently smaller split would cross a commit with either dead code, an advertised unusable format, or an inaccurate claim.

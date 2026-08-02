@@ -203,6 +203,7 @@ func TestCheckPairAmendedContent(t *testing.T) {
 	})
 }
 
+// invariant: adr-system/adr-lifecycle:corrective-reapplication (TestAuthoredCorrectiveReapplication)
 func TestAuthoredCorrectiveReapplication(t *testing.T) {
 	pending := op(adr.OpAdd, "d/t:pending")
 

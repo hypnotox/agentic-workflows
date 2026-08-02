@@ -599,6 +599,7 @@ func TestApplicationProjectionContracts(t *testing.T) {
 	}
 }
 
+// invariant: adr-system/adr-lifecycle:corrective-reapplication (TestOperationProgressReapplied)
 func TestOperationProgressReapplied(t *testing.T) {
 	add := adr.Operation{Verb: adr.OpAdd, ID: "alpha/state:one", Slug: "one"}
 	update := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/state:two", Slug: "two"}
