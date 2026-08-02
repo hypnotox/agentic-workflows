@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -120,6 +122,10 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		{Name: "bad", Capabilities: []Capability{"unknown"}},
 		{Name: "bad", AgentDialect: "unknown"},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "../bad", TemplateID: "x"}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{SkillName: "x/y", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{SkillName: "../escape", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{SkillName: "/absolute", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", SkillName: "ambiguous", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: "unknown"}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: "unexpected", Role: ArtifactTemplate}}}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate}}},
@@ -223,6 +229,9 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		t.Error("custom descriptor capabilities were not projected")
 	}
 	for _, output := range piTarget.Outputs {
+		if output.RequiresSkill != "" {
+			continue
+		}
 		node, ok := byPath[output.Path]
 		if !ok || node.Recipe.TemplateID != output.TemplateID || node.Recipe.Encoder != output.Encoder {
 			t.Errorf("Pi target output %s changed: %#v", output.Path, node)
@@ -389,4 +398,26 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 		}
 	}
 	t.Fatal("literal topic output was absent from the plan")
+}
+
+func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
+	bad := piTarget
+	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
+	p := &Project{Cfg: &config.Config{Prefix: "example", Skills: []string{"effort-workflow"}}, Cat: catalog.Standard, Targets: []Target{bad}}
+	_, err := p.targetOutputDeclarations(nil)
+	t.Logf("target output declaration error = %v", err)
+	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
+		t.Fatalf("unreadable target output template error = %v", err)
+	}
+}
+
+func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
+	bad := piTarget
+	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs[0].RequiresSkill = "missing"
+	p := &Project{Cfg: &config.Config{Prefix: "example"}, Cat: catalog.Standard, Targets: []Target{bad}}
+	if _, err := p.targetOutputDeclarations(nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+		t.Fatalf("unknown target output requirement error = %v", err)
+	}
 }

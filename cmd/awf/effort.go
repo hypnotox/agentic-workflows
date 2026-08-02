@@ -47,12 +47,13 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		return effortComposition{}, err
 	}
 	service, err := effort.Open(roots, effort.Dependencies{
-		Clock:        time.Now,
-		UUID:         effort.RandomUUIDv4,
-		Worktrees:    repo.WorktreeList,
-		BranchExists: repo.BranchExists,
-		ValidateRef:  repo.ValidateRefName,
-		RemoveTree:   os.RemoveAll,
+		Clock:           time.Now,
+		UUID:            effort.RandomUUIDv4,
+		Worktrees:       repo.WorktreeList,
+		BranchExists:    repo.BranchExists,
+		ValidateRef:     repo.ValidateRefName,
+		RemoveTree:      os.RemoveAll,
+		ResolveCheckout: resolveEffortCheckout,
 	})
 	if err != nil {
 		return effortComposition{}, err
@@ -68,6 +69,33 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 // the Git seam's handle: no adapter stands between them, so the manager's
 // contract is exactly a subset of the handle's surface.
 func openCheckout(root string) (worktree.Runner, error) { return awfgit.Open(root) }
+
+// resolveEffortCheckout is the sole Git-to-effort error translation boundary.
+// It intentionally retains only standard-library error prose: callers can use
+// effort's closed kind without receiving a Git implementation type.
+func resolveEffortCheckout(ctx context.Context, path string) (effort.CheckoutFacts, error) {
+	roots, err := awfgit.ResolveControlRoots(ctx, path)
+	if err == nil {
+		return effort.CheckoutFacts{InvokingRoot: roots.InvokingRoot, PrimaryRoot: roots.PrimaryRoot}, nil
+	}
+	return effort.CheckoutFacts{}, normalizeCheckoutResolutionError(err)
+}
+
+func normalizeCheckoutResolutionError(err error) *effort.CheckoutResolutionError {
+	kind := effort.CheckoutRepositoryMismatch
+	var hard *awfgit.HardSafetyError
+	if errors.As(err, &hard) {
+		switch hard.Category {
+		case "symlink", "foreign-owner", "file-type", "resident-permissions":
+			kind = effort.CheckoutUnsafe
+		case "repository-identity", "bare-repository", "missing-primary", "ambiguous-primary", "unconfined":
+			kind = effort.CheckoutRepositoryMismatch
+		}
+	}
+	// Do not retain err as a cause: errors.As at the effort boundary must never
+	// expose a Git mechanism type, including HardSafetyError with nil Err.
+	return effort.NewCheckoutResolutionError(kind, errors.New(err.Error()))
+}
 
 func runEffort(c *cmdCtx, compose composeEffort) error {
 	if err := validateEffortGrammar(c); err != nil {
@@ -144,9 +172,49 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 		}
 		result, err := manager.Integrate(c.ctx, slug, gateCommand)
 		return writeWorktreeResult(c.stdout, result, err)
+	case "memory update":
+		return service.UpdateMemory(slug, effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")})
+	case "activity resolve", "activity attach", "activity heartbeat", "activity checkout", "activity detach":
+		return writeActivityReply(c.stdout, runEffortActivity(c, service))
 	default:
-		return &usageErr{"usage: awf effort <new|list|show|finish|worktree|integrate>"}
+		return &usageErr{"usage: awf effort <new|list|show|finish|worktree|integrate|memory|activity>"}
 	}
+}
+
+func effortValue(inv invocation, flag string) *string {
+	value, ok := inv.values[flag]
+	if !ok {
+		return nil
+	}
+	return &value
+}
+
+func runEffortActivity(c *cmdCtx, service *effort.Service) effort.ActivityReply {
+	slug := firstPos(c.inv.positionals)
+	switch c.sub {
+	case "activity resolve":
+		return service.ResolveActivity(c.ctx, slug, effort.CheckoutRole(c.inv.values["--destination"]), c.inv.values["--receiving-checkout"])
+	case "activity attach":
+		return service.AttachActivity(c.ctx, slug, effort.Activity{
+			SchemaVersion:     1,
+			Owner:             c.inv.values["--owner"],
+			CWD:               c.inv.values["--cwd"],
+			ReceivingCheckout: c.inv.values["--receiving-checkout"],
+			Role:              effort.CheckoutRole(c.inv.values["--role"]),
+		})
+	case "activity heartbeat":
+		return service.HeartbeatActivity(slug, c.inv.values["--owner"])
+	case "activity checkout":
+		return service.CheckoutActivity(c.ctx, slug, c.inv.values["--owner"], c.inv.values["--cwd"], effort.CheckoutRole(c.inv.values["--role"]))
+	case "activity detach":
+		return service.DetachActivity(slug, c.inv.values["--owner"])
+	default: // coverage-ignore: validateEffortGrammar admits only the closed activity action set
+		panic("unreachable effort activity action")
+	}
+}
+
+func writeActivityReply(out io.Writer, reply effort.ActivityReply) error {
+	return writeEffortJSON(out, reply)
 }
 
 func integrationGateCommand(root string) (string, error) {
@@ -165,6 +233,23 @@ func integrationGateCommand(root string) (string, error) {
 }
 
 func validateEffortGrammar(c *cmdCtx) error {
+	if c.sub == "memory" {
+		return &usageErr{"usage: awf effort memory update <slug> [--phase <text>] [--next <text>]"}
+	}
+	if c.sub == "activity" {
+		return &usageErr{"usage: awf effort activity <resolve|attach|heartbeat|checkout|detach>"}
+	}
+	if c.sub == "memory update" {
+		if _, phase := c.inv.values["--phase"]; !phase {
+			if _, next := c.inv.values["--next"]; !next {
+				return &usageErr{"usage: awf effort memory update <slug> [--phase <text>] [--next <text>]"}
+			}
+		}
+		return nil
+	}
+	if strings.HasPrefix(c.sub, "activity ") {
+		return validateEffortActivityGrammar(c)
+	}
 	if c.sub == "new" {
 		if c.inv.bools["--no-worktree"] && c.inv.values["--base"] != "" {
 			return &usageErr{"awf effort new: --base is invalid with --no-worktree"}
@@ -187,6 +272,34 @@ func validateEffortGrammar(c *cmdCtx) error {
 		return nil
 	default:
 		return &usageErr{"usage: awf effort worktree <add|remove> <slug>"}
+	}
+}
+
+func validateEffortActivityGrammar(c *cmdCtx) error {
+	usage := "usage: awf effort " + c.sub
+	if !c.inv.bools["--json"] {
+		return &usageErr{usage + " requires --json"}
+	}
+	for _, flag := range activityRequiredFlags(c.sub) {
+		if _, ok := c.inv.values[flag]; !ok {
+			return &usageErr{usage + " requires " + flag}
+		}
+	}
+	return nil
+}
+
+func activityRequiredFlags(action string) []string {
+	switch action {
+	case "activity resolve":
+		return []string{"--destination"}
+	case "activity attach":
+		return []string{"--owner", "--cwd", "--role", "--receiving-checkout"}
+	case "activity heartbeat", "activity detach":
+		return []string{"--owner"}
+	case "activity checkout":
+		return []string{"--owner", "--cwd", "--role"}
+	default: // coverage-ignore: clispec admits only this closed action set
+		return nil
 	}
 }
 

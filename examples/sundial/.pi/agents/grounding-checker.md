@@ -33,7 +33,7 @@ Ground guide-first before verifying:
 
 Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs under `docs/domains`. Current-state documentation is what binds. Consult the recent history of the touched paths (`git log --oneline -20 <path>`) only when current state leaves what you are seeing unexplained.
 
-For managed context calls, start bare: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
+For managed context calls, provide one or more explicit paths (or a staged/range file selection) and omit `--show` and `--full` detail flags on the initial query: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 
 <!-- awf:edit return-schema: default; create .awf/agents/parts/grounding-checker/return-schema.md to override -->

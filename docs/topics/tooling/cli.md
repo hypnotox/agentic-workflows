@@ -70,8 +70,9 @@ Backing: test
 
 ### `invariant: check-universe-groups`
 
-The check command groups checks by subject: repo aggregates drift, state, prose, and memory, while staged aggregates its HEAD-to-index state check and excludes the directly-invoked commit-message check. Bare awf check runs both aggregates, repo state and staged state dispatch to distinct handlers, and outside a git repository the bare form runs only repo and reports staged unavailable.
+The check command groups checks by subject: repo aggregates drift, state, prose, and memory, while staged aggregates its HEAD-to-index state check, plan-artifact findings and non-failing assignment notes, and excludes the directly-invoked commit-message check. Bare awf check runs both aggregates, repo state and staged state dispatch to distinct handlers, and outside a git repository the bare form runs only repo and reports staged unavailable.
 Origin: ADR-0210
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: check-disabled-child-disclosure`
@@ -82,8 +83,9 @@ Backing: test
 
 ### `invariant: plan-read-command`
 
-The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures list available exact values. Success writes the internal/plan-rendered executable closure unchanged: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected phase or task, Phase close, Definition of done, and Notes when present; it neither includes other phases nor mutates the source.
+The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures retain plan-owned selector identities and available exact values. Plan-v2 success writes the internal/plan-rendered ordered Applying then Context Decision and phase-owner outcome closure unchanged, with first-authored resolved-key deduplication, Applying precedence, task scope safety, whole-plan Definition-of-done exclusion, and preserved source; plan-v1 bytes remain unchanged. Blocking references fail while assignment notes remain non-blocking. It neither includes other phases nor mutates source.
 Origin: ADR-0213
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: single-os-exit`
@@ -131,7 +133,7 @@ Backing: test
 
 ### `invariant: effort-command-contract`
 
-`awf effort` exposes exactly schema-2 `new <outcome-title> [--json] [--no-worktree] [--base <ref>]`, `list [--json]`, `show <slug> [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, and `integrate <slug>`; `--base` is invalid with `--no-worktree`. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`; the new reply additionally carries a `worktree` object with `path` and `branch`, or the explicit absence forms `"worktree": null` and text `worktree=none` under `--no-worktree`, while show/list shapes are unchanged and `schemaVersion` stays 2. `memoryPath` and the text `memory=` fact are primary-root-qualified absolute paths when the invoking checkout is not the primary root. List returns the same objects sorted by slug, and JSON failures keep stdout empty while returning the actionable text error on stderr. Mutation replies are line-oriented and report condition, changed bytes or topology, and next action; there is no rename, standalone memory, lifecycle, repair, manual integration, assignment, Pi-session, or force command.
+`awf effort` exposes schema-2 `new <outcome-title> [--json] [--no-worktree] [--base <ref>]`, `list [--json]`, `show <slug> [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, `integrate <slug>`, `memory update <slug> [--phase <text>] [--next <text>]`, and protocol-1 JSON-only `activity resolve|attach|heartbeat|checkout|detach` with the ADR-declared flags. Memory update requires at least one mutable field, preserves matching identity/body, migrates exact legacy metadata, and updates UTC time. Activity handled outcomes are typed newline-terminated JSON with explicit mutation axes; malformed/pre-state failures use empty stdout and actionable stderr, while state-observing mechanism failures use structured outcomes with cause. Existing protocol-2 new/show/list shapes, worktree behavior, primary-root-qualified memory paths, and unrelated command availability remain unchanged; there is no rename, standalone memory, lifecycle ledger, manual integration, authoritative assignment, or force command.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175, ADR-0189
+Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218
 Backing: test

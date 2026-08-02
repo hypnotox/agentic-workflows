@@ -451,10 +451,13 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
+	contextDrift, contextNotes := planArtifactReport(plans, corpus)
+	planDrift = append(planDrift, contextDrift...)
 	notes, err := p.advisoryNotesWithState(ctx, corpus, topics, eff, plans)
 	if err != nil { // coverage-ignore: checkWithState already ran the same output producers over identical operation-owned inputs
 		return CheckReport{}, err
 	}
+	notes = append(notes, contextNotes...)
 	return CheckReport{Drift: append(drift, planDrift...), Notes: notes}, nil
 }
 

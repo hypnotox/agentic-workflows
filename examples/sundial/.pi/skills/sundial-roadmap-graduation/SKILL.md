@@ -20,7 +20,7 @@ This is a **support skill**: it sits off the workflow chain.
 
 ## Procedure
 
-A minimal simple graduation may remain effort-free. Identify and re-verify the roadmap item before treating graduation as a concrete non-minimal outcome; neither reaching this procedure nor citing an item confirms creation. An existing effort resumes under its fixed identity without title reconfirmation only while graduation remains within its confirmed outcome. Repository sources and current-state documentation outrank checkpoint prose, children receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only and never edit memory, standalone memory is forbidden, and one user-managed writer remains responsible.
+A minimal simple graduation may remain effort-free. Identify and re-verify the roadmap item before treating graduation as a concrete non-minimal outcome; neither reaching this procedure nor citing an item confirms creation. An existing effort resumes under its fixed identity without title reconfirmation only while graduation remains within its confirmed outcome. Confirm either legacy `Effort: <slug>` or canonical frontmatter `effort: <slug>` identity when ownership exists. Repository sources and current-state documentation outrank checkpoint prose, children receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only and never edit memory, standalone memory is forbidden, and one user-managed writer remains responsible.
 
 <!-- awf:edit identify-entry: default; create .awf/skills/parts/roadmap-graduation/identify-entry.md to override -->
 ### 1. Identify the roadmap entry

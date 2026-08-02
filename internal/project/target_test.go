@@ -170,81 +170,27 @@ func TestPiContextUsageInjection(t *testing.T) {
 	}
 }
 
-func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
-	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined", "getSessionFile()"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("handoff lifecycle output missing %q", want)
-		}
-	}
-}
-
-func TestHandoffPublicProseContract(t *testing.T) {
-	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"Type.Object({kickoff:Type.String({maxLength:1000})},{additionalProperties:false})", "typeof params.kickoff!==\"string\"", "params.kickoff.trim().length===0", "params.kickoff.length>1000", "kickoff:params.kickoff", "sendUserMessage(kickoff)", "setEditorText(kickoff)"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("handoff prose contract missing %q", want)
-		}
-	}
-	for _, banned := range []string{"memoryPath", ".awf/efforts/", "node:path", "validateMemoryPath", "buildKickoffWrapper", "selected effort", "telemetry", "lifecycle mutation"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("handoff prose contract retains %q", banned)
-		}
-	}
-}
-
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-effort-session-association (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:using-effort-skill (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRealRuntimeSmoke)
+// invariant: rendering/project-output-plan:multi-target-render (TestPiRealRuntimeSmoke)
+// invariant: rendering/catalog-and-targets:target-dialect-render (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
 func TestPiRealRuntimeSmoke(t *testing.T) {
+	if os.Getenv("AWF_PI_RUNTIME_SMOKE") != "1" {
+		t.Skip("Pi container skipped; run './x pi-test run' alone or './x gate' to include it")
+	}
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
 	cmd.Dir = root
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", err, output)
-	}
-}
-
-func TestHandoffWorkflowKeepsPolicyOutsideRuntime(t *testing.T) {
-	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, banned := range []string{"memoryPath", ".awf/efforts/", "effort-owned", "Read ${memoryPath}", "Then continue with this immediate action", "telemetry", "adopt_effort"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("handoff runtime retains workflow policy %q", banned)
-		}
-	}
-
-	data := map[string]any{
-		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
-		"layout": testLayout(), "data": map[string]any{}, "targetSessionHandoff": true,
-	}
-	settled := map[string]string{
-		"executing-plans":             "Review settles before checkpointing.",
-		"subagent-driven-development": "checkpoints only after findings resolve",
-	}
-	for name, settledPhrase := range settled {
-		body := renderSkillGolden(t, name, data)
-		if !strings.Contains(body, "awf read plan <plan>") || !strings.Contains(body, "projection changes neither") {
-			t.Errorf("%s lacks fresh-owner projection guidance", name)
-		}
-		settledAt := strings.Index(body, settledPhrase)
-		checkpointAt := strings.Index(body, "**Routine checkpoint.**")
-		if settledAt < 0 || checkpointAt < settledAt {
-			t.Errorf("%s does not place routine checkpoint after settled phase persistence", name)
-		}
-		for _, banned := range []string{
-			"checkbox task", "after every heading-identified task", "after each heading-identified task",
-			"heading-identified task triggers", "projection triggers handoff", "handoff after projection",
-			"after every batch-helper return", "after each batch-helper return",
-			"batch-helper return triggers", "handoff after a helper return",
-		} {
-			if strings.Contains(strings.ToLower(body), banned) {
-				t.Errorf("%s retains task/helper handoff trigger %q", name, banned)
-			}
-		}
 	}
 }
 
@@ -872,6 +818,56 @@ func TestPiRoleContractLoader(t *testing.T) {
 	} {
 		if strings.Contains(body, banned) {
 			t.Errorf("role prose survived inline in the extension: %q", banned)
+		}
+	}
+}
+
+func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
+	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "if(pending!==request)", "pending=undefined"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff lifecycle output missing %q", want)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"handoff rejects a continuation whose pending request changes during countdown",
+		"wrong continuation token preserves the valid pending request",
+		"handoff preserves lineage and does not silently retry",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("TypeScript lifecycle behavior contract missing %q", want)
+		}
+	}
+}
+
+func TestHandoffPublicKickoffContract(t *testing.T) {
+	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{"kickoff:Type.String({maxLength:1000})", "params.kickoff.length>1000", "remote-pi:notification-disposition.v1", "additionalProperties:false"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff public contract missing %q", want)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"handoff schema exposes only required bounded kickoff prose",
+		`"😀".repeat(500)`,
+		`"😀".repeat(501)`,
+		"handoff marks a successfully queued continuation as non-terminal",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("TypeScript public-contract behavior case missing %q", want)
+		}
+	}
+	for _, banned := range []string{"memoryPath", "validateMemoryPath", "runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("handoff public contract retains %q", banned)
 		}
 	}
 }

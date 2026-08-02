@@ -284,6 +284,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"confirmed-downstream": {
 			"proposing-adr", "adr-lifecycle", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
 			"reviewing-adr", "executing-plans", "subagent-driven-development", "reviewing-impl", "retrospective",
+			"effort-workflow",
 		},
 		"confirmed-report-support": {"refactor-coupling-audit"},
 		"never-create-support":     {"exploring", "orienting"},
@@ -327,6 +328,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"subagent-driven-development": "2. You, the dispatching parent",
 		"reviewing-impl":              "1. **Determine the session SHA range",
 		"retrospective":               "2. **Reflect and record worthy observations",
+		"effort-workflow":             "Update checkpoints with",
 		"refactor-coupling-audit":     "**Pick the audit shape",
 	}
 	routineOrdered := []string{
@@ -336,10 +338,12 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"already-confirmed immutable slugged effort",
 		"always owns `.awf/efforts/<slug>/memory.md`",
 		"primary-root-relative spelling",
-		"Effort: <slug>",
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
 		"managed worktree when one exists",
 		"writer-owned tool batch",
-		"any unrecorded settled decision and observation",
+		"./awf effort memory update",
+		"sole writer of phase, next action, and time",
+		"Separately append any unrecorded settled decision and observation",
 		"continuity notice",
 	}
 	for _, target := range []string{"pi", "claude"} {
@@ -487,6 +491,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		// only Pi may name the handoff tool.
 		for _, name := range routineCheckpointSkills {
 			body := read(t, pathFor(name))
+			assertMemoryCheckpointIdentityAndUpdate(t, target+"/"+name, body, "<immediate next action>")
 			ordered := append([]string{}, routineOrdered...)
 			if target == "pi" {
 				ordered = append(ordered,
@@ -571,6 +576,20 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	}
 }
 
+// assertMemoryCheckpointIdentityAndUpdate proves the two alternative immutable
+// identities and the exact structured update batch at every checkpoint surface.
+func assertMemoryCheckpointIdentityAndUpdate(t *testing.T, label, body, next string) {
+	t.Helper()
+	for _, clause := range []string{
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+		"./awf effort memory update <slug> --phase \"<completed phase>\" --next \"" + next + "\"",
+	} {
+		if !strings.Contains(body, clause) {
+			t.Errorf("%s missing memory checkpoint clause %q", label, clause)
+		}
+	}
+}
+
 // TestMandatoryApprovalBoundaries asserts first-creation confirmation plus the
 // two final approval boundaries, and that final approval renders nowhere else.
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMandatoryApprovalBoundaries)
@@ -635,6 +654,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	}
 	for _, name := range finalApprovalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
+		assertMemoryCheckpointIdentityAndUpdate(t, "pi/"+name, piBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
 			"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
 			"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
@@ -647,6 +667,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		}
 		assertNoCheckpointTimeHandoffLog(t, "pi/"+name, piBody)
 		claudeBody := read(t, skillPath(nonPiRoot, name))
+		assertMemoryCheckpointIdentityAndUpdate(t, "claude/"+name, claudeBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
 			"Then continue through the target-native successor without claiming session replacement",
 			"the workflow doc's working-memory section",

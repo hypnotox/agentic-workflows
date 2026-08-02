@@ -23,7 +23,6 @@ matcher library.
 Origin: ADR-0201
 Backing: unbacked
 Verify: Inspect the imports of each added or converted test file; an assertion or matcher library import fails, and go.mod gaining a direct assertion-library dependency fails.
-
 ### `invariant: no-new-global-seams`
 
 In a new or deliberately converted test, minting a new package-level variable that exists

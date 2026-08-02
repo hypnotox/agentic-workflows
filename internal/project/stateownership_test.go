@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -360,7 +361,7 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	// nested re-derivation is a failure rather than an invisible regression.
 	wantEntries := map[string]bool{
 		"CheckReport": true, "syncReport": true, "AdvisoryNotes": true,
-		"ConfigReferenceModel": true, "OutputPlan": true,
+		"ConfigReferenceModel": true, "OutputPlan": true, "ReadPlan": true,
 	}
 	entries := derivingEntries(production)
 	for name, count := range entries {
@@ -395,136 +396,87 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 		}
 	}
 
-	// Committed negative case: a method mutating its receiver must be flagged,
-	// so the detector cannot silently stop detecting.
+	// One combined overlay proves every detector branch without paying for a
+	// separate packages.Load per mutation shape.
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture := filepath.Join(root, filepath.FromSlash("internal/project/state_ownership_mutation_fixture.go"))
-	mutation := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
+	projectFixture := filepath.Join(root, filepath.FromSlash("internal/project/state_ownership_mutation_fixture.go"))
+	contextqFixture := filepath.Join(root, filepath.FromSlash("internal/contextq/state_ownership_mutation_fixture.go"))
+	mutation := loadProjectPackage(t, map[string][]byte{
+		projectFixture: []byte(`package project
+
+import "github.com/hypnotox/agentic-workflows/internal/adr"
+
+func writeThrough(target *string, value string) { *target = value }
 
 func (p *Project) mutationWritesAfterConstruction() {
 	p.Root = "mutated"
 }
-`)})
-	findings := projectFieldWriteFindings(mutation)
-	var flagged bool
-	for _, f := range findings {
-		if strings.HasPrefix(f, "mutationWritesAfterConstruction writes p.Root") {
-			flagged = true
-		}
-	}
-	if !flagged {
-		t.Fatalf("receiver mutation escaped the detector: %#v", findings)
-	}
-
-	// The same fixture, written through a locally constructed value, must NOT
-	// be flagged: the rule turns on construction in the same function, not on
-	// the mere presence of a field write.
-	conforming := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
 
 func mutationConstructsLocally(rootDir string) *Project {
 	built := &Project{Root: rootDir}
 	built.Cfg = nil
 	return built
 }
-`)})
-	for _, f := range projectFieldWriteFindings(conforming) {
-		if strings.HasPrefix(f, "mutationConstructsLocally") {
-			t.Fatalf("a write to a locally constructed value was flagged: %q", f)
-		}
-	}
-
-	// The detector must also see a field handed out by address, which is how a
-	// post-construction write escapes an assignment-only scan.
-	byAddress := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
-
-func writeThrough(target *string, value string) { *target = value }
 
 func (p *Project) mutationWritesViaPointer() {
 	writeThrough(&p.Root, "mutated")
 }
-`)})
-	var addressFlagged bool
-	for _, f := range projectFieldWriteFindings(byAddress) {
-		if strings.HasPrefix(f, "mutationWritesViaPointer takes the address of p.Root") {
-			addressFlagged = true
-		}
-	}
-	if !addressFlagged {
-		t.Error("a *Project field handed out by address escaped the detector")
-	}
-
-	// A nested re-derivation is the regression the whole conversion prevents.
-	nested := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
 
 func (p *Project) mutationRederivesNested() {
 	_, _, _, _ = p.deriveOperationState()
 }
-`)})
-	if derivingEntries(nested)["mutationRederivesNested"] != 1 {
-		t.Error("a nested deriveOperationState call escaped the deriving-entry scan")
-	}
-
-	// A consumer calling a producer directly bypasses the aggregate entirely
-	// and writes no field, so only the producer scan can see it.
-	direct := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
-
-import "github.com/hypnotox/agentic-workflows/internal/adr"
 
 func (p *Project) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
 	return adr.LoadCorpus(p.decisionsDir())
 }
-`)})
-	var directFlagged bool
-	for _, owners := range producerCallSites(direct) {
-		for _, owner := range owners {
-			if owner == "mutationRederivesCorpusDirectly" {
-				directFlagged = true
-			}
-		}
-	}
-	if !directFlagged {
-		t.Error("a direct producer call bypassing deriveOperationState escaped the producer scan")
-	}
-
-	// Replacing the whole value writes every field at once.
-	wholesale := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
 
 func (p *Project) mutationOverwritesWholeValue() {
 	*p = Project{Root: "mutated"}
 }
-`)})
-	var wholesaleFlagged bool
-	for _, f := range projectFieldWriteFindings(wholesale) {
-		if strings.HasPrefix(f, "mutationOverwritesWholeValue replaces the whole value p") {
-			wholesaleFlagged = true
-		}
-	}
-	if !wholesaleFlagged {
-		t.Error("a wholesale *p = Project{...} overwrite escaped the detector")
-	}
-
-	// The widened scope must detect a carve-side mutation too: a contextq
-	// method writing its Query field after construction is the same shape one
-	// package over, and only the widened watch list can see it.
-	contextqFixture := filepath.Join(root, filepath.FromSlash("internal/contextq/state_ownership_mutation_fixture.go"))
-	widened := loadProjectPackage(t, map[string][]byte{contextqFixture: []byte(`package contextq
+`),
+		contextqFixture: []byte(`package contextq
 
 import "github.com/hypnotox/agentic-workflows/internal/project"
 
 func (q *Query) mutationReplacesStateAfterConstruction(state project.ContextState) {
 	q.state = state
 }
-`)})
-	var widenedFlagged bool
-	for _, f := range projectFieldWriteFindings(widened) {
-		if strings.HasPrefix(f, "mutationReplacesStateAfterConstruction writes q.state") {
-			widenedFlagged = true
+`),
+	})
+	findings := projectFieldWriteFindings(mutation)
+	hasPrefix := func(prefix string) bool {
+		return slices.ContainsFunc(findings, func(finding string) bool {
+			return strings.HasPrefix(finding, prefix)
+		})
+	}
+	for _, want := range []string{
+		"mutationWritesAfterConstruction writes p.Root",
+		"mutationWritesViaPointer takes the address of p.Root",
+		"mutationOverwritesWholeValue replaces the whole value p",
+		"mutationReplacesStateAfterConstruction writes q.state",
+	} {
+		if !hasPrefix(want) {
+			t.Errorf("mutation %q escaped the field-write detector: %#v", want, findings)
 		}
 	}
-	if !widenedFlagged {
-		t.Error("a Query field write in contextq escaped the widened detector")
+	for _, finding := range findings {
+		if strings.HasPrefix(finding, "mutationConstructsLocally") {
+			t.Errorf("a write to a locally constructed value was flagged: %q", finding)
+		}
+	}
+	if derivingEntries(mutation)["mutationRederivesNested"] != 1 {
+		t.Error("a nested deriveOperationState call escaped the deriving-entry scan")
+	}
+	var directFlagged bool
+	for _, owners := range producerCallSites(mutation) {
+		if slices.Contains(owners, "mutationRederivesCorpusDirectly") {
+			directFlagged = true
+		}
+	}
+	if !directFlagged {
+		t.Error("a direct producer call bypassing deriveOperationState escaped the producer scan")
 	}
 }

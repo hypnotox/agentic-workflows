@@ -136,6 +136,11 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	// so only this pass ever sees them).
 	withInputs := Target{Name: "three", SkillDir: ".three/skills", Outputs: []TargetOutput{{Path: "declared-inputs", TemplateID: "target.tmpl", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: ".awf/extension.json", Role: ArtifactProtocolDescriptor}}}}}
 	parsedADRs := mustCorpus([]adr.ADR{{Number: "0001", Filename: "0001-real.md"}})
+	badRequirement := target
+	badRequirement.Outputs = []TargetOutput{{Path: "gated", TemplateID: "target.tmpl", Producer: TargetOutputTemplate, RequiresSkill: "missing"}}
+	if _, err := BuildOutputDeclarations(cfg, cat, []Target{badRequirement}, read, parsedADRs); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+		t.Fatalf("declaration accepted unknown target-output requirement: %v", err)
+	}
 	decls, err := BuildOutputDeclarations(cfg, cat, []Target{target, other, withInputs}, read, parsedADRs)
 	if err != nil {
 		t.Fatal(err)

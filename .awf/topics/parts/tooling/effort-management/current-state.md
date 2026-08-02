@@ -4,9 +4,9 @@ The awf binary owns lightweight repository-local effort records and their option
 
 ### `invariant: effort-record-authority`
 
-The awf binary derives an immutable 1-63 byte ASCII slug from each outcome, allocates an internal lowercase UUIDv4, and durably publishes schema-2 `.awf/efforts/<slug>/state.json` only after its always-owned `memory.md`. Directory presence is the active-effort fact; listing ignores unpublished incomplete directories and preserves malformed or foreign residents, while restartable finish renames to a slug-and-UUID-matched tombstone, deletes only proven bytes after managed topology is absent, and classifies its managed-topology refusal structurally for rollback callers. Efforts have no lifecycle ledger, coordination lock, Pi-session assignment, standalone memory, or stored worktree state, and Git-tracked project truth remains authoritative.
+The awf binary derives the immutable slug/UUID identity, durably owns schema-2 `state.json`, always-owned `memory.md`, and optional mutable protocol-1 `activity.json` under `.awf/efforts/<slug>/`. Directory presence remains the active-effort fact; listing ignores unpublished reservations and preserves foreign residents; show/list/finish validate only dual-format memory identity and do not gate on activity or mutable checkpoint metadata. The binary alone atomically updates bounded memory metadata and creates/replaces/removes owner-checked advisory activity; finish consumes activity only inside proven tombstone deletion after managed topology is absent. Activity is a fallible Pi-session claim, never authorization, a lock, lifecycle/worktree state, or tracked-project authority; Git remains topology authority and older binaries need not read an effort after activity exists.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175, ADR-0189
+Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218
 Backing: test
 
 ### `invariant: managed-worktree-lifecycle`
@@ -24,6 +24,7 @@ Backing: test
 
 ### `invariant: memory-skeleton-purpose-partition`
 
-The binary-scaffolded memory skeleton partitions working memory into consumer-named sections: the resume header lines, `## Brief` with durable-artifact pointers, the append-only ordinal `## Decision log` whose placeholder names reviewers as consumers of user entries and defers full rules to the workflow doc, the append-only `## Observations` log naming the retrospective as consumer, and `## Handoff log`. Each placeholder states its section's contract and consumer, and no production code parses section headings.
+The binary-scaffolded memory begins with closed YAML frontmatter containing exactly `effort`, `phase`, `next`, and `updated`, using immutable slug identity, bounded nonblank single-line mutable values, and a real UTC creation/update time. Its Markdown body retains `## Brief`, append-only ordinal `## Decision log`, append-only `## Observations`, and `## Handoff log`, with each placeholder naming its contract and consumer. Structured update rewrites only selected mutable metadata plus time, atomically migrates the exact bounded legacy four-line header, and repairs invalid mutable values only when every invalid field is supplied and identity/boundary are safe; section headings remain unparsed by production code.
 Origin: ADR-0186
+Revised-by: ADR-0218
 Backing: test

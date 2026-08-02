@@ -13,14 +13,23 @@ import (
 
 // invariant: tooling/context-and-topic:context-spill-observability (TestContextSpillObservabilityContract)
 func TestContextSpillObservabilityContract(t *testing.T) {
-	t.Run("wrapper byte and status preservation", testContextRunnerPreservesOutputStatusAndObservesSpills)
-	t.Run("logging failure warning degradation", testContextRunnerLoggingFailureWarnsWithoutChangingSuccess)
-	t.Run("concurrent wrapper records", testContextRunnerConcurrentRecordsDoNotInterleave)
-	t.Run("safe check advisory", testCheckRunnerSpillAdvisoryTracksNonemptySafeLog)
+	helper := buildContextSpillHelper(t)
+	t.Run("wrapper byte and status preservation", func(t *testing.T) {
+		testContextRunnerPreservesOutputStatusAndObservesSpills(t, helper)
+	})
+	t.Run("logging failure warning degradation", func(t *testing.T) {
+		testContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t, helper)
+	})
+	t.Run("concurrent wrapper records", func(t *testing.T) {
+		testContextRunnerConcurrentRecordsDoNotInterleave(t, helper)
+	})
+	t.Run("safe check advisory", func(t *testing.T) {
+		testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t, helper)
+	})
 }
 
-func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
-	root := contextRunnerFixture(t)
+func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helper string) {
+	root := contextRunnerFixture(t, helper)
 	run := func(mode string) (string, string, int) {
 		t.Helper()
 		command := exec.Command("bash", "./x", "context", "a b")
@@ -91,8 +100,8 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
 	}
 }
 
-func testContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
-	root := contextRunnerFixture(t)
+func testContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T, helper string) {
+	root := contextRunnerFixture(t, helper)
 	local := filepath.Join(root, ".awf", "local")
 	if err := os.Mkdir(local, 0o755); err != nil {
 		t.Fatal(err)
@@ -110,8 +119,8 @@ func testContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
 	}
 }
 
-func testContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
-	root := contextRunnerFixture(t)
+func testContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T, helper string) {
+	root := contextRunnerFixture(t, helper)
 	const count = 8
 	var wg sync.WaitGroup
 	errs := make(chan error, count)
@@ -147,8 +156,8 @@ func testContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
 	}
 }
 
-func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
-	root := contextRunnerFixture(t)
+func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T, helper string) {
+	root := contextRunnerFixture(t, helper)
 	fakeBin := filepath.Join(root, "fake-bin")
 	if err := os.Mkdir(fakeBin, 0o755); err != nil {
 		t.Fatal(err)
@@ -196,18 +205,23 @@ func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
 	}
 }
 
-func contextRunnerFixture(t *testing.T) string {
+func buildContextSpillHelper(t *testing.T) string {
+	t.Helper()
+	helper := filepath.Join(t.TempDir(), "contextspilllog")
+	build := exec.Command("go", "build", "-o", helper, "./cmd/contextspilllog")
+	build.Dir = "../.."
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build helper: %v\n%s", err, output)
+	}
+	return helper
+}
+
+func contextRunnerFixture(t *testing.T, helper string) string {
 	t.Helper()
 	root := t.TempDir()
 	runner, err := os.ReadFile("../../x")
 	if err != nil {
 		t.Fatal(err)
-	}
-	helper := filepath.Join(root, "contextspilllog")
-	build := exec.Command("go", "build", "-o", helper, "./cmd/contextspilllog")
-	build.Dir = "../.."
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build helper: %v\n%s", err, output)
 	}
 	script := strings.ReplaceAll(string(runner), "go run ./cmd/contextspilllog", "'"+helper+"'")
 	if err := os.WriteFile(filepath.Join(root, "x"), []byte(script), 0o755); err != nil {

@@ -6,3 +6,4 @@ fails if it is stale. It lists Proposed, Accepted, and Implementing ADRs under *
 Abandoned ADRs under a compact *History* by number, title, and status. After adding an ADR or
 changing a `status:` field, run `./x render` and stage the regenerated `INDEX.md` alongside your
 change.
+V4 Decision slugs are stable navigation identities, not active authority or supersession anchors; older frozen formats retain ordinal navigation only.

@@ -8,7 +8,6 @@ The schema-11 config migration prints the removed audit.baseBranch key when it s
 Origin: ADR-0127
 Backing: unbacked
 Verify: Run `awf upgrade` on a schema-10 tree whose `.awf/config.yaml` sets audit.baseBranch and confirm the command output names the removed key.
-
 ### `invariant: awf-relocation-migration`
 
 The migration registry carries a relocation step that reports a project still keeping its config under `.claude/awf/` as a pending upgrade (a generation below the current schema, so the version gate blocks it); running the upgrade moves that tree to `.awf/` and stamps the new schema version.

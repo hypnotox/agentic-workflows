@@ -67,27 +67,54 @@ func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, 
 }
 
 func readRegularNoFollow(path string) ([]byte, error) {
+	return readRegularNoFollowBounded(path, -1)
+}
+
+// readRegularNoFollowBounded preserves the resident no-follow/current-owner
+// proof while rejecting an oversized advisory record before decoding it.
+func readRegularNoFollowBounded(path string, limit int64) ([]byte, error) {
+	raw, _, err := readRegularNoFollowBoundedIdentity(path, limit)
+	return raw, err
+}
+
+// readRegularNoFollowBoundedIdentity returns content and the identity proven to
+// remain resident through the read, so callers can conditionally publish over
+// precisely the claim they inspected.
+func readRegularNoFollowBoundedIdentity(path string, limit int64) ([]byte, fileIdentity, error) {
 	file, identity, err := openRegularNoFollow(path, false, 0)
 	if err != nil {
-		return nil, err
+		return nil, fileIdentity{}, err
 	}
-	raw, readErr := io.ReadAll(file)
+	var reader io.Reader = file
+	if limit >= 0 {
+		reader = io.LimitReader(file, limit+1)
+	}
+	raw, readErr := io.ReadAll(reader)
 	closeErr := file.Close()
 	if readErr != nil { // coverage-ignore: a validated local regular file read fails only on a kernel or storage fault
-		return nil, fmt.Errorf("read %s: %w", path, readErr)
+		return nil, fileIdentity{}, fmt.Errorf("read %s: %w", path, readErr)
+	}
+	if limit >= 0 && int64(len(raw)) > limit {
+		return nil, fileIdentity{}, fmt.Errorf("read %s: exceeds %d byte bound", path, limit)
 	}
 	if closeErr != nil { // coverage-ignore: closing a read-only descriptor after successful ReadAll has no userspace failure trigger
-		return nil, fmt.Errorf("close %s after read: %w", path, closeErr)
+		return nil, fileIdentity{}, fmt.Errorf("close %s after read: %w", path, closeErr)
 	}
 	resident, err := lstatRegular(path)
 	if err != nil { // coverage-ignore: the leaf was validated immediately before reading; failure requires a concurrent namespace race
-		return nil, err
+		return nil, fileIdentity{}, err
 	}
 	if !os.SameFile(identity.info, resident.info) { // coverage-ignore: replacing the leaf during a bounded read requires a concurrent namespace race
-		return nil, safety("identity", path, errors.New("leaf changed while reading"))
+		return nil, fileIdentity{}, safety("identity", path, errors.New("leaf changed while reading"))
 	}
-	return raw, nil
+	return raw, identity, nil
 }
+
+type publicationIdentityError struct{ err error }
+
+func (e *publicationIdentityError) Error() string { return e.err.Error() }
+func (e *publicationIdentityError) Unwrap() error { return e.err }
+func publicationIdentityRefusal(err error) error  { return &publicationIdentityError{err: err} }
 
 // residentOwner is the ownership predicate behind ValidateCurrentOwner. It is a
 // variable so the foreign-owner refusal is provable without a privileged test
