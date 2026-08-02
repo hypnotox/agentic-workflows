@@ -4,11 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -128,8 +130,9 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		t.Fatal("staged comparison erased an output read fault")
 	}
 
-	// A dirty working output must not contaminate the staged comparison.
-	projectRoot := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	// Dirty working output and config must not contaminate the staged comparison.
+	const baselineConfig = "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"
+	projectRoot := scaffold(t, baselineConfig)
 	repo := gitfixture.InitRepoAt(t, projectRoot)
 	gitfixture.AddAll(t, repo)
 	gitfixture.Commit(t, repo, "config", nil)
@@ -161,5 +164,22 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	}
 	if drift, err := CheckStagedDriftRoot(testContext(t), projectRoot); err != nil || len(drift) != 0 {
 		t.Fatalf("working output contaminated staged drift: drift=%v err=%v", drift, err)
+	}
+
+	// Conversely, a staged config change must drive rendering even when the
+	// working config is restored to the clean baseline.
+	stagedConfig := strings.Replace(baselineConfig, "prefix: example", "prefix: staged", 1)
+	gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": stagedConfig})
+	testsupport.WriteAwfConfig(t, projectRoot, baselineConfig)
+	drift, err := CheckStagedDriftRoot(testContext(t), projectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stale bool
+	for _, finding := range drift {
+		stale = stale || finding.Kind == "stale"
+	}
+	if !stale {
+		t.Fatalf("staged config did not drive rendered-output drift: %v", drift)
 	}
 }
