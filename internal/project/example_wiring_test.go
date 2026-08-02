@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // The legacy sweep in container.sh is the one piece of ADR-0198 that can destroy
@@ -72,7 +74,7 @@ exit 0
 }
 
 // ADR-0090: the committed example adopter is kept deterministic through ./x -
-// sync re-renders it from source; check drift-, invariant-, note-, and
+// sync re-renders it from source; check repository authority, note-, and
 // test-gates it. The example is its own Go module so the enclosing ./...
 // sweeps never see it; this test pins the wiring so it cannot be silently
 // dropped.
@@ -93,14 +95,28 @@ func TestExampleAdopterWiring(t *testing.T) {
 		`resolve or promote the issue`,
 		`|check|context|`,
 		`(cd examples/sundial && "$bindir/awf" render)`,
-		`out="$(cd examples/sundial && "$bindir/awf" check)"`,
+		`out="$(cd examples/sundial && "$bindir/awf" check repo)"`,
 		`grep -q '^note: '`,
-		`(cd examples/sundial && "$bindir/awf" check invariants)`,
 		`(cd examples/sundial && go test ./...)`,
 	} {
 		if !strings.Contains(script, want) {
 			t.Errorf("x lost the example-adopter step %q (ADR-0090)", want)
 		}
+	}
+	failureStart := strings.Index(script, `if ! out="$(cd examples/sundial && "$bindir/awf" check repo)"; then`)
+	if failureStart < 0 {
+		t.Fatal("x lost the failing example-check branch")
+	}
+	failureEnd := strings.Index(script[failureStart:], "\n    fi")
+	if failureEnd < 0 || !strings.Contains(script[failureStart:failureStart+failureEnd], "exit 1") {
+		t.Fatal("a failed example check no longer fails ./x check")
+	}
+	exampleCfg, err := config.Load("../../examples/sundial/.awf")
+	if err != nil {
+		t.Fatalf("load example config: %v", err)
+	}
+	if exampleCfg.ProseGate == nil || !exampleCfg.ProseGate.Enabled || exampleCfg.MemoryCite == nil || !exampleCfg.MemoryCite.Enabled {
+		t.Fatalf("example gates are not both enabled: prose=%+v memory=%+v", exampleCfg.ProseGate, exampleCfg.MemoryCite)
 	}
 	if _, err := os.Stat("../../examples/sundial/go.mod"); err != nil {
 		t.Errorf("examples/sundial must stay its own Go module (ADR-0090): %v", err)
@@ -207,7 +223,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 	if !strings.Contains(string(cfg), "runner:") {
 		t.Error("the sundial example must enable the runner singleton (ADR-0156)")
 	}
-	for _, dropped := range []string{"activeMdRegenCmd", "checkCmd", "commitGateCmd", "proseGateCmd", "memoryGateCmd"} {
+	for _, dropped := range []string{"activeMdRegenCmd", "checkCmd", "commitGateCmd"} {
 		if strings.Contains(string(cfg), dropped) {
 			t.Errorf("the sundial config must carry no awf-verb command var %q: it dogfoods the rendered defaults", dropped)
 		}

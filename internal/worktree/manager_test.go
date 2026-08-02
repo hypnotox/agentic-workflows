@@ -89,7 +89,7 @@ func TestDivergentIntegrationStopsBeforeCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !result.ChangedTopology || !strings.Contains(result.Condition, "staged without a commit") ||
-		!strings.Contains(result.NextAction, "check --staged") || !strings.Contains(result.NextAction, "project gate") ||
+		!strings.Contains(result.NextAction, "check staged") || !strings.Contains(result.NextAction, "project gate") ||
 		strings.Contains(result.NextAction, "./x gate") {
 		t.Fatalf("divergent result = %#v", result)
 	}

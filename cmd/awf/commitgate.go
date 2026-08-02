@@ -35,12 +35,12 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 		raw, err = io.ReadAll(stdin)
 	}
 	if err != nil {
-		return fmt.Errorf("check commit: read message: %w", err)
+		return fmt.Errorf("check staged commit: read message: %w", err)
 	}
 	msg := commitmsg.Clean(raw)
 	p, err := project.Open(ctx, root)
 	if err != nil {
-		return fmt.Errorf("check commit: %w", err)
+		return fmt.Errorf("check staged commit: %w", err)
 	}
 	if msg.Subject != "" {
 		if p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled {
@@ -49,10 +49,10 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 			// text git itself discards.
 			refs := memorycite.ScanText("commit message", []byte(msg.Text))
 			for _, r := range refs {
-				fmt.Fprintf(stdout, "check commit: %s line %d names the effort-owned memory file %q\n", r.Path, r.Line, r.Segment)
+				fmt.Fprintf(stdout, "check staged commit: %s line %d names the effort-owned memory file %q\n", r.Path, r.Line, r.Segment)
 			}
 			if len(refs) > 0 {
-				return errors.New("check commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
+				return errors.New("check staged commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
 			}
 		}
 		// A git-generated merge or autosquash subject is exempt from the Conventional
@@ -62,9 +62,9 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 				git.Commit{Subject: msg.Subject}, audit.Resolve(p.Cfg.Audit))
 			if len(findings) > 0 {
 				for _, f := range findings {
-					fmt.Fprintf(stdout, "check commit: %s\n", f.Detail)
+					fmt.Fprintf(stdout, "check staged commit: %s\n", f.Detail)
 				}
-				return fmt.Errorf("check commit: rejected %q", msg.Subject)
+				return fmt.Errorf("check staged commit: rejected %q", msg.Subject)
 			}
 		}
 	}
@@ -75,12 +75,12 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 	if authErr != nil {
 		var syntax *commitmsg.SyntaxError
 		if errors.As(authErr, &syntax) {
-			return fmt.Errorf("check commit: stale merge authorization refused: %w", authErr)
+			return fmt.Errorf("check staged commit: stale merge authorization refused: %w", authErr)
 		}
-		return fmt.Errorf("check commit: stale merge authorization: %w", authErr)
+		return fmt.Errorf("check staged commit: stale merge authorization: %w", authErr)
 	}
 	if len(result.NextActions) > 0 {
-		return errors.New("check commit: stale merge authorization refused")
+		return errors.New("check staged commit: stale merge authorization refused")
 	}
 	return nil
 }

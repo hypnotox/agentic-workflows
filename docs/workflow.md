@@ -28,7 +28,7 @@ Never commit the file or cite a concrete owned-memory path in a durable ADR, pla
 
 Use Conventional Commits, one concern per commit. Stage files explicitly rather than `git add -A`, so each commit is a deliberate, reviewable unit.
 
-The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), and enforced by `awf check commit`. awf uses a domain-aligned taxonomy:
+The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), and enforced by `awf check staged commit`. awf uses a domain-aligned taxonomy:
 
 | scope | use it for |
 |---|---|
@@ -42,7 +42,7 @@ The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), 
 | `rendering` | the render engine and templates |
 | `tooling` | CLI, audit/gate, coverage, CI, ./x, changelog, evals |
 
-The code scopes mirror the domain vocabulary in `.awf/config.yaml`; see [the domain docs](domains) for what each area covers. The correspondence is hand-maintained, not machine-enforced (ADR-0055): adding a domain does not add a scope. The gate only checks set membership; it cannot catch a wrong-but-valid pick (a docs scope where a code scope was meant), so pick the scope that names the area you actually changed. For a merge that imports an older-format ADR, `awf check commit` validates its final authorization trailers before the commit completes; `awf audit` replays that same authorization against committed schema-31-and-later merges.
+The code scopes mirror the domain vocabulary in `.awf/config.yaml`; see [the domain docs](domains) for what each area covers. The correspondence is hand-maintained, not machine-enforced (ADR-0055): adding a domain does not add a scope. The gate only checks set membership; it cannot catch a wrong-but-valid pick (a docs scope where a code scope was meant), so pick the scope that names the area you actually changed. For a merge that imports an older-format ADR, `awf check staged commit` validates its final authorization trailers before the commit completes; `awf audit` replays that same authorization against committed schema-31-and-later merges.
 
 
 <!-- awf:edit doc-currency: default; create .awf/parts/workflow/doc-currency.md to override -->
@@ -59,8 +59,8 @@ uploads), the 100%-coverage check (`cmd/covercheck`, ADR-0012), the containerize
 strict type check and its 100% line/function/branch coverage floor (ADR-0123, ADR-0126),
 `go vet`, `golangci-lint`, the dead-code gate (`cmd/deadcodecheck`, ADR-0063), and the
 workflow-pin check (`cmd/pincheck`, ADR-0079). Every step is deterministic: same tree in, same
-verdict out. The plain-punctuation scan (`awf check prose`, ADR-0119) and the working-memory
-citation scan (`awf check memory`, ADR-0158), both opt-in for adopters and enabled here, are
+verdict out. The plain-punctuation scan (`awf check repo prose`, ADR-0119) and the working-memory
+citation scan (`awf check repo memory`, ADR-0158), both opt-in for adopters and enabled here, are
 not gate steps: the pre-commit hook payload runs them locally and CI is their enforcement
 backstop (ADR-0196).
 
@@ -78,7 +78,7 @@ escape when a cutover transaction is interrupted.
 <!-- awf:edit local-hooks: from .awf/parts/workflow/local-hooks.md -->
 ## Local git hooks
 
-This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check`, `./x check --staged`, `./x gate`, then the enabled `./awf check prose` and `./awf check memory`; `.awf/hooks/commit-msg.sh` runs `./awf check commit` with the message file; `.awf/hooks/pre-push.sh` runs the gate; and `.awf/hooks/pre-merge-commit.sh` runs `./x check --staged`. The commands are driven by the staged-check, `checkCmd`, `proseGateCmd`, `memoryGateCmd`, `gateCmd`, and `commitGateCmd` configuration and kept current by `./x render`.
+This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs the configured bare `./x check` aggregate and `./x gate`; `.awf/hooks/commit-msg.sh` runs `./awf check staged commit` with the message file; `.awf/hooks/pre-push.sh` runs the gate; and `.awf/hooks/pre-merge-commit.sh` runs `./x check staged`. The payloads are driven by `checkCmd`, `gateCmd`, and `commitGateCmd` and kept current by `./x render`.
 
 The fourth payload exists because Git runs no `pre-commit` hook for a true merge commit. A merge that Git resolves without conflicts therefore reaches the integration branch with nothing checked, which is precisely where two branches can land two records on one ADR identity, or compose a current-state transition neither branch authored alone. `pre-merge-commit` is that backstop and runs the staged check only: the gate belongs to the commits that produced the code, not to their merge (ADR-0202). The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
 
@@ -89,7 +89,7 @@ resolves: run the permitted mode to roll an interrupted cutover back, clean up a
 consume the seal before the hooks pass again. A malformed journal refuses even recovery and asks you to
 restore the working tree from Git and reinstall the bridge release.
 
-`awf check commit` is the deterministic, blocking commit-message gate, the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject) and definitively validates stale-format ADR merge authorization from the assembled index, `MERGE_HEAD`, incoming-parent trees, and cleaned final trailer block. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects from Conventional Commits only, and exits non-zero on any violation. A needed authorization is an adjacent `AWF-Allow-Version: <current-state-vN-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` pair. Malformed reserved trailers refuse. An unstamped conflict-free merge remains staged with `MERGE_HEAD`; correct the trailers and run `git commit` rather than repeating the merge. `pre-merge-commit` stays limited to the staged evidence available before Git exposes the final message and parents. A proactive flow may use `git merge --no-commit --no-ff`; a true fast-forward has no merge commit to authorize. Never retrofit the ADR or create allowance state. awf renders the `commit-msg.sh` payload but never wires it (ADR-0048); the `.githooks/commit-msg` stub here is the wiring.
+`awf check staged commit` is the deterministic, blocking commit-message gate, the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject) and definitively validates stale-format ADR merge authorization from the assembled index, `MERGE_HEAD`, incoming-parent trees, and cleaned final trailer block. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects from Conventional Commits only, and exits non-zero on any violation. A needed authorization is an adjacent `AWF-Allow-Version: <current-state-vN-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` pair. Malformed reserved trailers refuse. An unstamped conflict-free merge remains staged with `MERGE_HEAD`; correct the trailers and run `git commit` rather than repeating the merge. `pre-merge-commit` stays limited to the staged evidence available before Git exposes the final message and parents. A proactive flow may use `git merge --no-commit --no-ff`; a true fast-forward has no merge commit to authorize. Never retrofit the ADR or create allowance state. awf renders the `commit-msg.sh` payload but never wires it (ADR-0048); the `.githooks/commit-msg` stub here is the wiring.
 
 
 <!-- awf:edit ci: default; create .awf/parts/workflow/ci.md to override -->

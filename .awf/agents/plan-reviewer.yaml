@@ -23,7 +23,7 @@ data:
         - name: gate-clean-embedded
           description: >-
               plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the
-              gate the executor will run; commit subjects ≤72 chars (check commit), constant-string
+              gate the executor will run; commit subjects ≤72 chars (check staged commit), constant-string
               `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned
               literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide
               brace guard)

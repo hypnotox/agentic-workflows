@@ -43,6 +43,7 @@ func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	if code := run([]string{"awf", "render"}, &syncOut, &syncErr); code != 0 {
 		t.Fatalf("render before first commit: exit %d (%s)", code, syncErr.String())
 	}
+	gitfixture.AddAll(t, gitfixture.At(root))
 	var checkOut, checkErr bytes.Buffer
 	if code := run([]string{"awf", "check"}, &checkOut, &checkErr); code != 0 {
 		t.Fatalf("check before first commit: exit %d (%s)\n%s", code, checkErr.String(), checkOut.String())
@@ -138,8 +139,10 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if err := runSync(ctx, root, io.Discard); err != nil {
 		t.Fatalf("sync after wiring gateCmd: %v", err)
 	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "rendered", nil)
 	var checkOut bytes.Buffer
-	if err := runCheck(ctx, root, false, &checkOut); err != nil {
+	if err := runCheck(ctx, root, &checkOut); err != nil {
 		t.Fatalf("check on fresh init: %v\n%s", err, checkOut.String())
 	}
 	if strings.Contains(checkOut.String(), "dead-skill-reference") {
@@ -202,8 +205,10 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "rendered", nil)
 	var out bytes.Buffer
-	if err := runCheck(ctx, root, false, &out); err != nil {
+	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with unset vars, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: skill tdd references unset vars: gateCmd") {
@@ -225,8 +230,10 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "rendered", nil)
 	var out bytes.Buffer
-	if err := runCheck(ctx, root, false, &out); err != nil {
+	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") ||
@@ -249,8 +256,9 @@ func TestCheckGlossaryTersenessNotesAreNonFailing(t *testing.T) {
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
+	gitfixture.AddAll(t, repo)
 	var out bytes.Buffer
-	if err := runCheck(ctx, root, false, &out); err != nil {
+	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with an over-length glossary meaning, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") ||
@@ -266,7 +274,7 @@ func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 		"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
-	if err := runCheck(ctx, root, false, io.Discard); err == nil {
+	if err := runCheck(ctx, root, io.Discard); err == nil {
 		t.Fatal("expected check to surface the render error from the notes pass")
 	}
 }
@@ -275,8 +283,11 @@ func TestCheckFullySetArtifactEmitsNoUnsetVarNote(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := scaffoldProject(t)
+	repo := gitfixture.At(root)
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "rendered", nil)
 	var out bytes.Buffer
-	if err := runCheck(ctx, root, false, &out); err != nil {
+	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	// The fixture sets every var the tdd skill references; other artifacts

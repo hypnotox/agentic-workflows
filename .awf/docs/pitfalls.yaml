@@ -19,7 +19,7 @@ data:
       tags: [adr-lifecycle]
       body: |
         Every line of a claim's canonical block is claim content, the `Verify:` line included:
-        `awf check --staged` rejects any edit to an applied claim that does not travel with a
+        `awf check staged` rejects any edit to an applied claim that does not travel with a
         matching `update` operation, and one ADR cannot declare both `add` and `update` for the
         same id, so an ADR cannot patch its own already-applied claim. Two Verify-line
         tightenings suggested by a terminal review had to be reverted and deferred to a future
@@ -32,7 +32,7 @@ data:
       body: |
         When main has taken a number a branch's ADR also declares, rebasing or merging first and
         renumbering after does not work: every intermediate commit AND the resulting HEAD declare the
-        number twice, and `awf check --staged` refuses to evaluate any transition from a
+        number twice, and `awf check staged` refuses to evaluate any transition from a
         duplicate-number HEAD, which blocks every commit including the renumber itself. The rename
         has to land inside the transition that first combines the two histories - during a rebase,
         fold it into the first replayed commit's conflict resolution (git rename detection carries
@@ -109,7 +109,7 @@ data:
         `migrate.ConfigForCurrentSchema` forward-ports a historical committed config so the current
         strict parser can read it, and it does that through one explicit per-migration branch, not
         by replaying the registry. A migration that removes a config key must add its own branch
-        there as well as its `apply` function. Miss it and `awf check --staged` fails to parse HEAD
+        there as well as its `apply` function. Miss it and `awf check staged` fails to parse HEAD
         the moment the key leaves the config model, because HEAD still carries it: the before side
         of the transition handshake loads the committed config, not the index one.
 
@@ -245,7 +245,7 @@ data:
       body: |
         Two ADR-0153 proposal-phase commits staged a regenerated docs/decisions/INDEX.md without
         the .awf/awf.lock outputHash update that the same `./x render` had written to the working
-        tree, and `awf check --staged` passed both times: the generated index is
+        tree, and `awf check staged` passed both times: the generated index is
         regeneration-checked, not hash-checked, so the staged INDEX/lock mismatch is invisible to
         the staged view while the fresh lock sits dirty on disk. The stranded lock change then
         pollutes the next unrelated commit or surfaces as confusing drift. After any `./x render`,
@@ -330,7 +330,7 @@ data:
         other effort's legitimate references versus your leftovers.
 
         Resolving inside the merge stops working once your ADR has an Applied batch. On
-        2026-07-31 the 0192 integration tried it and `awf check --staged` refused with "ADR-0190
+        2026-07-31 the 0192 integration tried it and `awf check staged` refused with "ADR-0190
         violates the history-prefix rule", plus both claim updates reading as provenance-only
         mutations with no operation behind them: the number is occupied by the other side's ADR
         with different applied history, so renaming yours inside the merge rewrites committed
@@ -538,7 +538,7 @@ data:
       tags: [doc-standard, cli-dispatch]
       body: |
         `README.md` is hand-owned, not rendered, so `awf check` never flags it. Its command table and
-        feature claims drift silently when the CLI grows (`awf new` and `awf check commit` shipped without
+        feature claims drift silently when the CLI grows (`awf new` and `awf check staged commit` shipped without
         README rows). Adding or changing a CLI command means updating the README table in the same
         change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
     - title: "`//go:embed` silently skips `_`- and `.`-prefixed paths"
@@ -959,7 +959,7 @@ data:
       body: |
         A `Backing: test` invariant claim must stay backed by its proof marker until the ADR's
         `remove` (or backing-changing `update`) operation applies, and that happens only in the
-        transaction that flips the ADR to `Implemented` (`awf check --staged` verifies the claim
+        transaction that flips the ADR to `Implemented` (`awf check staged` verifies the claim
         mutation and the ADR flip together). So a commit that removes or renames the proof marker
         cannot land while its ADR is still Proposed, and the green-gate-per-commit rule then forces
         the marker edit and the ADR's `Implemented` flip into one commit. The ADR-0085 implementation
@@ -1498,7 +1498,7 @@ data:
       body: |
         A file whose subject is the banned typographic substitutes (the scanner's rune map, a test
         fixture that plants an em-dash to prove the gate fires, an ADR example) is itself a tracked
-        text file the `awf check prose` scan reads, so a literal glyph in it is a finding against the
+        text file the `awf check repo prose` scan reads, so a literal glyph in it is a finding against the
         file that defines or tests the rule. Write the glyph as its Go escape (a backslash-u rune
         or string literal, which compiles to the real rune while the source stays ASCII), exactly as
         `internal/project/residue_scan_test.go`'s `bannedRunes` map and `internal/prosegate`'s
@@ -1585,7 +1585,7 @@ data:
       tags: [plan-artifact, adr-lifecycle, verification-discipline]
       body: |
         The frozen content digest is computed over the ADR body and named exactly by
-        `awf check --staged` on mismatch. A plan writes the event shape and the instruction
+        `awf check staged` on mismatch. A plan writes the event shape and the instruction
         "use exactly the value the staged check names", never a digest, the same way it already
         avoids hard-coded counts.
     - title: "A pinned template contract string is usually pinned in more than one test"
@@ -1631,7 +1631,7 @@ data:
       body: |
         When a concurrent effort merges an ADR that takes your number, a later standalone
         renumber commit does not make the replay safe: the ADR's introducing commit is replayed
-        first and collides with the number already on the new base. `awf check --staged` also loads
+        first and collides with the number already on the new base. `awf check staged` also loads
         the HEAD snapshot, so every intermediate rebased commit must avoid the duplicate identity.
         The working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
         into the conflict resolution of the ADR's introducing commit during the replay; rename
@@ -1740,7 +1740,7 @@ data:
         session had staged an ADR status flip plus its regenerated `docs/decisions/INDEX.md` plus the
         lock's new `INDEX.md` outputHash, so committing the lock by pathspec without their
         `INDEX.md` would have landed a lock whose recorded hash no file in that commit matched.
-        The pre-commit hook does NOT catch this: `awf check --staged` validates the staged UNION,
+        The pre-commit hook does NOT catch this: `awf check staged` validates the staged UNION,
         which is internally consistent, so the broken commit passes the gate and only the next
         person's `awf check` fails. Neither including their `INDEX.md` (splitting their transaction)
         nor including their ADR (committing their work under your message) is acceptable either.

@@ -214,3 +214,4 @@ _No decisions are in flight._
 - [ADR-0207: Two-layer glossary with record-model terms](0207-two-layer-glossary-with-record-model-terms.md) (Implemented)
 - [ADR-0208: Narrow the glossary-terms-validated claim to the implementation](0208-narrow-the-glossary-terms-validated-claim-to-the-implementation.md) (Implemented)
 - [ADR-0209: Context-aware discretionary Pi handoffs](0209-context-aware-discretionary-pi-handoffs.md) (Implemented)
+- [ADR-0210: Fork the verification commands by universe into check repo and check staged](0210-fork-the-verification-commands-by-universe-into-check-repo-and-check-staged.md) (Implemented)

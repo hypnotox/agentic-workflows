@@ -32,7 +32,7 @@ func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error
 // the rule.
 // invariant: config/validation:hooks-commands-resolvable (TestValidateCommandWiring)
 func TestValidateCommandWiring(t *testing.T) {
-	fire := []struct {
+	fixtures := []struct {
 		name, config, want string
 	}{
 		{
@@ -50,55 +50,35 @@ func TestValidateCommandWiring(t *testing.T) {
 			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\nhooks:\n  enabled: true\nrunner:\n  enabled: false\n",
 			"hooks.enabled without the runner singleton requires vars.commitGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
 		},
-		{
-			"runner disabled, proseGateCmd third",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\nhooks:\n  enabled: true\n",
-			"hooks.enabled without the runner singleton requires vars.proseGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
-		},
-		{
-			"runner disabled, memoryGateCmd fourth",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\nhooks:\n  enabled: true\n",
-			"hooks.enabled without the runner singleton requires vars.memoryGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
-		},
-	}
-	for _, tc := range fire {
-		t.Run(tc.name, func(t *testing.T) {
-			syncErr, checkErr := commandWiringErrs(t, tc.config)
-			if syncErr == nil || syncErr.Error() != tc.want {
-				t.Errorf("sync error = %v, want %q", syncErr, tc.want)
-			}
-			if checkErr == nil || checkErr.Error() != tc.want {
-				t.Errorf("check error = %v, want %q", checkErr, tc.want)
-			}
-		})
-	}
 
-	valid := []struct{ name, config string }{
 		{
 			"runner satisfies the awf-verb vars",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "",
 		},
 		{
 			"explicit vars satisfy a runner-less config",
-			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\n  memoryGateCmd: make memory-gate\nhooks:\n  enabled: true\n",
+			"prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\nhooks:\n  enabled: true\n", "",
 		},
 		{
 			"hooks disabled needs nothing",
-			"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: false\n",
+			"prefix: example\nintegrationBranch: main\nhooks:\n  enabled: false\n", "",
 		},
 		{
 			"hooks absent needs nothing",
-			"prefix: example\nintegrationBranch: main\n",
+			"prefix: example\nintegrationBranch: main\n", "",
 		},
 	}
-	for _, tc := range valid {
+	for _, tc := range fixtures {
 		t.Run(tc.name, func(t *testing.T) {
 			syncErr, checkErr := commandWiringErrs(t, tc.config)
-			if syncErr != nil {
-				t.Errorf("sync error = %v, want none", syncErr)
+			if tc.want == "" {
+				if syncErr != nil || checkErr != nil {
+					t.Errorf("errors = %v, %v; want none", syncErr, checkErr)
+				}
+				return
 			}
-			if checkErr != nil {
-				t.Errorf("check error = %v, want none", checkErr)
+			if syncErr == nil || syncErr.Error() != tc.want || checkErr == nil || checkErr.Error() != tc.want {
+				t.Errorf("errors = %v, %v; want %q", syncErr, checkErr, tc.want)
 			}
 		})
 	}

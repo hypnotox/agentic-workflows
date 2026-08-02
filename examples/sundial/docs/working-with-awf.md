@@ -29,12 +29,16 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf effort new <outcome-title> [--json] [--no-worktree] [--base <ref>]`: derive an immutable slug, publish schema-2 state with owned `.awf/efforts/<slug>/memory.md`, and create the managed `.awf/worktrees/<slug>/` checkout on `awf/<slug>` by default, reporting the path to continue in; `--no-worktree` keeps the invoking checkout, and `integrate`, `worktree remove`, and final `finish` stay separate operations.
-- `awf check drift`: report only the stale or hand-edited rendered output, including the config-tree hygiene sweep, without the current-state evaluation bare `awf check` runs with it.
-- `awf check state`: report only the current-state authority findings over the working tree. The staged transition stays `awf check --staged`, which applies to the bare form alone.
-- `awf check invariants`: report the current-state topic invariant claims and their backing state.
-- `awf check commit [FILE]`: validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers (used by a commit-msg hook).
-- `awf check prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
-- `awf check memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off; used by a pre-commit hook).
+- `awf check`: run both verification universes; outside Git, run the repo universe and report the staged universe unavailable.
+- `awf check repo`: run the repository-property aggregate. Its `drift` and `state` children inspect the working tree, while `prose` and `memory` scan the tracked index corpus.
+- `awf check repo drift`: report stale or hand-edited rendered output, including the config-tree hygiene sweep.
+- `awf check repo state`: report current-state authority findings over the working tree.
+- `awf check repo prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off).
+- `awf check repo memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off).
+- `awf check staged`: run the HEAD-to-index current-state transition and rendered-output drift checks.
+- `awf check staged state`: report current-state authority findings over the HEAD-to-index transition.
+- `awf check staged drift`: render from the staged config and report only stale or hand-edited staged rendered output; other repository drift kinds are out of scope.
+- `awf check staged commit [FILE]`: directly validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers; it is not part of the staged aggregate and is used by a commit-msg hook.
 - `awf changelog`: query the changelog by version or range.
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place while optional effort and worktree residents remain local.
 - `awf version`: print the binary's version.

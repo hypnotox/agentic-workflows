@@ -17,7 +17,7 @@ import (
 func proseGateRepo(t *testing.T, proseGateYAML string, stage map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n"+proseGateYAML)
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"+proseGateYAML)
 	repo := gitfixture.InitRepoAt(t, root)
 	gitfixture.Add(t, repo, ".awf/config.yaml")
 	gitfixture.Stage(t, repo, stage)
@@ -31,7 +31,7 @@ func TestProseGateKnobOff(t *testing.T) {
 	if err := runProseGate(ctx, t.TempDir(), io.Discard); err == nil {
 		t.Error("no .awf: want a config-load error, got nil")
 	}
-	// Knob absent, and knob explicitly false: both no-op and return nil.
+	// Knob absent and knob explicitly false both disclose the disabled child and return nil.
 	for _, y := range []string{"", "proseGate:\n  enabled: false\n"} {
 		root := proseGateRepo(t, y, nil)
 		if err := runProseGate(ctx, root, io.Discard); err != nil {
@@ -40,17 +40,17 @@ func TestProseGateKnobOff(t *testing.T) {
 	}
 }
 
-func TestProseGateRefusesMissingOrInvalidStagedConfig(t *testing.T) {
+func TestProseGateRefusesMissingOrInvalidWorkingConfig(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := gitfixture.InitRepo(t).Root()
-	if err := runProseGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "staged snapshot has no") {
-		t.Fatalf("missing staged config: %v", err)
+	if err := runProseGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "not an awf project") {
+		t.Fatalf("missing working config: %v", err)
 	}
 
 	root = proseGateRepo(t, "proseGate: [\n", nil)
 	if err := runProseGate(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "parse config") {
-		t.Fatalf("invalid staged config: %v", err)
+		t.Fatalf("invalid working config: %v", err)
 	}
 }
 
@@ -75,7 +75,7 @@ func TestProseGateClean(t *testing.T) {
 	if err := runProseGate(ctx, root, &out); err != nil {
 		t.Fatalf("clean: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check prose: clean") {
+	if !strings.Contains(out.String(), "check repo prose: clean") {
 		t.Errorf("clean: output %q", out.String())
 	}
 }
@@ -97,7 +97,7 @@ func TestProseGateReportsSkippedBinaries(t *testing.T) {
 	if first < 0 || second < 0 || first > second {
 		t.Errorf("skipped binary paths must be printed in sorted order: %q", text)
 	}
-	if !strings.Contains(text, "check prose: clean") {
+	if !strings.Contains(text, "check repo prose: clean") {
 		t.Errorf("clean output missing after binary reports: %q", text)
 	}
 }
@@ -114,7 +114,7 @@ func TestProseGateValidExemptionPermits(t *testing.T) {
 	if err := runProseGate(ctx, root, &out); err != nil {
 		t.Fatalf("valid exemption: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check prose: clean") {
+	if !strings.Contains(out.String(), "check repo prose: clean") {
 		t.Errorf("valid exemption: output %q", out.String())
 	}
 }
@@ -157,25 +157,21 @@ func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	})
 }
 
-func TestProseGateUsesStagedConfig(t *testing.T) {
+func TestProseGateUsesWorkingConfigKnob(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
 	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "staged \u2014\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nproseGate:\n  enabled: false\n")
-	if err := runProseGate(ctx, root, io.Discard); err == nil {
-		t.Fatal("worktree disabled knob must not override staged enabled config")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: false\n")
+	if err := runProseGate(ctx, root, io.Discard); err != nil {
+		t.Fatalf("worktree-disabled knob must return before reading the staged corpus: %v", err)
 	}
 }
 
-func TestProseGateUsesStagedExemption(t *testing.T) {
+func TestProseGateUsesWorkingConfigExemption(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
-	root := proseGateRepo(t,
-		"proseGate:\n  enabled: true\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n",
-		map[string]string{"depict.md": "staged \u2014\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nproseGate:\n  enabled: true\n")
+	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"depict.md": "staged \u2014\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: true\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n")
 	if err := runProseGate(ctx, root, io.Discard); err != nil {
-		t.Fatalf("staged exemption must control despite worktree config: %v", err)
+		t.Fatalf("working-config exemption must control the staged corpus: %v", err)
 	}
 }
 
@@ -196,12 +192,17 @@ func TestProseGateDispatch(t *testing.T) {
 	// exercised, not just runProseGate directly.
 	root := proseGateRepo(t, "proseGate:\n  enabled: true\n",
 		map[string]string{"a.md": "plain ascii\n"})
+	if err := initializeProject(ctx, root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.AddAll(t, gitfixture.At(root))
+	gitfixture.Commit(t, gitfixture.At(root), "fixture", nil)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb strings.Builder
-	if code := run([]string{"awf", "check", "prose"}, &out, &errb); code != 0 {
-		t.Fatalf("check prose exited %d: %s", code, errb.String())
+	if code := run([]string{"awf", "check", "repo", "prose"}, &out, &errb); code != 0 {
+		t.Fatalf("check repo prose exited %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "check prose: clean") {
+	if !strings.Contains(out.String(), "check repo prose: clean") {
 		t.Errorf("dispatch: output %q", out.String())
 	}
 }
@@ -209,13 +210,14 @@ func TestProseGateDispatch(t *testing.T) {
 // invariant: tooling/quality-gates:prose-gate-refuses-without-git (TestProseGateRefusesOutsideAGitRepo)
 func TestProseGateRefusesOutsideAGitRepo(t *testing.T) {
 	ctx := testContext(t)
-	_ = ctx
-	// An adopted tree outside a git repository has no staged snapshot, so the
-	// command refuses rather than reporting a clean tree it could not see.
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nproseGate:\n  enabled: true\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: false\n")
+	if err := runProseGate(ctx, root, io.Discard); err != nil {
+		t.Fatalf("disabled outside git must return before reading the index: %v", err)
+	}
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\nproseGate:\n  enabled: true\n")
 	err := runProseGate(ctx, root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
-		t.Fatalf("outside git: want a refusal naming the enumeration failure, got %v", err)
+		t.Fatalf("enabled outside git: want a refusal naming the enumeration failure, got %v", err)
 	}
 }

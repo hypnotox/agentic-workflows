@@ -27,8 +27,8 @@ jobs:
       # per-clone and optional, so CI is their enforcement backstop (ADR-0196).
       - name: Prose and memory scans
         run: |
-          ./awf check prose
-          ./awf check memory
+          ./awf check repo prose
+          ./awf check repo memory
       # coverage.out is written by ./x gate above (ADR-0196); no second suite run.
       - name: Filtered coverage profile (coverage-ignore blocks dropped)
         run: go run ./cmd/covercheck --emit-filtered coverage.out > coverage.covered.out

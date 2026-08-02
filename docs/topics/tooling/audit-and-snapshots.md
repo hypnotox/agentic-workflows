@@ -72,9 +72,9 @@ Backing: test
 
 ### `invariant: commit-gate-shared-rule`
 
-The Conventional Commits subject check is defined once as a single shared function. Both the audit range loop and the check commit command call that function, so neither re-implements the subject regex, the allowed type and scope lists, or the subject-length limit, and a subject the audit rejects is rejected identically by the commit gate.
+The Conventional Commits subject check is defined once as a single shared function. Both the audit range loop and the check staged commit command call that function, so neither re-implements the subject regex, the allowed type and scope lists, or the subject-length limit, and a subject the audit rejects is rejected identically by the commit gate.
 Origin: ADR-0036
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0210
 Backing: test
 
 ### `invariant: repo-audit-error-exit`

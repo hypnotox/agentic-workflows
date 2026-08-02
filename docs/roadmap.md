@@ -9,6 +9,14 @@
   and patch-producing parallel workers remain out of scope for the current workflow contract.
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
+- Redesign the check architecture around explicit snapshot capabilities. ADR-0210 forked checks by
+  repository-state and staged-transition universe, removed duplicate payload invocations, made
+  disabled scans git-independent, and made every universe child applicable by construction. Its
+  staged drift remains intentionally narrower than repository drift: a snapshot tree has neither
+  directory entries nor untracked files, so the config-tree hygiene sweep and dead-reference probe
+  need explicit semantics before they can join the blocking staged gate. Use that decision to
+  separate rendered-byte comparison from filesystem-only hygiene instead of extending the current
+  check orchestration with more special cases.
 - Let a global topic carry path selectors, so it can own specific paths as well as supply
   global authority. Today `applies: global` is skipped outright by both `coveredByDomain`
   and `matchingScopedTopics` in `internal/topic/coverage.go`, so a global topic can never
@@ -39,7 +47,7 @@
   config-domain ADR.
 - Design a structured context result only when a demonstrated consumer can define its contract;
   ADR-0165 deliberately removed speculative JSON rather than preserving a hidden path census.
-- Enforce the plan freeze mechanically: `awf check --staged` could refuse a diff that edits a
+- Enforce the plan freeze mechanically: `awf check staged` could refuse a diff that edits a
   `docs/plans/` file whose HEAD `status:` is `Implemented`. The recorded "record implementation
   deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151
   session from appending Notes to a frozen plan at review's direction; a prose rule that failed
@@ -114,7 +122,7 @@
 
 - Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
-  merge the target in the managed worktree, run `awf check --staged`, run the gate, commit,
+  merge the target in the managed worktree, run `awf check staged`, run the gate, commit,
   renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
   path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
   and a renewed terminal review, blocking every other finishing effort for that whole window,
@@ -352,36 +360,6 @@ worth considering at the same time is the inverse direction: a file in the diff
 that no part of the message accounts for, which is what catches a `git add -A`
 sweeping another effort's work.
 
-## Bare `awf check` should run every enabled check and report what ran
-
-ADR-0159 was deliberately the first of two decisions: it renamed and regrouped
-the verification commands without changing what bare `awf check` does. The
-follow-on makes bare `awf check` run drift, state, invariants, and, when their
-config knobs are on, the prose and working-memory-citation scans, then report
-every check with a ran or skipped verdict and a reason for each skip. The
-requirement as the user framed it during the ADR-0159 brainstorm: it should
-clearly state what ran and what did not.
-
-Four contracts belong to that decision, all named in ADR-0159 and left
-untouched there. The prose and memory scans call `snapshot.IndexTree` before
-consulting their own knob, so today a disabled gate hard-errors outside a git
-repository instead of reporting itself skipped; the knob check has to move
-ahead of the index read, and what bare check does outside git while a knob is
-ON still needs deciding. The pre-commit payload and `./x gate` between them
-invoke each scan three times, which the report makes visible and which should
-be pruned in the same decision. The exit-code contract when every check is
-skipped is unsettled. And `--staged` could widen from the bare form to the
-children once a report exists to disclose a skip honestly, which ADR-0159
-Decision 3 records as the reason it stayed bare-form-only.
-
-One open design question has no home in ADR-0159 and would otherwise be lost.
-`examples/sundial` is the deliberately smell-free showcase adopter, and it
-enables neither opt-in scan, so a faithful ran/skipped report prints two skip
-lines in the one rendered tree held up as the clean example. Either those lines
-are acceptable output for a healthy project, or the report suppresses a check
-whose knob is off, which weakens the very disclosure the decision exists to
-provide. Settle that before writing the report format, not after.
-
 ## A direct first-stamp ADR flip can smuggle unreviewed section content
 
 Since ADR-0188, the stamp chain makes every status flip after the first content stamp
@@ -488,15 +466,4 @@ does not select them, so any broader cleanup policy needs a separate safety deci
 A future release-policy change should remove Windows from `.goreleaser.yaml` and the
 cross-compile gate. Test-temp management retains Windows compile compatibility now, but owns
 real behavior only on Linux and macOS; it must not approximate Windows ACL safety.
-
-## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
-
-Neither subcommand is invoked by any hook payload, runner step, or CI job in this
-repository - every enforcement path calls bare `awf check`, which runs both halves
-together. Surveyed 2026-07-31 during the workflow-friction effort and deliberately
-kept: they are cheap, tested, and harmless single-half conveniences for focused
-debugging, and removing shipped CLI surface is more churn than a dormant tested
-branch. Tripwire, mirroring the removed `--json` precedent: if either subcommand
-starts misleading users about what bare `awf check` covers, cut it then. Do not
-keep re-asking why they are uninvoked.
 

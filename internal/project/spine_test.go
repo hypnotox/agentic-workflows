@@ -304,7 +304,7 @@ func TestImplementerAgent(t *testing.T) {
 		"Never make a check pass by weakening what it proves",
 		"There is nobody to wait for",
 		"That report is the escalation",
-		"`awf check --staged`",
+		"`awf check staged`",
 		"`make gate`",
 		// Each enumerated stopped field and owner step gets its own want, since
 		// section parity catches only whole-section loss, not intra-section drift.
@@ -892,22 +892,22 @@ func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name, func(t *testing.T) {
 			out := renderSkillGolden(t, name, configured)
-			assertOrderedPhrases(t, out, "the complete transaction", "`awf check --staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+			assertOrderedPhrases(t, out, "the complete transaction", "`awf check staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 
 	agents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", configured)
-	assertOrderedPhrases(t, agents, "the complete transaction", "`awf check --staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+	assertOrderedPhrases(t, agents, "the complete transaction", "`awf check staged`", "`./x gate`", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 
 	fallback := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}}
 	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
 		t.Run(name+"-fallback", func(t *testing.T) {
 			out := renderSkillGolden(t, name, fallback)
-			assertOrderedPhrases(t, out, "the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+			assertOrderedPhrases(t, out, "the complete transaction", "`awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 		})
 	}
 	fallbackAgents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", fallback)
-	assertOrderedPhrases(t, fallbackAgents, "the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
+	assertOrderedPhrases(t, fallbackAgents, "the complete transaction", "`awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks")
 }
 
 func TestExecutingPlansTemplate(t *testing.T) {

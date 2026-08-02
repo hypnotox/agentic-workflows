@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -87,9 +86,8 @@ func coverageLine(c topic.CoverageFinding) string {
 
 // workingState is one loaded working-tree current-state universe: the parsed
 // ADR/topic view, the Tree it came from, and the lock.
-// It is the shared substrate for CheckCurrentState and CurrentStateInvariants,
-// which each read exactly one working Tree so a check and a report never mix a
-// working and an index universe.
+// It is the shared substrate for CheckCurrentState, keeping the loaded corpus,
+// tree, lock, and config in one working-tree universe.
 type workingState struct {
 	Loaded currentstate.Loaded
 	Tree   *snapshot.Tree
@@ -100,6 +98,9 @@ type workingState struct {
 // workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
 func (p *Project) workingCurrentState(ctx context.Context) (workingState, error) {
 	tree, err := p.workingTree(ctx)
+	if errors.Is(err, git.ErrNotARepository) {
+		tree, err = snapshot.FilesystemTree(ctx, p.Root)
+	}
 	if err != nil {
 		return workingState{}, err
 	}
@@ -548,47 +549,6 @@ func coveragePolicy(cs *config.CurrentStateConfig) topic.CoveragePolicy {
 		Fanout:           true,
 		MaxTopicsPerPath: cs.EffectiveMaxTopicsPerPath(),
 	}
-}
-
-// InvariantReport is one invariant claim in the working-tree topic corpus for the
-// standalone `awf check invariants` report (ADR-0134): its full claim ID, backing mode
-// (test or unbacked), an unbacked claim's Verify guidance, and the sorted
-// proof-marker sites of a test-backed claim. Rule claims never appear. A
-// backing-contract violation is a corpus load error surfaced by
-// CurrentStateInvariants, never a reported entry.
-type InvariantReport struct {
-	ID      string   `json:"id"`
-	Backing string   `json:"backing"`
-	Verify  string   `json:"verify,omitempty"`
-	Proofs  []string `json:"proofs,omitempty"`
-}
-
-// CurrentStateInvariants reports the invariant claims in the working-tree topic
-// corpus (ADR-0134). Authority is the topic claim set: test-backed proof and
-// unbacked Verify contracts are already enforced when the corpus loads, so this
-// reads only typed claims and their qualified proof markers - no ADR is consulted.
-func (p *Project) CurrentStateInvariants(ctx context.Context) ([]InvariantReport, error) {
-	ws, err := p.workingCurrentState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var out []InvariantReport
-	for _, t := range ws.Loaded.Topics.All() {
-		for _, claim := range t.Claims {
-			if claim.Type != topic.Invariant {
-				continue
-			}
-			r := InvariantReport{ID: claim.ID, Backing: string(claim.Backing), Verify: claim.Verify}
-			for _, s := range ws.Loaded.Topics.Markers.ForClaim(claim.ID) {
-				if s.Kind == topic.ProofMarker {
-					r.Proofs = append(r.Proofs, fmt.Sprintf("%s:%d", s.Path, s.Line))
-				}
-			}
-			out = append(out, r)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out, nil
 }
 
 // eligiblePaths returns the snapshot files that are neither a generated output (a
