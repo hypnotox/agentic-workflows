@@ -5,7 +5,6 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -141,41 +140,15 @@ func TestProductionNeverImportsTestSupport(t *testing.T) {
 	}
 
 	root := testsupport.RepoRoot(t)
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	testsupport.WalkRepoSources(t, root, func(path string, source []byte) {
+		violations, err := productionTestsupportImportViolations(path, source)
 		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		slashPath := filepath.ToSlash(rel)
-		if d.IsDir() {
-			if d.Name() == ".git" || d.Name() == "testdata" || d.Name() == "vendor" || d.Name() == "node_modules" ||
-				slashPath == "internal/testsupport" || slashPath == ".awf/efforts" || slashPath == ".awf/worktrees" {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(slashPath, ".go") || strings.HasSuffix(slashPath, "_test.go") {
-			return nil
-		}
-		source, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		violations, err := productionTestsupportImportViolations(slashPath, source)
-		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 		for _, violation := range violations {
 			t.Error(violation)
 		}
-		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestDependencyProofRejectsThirdPartyImportFixture(t *testing.T) {
