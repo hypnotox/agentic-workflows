@@ -52,15 +52,15 @@ needed to associate a session, publish activity, and rebind the same conversatio
 non-Pi target must not receive Pi tooling, learn a `using_effort` tool, or create a parallel
 harness-owned worktree beside awf's managed topology.
 
-Pi's accepted but not-yet-released prerequisite design provides command-context-only
+Pi provides command-context-only
 `ExtensionCommandContext.changeCwd(targetCwd, options)`. It replaces the same session
 runtime, writes the destination into the session header, relocates default session storage
-when applicable, gives extensions a fresh `ReplacedSessionContext`, runs destination trust,
-and is detected by `typeof ctx.changeCwd === "function"`. Remote Pi's accepted but
-not-yet-released prerequisite design provides an awf-only process-local peer-name override,
-capability negotiation and replay requests, serialized identity reconciliation, and
-continued atomic replacement of the existing `awf` metadata namespace. awf must consume
-those owner-provided contracts rather than duplicate them or depend on an unlanded shape.
+when applicable, gives extensions a fresh `ReplacedSessionContext`, and runs destination
+trust. Remote Pi provides an awf-only process-local peer-name override, capability
+negotiation and replay requests, serialized identity reconciliation, and atomic replacement
+of the existing `awf` metadata namespace. awf develops against locally owned structural
+foreign interfaces for these capabilities and detects their presence at runtime. Package
+publication, release versions, and installation topology are not capability authority.
 
 Activity is stored beside the effort that owns it. This makes the ownership boundary
 cohesive but intentionally creates a one-way compatibility boundary: after
@@ -228,29 +228,25 @@ Downgrade compatibility is not a goal.
     artifact found during implementation, then renders their generated outputs in the same
     commit.
 
-11. Land prerequisites in owner order before awf advertises portable end-to-end runtime
-    support. Pi has implemented, tested, documented, and committed SessionManager
-    persistence/relocation, runtime and extension types, lifecycle, official TUI/RPC/print
-    host bindings, and changelog at commit
-    `f9447485497b12c100c2064c295c2c1beead0c29`. Remote Pi has implemented and committed the
-    process-local override, capability, replay, status, identity-reconciliation, tests, and
-    README contract at commit `3355463ff484bbd4fb80ada9fcd826dcb6ad6a53`. Both prerequisite
-    owner contracts are therefore landed for awf development, but neither custom fork has a
-    published minimum release yet.
+11. Define the foreign runtime interfaces awf develops against without importing, pinning,
+    or publishing either owner package. The Pi interface is an optional command-context
+    `changeCwd` method with its replacement-session callback and structured result. The
+    Remote Pi interface is a closed set of awf-owned structural event payloads for metadata
+    replacement, capability discovery, replay, transient name override, and assigned-name
+    diagnostics. Owner commits `f9447485497b12c100c2064c295c2c1beead0c29` in Pi and
+    `3355463ff484bbd4fb80ada9fcd826dcb6ad6a53` in Remote Pi record the implementation
+    provenance for those interface shapes; they do not establish a package, release, version,
+    artifact, checksum, or installation prerequisite.
 
-    awf may implement and smoke-test against builds containing those commits while detecting
-    their capabilities at runtime. It fills in and raises exact minimum versions only from
-    the first published releases that contain them, never guesses release numbers, and does
-    not claim portable support before those releases exist. Remote Pi's authoritative signal
-    is `nameOverride.version === 1` with the `awf` namespace.
-    Guarded awf code may merge earlier only when missing `ctx.changeCwd` leaves committed
-    association/location unchanged and makes that `using_effort` call fail with one visible,
-    actionable notice naming the required Pi capability and upgrade remedy. Capability
-    detection remains mandatory even after awf raises its tested runtime floor. Missing
-    Remote Pi override support still degrades to metadata-only through its negotiated
-    compatibility contract. awf does not advertise live rebinding before Pi ships it or
-    create a private compatibility shim for either owner contract. The two prerequisite
-    repositories may land in either order.
+    Detect `typeof ctx.changeCwd === "function"` immediately before a queued switch. When it
+    is absent, leave CWD, activity, and memory unchanged and emit one visible actionable
+    refusal naming the missing capability and reload remedy. Detect Remote Pi through the
+    optional event bus and require `nameOverride.version === 1` with the `awf` namespace
+    before requesting a transient name. If the event bus is absent, local effort association,
+    switching, heartbeat, and detach continue without peer publication. If metadata exists
+    without name override, publication remains metadata-only. Replay, metadata, and naming
+    failures are advisory. Capability presence, not a foreign package version or publication
+    channel, is the compatibility boundary.
 
 12. Catalog a core cross-target `effort-workflow` support skill as the single user-facing
     selection knob. New project scaffolds enable it by default; existing adopters retain
@@ -265,12 +261,15 @@ Downgrade compatibility is not a goal.
     `awf-effort` extension. `using-effort` is not a second catalog selection and never renders
     for a non-Pi target. The target output declaration, render, prune, and drift paths use the
     same predicate so partial output cannot persist. Add the extension to the containerized
-    TypeScript strict-check and 100 percent line/function/branch coverage lane, and extend
-    pinned real-runtime smoke to prove same-session CWD persistence, legacy-memory
-    compatibility and migration, frontmatter metadata publication, capability replay,
-    transient-name restoration, and advisory failure behavior. Render coverage also
-    exercises every new template with empty optional values, proving coherent missingkey-zero
-    output with no `<no value>` token.
+    TypeScript strict-check and 100 percent line/function/branch coverage lane. awf-owned
+    contract fixtures prove the structural Pi and Remote Pi interfaces, same-session CWD
+    transfer, legacy-memory compatibility and migration, frontmatter metadata publication,
+    capability replay, transient-name restoration, complete Remote Pi absence, and advisory
+    failure behavior. The existing pinned real-runtime smoke remains scoped to its retained
+    subagent, handoff, skill-discovery, and routing contracts; `using_effort` does not add a
+    foreign release prerequisite to that lane. Render coverage also exercises every new
+    template with empty optional values, proving coherent missingkey-zero output with no
+    `<no value>` token.
 
 13. Add `rendering/pi-workflows:pi-effort-session-association`,
     `rendering/workflow-skill-templates:effort-workflow`, and
@@ -287,7 +286,6 @@ Downgrade compatibility is not a goal.
 - update `tooling/effort-management:memory-skeleton-purpose-partition`
 - update `rendering/pi-runtime:pi-extension-target-render`
 - update `rendering/pi-runtime:pi-minimum-runtime`
-- update `rendering/pi-runtime:pi-real-runtime-smoke`
 - update `rendering/pi-workflows:pi-session-handoff-lifecycle`
 - update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
@@ -328,9 +326,9 @@ filesystem or Git failures remain visible to the agent.
 
 Older awf binaries may reject an effort containing `activity.json`. Users must upgrade
 rather than downgrade or manually relocate the resident. Existing adopters must explicitly
-enable `effort-workflow` once. awf implementation and release are sequenced behind two external
-owner releases, which delays the feature but avoids coupling shipped behavior to provisional
-APIs.
+enable `effort-workflow` once. Foreign runtime capabilities may be absent from any particular
+installation; structural detection and bounded degradation keep that absence local to the
+optional integration instead of coupling awf support to a publication channel.
 
 ## Alternatives Considered
 
@@ -348,7 +346,8 @@ APIs.
 | Add an `active` boolean | File existence already expresses the attachment claim, and the boolean would have no useful false state. |
 | Make all effort commands validate the memory header | A narrow metadata feature would become a repository-wide operational gate contrary to the supportive design. |
 | Persist the effort slug as the configured Remote Pi name | The override is session-scoped coordination context, not user configuration, and must disappear on detach or restart. |
-| Implement private Pi or Remote Pi compatibility shims in awf | The owning projects have settled prerequisite shapes; duplicating provisional runtime behavior would create competing contracts. |
+| Implement private Pi or Remote Pi behavior shims in awf | awf owns only the structural consumption interfaces and degradation policy; reproducing foreign runtime behavior would create competing implementations. |
+| Require published Pi or Remote Pi packages and exact release pins | Capability presence is the runtime compatibility boundary; publication topology is unrelated and custom local extensions are valid providers. |
 | Catalog or render `using-effort` for every target | It leaks Pi-only runtime semantics and an unavailable tool into non-Pi guidance. |
 | Let each harness create a parallel worktree for the effort | The existing awf-managed worktree is the one workflow topology; competing topology would obscure authority and cleanup. |
 | Expose separate selection knobs for `effort-workflow`, `using-effort`, and the Pi extension | Independent toggles permit incoherent partial output; one workflow selection can derive its Pi-owned companion outputs. |
@@ -363,3 +362,4 @@ APIs.
 - 2026-08-02: Applied; operations: update `tooling/cli:effort-command-contract`, update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:memory-skeleton-purpose-partition`, update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
 - 2026-08-02: Amended; content-sha256: ea7654729e8ad4a3ff4a825a8634a65bfaa956fd43ab7577dc0d30a7ffcd4ac2
 - 2026-08-02: Applied; operations: update `rendering/pi-runtime:pi-extension-target-render`, add `rendering/pi-workflows:pi-effort-session-association`, update `rendering/project-output-plan:multi-target-render`, update `rendering/catalog-and-targets:target-dialect-render`, update `rendering/pi-workflows:pi-native-workflow-skills`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, add `rendering/workflow-skill-templates:effort-workflow`, add `rendering/pi-workflows:using-effort-skill`
+- 2026-08-02: Amended; content-sha256: 6b904e7e26609ecf60c7b2ff95fe76a4ad24cfc58fceb23e061083d1dca70971
