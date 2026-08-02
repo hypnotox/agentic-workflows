@@ -119,6 +119,21 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 	}
 }
 
+func TestPlanSectionsInPlaceOutputReadError(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "out.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	if _, err := p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil || !strings.Contains(err.Error(), "read output out.md") {
+		t.Fatalf("in-place output read error = %v", err)
+	}
+}
+
 // observeRenderInputs records an existing output as a managed-output input when
 // the section plan carries an in-place section, so the read-back channel shows
 // up among the node's observed inputs.
@@ -143,6 +158,15 @@ func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("in-place plan must observe the existing output as a managed-output input: %#v", inputs)
+	}
+	if err := os.Remove(filepath.Join(root, "out.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "out.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.observeRenderInputs("skills", "foo", "skills/foo/SKILL.md.tmpl", "out.md", map[string]render.SectionPlan{"s": {InPlace: true}}); err == nil {
+		t.Fatal("observed in-place output read fault was erased")
 	}
 }
 

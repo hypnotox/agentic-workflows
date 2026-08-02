@@ -1,6 +1,8 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -58,6 +60,7 @@ func TestCheckStagedDriftErrorPaths(t *testing.T) {
 	})
 }
 
+// invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestCheckStagedRenderedFilesKindsAndScope)
 func TestCheckStagedRenderedFilesKindsAndScope(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: "regen-stale", Mode: snapshot.Regular, Bytes: []byte("old")},
@@ -90,7 +93,10 @@ func TestCheckStagedRenderedFilesKindsAndScope(t *testing.T) {
 		"ordinary-missing": {Path: "ordinary-missing", TemplateHash: "template", ConfigHash: "config"},
 	}
 
-	got := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, false)
+	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := []manifest.Drift{
 		{Path: "ordinary-edit", Kind: "hand-edited", Detail: "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"},
 		{Path: "ordinary-stale", Kind: "stale", Detail: "template or config changed; run awf render"},
@@ -99,5 +105,15 @@ func TestCheckStagedRenderedFilesKindsAndScope(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("staged rendered drift:\n got %#v\nwant %#v", got, want)
+	}
+
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "fault"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	faultLock := &manifest.Lock{Files: map[string]manifest.Entry{"fault": {}}}
+	faultRendered := map[string]RenderedFile{"fault": {Path: "fault"}}
+	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, filesystemProjectReader{root: root}, true); err == nil {
+		t.Fatal("staged comparison erased an output read fault")
 	}
 }

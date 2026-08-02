@@ -54,13 +54,13 @@ func (p *Project) CheckStagedDrift(ctx context.Context) ([]manifest.Drift, error
 	for _, file := range op.writeFiles() {
 		rendered[file.Path] = file
 	}
-	return checkStagedRenderedFiles(state.Lock, rendered, read, !p.nested), nil
+	return checkStagedRenderedFiles(state.Lock, rendered, read, !p.nested)
 }
 
 // checkStagedRenderedFiles intentionally has no structural drift branches.
 // Missing, orphaned, unsynced, invalid-frontmatter, and other repo-only kinds
 // are outside the staged rendered-output comparison.
-func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, read ProjectTreeReader, includeResident bool) []manifest.Drift {
+func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, read ProjectTreeReader, includeResident bool) ([]manifest.Drift, error) {
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if !includeResident && resident.IsResidentPath(path) {
@@ -71,7 +71,10 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 		if !produced {
 			continue
 		}
-		staged, present := read.ReadFile(path)
+		staged, present, err := read.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
 		if file.Policy.Regenerate {
 			if present && manifest.Hash(staged) != manifest.Hash([]byte(file.Content)) {
 				kind, detail := "stale", "generated output out of date; run awf render"
@@ -90,5 +93,5 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"})
 		}
 	}
-	return drift
+	return drift, nil
 }

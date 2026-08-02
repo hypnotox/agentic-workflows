@@ -215,6 +215,14 @@ func TestTopicHashReadsTheSelectedSnapshot(t *testing.T) {
 	}
 }
 
+func TestTopicHashPropagatesReaderFault(t *testing.T) {
+	root := t.TempDir()
+	model := topic.TopicRenderModel{Title: "Fault", Summary: "Fault."}
+	if _, err := topicHash(root, failingReadReader{}, model, filepath.Join(root, "metadata")); err == nil {
+		t.Fatal("topic hash erased a project-tree read fault")
+	}
+}
+
 func TestTopicRenderLifecycle(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "zeta", "Zeta", "paths: [\"internal/**\"]\n")

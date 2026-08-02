@@ -26,10 +26,10 @@ import (
 // call plan functions.
 
 // ProjectTreeReader is the read-only input authority for output declarations.
-// Paths reports a fault rather than a short list: a truncated enumeration would
-// silently narrow the declarations the drift oracle is computed over.
+// Reads distinguish absence from a fault, and Paths reports a fault rather than
+// a short list: either loss would silently narrow the drift oracle.
 type ProjectTreeReader interface {
-	ReadFile(path string) ([]byte, bool)
+	ReadFile(path string) ([]byte, bool, error)
 	Paths(prefix string) ([]string, error)
 }
 
@@ -66,12 +66,12 @@ type OutputDeclaration struct {
 
 type snapshotTreeReader struct{ tree *snapshot.Tree }
 
-func (r snapshotTreeReader) ReadFile(path string) ([]byte, bool) {
+func (r snapshotTreeReader) ReadFile(path string) ([]byte, bool, error) {
 	f, ok := r.tree.Lookup(filepath.ToSlash(path))
 	if !ok || !f.Scannable() {
-		return nil, false
+		return nil, false, nil
 	}
-	return slices.Clone(f.Bytes), true
+	return slices.Clone(f.Bytes), true, nil
 }
 func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
@@ -93,12 +93,15 @@ func (p *Project) projectTreeReader() ProjectTreeReader {
 
 type filesystemProjectReader struct{ root string }
 
-func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool) {
+func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool, error) {
 	b, err := os.ReadFile(filepath.Join(r.root, filepath.FromSlash(path)))
-	if err != nil {
-		return nil, false
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, false, nil
 	}
-	return slices.Clone(b), true
+	if err != nil {
+		return nil, false, err
+	}
+	return slices.Clone(b), true, nil
 }
 func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
@@ -157,13 +160,21 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		decls = append(decls, OutputDeclaration{Path: path, TemplateID: tid, Declarers: []string{who}, Inputs: inputs, Reservation: reservation})
 	}
 	configInput := []OutputInput{{Path: ".awf/config.yaml", Role: ArtifactConfig}}
+	var readErr error
+	exists := func(path string) bool {
+		_, ok, err := read.ReadFile(path)
+		if err != nil && readErr == nil {
+			readErr = err
+		}
+		return ok
+	}
 	inputs := func(tid string, authored ...OutputInput) []OutputInput {
 		out := slices.Clone(configInput)
 		if tid != "" {
 			out = append(out, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 		}
 		for _, in := range authored {
-			if _, ok := read.ReadFile(in.Path); ok {
+			if exists(in.Path) {
 				out = append(out, in)
 			}
 		}
@@ -181,7 +192,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			} else {
 				p = ".awf/" + kind + "/parts/" + name + "/" + section + ".md"
 			}
-			if _, ok := read.ReadFile(p); ok {
+			if exists(p) {
 				out = append(out, OutputInput{Path: p, Role: ArtifactConventionPart})
 			}
 		}
@@ -360,6 +371,9 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	for _, name := range resident.RootNames() {
 		tid := residentGitignoreTID(name)
 		add(".awf/"+name+"/.gitignore", tid, tid, inputs(tid), false)
+	}
+	if readErr != nil {
+		return nil, readErr
 	}
 	for i := range decls {
 		switch decls[i].TemplateID {

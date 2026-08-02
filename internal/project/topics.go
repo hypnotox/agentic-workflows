@@ -115,7 +115,10 @@ func topicHash(root string, read ProjectTreeReader, model topic.TopicRenderModel
 	inputs := map[string]string{}
 	for _, path := range paths {
 		rel := relSlash(root, path)
-		b, ok := read.ReadFile(rel)
+		b, ok, err := read.ReadFile(rel)
+		if err != nil {
+			return "", err
+		}
 		if !ok { // coverage-ignore: topic loading just read both inputs from the same project-tree reader
 			return "", fmt.Errorf("read topic hash input %s", rel)
 		}

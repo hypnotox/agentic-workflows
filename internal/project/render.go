@@ -202,15 +202,18 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 	// actually declares an in-place section - every other artifact avoids the read.
 	var output string
 	outputRead := false
-	readOutput := func() string {
+	readOutput := func() (string, error) {
 		if !outputRead {
-			b, ok := p.projectTreeReader().ReadFile(outPath)
+			b, ok, err := p.projectTreeReader().ReadFile(outPath)
+			if err != nil {
+				return "", err
+			}
 			if !ok {
 				b = nil
 			}
 			output, outputRead = string(b), true // "" when absent (first render)
 		}
-		return output
+		return output, nil
 	}
 	for _, s := range declared {
 		sp := render.SectionPlan{EditPath: p.partRel(kind, artifact, s)}
@@ -227,7 +230,10 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			} else if exists {
 				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
 			}
-			out := readOutput()
+			out, readErr := readOutput()
+			if readErr != nil {
+				return nil, fmt.Errorf("read output %s: %w", outPath, readErr)
+			}
 			sp.InPlace = true
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
@@ -764,7 +770,9 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 		inPlaceRead = inPlaceRead || sp.InPlace
 	}
 	if inPlaceRead {
-		if _, ok := p.projectTreeReader().ReadFile(outPath); ok {
+		if _, ok, err := p.projectTreeReader().ReadFile(outPath); err != nil {
+			return nil, err
+		} else if ok {
 			inputs = append(inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
 		}
 	}
