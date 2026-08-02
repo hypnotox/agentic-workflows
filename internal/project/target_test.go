@@ -261,6 +261,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiStructuredExplorationContractRender)
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
@@ -268,6 +269,16 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi subagent extension missing %q", want)
 		}
+	}
+	claude := explorationRenderedByPath(t, explorationFixtureConfig("claude"))
+	for path, content := range claude {
+		if strings.Contains(path, "/skills/") && (strings.Contains(content, "subagent_grounding") || strings.Contains(content, "subagent_explore")) {
+			t.Errorf("Claude target %s leaked Pi dispatch tools", path)
+		}
+	}
+	brainstorming := claude[".claude/skills/example-brainstorming/SKILL.md"]
+	if !strings.Contains(brainstorming, "`grounding-checker` agent") {
+		t.Fatal("Claude grounding dispatch lost its target-native agent")
 	}
 }
 
@@ -581,7 +592,6 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestAllTargetPathsAndBridges)
 func TestAllTargetPathsAndBridges(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
