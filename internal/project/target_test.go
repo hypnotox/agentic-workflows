@@ -183,6 +183,9 @@ func TestPiContextUsageInjection(t *testing.T) {
 // invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
 func TestPiRealRuntimeSmoke(t *testing.T) {
+	if os.Getenv("AWF_PI_RUNTIME_SMOKE") != "1" {
+		t.Skip("Pi container skipped; run './x pi-test run' alone or './x gate' to include it")
+	}
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
 	cmd.Dir = root

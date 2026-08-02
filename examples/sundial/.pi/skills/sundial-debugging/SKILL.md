@@ -37,7 +37,7 @@ Start by querying the explicit paths named above without `--show` or `--full` de
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 
 
-6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with `./x gate`. Run `./x gate full` when the regression test lives in a slower surface that the default gate does not exercise.
+6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with `./x gate`.
 
 7. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `sundial-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `sundial-brainstorming` instead.
 
