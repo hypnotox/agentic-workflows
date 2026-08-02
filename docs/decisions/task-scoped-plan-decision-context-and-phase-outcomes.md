@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: task-scoped-plan-decision-context-and-phase-outcomes
-status: Proposed
+status: Accepted
 date: 2026-08-02
 ---
 # ADR-task-scoped-plan-decision-context-and-phase-outcomes: Task-scoped plan decision context and phase outcomes
@@ -224,3 +224,4 @@ boundaries support the work without an enabling refactor.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-02: Accepted; content-sha256: cebe1b41b700ffd88c6c3c5aafdc82d3e6b0afdb5eb73ffba9642394a71facdf
