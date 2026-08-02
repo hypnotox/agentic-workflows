@@ -224,3 +224,4 @@ _No decisions are in flight._
 - [ADR-0217: Task-scoped plan decision context and phase outcomes](0217-task-scoped-plan-decision-context-and-phase-outcomes.md) (Implemented)
 - [ADR-0218: Associate Pi sessions with efforts and live checkout context](0218-associate-pi-sessions-with-efforts-and-live-checkout-context.md) (Implemented)
 - [ADR-0219: Correct Pi handoff and checkpoint authority](0219-correct-pi-handoff-and-checkpoint-authority.md) (Implemented)
+- [ADR-correct-adr-0219-reference-and-rendering-handoff-prose: Correct ADR-0219 reference and rendering handoff prose](correct-adr-0219-reference-and-rendering-handoff-prose.md) (Implemented)
