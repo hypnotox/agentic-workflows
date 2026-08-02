@@ -195,28 +195,28 @@ func TestPiMinimumRuntime(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestHandoffLifecycleIndependentOfEffortState)
 func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined"} {
+	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined", "getSessionFile()"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff lifecycle output missing %q", want)
 		}
 	}
 	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
-	if err != nil || !strings.Contains(string(body), "handoff counts down, cancels, cleans pending, and links parent before setup kickoff") {
+	if err != nil || !strings.Contains(string(body), "handoff counts down, cancels, and retains pending lifecycle guards") {
 		t.Fatalf("TypeScript lifecycle behavior proof missing: %v", err)
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestHandoffPublicOwnedMemoryContract)
-func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestHandoffPublicProseContract)
+func TestHandoffPublicProseContract(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", ".awf/efforts/", "/memory.md", "1048576", "TextDecoder", "sameIdentity", "Effort: ${slug}", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
+	for _, want := range []string{"Type.Object({kickoff:Type.String({maxLength:1000})},{additionalProperties:false})", "typeof params.kickoff!==\"string\"", "params.kickoff.trim().length===0", "params.kickoff.length>1000", "kickoff:params.kickoff", "sendUserMessage(kickoff)", "setEditorText(kickoff)"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("handoff public contract missing %q", want)
+			t.Errorf("handoff prose contract missing %q", want)
 		}
 	}
-	for _, banned := range []string{"runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
+	for _, banned := range []string{"memoryPath", ".awf/efforts/", "node:path", "validateMemoryPath", "buildKickoffWrapper", "selected effort", "telemetry", "lifecycle mutation"} {
 		if strings.Contains(out, banned) {
-			t.Errorf("handoff public contract retains %q", banned)
+			t.Errorf("handoff prose contract retains %q", banned)
 		}
 	}
 }
@@ -233,46 +233,11 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 	}
 }
 
-func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
+func TestHandoffWorkflowKeepsPolicyOutsideRuntime(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"Continue a validated fresh-session handoff.", "Continue from an optional effort-owned awf checkpoint", "Read ${memoryPath} first.", "Then continue with this immediate action"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("handoff workflow contract missing %q", want)
-		}
-	}
-	for _, banned := range []string{"selected effort", "telemetry lifecycle", "structured resume", "adopt_effort"} {
+	for _, banned := range []string{"memoryPath", ".awf/efforts/", "effort-owned", "Read ${memoryPath}", "Then continue with this immediate action", "telemetry", "adopt_effort"} {
 		if strings.Contains(out, banned) {
-			t.Errorf("handoff workflow contract retains %q", banned)
-		}
-	}
-
-	data := map[string]any{
-		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
-		"layout": testLayout(), "data": map[string]any{}, "targetSessionHandoff": true,
-	}
-	settled := map[string]string{
-		"executing-plans":             "Review settles before checkpointing.",
-		"subagent-driven-development": "checkpoints only after findings resolve",
-	}
-	for name, settledPhrase := range settled {
-		body := renderSkillGolden(t, name, data)
-		settledAt := strings.Index(body, settledPhrase)
-		checkpointAt := strings.Index(body, "**Routine checkpoint.**")
-		handoffAt := strings.Index(body, "handoff_session")
-		if got := strings.Count(body, "handoff_session"); got != 1 {
-			t.Errorf("%s renders %d handoff_session invocations, want one settled-phase invocation", name, got)
-		}
-		if settledAt < 0 || checkpointAt < settledAt || handoffAt < checkpointAt {
-			t.Errorf("%s does not place its sole Pi handoff after settled phase persistence", name)
-		}
-		for _, banned := range []string{
-			"after every checkbox task", "after each checkbox task", "after any checkbox task",
-			"checkbox task triggers", "after every batch-helper return", "after each batch-helper return",
-			"batch-helper return triggers", "handoff after a helper return",
-		} {
-			if strings.Contains(strings.ToLower(body), banned) {
-				t.Errorf("%s retains task/helper handoff trigger %q", name, banned)
-			}
+			t.Errorf("handoff runtime retains workflow policy %q", banned)
 		}
 	}
 }

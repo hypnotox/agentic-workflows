@@ -11,9 +11,9 @@ Pi workflow contracts: governed subagent tools, session handoff, native skills, 
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-Pi handoff retains its single-use queue, countdown, cancellation, parent link, kickoff, child cleanup, editor fallback, and post-countdown revalidation. When supplied, memory must be the stable, current-owned, singly-linked, bounded valid-UTF-8 regular file at `.awf/efforts/<slug>/memory.md` with matching `Effort: <slug>` identity and confined repository identity. Handoff never parses state, selects or assigns an effort, invokes awf, or mutates memory.
+Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. Post-countdown revalidation covers only the pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-context-aware-discretionary-pi-handoffs
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -36,9 +36,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-Pi handoff accepts an optional exact repository-relative `.awf/efforts/<slug>/memory.md` path, or an absolute spelling that normalizes to it, plus a bounded kickoff; absent memory remains valid. Containment resolves against the primary control root: a current-owned regular-file `.git` marker whose `gitdir:` pointer has the `.git/worktrees/<name>` shape is dereferenced to the primary root, any other well-formed pointer or a symlinked, unowned, or absent marker keeps the rendered root, and a marker without a `gitdir:` line is rejected, so validation accepts the effort memory from any managed worktree. It validates slug grammar, exact basename, lexical and no-follow containment, ownership, one hard link, 1 MiB size, fatal UTF-8 decoding, stable identity, effort header, and repository identity without selecting or assigning an effort, invoking awf, adopting checkpoints, or fabricating history.
+Pi handoff exposes exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and otherwise carries the prose unchanged into the replacement session, automatic submission, editor fallback, and recovery path. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-context-aware-discretionary-pi-handoffs
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`

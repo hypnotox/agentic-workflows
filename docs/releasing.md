@@ -119,7 +119,7 @@ broken release config fails CI before any tag is pushed.
 
 ## Real Pi extension smoke
 
-Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later compatible build. From a clean reviewed commit, run `./x check`, `./x gate`, and the independent implementation review. Start a new Pi session and exercise native skill discovery, exploration, and effort-independent handoff with optional confined memory. Confirm the retained extensions load and the handoff cancellation and editor fallback paths remain usable.
+Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later compatible build. From a clean reviewed commit, run `./x check`, `./x gate`, and the independent implementation review. Start a new Pi session and exercise native skill discovery, exploration, and effort-independent handoff with bounded kickoff prose. Confirm the retained extensions load and the handoff cancellation and editor fallback paths remain usable.
 
 ## Notes
 

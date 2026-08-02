@@ -8,4 +8,4 @@ The render engine overlays authored convention parts onto embedded templates wit
 
 The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
 
-Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff remains lifecycle-independent: workflow templates, rather than replacement mechanics, own effort checkpoint, approval, safe-point, and handoff-log policy.
+Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff remains lifecycle-independent: workflow templates own effort checkpoint, approval, safe-point, reorientation, and handoff-log policy; bounded kickoff carries instructions while replacement mechanics own no memory policy.

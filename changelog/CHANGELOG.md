@@ -32,6 +32,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Pi `handoff_session` removes `memoryPath` and now exposes the exact closed `{kickoff}` schema for bounded replacement prose.
+
 - Every `invariant:` proof marker must now name the unit that proves it,
   `<marker> invariant: <domain>/<topic>:<slug> (<name>)`, and that text must occur verbatim on a
   line of the marker's own file that does not itself open with that family's marker token,
