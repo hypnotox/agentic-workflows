@@ -17,25 +17,25 @@ This plan does not rewrite historical ADRs, completed plans, research, or change
 
 `internal/project` retains one generic `Target` descriptor and registry-driven render/output-plan flow. Claude Code and Pi remain concrete descriptors with independent paths, bridge behavior, capabilities, encodings, wording, and additional outputs. Codex-only TOML representation and validation disappear at their current boundary, while structured Markdown agent rendering and Pi's plain TypeScript output encoding remain.
 
-Implementation uses two incremental ADR application transactions followed by one active-documentation and adopter transaction. The first transaction contracts the registry, removes TOML machinery, rewrites generic tests around Claude/Pi and synthetic descriptors, and applies the first four State changes. The second transaction replaces the accidental Claude bridge identity and applies the fifth operation. The sixth operation, `multi-target-render`, remains pending until terminal implementation review; that final governed transaction updates the claim and freezes the ADR and plan.
+Phase 1 is the complete runtime-contraction transaction: production, tests, proof markers, dependencies, active authored docs, templates, integration metadata, changelog, root generated artifacts, and Sundial configuration/output pruning travel together. It applies the first four ADR operations and leaves the ADR `Implementing`. Phase 2 is the independently truthful neutral bridge-identity refactor and applies the fifth operation. The sixth operation, `multi-target-render`, remains pending until terminal implementation review; that final governed transaction updates the claim and freezes the ADR and plan.
 
-Authoring sources under `.awf/` and `templates/` remain authoritative. Root and Sundial generated artifacts are changed only through render/prune operations, and unmanaged lookalike files retain the existing ownership protection.
+Authoring sources under `.awf/` and `templates/` remain authoritative. Root and Sundial generated artifacts change only through render/prune operations, and unmanaged lookalike files retain the existing ownership protection.
 
-## Phase 1: Contract the runtime registry and remove TOML machinery
+## Phase 1: Contract the runtime set and purge removed adapters
 
 **Execution mode: inline.**
 
-### Task 1.1: Rewrite target and encoding coverage around the surviving abstraction
+### Task 1.1: Rewrite coverage and contract production in one ordered batch
 Kind: batch
 Latitude: exact
-Paths: ["internal/project/target_test.go", "internal/project/agent_test.go", "internal/project/output_plan_test.go", "internal/project/coverage_test.go", "internal/project/notes_test.go", "internal/project/project_test.go", "internal/project/local_test.go", "internal/project/render_tree_test.go", "internal/project/subagent_model_selection_test.go", "internal/project/spine_test.go", "internal/contextq/adapter_outputs_test.go", "cmd/awf/list_add_test.go", "internal/config/edit_test.go", "internal/evals/chain_test.go"]
-Representative: Replace the exact six-target roster and Claude/Cursor multi-target fixtures with exact `claude`, `pi` expectations while retaining iteration through `KnownTargets()` and asserting descriptor-derived skill, agent, bridge, capability, encoding, and extra-output behavior.
-Edge: Remove Codex TOML, Cursor bridge, Gemini bridge, and Copilot path assertions, but retain Pi OpenAI Codex provider/model strings and add explicit unknown-target failures for each removed configuration name.
-Post-check: `git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|TestCodexTargetRendersTOMLAgents' -- 'internal/**/*_test.go' 'cmd/**/*_test.go'` returns no output, while `go test ./internal/project ./internal/contextq ./cmd/awf ./internal/config ./internal/evals` passes.
+Paths: ["internal/project/target.go", "internal/project/agent.go", "internal/project/render.go", "internal/project/validate.go", "internal/project/banner.go", "internal/project/banner_test.go", "internal/render/render.go", "internal/render/render_test.go", "internal/project/target_test.go", "internal/project/agent_test.go", "internal/project/output_plan_test.go", "internal/project/coverage_test.go", "internal/project/notes_test.go", "internal/project/project_test.go", "internal/project/local_test.go", "internal/project/render_tree_test.go", "internal/project/subagent_model_selection_test.go", "internal/project/spine_test.go", "internal/contextq/adapter_outputs_test.go", "cmd/awf/list_add_test.go", "internal/config/edit_test.go", "internal/evals/chain_test.go", "go.mod", "go.sum"]
+Representative: First rewrite the exact six-target and Claude/Cursor fixtures around `claude`, `pi`, and synthetic descriptors; then remove the four production descriptors and Codex TOML machinery so the rewritten tests pass without collapsing the generic target seam.
+Edge: Remove removed-adapter assertions and TOML provenance/comment handling, but retain Pi OpenAI Codex provider/model strings, structured Markdown agents, `PlainAgentDialect`, Pi TypeScript outputs, generic closed-set validation, and descriptor-owned customization.
+Post-check: The literal `gofmt -w` and `go mod tidy` commands below succeed; the scoped removed-symbol grep returns no output; and `go test ./internal/project ./internal/render ./internal/contextq ./cmd/awf ./internal/config ./internal/evals` passes.
 
-Start from a clean worktree at the settled plan-review commit. `git status --short` must produce no output, `./x check` must finish clean, and `go test ./internal/project ./internal/contextq` must pass before edits. This phase applies the first four ADR operations in declaration order and leaves the ADR `Implementing` with two Remaining operations.
+Start from the settled plan-review commit. Require `git status --short` to produce no output, `./x check` to finish clean, and `go test ./internal/project ./internal/contextq` to pass before edits.
 
-Add or reshape focused tests before production deletion:
+Add or reshape focused tests before deleting production behavior:
 
 - `TestKnownTargets` proves the registry order and set are exactly `claude`, `pi`; place `// invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestKnownTargets)` immediately above it.
 - Retain `target-dialect-render` proof coverage on a test that renders structured agents for both survivors and parses their Markdown frontmatter. Do not weaken this to path existence alone.
@@ -43,21 +43,56 @@ Add or reshape focused tests before production deletion:
 - Rewrite `multi-target-render` proof coverage around Claude and Pi and assert neutral outputs such as `AGENTS.md` occur once. The claim text remains unchanged until the terminal transaction.
 - Replace removed-adapter incidental variation with a synthetic descriptor test covering custom skill directory, agent directory, agent suffix, encoding, capabilities, and extra outputs. Bridge customization is completed in Phase 2.
 - Rewrite pruning coverage so removing one surviving target deletes only lock-owned output files and empty ancestors, without using a removed target as live configuration.
-- Delete the `cursor-no-bridge` proof marker with its claim-specific assertions. Preserve every unrelated proof marker carried by the touched tests and keep each marker immediately above a test whose name appears verbatim in that file.
+- Add explicit project-open and CLI failures for `codex`, `copilot`, `cursor`, and `gemini`; each uses the existing unknown-target identity and lists only the surviving known targets.
+- Delete the `cursor-no-bridge` proof marker with its claim-specific assertions. Preserve every unrelated proof marker carried by touched tests and keep each marker immediately above a test whose name occurs verbatim in that file.
 
-### Task 1.2: Remove four descriptors and all Codex TOML production machinery
+Then delete `codexTarget`, `copilotTarget`, `cursorTarget`, and `geminiTarget` plus their registry entries. Keep `KnownTargets()` registry-derived and deterministic. Remove only `TOMLAgentDialect`, `codexAgentProfile`, TOML encode/validate dispatch, TOML provenance/comment handling, and `github.com/BurntSushi/toml`. Do not add a migration, alias, warning, silent configuration rewrite, dead-code exemption, or coverage exemption.
+
+Run exactly:
+
+```bash
+gofmt -w internal/project/target.go internal/project/agent.go internal/project/render.go internal/project/validate.go internal/project/banner.go internal/project/banner_test.go internal/render/render.go internal/render/render_test.go internal/project/target_test.go internal/project/agent_test.go internal/project/output_plan_test.go internal/project/coverage_test.go internal/project/notes_test.go internal/project/project_test.go internal/project/local_test.go internal/project/render_tree_test.go internal/project/subagent_model_selection_test.go internal/project/spine_test.go internal/contextq/adapter_outputs_test.go cmd/awf/list_add_test.go internal/config/edit_test.go internal/evals/chain_test.go
+go mod tidy
+git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|BurntSushi|TestCodexTargetRendersTOMLAgents' -- internal cmd go.mod go.sum
+```
+
+The final grep returns no output.
+
+### Task 1.2: Purge adapter-only templates, active prose, and integration metadata
 Kind: batch
 Latitude: exact
-Paths: ["internal/project/target.go", "internal/project/agent.go", "internal/project/render.go", "internal/project/validate.go", "internal/project/banner.go", "internal/project/banner_test.go", "internal/render/render.go", "internal/render/render_test.go", "go.mod", "go.sum"]
-Representative: Delete `codexTarget`, `copilotTarget`, `cursorTarget`, and `geminiTarget` plus their registry entries; retain `Target`, target validation, ordered registry resolution, Claude and Pi descriptors, and every per-target customization field.
-Edge: Remove only `TOMLAgentDialect`, `codexAgentProfile`, TOML encode/validate dispatch, TOML provenance/comment handling, and `github.com/BurntSushi/toml`; preserve `MarkdownAgentDialect`, `PlainAgentDialect`, structured agent metadata, Pi TypeScript outputs, and generic closed-set validation.
-Post-check: `git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|BurntSushi' -- internal go.mod go.sum` returns no output; `go mod tidy`, `gofmt -w` over changed Go files, and `go test ./internal/project ./internal/render ./internal/contextq ./cmd/awf` pass.
+Paths: ["templates/embed.go", "templates/gemini/GEMINI.md.tmpl", "templates/docs/working-with-awf.md.tmpl", ".awf/docs/parts/architecture/dependencies.md", ".awf/docs/parts/development/dependencies.md", ".awf/docs/parts/roadmap/deferred.md", ".awf/docs/pitfalls.yaml", ".gitignore", "README.md", "changelog/CHANGELOG.md"]
+Representative: Delete the Gemini template embed/tree, remove Codex TOML dependency prose, replace six-runtime rosters and Cursor toggle examples with Claude/Pi or runtime-neutral examples, and append an Unreleased breaking-change entry for immediate removal of four target names.
+Edge: Preserve shared `.github` infrastructure rules, immutable historical changelog entries, generic target enable/disable guidance, historical records elsewhere, and every Pi `openai-codex` provider/model identifier.
+Post-check: `git diff --check` passes; the scoped authoring-source grep below returns no removed-adapter support assertion; and the new Unreleased changelog entry names the four removed configuration values and the lack of compatibility or migration.
 
-Keep `KnownTargets()` registry-derived and deterministic. Existing configs naming a removed target must reach the existing unknown-target error, whose available-target list contains only Claude and Pi. Do not add a migration, alias, warning, or silent rewrite. If TOML removal exposes a branch or helper with no remaining production caller, delete it rather than adding a dead-code or coverage exemption.
+Remove `.gitignore` comments and negations that exist only to commit `.agents`, `.codex`, `.cursor`, `.gemini`, or `GEMINI.md`. Preserve `.claude`, `.pi`, shared `.github` infrastructure, and unrelated repository exceptions. Update authoring sources rather than generated `docs/**` counterparts. Append one `[Unreleased]` Breaking changes bullet; do not rewrite any historical changelog entry.
 
-### Task 1.3: Apply the first four current-state operations atomically
+Run:
+
+```bash
+git grep -nE 'BurntSushi|templates/gemini|GEMINI\.md|\.cursor/|\.codex/agents|\.agents/skills|\.gemini/skills|\.github/agents|six (built-in )?runtime|six target' -- templates/embed.go templates/docs/working-with-awf.md.tmpl .awf/docs .awf/topics .gitignore README.md
+```
+
+At this point the only allowed hit is the still-pending old `multi-target-render` example under `.awf/topics/parts/rendering/project-output-plan/current-state.md`; every other result is a defect. The changelog is deliberately excluded because its new breaking-change entry and old history truthfully name removed targets.
+
+### Task 1.3: Contract Sundial authoring before any render
 Latitude: exact
-Paths: ["docs/decisions/retain-only-claude-code-and-pi-runtime-targets.md", ".awf/topics/parts/rendering/catalog-and-targets/current-state.md", ".awf/topics/parts/rendering/project-output-plan/current-state.md", "docs/decisions/INDEX.md", "docs/topics/rendering/catalog-and-targets.md", "docs/topics/rendering/project-output-plan.md", "docs/domains/rendering.md", ".awf/awf.lock"]
+Paths: ["examples/sundial/.awf/config.yaml"]
+
+Replace Sundial's ordered target list with exactly:
+
+```yaml
+targets:
+  - claude
+  - pi
+```
+
+Do not edit its generated outputs or lock by hand. Require a YAML-aware config read through the new binary to succeed and `git diff -- examples/sundial/.awf/config.yaml` to contain no unrelated configuration change. This task must complete before Task 1.5 invokes root rendering, because nested-adopter rendering rejects removed target names immediately.
+
+### Task 1.4: Apply the first four current-state operations atomically
+Latitude: exact
+Paths: ["docs/decisions/retain-only-claude-code-and-pi-runtime-targets.md", ".awf/topics/parts/rendering/catalog-and-targets/current-state.md", ".awf/topics/parts/rendering/project-output-plan/current-state.md"]
 
 Transition the ADR directly from `Proposed` to `Implementing` in this transaction. Set `status: Implementing`, append the canonical stamped Implementing event, then append one Applied event naming exactly these declaration-ordered operations:
 
@@ -65,7 +100,7 @@ Transition the ADR directly from `Proposed` to `Implementing` in this transactio
 add rendering/catalog-and-targets:built-in-runtime-targets, update rendering/catalog-and-targets:structured-agent-encoding, update rendering/catalog-and-targets:target-dialect-render, remove rendering/project-output-plan:cursor-no-bridge
 ```
 
-Land these exact claim endpoints, using the ADR's current pending identity in provenance until numbering mechanically changes it:
+Land these exact claim endpoints, using the ADR's pending identity until numbering mechanically changes it:
 
 ```markdown
 ### `invariant: built-in-runtime-targets`
@@ -93,15 +128,40 @@ Revised-by: ADR-retain-only-claude-code-and-pi-runtime-targets
 Backing: test
 ```
 
-Remove the complete `cursor-no-bridge` claim block. Preserve surrounding topic prose and all unrelated claims byte-for-byte except deterministic render framing. Run `./x render` and stage every claim-derived topic/domain/index/lock change with the ADR, production behavior, dependency removal, tests, and proof markers. `./awf check staged` must recognize exactly the four-operation first batch and leave `bridge-render-identity` and `multi-target-render` Remaining.
+Remove the complete `cursor-no-bridge` claim block. Preserve surrounding topic prose and unrelated claims byte-for-byte except deterministic render framing.
 
-### Task 1.4: Verify the contraction transaction
+### Task 1.5: Render root and Sundial and prune every managed removed-target output
+Kind: batch
+Latitude: exact
+Paths: ["pathspec:docs/**", "AGENTS.md", "CLAUDE.md", "pathspec:.claude/**", "pathspec:.pi/**", ".awf/awf.lock", "pathspec:examples/sundial/.agents/**", "pathspec:examples/sundial/.codex/**", "pathspec:examples/sundial/.cursor/**", "pathspec:examples/sundial/.gemini/**", "pathspec:examples/sundial/.github/agents/**", "pathspec:examples/sundial/.github/skills/**", "examples/sundial/GEMINI.md", "pathspec:examples/sundial/.claude/**", "pathspec:examples/sundial/.pi/**", "examples/sundial/AGENTS.md", "examples/sundial/CLAUDE.md", "pathspec:examples/sundial/docs/**", "examples/sundial/.awf/awf.lock"]
+Representative: Run `./x render` once all Phase 1 authoring changes are present; allow lock-owned removed-target trees to prune and regenerate every Claude/Pi, documentation, index, domain/topic, and lock output selected by the render.
+Edge: Do not delete unrelated `.github` infrastructure or unmanaged lookalike files; do not hand-edit generated files; and do not modify historical ADRs, dated plans, research, or historical changelog entries.
+Post-check: Root and Sundial checks pass; no removed-target generated path or lock entry remains; generated docs reflect all Phase 1 authored changes except the explicitly Remaining `multi-target-render` claim.
 
-Run `git diff --check`, `go test ./...`, `./x render`, and `./x check`; all finish clean. Run `git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|BurntSushi' -- ':!docs/decisions/**' ':!docs/plans/**' ':!docs/research/**' ':!changelog/**'`; it returns no active implementation hit. Do not treat `openai-codex/...` strings under retained Pi routing as residue.
+Run `./x render && ./x check`, then inspect every generated modification and deletion. Require:
+
+```bash
+git ls-files 'examples/sundial/.agents/**' 'examples/sundial/.codex/**' 'examples/sundial/.cursor/**' 'examples/sundial/.gemini/**' 'examples/sundial/.github/agents/**' 'examples/sundial/.github/skills/**' 'examples/sundial/GEMINI.md'
+git grep -nE '(^|[ /])(codex|copilot|cursor|gemini)([ /]|$)' -- examples/sundial/.awf/config.yaml examples/sundial/.awf/awf.lock
+```
+
+Both commands return no output. `(cd examples/sundial && go test ./...)` passes. Retain and stage all Claude/Pi artifacts, `AGENTS.md`, and `CLAUDE.md` selected by render.
+
+### Task 1.6: Verify active residue and the first lifecycle batch
+
+Run the following scoped residue check:
+
+```bash
+git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|BurntSushi|templates/gemini|GEMINI\.md|\.cursor/|\.codex/agents|\.agents/skills|\.gemini/skills|\.github/agents' -- ':!docs/decisions/**' ':!docs/plans/**' ':!docs/research/**' ':!changelog/**' ':!.awf/topics/parts/rendering/project-output-plan/current-state.md' ':!docs/topics/rendering/project-output-plan.md' ':!docs/domains/rendering.md' ':!templates/pi/**' ':!.pi/**' ':!examples/sundial/.pi/**'
+```
+
+It returns no output. Inspect the three excluded current-state projections and require any removed-target path reference to belong only to the still-Remaining `multi-target-render` claim, never the removed `cursor-no-bridge` claim. Separately require `git grep -n 'openai-codex/' -- templates/pi .pi examples/sundial/.pi` to return retained routing matches.
+
+Run `git diff --check`, `go test ./...`, `./x check`, and `./awf check staged` after explicit staging. The staged check must recognize exactly the four-operation first batch and leave `bridge-render-identity` and `multi-target-render` Remaining.
 
 ### Phase close
 
-Stage the complete first application transaction explicitly, require `./awf check staged` and `./x gate` to pass, and create one commit:
+Stage the complete production, test, dependency, claim, active-doc, template, changelog, integration-metadata, root-render, and Sundial transaction explicitly. Require `./awf check staged` and `./x gate` to pass, then create one commit:
 
 ```commit
 refactor(rendering): contract runtime targets
@@ -134,7 +194,15 @@ Paths: ["internal/project/render.go", "internal/project/output_plan.go", "intern
 
 Introduce one package-local neutral identity constant only if both bridge render construction and input observation consume it; otherwise use the same neutral literal at the single shared ownership point. Replace the generic bridge call's `claude` kind and update the observation exclusion so it does not search for a neutral-kind sidecar. Do not alter Claude's descriptor-owned `CLAUDE.md` path/template or Pi's empty bridge declaration, and do not add target-name branching.
 
-Run `gofmt -w` on changed Go files and `go test ./internal/project -run 'Bridge|TargetDescriptorCustomization|AllTargetPaths' -count=1`; all pass. `git grep -n 'renderTarget("claude"' -- internal/project` returns no output.
+Run exactly:
+
+```bash
+gofmt -w internal/project/output_declarations_test.go internal/project/output_plan_test.go internal/project/target_test.go internal/project/render_tree_test.go internal/project/render.go internal/project/output_plan.go internal/project/singleton.go
+go test ./internal/project -run 'Bridge|TargetDescriptorCustomization|AllTargetPaths' -count=1
+git grep -n 'renderTarget("claude"' -- internal/project
+```
+
+The tests pass and the final grep returns no output.
 
 ### Task 2.3: Apply the bridge identity claim
 Latitude: exact
@@ -152,62 +220,16 @@ Backing: test
 
 Run `./x render`; stage the ADR event, claim, proof, production change, tests, generated topic/domain output, and lock together. `./awf check staged` must recognize this one middle batch and report only `multi-target-render` Remaining.
 
+### Task 2.4: Verify the bridge transaction
+
+Run `git diff --check`, `go test ./...`, `./x render`, and `./x check`; all finish clean. Inspect generated output to confirm Claude still emits `CLAUDE.md`, Pi emits no bridge, and no target output changed merely because the internal bridge identity became neutral.
+
 ### Phase close
 
 Stage the complete bridge application transaction explicitly, require `./awf check staged` and `./x gate` to pass, and create one commit:
 
 ```commit
 refactor(rendering): neutralize bridge render identity
-```
-
-## Phase 3: Purge active adapter residue and regenerate Sundial
-
-**Execution mode: inline.**
-
-### Task 3.1: Remove adapter-only templates, integration metadata, and active prose
-Kind: batch
-Latitude: exact
-Paths: ["templates/embed.go", "templates/gemini/GEMINI.md.tmpl", "templates/docs/working-with-awf.md.tmpl", ".awf/docs/parts/architecture/dependencies.md", ".awf/docs/parts/development/dependencies.md", ".awf/docs/parts/roadmap/deferred.md", ".awf/docs/pitfalls.yaml", ".gitignore", "README.md"]
-Representative: Delete the Gemini template embed/tree, remove Codex TOML dependency prose, replace six-runtime rosters and Cursor toggle examples with Claude/Pi or runtime-neutral examples, and remove obsolete roadmap/pitfall material owned solely by removed adapters.
-Edge: Preserve shared `.github` infrastructure rules, immutable historical records, generic target enable/disable documentation, and every Pi `openai-codex` provider/model identifier.
-Post-check: The active-source residue command in Task 3.3 returns no removed-adapter support claim, while historical paths and retained Pi routing remain unchanged.
-
-Start with Phase 2 committed, `git status --short` empty, `./x check` clean, and `./x gate` passing. This phase updates live documentation and adopter topology but deliberately does not mutate or apply the final `multi-target-render` claim; that operation remains for the terminal review transaction.
-
-Remove `.gitignore` comments and negations that exist only to commit `.agents`, `.codex`, `.cursor`, `.gemini`, or `GEMINI.md`. Preserve `.claude`, `.pi`, shared `.github` infrastructure, and unrelated repository exceptions. Update authoring sources rather than generated `docs/**` counterparts.
-
-### Task 3.2: Reduce Sundial to Claude and Pi and prune every managed removed-target output
-Kind: batch
-Latitude: exact
-Paths: ["examples/sundial/.awf/config.yaml", "pathspec:examples/sundial/.agents/**", "pathspec:examples/sundial/.codex/**", "pathspec:examples/sundial/.cursor/**", "pathspec:examples/sundial/.gemini/**", "pathspec:examples/sundial/.github/agents/**", "pathspec:examples/sundial/.github/skills/**", "examples/sundial/GEMINI.md", "pathspec:examples/sundial/.claude/**", "pathspec:examples/sundial/.pi/**", "examples/sundial/AGENTS.md", "examples/sundial/CLAUDE.md", "pathspec:examples/sundial/docs/**", "examples/sundial/.awf/awf.lock"]
-Representative: Change Sundial's ordered `targets` list to `claude`, `pi`, then render with the new binary so lock-owned `.agents`, `.codex`, `.cursor`, `.gemini`, `.github/agents`, `.github/skills`, and `GEMINI.md` outputs are deleted and surviving outputs are regenerated.
-Edge: Do not delete unrelated `.github` repository infrastructure or any unmanaged lookalike file; verify deletion is justified by the pre-render lock and existing pruning semantics.
-Post-check: `git ls-files 'examples/sundial/.agents/**' 'examples/sundial/.codex/**' 'examples/sundial/.cursor/**' 'examples/sundial/.gemini/**' 'examples/sundial/.github/agents/**' 'examples/sundial/.github/skills/**' 'examples/sundial/GEMINI.md'` returns no output, `git grep -nE '(^|[ /])(codex|copilot|cursor|gemini)([ /]|$)' -- examples/sundial/.awf/config.yaml examples/sundial/.awf/awf.lock` returns no output, and `(cd examples/sundial && go test ./...)` passes.
-
-Use the repository's normal root render command so the nested adopter is synchronized by the supported workflow; do not hand-edit its lock or generated files. Inspect every staged deletion and retain all Claude/Pi artifacts, `AGENTS.md`, and `CLAUDE.md`.
-
-### Task 3.3: Regenerate active documentation and prove residue boundaries
-Kind: batch
-Latitude: exact
-Paths: ["pathspec:docs/**", "AGENTS.md", "CLAUDE.md", "pathspec:.claude/**", "pathspec:.pi/**", ".awf/awf.lock", "pathspec:examples/sundial/docs/**", "examples/sundial/AGENTS.md", "examples/sundial/CLAUDE.md"]
-Representative: Run `./x render` from the repository root and stage every deterministic generated change caused by Phase 3 authoring sources and Sundial configuration.
-Edge: Do not edit or delete `docs/decisions/**` other than generated `INDEX.md`, dated `docs/plans/**`, `docs/research/**`, or `changelog/**`; do not treat `openai-codex` strings in retained Pi outputs as adapter residue.
-Post-check: `./x check`, `git diff --check`, the scoped active-source grep below, and `./x gate` all finish clean.
-
-Run this scoped residue check and inspect every result rather than performing a lexical repository-wide purge:
-
-```bash
-git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|BurntSushi|templates/gemini|GEMINI\.md|\.cursor/|\.codex/agents|\.agents/skills|\.gemini/skills|\.github/agents' -- ':!docs/decisions/**' ':!docs/plans/**' ':!docs/research/**' ':!changelog/**' ':!templates/pi/**' ':!.pi/**' ':!examples/sundial/.pi/**'
-```
-
-The command returns no removed-adapter implementation, template, active-documentation, config, generated-output, or lock residue. Separately require `git grep -n 'openai-codex/' -- templates/pi .pi examples/sundial/.pi` to return retained routing matches, proving the exception was preserved intentionally. Confirm root `.awf/config.yaml` still lists only Claude and Pi.
-
-### Phase close
-
-Stage the complete active-documentation and adopter purge explicitly, require `./awf check staged` and `./x gate` to pass, and create one commit:
-
-```commit
-docs(rendering): purge removed runtime adapter surfaces
 ```
 
 ## Definition of done
@@ -217,14 +239,15 @@ docs(rendering): purge removed runtime adapter surfaces
 - Codex TOML production code, validation, provenance style, tests, and module dependency are absent; structured Markdown agents and Pi plain TypeScript outputs remain covered.
 - Generic bridge rendering and input observation use the neutral `target-bridge` identity, while Claude still emits `CLAUDE.md` and Pi emits no bridge.
 - Root and Sundial rendering/checks are clean; Sundial enables only Claude and Pi and contains no managed output or lock entry for a removed adapter.
-- Active source, documentation, roadmap, ignore metadata, and generated outputs contain no removed-adapter support residue, while immutable historical records and Pi OpenAI Codex model identifiers remain unchanged.
+- Active source, documentation, roadmap, ignore metadata, and generated outputs contain no removed-adapter support residue except the explicitly pending old `multi-target-render` example, while immutable historical records and Pi OpenAI Codex model identifiers remain unchanged.
+- `[Unreleased]` documents the four removed target values as an immediate breaking change without rewriting historical changelog entries.
 - Every invariant proof marker names a present test that proves its current claim; `cursor-no-bridge` and its markers are absent.
 - `go test ./...`, `./x render`, `./x check`, `./awf check staged`, and `./x gate` pass, including 100% statement coverage and dead-code checks.
 - After terminal implementation review settles, the final transaction applies `update rendering/project-output-plan:multi-target-render`, freezes the ADR and this plan as `Implemented`, and leaves the repository clean.
 
 ## Notes
 
-- The terminal implementation-review flow owns the sixth operation and lifecycle freeze. After Phase 3 review has zero unresolved findings, update `multi-target-render` to the exact endpoint below, append the final Applied event followed by the stamped Implemented event, change ADR status to `Implemented`, change this plan's status to `Implemented`, run `./x render`, and commit the complete claim/proof/status/generated transaction only after `./awf check staged` and `./x gate` pass:
+- The terminal implementation-review flow owns the sixth operation and lifecycle freeze. After Phase 2 review has zero unresolved findings, update `multi-target-render` to the exact endpoint below, append the final Applied event followed by the stamped Implemented event, change ADR status to `Implemented`, change this plan's status to `Implemented`, run `./x render`, and commit the complete claim/proof/status/generated transaction only after `./awf check staged` and `./x gate` pass:
 
 ```markdown
 ### `invariant: multi-target-render`
@@ -236,5 +259,5 @@ Backing: test
 ```
 
 - Until that terminal transaction, the old `multi-target-render` claim remains active and visibly pending correction. Do not edit its prose early or append the final Applied/Implemented events before review establishes completion.
-- Historical mentions of Codex, Copilot, Cursor, and Gemini are evidence of past support, not residue. The residue commands intentionally exclude immutable record paths and distinguish the removed Codex runtime adapter from retained OpenAI Codex model routing.
+- Historical mentions of Codex, Copilot, Cursor, and Gemini are evidence of past support, not residue. Residue commands intentionally exclude immutable record paths and distinguish the removed Codex runtime adapter from retained OpenAI Codex model routing.
 - Record implementation deviations, reviewer findings, and any newly discovered active residue here while the plan remains Proposed. A load-bearing scope change requires returning to the ADR rather than silently widening this plan.
