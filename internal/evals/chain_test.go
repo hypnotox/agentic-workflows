@@ -308,6 +308,11 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 
 	minimal := map[string]bool{"brainstorming": true, "executing-direct": true, "debugging": true, "bugfix": true, "tdd": true, "roadmap-graduation": true}
 	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true, "orienting": true}
+	discoveryMutationBoundary := map[string]string{
+		"brainstorming":      "5. **Present the design in sections",
+		"debugging":          "5. **Isolate with a failing test",
+		"roadmap-graduation": "### 4. Graduate in a single commit",
+	}
 	ownershipBoundary := map[string]string{
 		"bugfix":                      "1. **Ensure a regression test",
 		"tdd":                         "1. Run `awf context",
@@ -378,8 +383,11 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			}
 			switch role {
 			case "first-creation-discovery":
+				confirmation := strings.Index(body, "**Mandatory first-creation confirmation.**")
 				laterResponse := strings.Index(body, "clear response in a later turn")
 				creation := strings.Index(body, "awf effort new")
+				mutationBoundary := discoveryMutationBoundary[name]
+				mutation := strings.Index(body, mutationBoundary)
 				for _, want := range []string{
 					"**Mandatory first-creation confirmation.**",
 					"Discovery creates no effort",
@@ -393,8 +401,11 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 						t.Errorf("%s/%s (%s) missing shared confirmation phrase %q", target, name, role, want)
 					}
 				}
-				if laterResponse < 0 || creation < 0 || creation < laterResponse {
-					t.Errorf("%s/%s (%s) must place awf effort new after the later-response confirmation", target, name, role)
+				if confirmation < 0 || laterResponse < confirmation || creation < laterResponse {
+					t.Errorf("%s/%s (%s) must place awf effort new after the complete later-response confirmation", target, name, role)
+				}
+				if mutationBoundary == "" || mutation < 0 || creation >= mutation {
+					t.Errorf("%s/%s (%s) must complete confirmed creation before mutation boundary %q", target, name, role, mutationBoundary)
 				}
 			case "confirmed-downstream-minimal", "confirmed-downstream":
 				boundary := ownershipBoundary[name]

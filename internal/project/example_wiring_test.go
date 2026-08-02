@@ -155,7 +155,7 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			t.Errorf("%s creates missing ownership after %q", label, boundary)
 		}
 	}
-	assertDiscoveryOwner := func(label, body string) {
+	assertDiscoveryOwner := func(label, body, mutationBoundary string) {
 		t.Helper()
 		assertOrdered(label, body,
 			"**Mandatory first-creation confirmation.**",
@@ -169,6 +169,11 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 		)
 		if !strings.Contains(body, "fixed identity") || !strings.Contains(body, "without title reconfirmation") {
 			t.Errorf("%s does not preserve fixed-identity resume without reconfirmation", label)
+		}
+		creation := strings.Index(body, "awf effort new \"<confirmed title>\"")
+		mutation := strings.Index(body, mutationBoundary)
+		if mutationBoundary == "" || mutation < 0 || creation < 0 || creation >= mutation {
+			t.Errorf("%s must complete confirmed creation before mutation boundary %q", label, mutationBoundary)
 		}
 	}
 	assertDownstream := func(label, body, boundary string) {
@@ -199,16 +204,19 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			return readExample(filepath.Join(target, "skills", "sundial-"+name, "SKILL.md"))
 		}
 		brainstorming := readSkill("brainstorming")
-		assertDiscoveryOwner(target+" brainstorming", brainstorming)
-		assertOrdered(target+" brainstorming detailed design", brainstorming, "awf effort new \"<confirmed title>\"", "Present the design in sections")
+		assertDiscoveryOwner(target+" brainstorming", brainstorming, "5. **Present the design in sections")
 		assertBoundaryDoesNotCreate(target+" brainstorming final approval", brainstorming, "**Mandatory approval check-in.**")
 		reviewingADR := readSkill("reviewing-adr")
 		assertBoundaryDoesNotCreate(target+" ADR final approval", reviewingADR, "**Mandatory approval check-in.**")
 		writingPlans := readSkill("writing-plans")
 		assertBoundaryDoesNotCreate(target+" routine checkpoint", writingPlans, "**Routine checkpoint.**")
 
-		for _, name := range []string{"debugging", "roadmap-graduation"} {
-			assertDiscoveryOwner(target+" "+name, readSkill(name))
+		discoveryBoundaries := map[string]string{
+			"debugging":          "5. **Isolate with a failing test",
+			"roadmap-graduation": "### 4. Graduate in a single commit",
+		}
+		for name, boundary := range discoveryBoundaries {
+			assertDiscoveryOwner(target+" "+name, readSkill(name), boundary)
 		}
 		downstreamBoundaries := map[string]string{
 			"tdd":           "1. Run `awf context",

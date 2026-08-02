@@ -1654,6 +1654,31 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("guide confirmation route missing %q", want)
 		}
 	}
+	readProjectSurface := func(path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join("../..", path))
+		if err != nil {
+			t.Fatalf("read committed project surface %s: %v", path, err)
+		}
+		return string(raw)
+	}
+	projectGuide := readProjectSurface("AGENTS.md")
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(projectGuide, want) {
+			t.Errorf("committed project guide confirmation route missing %q", want)
+		}
+	}
+	projectWorkflow := readProjectSurface("docs/workflow.md")
+	workingMemory := strings.Index(projectWorkflow, "## Working memory")
+	if workingMemory < 0 {
+		t.Fatal("committed project workflow lost the Working memory boundary")
+	}
+	projectChain := projectWorkflow[:workingMemory]
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(projectChain, want) {
+			t.Errorf("committed project workflow chain confirmation route missing %q", want)
+		}
+	}
 	for label, body := range map[string]string{"routine": routine, "approval": approval} {
 		boundary := "**Routine checkpoint.**"
 		if label == "approval" {
