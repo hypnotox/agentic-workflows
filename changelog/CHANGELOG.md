@@ -60,6 +60,10 @@ query a single version or a range.
   section name is a permanent override surface; adopters re-render `docs/maintainable-code-design.md`
   on upgrade.
 
+### Bug fixes
+
+- ADR-authoring guidance now requires `awf new adr` before any ADR-file mutation, followed by capturing and reading the generated scaffold and editing it in place rather than creating or replacing the record through another mechanism.
+
 ### Breaking changes
 
 - The built-in runtime target set is now exactly `claude` and `pi`. The `codex`, `copilot`, `cursor`, and `gemini` target values, their renderers, and their generated outputs are removed immediately without a migration or compatibility alias; remove those names from `targets` before opening an adopted project with this release.

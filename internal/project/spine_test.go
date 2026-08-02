@@ -1325,11 +1325,15 @@ func TestProposingAdrTemplate(t *testing.T) {
 		t.Errorf("expected 'name: example-proposing-adr' in output:\n%s", out)
 	}
 
-	// Assert load-bearing phrases unique to proposing-adr
+	// Assert the scaffold-first operations as one ordered procedure.
+	procedure := "Run `awf new adr \"<Title>\"` before any ADR-file mutation. Capture the exact path it creates. Read the exact file it creates, then edit that scaffold in place."
+	if !strings.Contains(out, procedure) {
+		t.Errorf("expected ordered procedure %q in output:\n%s", procedure, out)
+	}
+
+	// Assert load-bearing phrases unique to proposing-adr.
 	loadBearing := []string{
 		"one decision per ADR",
-		"before any ADR-file mutation",
-		"Read the exact file it creates",
 		"Never create or replace an ADR by any other mechanism",
 		"Context",
 		"Consequences",
