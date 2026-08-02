@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: associate-pi-sessions-with-efforts-and-live-checkout-context
-status: Implementing
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-associate-pi-sessions-with-efforts-and-live-checkout-context: Associate Pi sessions with efforts and live checkout context
@@ -363,3 +363,5 @@ optional integration instead of coupling awf support to a publication channel.
 - 2026-08-02: Amended; content-sha256: ea7654729e8ad4a3ff4a825a8634a65bfaa956fd43ab7577dc0d30a7ffcd4ac2
 - 2026-08-02: Applied; operations: update `rendering/pi-runtime:pi-extension-target-render`, add `rendering/pi-workflows:pi-effort-session-association`, update `rendering/project-output-plan:multi-target-render`, update `rendering/catalog-and-targets:target-dialect-render`, update `rendering/pi-workflows:pi-native-workflow-skills`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, add `rendering/workflow-skill-templates:effort-workflow`, add `rendering/pi-workflows:using-effort-skill`
 - 2026-08-02: Amended; content-sha256: 6b904e7e26609ecf60c7b2ff95fe76a4ad24cfc58fceb23e061083d1dca70971
+- 2026-08-02: Applied; operations: update `rendering/pi-runtime:pi-minimum-runtime`
+- 2026-08-02: Implemented; content-sha256: 6b904e7e26609ecf60c7b2ff95fe76a4ad24cfc58fceb23e061083d1dca70971

@@ -1,7 +1,7 @@
 ---
 date: 2026-08-02
 adrs: [associate-pi-sessions-with-efforts-and-live-checkout-context]
-status: Proposed
+status: Implemented
 ---
 # Plan: Associate Pi sessions with efforts and live checkout context
 
@@ -207,5 +207,6 @@ feat(rendering): ship effort-associated Pi sessions
 
 - Phase 2 implementation required undeclared CLI composition paths `cmd/awf/dispatch.go` and `cmd/awf/main.go` for nested leaf resolution/help, `cmd/awf/gate_test.go` for gated-command coverage, and `internal/effort/safeio.go` for the shared bounded no-follow read. It also added `internal/project/spine_test.go`, `internal/worktree/wiring_test.go`, and `templates/skills/roadmap-graduation/SKILL.md.tmpl` to the inventory in the Phase 2 transaction when render and wiring closure exposed them. Phase 2 review then required the platform `internal/effort/publication_{linux,darwin,windows}.go` seams for cross-process conditional activity mutation. The omitted adopter-facing `changelog/CHANGELOG.md` entry was corrected in the focused review-fix transaction. These are implementation-path deviations only; they do not change the ADR design or phase ownership.
 - D23 removed the stale owner-publication gate: awf owns structural foreign interfaces and graceful degradation, while package publication, versioning, artifacts, checksums, and installation topology remain outside this plan.
+- Terminal workflow split Phase 4 implementation and mechanical review fixes from the final claim/lifecycle transaction so `pi-minimum-runtime` became current authority only after independent review settled; this transaction split did not change the ADR design or phase scope.
 - Phase 3 documentation fit the existing `.awf/docs/parts`, `.awf/parts/workflow`, and `.awf/parts/working-with-awf` authoring seams without changing the shared workflow-document template bodies. Its target/render/scaffold proof is concentrated in `internal/project/target_test.go`, `internal/project/spine_test.go`, and `internal/project/output_declarations_test.go`, exercising the production output plan/render/prune and scaffold paths rather than adding parallel focused test helpers. Report-only phase review added the adopter-facing `changelog/CHANGELOG.md` entry, target `SkillName` safety cases in `internal/project/output_plan_test.go`, and a same-CWD post-detach recovery regression.
 - No concrete resident memory path is cited here; execution carries the effort checkpoint out of band under the workflow's one-writer contract.

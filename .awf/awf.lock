@@ -421,7 +421,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:394837fd8e905e667ea20fff4d21fb259b2893fbc767b9bcc25f327c065e918c",
+      "outputHash": "sha256:8b8f367df9c47108142c8a05d0caa1a88d310aaca464d50bce4e25c26a5d1090",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -709,8 +709,8 @@
     "docs/topics/rendering/pi-runtime.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:b1d73159cb1c95bab8376f505cdcc3023ce4f0a9b9164c8bb4f49ddd442c11fa",
-      "outputHash": "sha256:8178d182f0d9f59073ab07262f6ed5a7f1e9e1dfb5bbb0e06c77fd55f3465676"
+      "configHash": "sha256:2359a08d641f816b1773d2ec0702be358c08bf0d8f1216009edc688e6ac4b696",
+      "outputHash": "sha256:a9fbea40acdf5469ed408c42ec630305f311083be39706b5a84d82e5531fb130"
     },
     "docs/topics/rendering/pi-workflows.md": {
       "templateId": "topics/topic.md.tmpl",
