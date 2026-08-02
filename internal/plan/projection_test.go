@@ -262,7 +262,14 @@ func TestPlanV2ProjectionOrdersPromotesAndScopes(t *testing.T) {
 	body = strings.Replace(body, "- A valid plan parses and projects.", "- `dod: advanced` Advance.\n- `dod: complete` Complete.", 1)
 	body = strings.Replace(body, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nAdvances: [\"advanced\"]\nCompletes: [\"complete\"]", 1)
 	dir := t.TempDir()
-	writePlan(t, dir, "2026-08-02-v2.md", body)
+	const filename = "2026-08-02-v2.md"
+	writePlan(t, dir, filename, body)
+	path := filepath.Join(dir, filename)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeHash := sha256.Sum256(before)
 	p, err := plan.Resolve(dir, "2026-08-02-v2")
 	if err != nil {
 		t.Fatal(err)
@@ -273,14 +280,90 @@ func TestPlanV2ProjectionOrdersPromotesAndScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := string(got)
-	for _, want := range []string{"## Applying decisions", "### ADR-a: First (Accepted)", "## Context decisions", "### ADR-b: Second (Implemented)", "Scope notice: only this task is in scope", "### Advanced outcomes", "- `dod: advanced` Advance.", "### Completed outcomes", "- `dod: complete` Complete."} {
-		if !strings.Contains(text, want) {
-			t.Errorf("projection missing %q:\n%s", want, text)
-		}
+	expected := `---
+format: plan-v2
+date: 2026-08-02
+adrs: []
+status: Proposed
+---
+# Plan: Example
+
+## Goal
+
+Deliver the thing without widening its scope.
+
+## Goal detail
+
+This level-two heading remains opaque Goal Markdown.
+
+## Architecture summary
+
+Keep parsing and rendering in the model owner.
+
+## Applying decisions
+
+### ADR-a: First (Accepted)
+
+1. First.
+
+## Context decisions
+
+### ADR-b: Second (Implemented)
+
+2. Second.
+
+## Phase 1: Parse
+
+**Execution mode: inline.**
+
+Advances: ["advanced"]
+Completes: ["complete"]
+
+
+> Scope notice: only this task is in scope. Phase close and phase outcomes remain phase-owner context; transaction ownership does not transfer, and unselected tasks must not be performed merely to clear an outcome.
+
+### Task 1.1: Build it
+Kind: batch
+Latitude: exact
+Paths: ["glob:internal/plan/*.go", "pathspec::(top)internal/plan", "docs/plans/template.md"]
+Representative: Cover normal input.
+Edge: Cover invalid input.
+Post-check: go test ./internal/plan
+
+Implement the parser.
+
+### Phase close
+
+Run the staged check and gate.
+
+` + "```commit\nfeat(plans): parse plans\n```" + `
+
+
+### Advanced outcomes (phase-owner context)
+
+- ` + "`dod: advanced`" + ` Advance.
+
+### Completed outcomes (phase-owner context)
+
+- ` + "`dod: complete`" + ` Complete.
+
+## Notes
+
+The spike established stable typed diagnostics.
+`
+	if !bytes.Equal(got, []byte(expected)) {
+		t.Fatalf("plan-v2 task projection differs:\n--- got ---\n%s\n--- want ---\n%s", got, expected)
 	}
-	if strings.Count(text, "First.") != 1 || strings.Index(text, "First.") > strings.Index(text, "Second.") || strings.Contains(text, "### Task 1.2") {
-		t.Fatalf("projection did not dedupe/promote/scope:\n%s", text)
+	if bytes.Contains(got, []byte("## Definition of done")) || bytes.Contains(got, []byte("### Task 1.2")) {
+		t.Fatalf("task projection leaked whole-plan DoD or unselected work:\n%s", got)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterHash := sha256.Sum256(after)
+	if beforeHash != afterHash || !bytes.Equal(before, after) || !bytes.Equal(p.Source, before) {
+		t.Fatal("plan-v2 projection mutated or failed to retain source bytes")
 	}
 }
 
