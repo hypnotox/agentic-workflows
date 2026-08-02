@@ -83,7 +83,7 @@ Backing: test
 Each enabled target renders every selected catalog skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A closed target descriptor may additionally declare a target-owned skill with a catalog-selection predicate; it uses the same target path, prefix, dialect, provenance, and policy machinery, is absent from every other target, and is planned and rendered by one resolved declaration path.
 Each enabled target renders every skill and agent exactly once at that descriptor's declared path and encoding, and the emitted artifact parses under the runtime's native format. The built-in Claude Code and Pi targets emit Markdown agents while retaining independent descriptor-owned paths, suffixes, capabilities, bridges, wording, and additional outputs.
 Origin: ADR-0122
-Revised-by: ADR-0214, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0214, ADR-0218
 Backing: test
 
 ### `invariant: unified-doc-model`

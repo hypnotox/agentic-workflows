@@ -4,7 +4,7 @@ slug: correct-pi-handoff-and-checkpoint-authority
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-correct-pi-handoff-and-checkpoint-authority: Correct Pi handoff and checkpoint authority
+# ADR-0219: Correct Pi handoff and checkpoint authority
 
 ## Context
 

@@ -4,7 +4,7 @@ slug: associate-pi-sessions-with-efforts-and-live-checkout-context
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-associate-pi-sessions-with-efforts-and-live-checkout-context: Associate Pi sessions with efforts and live checkout context
+# ADR-0218: Associate Pi sessions with efforts and live checkout context
 
 
 ## Context
