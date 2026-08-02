@@ -36,29 +36,22 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p.advisoryNotesWithState(ctx, corpus, topics, eff, plans)
-}
-
-// advisoryNotesWithState returns the non-failing render advisories in print
-// order from operation-owned state and its already parsed plans.
-func (p *Project) advisoryNotesWithState(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan) ([]string, error) {
 	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
 		return nil, err
 	}
+	return p.advisoryNotesWithState(corpus, plans, op)
+}
+
+// advisoryNotesWithState returns the non-failing render advisories in print
+// order from operation-owned state, its already parsed plans, and its one
+// prepared output plan.
+func (p *Project) advisoryNotesWithState(corpus adr.Corpus, plans []plan.Plan, op *OutputPlan) ([]string, error) {
 	files := op.writeFiles()
-	dds, err := p.generateDomainDocs(topics, eff)
-	if err != nil { // coverage-ignore: the same producer ran inside outputPlan above over these identical inputs, so a second call cannot newly fail
-		return nil, err
-	}
-	all := slices.Concat(files, dds)
-	// The generated config reference joins the stub/marker scan: its intro
-	// part is authored like any other and can carry residue (ADR-0088).
-	if cref, ok, err := p.generateConfigReference(all, eff); err != nil { // coverage-ignore: the same producer ran inside outputPlan above over these identical inputs, so a second call cannot newly fail
-		return nil, err
-	} else if ok {
-		all = append(all, *cref)
-	}
+	// Generated domain documents and the config reference are already write
+	// nodes in the operation plan, so the stub and marker scans consume that
+	// complete set without reconstructing either producer.
+	all := files
 	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
 	notes = append(notes, markerNotes(all)...)
 	th, err := p.tagHealthNotes(corpus)
@@ -447,12 +440,16 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 			})
 		}
 	}
-	drift, err := p.checkWithState(ctx, corpus, topics, eff, plans)
+	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	notes, err := p.advisoryNotesWithState(ctx, corpus, topics, eff, plans)
-	if err != nil { // coverage-ignore: checkWithState already ran the same output producers over identical operation-owned inputs
+	drift, err := p.checkWithState(ctx, corpus, topics, eff, plans, op)
+	if err != nil {
+		return CheckReport{}, err
+	}
+	notes, err := p.advisoryNotesWithState(corpus, plans, op)
+	if err != nil { // coverage-ignore: outputPlan and checkWithState already consumed every fallible advisory input over these identical operation-owned values
 		return CheckReport{}, err
 	}
 	return CheckReport{Drift: append(drift, planDrift...), Notes: notes}, nil
@@ -464,17 +461,13 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 	return report.Drift, err
 }
 
-func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan) ([]manifest.Drift, error) {
+func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan, op *OutputPlan) ([]manifest.Drift, error) {
 	lock, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return nil, err
 	}
 	if !found {
 		return nil, errors.New("no lock (run awf render)")
-	}
-	op, err := p.outputPlan(ctx, corpus, topics, eff)
-	if err != nil {
-		return nil, err
 	}
 	files := op.writeFiles()
 	rendered := map[string]RenderedFile{}

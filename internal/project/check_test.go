@@ -3,6 +3,9 @@ package project
 import (
 	"bytes"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
@@ -641,6 +644,136 @@ func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
 	}
 	if drift := p.checkPendingADRs(testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
 		t.Fatalf("a numbered corpus must not be blocked, got %#v", drift)
+	}
+}
+
+func parseCheckSource(t *testing.T) *ast.File {
+	t.Helper()
+	path := filepath.Join(testsupport.RepoRoot(t), "internal/project/check.go")
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file
+}
+
+func checkFunc(t *testing.T, file *ast.File, name string) *ast.FuncDecl {
+	t.Helper()
+	for _, decl := range file.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == name {
+			return fn
+		}
+	}
+	t.Fatalf("check.go has no %s function", name)
+	return nil
+}
+
+func calledMethodCount(fn *ast.FuncDecl, name string) int {
+	count := 0
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if ok && sel.Sel.Name == name {
+			count++
+		}
+		return true
+	})
+	return count
+}
+
+func hasOutputPlanParameter(fn *ast.FuncDecl) bool {
+	for _, field := range fn.Type.Params.List {
+		ptr, ok := field.Type.(*ast.StarExpr)
+		if !ok {
+			continue
+		}
+		ident, ok := ptr.X.(*ast.Ident)
+		if !ok || ident.Name != "OutputPlan" {
+			continue
+		}
+		for _, name := range field.Names {
+			if name.Name == "op" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
+	found := false
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != method {
+			return true
+		}
+		for _, arg := range call.Args {
+			if ident, ok := arg.(*ast.Ident); ok && ident.Name == argument {
+				found = true
+			}
+		}
+		return true
+	})
+	return found
+}
+
+func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
+	file := parseCheckSource(t)
+	report := checkFunc(t, file, "CheckReport")
+	check := checkFunc(t, file, "checkWithState")
+	advisory := checkFunc(t, file, "advisoryNotesWithState")
+
+	if got := calledMethodCount(report, "outputPlan"); got != 1 {
+		t.Errorf("CheckReport constructs %d output plans, want exactly one", got)
+	}
+	for _, fn := range []*ast.FuncDecl{check, advisory} {
+		if !hasOutputPlanParameter(fn) {
+			t.Errorf("%s does not receive op *OutputPlan", fn.Name.Name)
+		}
+		if got := calledMethodCount(fn, "outputPlan"); got != 0 {
+			t.Errorf("%s reconstructs %d output plans", fn.Name.Name, got)
+		}
+		if !callsMethodWithIdent(report, fn.Name.Name, "op") {
+			t.Errorf("CheckReport does not pass op to %s", fn.Name.Name)
+		}
+	}
+	for _, producer := range []string{"generateDomainDocs", "generateConfigReference"} {
+		if got := calledMethodCount(advisory, producer); got != 0 {
+			t.Errorf("advisoryNotesWithState calls %s %d times, want plan write nodes", producer, got)
+		}
+	}
+
+	root := scaffoldFiles(t,
+		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n",
+		map[string]string{
+			"parts/config-reference/intro.md": "Config intro.\n<!-- awf:section bogus -->\n",
+		})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	reportValue, err := p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(reportValue.Notes, "\n")
+	for _, want := range []string{
+		"docs/domains/config.md has unauthored stub content",
+		"part .awf/parts/config-reference/intro.md contains a marker-shaped line",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("CheckReport notes omit planned write node %q:\n%s", want, joined)
+		}
 	}
 }
 
