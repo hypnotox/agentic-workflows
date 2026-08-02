@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: associate-pi-sessions-with-efforts-and-live-checkout-context
-status: Proposed
+status: Accepted
 date: 2026-08-02
 ---
 # ADR-associate-pi-sessions-with-efforts-and-live-checkout-context: Associate Pi sessions with efforts and live checkout context
@@ -315,3 +315,4 @@ APIs.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-02: Accepted; content-sha256: 7ce4df8ed04b71c447ecd1ed0bf0d7b50620b5107b71b358d2fd374d715d7d51
