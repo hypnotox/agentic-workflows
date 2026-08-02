@@ -381,8 +381,28 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 			}
 		}
 	})
+	t.Run("stale replay ignores omitted projections", func(t *testing.T) {
+		repo, base := staleAuditRepo(t, 31)
+		main := gitfixture.Merge(t, repo, "feat(awf): main")
+		gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+		feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{
+			".awf/config.yaml":        "prefix: test\nintegrationBranch: master\ntargets: [claude]\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
+			".awf/domains/alpha.yaml": "unknown: [\n",
+			"internal/proof_test.go":  "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
+		})
+		merge := gitfixture.Merge(t, repo, "Merge feature", main, feature)
+		commit := awfgit.Commit{Hash: merge[:8], Revision: merge, Subject: "Merge feature", Message: "Merge feature", Parents: []string{main, feature}, IsMerge: true}
+		handle, _, err := awfgit.OpenContaining(repo.Root())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := staleMergeFindingsForTest(t, repo.Root(), handle, []Commit{commit}); err != nil {
+			t.Fatalf("stale replay rejected omitted marker/domain projections: %v", err)
+		}
+	})
 	outside := awfgit.Commit{Revision: "outside"}
 	commits := []awfgit.Commit{
+		{Revision: "root"},
 		{Revision: "code", Parents: []string{outside.Revision}, Changes: []awfgit.FileChange{{Path: "internal/code.go", Action: awfgit.Modified}}},
 		{Revision: "marker", Parents: []string{"code"}, Changes: []awfgit.FileChange{{Path: "internal/proof_test.go", Action: awfgit.Modified}}},
 		{Revision: "sidecar", Parents: []string{"marker"}, Changes: []awfgit.FileChange{{Path: ".awf/domains/alpha.yaml", Action: awfgit.Modified}}},
@@ -393,7 +413,8 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		{Revision: "custom-adr", Parents: []string{"custom-config"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Modified}}},
 		{Revision: "delete", Parents: []string{"custom-adr"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Deleted}}},
 		{Revision: "rename", Parents: []string{"delete"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Deleted}, {Path: "records/decisions/0003-three.md", Action: awfgit.Added}}},
-		{Revision: "merge", Parents: []string{"rename", "incoming"}, IsMerge: true},
+		{Revision: "merge-irrelevant", Parents: []string{"rename", "incoming-zero"}, IsMerge: true},
+		{Revision: "merge", Parents: []string{"merge-irrelevant", "incoming"}, IsMerge: true},
 		{Revision: "merge-ambiguous", Parents: []string{"merge", "incoming-two"}, IsMerge: true},
 	}
 	loads := map[string]int{}
@@ -410,6 +431,8 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 	}
 	firstParentPaths := func(_ context.Context, revision string) ([]string, error) {
 		switch revision {
+		case "merge-irrelevant":
+			return []string{"internal/merge.go"}, nil
 		case "merge":
 			return []string{"records/decisions/0004-merge.md"}, nil
 		case "merge-ambiguous":
@@ -425,7 +448,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 			t.Fatalf("state for %s: %v", commit.Revision, err)
 		}
 	}
-	if loads["outside"] != 1 || loads["code"] != 0 || loads["marker"] != 0 {
+	if loads["root"] != 1 || loads["outside"] != 1 || loads["code"] != 0 || loads["marker"] != 0 || loads["merge-irrelevant"] != 0 {
 		t.Fatalf("irrelevant code or marker changes reloaded state: %#v", loads)
 	}
 	for _, revision := range []string{"sidecar", "config", "topic", "default-adr", "custom-config", "custom-adr", "delete", "rename", "merge", "merge-ambiguous"} {
@@ -433,7 +456,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 			t.Errorf("loads[%s] = %d, want 1", revision, loads[revision])
 		}
 	}
-	if loads["incoming"] != 0 || loads["incoming-two"] != 0 {
+	if loads["incoming-zero"] != 0 || loads["incoming"] != 0 || loads["incoming-two"] != 0 {
 		t.Errorf("incoming merge parent was loaded during first-parent relevance: %#v", loads)
 	}
 

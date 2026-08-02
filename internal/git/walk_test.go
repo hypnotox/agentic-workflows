@@ -469,7 +469,7 @@ func TestFirstParentChangedPathsPropagatesCancellationDuringDiff(t *testing.T) {
 }
 
 func TestFirstParentChangedPathsReportsCorruptTreeEvidence(t *testing.T) {
-	for _, target := range []string{"current tree", "parent tree", "parent subtree", "changed subtree"} {
+	for _, target := range []string{"current tree", "parent tree", "parent subtree", "changed subtree", "unsafe path"} {
 		t.Run(target, func(t *testing.T) {
 			repo := gitfixture.InitRepo(t)
 			dir := repo.Root()
@@ -504,6 +504,39 @@ func TestFirstParentChangedPathsReportsCorruptTreeEvidence(t *testing.T) {
 					t.Fatal(err)
 				}
 				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "corrupt subtree\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(base)}}
+				encodedCommit := backend.Storer.NewEncodedObject()
+				if err := commit.Encode(encodedCommit); err != nil {
+					t.Fatal(err)
+				}
+				commitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head = commitHash.String()
+			case "unsafe path":
+				backend := openWalkRepo(t, dir)
+				baseCommit, err := backend.CommitObject(plumbing.NewHash(base))
+				if err != nil {
+					t.Fatal(err)
+				}
+				baseTree, err := baseCommit.Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				file, err := baseTree.File("nested/base.txt")
+				if err != nil {
+					t.Fatal(err)
+				}
+				top := &object.Tree{Entries: []object.TreeEntry{{Name: "..", Mode: filemode.Regular, Hash: file.Hash}}}
+				encodedTree := backend.Storer.NewEncodedObject()
+				if err := top.Encode(encodedTree); err != nil {
+					t.Fatal(err)
+				}
+				treeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "unsafe path\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(base)}}
 				encodedCommit := backend.Storer.NewEncodedObject()
 				if err := commit.Encode(encodedCommit); err != nil {
 					t.Fatal(err)
