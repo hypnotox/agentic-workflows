@@ -74,6 +74,47 @@ func readCommandV4ADRFor(t *testing.T, slug, title, decision string) string {
 	return strings.Replace(implemented, "- 2026-08-02: Proposed\n", "- 2026-08-02: Proposed\n- 2026-08-03: Implemented; content-sha256: "+adr.ContentDigest(record.Sections)+"\n", 1)
 }
 
+const readCommandPromotionPlan = `---
+format: plan-v2
+date: 2026-08-03
+adrs: [fixture, context]
+status: Proposed
+---
+# Plan: Promotion order
+
+## Goal
+
+Preserve first-authored Decision order across promotion.
+
+## Architecture summary
+
+Keep reference ordering in the project composition boundary.
+
+## Phase 1: Project
+
+**Execution mode: inline.**
+
+### Task 1.1: Introduce context
+Context: ["context:second"]
+
+Use the earlier context.
+
+### Task 1.2: Promote context
+Applying: ["fixture:first", "context:second"]
+
+Promote the earlier context after another Applying reference.
+
+### Phase close
+
+Run the gate.
+
+` + "```commit\nfeat(plans): preserve promotion order\n```" + `
+
+## Definition of done
+
+- ` + "`dod: ordered`" + ` Preserve first-authored order.
+`
+
 const readCommandPlan = `---
 format: plan-v1
 date: 2026-08-02
@@ -232,6 +273,18 @@ func TestReadPlanCommand(t *testing.T) {
 		t.Fatalf("v2 phase projection did not first-author dedupe and promote Applying decisions; stdout=%q stderr=%q", v2Phase, stderr.String())
 	}
 
+	promotionPath := filepath.Join(root, "docs/plans/2026-08-03-promotion-order.md")
+	testsupport.WriteFile(t, promotionPath, readCommandPromotionPlan)
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-promotion-order", "1"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("promotion-order phase read exit = %d, stderr = %q", code, stderr.String())
+	}
+	promotion := stdout.String()
+	if contextAt, fixtureAt := strings.Index(promotion, "Second exact Decision block."), strings.Index(promotion, "First exact Decision block."); contextAt < 0 || fixtureAt < 0 || contextAt > fixtureAt {
+		t.Fatalf("promoted Context lost first-authored order; stdout=%q", promotion)
+	}
+
 	for _, source := range []struct {
 		path string
 		want []byte
@@ -252,8 +305,19 @@ func TestReadPlanCommand(t *testing.T) {
 	testsupport.WriteFile(t, brokenPath, strings.Replace(readCommandV2Plan, "fixture:first", "missing:first", 1))
 	stdout.Reset()
 	stderr.Reset()
-	if code := run([]string{"awf", "read", "plan", "2026-08-03-broken-reference", "1.1"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "ADR not found") {
-		t.Fatalf("broken v2 reference did not block read: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	const missingReferenceError = "awf: plan 2026-08-03-broken-reference.md task 1.1 Applying \"missing:first\": ADR not found\n"
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-broken-reference", "1.1"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != missingReferenceError {
+		t.Fatalf("broken v2 reference did not preserve task coordinates: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+
+	absentPath := filepath.Join(root, "docs/plans/2026-08-03-absent-applying.md")
+	absentPlan := strings.Replace(readCommandV2Plan, "adrs: [fixture, context, third]", "adrs: [context, third]", 1)
+	testsupport.WriteFile(t, absentPath, absentPlan)
+	stdout.Reset()
+	stderr.Reset()
+	const absentApplyingError = "awf: plan 2026-08-03-absent-applying.md task 1.1 Applying \"fixture:first\": Applying ADR is absent from adrs\n"
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-absent-applying", "1.1"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != absentApplyingError {
+		t.Fatalf("Applying outside plan adrs did not block read: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 
 	t.Run("direct failures", TestRunReadPlanRejectsArityAndUnadoptedRoot)

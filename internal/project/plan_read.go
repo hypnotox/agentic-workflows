@@ -25,21 +25,9 @@ func (p *Project) ReadPlan(name, selector string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	refs := task.Fields
-	if task.Number == 0 {
-		for _, candidate := range phase.Tasks {
-			refs.Applying = append(refs.Applying, candidate.Fields.Applying...)
-			refs.Context = append(refs.Context, candidate.Fields.Context...)
-		}
-	}
-	applying, err := resolvePlanDecisions(selected, corpus, refs.Applying, false)
+	applying, context, err := resolveSelectedPlanDecisions(selected, corpus, phase, task)
 	if err != nil {
 		return nil, err
 	}
-	context, err := resolvePlanDecisions(selected, corpus, refs.Context, true)
-	if err != nil {
-		return nil, err
-	}
-	_ = phase
 	return plan.RenderProjectionInput(plan.ProjectionInput{Plan: selected, Selector: selector, Applying: applying, Context: context})
 }

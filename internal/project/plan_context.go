@@ -19,14 +19,9 @@ func planArtifactReport(plans []plan.Plan, corpus adr.Corpus) ([]manifest.Drift,
 		// Assignment and membership belong to one plan, never the corpus-wide
 		// traversal. Resolve every declared link even if no task references it.
 		assigned := map[string]bool{}
-		allowed := map[string]bool{}
-		for _, l := range p.ADRs {
-			record, ok := corpus.ByIdentity(l.Identity())
-			if !ok {
-				drift = append(drift, manifest.Drift{Path: p.Path, Kind: "plan-reference", Detail: fmt.Sprintf("%s adrs %q: ADR not found", p.Filename, l.Identity())})
-				continue
-			}
-			allowed[record.Identity()] = true
+		allowed, missingLinks := planAllowedADRIdentities(p, corpus)
+		for _, identity := range missingLinks {
+			drift = append(drift, manifest.Drift{Path: p.Path, Kind: "plan-reference", Detail: fmt.Sprintf("%s adrs %q: ADR not found", p.Filename, identity)})
 		}
 		for _, ph := range p.Phases {
 			for _, task := range ph.Tasks {
@@ -117,23 +112,82 @@ func filterPlanAdvisories(in []manifest.Drift) []manifest.Drift {
 	}
 	return out
 }
-func resolvePlanDecisions(p plan.Plan, corpus adr.Corpus, refs []plan.DecisionRef, context bool) ([]plan.ResolvedDecision, error) {
-	out := make([]plan.ResolvedDecision, 0, len(refs))
-	for _, ref := range refs {
+func planAllowedADRIdentities(p plan.Plan, corpus adr.Corpus) (map[string]bool, []string) {
+	allowed := make(map[string]bool, len(p.ADRs))
+	var missing []string
+	for _, link := range p.ADRs {
+		record, ok := corpus.ByIdentity(link.Identity())
+		if !ok {
+			missing = append(missing, link.Identity())
+			continue
+		}
+		allowed[record.Identity()] = true
+	}
+	return allowed, missing
+}
+
+type selectedPlanDecisionRef struct {
+	ref         plan.DecisionRef
+	phase, task int
+}
+
+func resolveSelectedPlanDecisions(p plan.Plan, corpus adr.Corpus, phase plan.Phase, task plan.Task) ([]plan.ResolvedDecision, []plan.ResolvedDecision, error) {
+	var refs []selectedPlanDecisionRef
+	appendTask := func(candidate plan.Task) {
+		for _, ref := range candidate.Fields.Applying {
+			refs = append(refs, selectedPlanDecisionRef{ref: ref, phase: phase.Number, task: candidate.Number})
+		}
+		for _, ref := range candidate.Fields.Context {
+			refs = append(refs, selectedPlanDecisionRef{ref: ref, phase: phase.Number, task: candidate.Number})
+		}
+	}
+	if task.Number != 0 {
+		appendTask(task)
+	} else {
+		for _, candidate := range phase.Tasks {
+			appendTask(candidate)
+		}
+	}
+
+	allowed, _ := planAllowedADRIdentities(p, corpus)
+	order := make([]string, 0, len(refs))
+	resolved := make(map[string]plan.ResolvedDecision, len(refs))
+	applyingKeys := make(map[string]bool, len(refs))
+	for _, located := range refs {
+		ref := located.ref
+		prefix := fmt.Sprintf("plan %s task %d.%d %s %q", p.Filename, located.phase, located.task, ref.Kind, ref.Authored)
 		record, ok := corpus.ByIdentity(ref.ADR)
 		if !ok {
-			return nil, fmt.Errorf("plan %s %s %q: ADR not found", p.Filename, ref.Kind, ref.Authored)
+			return nil, nil, fmt.Errorf("%s: ADR not found", prefix)
 		}
-		if context && record.IsContentAmendable() {
-			return nil, fmt.Errorf("plan %s Context %q: requires frozen ADR", p.Filename, ref.Authored)
+		if ref.Kind == "Applying" && !allowed[record.Identity()] {
+			return nil, nil, fmt.Errorf("%s: Applying ADR is absent from adrs", prefix)
+		}
+		if ref.Kind == "Context" && record.IsContentAmendable() {
+			return nil, nil, fmt.Errorf("%s: requires frozen ADR", prefix)
 		}
 		item, err := record.LookupDecision(ref.Selector)
 		if err != nil {
-			return nil, fmt.Errorf("plan %s %s %q: %w", p.Filename, ref.Kind, ref.Authored, err)
+			return nil, nil, fmt.Errorf("%s: %w", prefix, err)
 		}
-		out = append(out, plan.ResolvedDecision{Key: item.Key, ADRIdentity: item.ADRIdentity, Title: item.Title, Status: item.Status, Markdown: item.Markdown})
+		if _, seen := resolved[item.Key]; !seen {
+			order = append(order, item.Key)
+			resolved[item.Key] = plan.ResolvedDecision{Key: item.Key, ADRIdentity: item.ADRIdentity, Title: item.Title, Status: item.Status, Markdown: item.Markdown}
+		}
+		if ref.Kind == "Applying" {
+			applyingKeys[item.Key] = true
+		}
 	}
-	return out, nil
+
+	var applying, context []plan.ResolvedDecision
+	for _, key := range order {
+		if applyingKeys[key] {
+			applying = append(applying, resolved[key])
+		} else {
+			context = append(context, resolved[key])
+		}
+	}
+	return applying, context, nil
 }
 
 func selectedRefs(p plan.Plan, selector string) (plan.Phase, plan.Task, error) {

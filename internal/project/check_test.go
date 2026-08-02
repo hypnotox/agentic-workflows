@@ -1015,7 +1015,8 @@ func TestPlanContextHelpersRejectMissingReferencesAndSelectors(t *testing.T) {
 	if err != nil || phase.Number != 1 || task.Number != 1 {
 		t.Fatalf("selected refs = %#v %#v %v", phase, task, err)
 	}
-	_, err = resolvePlanDecisions(p, adr.Corpus{}, []plan.DecisionRef{{Authored: "missing:item", ADR: "missing", Selector: "item", Kind: "Applying"}}, false)
+	task.Fields.Applying = []plan.DecisionRef{{Authored: "missing:item", ADR: "missing", Selector: "item", Kind: "Applying"}}
+	_, _, err = resolveSelectedPlanDecisions(p, adr.Corpus{}, phase, task)
 	if err == nil || !strings.Contains(err.Error(), "ADR not found") {
 		t.Fatalf("missing reference = %v", err)
 	}
@@ -1086,7 +1087,12 @@ func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
 		case selectorError && len(drift) != 1:
 			t.Fatalf("selector planArtifactReport drift = %#v", drift)
 		}
-		return resolvePlanDecisions(p, corpus, []plan.DecisionRef{ref}, context)
+		phase, task := p.Phases[0], p.Phases[0].Tasks[0]
+		applying, selectedContext, err := resolveSelectedPlanDecisions(p, corpus, phase, task)
+		if context {
+			return selectedContext, err
+		}
+		return applying, err
 	}
 
 	// Numbered links and retained-slug task references resolve the same V4 ADR,
@@ -1113,6 +1119,31 @@ func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
 	if resolved, err := resolve(frozenV4, plan.ADRLink{Slug: "fixture"}, contextRef, true, false); err != nil || len(resolved) != 1 {
 		t.Fatalf("frozen V4 Context = %#v, %v", resolved, err)
 	}
+	frozenCorpus, err := adr.NewCorpus([]adr.ADR{frozenV4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contextTask := plan.Task{Number: 1, Fields: plan.TaskFields{Context: []plan.DecisionRef{contextRef}}}
+	contextPhase := plan.Phase{Number: 1, Tasks: []plan.Task{contextTask}}
+	contextPlan := plan.Plan{Filename: "v2.md", ADRs: []plan.ADRLink{{Slug: "fixture"}}, Phases: []plan.Phase{contextPhase}}
+	applying, selectedContext, err := resolveSelectedPlanDecisions(contextPlan, frozenCorpus, contextPhase, contextTask)
+	if err != nil || len(applying) != 0 || len(selectedContext) != 1 || selectedContext[0].Key != "0001:first" {
+		t.Fatalf("selected frozen V4 Context = applying %#v, context %#v, err %v", applying, selectedContext, err)
+	}
+	amendableV4Corpus, err := adr.NewCorpus([]adr.ADR{v4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := resolveSelectedPlanDecisions(contextPlan, amendableV4Corpus, contextPhase, contextTask); err == nil || !strings.Contains(err.Error(), "task 1.1 Context \"fixture:first\": requires frozen ADR") {
+		t.Fatalf("selected amendable Context error = %v", err)
+	}
+	missingContextRef := plan.DecisionRef{Authored: "fixture:missing", ADR: "fixture", Selector: "missing", Kind: "Context"}
+	missingContextTask := plan.Task{Number: 1, Fields: plan.TaskFields{Context: []plan.DecisionRef{missingContextRef}}}
+	missingContextPhase := plan.Phase{Number: 1, Tasks: []plan.Task{missingContextTask}}
+	_, _, err = resolveSelectedPlanDecisions(contextPlan, frozenCorpus, missingContextPhase, missingContextTask)
+	if !errors.Is(err, adr.ErrDecisionSelectorUnknown) || !strings.Contains(err.Error(), "task 1.1 Context \"fixture:missing\"") {
+		t.Fatalf("selected Context selector error = %v", err)
+	}
 
 	frozenV3 := v3
 	frozenV3.Status = "Implemented"
@@ -1128,7 +1159,7 @@ func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
 	if drift, _ := planArtifactReport([]plan.Plan{amendablePlan}, amendableV3); len(drift) != 1 || !strings.Contains(drift[0].Detail, adr.ErrDecisionSelectorAmendable.Error()) {
 		t.Fatalf("amendable pre-V4 ordinal drift = %#v", drift)
 	}
-	if _, err := resolvePlanDecisions(amendablePlan, amendableV3, []plan.DecisionRef{ordinal}, false); err == nil || !errors.Is(err, adr.ErrDecisionSelectorAmendable) {
+	if _, _, err := resolveSelectedPlanDecisions(amendablePlan, amendableV3, amendablePlan.Phases[0], amendablePlan.Phases[0].Tasks[0]); err == nil || !errors.Is(err, adr.ErrDecisionSelectorAmendable) {
 		t.Fatalf("amendable pre-V4 ordinal error = %v", err)
 	}
 
