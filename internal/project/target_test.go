@@ -213,6 +213,9 @@ func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 		"Effort: work\\r\\ncheckpoint",
 		`["1e3","---\neffort: 1e3\n---\n"]`,
 		`["2026-08-02","---\neffort: '2026-08-02'\n---\n"]`,
+		`["0b2","---\neffort: 0b2\n---\n"]`,
+		`["0babc","---\neffort: 0babc\n---\n"]`,
+		`["0o89","---\neffort: 0o89\n---\n"]`,
 	} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("TypeScript lifecycle behavior contract missing %q", want)
@@ -240,6 +243,9 @@ func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 		`["1e3","---\neffort: 1e3\n---\n"]`,
 		`["2026-08-02","---\neffort: 2026-08-02\n---\n"]`,
 		`["1e3","---\neffort: \"1e3\"\n---\n"]`,
+		`["0b2","---\neffort: 0b2\n---\n"]`,
+		`["0babc","---\neffort: 0babc\n---\n"]`,
+		`["0o89","---\neffort: 0o89\n---\n"]`,
 	} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("TypeScript public-contract behavior case missing %q", want)
