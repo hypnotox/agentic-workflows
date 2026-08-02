@@ -7,6 +7,8 @@ Coverage, prose, working-memory citations, and the command-runner gate machinery
 
 These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, working-memory citations, and the gate tiers. The claims below capture the current gate contracts.
 
+The Pi container lane enforces 100% line, function, and branch coverage for every generated Pi extension, including context usage, without reachable-branch ignores.
+
 ## Claims
 
 ### `invariant: coverage-gate-100`
@@ -41,9 +43,9 @@ Backing: test
 
 ### `invariant: example-adopter-checked`
 
-The ./x render step re-renders examples/sundial with the from-source binary, and ./x check runs awf check and awf check invariants inside that example, so example drift or an invariant finding there fails ./x check.
+The ./x render step re-renders examples/sundial with the from-source binary, and ./x check runs awf check repo inside that example with proseGate.enabled and memoryCite.enabled, so example drift, current-state, prose, or memory findings fail ./x check.
 Origin: ADR-0090
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0210
 Backing: test
 
 ### `invariant: example-module-isolated`
@@ -60,9 +62,9 @@ Backing: test
 
 ### `invariant: memory-citation-gate`
 
-With memoryCite.enabled true, the check memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision and plan text and exits non-zero on any finding outside memoryCite.exemptions; check commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.
+With memoryCite.enabled true, the check repo memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision and plan text and exits non-zero on any finding outside memoryCite.exemptions; check staged commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.
 Origin: ADR-0158
-Revised-by: ADR-0159, ADR-0175
+Revised-by: ADR-0159, ADR-0175, ADR-0210
 Backing: test
 
 ### `invariant: mutants-timeout-untrusted`
@@ -80,9 +82,9 @@ Backing: test
 
 ### `invariant: prose-gate-refuses-without-git`
 
-In an adopted tree that is not a git repository, the check prose command refuses with an error about being unable to read staged files rather than reporting a clean result it could not verify.
+In an adopted tree that is not a git repository, the check repo prose command refuses with an error about being unable to read staged files when proseGate.enabled is true, while a disabled gate returns without touching git.
 Origin: ADR-0119
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0210
 Backing: test
 
 ### `invariant: prose-gate-tracked-file-scan`

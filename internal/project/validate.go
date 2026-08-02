@@ -176,8 +176,8 @@ func checkSectionsAllowed(kind, name string, declared []string, used map[string]
 // validateCommandWiring fails sync and check when the rendered hook payloads
 // could not resolve their commands (ADR-0156 Decision 5): an enabled hooks
 // singleton needs a project gate command, and with the runner singleton
-// disabled the hook-referenced awf-verb vars must be set explicitly (ADR-0158
-// added the fourth of them, memoryGateCmd, with its pre-commit line). It is
+// disabled the two surviving hook-referenced awf-verb vars must be set
+// explicitly. It is
 // deliberately not wired into awf init's scaffold sync (a fresh init with an
 // empty interactive gateCmd answer must not hard-fail) or the staged index
 // check (the working-tree check in the same gate run covers the config).
@@ -191,7 +191,7 @@ func validateCommandWiring(cfg *config.Config) error {
 	if cfg.Runner != nil && cfg.Runner.Enabled {
 		return nil
 	}
-	for _, name := range []string{"checkCmd", "commitGateCmd", "proseGateCmd", "memoryGateCmd"} {
+	for _, name := range []string{"checkCmd", "commitGateCmd"} {
 		if commandVarUnset(cfg, name) {
 			return fmt.Errorf("hooks.enabled without the runner singleton requires vars.%s: set it in .awf/config.yaml or enable the runner (awf enable runner)", name)
 		}

@@ -80,7 +80,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"plan may mix modes", "hand inline phases", "known clean and green baseline",
 			"awf read plan <plan> <P>", "projection changes neither ownership nor checkpoint boundaries",
 			"one implementation child alone", "state commit-capable phase-owner mode in the brief", "complete phase",
-			"stages the complete transaction", "declared phase-closing commit", "awf check --staged", gatePhrase,
+			"stages the complete transaction", "declared phase-closing commit", "awf check staged", gatePhrase,
 			"report-only phase review", "focused settlement commits",
 			"checkpoints only after findings resolve", "**Routine checkpoint.**", "parent completion",
 			"redispatch the complete revised phase", "stop for user input", "dirty-state inventory",
@@ -93,7 +93,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 		assertAll("template",
 			"format: plan-v1", "**Execution mode: inline.**", "### Task 1.1:",
 			"### Phase close", "Stage the complete transaction", "one closing commit",
-			"staged check and gate pass", "```commit", "## Definition of done")
+			"awf check staged", "```commit", "## Definition of done")
 
 		for _, name := range []string{"inline", "subagent"} {
 			body := surfaces[name]
@@ -107,8 +107,8 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			}
 		}
 		phase := surfaces["template"]
-		assertOrderedPhrases(t, phase, "Task 1.1", "Phase close", "Stage the complete transaction", "```commit", "Definition of done")
-		if got := strings.Count(phase, "staged check"); got != 1 {
+		assertOrderedPhrases(t, phase, "Task 1.1", "Phase close", "Stage the complete transaction", "awf check staged", gatePhrase, "```commit", "Definition of done")
+		if got := strings.Count(phase, "awf check staged"); got != 1 {
 			t.Errorf("%s representative phase has %d staged-check boundaries, want one", variant, got)
 		}
 		if got := strings.Count(phase, "```commit"); got != 1 {

@@ -3,7 +3,7 @@ format: current-state-v2
 status: Implemented
 date: 2026-08-01
 ---
-# ADR-0209: Sanction authoring latitude in plans
+# ADR-0211: Sanction authoring latitude in plans
 
 ## Context
 

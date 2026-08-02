@@ -38,6 +38,7 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 
 // invariant: rendering/project-output-plan:output-plan-complete (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
@@ -72,7 +73,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
 		}
@@ -81,6 +82,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 		path     string
 		template string
 	}{
+		{path: ".pi/extensions/awf-context-usage/index.ts", template: "templates/pi/awf-context-usage/index.ts.tmpl"},
 		{path: ".pi/extensions/awf-handoff/index.ts", template: "templates/pi/awf-handoff/index.ts.tmpl"},
 		{path: ".pi/extensions/awf-subagents/model-routing.ts", template: "templates/pi/awf-subagents/model-routing.ts.tmpl"},
 	} {
@@ -154,6 +156,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -216,15 +219,12 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/catalog-and-targets:claude-md-bridge (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/catalog-and-targets:target-dialect-render (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))

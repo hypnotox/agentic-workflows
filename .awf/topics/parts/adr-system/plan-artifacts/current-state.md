@@ -56,7 +56,7 @@ Backing: test
 
 The rendered plans template emits `format: plan-v1`, date, adrs, and status frontmatter; `# Plan:`; nonempty Goal and Architecture summary; sequential heading-identified phases and tasks with one execution mode and one final Phase close per phase; required Definition of done plain bullets; and optional Notes. File structure, Verification, and task checkboxes are not plan-v1 sections or task declarations. Marker-absent historical plans remain on the legacy taxonomy.
 Origin: ADR-0098
-Revised-by: ADR-0209, ADR-parsed-plan-artifacts-and-executable-projections
+Revised-by: ADR-0211, ADR-parsed-plan-artifacts-and-executable-projections
 Backing: test
 
 ### `invariant: plan-v1-structure-validated`

@@ -12,25 +12,22 @@ import (
 )
 
 // runMemoryGate scans the staged decision records for a citation of a specific
-// working-memory file (ADR-0158). It returns nil without scanning when the knob
-// is off, so a hook or a runner may invoke it unconditionally. The scanned
-// prefixes derive from the configured docs directory, so an adopter with a
-// custom docsDir gets their own decisions and plans directories.
+// working-memory file (ADR-0158). It reports the disabled child and returns nil
+// without scanning when the knob is off. The scanned prefixes derive from the
+// configured docs directory, so an adopter with a custom docsDir gets their own
+// decisions and plans directories.
 func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
-	tree, err := stagedTree(ctx, root)
-	if err != nil {
-		return fmt.Errorf("check memory: cannot read staged files: %w", err)
-	}
-	stagedConfig, ok := tree.Lookup(".awf/config.yaml")
-	if !ok {
-		return errors.New("check memory: staged snapshot has no .awf/config.yaml")
-	}
-	cfg, err := config.Parse(config.RootDir(root), stagedConfig.Bytes)
+	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
 		return err
 	}
 	if cfg.MemoryCite == nil || !cfg.MemoryCite.Enabled {
+		fmt.Fprintln(stdout, "note: memory: disabled (memoryCite.enabled)")
 		return nil
+	}
+	tree, err := stagedTree(ctx, root)
+	if err != nil {
+		return fmt.Errorf("check repo memory: cannot read staged files: %w", err)
 	}
 	exemptions := make([]memorycite.Exemption, 0, len(cfg.MemoryCite.Exemptions))
 	for _, e := range cfg.MemoryCite.Exemptions {
@@ -56,8 +53,8 @@ func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 		fmt.Fprintln(stdout, memorycite.Format(f))
 	}
 	if len(findings) > 0 {
-		return errors.New("check memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")
+		return errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")
 	}
-	fmt.Fprintln(stdout, "check memory: clean")
+	fmt.Fprintln(stdout, "check repo memory: clean")
 	return nil
 }

@@ -4,7 +4,7 @@
 set -euo pipefail
 repo_root="$1"
 awf_bin="$2"
-if ! (cd "$repo_root/examples/sundial" && "$awf_bin" check --staged); then
+if ! (cd "$repo_root/examples/sundial" && "$awf_bin" check staged); then
   echo "pre-commit: the staged slice fails examples/sundial's HEAD-to-index current-state transition check" >&2
   exit 1
 fi

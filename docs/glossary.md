@@ -41,6 +41,7 @@
 | git seam | The `internal/git` package as the single home of every form of Git access: each capability is one semantic entrypoint, and whether it runs a library in process or the git binary is an internal detail no consumer can observe. |
 | global test seam | A package-level variable reassigned by tests. New seams of this form are banned; existing census entries remain bounded conversion candidates until constructor or parameter injection replaces them. |
 | grab-bag home | A production package or file named for a topical pile rather than one owned concern, such as util, common, helpers, or misc. New production code and deliberate conversions may not create one. |
+| handoff kickoff | The exact bounded `{kickoff}` prose passed to Pi session replacement. Workflow guidance supplies checkpoint reorientation; the runtime carries the text unchanged and owns replacement mechanics only. |
 | integration branch | The explicitly configured branch onto which finished work integrates. ADR authoring there allocates a number immediately; authoring elsewhere produces a pending slug record numbered during integration. |
 | invariant backing | The ledger-not-proof model: a `Backing: test` claim is satisfied by a matching proof-marker comment in a test file, a textual match blind to whether that test asserts the invariant. `Backing: unbacked` forbids a marker and requires a `Verify:` line. |
 | managed effort worktree | The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes. |
@@ -61,9 +62,11 @@
 | resync | The plan and ADR reconciliation pass that runs before implementation when both exist; it re-runs the scope-completeness and doc-currency lenses to catch plan-versus-finalised-ADR drift and loops until they converge. |
 | retrospective | The terminal workflow step after settled review and managed-topology removal: reflect on the work, record durable lessons, promote recurring findings toward deterministic checks, and finish the effort last. |
 | Roots anchoring value | The tracked and resident output roots as one construction input, built once at project open and owning anchored output-path resolution. Replaces per-call-site root joins as the single anchoring authority. |
-| routine checkpoint | The autonomous boundary that validates effort ownership, updates its memory, classifies whether user attention is required, then raises a check-in or continues with a continuity notice. |
+| routine checkpoint | The autonomous boundary that validates effort ownership, updates its memory, and classifies whether user attention is required. A clear boundary continues with a continuity notice and may choose eligible Pi session replacement without making persistence discretionary. |
+| safe resumable point | A durable checkpoint whose immediate successor can start independently. |
 | seam entrypoint | One exported operation of the git seam: a method on the repo handle, or a free function that precedes an opened repository or does without one. Every entrypoint is registered against the contract suite that pins it. |
 | seed-on-introduction | The convention keeping absence a reliable deletion signal: the release that adds a catalog var descriptor ships a one-time migration seed, run once via the generation gate, so a later deletion is never resurrected. |
+| session context facts | The transient model-facing line reporting current tokens against the active model window and the active-branch compaction count. |
 | sidecar-derived doc | The computed-doc model: a render transform computes content from the artifact's own sidecar data upstream of both render and config hash, keeping the doc in the ordinary drift model. Contrast regeneration, which derives from repo state outside the sidecar. |
 | single home | A policy or mechanism consumed from more than one package has exactly one implementation, in the package that owns the concern. A second is a defect, not a variant, and is never forked to avoid an uncovered branch. |
 | State changes | An ADR's operation declaration, each operation frozen once an Applied event references it: `None.` or a list of add, update, and remove entries naming qualified claim ids. Each appended batch travels with exactly its claim mutations. |
@@ -74,7 +77,7 @@
 | trigger table | The guide's workflow section: a catalog-derived row per enabled skill, pairing its prefixed name with its one-line trigger. Rendered from a data key so a new skill cannot be dropped by a forgotten template edit. |
 | trust-bearing file | A file other decisions trust without re-derivation: the lock, and the authored `config.yaml` when a migration rewrites it. Written atomically; a present-but-unreadable lock is a hard error in every reader. |
 | upgrade porcelain | The rendered `.awf/upgrade.sh`, the deliberately nondeterministic layer over the deterministic `.awf/bootstrap.sh`: it resolves a target version, fetches through the bootstrap, and execs `awf upgrade` as its final statement. |
-| working memory | The always-owned `.awf/efforts/<slug>/memory.md` inside one active effort: phase, next action, brief, decision log, observations, and handoff log. Repository and current-state authority outrank it; one user-managed writer updates it. |
+| working memory | One active effort's always-owned `.awf/efforts/<slug>/memory.md`, carrying phase, next action, brief, decisions, observations, and handoff log. Repository authority outranks it; one writer updates it, and a replacement session logs its actual boundary first. |
 
 <!-- awf:edit append: default; create .awf/docs/parts/glossary/append.md to override -->
 

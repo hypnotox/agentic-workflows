@@ -1,7 +1,7 @@
 ## Tiers
 
-awf has a single tier: `./x gate` runs everything, including protocol parity and the pinned in-memory Pi 0.81.1
-three-factory runtime seam plus the pinned repository-runtime cache and launcher tests. `./x gate full` runs the
+awf has a single tier: `./x gate` runs everything, including protocol parity, the pinned in-memory Pi 0.81.1
+two-extension-factory runtime seam that proves real-request context-line refresh after active-branch compaction, and the pinned repository-runtime cache and launcher tests. `./x gate full` runs the
 identical Go and containerized TypeScript steps; the `full` argument is accepted only as a
 no-op legacy argument, and no rendered artifact passes it. There is no slower, fuller
 tier to reach for; the whole gate is fast enough to run before every commit. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.

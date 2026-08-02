@@ -58,6 +58,10 @@ hooks:
   enabled: true
 runner:
   enabled: true
+proseGate:
+  enabled: true
+memoryCite:
+  enabled: true
 domains:
   - almanac
   - cli

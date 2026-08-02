@@ -120,7 +120,7 @@ operation by amending it; correct an already-applied add or update with a Reappl
 record remains in its correction window, not by declaring the operation twice. Otherwise use a
 follow-up ADR or, when identity must change, remove plus add. A rename or move is a remove plus an
 add; a split is one remove plus several adds; a merge is several removes plus one add. A removed id
-is never added again. For each newly appended batch, `awf check --staged` verifies every applied operation against its
+is never added again. For each newly appended batch, `awf check staged` verifies every applied operation against its
 matching topic-claim mutation in the same HEAD-to-index pair. Applied operations authorize current
 or removed results immediately; Remaining operations are pending; Canceled operations provide no
 authority. Multiple ADR batches may share a pair only for distinct claim IDs.

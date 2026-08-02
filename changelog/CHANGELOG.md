@@ -20,6 +20,12 @@ query a single version or a range.
 
 - The glossary now renders one sorted table from two layers: awf's shipped standard vocabulary and project-authored `data.terms`. A project record overrides a shipped term with the same case-insensitive name, including to reword or retire it locally.
 
+- Pi now renders a standalone context-usage extension that injects neutral transient session context facts before every model call, without persistence, warnings, telemetry, or automatic pressure action.
+
+- Mandatory workflow checkpoints now persist durable effort memory independently of discretionary Pi session replacement. Eligible Pi boundaries may continue in-session or replace the session, while only a replacement session records the actual handoff boundary.
+
+- `awf check staged` now includes a rendered-output drift check, also available directly as `awf check staged drift`. It renders from the staged config and compares against the staged output tree, reporting only stale and hand-edited output; repository-only drift kinds remain outside its scope.
+
 - `awf audit` now replays stale-ADR merge authorization for committed schema-31-and-later merges, using the same cleaned-message trailers and exact incoming-parent qualification as `awf check commit`. It reports malformed reserved trailers and unauthorized older-format imports while leaving pre-epoch merges, non-merges, and fast-forwards outside the rule.
 
 - `awf check commit` now definitively authorizes exact incoming-parent older-format ADRs in real merges through adjacent `AWF-Allow-Version` and nonempty `AWF-Allow-Reason` trailers. Malformed syntax or an unqualified import refuses without changing the staged index or merge state, so an agent can correct the message and finish the existing merge.
@@ -41,6 +47,16 @@ query a single version or a range.
 ### Breaking changes
 
 - `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts it. Convert each pair by hand; an unconverted tree fails render with `data.terms: must be a list of {term, meaning} records`.
+
+- Pi `handoff_session` removes `memoryPath` and now exposes the exact closed `{kickoff}` schema for bounded replacement prose.
+
+- Verification commands now live under repository and staged universes: `awf check repo` owns
+  drift, state, prose, and memory checks, while `awf check staged` owns transition-state and
+  rendered-output drift checks and `awf check staged commit` remains direct-only. Bare `awf check`
+  runs both aggregates. A disabled prose or memory child emits a non-failing note naming its
+  enablement knob. The `--staged` flag and the non-verdict `awf check invariants` report are removed.
+  Schema generation 32 retargets surviving var values to the new paths, clears values that invoke
+  the removed report, and deletes the retired `proseGateCmd` and `memoryGateCmd` keys.
 
 - Every `invariant:` proof marker must now name the unit that proves it,
   `<marker> invariant: <domain>/<topic>:<slug> (<name>)`, and that text must occur verbatim on a
@@ -397,6 +413,8 @@ query a single version or a range.
   awf-verb vars already carry.
 
 ### Bug fixes
+
+- Pi `handoff_session` now emits Remote Pi's optional continuation disposition after it successfully queues the replacement command. Compatible push integrations no longer report the intermediate parent run as a terminal completion, while listener failures remain isolated from handoff execution.
 
 - `awf check` no longer refuses an integration whose effort branch was forked before schema
   generation 29. Merging an integration branch that has already sealed the ADR v3 cutoff crosses

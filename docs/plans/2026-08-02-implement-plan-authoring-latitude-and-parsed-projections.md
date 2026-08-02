@@ -1,8 +1,8 @@
 ---
 date: 2026-08-02
 adrs:
-  - 0209
-  - 0210
+  - 0211
+  - 0212
   - parsed-plan-artifacts-and-executable-projections
 status: Proposed
 ---
@@ -10,7 +10,7 @@ status: Proposed
 
 ## Goal
 
-Implement [ADR-0209](../decisions/0209-sanction-authoring-latitude-in-plans.md), [ADR-0210](../decisions/0210-corrective-re-application-of-an-applied-state-operation.md), and [ADR-parsed-plan-artifacts-and-executable-projections](../decisions/parsed-plan-artifacts-and-executable-projections.md): invert plan-detail guidance toward qualifying prose, add corrective ADR operation re-application, and make new plans parsed artifacts with executable phase and task projections.
+Implement [ADR-0211](../decisions/0211-sanction-authoring-latitude-in-plans.md), [ADR-0212](../decisions/0212-corrective-re-application-of-an-applied-state-operation.md), and [ADR-parsed-plan-artifacts-and-executable-projections](../decisions/parsed-plan-artifacts-and-executable-projections.md): invert plan-detail guidance toward qualifying prose, add corrective ADR operation re-application, and make new plans parsed artifacts with executable phase and task projections.
 
 This plan does not retrofit historical plans to `plan-v1`, add conditional tasks, allow re-applying removes or terminal ADRs, add fuzzy plan lookup, execute authored post-checks during validation, or change historical ADR bytes.
 
@@ -20,7 +20,7 @@ This plan does not retrofit historical plans to `plan-v1`, add conditional tasks
 
 `internal/adr` adds `Reapplied` to the shared V2/V3 history model and retains event kind plus occurrence identity in application batches while progress continues to count each declaration once. `internal/currentstate` consumes each corrective occurrence, validates corrective update and add mutations, and folds merge aggregates by their observable endpoint without inventing intermediate claim bytes.
 
-Authored templates, convention parts, current-state claims, docs, and adopter examples move through `.awf/` sources and `./x render`; rendered files are never edited by hand. ADR-0209 applies before the parsed-plan ADR so their two updates to `plans-template-taxonomy` record the approved provenance order. Each ADR's State changes land with its matching production behavior and proof in one independently green transaction.
+Authored templates, convention parts, current-state claims, docs, and adopter examples move through `.awf/` sources and `./x render`; rendered files are never edited by hand. ADR-0211 applies before the parsed-plan ADR so their two updates to `plans-template-taxonomy` record the approved provenance order. Each ADR's State changes land with its matching production behavior and proof in one independently green transaction.
 
 ## File structure
 
@@ -33,69 +33,69 @@ Authored templates, convention parts, current-state claims, docs, and adopter ex
 
 These contract-bearing claim bodies are the required transaction endpoints. Numbering may mechanically replace the pending ADR identity with its assigned number; no other prose or metadata variation is permitted unless implementation discovers contradictory repository authority and stops for an ADR amendment.
 
-**ADR-0209 update `rendering/workflow-skill-templates:plan-task-detail-modes`:**
+**ADR-0211 update `rendering/workflow-skill-templates:plan-task-detail-modes`:**
 
 ```markdown
 ### `invariant: plan-task-detail-modes`
 
 The rendered plan-authoring skill, plan reviewer, implementation-plans README, and plan template use qualifying implementation-ready instructions as the default task-content form; require `Latitude: exact` for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and batch representative and edge transformations; and permit that marker voluntarily elsewhere. They define contiguous task fields for exactness, spikes, batches, affected paths, and deterministic post-checks; require `Paths:` whenever scope is ambiguous, always including a batch; require `Post-check:` for every batch and every glob or pathspec scope; preserve the no-placeholder boundary for implementation tasks; forbid conditional and optional tasks; require one coherent green transaction and an inline or subagent-driven owner per phase; and keep any helper partition exhaustive, path-disjoint, shared-file-safe, and command-confined. A spike is question-only, records its answer in Notes, cannot own a phase, and sequences dependent work into a later phase. Every surface renders coherently with empty variables.
 Origin: ADR-0148
-Revised-by: ADR-0157, ADR-0166, ADR-0209
+Revised-by: ADR-0157, ADR-0166, ADR-0211
 Backing: test
 ```
 
-**ADR-0209 interim update `adr-system/plan-artifacts:plans-template-taxonomy`:**
+**ADR-0211 interim update `adr-system/plan-artifacts:plans-template-taxonomy`:**
 
 ```markdown
 ### `invariant: plans-template-taxonomy`
 
 The rendered plans template at docs/plans/template.md carries the date, adrs, and status frontmatter block and the plan section taxonomy: the # Plan: title, Goal and Architecture summary, at least one phase, optional Verification, and Notes that is required when any task is a spike and optional otherwise. File structure is not a plan-level section; affected paths belong to tasks.
 Origin: ADR-0098
-Revised-by: ADR-0209
+Revised-by: ADR-0211
 Backing: test
 ```
 
-**ADR-0210 add `adr-system/adr-lifecycle:corrective-reapplication`:**
+**ADR-0212 add `adr-system/adr-lifecycle:corrective-reapplication`:**
 
 ```markdown
 ### `invariant: corrective-reapplication`
 
 A current-state-v2 or current-state-v3 ADR in Implementing may append any number of `Reapplied; operations:` events for an add or update operation already named by an earlier Applied event. Each event is declaration-ordered, unique within the event, retained as its own ordered application occurrence, and reconciles one further material authored correction while operation progress continues to count the declaration once. A re-applied update preserves Origin and its existing canonical Revised-by entry; a re-applied add preserves its Origin naming the ADR and leaves Revised-by byte-identical. Remove operations, events before the first Applied occurrence, events outside Implementing, and events between the final Applied event and Implemented are refused.
-Origin: ADR-0210
+Origin: ADR-0212
 Backing: test
 ```
 
-**ADR-0210 update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`:**
+**ADR-0212 update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`:**
 
 ```markdown
 ### `invariant: adr-status-enum-and-matrix`
 
 Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0210
+Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0212
 Backing: test
 ```
 
-**ADR-0210 update `invariants/current-state-authority:update-requires-substance`:**
+**ADR-0212 update `invariants/current-state-authority:update-requires-substance`:**
 
 ```markdown
 ### `invariant: update-requires-substance`
 
 An update preserves Origin and prior revision history, carries its ADR once at its canonical ascending position, and changes a canonical claim field other than formatting or provenance alone. The once rule is satisfied by adding the ADR for its first application and by preserving that existing entry for a corrective re-application. Across a merge, where intermediate claim states exist only in authored commits and not in either compared universe, substance is evaluated on the net operation-chain endpoint; every authored application and re-application proves its own materiality.
 Origin: ADR-0135
-Revised-by: ADR-0182, ADR-0191, ADR-0210
+Revised-by: ADR-0182, ADR-0191, ADR-0212
 Backing: unbacked
 Verify: Staged fixtures with Origin edits, revision deletion, duplication, or reordering, whitespace-only, provenance-only, first substantive update, and repeated substantive correction accept only the prefix-preserving materially changed cases with one canonical ADR entry.
 ```
 
-**ADR-0210 update `invariants/current-state-authority:merge-transition-ordered-aggregate`:**
+**ADR-0212 update `invariants/current-state-authority:merge-transition-ordered-aggregate`:**
 
 ```markdown
 ### `invariant: merge-transition-ordered-aggregate`
 
 A merge transition is validated as an ordered aggregate rather than one authoring step: application and re-application batches remain distinct in ascending ADR-identity and intra-ADR history order; a claim's operations across the pair form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates; and appended Status history preserves the prior history as an exact prefix. Repeated updates from one ADR contribute that updater once and require a material endpoint; repeated adds by their originating ADR fold into the chain's first absent-to-present net add; a canceling update endpoint is refused. Per-occurrence materiality is proven by each authored commit, while aggregate validation checks the observable ordered net effect without inventing intermediate claim bytes. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation occurrence per claim, and the fixed status-event shape. A newly introduced ADR in an older intrinsic format is provisional at the staged boundary that lacks merge-parent and message evidence; every other derivable transition check remains blocking, and definitive admission requires exact incoming-parent qualification at commit-msg.
 Origin: ADR-0182
-Revised-by: ADR-0191, ADR-0206, ADR-0210
+Revised-by: ADR-0191, ADR-0206, ADR-0212
 Backing: test
 ```
 
@@ -117,7 +117,7 @@ Backing: test
 
 The rendered plans template emits `format: plan-v1`, date, adrs, and status frontmatter; `# Plan:`; nonempty Goal and Architecture summary; sequential heading-identified phases and tasks with one execution mode and one final Phase close per phase; required Definition of done plain bullets; and optional Notes. File structure, Verification, and task checkboxes are not plan-v1 sections or task declarations. Marker-absent historical plans remain on the legacy taxonomy.
 Origin: ADR-0098
-Revised-by: ADR-0209, ADR-parsed-plan-artifacts-and-executable-projections
+Revised-by: ADR-0211, ADR-parsed-plan-artifacts-and-executable-projections
 Backing: test
 ```
 
@@ -186,7 +186,7 @@ Backing: test
 
 ## Pre-implementation ADR acceptance transaction
 
-After this plan and its resync review settle, transition ADR-0209, ADR-0210, and the pending parsed-plan ADR from Proposed to Accepted in one docs-only transaction, appending each stamped Accepted status event without applying an operation or changing a claim. Run `./x render`; stage the three lifecycle changes and every generated output caused by them, including `docs/decisions/INDEX.md`, `.awf/awf.lock`, and any adopter lock/output selected by render. Require `git diff --name-only` to contain only those lifecycle and derived render paths, then require `./awf check --staged` and `./x gate`, and commit:
+After this plan and its resync review settle, transition ADR-0211, ADR-0212, and the pending parsed-plan ADR from Proposed to Accepted in one docs-only transaction, appending each stamped Accepted status event without applying an operation or changing a claim. Run `./x render`; stage the three lifecycle changes and every generated output caused by them, including `docs/decisions/INDEX.md`, `.awf/awf.lock`, and any adopter lock/output selected by render. Require `git diff --name-only` to contain only those lifecycle and derived render paths, then require `./awf check staged` and `./x gate`, and commit:
 
 ```commit
 docs(adr): accept plan authoring slate
@@ -196,7 +196,7 @@ Each implementation phase below then uses the intentional direct `Accepted -> Im
 
 ## Phase 1: Sanction plan-authoring latitude
 
-**Execution mode: inline.** This phase applies ADR-0209's two State changes in declaration order and leaves the current legacy plan parser valid. It deliberately precedes the parsed-plan transaction so `plans-template-taxonomy` records ADR-0209 before the pending parsed-plan ADR.
+**Execution mode: inline.** This phase applies ADR-0211's two State changes in declaration order and leaves the current legacy plan parser valid. It deliberately precedes the parsed-plan transaction so `plans-template-taxonomy` records ADR-0211 before the pending parsed-plan ADR.
 
 - [ ] **Task 1.1: Rewrite and strengthen the authoring-surface parity tests first.** In `internal/project/plan_detail_modes_test.go`, retain the existing proof marker for `plan-task-detail-modes` and make its clause table require, across the standard template and this repository's rendered writing skill, plan reviewer, plans README, and plan template: qualifying instructions as the default; the unchanged closed exactness categories; `Latitude: exact`; `Kind: spike` with `Question:` and no implementation body; Notes as the spike answer target; `Kind: batch`; `Paths:` whenever the affected set is ambiguous, with every batch as the always-true case; `Post-check:` for every batch and every glob/pathspec scope; the unchanged no-placeholder rule for implementation tasks; the no-conditional-task rule; field placement immediately under a task declaration; and coherent missingkey=zero output with no no-value token. In `internal/project/golden_test.go`, replace the assertion for three narrative headings with Goal and Architecture summary and assert `File structure` is absent while the legacy optional Verification and conditional Notes tails remain. Run `go test ./internal/project -run 'TestPlanTaskDetailModes|TestGolden'`; the new assertions must fail before source edits and pass afterward.
 
@@ -204,11 +204,11 @@ Each implementation phase below then uses the intentional direct `Accepted -> Im
 
 - [ ] **Task 1.3: Retire the whole-plan File structure section across its exhaustive authored surfaces.** Remove the section from `templates/plans-template/template.md.tmpl`; change the canonical-header text and plan-writing procedure in `templates/skills/writing-plans/SKILL.md.tmpl`; change the plans structure prose in `templates/plans-readme/README.md.tmpl`; and change the plan reviewer's `section-taxonomy` focus in both `templates/agents/plan-reviewer.md.tmpl` and `.awf/agents/plan-reviewer.yaml`. In `templates/skills/writing-plans/SKILL.md.tmpl`, `templates/skills/reviewing-plan/SKILL.md.tmpl`, and `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`, replace collection from the retired header with collection of every task-level `Paths:` entry plus exact repository paths named in task titles and bodies; deduplicate the resolved set before `awf context`, and do not infer a path from vague prose. Add parity assertions to `internal/project/plan_detail_modes_test.go` for all three collection instructions. Do not change the catalog `Sections` list or `adr-singleton-section-parity`, because File structure is inside the existing header marker rather than a singleton section. Run `rg -n 'three canonical|Goal, Architecture summary, and File structure|## File structure|file-structure header' templates/{plans-template,plans-readme,skills/writing-plans,skills/reviewing-plan,skills/reviewing-plan-resync,agents/plan-reviewer} .awf/agents/plan-reviewer.yaml` and require no stale structural mandate or collection instruction.
 
-- [ ] **Task 1.4: Complete ADR-0209 through the direct path and land its exact claims.** Transition accepted ADR-0209 directly to Implemented with the current canonical stamp; append no Applied event because this direct transaction implicitly applies both declared operations. Land the two verbatim ADR-0209 claim outcomes above in their owning `.awf/topics/parts/**/current-state.md` files and retain each existing proof marker.
+- [ ] **Task 1.4: Complete ADR-0211 through the direct path and land its exact claims.** Transition accepted ADR-0211 directly to Implemented with the current canonical stamp; append no Applied event because this direct transaction implicitly applies both declared operations. Land the two verbatim ADR-0211 claim outcomes above in their owning `.awf/topics/parts/**/current-state.md` files and retain each existing proof marker.
 
 - [ ] **Task 1.5: Render and verify the complete alpha sweep.** Add an Unreleased changelog entry for the authoring forms. Run `./x render && ./x check`; both must finish clean. Inspect `git diff --name-only` and require every generated change to derive from a listed authored source, including all enabled target renders and sundial outputs. Run `go test ./internal/project`, `git diff --check`, and `rg -n '<no value>|TBD|implement later' docs/plans/template.md .pi/skills/awf-writing-plans/SKILL.md .pi/agents/plan-reviewer.md`; the first two commands must pass and the grep may show only the intentional no-placeholder prohibition, never unresolved template output.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete ADR-0209 implementation transaction. Require `./awf check --staged` and `./x gate` to pass, then commit:
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete ADR-0211 implementation transaction. Require `./awf check staged` and `./x gate` to pass, then commit:
 
 ```commit
 feat(plans): sanction task authoring latitude
@@ -216,7 +216,7 @@ feat(plans): sanction task authoring latitude
 
 ## Phase 2: Add corrective re-application semantics
 
-**Execution mode: inline.** This phase implements ADR-0210 as one coherent feature because its first added claim describes the complete author-visible route; splitting parser admission from mutation reconciliation would make that claim or the user guidance temporarily false. It applies all four ADR-0210 State changes in declaration order.
+**Execution mode: inline.** This phase implements ADR-0212 as one coherent feature because its first added claim describes the complete author-visible route; splitting parser admission from mutation reconciliation would make that claim or the user guidance temporarily false. It applies all four ADR-0212 State changes in declaration order.
 
 - [ ] **Task 2.1: Add failing history and progress tests for Reapplied.** In `internal/adr/format_test.go` and `internal/adr/corpus_test.go`, cover the exact `Reapplied; operations:` grammar for V2 and V3, declaration order and within-event uniqueness, prior-Applied requirement, repeated Reapplied events for one add or update, refusal of remove, refusal outside Implementing, refusal before the first Applied event, and refusal between the final Applied event and Implemented. Prove a second Applied remains an error, every Reapplied occurrence keeps its own event/batch identity, and `OperationProgress` reports one applied declaration with no duplicate progress. Add `// invariant: adr-system/adr-lifecycle:corrective-reapplication (TestCorrectiveReapplication)` immediately above `TestCorrectiveReapplication`. Run `go test ./internal/adr -run 'TestCorrectiveReapplication|TestOperationProgressReapplied'`; it must fail before production edits and pass afterward.
 
@@ -228,11 +228,11 @@ feat(plans): sanction task authoring latitude
 
 - [ ] **Task 2.5: Reconcile each corrective occurrence in current state.** In `internal/currentstate/check.go` and `transition.go`, thread event kind and occurrence identity from `ApplicationBatches` through `pairOps` and the ordered chain. In authored mode accept one new Reapplied batch and reconcile it against the immediate before/after claims. Route a re-applied update through the existing materiality and Origin checks while treating the existing canonical ADR entry in Revised-by as the required once-only provenance. Add a corrective-add branch requiring the claim on both sides, unchanged Origin naming the owning ADR, byte-identical Revised-by, and a material canonical change. In merge mode let repeated updates from the same ADR contribute one updater identity and fold repeated adds into the first net add; retain per-authored-commit materiality and refuse a non-material endpoint update. Keep remove absorption, dominated updates, numbering substitutions, and ordinary duplicate-target errors unchanged.
 
-- [ ] **Task 2.6: Complete ADR-0210 and document the route.** Transition accepted ADR-0210 directly to Implemented with the current canonical stamp; append no Applied event because the transaction implicitly applies all four operations. Land the four exact ADR-0210 claim outcomes above. Update `templates/adr-readme/README.md.tmpl`, `.awf/parts/adr-readme/index.md`, `templates/adr-template/template.md.tmpl`, `.awf/parts/adr-template/frontmatter.md`, `templates/skills/adr-lifecycle/SKILL.md.tmpl`, `.awf/parts/working-with-awf/commands.md`, and `.awf/docs/pitfalls.yaml` with route selection: amend an unapplied operation, Reapply an already-applied add/update while operations remain, otherwise use a follow-up ADR or remove-plus-add. Preserve generic rendering with empty variables.
+- [ ] **Task 2.6: Complete ADR-0212 and document the route.** Transition accepted ADR-0212 directly to Implemented with the current canonical stamp; append no Applied event because the transaction implicitly applies all four operations. Land the four exact ADR-0212 claim outcomes above. Update `templates/adr-readme/README.md.tmpl`, `.awf/parts/adr-readme/index.md`, `templates/adr-template/template.md.tmpl`, `.awf/parts/adr-template/frontmatter.md`, `templates/skills/adr-lifecycle/SKILL.md.tmpl`, `.awf/parts/working-with-awf/commands.md`, and `.awf/docs/pitfalls.yaml` with route selection: amend an unapplied operation, Reapply an already-applied add/update while operations remain, otherwise use a follow-up ADR or remove-plus-add. Preserve generic rendering with empty variables.
 
 - [ ] **Task 2.7: Render and verify beta end to end.** Add the behavior to the Unreleased changelog. Run `gofmt -w internal/adr/history.go internal/adr/application.go internal/adr/format.go internal/adr/format_test.go internal/adr/corpus_test.go internal/currentstate/check.go internal/currentstate/check_test.go internal/currentstate/transition.go internal/currentstate/transition_test.go internal/currentstate/aggregate_test.go`, `go test ./internal/adr ./internal/currentstate ./internal/project`, `./x render`, `./x check`, and `git diff --check`; all must pass. Verify `rg -n 'Reapplied' internal templates .awf docs/decisions/{README.md,template.md} docs/working-with-awf.md docs/pitfalls.md` shows parser, validators, authored sources, rendered guidance, and tests, and no production consumer reconstructs event kind from prose.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete ADR-0210 implementation and claim transaction. Require `./awf check --staged` and `./x gate` to pass, then commit:
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete ADR-0212 implementation and claim transaction. Require `./awf check staged` and `./x gate` to pass, then commit:
 
 ```commit
 feat(adr-system): permit corrective operation reapplication
@@ -254,7 +254,7 @@ feat(adr-system): permit corrective operation reapplication
 
 - [ ] **Task 3.6: Add the gated `awf read plan` command.** In `internal/clispec/clispec.go`, add gated parent `read` with child `plan`, two required positionals, exact usage `awf read plan <plan> <P[.T]>`, and help describing exact filename/stem and numeric selectors. Update clispec tests and generated gated-command expectations. Create `cmd/awf/read.go`; validate arity, open through the ordinary gated project path, call the project seam, write returned bytes unchanged, and map typed errors without parsing Markdown or rendering plan content. Register the handler in `cmd/awf/dispatch.go`. Add `cmd/awf/read_test.go` plus help/registry/gate coverage for success, failures, stdout/stderr separation, and ahead-binary refusal. Add `// invariant: tooling/cli:plan-read-command (TestReadPlanCommand)` immediately above the end-to-end `TestReadPlanCommand` and retain single-source command-table proofs.
 
-- [ ] **Task 3.7: Convert future scaffolds and all authoring surfaces to plan-v1.** Replace the default body of `templates/plans-template/template.md.tmpl` with the exact scaffold below, retaining the existing `awf:edit` marker comments immediately before their owning sections. The field-vocabulary prose inside Task 1.1 must spell `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check` exactly and state their ADR-0209 relationships; no field line is emitted for the ordinary qualifying example task.
+- [ ] **Task 3.7: Convert future scaffolds and all authoring surfaces to plan-v1.** Replace the default body of `templates/plans-template/template.md.tmpl` with the exact scaffold below, retaining the existing `awf:edit` marker comments immediately before their owning sections. The field-vocabulary prose inside Task 1.1 must spell `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check` exactly and state their ADR-0211 relationships; no field line is emitted for the ordinary qualifying example task.
 
 ````markdown
 ---
@@ -306,7 +306,7 @@ The outer plan must encode the inner `commit` fence without changing its bytes; 
 
 - [ ] **Task 3.10: Render and verify the complete gamma activation.** Run `gofmt -w internal/plan/plan.go internal/plan/plan_test.go internal/plan/structure.go internal/plan/structure_test.go internal/plan/projection.go internal/plan/projection_test.go internal/project/check.go internal/project/check_test.go internal/project/plan_read.go internal/project/plan_read_test.go internal/clispec/clispec.go internal/clispec/clispec_test.go cmd/awf/check.go cmd/awf/check_test.go cmd/awf/read.go cmd/awf/read_test.go cmd/awf/dispatch.go cmd/awf/main_test.go cmd/awf/help_test.go cmd/awf/gate_test.go cmd/awf/new_test.go`, `go test ./internal/plan ./internal/project ./internal/clispec ./cmd/awf`, `./x render`, `./x check`, and `git diff --check`; all must pass. Run `go test ./internal/plan -run 'TestPlanV1StructureValidated|TestPlanExecutableProjection' -count=1` and `go test ./cmd/awf -run TestReadPlanCommand -count=1`; the named fixture tests must scaffold through a copied plans directory, compare phase 1 and task 1.1 projections byte-for-byte, compare the source SHA-256 before and after both reads, and remove their `t.TempDir` fixtures automatically. Run `rg -n 'checkbox tasks|\- \[ \] \*\*Task|## Verification|## File structure' templates/{plans-template,plans-readme,skills/writing-plans,agents/plan-reviewer} .awf/skills/parts/writing-plans .awf/agents/plan-reviewer.yaml`; it must return no new-format mandate, though historical plans remain untouched.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete parsed-plan implementation and eight-operation claim transaction. Require `./awf check --staged` and `./x gate` to pass, then commit:
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete parsed-plan implementation and eight-operation claim transaction. Require `./awf check staged` and `./x gate` to pass, then commit:
 
 ```commit
 feat(plans): parse and project executable plan sections
@@ -314,7 +314,7 @@ feat(plans): parse and project executable plan sections
 
 ## Governed review and integration tail
 
-This tail is workflow, not an implementation phase or transaction. After Phase 3 closes green, merge current `main` into the managed worktree and resolve or abort any conflict. Run `./awf adr number parsed-plan-artifacts-and-executable-projections`, then `./x render`; stage only the deterministic numbering and generated index/output changes, require `./awf check --staged` and `./x gate`, and commit `docs(adr): number parsed plan artifacts` with the printed slug-to-number mapping in the body. Numbering must not rewrite this plan's slug link.
+This tail is workflow, not an implementation phase or transaction. After Phase 3 closes green, merge current `main` into the managed worktree and resolve or abort any conflict. Run `./awf adr number parsed-plan-artifacts-and-executable-projections`, then `./x render`; stage only the deterministic numbering and generated index/output changes, require `./awf check staged` and `./x gate`, and commit `docs(adr): number parsed plan artifacts` with the printed slug-to-number mapping in the body. Numbering must not rewrite this plan's slug link.
 
 Invoke `awf-reviewing-impl` over every implementation and numbering commit after this plan's review-settled baseline. Resolve mechanical and reasoned findings in new green commits and stop on a user-decision finding. In the clean primary checkout, integrate the effort with `./awf effort integrate sanction-authoring-latitude-and-gate-plan-structure`; accept only its documented terminal outcomes. If integration creates a divergent staged merge, run the staged check and gate, commit it, and renew implementation review over the combined target history. Remove managed topology only after terminal review and integration settle.
 
@@ -324,7 +324,7 @@ Invoke `awf-reviewing-impl` over every implementation and numbering commit after
 
 - [ ] **Task 4.1: Record established completion without over-restricting the plan.** Confirm every Definition of done and Verification item against repository truth and record actual deviations or follow-ups under Notes. Only after that positive completion determination, change this plan's `status:` to `Implemented`. If any item is not complete, leave status Proposed and return to implementation rather than freezing an incomplete execution record. Run `./x render`; `docs/decisions/INDEX.md` must already retain all three terminal ADR identities.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Run `git diff --check`, `./x render`, and `./x check`; stage only the plan status/Notes and generated output. Require `./awf check --staged` and `./x gate`, then commit:
+- [ ] **Phase-close: stage, check, gate, and commit.** Run `git diff --check`, `./x render`, and `./x check`; stage only the plan status/Notes and generated output. Require `./awf check staged` and `./x gate`, then commit:
 
 ```commit
 docs(plans): complete parsed plan rollout
@@ -335,7 +335,7 @@ After the commit, require the effort worktree and branch to be absent through th
 ## Verification
 
 - `go test ./...`, `./x render`, `./x check`, and `./x gate` finish successfully; statement coverage, dead-code, lint, cross-compile, generated Pi, prose, memory, and supply-chain checks remain green.
-- Every direct implementation transaction passes `./awf check --staged` only when its Implemented event, implicit operation effects, exact current-state mutations, proof markers, production behavior, docs, and rendered outputs are staged together.
+- Every direct implementation transaction passes `./awf check staged` only when its Implemented event, implicit operation effects, exact current-state mutations, proof markers, production behavior, docs, and rendered outputs are staged together.
 - New scaffolds carry `format: plan-v1` and parse into one typed model; marker-absent historical plans retain their prior check results and are not rewritten.
 - Structural validation rejects malformed numbering, fields, Paths, spike/batch relationships, phase closes, and Definition of done, while leaving ambiguity, exactness-category judgment, baseline substance, and post-check execution to review or execution.
 - `awf read plan` accepts only exact filename/stem and canonical numeric selectors, returns the full executable closure in source order, lists available exact values on failure, and never mutates the plan.
@@ -345,7 +345,7 @@ After the commit, require the effort worktree and branch to be absent through th
 
 ## Notes
 
-- Phase 2 preserves ADR-0206 in the `adr-status-enum-and-matrix` Revised-by endpoint. The reviewed endpoint omitted that already-applied provenance entry; repository authority and the user-approved execution correction require retaining it before appending ADR-0210.
+- Phase 2 preserves ADR-0206 in the `adr-status-enum-and-matrix` Revised-by endpoint. The reviewed endpoint omitted that already-applied provenance entry; repository authority and the user-approved execution correction require retaining it before appending ADR-0212.
 - Phase 2 needed no byte change in `internal/currentstate/check.go`: that static authority path deliberately projects only the first Applied occurrence through `OperationProgress`, while corrective event kind and occurrence identity belong to the pair-transition boundary in `transition.go`. Counting Reapplied there would violate the progress-once contract.
 - Phase 2 needed no byte change in `.awf/parts/adr-readme/index.md` or `.awf/parts/adr-template/frontmatter.md`. Those overrides own only INDEX guidance and scaffold frontmatter, neither of which carries operation-route prose; the applicable lifecycle and template-body sources changed and rendered instead. Adding Reapplied prose to either override would pollute an unrelated section.
 

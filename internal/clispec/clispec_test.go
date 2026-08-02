@@ -10,9 +10,13 @@ func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
 	if !ok {
 		t.Fatal("missing check")
 	}
-	commit, ok := check.Child("commit")
+	staged, ok := check.Child("staged")
 	if !ok {
-		t.Fatal("missing check commit")
+		t.Fatal("missing check staged")
+	}
+	commit, ok := staged.Child("commit")
+	if !ok {
+		t.Fatal("missing check staged commit")
 	}
 	if !strings.Contains(commit.Summary, "stale-ADR merge authorization") {
 		t.Fatalf("summary = %q", commit.Summary)
@@ -70,66 +74,16 @@ func TestCommandsWellFormed(t *testing.T) {
 		if !strings.Contains(c.HelpBody, "Usage: awf "+c.Name) {
 			t.Errorf("command %q help missing its usage line", c.Name)
 		}
-		for _, ch := range c.Children {
-			if ch.Name == "" || ch.Summary == "" || ch.HelpBody == "" {
-				t.Errorf("child %s/%s has empty metadata", c.Name, ch.Name)
+		var walk func(parent string, children []Command)
+		walk = func(parent string, children []Command) {
+			for _, ch := range children {
+				if ch.Name == "" || ch.Summary == "" || ch.HelpBody == "" {
+					t.Errorf("child %s/%s has empty metadata", parent, ch.Name)
+				}
+				walk(parent+"/"+ch.Name, ch.Children)
 			}
 		}
-	}
-}
-
-// Gating resolves from the child when it declares one and from the parent
-// otherwise. The Inherit zero value is what makes "declares nothing" distinct
-// from "declares Ungated", so an ungated child under a gated parent is honoured
-// rather than silently gated.
-// invariant: tooling/cli:group-child-gating-honored (TestResolvedGating)
-func TestResolvedGating(t *testing.T) {
-	// A top-level command has no parent to inherit from, so Inherit is never valid there.
-	for _, c := range Commands {
-		if c.Gating == Inherit {
-			t.Errorf("top-level %q leaves Gating at Inherit; it has no parent to inherit from", c.Name)
-		}
-	}
-	// A child that declares Ungated under a Gated parent lowers it deliberately.
-	check, ok := Lookup("check")
-	if !ok {
-		t.Fatal("Lookup(check) missing")
-	}
-	if check.Gating != Gated {
-		t.Fatalf("check Gating = %d, want Gated", check.Gating)
-	}
-	for _, name := range []string{"prose", "memory", "commit"} {
-		child, found := check.Child(name)
-		if !found {
-			t.Fatalf("check.Child(%s) missing", name)
-		}
-		if got := ResolvedGating(check, child); got != Ungated {
-			t.Errorf("ResolvedGating(check, %s) = %d, want Ungated", name, got)
-		}
-	}
-	// The remaining children inherit check's gate.
-	for _, name := range []string{"drift", "state", "invariants"} {
-		child, found := check.Child(name)
-		if !found {
-			t.Fatalf("check.Child(%s) missing", name)
-		}
-		if got := ResolvedGating(check, child); got != Gated {
-			t.Errorf("ResolvedGating(check, %s) = %d, want the inherited Gated", name, got)
-		}
-	}
-}
-
-// UngatedGroupChildren is the exclusion list published beside the gated set.
-func TestUngatedGroupChildren(t *testing.T) {
-	want := []string{"check prose", "check memory", "check commit"}
-	got := UngatedGroupChildren()
-	if len(got) != len(want) {
-		t.Fatalf("UngatedGroupChildren() = %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("UngatedGroupChildren()[%d] = %q, want %q", i, got[i], want[i])
-		}
+		walk(c.Name, c.Children)
 	}
 }
 

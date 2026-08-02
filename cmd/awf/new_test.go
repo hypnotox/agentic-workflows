@@ -696,8 +696,8 @@ func TestRunNewScaffoldsSkill(t *testing.T) {
 	if !strings.Contains(string(rendered), "<!-- awf:stub -->") {
 		t.Errorf("stub-marked part must render verbatim, marker included:\n%s", rendered)
 	}
-	if err := runCheck(ctx, root, false, io.Discard); err != nil {
-		t.Errorf("post-scaffold check not clean: %v", err)
+	if err := runCheckRepo(ctx, root, io.Discard); err != nil {
+		t.Errorf("post-scaffold repo check not clean: %v", err)
 	}
 }
 

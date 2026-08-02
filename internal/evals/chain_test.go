@@ -221,7 +221,7 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			body := read(t, path)
 			position := 0
-			for _, phrase := range []string{"the complete transaction", "`awf check --staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks"} {
+			for _, phrase := range []string{"the complete transaction", "`awf check staged`", "the project's gate", "wired pre-commit hook enforces both", "only in a clone without wired hooks"} {
 				next := strings.Index(body[position:], phrase)
 				if next < 0 {
 					t.Fatalf("%s missing ordered authority step %q after byte %d", name, phrase, position)
@@ -274,6 +274,7 @@ func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
 // hand-maintained corpus count.
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestUnifiedEffortWorkflowCoverage)
 // invariant: rendering/workflow-skill-templates:unified-effort-workflow-coverage (TestUnifiedEffortWorkflowCoverage)
+// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestUnifiedEffortWorkflowCoverage)
 func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	roles := map[string]string{
@@ -310,6 +311,18 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	}
 	for _, target := range []string{"pi", "claude"} {
 		root := syncFullCatalogForTarget(t, cat, target)
+		guide := read(t, filepath.Join(root, "AGENTS.md"))
+		if target == "pi" {
+			if !strings.Contains(guide, "discretionary eligible session-replacement choice") {
+				t.Errorf("Pi guide omits discretionary session replacement")
+			}
+		} else {
+			for _, banned := range []string{"session-replacement choice", "new session logs an actual replacement boundary"} {
+				if strings.Contains(strings.ToLower(guide), banned) {
+					t.Errorf("%s guide publishes unsupported replacement claim %q", target, banned)
+				}
+			}
+		}
 		for name, role := range roles {
 			path := skillPath(root, name)
 			if target == "pi" {
@@ -353,7 +366,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			"Route settled terminal review", "If no managed", "continue to the deferred flip",
 			"awf effort integrate <slug>",
 			"Integration never implies review, removal, retrospective, or finish",
-			"divergent merge", "awf check --staged", "project gate", "merge commit",
+			"divergent merge", "awf check staged", "project gate", "merge commit",
 			"terminal implementation review again", "deferred flip transaction",
 			"If managed topology exists", "awf effort worktree remove <slug>", "retrospective",
 		})
@@ -372,10 +385,11 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			ordered := append([]string{}, routineOrdered...)
 			if target == "pi" {
 				ordered = append(ordered,
-					"invoke `handoff_session` alone",
-					"continue automatically in the fresh session",
-					"unless the user cancels during the five-second window",
-					"A failed handoff leaves the checkpoint valid and becomes a check-in",
+					"safe resumable point whose immediate successor can start independently",
+					"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
+					"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
+					"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work",
+					"Cancellation or failure that leaves the old session active appends no handoff log",
 				)
 			} else {
 				ordered = append(ordered, "Continue through the target-native successor without claiming session replacement")
@@ -385,6 +399,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 				"the workflow doc's working-memory section",
 			)
 			assertOrderedBody(t, target+"/"+name+" routine checkpoint", body, ordered)
+			assertNoCheckpointTimeHandoffLog(t, target+"/"+name, body)
 			// Only the two phase skills carry exactly one. executing-direct also
 			// checkpoints per resumable change, so it legitimately renders more.
 			if phaseCheckpointSkills[name] {
@@ -417,6 +432,20 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 // trigger, breaks the claim.
 const checkpointBoundarySentence = "heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries"
 
+func assertNoCheckpointTimeHandoffLog(t *testing.T, label, body string) {
+	t.Helper()
+	lower := strings.ToLower(body)
+	for _, banned := range []string{
+		"append one `## handoff log` line",
+		"updates phase, next action, time, and handoff log",
+		"invoke `handoff_session` alone with the exact",
+	} {
+		if strings.Contains(lower, banned) {
+			t.Errorf("%s retains checkpoint-time or unconditional handoff contract %q", label, banned)
+		}
+	}
+}
+
 func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	t.Helper()
 	if !strings.Contains(body, checkpointBoundarySentence) {
@@ -441,6 +470,7 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 // for explicit approval, persist it, and only then continue target-natively,
 // and that the approval stop renders nowhere else (ADR-0152).
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMandatoryApprovalBoundaries)
+// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestMandatoryApprovalBoundaries)
 func TestMandatoryApprovalBoundaries(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
@@ -464,14 +494,16 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	for _, name := range approvalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
-			"invoke `handoff_session` alone",
-			"unless the user cancels during the five-second window",
-			"A failed handoff leaves the checkpoint valid and becomes a check-in",
+			"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
+			"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
+			"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work",
+			"Cancellation or failure that leaves the old session active appends no handoff log",
 			"the workflow doc's working-memory section",
 		))
 		if handoff, approval := strings.Index(piBody, "handoff_session"), strings.Index(piBody, "explicitly request approval"); handoff >= 0 && handoff < approval {
 			t.Errorf("pi/%s names handoff_session before the approval request", name)
 		}
+		assertNoCheckpointTimeHandoffLog(t, "pi/"+name, piBody)
 		claudeBody := read(t, skillPath(nonPiRoot, name))
 		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
 			"Then continue through the target-native successor without claiming session replacement",

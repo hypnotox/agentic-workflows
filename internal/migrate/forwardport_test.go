@@ -31,7 +31,7 @@ var retiredConfigKeys = []struct {
 // check loads the BEFORE side from HEAD, which still carries the key, and
 // forward-ports it through ConfigForCurrentSchema for the current strict parser.
 // Without a branch the key survives and parsing fails, so the phase-closing
-// `awf check --staged` breaks on the very commit that removes the key, while the
+// `awf check staged` breaks on the very commit that removes the key, while the
 // migration's own test passes throughout because it operates on fixture bytes.
 //
 // docs/pitfalls.md has recorded this since ADR-0183 and it recurred anyway at

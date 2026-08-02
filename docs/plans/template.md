@@ -27,7 +27,7 @@ Supply qualifying implementation-ready instructions. Immediately below a task he
 
 ### Phase close
 
-Stage the complete transaction and create its one closing commit after the staged check and gate pass.
+Stage the complete transaction and create its one closing commit after `awf check staged` and `./x gate` pass.
 
 ```commit
 feat(scope): describe phase outcome

@@ -67,6 +67,7 @@ var minVersionBySchema = map[int]string{
 	29: "0.30.0",
 	30: "0.30.0",
 	31: "0.30.0",
+	32: "0.30.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -139,6 +140,12 @@ type Project struct {
 	Cat      *catalog.Catalog
 	Targets  []Target
 	standard *catalog.Catalog
+	// read selects an immutable project-tree universe for render inputs. A nil
+	// reader means ordinary filesystem rendering.
+	read ProjectTreeReader
+	// nested records that Root is an adopted subtree of the containing Git
+	// repository, whose resident outputs live outside the subtree index.
+	nested bool
 	// repo is the Git handle selected at the composition root and written once
 	// here, nil when the project tree carries no repository.
 	repo *awfgit.Repo
@@ -228,11 +235,11 @@ func (p *Project) indexTree(ctx context.Context) (*snapshot.Tree, error) {
 // never load working-tree configuration, so no Loader is involved and the only
 // dependency they need is the handle.
 func openRootProject(root string) (*Project, error) {
-	repo, _, err := awfgit.OpenContaining(root)
+	repo, prefix, err := awfgit.OpenContaining(root)
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Root: root, roots: resident.NewRoots(root, ""), standard: catalog.Standard, repo: repo}, nil
+	return &Project{Root: root, roots: resident.NewRoots(root, ""), standard: catalog.Standard, nested: prefix != "", repo: repo}, nil
 }
 
 // Backup records a foreign file preserved before sync overwrote its path.

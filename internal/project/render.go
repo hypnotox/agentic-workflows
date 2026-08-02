@@ -1,11 +1,9 @@
 package project
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -141,7 +139,7 @@ func (p *Project) skillRows() string {
 
 // commitScopesDisplay returns the display-formatted allowed commit-scope list
 // (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes - the same
-// audit.Resolve path awf check commit reads, so prose and gate agree by
+// audit.Resolve path awf check staged commit reads, so prose and gate agree by
 // construction - or "" when scopes are accept-any (ADR-0051).
 func (p *Project) commitScopesDisplay() string {
 	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes
@@ -206,9 +204,12 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 	outputRead := false
 	readOutput := func() (string, error) {
 		if !outputRead {
-			b, rerr := os.ReadFile(filepath.Join(p.Root, outPath))
-			if rerr != nil && !errors.Is(rerr, os.ErrNotExist) { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses; absence is folded into an empty read
-				return "", rerr
+			b, ok, err := p.projectTreeReader().ReadFile(outPath)
+			if err != nil {
+				return "", err
+			}
+			if !ok {
+				b = nil
 			}
 			output, outputRead = string(b), true // "" when absent (first render)
 		}
@@ -229,9 +230,9 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			} else if exists {
 				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
 			}
-			out, rerr := readOutput()
-			if rerr != nil { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses (NotExist is folded into an empty read above)
-				return nil, fmt.Errorf("read output %s: %w", outPath, rerr)
+			out, readErr := readOutput()
+			if readErr != nil {
+				return nil, fmt.Errorf("read output %s: %w", outPath, readErr)
 			}
 			sp.InPlace = true
 			// A located region (its pointer present) is used verbatim even when
@@ -769,7 +770,9 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 		inPlaceRead = inPlaceRead || sp.InPlace
 	}
 	if inPlaceRead {
-		if _, ok := (filesystemProjectReader{root: p.Root}).ReadFile(outPath); ok {
+		if _, ok, err := p.projectTreeReader().ReadFile(outPath); err != nil {
+			return nil, err
+		} else if ok {
 			inputs = append(inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
 		}
 	}

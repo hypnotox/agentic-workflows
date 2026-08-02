@@ -146,12 +146,19 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			extensions[file.Path] = file.Content
 		}
 	}
-	if len(extensions) != 4 {
-		t.Fatalf("Pi extension count = %d, want 4: %v", len(extensions), extensions)
-	}
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
-		if content := extensions[path]; !strings.HasPrefix(content, "// "+bannerText+"\n") {
+	expectedExtensions := map[string]bool{}
+	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+		expectedExtensions[path] = true
+		content, ok := extensions[path]
+		if !ok {
+			t.Errorf("missing governed Pi extension %s", path)
+		} else if !strings.HasPrefix(content, "// "+bannerText+"\n") {
 			t.Errorf("%s lacks provenance banner", path)
+		}
+	}
+	for path := range extensions {
+		if !expectedExtensions[path] {
+			t.Errorf("unexpected Pi extension rendered: %s", path)
 		}
 	}
 	for _, banned := range []string{"awf-telemetry", "awf-workflow", "awf-workflows"} {
@@ -161,10 +168,11 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			}
 		}
 	}
+	contextUsage := extensions[".pi/extensions/awf-context-usage/index.ts"]
 	handoff := extensions[".pi/extensions/awf-handoff/index.ts"]
 	index := extensions[".pi/extensions/awf-subagents/index.ts"]
 	routing := extensions[".pi/extensions/awf-subagents/model-routing.ts"]
-	if !strings.Contains(handoff, "registerHandoff(pi") || !strings.Contains(index, "registerSubagentTools(pi") {
+	if !strings.Contains(contextUsage, "registerContextUsage(pi") || !strings.Contains(handoff, "registerHandoff(pi") || !strings.Contains(index, "registerSubagentTools(pi") {
 		t.Fatal("Pi extension entrypoints are not registered")
 	}
 	for _, owned := range []string{"export const PREFERENCE_FIELDS", "export function parsePreferenceSource", "export async function loadPreferenceState", "export function effectivePreferenceState", "export function resolveChildModel", "export function buildRoutingCard"} {
@@ -180,9 +188,8 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiMinimumRuntime)
 func TestPiMinimumRuntime(t *testing.T) {
-	for _, name := range []string{"awf-handoff/index.ts", "awf-subagents/index.ts"} {
+	for _, name := range []string{"awf-context-usage/index.ts", "awf-handoff/index.ts", "awf-subagents/index.ts"} {
 		out := renderPiExtensionFile(t, name)
 		for _, want := range []string{"MIN_PI_VERSION", "guardMinimumRuntime", "awf.pi.minimum-runtime-notified", "Upgrade Pi and reload."} {
 			if !strings.Contains(out, want) {
@@ -192,31 +199,39 @@ func TestPiMinimumRuntime(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestHandoffLifecycleIndependentOfEffortState)
+func TestPiContextUsageInjection(t *testing.T) {
+	out := renderPiExtensionFile(t, "awf-context-usage/index.ts")
+	for _, want := range []string{"pi.on(\"context\"", "[session context]", "unknown/", "unavailable;", "getContextUsage()", "getBranch()", "entry.type===\"compaction\"", "customType:\"awf-context-usage\"", "display:false"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("context usage output missing %q", want)
+		}
+	}
+	for _, banned := range []string{"appendEntry(", "registerTool(", "registerCommand(", "queueCommand(", "handoff_session", "telemetry"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("context usage output retains side effect %q", banned)
+		}
+	}
+}
+
 func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined"} {
+	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined", "getSessionFile()"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff lifecycle output missing %q", want)
 		}
 	}
-	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
-	if err != nil || !strings.Contains(string(body), "handoff counts down, cancels, cleans pending, and links parent before setup kickoff") {
-		t.Fatalf("TypeScript lifecycle behavior proof missing: %v", err)
-	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestHandoffPublicOwnedMemoryContract)
-func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
+func TestHandoffPublicProseContract(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", ".awf/efforts/", "/memory.md", "1048576", "TextDecoder", "sameIdentity", "Effort: ${slug}", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
+	for _, want := range []string{"Type.Object({kickoff:Type.String({maxLength:1000})},{additionalProperties:false})", "typeof params.kickoff!==\"string\"", "params.kickoff.trim().length===0", "params.kickoff.length>1000", "kickoff:params.kickoff", "sendUserMessage(kickoff)", "setEditorText(kickoff)"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("handoff public contract missing %q", want)
+			t.Errorf("handoff prose contract missing %q", want)
 		}
 	}
-	for _, banned := range []string{"runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
+	for _, banned := range []string{"memoryPath", ".awf/efforts/", "node:path", "validateMemoryPath", "buildKickoffWrapper", "selected effort", "telemetry", "lifecycle mutation"} {
 		if strings.Contains(out, banned) {
-			t.Errorf("handoff public contract retains %q", banned)
+			t.Errorf("handoff prose contract retains %q", banned)
 		}
 	}
 }
@@ -224,6 +239,10 @@ func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
@@ -233,17 +252,11 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestHandoffWorkflowUsesOwnedCheckpoint)
-func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
+func TestHandoffWorkflowKeepsPolicyOutsideRuntime(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"Continue a validated fresh-session handoff.", "Continue from an optional effort-owned awf checkpoint", "Read ${memoryPath} first.", "Then continue with this immediate action"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("handoff workflow contract missing %q", want)
-		}
-	}
-	for _, banned := range []string{"selected effort", "telemetry lifecycle", "structured resume", "adopt_effort"} {
+	for _, banned := range []string{"memoryPath", ".awf/efforts/", "effort-owned", "Read ${memoryPath}", "Then continue with this immediate action", "telemetry", "adopt_effort"} {
 		if strings.Contains(out, banned) {
-			t.Errorf("handoff workflow contract retains %q", banned)
+			t.Errorf("handoff runtime retains workflow policy %q", banned)
 		}
 	}
 
@@ -262,12 +275,8 @@ func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 		}
 		settledAt := strings.Index(body, settledPhrase)
 		checkpointAt := strings.Index(body, "**Routine checkpoint.**")
-		handoffAt := strings.Index(body, "handoff_session")
-		if got := strings.Count(body, "handoff_session"); got != 1 {
-			t.Errorf("%s renders %d handoff_session invocations, want one settled-phase invocation", name, got)
-		}
-		if settledAt < 0 || checkpointAt < settledAt || handoffAt < checkpointAt {
-			t.Errorf("%s does not place its sole Pi handoff after settled phase persistence", name)
+		if settledAt < 0 || checkpointAt < settledAt {
+			t.Errorf("%s does not place routine checkpoint after settled phase persistence", name)
 		}
 		for _, banned := range []string{
 			"checkbox task", "after every heading-identified task", "after each heading-identified task",

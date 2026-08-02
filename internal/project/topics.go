@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -49,7 +48,12 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 		return nil, nil, err
 	}
 	var currentPaths []string
-	if workingTree, snapErr := p.workingTree(ctx); snapErr == nil {
+	if p.read != nil {
+		currentPaths, err = p.read.Paths("")
+		if err != nil { // coverage-ignore: the only injected production reader is snapshotTreeReader, whose in-memory enumeration cannot fail
+			return nil, nil, err
+		}
+	} else if workingTree, snapErr := p.workingTree(ctx); snapErr == nil {
 		currentPaths = safelyMatchablePaths(workingTree)
 	} else {
 		// Init and isolated renderer tests can render before a Git repository
@@ -73,7 +77,7 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)
 		}
 		content = injectBanner(content, topicTID)
-		cfgHash, err := topicHash(p.Root, model, t.MetadataPath, t.PartPath)
+		cfgHash, err := topicHash(p.Root, p.projectTreeReader(), model, t.MetadataPath, t.PartPath)
 		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
 			return nil, nil, err
 		}
@@ -106,15 +110,19 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 	}
 	return files, deps, nil
 }
-func topicHash(root string, model topic.TopicRenderModel, paths ...string) (string, error) {
+func topicHash(root string, read ProjectTreeReader, model topic.TopicRenderModel, paths ...string) (string, error) {
 	proj := map[string]any{"model": model}
 	inputs := map[string]string{}
 	for _, path := range paths {
-		b, err := os.ReadFile(path)
-		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
+		rel := relSlash(root, path)
+		b, ok, err := read.ReadFile(rel)
+		if err != nil {
 			return "", err
 		}
-		inputs[relSlash(root, path)] = manifest.Hash(b)
+		if !ok { // coverage-ignore: topic loading just read both inputs from the same project-tree reader
+			return "", fmt.Errorf("read topic hash input %s", rel)
+		}
+		inputs[rel] = manifest.Hash(b)
 	}
 	proj["inputs"] = inputs
 	enc, err := yaml.Marshal(proj)

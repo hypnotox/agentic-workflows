@@ -1,29 +1,473 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dirname, isAbsolute, posix, resolve, win32 } from "node:path";
-import handoffDefault, { buildKickoffWrapper, guardMinimumRuntime, registerHandoff, validateMemoryPath, versionSupported } from "../../../.pi/extensions/awf-handoff/index.ts";
-const root="/repo";
-function make(options:any={}) { const tools=new Map<string,any>(),commands=new Map<string,any>(),hooks=new Map<string,any>(),queued:any[]=[],emitted:any[]=[],notice:any[]=[],editor:string[]=[],sessions:any[]=[],entries:any=[];let component:any,done:any,sendFails=false,lstatCalls=0,sessionFile:any=options.noFile?undefined:"old",leaf:any={type:"message",message:{role:"assistant",content:[{type:"toolCall",id:"id",name:"handoff_session"}]}};const pi:any={on:(n:string,f:any)=>hooks.set(n,f),registerTool:(x:any)=>tools.set(x.name,x),registerCommand:(n:string,x:any)=>commands.set(n,x),queueCommand:(n:string,id:string)=>{if(options.queueFail)throw Error("queue");queued.push([n,id]);},events:{emit:(...event:any[])=>{if(options.emitFail)throw Error("emit");emitted.push(event);}}};const pathImpl=options.path??posix;const deps:any={packageVersion:"0.81.1",extensionFile:options.extensionFile??`${root}/.pi/extensions/awf-handoff/index.ts`,path:pathImpl,getuid:()=>1000,randomUUID:()=>"id",setInterval:(f:any)=>{if(options.timerFail)throw Error("timer");return {f}},clearInterval(){},setTimeout:(f:any)=>({f}),clearTimeout(){},lstat:async(p:string)=>{lstatCalls++;if(options.lstat)return options.lstat(p,lstatCalls);return {isSymbolicLink:()=>p.includes("link"),isFile:()=>p.endsWith(".md"),isDirectory:()=>!p.endsWith(".md"),uid:1000,dev:1,ino:p.length,nlink:1,size:32,mtimeMs:1}},readFile:options.readFile??(async(p:string,encoding?:string)=>encoding!==undefined?"":Buffer.from(`Effort: ${p.replaceAll("\\","/").split("/").at(-2)}\ncheckpoint\n`))};registerHandoff(pi,deps);const ui:any={notify:(...x:any[])=>notice.push(x),setEditorText:(x:string)=>editor.push(x),custom:async(factory:any)=>new Promise(r=>{done=r;component=factory({requestRender(){}},{},{matches:(x:string)=>{if(options.keyFail)throw Error("key");return x==="escape"}},r);})};const ctx:any={mode:options.mode??"tui",ui,sessionManager:{getSessionFile:()=>sessionFile,getSessionId:()=>"parent-session",getLeafEntry:()=>leaf},newSession:async(x:any)=>{sessions.push(x);const manager={cleanup:async()=>{if(options.cleanupFail)throw Error("cleanup");entries.push(["cleanup"])}};await x.setup(manager);if(options.newFail)throw Error("new");await x.withSession({ui,sendUserMessage:async(x:string)=>{if(sendFails)throw Error("send");editor.push("sent:"+x)}})}};return {tools,commands,hooks,queued,emitted,notice,editor,sessions,entries,ctx,deps,get component(){return component},go:()=>done(true),cancel:()=>component.handleInput("escape"),sendFails:()=>sendFails=true,setLeaf:(x:any)=>leaf=x,dropFile:()=>sessionFile=undefined};}
-async function execute(h:any,p:any={memoryPath:".awf/efforts/work/memory.md",kickoff:"go"}){return h.tools.get("handoff_session").execute("id",p,undefined,undefined,h.ctx)}
-async function continueHandoff(h:any){const promise=h.commands.get("awf-handoff-continue").handler("id",h.ctx);await new Promise(r=>setImmediate(r));return promise;}
-test("handoff validates and normalizes confined regular-file memory paths",async()=>{const h=make();assert.equal(await validateMemoryPath(".awf/efforts/work/memory.md",h.deps),".awf/efforts/work/memory.md");assert.equal(await validateMemoryPath("/repo/.awf/efforts/work/memory.md",h.deps),".awf/efforts/work/memory.md");assert.equal(await validateMemoryPath("/repo/.awf/efforts/archive/../work/memory.md",h.deps),".awf/efforts/work/memory.md");for(const path of ["", ".awf/memory", ".awf/memory/../x", ".awf/memory/./work.md", ".awf//memory/work.md", ".awf\\memory\\work.md", ".awf/efforts/Bad/memory.md", "/tmp/x", "/repo/.awf/memory", "/repo/.awf/memory/link.md", "/repo/.awf/memory/back\\slash.md"])await assert.rejects(validateMemoryPath(path,h.deps));const directory=make({lstat:async()=>({isSymbolicLink:()=>false,isFile:()=>false,isDirectory:()=>true})});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",directory.deps));const missing=make({lstat:async(p:string)=>{if(p.endsWith("memory.md"))throw Error("missing");return {isSymbolicLink:()=>false,isFile:()=>false,isDirectory:()=>true}}});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",missing.deps),/missing/);const unsafe=make({lstat:async(p:string)=>({isSymbolicLink:()=>false,isFile:()=>false,isDirectory:()=>false})});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",unsafe.deps),/unsafe/);});
-test("handoff normalizes Windows absolute paths and keeps relative syntax portable",async()=>{const h=make({path:win32,extensionFile:"C:\\repo\\.pi\\extensions\\awf-handoff\\index.ts"});assert.equal(await validateMemoryPath("C:\\repo\\.awf\\efforts\\work\\memory.md",h.deps),".awf/efforts/work/memory.md");await assert.rejects(validateMemoryPath("C:\\outside\\work.md",h.deps));await assert.rejects(validateMemoryPath(".awf\\efforts\\work\\memory.md",h.deps));});
-test("handoff rejects foreign ownership, hard links, oversized or invalid UTF-8, identity swaps, and foreign repository identity",async()=>{const stat=(p:string,extra:any={})=>({isSymbolicLink:()=>false,isFile:()=>p.endsWith(".md"),isDirectory:()=>!p.endsWith(".md"),uid:1000,dev:1,ino:1,nlink:1,size:32,mtimeMs:1,...extra});const foreign=make({lstat:async(p:string)=>stat(p,{uid:2000})});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",foreign.deps),/unsafe/);const linked=make({lstat:async(p:string)=>stat(p,p.endsWith("memory.md")?{nlink:2}:{})});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",linked.deps),/singly-linked/);const large=make({lstat:async(p:string)=>stat(p,p.endsWith("memory.md")?{size:1048577}:{})});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",large.deps),/bounded/);const readLarge=make({lstat:async(p:string)=>stat(p,p.endsWith("memory.md")?{size:undefined}:{}),readFile:async()=>Buffer.alloc(1048577)});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",readLarge.deps),/1 MiB/);const invalid=make({lstat:async(p:string)=>stat(p),readFile:async()=>Buffer.from([255])});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",invalid.deps),/UTF-8/);let leaf=0;const swapped=make({lstat:async(p:string)=>stat(p,p.endsWith("memory.md")?{ino:++leaf}:{} )});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",swapped.deps),/identity changed/);const foreignRepo=make({lstat:async(p:string)=>p.endsWith(".git")?{...stat(p),isSymbolicLink:()=>true}:stat(p)});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",foreignRepo.deps),/repository identity/);const wrongOwner=make({lstat:async(p:string)=>stat(p),readFile:async()=>Buffer.from("Effort: other\n")});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",wrongOwner.deps),/not owned/);});
-test("handoff resolves the primary control root from a linked managed worktree",async()=>{const worktree="/primary/.awf/worktrees/w",marker=`${worktree}/.git`,linked=(gitdir:string)=>make({extensionFile:`${worktree}/.pi/extensions/awf-handoff/index.ts`,lstat:async(p:string)=>({isSymbolicLink:()=>false,isFile:()=>p===marker||p.endsWith(".md"),isDirectory:()=>p!==marker&&!p.endsWith(".md"),uid:1000,dev:1,ino:p.length,nlink:1,size:32,mtimeMs:1}),readFile:async(p:string,encoding?:string)=>encoding!==undefined?gitdir:Buffer.from("Effort: work\ncheckpoint\n")});const absolute=linked("gitdir: /primary/.git/worktrees/w\n");assert.equal(await validateMemoryPath(".awf/efforts/work/memory.md",absolute.deps),".awf/efforts/work/memory.md");assert.equal(await validateMemoryPath("/primary/.awf/efforts/work/memory.md",absolute.deps),".awf/efforts/work/memory.md");await assert.rejects(validateMemoryPath("/other/.awf/efforts/work/memory.md",absolute.deps),/inside this repository/);const relative=linked("gitdir: ../../../.git/worktrees/w\n");assert.equal(await validateMemoryPath(".awf/efforts/work/memory.md",relative.deps),".awf/efforts/work/memory.md");await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",linked("not a gitdir file\n").deps),/unreadable worktree \.git file/);const submodule=linked("gitdir: /primary/.git/modules/w\n");assert.equal(await validateMemoryPath(".awf/efforts/work/memory.md",submodule.deps),".awf/efforts/work/memory.md");await assert.rejects(validateMemoryPath("/primary/.awf/efforts/work/memory.md",submodule.deps),/inside this repository/);const absent=make({lstat:async(p:string)=>{if(p.endsWith(".git"))throw Error("no git marker");return {isSymbolicLink:()=>false,isFile:()=>p.endsWith(".md"),isDirectory:()=>!p.endsWith(".md")}}});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",absent.deps),/no git marker/);});
+import { Value } from "typebox/value";
+import handoffDefault, {
+  guardMinimumRuntime,
+  registerHandoff,
+  versionSupported,
+} from "../../../.pi/extensions/awf-handoff/index.ts";
 
-test("handoff ignores a foreign-owned worktree .git marker when resolving the root",async()=>{const worktree="/primary/.awf/worktrees/w",marker=`${worktree}/.git`,foreign=make({extensionFile:`${worktree}/.pi/extensions/awf-handoff/index.ts`,lstat:async(p:string)=>({isSymbolicLink:()=>false,isFile:()=>p===marker||p.endsWith(".md"),isDirectory:()=>p!==marker&&!p.endsWith(".md"),uid:p===marker?999:1000,dev:1,ino:p.length,nlink:1,size:32,mtimeMs:1}),readFile:async(p:string,encoding?:string)=>encoding!==undefined?"gitdir: /primary/.git/worktrees/w\n":Buffer.from("Effort: work\ncheckpoint\n")});await assert.rejects(validateMemoryPath(".awf/efforts/work/memory.md",foreign.deps),/repository identity is unsafe/);});
+function make(options: any = {}) {
+  const tools = new Map<string, any>();
+  const commands = new Map<string, any>();
+  const hooks = new Map<string, any>();
+  const queued: any[] = [];
+  const emitted: any[] = [];
+  const notice: any[] = [];
+  const editor: string[] = [];
+  const sessions: any[] = [];
+  const entries: any[] = [];
+  const components: any[] = [];
+  const intervals: any[] = [];
+  const timeouts: any[] = [];
+  const clearedIntervals: any[] = [];
+  const clearedTimeouts: any[] = [];
+  const renderRequests: any[] = [];
+  const sends: string[] = [];
+  let component: any;
+  let done: any;
+  let queueFails = Boolean(options.queueFail);
+  let sendFails = false;
+  let sessionFile: any = options.noFile ? undefined : "old";
+  let leaf: any = {
+    type: "message",
+    message: {
+      role: "assistant",
+      content: [{ type: "toolCall", id: "id", name: "handoff_session" }],
+    },
+  };
+  const pi: any = {
+    on: (name: string, fn: any) => hooks.set(name, fn),
+    registerTool: (tool: any) => tools.set(tool.name, tool),
+    registerCommand: (name: string, command: any) => commands.set(name, command),
+    queueCommand: (name: string, id: string) => {
+      if (queueFails) throw Error("queue");
+      queued.push([name, id]);
+    },
+    events: {
+      emit: (...event: any[]) => {
+        if (options.emitFail) throw Error("emit");
+        emitted.push(event);
+      },
+    },
+  };
+  const deps: any = {
+    packageVersion: "0.81.1",
+    randomUUID: () => "id",
+    setInterval: (fn: any, milliseconds: number) => {
+      if (options.intervalFail) throw Error("interval");
+      const handle = { fn, milliseconds };
+      intervals.push(handle);
+      return handle;
+    },
+    clearInterval: (handle: any) => clearedIntervals.push(handle),
+    setTimeout: (fn: any, milliseconds: number) => {
+      if (options.timeoutFail) throw Error("timeout");
+      const handle = { fn, milliseconds };
+      timeouts.push(handle);
+      return handle;
+    },
+    clearTimeout: (handle: any) => clearedTimeouts.push(handle),
+  };
+  registerHandoff(pi, deps);
+  const ui: any = {
+    notify: (...args: any[]) => notice.push(args),
+    setEditorText: (value: string) => editor.push(value),
+    custom: async (factory: any) =>
+      new Promise((resolve) => {
+        done = resolve;
+        component = factory(
+          { requestRender: () => renderRequests.push("render") },
+          {},
+          {
+            matches: (data: string) => {
+              if (options.keyFail) throw Error("key");
+              return data === "escape";
+            },
+          },
+          resolve,
+        );
+        component.complete = resolve;
+        components.push(component);
+      }),
+  };
+  const ctx: any = {
+    mode: options.mode ?? "tui",
+    ui,
+    sessionManager: {
+      getSessionFile: () => sessionFile,
+      getSessionId: () => "parent-session",
+      getLeafEntry: () => leaf,
+    },
+    newSession: async (request: any) => {
+      sessions.push(request);
+      const manager = {
+        cleanup: async () => {
+          entries.push(["cleanup"]);
+          if (options.cleanupFail) throw Error("cleanup");
+        },
+      };
+      await request.setup(manager);
+      if (options.newFail) throw Error("new");
+      await request.withSession({
+        ui,
+        sendUserMessage: async (value: string) => {
+          sends.push(value);
+          if (sendFails) throw Error("send");
+          editor.push("sent:" + value);
+        },
+      });
+    },
+  };
+  return {
+    tools,
+    commands,
+    hooks,
+    queued,
+    emitted,
+    notice,
+    editor,
+    sessions,
+    entries,
+    components,
+    intervals,
+    timeouts,
+    clearedIntervals,
+    clearedTimeouts,
+    renderRequests,
+    sends,
+    ctx,
+    deps,
+    get component() {
+      return component;
+    },
+    complete: (result = true) => setImmediate(() => done(result)),
+    cancel: () => component.handleInput("escape"),
+    sendFails: () => {
+      sendFails = true;
+    },
+    queueWorks: () => {
+      queueFails = false;
+    },
+    setLeaf: (value: any) => {
+      leaf = value;
+    },
+    dropFile: () => {
+      sessionFile = undefined;
+    },
+  };
+}
 
-test("handoff resolves the primary control root from a win32 linked worktree",async()=>{const worktree="C:\\primary\\.awf\\worktrees\\w",marker=`${worktree}\\.git`,linked=(gitdir:string)=>make({path:win32,extensionFile:`${worktree}\\.pi\\extensions\\awf-handoff\\index.ts`,lstat:async(p:string)=>({isSymbolicLink:()=>false,isFile:()=>p===marker||p.endsWith(".md"),isDirectory:()=>p!==marker&&!p.endsWith(".md"),uid:1000,dev:1,ino:p.length,nlink:1,size:32,mtimeMs:1}),readFile:async(p:string,encoding?:string)=>encoding!==undefined?gitdir:Buffer.from("Effort: work\ncheckpoint\n")});const absolute=linked("gitdir: C:\\primary\\.git\\worktrees\\w\n");assert.equal(await validateMemoryPath(".awf/efforts/work/memory.md",absolute.deps),".awf/efforts/work/memory.md");assert.equal(await validateMemoryPath(".awf/efforts/work/memory.md",linked("gitdir: C:\\primary\\.git\\modules\\w\n").deps),".awf/efforts/work/memory.md");});
-test("handoff preflight exclusively blocks mixed and unverifiable batches",()=>{const h=make(),pre=h.hooks.get("tool_call");assert.equal(pre({toolCallId:"id",toolName:"handoff_session"},h.ctx),undefined);h.setLeaf({type:"message",message:{role:"assistant",content:[{type:"toolCall",id:"id",name:"handoff_session"},{type:"toolCall",id:"x",name:"read"}]}});assert.match(pre({toolCallId:"x",toolName:"read"},h.ctx).reason,/siblings/);h.setLeaf(undefined);assert.match(pre({toolCallId:"id",toolName:"handoff_session"},h.ctx).reason,/Cannot verify/);assert.equal(pre({toolCallId:"x",toolName:"read"},h.ctx),undefined);});
-test("kickoff exact text only reads a checkpoint when supplied",()=>{assert.equal(buildKickoffWrapper(undefined,"go"),"Then continue with this immediate action: go");assert.equal(buildKickoffWrapper(".awf/efforts/work/memory.md","go"),"Read .awf/efforts/work/memory.md first. Repository sources and current-state documentation are authoritative over the checkpoint. Then continue with this immediate action: go");});
-test("handoff counts down, cancels, cleans pending, and links parent before setup kickoff",async()=>{const h=make();await execute(h);const p=continueHandoff(h);await new Promise(r=>setImmediate(r));assert.match(h.component.render(200)[0],/5s/);h.component.render(0);h.component.invalidate();h.component.dispose();h.cancel();await p;assert.deepEqual(h.notice,[["Fresh-session handoff canceled."]]);assert.equal(h.sessions.length,0);});
-test("handoff marks a successfully queued continuation as non-terminal",async()=>{const h=make();await execute(h);assert.deepEqual(h.emitted,[["remote-pi:notification-disposition.v1",{version:1,sessionId:"parent-session",disposition:"suppress_next_agent_end_push",id:"id"}]]);const failed=make({queueFail:true});await assert.rejects(execute(failed),/queue/);assert.deepEqual(failed.emitted,[]);const isolated=make({emitFail:true});assert.equal((await execute(isolated)).terminate,true);assert.equal(isolated.queued.length,1);});
-test("handoff validates empty input and propagates normalized absolute memory",async()=>{const empty=make();await assert.rejects(execute(empty,{memoryPath:"",kickoff:"go"}),/canonical/);const h=make();const result=await execute(h,{memoryPath:"/repo/.awf/efforts/work/memory.md",kickoff:"go"});assert.equal(result.details.memoryPath,".awf/efforts/work/memory.md");h.sendFails();const p=continueHandoff(h);await new Promise(r=>setImmediate(r));h.go();await p;assert.match(h.editor[0],/^Read \.awf\/efforts\/work\/memory\.md first/);});
-test("handoff revalidates normalized memory after countdown",async()=>{const h=make({lstat:async(p:string,n:number)=>{if(n>7&&p.endsWith("memory.md"))throw Error("removed");return {isSymbolicLink:()=>false,isFile:()=>p.endsWith(".md"),isDirectory:()=>!p.endsWith(".md")}}});await execute(h,{memoryPath:"/repo/.awf/efforts/work/memory.md",kickoff:"go"});const p=continueHandoff(h);await new Promise(r=>setImmediate(r));h.go();await assert.rejects(p,/removed/);assert.equal(h.sessions.length,0);assert.match(h.editor[0],/^Read \.awf\/efforts\/work\/memory\.md first/);});
-test("handoff rejects stale continuation, lost persistence, invalid kickoff, and a second pending request",async()=>{const stale=make();await execute(stale);await assert.rejects(stale.commands.get("awf-handoff-continue").handler("wrong",stale.ctx),/matching/);await assert.rejects(execute(stale),/already pending/);const lost=make();await execute(lost);lost.dropFile();const p=continueHandoff(lost);await new Promise(r=>setImmediate(r));lost.go();await assert.rejects(p,/no longer persisted/);const whitespace=make();await assert.rejects(execute(whitespace,{kickoff:"  "}),/non-whitespace/);});
-test("handoff submits kickoff successfully and tolerates cleanup failure",async()=>{const success=make();await execute(success);const sent=continueHandoff(success);await new Promise(r=>setImmediate(r));success.go();await sent;assert.match(success.editor[0],/^sent:Read \.awf/);const cleanup=make({newFail:true,cleanupFail:true});await execute(cleanup);const failed=continueHandoff(cleanup);await new Promise(r=>setImmediate(r));cleanup.go();await assert.rejects(failed,/new/);});
-test("handoff countdown handles timer and key faults",async()=>{const timer=make({timerFail:true});await execute(timer);await continueHandoff(timer).catch(()=>undefined);const key=make({keyFail:true});await execute(key);const p=continueHandoff(key);await new Promise(r=>setImmediate(r));assert.throws(()=>key.component.handleInput("escape"),/key/);await p;});
-test("testHandoffDoesNotInvokeAwfOrSelectEffort",async()=>{const h=make();h.sendFails();await execute(h);const p=continueHandoff(h);await new Promise(r=>setImmediate(r));h.go();await p;assert.equal(h.sessions[0].parentSession,"old");assert.equal(h.entries.length,0);assert.match(h.editor[0],/^Read .awf/);assert.deepEqual(h.notice,[["Automatic kickoff failed; submit the prepared editor text.","warning"]]);assert.equal(JSON.stringify([...h.commands.keys()]).includes("effort"),false);});
-test("handoff accepts absent memory and cleans prepared child on failure",async()=>{const h=make({newFail:true});await execute(h,{kickoff:"go"});const p=continueHandoff(h);await new Promise(r=>setImmediate(r));h.go();await assert.rejects(p,/new/);assert.ok(h.entries.some((x:any)=>x[0]==="cleanup"));assert.match(h.editor[0],/^Then continue/);const bad=make({mode:"rpc"});await assert.rejects(execute(bad),/persisted/);const queue=make({queueFail:true});await assert.rejects(execute(queue),/queue/);});
-test("handoff exercises runtime guard and generated entrypoint",async()=>{(globalThis as any)[Symbol.for("awf.pi.minimum-runtime-notified")]=undefined;let noticeHandler:any;const old:any={on:(name:string,handler:any)=>{if(name==="session_start")noticeHandler=handler;}};registerHandoff(old,{...make().deps,packageVersion:"0.80.0",eventsEmit:undefined});await noticeHandler({}, {ui:{notify:(...args:any[])=>assert.equal(args[1],"error")}});await noticeHandler({}, {ui:{notify:()=>assert.fail("duplicate notice")}});assert.equal(versionSupported("0.81.1"),true);assert.equal(versionSupported("bad"),false);assert.equal(guardMinimumRuntime({} as any,{packageVersion:"bad"},[]),false);(globalThis as any)[Symbol.for("awf.pi.minimum-runtime-notified")]=undefined;let versionOnly:any;assert.equal(guardMinimumRuntime({on:(_name:string,handler:any)=>versionOnly=handler} as any,{packageVersion:"0.80.0"},[]),false);await versionOnly({}, {ui:{notify:(message:string)=>assert.equal(message.includes("Missing runtime APIs"),false)}});await handoffDefault({on:()=>{},registerTool(){},registerCommand(){},queueCommand(){}} as any);});
-test("handoff accepts optional child APIs",async()=>{const child=make();child.ctx.newSession=async(x:any)=>{await x.setup({})};await execute(child);const p=continueHandoff(child);await new Promise(r=>setImmediate(r));child.go();await p;});
+async function execute(h: any, params: any = { kickoff: "go" }) {
+  return h.tools
+    .get("handoff_session")
+    .execute("id", params, undefined, undefined, h.ctx);
+}
+
+function continueHandoff(h: any, token = "id") {
+  return h.commands.get("awf-handoff-continue").handler(token, h.ctx);
+}
+
+test("handoff schema exposes only required bounded kickoff prose", async () => {
+  const h = make();
+  const schema = h.tools.get("handoff_session").parameters;
+  assert.deepEqual(Object.keys(schema.properties), ["kickoff"]);
+  assert.deepEqual(schema.required, ["kickoff"]);
+  assert.equal(schema.additionalProperties, false);
+  assert.equal(schema.properties.kickoff.maxLength, 1000);
+  assert.equal(Value.Check(schema, {}), false);
+  assert.equal(Value.Check(schema, { kickoff: "go", extra: true }), false);
+  assert.equal(Value.Check(schema, { kickoff: "x".repeat(1000) }), true);
+  assert.equal(Value.Check(schema, { kickoff: "x".repeat(1001) }), false);
+  for (const value of [
+    { kickoff: 1 },
+    { kickoff: "" },
+    { kickoff: "  " },
+    { kickoff: "x".repeat(1001) },
+  ]) {
+    await assert.rejects(execute(h, value), /kickoff/);
+  }
+  await execute(make(), { kickoff: "😀".repeat(500) });
+  await assert.rejects(execute(make(), { kickoff: "😀".repeat(501) }), /1000/);
+  assert.deepEqual(h.emitted, []);
+});
+
+test("handoff marks a successfully queued continuation as non-terminal", async () => {
+  const h = make();
+  await execute(h);
+  assert.deepEqual(h.emitted, [[
+    "remote-pi:notification-disposition.v1",
+    {
+      version: 1,
+      sessionId: "parent-session",
+      disposition: "suppress_next_agent_end_push",
+      id: "id",
+    },
+  ]]);
+
+  const failed = make({ queueFail: true });
+  await assert.rejects(execute(failed), /queue/);
+  assert.deepEqual(failed.emitted, []);
+
+  const isolated = make({ emitFail: true });
+  assert.equal((await execute(isolated)).terminate, true);
+  assert.equal(isolated.queued.length, 1);
+});
+
+test("handoff preserves exact kickoff through submission and editor fallback", async () => {
+  const kickoff = "  keep this exact prose  ";
+  const h = make();
+  const result = await execute(h, { kickoff });
+  assert.deepEqual(result.details, { kickoff });
+  assert.equal(result.terminate, true);
+  assert.deepEqual(h.queued, [["awf-handoff-continue", "id"]]);
+  const pending = continueHandoff(h);
+  h.complete();
+  await pending;
+  assert.deepEqual(h.sends, [kickoff]);
+  assert.deepEqual(h.editor, ["sent:" + kickoff]);
+  assert.equal(h.sessions.length, 1);
+
+  const fallback = make();
+  fallback.sendFails();
+  await execute(fallback, { kickoff });
+  const fallbackPending = continueHandoff(fallback);
+  fallback.complete();
+  await fallbackPending;
+  assert.deepEqual(fallback.sends, [kickoff]);
+  assert.deepEqual(fallback.editor, [kickoff]);
+  assert.deepEqual(fallback.notice, [
+    ["Automatic kickoff failed; submit the prepared editor text.", "warning"],
+  ]);
+  assert.equal(fallback.sessions.length, 1);
+});
+
+test("handoff preserves exact kickoff through replacement failure recovery", async () => {
+  const kickoff = "  recover exactly  ";
+  const h = make({ newFail: true });
+  await execute(h, { kickoff });
+  const pending = continueHandoff(h);
+  h.complete();
+  await assert.rejects(pending, /new/);
+  assert.deepEqual(h.entries, [["cleanup"]]);
+  assert.deepEqual(h.editor, [kickoff]);
+  assert.deepEqual(h.notice, [
+    ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
+  ]);
+  assert.equal(h.sessions.length, 1);
+  assert.deepEqual(h.sends, []);
+});
+
+test("handoff preflight exclusively blocks mixed and unverifiable batches", () => {
+  const h = make();
+  const preflight = h.hooks.get("tool_call");
+  assert.equal(
+    preflight({ toolCallId: "id", toolName: "handoff_session" }, h.ctx),
+    undefined,
+  );
+  h.setLeaf({
+    type: "message",
+    message: {
+      role: "assistant",
+      content: [
+        { type: "toolCall", id: "id", name: "handoff_session" },
+        { type: "toolCall", id: "x", name: "read" },
+      ],
+    },
+  });
+  assert.match(preflight({ toolCallId: "x", toolName: "read" }, h.ctx).reason, /siblings/);
+  h.setLeaf(undefined);
+  assert.match(
+    preflight({ toolCallId: "id", toolName: "handoff_session" }, h.ctx).reason,
+    /Cannot verify/,
+  );
+  assert.equal(preflight({ toolCallId: "x", toolName: "read" }, h.ctx), undefined);
+});
+
+test("handoff countdown advances for five seconds and disposes deterministically", async () => {
+  const h = make();
+  await execute(h);
+  const pending = continueHandoff(h);
+  assert.equal(h.intervals[0].milliseconds, 1000);
+  assert.equal(h.timeouts[0].milliseconds, 5000);
+  assert.match(h.component.render(200)[0], /5s/);
+  assert.equal(h.component.render(200), h.component.render(200));
+  assert.equal(h.component.render(0)[0].length > 0, true);
+  h.intervals[0].fn();
+  assert.deepEqual(h.renderRequests, ["render"]);
+  assert.match(h.component.render(200)[0], /4s/);
+  h.component.handleInput("not-cancel");
+  h.timeouts[0].fn();
+  h.timeouts[0].fn();
+  await pending;
+  h.component.invalidate();
+  h.component.dispose();
+  assert.equal(h.clearedIntervals.length >= 2, true);
+  assert.equal(h.clearedTimeouts.length >= 2, true);
+  assert.equal(h.sessions.length, 1);
+});
+
+test("handoff cancellation clears pending and never replaces the session", async () => {
+  const h = make();
+  await execute(h);
+  const pending = continueHandoff(h);
+  h.cancel();
+  await pending;
+  assert.deepEqual(h.notice, [["Fresh-session handoff canceled."]]);
+  assert.equal(h.sessions.length, 0);
+  await execute(h);
+});
+
+test("wrong continuation token preserves the valid pending request", async () => {
+  const h = make();
+  await execute(h);
+  await assert.rejects(continueHandoff(h, "wrong"), /matching/);
+  await assert.rejects(execute(h), /already pending/);
+  const pending = continueHandoff(h);
+  h.complete();
+  await pending;
+  assert.equal(h.sessions.length, 1);
+});
+
+test("handoff rejects a continuation whose pending request changes during countdown", async () => {
+  const h = make();
+  await execute(h);
+  const first = continueHandoff(h);
+  const second = continueHandoff(h);
+  h.components[1].complete(true);
+  await second;
+  h.components[0].complete(true);
+  await assert.rejects(first, /matching pending/);
+});
+
+test("handoff independently rejects unsupported mode and absent persistence", async () => {
+  await assert.rejects(execute(make({ mode: "rpc" })), /persisted interactive/);
+  await assert.rejects(execute(make({ noFile: true })), /persisted interactive/);
+});
+
+test("handoff revalidates persisted session only after countdown", async () => {
+  const h = make();
+  await execute(h);
+  h.dropFile();
+  const pending = continueHandoff(h);
+  h.complete();
+  await assert.rejects(pending, /no longer persisted/);
+  assert.deepEqual(h.editor, ["go"]);
+  assert.deepEqual(h.notice, [
+    ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
+  ]);
+  assert.equal(h.sessions.length, 0);
+});
+
+test("handoff preserves lineage and does not silently retry", async () => {
+  const success = make();
+  await execute(success);
+  const successPending = continueHandoff(success);
+  success.complete();
+  await successPending;
+  assert.equal(success.sessions[0].parentSession, "old");
+  assert.equal(success.sessions.length, 1);
+  assert.deepEqual(success.sends, ["go"]);
+
+  const failure = make({ newFail: true });
+  await execute(failure);
+  const failedPending = continueHandoff(failure);
+  failure.complete();
+  await assert.rejects(failedPending, /new/);
+  assert.equal(failure.sessions.length, 1);
+  assert.deepEqual(failure.sends, []);
+});
+
+test("queue failure clears pending so a later request can succeed", async () => {
+  const h = make({ queueFail: true });
+  await assert.rejects(execute(h), /queue/);
+  h.queueWorks();
+  await execute(h);
+  assert.deepEqual(h.queued, [["awf-handoff-continue", "id"]]);
+});
+
+test("countdown timer, key, and cleanup faults retain the original boundary", async () => {
+  const intervalFailure = make({ intervalFail: true });
+  await execute(intervalFailure);
+  await continueHandoff(intervalFailure);
+  assert.deepEqual(intervalFailure.notice, [["Fresh-session handoff canceled."]]);
+  assert.equal(intervalFailure.sessions.length, 0);
+
+  const timeoutFailure = make({ timeoutFail: true });
+  await execute(timeoutFailure);
+  await continueHandoff(timeoutFailure);
+  assert.deepEqual(timeoutFailure.notice, [["Fresh-session handoff canceled."]]);
+  assert.equal(timeoutFailure.sessions.length, 0);
+  assert.equal(timeoutFailure.clearedIntervals.length, 1);
+
+  const keyFailure = make({ keyFail: true });
+  await execute(keyFailure);
+  const keyPending = continueHandoff(keyFailure);
+  assert.throws(() => keyFailure.component.handleInput("escape"), /key/);
+  await keyPending;
+  assert.deepEqual(keyFailure.notice, [["Fresh-session handoff canceled."]]);
+
+  const cleanupFailure = make({ newFail: true, cleanupFail: true });
+  await execute(cleanupFailure);
+  const cleanupPending = continueHandoff(cleanupFailure);
+  cleanupFailure.complete();
+  await assert.rejects(cleanupPending, /new/);
+  assert.deepEqual(cleanupFailure.entries, [["cleanup"]]);
+  assert.equal(cleanupFailure.sessions.length, 1);
+});
+
+test("handoff exercises runtime guard and generated entrypoint", async () => {
+  (globalThis as any)[Symbol.for("awf.pi.minimum-runtime-notified")] = undefined;
+  let noticeHandler: any;
+  const old: any = {
+    on: (name: string, handler: any) => {
+      if (name === "session_start") noticeHandler = handler;
+    },
+  };
+  registerHandoff(old, {
+    ...make().deps,
+    packageVersion: "0.80.0",
+    eventsEmit: undefined,
+  });
+  await noticeHandler({}, {
+    ui: { notify: (...args: any[]) => assert.equal(args[1], "error") },
+  });
+  await noticeHandler({}, {
+    ui: { notify: () => assert.fail("duplicate notice") },
+  });
+  assert.equal(versionSupported("0.81.1"), true);
+  assert.equal(versionSupported("bad"), false);
+  assert.equal(guardMinimumRuntime({} as any, { packageVersion: "bad" }, []), false);
+  (globalThis as any)[Symbol.for("awf.pi.minimum-runtime-notified")] = undefined;
+  let versionOnly: any;
+  assert.equal(
+    guardMinimumRuntime(
+      { on: (_name: string, handler: any) => (versionOnly = handler) } as any,
+      { packageVersion: "0.80.0" },
+      [],
+    ),
+    false,
+  );
+  await versionOnly({}, {
+    ui: {
+      notify: (message: string) => assert.equal(message.includes("Missing runtime APIs"), false),
+    },
+  });
+  await handoffDefault({
+    on: () => {},
+    registerTool() {},
+    registerCommand() {},
+    queueCommand() {},
+  } as any);
+});
+
+test("handoff accepts optional child APIs", async () => {
+  const child = make();
+  child.ctx.newSession = async (request: any) => {
+    await request.setup({});
+  };
+  await execute(child);
+  const pending = continueHandoff(child);
+  child.complete();
+  await pending;
+});
