@@ -30,7 +30,9 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 <!-- awf:end -->
 
 <!-- awf:section test-isolation -->
-4. **Establish effort ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search; a minimal simple known-root fix stays effort-free. Once evidence confirms a concrete non-minimal fix outcome, carry the one effort slug and exact `.awf/efforts/<slug>/memory.md` path onward; exploring children receive them read-only and never edit memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
+4. **Confirm ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search, and a minimal simple known-root fix stays effort-free. An existing effort resumes under its fixed identity without title reconfirmation only while the fix remains within its confirmed outcome. When evidence identifies a concrete non-minimal fix without existing ownership, complete the mandatory first-creation confirmation below before writing a failing test or mutating files; exploring children remain non-creating and receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible.
+
+<!-- awf:include outcome-confirmation -->
 
 5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.{{ else }}Write it test-first.{{ end }} Before writing the test, run `awf context <the suspect paths>`.
 <!-- awf:include context-orientation -->

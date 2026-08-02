@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Discovery now remains effort-free until the agent presents a labeled concrete outcome and proposed effort title, stops without mutation, and receives clear confirmation in a later user response; existing efforts resume under their fixed identity without reconfirmation only inside their confirmed outcome, a new outcome cannot silently reuse or replace an active effort, and no CLI or schema migration occurs. Adopters with full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this first-creation boundary because default-template projection tests cannot inspect replacement prose.
+
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.

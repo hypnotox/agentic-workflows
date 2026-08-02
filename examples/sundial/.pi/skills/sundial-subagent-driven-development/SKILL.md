@@ -17,7 +17,7 @@ Invoke when a plan phase benefits from delegated implementation ownership. A pla
 
 ## Procedure
 <!-- awf:edit procedure-resolve-plan: default; create .awf/skills/parts/subagent-driven-development/procedure-resolve-plan.md to override -->
-1. Resolve the mutable plan and read every declared phase mode. Before dispatch, validate the one immutable effort slug and exact `.awf/efforts/<slug>/memory.md` path, confirm `Effort: <slug>`, and preserve one user-managed writer. Repository authority outranks checkpoint prose, and standalone memory is forbidden.
+1. This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Resolve the mutable plan and read every declared phase mode. Before dispatch, validate the fixed identity, one immutable effort slug and exact `.awf/efforts/<slug>/memory.md` path, confirm `Effort: <slug>`, and preserve one user-managed writer. Repository authority outranks checkpoint prose, and standalone memory is forbidden.
 <!-- awf:edit procedure-raise-concerns: default; create .awf/skills/parts/subagent-driven-development/procedure-raise-concerns.md to override -->
 2. You, the dispatching parent, stop before dispatch when the plan is missing phase context, paths, boundaries, checks, or a closing subject. Resolve it with the user; never hand a child an incomplete phase and let it discover the gap.
 <!-- awf:edit procedure-extract-context: default; create .awf/skills/parts/subagent-driven-development/procedure-extract-context.md to override -->

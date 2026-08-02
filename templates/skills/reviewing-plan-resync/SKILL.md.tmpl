@@ -20,7 +20,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 ## Procedure
 
-Validate and carry the same effort slug and exact `.awf/efforts/<slug>/memory.md` path through resync. Repository sources, ADRs, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
+This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity and carry the same effort slug and exact `.awf/efforts/<slug>/memory.md` path through resync. Repository sources, ADRs, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
 
 <!-- awf:section dispatch-subagent-narrowed -->
 Identify the plan path first: it is named in the just-settled ADR(s), or it is the most recently-modified file under `{{ .layout.plansDir }}/` matching `YYYY-MM-DD-*.md`.

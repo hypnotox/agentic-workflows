@@ -155,23 +155,74 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			t.Errorf("%s creates missing ownership after %q", label, boundary)
 		}
 	}
-	for _, target := range []string{".pi", ".claude"} {
-		brainstorming := readExample(filepath.Join(target, "skills", "sundial-brainstorming", "SKILL.md"))
-		assertOrdered(target+" brainstorming", brainstorming,
+	assertDiscoveryOwner := func(label, body string) {
+		t.Helper()
+		assertOrdered(label, body,
 			"**Mandatory first-creation confirmation.**",
+			"Discovery creates no effort",
 			"`Outcome: <concrete non-minimal outcome>`",
 			"`Effort title: <proposed title>`",
 			"Ask the user to confirm creation",
 			"end the turn without creating an effort",
 			"clear response in a later turn",
 			"awf effort new \"<confirmed title>\"",
-			"Present the design in sections",
 		)
+		if !strings.Contains(body, "fixed identity") || !strings.Contains(body, "without title reconfirmation") {
+			t.Errorf("%s does not preserve fixed-identity resume without reconfirmation", label)
+		}
+	}
+	assertDownstream := func(label, body string) {
+		t.Helper()
+		if strings.Contains(body, "awf effort new") {
+			t.Errorf("%s creates an effort instead of requiring confirmed ownership", label)
+		}
+		for _, want := range []string{"already-confirmed", "mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
+			if !strings.Contains(strings.ToLower(body), want) {
+				t.Errorf("%s is missing confirmed-downstream ownership contract %q", label, want)
+			}
+		}
+		if !strings.Contains(body, "fixed identity") || !strings.Contains(body, "without title reconfirmation") {
+			t.Errorf("%s does not preserve fixed-identity resume without reconfirmation", label)
+		}
+	}
+	for _, target := range []string{".pi", ".claude"} {
+		readSkill := func(name string) string {
+			return readExample(filepath.Join(target, "skills", "sundial-"+name, "SKILL.md"))
+		}
+		brainstorming := readSkill("brainstorming")
+		assertDiscoveryOwner(target+" brainstorming", brainstorming)
+		assertOrdered(target+" brainstorming detailed design", brainstorming, "awf effort new \"<confirmed title>\"", "Present the design in sections")
 		assertBoundaryDoesNotCreate(target+" brainstorming final approval", brainstorming, "**Mandatory approval check-in.**")
-		reviewingADR := readExample(filepath.Join(target, "skills", "sundial-reviewing-adr", "SKILL.md"))
+		reviewingADR := readSkill("reviewing-adr")
 		assertBoundaryDoesNotCreate(target+" ADR final approval", reviewingADR, "**Mandatory approval check-in.**")
-		writingPlans := readExample(filepath.Join(target, "skills", "sundial-writing-plans", "SKILL.md"))
+		writingPlans := readSkill("writing-plans")
 		assertBoundaryDoesNotCreate(target+" routine checkpoint", writingPlans, "**Routine checkpoint.**")
+
+		for _, name := range []string{"debugging", "roadmap-graduation"} {
+			assertDiscoveryOwner(target+" "+name, readSkill(name))
+		}
+		for _, name := range []string{"tdd", "proposing-adr", "writing-plans"} {
+			assertDownstream(target+" "+name, readSkill(name))
+		}
+		orienting := readSkill("orienting")
+		if strings.Contains(orienting, "awf effort new") || !strings.Contains(orienting, "never creates an effort") || !strings.Contains(orienting, "fixed identity") {
+			t.Errorf("%s orienting must never create and must validate fixed-identity resume", target)
+		}
+		exploring := readSkill("exploring")
+		if strings.Contains(exploring, "awf effort new") || !strings.Contains(exploring, "never creates an effort") || !strings.Contains(exploring, "report-only") {
+			t.Errorf("%s exploring must never create and must remain report-only", target)
+		}
+
+		entries, err := os.ReadDir(filepath.Join("../../examples/sundial", target, "skills"))
+		if err != nil {
+			t.Fatalf("list sundial %s skills: %v", target, err)
+		}
+		for _, entry := range entries {
+			body := readExample(filepath.Join(target, "skills", entry.Name(), "SKILL.md"))
+			if strings.Contains(body, "<no value>") {
+				t.Errorf("%s/%s contains an unresolved-value token", target, entry.Name())
+			}
+		}
 	}
 	workflow := readExample("docs/workflow.md")
 	for _, want := range []string{"Discovery creates no effort", "existing effort resumes under its fixed identity", "newly discovered outcome cannot silently reuse"} {

@@ -54,7 +54,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 
 ## Procedure
 
-Complex planning is a concrete non-minimal outcome: create or resume exactly one immutable slugged effort before authoring and carry its slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The plan reviewer receives slug/path as read-only context and never edits memory.
+This skill requires the one existing confirmed effort and its exact owned memory path before durable authoring or lifecycle mutation. It never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity and carry its slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The plan reviewer receives slug/path as read-only context and never edits memory.
 
 <!-- awf:edit procedure-confirm-scope: default; create .awf/skills/parts/writing-plans/procedure-confirm-scope.md to override -->
 1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan. If the plan is written in a later session than the brainstorm, or the file structure reaches areas not examined this session, invoke `awf-orienting` first.

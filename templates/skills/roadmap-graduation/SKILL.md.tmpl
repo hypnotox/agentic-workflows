@@ -20,7 +20,7 @@ This is a **support skill**: it sits off the workflow chain.
 
 ## Procedure
 
-A minimal simple graduation may remain effort-free. Once graduation is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, keep one user-managed writer, and carry slug/path into ADR or implementation review. Repository sources and current-state documentation outrank checkpoint prose, children never edit memory, and standalone memory is forbidden.
+A minimal simple graduation may remain effort-free. Identify and re-verify the roadmap item before treating graduation as a concrete non-minimal outcome; neither reaching this procedure nor citing an item confirms creation. An existing effort resumes under its fixed identity without title reconfirmation only while graduation remains within its confirmed outcome. Repository sources and current-state documentation outrank checkpoint prose, children receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only and never edit memory, standalone memory is forbidden, and one user-managed writer remains responsible.
 
 <!-- awf:section identify-entry -->
 ### 1. Identify the roadmap entry
@@ -33,13 +33,19 @@ If the entry cites inline numbers, re-measure on the current code before graduat
 <!-- awf:end -->
 
 <!-- awf:section graduate-single-commit -->
-### 3. Graduate in a single commit
+### 3. Confirm first effort creation
+
+For a concrete non-minimal graduation outcome without existing ownership, complete the mandatory first-creation confirmation below after identifying and re-verifying the item, and before ADR or implementation mutation.
+
+<!-- awf:include outcome-confirmation -->
+
+### 4. Graduate in a single commit
 - **Architectural → ADR:** {{ if index .skills "proposing-adr" }}Invoke `{{ .prefix }}-proposing-adr`.{{ else }}Write the ADR per the project's decision process.{{ end }} Remove the roadmap entry in the same commit as the ADR introduction (or, if the ADR ships across multiple commits, in the final implementation commit).
 - **Small → PR:** Implement the change, write the commit body to capture the why (cite the roadmap entry's reasoning), and remove the roadmap entry in the same commit.
 <!-- awf:end -->
 
 <!-- awf:section explicit-drop -->
-### 4. Explicit drop
+### 5. Explicit drop
 Commit with subject `docs(roadmap): drop <item>`; the one-line reason goes in the commit body, not the subject or the file.
 <!-- awf:end -->
 
@@ -48,7 +54,7 @@ Commit with subject `docs(roadmap): drop <item>`; the one-line reason goes in th
 <!-- awf:end -->
 
 <!-- awf:section doc-currency -->
-### 5. Doc-currency
+### 6. Doc-currency
 If the graduated entry mentions a state doc or ADR that needs updating, fold that update into the same commit.
 <!-- awf:end -->
 

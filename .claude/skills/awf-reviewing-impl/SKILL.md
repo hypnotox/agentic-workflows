@@ -6,7 +6,7 @@ description: Independent review step after implementation commits. Dispatches th
 
 # awf-reviewing-impl
 
-Invoked as the independent review step of the implementation phase. It validates the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path, keeps the parent as the one user-managed memory writer, and dispatches the `code-reviewer` subagent against the session's SHA range as report-only. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
+Invoked as the independent review step of the implementation phase. This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. It validates the fixed identity, existing effort slug, and exact `.awf/efforts/<slug>/memory.md` path, keeps the parent as the one user-managed memory writer, and dispatches the `code-reviewer` subagent against the session's SHA range as report-only. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
 
 ## When this skill fires
 

@@ -43,7 +43,31 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 
 <!-- awf:edit test-isolation: default; create .awf/skills/parts/debugging/test-isolation.md to override -->
-4. **Establish effort ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search; a minimal simple known-root fix stays effort-free. Once evidence confirms a concrete non-minimal fix outcome, carry the one effort slug and exact `.awf/efforts/<slug>/memory.md` path onward; exploring children receive them read-only and never edit memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
+4. **Confirm ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search, and a minimal simple known-root fix stays effort-free. An existing effort resumes under its fixed identity without title reconfirmation only while the fix remains within its confirmed outcome. When evidence identifies a concrete non-minimal fix without existing ownership, complete the mandatory first-creation confirmation below before writing a failing test or mutating files; exploring children remain non-creating and receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible.
+
+**Mandatory first-creation confirmation.** Discovery creates no effort. Analysis, exploration,
+prioritization, option comparison, and selection remain discovery until one concrete non-minimal
+outcome can be named. A direct concrete non-minimal request follows the same boundary. A minimal
+simple fix remains effort-free. An existing effort resumes under its fixed identity and existing
+validation rules without title reconfirmation only while work remains within its confirmed outcome;
+a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
+effort.
+
+When no existing effort owns the outcome, present both fields:
+
+`Outcome: <concrete non-minimal outcome>`
+`Effort title: <proposed title>`
+
+Ask the user to confirm creation, then end the turn without creating an effort, memory, branch, or
+managed worktree. Only a clear response in a later turn confirms the pair and permits
+`awf effort new "<confirmed title>"`. Agreement before the pair was presented does not confirm it.
+A requested change stays in discovery and receives a revised pair; an ambiguous response receives a
+focused clarification.
+
+If creation fails while the pair and its later confirming response remain available in conversational
+context, report the concrete failure and recovery action and retry without another confirmation. If
+context loss or session replacement makes that evidence unavailable, present and confirm the pair
+again before retrying creation.
 
 5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline. Before writing the test, run `awf context <the suspect paths>`.
 Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.

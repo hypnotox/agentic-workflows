@@ -278,14 +278,24 @@ func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestUnifiedEffortWorkflowCoverage)
 func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	cat := loadCatalog(t)
-	roles := map[string]string{
-		"brainstorming": "creation", "proposing-adr": "carry", "adr-lifecycle": "carry",
-		"writing-plans": "creation", "reviewing-plan": "review", "reviewing-plan-resync": "review",
-		"reviewing-adr": "review", "executing-direct": "execution", "executing-plans": "execution",
-		"subagent-driven-development": "execution", "reviewing-impl": "terminal-review",
-		"retrospective": "finish", "debugging": "conditional-creation", "bugfix": "conditional-creation",
-		"tdd": "conditional-creation", "refactor-coupling-audit": "report", "exploring": "report",
-		"orienting": "report", "roadmap-graduation": "conditional-creation",
+	roleMembers := map[string][]string{
+		"first-creation-discovery":     {"brainstorming", "debugging", "roadmap-graduation"},
+		"confirmed-downstream-minimal": {"bugfix", "tdd", "executing-direct"},
+		"confirmed-downstream": {
+			"proposing-adr", "adr-lifecycle", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
+			"reviewing-adr", "executing-plans", "subagent-driven-development", "reviewing-impl", "retrospective",
+		},
+		"confirmed-report-support": {"refactor-coupling-audit"},
+		"never-create-support":     {"exploring", "orienting"},
+	}
+	roles := map[string]string{}
+	for role, names := range roleMembers {
+		for _, name := range names {
+			if previous, exists := roles[name]; exists {
+				t.Fatalf("skill %q belongs to both %q and %q", name, previous, role)
+			}
+			roles[name] = role
+		}
 	}
 	if len(roles) != len(cat.Skills) {
 		t.Fatalf("unified-effort classification has %d skills, enabled catalog has %d", len(roles), len(cat.Skills))
@@ -349,6 +359,55 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			}
 			if minimal[name] && !strings.Contains(lower, "minimal simple") {
 				t.Errorf("%s/%s lost the minimal-simple effort exception", target, name)
+			}
+			switch role {
+			case "first-creation-discovery":
+				laterResponse := strings.Index(body, "clear response in a later turn")
+				creation := strings.Index(body, "awf effort new")
+				for _, want := range []string{
+					"**Mandatory first-creation confirmation.**",
+					"Discovery creates no effort",
+					"`Outcome: <concrete non-minimal outcome>`",
+					"`Effort title: <proposed title>`",
+					"Ask the user to confirm creation",
+					"end the turn without creating an effort",
+					"clear response in a later turn",
+				} {
+					if !strings.Contains(body, want) {
+						t.Errorf("%s/%s (%s) missing shared confirmation phrase %q", target, name, role, want)
+					}
+				}
+				if laterResponse < 0 || creation < 0 || creation < laterResponse {
+					t.Errorf("%s/%s (%s) must place awf effort new after the later-response confirmation", target, name, role)
+				}
+			case "confirmed-downstream-minimal", "confirmed-downstream":
+				for _, want := range []string{"already-confirmed", "mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
+					if !strings.Contains(lower, want) {
+						t.Errorf("%s/%s (%s) must validate confirmed ownership and route absence to first creation", target, name, role)
+					}
+				}
+				if role == "confirmed-downstream-minimal" && !strings.Contains(lower, "minimal simple") {
+					t.Errorf("%s/%s lost the minimal-simple effort exception", target, name)
+				}
+			case "confirmed-report-support":
+				for _, want := range []string{"existing confirmed effort", "mandatory first-creation outcome/title confirmation", "never creates a missing effort", "report-only", "never edit"} {
+					if !strings.Contains(lower, want) {
+						t.Errorf("%s/%s (%s) missing confirmed report-support contract %q", target, name, role, want)
+					}
+				}
+			case "never-create-support":
+				if !strings.Contains(lower, "never creates an effort") {
+					t.Errorf("%s/%s (%s) must state that it never creates an effort", target, name, role)
+				}
+				if name == "exploring" && (!strings.Contains(lower, "report-only") || !strings.Contains(lower, "never edit")) {
+					t.Errorf("%s/%s must remain report-only toward parent memory", target, name)
+				}
+				if name == "orienting" && (!strings.Contains(lower, "one user-managed writer") || !strings.Contains(lower, "stale checkpoint")) {
+					t.Errorf("%s/%s must retain one-writer stale-checkpoint correction", target, name)
+				}
+			}
+			if role != "first-creation-discovery" && strings.Contains(body, "awf effort new") {
+				t.Errorf("%s/%s (%s) must not create an effort", target, name, role)
 			}
 			if reviewers[name] && !strings.Contains(lower, "never edit") {
 				t.Errorf("%s/%s does not keep report-only children from memory mutation", target, name)
