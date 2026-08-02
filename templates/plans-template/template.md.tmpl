@@ -25,7 +25,7 @@ Completes: ["plan-outcome"]
 
 ### Task 1.1: <what>
 
-Supply qualifying implementation-ready instructions. Add nonempty JSON `Applying` or `Context` arrays only when an ADR applies; each reference has inert form `<adr-number-or-retained-slug>:<decision-slug-or-#N>`. Immediately below a task heading, the recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`. Use `Latitude: exact` for a contract-bearing task; `Kind: spike` requires `Question`, no body, and an answer in Notes; `Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`; ambiguous scope requires `Paths`; and any batch, glob, or pathspec scope requires `Post-check`. Omit fields whose contracts do not apply.
+Supply qualifying implementation-ready instructions. Add nonempty JSON `Applying` or `Context` arrays only when an ADR applies; each reference has inert form `<adr-number-or-retained-slug>:<decision-slug-or-#N>`. Immediately below a task heading, the recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`. `Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`. Use `Latitude: exact` for a contract-bearing task; `Kind: spike` requires `Question`, no body, and an answer in Notes; `Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`; ambiguous scope requires `Paths`; and any batch, glob, or pathspec scope requires `Post-check`. Omit fields whose contracts do not apply.
 
 ### Phase close
 

@@ -70,9 +70,9 @@
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:0d1391b636a0268e124e437e9399259909cfb8979a82fbb0e06d54015f1d9512",
+      "templateHash": "sha256:560ded37d9605b3c945de399a8906522ef437f5f780badb8c4e17258e4fc4d58",
       "configHash": "sha256:5c1376eb3775a0a0420fc7487f6faeecbf8b4d07c1a32e570b7fddcbfa4a17c4",
-      "outputHash": "sha256:51fd1e64fe4eca4c537333122696a5c7aabce8a0e2d056700b6df47a1d359ecd"
+      "outputHash": "sha256:2063445a6e19566227e505cd77e12d00301ce0a8bce8a65f51bb8c0994a91458"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -178,9 +178,9 @@
     },
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:9347a6ed30864b5d1b7dae30d2232834aa20f3d583b3305b9efa8e96f0924938",
+      "templateHash": "sha256:71381cc34914ac1d57dee41b40c468c07a08dfb2d2bd5c753cbeb76d453b59ad",
       "configHash": "sha256:e80b892535df7bd394d3768eae915ae1786ff6c418925b04dd4699494c7fede0",
-      "outputHash": "sha256:fd8940278f965e3770396b1208e38b8fdcb30460da7cbfe981298fb3127fea4e"
+      "outputHash": "sha256:51a133d32fad500541b6d4767d44b4b595049ca50faa89ac09dec3ee506e2579"
     },
     ".pi/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -214,9 +214,9 @@
     },
     ".pi/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:0d1391b636a0268e124e437e9399259909cfb8979a82fbb0e06d54015f1d9512",
+      "templateHash": "sha256:560ded37d9605b3c945de399a8906522ef437f5f780badb8c4e17258e4fc4d58",
       "configHash": "sha256:030af0261eb240f688be939f250ff2d3bd6506ccbf9807124e50310d48fd321e",
-      "outputHash": "sha256:51fd1e64fe4eca4c537333122696a5c7aabce8a0e2d056700b6df47a1d359ecd"
+      "outputHash": "sha256:2063445a6e19566227e505cd77e12d00301ce0a8bce8a65f51bb8c0994a91458"
     },
     ".pi/extensions/awf-context-usage/index.ts": {
       "templateId": "pi/awf-context-usage/index.ts.tmpl",
@@ -352,9 +352,9 @@
     },
     ".pi/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:9347a6ed30864b5d1b7dae30d2232834aa20f3d583b3305b9efa8e96f0924938",
+      "templateHash": "sha256:71381cc34914ac1d57dee41b40c468c07a08dfb2d2bd5c753cbeb76d453b59ad",
       "configHash": "sha256:40690e12a08cc9ec59fb04d46c49b0ae50cc34fd2887ac4f21fb9de797d76fc4",
-      "outputHash": "sha256:b7af4560ac3144c3098145d444d38055f033aa6a85a3182350dd1d2fd5087724"
+      "outputHash": "sha256:33e3faf5fe8ccfa879648213c6d28bfdb85e7b274fd2123fac86b327522ed2dd"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
@@ -486,15 +486,15 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:0bf18f7ab2a87b22b3b1aa9164de128ba4c528b91a1d76c71c9747378ba12494",
+      "templateHash": "sha256:c767e3647ae66c4126252efc627b2b246e03d611cc7df65dd807fc0a4a1f821c",
       "configHash": "sha256:33f22ebf6e3ea2d21a20556ee4c1a018dc97a0d3676a78a4cdef60e2148b054d",
-      "outputHash": "sha256:4563c01bc725ae9e29cd64e11b3ff2ceaf0a8bcbe66ab43ff27824a77285d664"
+      "outputHash": "sha256:4ec62f9f78856c16bae7af5fb0e13b5ea7da2e262987a355825a24af81b6d7ca"
     },
     "docs/plans/template.md": {
       "templateId": "plans-template/template.md.tmpl",
-      "templateHash": "sha256:626ad912feb972477fd9335d183598962723cdb86228c668398ad48acd9d1bb1",
+      "templateHash": "sha256:92131c33e3488bd930010e1a9d5f125c21c4859c4f17410c2d344539e72ac4aa",
       "configHash": "sha256:17391ab1e25e4398dce677492cc2a953a464c151122135bce9c509a18bcff583",
-      "outputHash": "sha256:3ec7633f83dd853d05e6f729fb6d929fe710f698d97329adc65e55fa7d9092b5"
+      "outputHash": "sha256:1efeec634255b7f0082a274e05e50cc40e6b13f3cb2b67d56817cd36fc4eca21"
     },
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
