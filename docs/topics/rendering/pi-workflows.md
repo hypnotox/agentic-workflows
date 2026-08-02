@@ -13,7 +13,7 @@ Pi workflow contracts: governed subagent tools, session handoff, native skills, 
 
 Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. Post-countdown revalidation covers only the pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-context-aware-discretionary-pi-handoffs
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -38,14 +38,14 @@ Backing: test
 
 Pi handoff exposes exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and otherwise carries the prose unchanged into the replacement session, automatic submission, editor fallback, and recovery path. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-context-aware-discretionary-pi-handoffs
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
 Pi workflow guidance keeps checkpoint persistence mandatory and permits session replacement only after a completed formal phase checkpoint, after explicit approval and its next action are persisted, or after an additional safe resumable checkpoint. At each eligible point the agent chooses continuation or handoff from currently available context and compaction evidence, retained-context relevance, and upcoming work, with no fixed threshold; declining handoff is autonomous continuation, not a check-in. A replacement session appends the handoff-log boundary as its first memory update before substantive continuation, while cancellation or failure that leaves the old session active appends none. Callers carry any effort-memory reorientation instruction across the replacement boundary; workflow guidance remains the owner of checkpoint eligibility, reorientation, and boundary logging.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-context-aware-discretionary-pi-handoffs
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0209
 Backing: test
 
 ### `invariant: pi-native-workflow-skills`

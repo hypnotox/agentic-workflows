@@ -4,7 +4,7 @@ slug: context-aware-discretionary-pi-handoffs
 status: Implementing
 date: 2026-08-02
 ---
-# ADR-context-aware-discretionary-pi-handoffs: Context-aware discretionary Pi handoffs
+# ADR-0209: Context-aware discretionary Pi handoffs
 
 
 ## Context

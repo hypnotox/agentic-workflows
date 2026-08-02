@@ -397,7 +397,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:5a604b6ae6426897fbfd834218c1df0bb52b21fd5aee797382e349780c579eae",
+      "outputHash": "sha256:2ece88eaf9447057cf1fe2fdb22282b7125a4e34fd9fe18309d93f503f475f70",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -685,14 +685,14 @@
     "docs/topics/rendering/pi-runtime.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:3779573b531b613468edf7f9fd0cef6fbc618a6b8c24da27848f8b34f1b0728a",
-      "outputHash": "sha256:7f3c26b73f1018bfe9c0569184d54f749e1028deee07bba700be4ffb6498bcd0"
+      "configHash": "sha256:e54d4c98317cfcad6b1307c82328c5a1245800969a950f4ed241ae75b2857527",
+      "outputHash": "sha256:ff698134fcfafd4413b60a2a1d4418515aabe2350fa853b19aa9c8baf42a7b6e"
     },
     "docs/topics/rendering/pi-workflows.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:affde4a212773df7820c771bb3b7baec76274c6d2ee1dac9001716537118a5e7",
-      "outputHash": "sha256:1e439d5a9c5d09b9f413e3d7a4f42648f380c8d8356e95fd1a21f7033ab0ed62"
+      "configHash": "sha256:856946c88f5bbe2ac3774357645bcf224970af49ba40beee2d59dcd7b8201fad",
+      "outputHash": "sha256:ed493fa78e4eddd79928c07fe449b07029f6812f8c1becbe6f28f4b7a8502f2e"
     },
     "docs/topics/rendering/project-output-plan.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -727,8 +727,8 @@
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:957ef3856c8272a4836cf9dc1346dda586fdd5091faa0f3c0c36cf01da95fc36",
-      "outputHash": "sha256:cef59bd46130f3190943eb1674d48add093fd2c9eb515abab64e16868765e0fa"
+      "configHash": "sha256:40d0171307ad8b2ecd9ef54af0a098deee5a9fc80787338a581e40634cfb82a9",
+      "outputHash": "sha256:a03c63847d8e8f48963012279c10c586586800dd05798484e3ae5725743b2a08"
     },
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",

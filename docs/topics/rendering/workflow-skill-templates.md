@@ -41,7 +41,7 @@ Backing: test
 
 Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix or merely because a boundary was reached, and once the outcome is concrete and non-minimal it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, and updates phase, next action, time, any unrecorded settled decision, and any observation in one writer-owned batch. It appends a handoff-log entry only after a fresh-session boundary actually exists. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; an additional checkpoint is permitted at any safe point whose next action is independently resumable, and every checkpoint points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-context-aware-discretionary-pi-handoffs
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
