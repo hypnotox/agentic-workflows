@@ -98,9 +98,19 @@ Downgrade compatibility is not a goal.
    and the operation-specific effort, memory, destination, or prior-claim facts. Handled
    conditions are `ready`, `attached`, `taken-over`, `heartbeat`, `checkout-updated`,
    `detached`, `not-owner`, and `missing`; ownership loss and missing effort are data, not
-   error-prose branches. Malformed invocation, unsafe residents, invalid headers, repository
-   mismatch, and I/O failure exit nonzero with empty stdout and bounded actionable stderr,
-   preserving the existing JSON CLI convention. Missing activity means no attachment claim.
+   error-prose branches.
+
+   Every refusal that observes effort or repository state follows the actionable-outcome
+   protocol: it uses the applicable closed category (`operation`, `topology`, or
+   `repository-identity`), states the observed present-tense condition, carries a boolean for
+   every activity, memory, or CWD axis the composite operation could have changed, gives an
+   ordered independently executable remedy, and includes a cause exactly when a mechanism
+   call failed. Unsafe resident, invalid header, repository mismatch, missing effort, and
+   ownership mismatch are typed identities that the Go CLI and TypeScript extension consume
+   without matching message substrings; their stable JSON condition remains available where
+   the extension must branch. Malformed invocation and failures that observe no managed state
+   exit nonzero with empty stdout and bounded actionable stderr, preserving the existing JSON
+   CLI convention. Missing activity means no attachment claim.
 
 4. Treat activity as advisory resident state. It never authorizes mutation, changes Git
    topology, changes effort lifecycle meaning, or blocks show, list, memory update,
@@ -160,11 +170,12 @@ Downgrade compatibility is not a goal.
    `remote-pi:name-override:assigned` only for diagnostics; assigned names and addresses are
    mutable opaque values, never routing or lock inputs. Remote Pi serializes identity
    reconciliation so extension load order, reconnects, relay state, base-name changes, and
-   broker collision suffixes converge. A process restart initially restores the base name
-   unless and until awf replays a still-active association; this extension deliberately
-   starts locally detached and does not infer one from a resident alone. Metadata and name
-   publication failures never roll back the local awf association or CWD, never grant
-   authority, and never become locks. Other peers may use the snapshot to hold a risky
+   broker collision suffixes converge. Replay is limited to an association held by the
+   currently running extension process, such as after extension load-order races or Remote Pi
+   reconnects. A Pi process restart always starts locally detached, restores the configured
+   base name, and never infers or replays an association from a resident left by the prior
+   process. Metadata and name publication failures never roll back the local awf association
+   or CWD, never grant authority, and never become locks. Other peers may use the snapshot to hold a risky
    receiving-checkout mutation and contact the named peer, but that behavior remains
    voluntary.
 
@@ -181,24 +192,29 @@ Downgrade compatibility is not a goal.
     artifact found during implementation, then renders their generated outputs in the same
     commit.
 
-11. Land prerequisites in owner order before awf advertises end-to-end runtime support.
-    Pi first implements and merges SessionManager persistence/relocation, runtime and
-    extension types, lifecycle, official TUI/RPC/print host bindings, tests, documentation,
-    and changelog, then publishes them in one lockstep Pi/coding-agent patch release. Remote
-    Pi has implemented and committed the process-local override, capability, replay, status,
-    identity-reconciliation, tests, and README contract at commit
-    `3355463ff484bbd4fb80ada9fcd826dcb6ad6a53`; its prerequisite remains unreleased until a
-    maintainer authorizes a version and publish path. Its authoritative runtime signal is
-    `nameOverride.version === 1` with the `awf` namespace. Exact minimum versions are filled
-    in from the first releases that contain those capabilities, never guessed in advance.
+11. Land prerequisites in owner order before awf advertises portable end-to-end runtime
+    support. Pi has implemented, tested, documented, and committed SessionManager
+    persistence/relocation, runtime and extension types, lifecycle, official TUI/RPC/print
+    host bindings, and changelog at commit
+    `f9447485497b12c100c2064c295c2c1beead0c29`. Remote Pi has implemented and committed the
+    process-local override, capability, replay, status, identity-reconciliation, tests, and
+    README contract at commit `3355463ff484bbd4fb80ada9fcd826dcb6ad6a53`. Both prerequisite
+    owner contracts are therefore landed for awf development, but neither custom fork has a
+    published minimum release yet.
 
-    After the owning releases exist, awf updates its pinned Pi test/runtime floor and Remote
-    Pi integration expectation, renders the extension, and adds real-runtime smoke coverage.
+    awf may implement and smoke-test against builds containing those commits while detecting
+    their capabilities at runtime. It fills in and raises exact minimum versions only from
+    the first published releases that contain them, never guesses release numbers, and does
+    not claim portable support before those releases exist. Remote Pi's authoritative signal
+    is `nameOverride.version === 1` with the `awf` namespace.
     Guarded awf code may merge earlier only when missing `ctx.changeCwd` leaves committed
-    association/location unchanged and missing override support degrades to metadata-only;
-    awf does not advertise live rebinding before Pi ships it or create a private compatibility
-    shim for either owner contract. The two prerequisite repositories may land in either
-    order.
+    association/location unchanged and makes that `using_effort` call fail with one visible,
+    actionable notice naming the required Pi capability and upgrade remedy. Capability
+    detection remains mandatory even after awf raises its tested runtime floor. Missing
+    Remote Pi override support still degrades to metadata-only through its negotiated
+    compatibility contract. awf does not advertise live rebinding before Pi ships it or
+    create a private compatibility shim for either owner contract. The two prerequisite
+    repositories may land in either order.
 
 12. Catalog a `using-effort` support skill for new adopters and explicitly enable it in this
     repository. Existing adopters receive the capability through normal catalog availability
