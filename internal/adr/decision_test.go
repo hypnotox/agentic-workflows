@@ -22,8 +22,8 @@ func decisionFixture(format, name, slug, status, decision string) string {
 
 // invariant: adr-system/adr-lifecycle:decision-item-stable-identity (TestDecisionItemStableIdentity)
 func TestDecisionItemStableIdentity(t *testing.T) {
-	first := "1. `decision: stable-one` First commitment.\n\n   Continuation bytes.\n\n   - nested list\n\n   ```go\n   1. backtick fence stays in the first item\n   ```\n\n"
-	second := "2. `decision: stable-two` Second commitment.\n\n   ~~~text\n   2. tilde fence stays in the second item\n   ~~~\n"
+	first := "1. `decision: current-context` First commitment.\n\n   Continuation bytes.\n\n   - nested list\n\n   ```go\n   1. backtick fence stays in the first item\n   ```\n\n"
+	second := "2. `decision: supersedes-history` Second commitment.\n\n   ~~~text\n   2. tilde fence stays in the second item\n   ~~~\n"
 	v4Bytes := decisionFixture(V4FormatMarker, "pending.md", "pending", statusProposed, first+second)
 	before := v4Bytes
 	v4, err := ParseV4("pending.md", []byte(v4Bytes))
@@ -36,10 +36,20 @@ func TestDecisionItemStableIdentity(t *testing.T) {
 	if v4.source != before || v4.decisionStart == 0 || v4.decisionEnd == 0 {
 		t.Fatal("V4 source or Decision bounds changed during parsing")
 	}
-	for selector, want := range map[string]string{"stable-one": first, "stable-two": second + "\n\n"} {
+	for selector, want := range map[string]string{"current-context": first, "supersedes-history": second + "\n\n"} {
 		item, err := v4.decisionBySelector(selector)
 		if err != nil || item.source != want {
-			t.Fatalf("V4 selector %q = %#v, %v", selector, item, err)
+			t.Fatalf("identity-only V4 selector %q = %#v, %v", selector, item, err)
+		}
+	}
+	for name, malformed := range map[string]string{
+		"missing marker":   strings.Replace(v4Bytes, "`decision: current-context` ", "", 1),
+		"malformed marker": strings.Replace(v4Bytes, "current-context", "Current", 1),
+		"duplicate marker": strings.Replace(v4Bytes, "supersedes-history", "current-context", 1),
+		"empty commitment": strings.Replace(v4Bytes, "First commitment.", "", 1),
+	} {
+		if _, err := ParseV4("pending.md", []byte(malformed)); err == nil {
+			t.Fatalf("%s was accepted", name)
 		}
 	}
 	if _, err := v4.decisionBySelector("#1"); err == nil {
@@ -75,7 +85,7 @@ func TestDecisionItemStableIdentity(t *testing.T) {
 			if err != nil || item.ordinal != 1 {
 				t.Fatalf("frozen #1 = %#v, %v", item, err)
 			}
-			for _, incompatible := range []string{"1", "#01", "stable-one"} {
+			for _, incompatible := range []string{"1", "#01", "current-context"} {
 				if _, err := frozen.decisionBySelector(incompatible); err == nil {
 					t.Fatalf("incompatible selector %q was accepted", incompatible)
 				}
@@ -84,8 +94,5 @@ func TestDecisionItemStableIdentity(t *testing.T) {
 				t.Fatal("unknown frozen pre-V4 ordinal was accepted")
 			}
 		})
-	}
-	if strings.Contains(strings.ToLower(v4.decisions[0].slug), "supersed") || strings.Contains(strings.ToLower(v4.decisions[0].slug), "current") {
-		t.Fatal("selector acquired semantics beyond identity")
 	}
 }
