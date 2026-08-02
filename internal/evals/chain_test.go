@@ -308,6 +308,22 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 
 	minimal := map[string]bool{"brainstorming": true, "executing-direct": true, "debugging": true, "bugfix": true, "tdd": true, "roadmap-graduation": true}
 	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true, "orienting": true}
+	ownershipBoundary := map[string]string{
+		"bugfix":                      "1. **Ensure a regression test",
+		"tdd":                         "1. Run `awf context",
+		"executing-direct":            "2. Implement only the agreed change",
+		"proposing-adr":               "1. **Scaffold the file",
+		"adr-lifecycle":               "1. **Edit the ADR history and status",
+		"writing-plans":               "1. **Confirm scope with the user",
+		"reviewing-plan":              "1. **Identify the plan path",
+		"reviewing-plan-resync":       "Identify the plan path first",
+		"reviewing-adr":               "1. **Identify the ADR path",
+		"executing-plans":             "2. You, the parent executing this plan",
+		"subagent-driven-development": "2. You, the dispatching parent",
+		"reviewing-impl":              "1. **Determine the session SHA range",
+		"retrospective":               "2. **Reflect and record worthy observations",
+		"refactor-coupling-audit":     "**Pick the audit shape",
+	}
 	routineOrdered := []string{
 		"**Routine checkpoint.**",
 		"minimal simple fix uses no effort",
@@ -381,18 +397,35 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 					t.Errorf("%s/%s (%s) must place awf effort new after the later-response confirmation", target, name, role)
 				}
 			case "confirmed-downstream-minimal", "confirmed-downstream":
-				for _, want := range []string{"already-confirmed", "mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
-					if !strings.Contains(lower, want) {
-						t.Errorf("%s/%s (%s) must validate confirmed ownership and route absence to first creation", target, name, role)
+				boundary := ownershipBoundary[name]
+				end := strings.Index(body, boundary)
+				if boundary == "" || end < 0 {
+					t.Errorf("%s/%s (%s) lost pre-mutation ownership boundary %q", target, name, role, boundary)
+					break
+				}
+				preMutation := strings.ToLower(body[:end])
+				if !strings.Contains(preMutation, "already-confirmed") && !strings.Contains(preMutation, "existing confirmed effort") {
+					t.Errorf("%s/%s (%s) pre-mutation contract does not establish confirmed ownership", target, name, role)
+				}
+				for _, want := range []string{"mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
+					if !strings.Contains(preMutation, want) {
+						t.Errorf("%s/%s (%s) pre-mutation contract missing %q", target, name, role, want)
 					}
 				}
-				if role == "confirmed-downstream-minimal" && !strings.Contains(lower, "minimal simple") {
-					t.Errorf("%s/%s lost the minimal-simple effort exception", target, name)
+				if role == "confirmed-downstream-minimal" && !strings.Contains(preMutation, "minimal simple") {
+					t.Errorf("%s/%s lost the pre-mutation minimal-simple effort exception", target, name)
 				}
 			case "confirmed-report-support":
+				boundary := ownershipBoundary[name]
+				end := strings.Index(body, boundary)
+				if boundary == "" || end < 0 {
+					t.Errorf("%s/%s (%s) lost pre-analysis ownership boundary %q", target, name, role, boundary)
+					break
+				}
+				preAnalysis := strings.ToLower(body[:end])
 				for _, want := range []string{"existing confirmed effort", "mandatory first-creation outcome/title confirmation", "never creates a missing effort", "report-only", "never edit"} {
-					if !strings.Contains(lower, want) {
-						t.Errorf("%s/%s (%s) missing confirmed report-support contract %q", target, name, role, want)
+					if !strings.Contains(preAnalysis, want) {
+						t.Errorf("%s/%s (%s) pre-analysis contract missing %q", target, name, role, want)
 					}
 				}
 			case "never-create-support":

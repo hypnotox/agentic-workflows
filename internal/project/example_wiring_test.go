@@ -171,18 +171,27 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			t.Errorf("%s does not preserve fixed-identity resume without reconfirmation", label)
 		}
 	}
-	assertDownstream := func(label, body string) {
+	assertDownstream := func(label, body, boundary string) {
 		t.Helper()
 		if strings.Contains(body, "awf effort new") {
 			t.Errorf("%s creates an effort instead of requiring confirmed ownership", label)
 		}
-		for _, want := range []string{"already-confirmed", "mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
-			if !strings.Contains(strings.ToLower(body), want) {
-				t.Errorf("%s is missing confirmed-downstream ownership contract %q", label, want)
+		end := strings.Index(body, boundary)
+		if end < 0 {
+			t.Errorf("%s lost pre-mutation boundary %q", label, boundary)
+			return
+		}
+		preMutation := strings.ToLower(body[:end])
+		if !strings.Contains(preMutation, "already-confirmed") && !strings.Contains(preMutation, "existing confirmed effort") {
+			t.Errorf("%s pre-mutation contract does not establish confirmed ownership", label)
+		}
+		for _, want := range []string{"mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
+			if !strings.Contains(preMutation, want) {
+				t.Errorf("%s pre-mutation ownership contract is missing %q", label, want)
 			}
 		}
-		if !strings.Contains(body, "fixed identity") || !strings.Contains(body, "without title reconfirmation") {
-			t.Errorf("%s does not preserve fixed-identity resume without reconfirmation", label)
+		if !strings.Contains(preMutation, "fixed identity") || !strings.Contains(preMutation, "without title reconfirmation") {
+			t.Errorf("%s pre-mutation contract does not preserve fixed-identity resume without reconfirmation", label)
 		}
 	}
 	for _, target := range []string{".pi", ".claude"} {
@@ -201,8 +210,13 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 		for _, name := range []string{"debugging", "roadmap-graduation"} {
 			assertDiscoveryOwner(target+" "+name, readSkill(name))
 		}
-		for _, name := range []string{"tdd", "proposing-adr", "writing-plans"} {
-			assertDownstream(target+" "+name, readSkill(name))
+		downstreamBoundaries := map[string]string{
+			"tdd":           "1. Run `awf context",
+			"proposing-adr": "1. **Scaffold the file",
+			"writing-plans": "1. **Confirm scope with the user",
+		}
+		for name, boundary := range downstreamBoundaries {
+			assertDownstream(target+" "+name, readSkill(name), boundary)
 		}
 		orienting := readSkill("orienting")
 		if strings.Contains(orienting, "awf effort new") || !strings.Contains(orienting, "never creates an effort") || !strings.Contains(orienting, "fixed identity") {
@@ -223,6 +237,14 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 				t.Errorf("%s/%s contains an unresolved-value token", target, entry.Name())
 			}
 		}
+	}
+	for _, target := range []string{".pi", ".claude"} {
+		path := filepath.Join("../..", target, "skills", "awf-retrospective", "SKILL.md")
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read project retrospective %s: %v", target, err)
+		}
+		assertDownstream("project "+target+" retrospective", string(raw), "2. **Reflect and record worthy observations")
 	}
 	workflow := readExample("docs/workflow.md")
 	for _, want := range []string{"Discovery creates no effort", "existing effort resumes under its fixed identity", "newly discovered outcome cannot silently reuse"} {
