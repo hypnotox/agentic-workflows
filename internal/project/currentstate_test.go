@@ -305,6 +305,18 @@ func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 	}
 }
 
+// invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCheckCurrentStateNoInvariantClaims)
+func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
+	p := csRepo(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
+	report, err := p.CheckCurrentState(testContext(t))
+	if err != nil {
+		t.Fatalf("current-state check with no invariant claims: %v", err)
+	}
+	if findings := report.Findings(); len(findings) != 0 {
+		t.Fatalf("current-state findings with no invariant claims = %v, want none", findings)
+	}
+}
+
 // TestCheckCurrentStateCorruptLock covers the lock-read failure: a malformed
 // awf.lock is not gated before this project method.
 func TestCheckCurrentStateCorruptLock(t *testing.T) {
@@ -324,83 +336,5 @@ func TestCheckCurrentStateLoadError(t *testing.T) {
 	})
 	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
 		t.Fatal("expected a corpus load error from the malformed ADR")
-	}
-}
-
-// invYAML declares a marker source over internal/** and a test-backing glob so a
-// test-backed invariant claim can carry its required proof marker.
-const invYAML = `prefix: example
-integrationBranch: main
-skills:
-  - tdd
-agents:
-  - code-reviewer
-domains:
-  - alpha
-currentState:
-  sources:
-    - globs: ["internal/**"]
-      marker: "//"
-  testGlobs: ["internal/**/*_test.go"]
-`
-
-// TestCurrentStateInvariants reports the invariant claims from the working-tree
-// topic corpus: a test-backed invariant with its proof-marker site and an
-// unbacked one with its Verify guidance, while a rule claim never appears.
-func TestCurrentStateInvariants(t *testing.T) {
-	p := csRepo(t, invYAML, map[string]string{
-		".awf/domains/alpha.yaml":             "paths:\n  - internal/**\n",
-		".awf/topics/metadata/alpha/one.yaml": "title: One\nsummary: O.\npaths:\n  - internal/**\n",
-		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n" +
-			"### `rule: r`\nA rule.\nOrigin: ADR-0001\n\n" +
-			"### `invariant: backed`\nBacked one.\nOrigin: ADR-0001\nBacking: test\n\n" +
-			"### `invariant: reasoned`\nReasoned one.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect by hand.\n",
-		"internal/foo.go":      "package foo\n",
-		"internal/foo_test.go": "package foo\n// invariant: alpha/one:backed (TestBacked)\nfunc TestBacked() {}\n",
-	})
-	invs, err := p.CurrentStateInvariants(testContext(t))
-	if err != nil {
-		t.Fatalf("CurrentStateInvariants: %v", err)
-	}
-	if len(invs) != 2 {
-		t.Fatalf("invariants = %#v; want the two invariant claims (rule excluded)", invs)
-	}
-	// Sorted by ID: alpha/one:backed then alpha/one:reasoned.
-	if invs[0].ID != "alpha/one:backed" || invs[0].Backing != "test" || len(invs[0].Proofs) != 1 ||
-		!strings.HasPrefix(invs[0].Proofs[0], "internal/foo_test.go:") {
-		t.Errorf("backed invariant = %#v", invs[0])
-	}
-	if invs[1].ID != "alpha/one:reasoned" || invs[1].Backing != "unbacked" || invs[1].Verify != "inspect by hand." || len(invs[1].Proofs) != 0 {
-		t.Errorf("reasoned invariant = %#v", invs[1])
-	}
-}
-
-// TestCurrentStateInvariantsEmpty proves a project with no invariant claims
-// reports none without error.
-// invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCurrentStateInvariantsEmpty)
-func TestCurrentStateInvariantsEmpty(t *testing.T) {
-	p := csRepo(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
-	invs, err := p.CurrentStateInvariants(testContext(t))
-	if err != nil {
-		t.Fatalf("CurrentStateInvariants: %v", err)
-	}
-	if len(invs) != 0 {
-		t.Fatalf("invariants = %#v; want none", invs)
-	}
-}
-
-// TestCurrentStateInvariantsError propagates a corpus load failure (a
-// backing-contract violation is a load error, not a reported entry): a
-// test-backed invariant with no proof marker.
-func TestCurrentStateInvariantsError(t *testing.T) {
-	p := csRepo(t, invYAML, map[string]string{
-		".awf/domains/alpha.yaml":             "paths:\n  - internal/**\n",
-		".awf/topics/metadata/alpha/one.yaml": "title: One\nsummary: O.\npaths:\n  - internal/**\n",
-		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n" +
-			"### `invariant: backed`\nBacked one.\nOrigin: ADR-0001\nBacking: test\n",
-		"internal/foo.go": "package foo\n",
-	})
-	if _, err := p.CurrentStateInvariants(testContext(t)); err == nil {
-		t.Fatal("expected a load error for the test-backed invariant with no proof marker")
 	}
 }

@@ -126,8 +126,6 @@ runs it when the hooks artifact is enabled).
 `},
 				},
 			},
-			{Name: "invariants", Summary: "Report each invariant claim's backing and proof sites", MaxPos: 0,
-				HelpBody: "Usage: awf check invariants\n\nReport each invariant claim's backing mode and proof-marker sites.\n"},
 		},
 	},
 

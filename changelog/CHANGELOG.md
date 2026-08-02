@@ -32,6 +32,13 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Verification commands now live under repository and staged universes: `awf check repo` owns
+  drift, state, prose, and memory checks, while `awf check staged` owns transition-state and
+  rendered-output drift checks and `awf check staged commit` remains direct-only. Bare `awf check`
+  runs both aggregates. The `--staged` flag and the non-verdict `awf check invariants` report are
+  removed. Schema generation 32 retargets surviving var values to the new paths, clears values that
+  invoke the removed report, and deletes the retired `proseGateCmd` and `memoryGateCmd` keys.
+
 - Every `invariant:` proof marker must now name the unit that proves it,
   `<marker> invariant: <domain>/<topic>:<slug> (<name>)`, and that text must occur verbatim on a
   line of the marker's own file that does not itself open with that family's marker token,

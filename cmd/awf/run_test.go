@@ -278,7 +278,6 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "context.go", owner: "runUncovered", name: "project.Open"}:            1,
 		{file: "init.go", owner: "probeCollisions", name: "project.Open"}:            2,
 		{file: "init.go", owner: "runInit", name: "project.Open"}:                    2,
-		{file: "invariants.go", owner: "runInvariants", name: "project.Open"}:        1,
 		{file: "list_add.go", owner: "enableDisableSingleton", name: "project.Open"}: 1,
 		{file: "list_add.go", owner: "enableDisableTarget", name: "project.Open"}:    1,
 		{file: "list_add.go", owner: "runList", name: "project.Open"}:                1,
@@ -627,7 +626,6 @@ func TestRunDispatchArms(t *testing.T) {
 		{"render", []string{"awf", "render"}},
 		{"check repo drift", []string{"awf", "check", "repo", "drift"}},
 		{"check repo state", []string{"awf", "check", "repo", "state"}},
-		{"check invariants", []string{"awf", "check", "invariants"}},
 		{"list", []string{"awf", "list"}},
 		{"upgrade", []string{"awf", "upgrade"}},
 	} {
@@ -679,11 +677,6 @@ func TestHandlersOnBareDirError(t *testing.T) {
 			t.Error("expected Open error")
 		}
 	})
-	t.Run("invariants", func(t *testing.T) {
-		if err := runInvariants(ctx, bare(t), io.Discard); err == nil {
-			t.Error("expected Open error")
-		}
-	})
 	t.Run("list", func(t *testing.T) {
 		if err := runList(ctx, bare(t), "", io.Discard); err == nil {
 			t.Error("expected Open error")
@@ -704,22 +697,6 @@ func TestHandlersOnBareDirError(t *testing.T) {
 			t.Error("expected Open error")
 		}
 	})
-}
-
-func TestRunInvariantsLoadFault(t *testing.T) {
-	ctx := testContext(t)
-	// A malformed ADR makes the working-tree corpus load error out of runInvariants.
-	root := scaffoldProject(t)
-	adrDir := filepath.Join(root, "docs", "decisions")
-	if err := os.MkdirAll(adrDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte("---\n: : bad yaml : :\n---\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runInvariants(ctx, root, io.Discard); err == nil {
-		t.Error("expected a corpus load error on a malformed ADR")
-	}
 }
 
 func TestRunCheckErrorPaths(t *testing.T) {
@@ -943,18 +920,6 @@ func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
 		t.Fatalf("runInit on existing config: %v", err)
-	}
-}
-
-func TestRunInvariantsNoClaims(t *testing.T) {
-	ctx := testContext(t)
-	root := scaffoldProject(t)
-	var out bytes.Buffer
-	if err := runInvariants(ctx, root, &out); err != nil {
-		t.Fatalf("runInvariants: %v", err)
-	}
-	if !strings.Contains(out.String(), "no invariant claims") {
-		t.Errorf("expected the no-claims report, got %q", out.String())
 	}
 }
 

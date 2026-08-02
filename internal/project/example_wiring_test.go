@@ -72,7 +72,7 @@ exit 0
 }
 
 // ADR-0090: the committed example adopter is kept deterministic through ./x -
-// sync re-renders it from source; check drift-, invariant-, note-, and
+// sync re-renders it from source; check repository authority, note-, and
 // test-gates it. The example is its own Go module so the enclosing ./...
 // sweeps never see it; this test pins the wiring so it cannot be silently
 // dropped.
@@ -93,9 +93,8 @@ func TestExampleAdopterWiring(t *testing.T) {
 		`resolve or promote the issue`,
 		`|check|context|`,
 		`(cd examples/sundial && "$bindir/awf" render)`,
-		`out="$(cd examples/sundial && "$bindir/awf" check)"`,
+		`out="$(cd examples/sundial && "$bindir/awf" check repo)"`,
 		`grep -q '^note: '`,
-		`(cd examples/sundial && "$bindir/awf" check invariants)`,
 		`(cd examples/sundial && go test ./...)`,
 	} {
 		if !strings.Contains(script, want) {

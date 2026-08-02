@@ -34,9 +34,9 @@ Backing: test
 
 ### `invariant: example-adopter-checked`
 
-The ./x render step re-renders examples/sundial with the from-source binary, and ./x check runs awf check and awf check invariants inside that example, so example drift or an invariant finding there fails ./x check.
+The ./x render step re-renders examples/sundial with the from-source binary, and ./x check runs awf check repo inside that example with proseGate.enabled and memoryCite.enabled, so example drift, current-state, prose, or memory findings fail ./x check.
 Origin: ADR-0090
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0207
 Backing: test
 
 ### `invariant: example-module-isolated`

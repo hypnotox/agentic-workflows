@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.30.0",
-  "schemaVersion": 31,
+  "schemaVersion": 32,
   "files": {
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",
@@ -443,7 +443,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:e3ea0bf85598d4495a28e2ee137747a8e5a388c48aa57a2063439bcc5f58856e",
+      "outputHash": "sha256:bc549e06e665f8122ff645bb8491132b5e11751466cdc8266844648b8d18ccce",
       "regenChecked": true
     },
     "docs/domains/rendering.md": {
@@ -499,8 +499,8 @@
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
       "templateHash": "sha256:26c7896fbc808c909083ceedc048ea5706a9252d32642d031bd816d7ef1cd511",
-      "configHash": "sha256:1ef97a28939fb3ce5867e607eae975ab2a6d8b5473b711d45e326e4617edc2b8",
-      "outputHash": "sha256:4096de5aa648f1cce83f8359f1646a4ec16bc629b003349e33bb211d07efdc4b"
+      "configHash": "sha256:9432764ca646ca9e0e0fc698330a4ef012ca4b3263bbecf5b8b27684ddaa0a67",
+      "outputHash": "sha256:0600c7fc1ccf46f1e19778ea0cc8851edc970065f08c89806bd46c16997fa01b"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
@@ -613,8 +613,8 @@
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:6261e5c65a2060fbf79f5c4bda35385fdc8d4dd7960abf7ccb4d01a644318784",
-      "outputHash": "sha256:d835dc8e97a09418b839189fe505f54fa388adbfa78660cd25169ee141e79ede"
+      "configHash": "sha256:b61427a7bfde94c280326520740706c7090afa018a861c91711d2db930ffcc80",
+      "outputHash": "sha256:358e67cf909e9a72a259e75526f895955e7990227f53577ff05f7e8417decf1c"
     },
     "docs/topics/invariants/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -787,8 +787,8 @@
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:7e9f8554148f6490676d5da3aebb68183c30ee353f48f50cd3ff8df32fa6b948",
-      "outputHash": "sha256:30fe50c5fcaca25fcaf2111ae9a97492533b37b2cb2b173f6c4083ba6f216d64"
+      "configHash": "sha256:0b19d93bc6aa1be7bfb4f27fec736b0640145e66ab487113fd2e59c41ce21b82",
+      "outputHash": "sha256:11d9bb7e7c95e46a491878ad6abd252df8c6398dc2aeeed8e0ea350d919330f5"
     },
     "docs/topics/tooling/test-infrastructure.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -810,7 +810,7 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:d4d3db2716d6d62e052a62cef920f5142e119301c0b7c29649821501a025ebad",
+      "templateHash": "sha256:e6965111d21b08ba636ef3c82bb62232a5d9c0f091559f58f3caead6d7922a75",
       "configHash": "sha256:97d8985762f13e0da621f6fb79615cbf8ffdfb33b17c59df6715097797246461",
       "outputHash": "sha256:b0d6345fc713c606d549afb3f77f2c1baf75abc4edd8d2cee61209b321d3801d"
     }

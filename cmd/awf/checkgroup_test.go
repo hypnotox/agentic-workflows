@@ -88,7 +88,7 @@ func TestCheckUnknownSubcommand(t *testing.T) {
 	if !strings.Contains(errb.String(), `unknown subcommand "bogus"`) {
 		t.Errorf("diagnostic = %q, want the unknown-subcommand message", errb.String())
 	}
-	for _, want := range []string{"repo", "staged", "invariants"} {
+	for _, want := range []string{"repo", "staged"} {
 		if !strings.Contains(errb.String(), want) {
 			t.Errorf("diagnostic omits the valid subcommand %q: %s", want, errb.String())
 		}
@@ -340,15 +340,15 @@ func TestRunCheckGroupDirectEdges(t *testing.T) {
 	}
 }
 
-// awf help lists the check group's six children, extending the group-child
-// assertion to the newly grouped command.
+// awf help lists both check-universe children, extending the group-child
+// assertion to the nested command structure.
 func TestHelpListsCheckChildren(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	var out, errb bytes.Buffer
 	run([]string{"awf", "help"}, &out, &errb)
 	got := out.String()
-	for _, sub := range []string{"repo", "staged", "invariants"} {
+	for _, sub := range []string{"repo", "staged"} {
 		if !strings.Contains(got, "\n    "+sub+" ") {
 			t.Errorf("awf help omits the check child %q:\n%s", sub, got)
 		}

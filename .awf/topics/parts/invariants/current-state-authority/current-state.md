@@ -59,8 +59,9 @@ Backing: test
 
 ### `invariant: invariants-zero-slugs-clean`
 
-When a project declares no invariant claims, loading the claim corpus succeeds and the invariant report is empty. There is no backing obligation to enforce, so the check passes with no findings and no error.
+When a project declares no invariant claims, loading the claim corpus succeeds and `awf check repo state` reports no backing findings or error.
 Origin: ADR-0008
+Revised-by: ADR-0207
 Backing: test
 
 ### `invariant: removed-claim-id-not-reused`

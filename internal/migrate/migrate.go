@@ -69,6 +69,7 @@ var registry = []Migration{
 	{To: 28, Name: "drop-max-claims-per-topic", Apply: treeOnly(applyDropMaxClaimsPerTopic)},
 	{To: integrationBranchGeneration, Name: "integration-branch-explicit", Apply: treeOnly(applyIntegrationBranch)},
 	{To: intrinsicADRFormatGeneration, Name: "intrinsic-adr-format", Apply: applyIntrinsicADRFormat, OwnsSchemaStamp: true},
+	{To: retargetCheckCommandsGeneration, Name: "retarget-check-commands", Apply: treeOnly(applyRetargetCheckCommands)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -165,6 +166,13 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 				if err != nil { // coverage-ignore: HasValue parsed these same bytes as a mapping one statement above, so SetString cannot fail here
 					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 				}
+			}
+		}
+		if migration.To == retargetCheckCommandsGeneration {
+			var err error
+			out, _, err = retargetCheckCommandBytes(out)
+			if err != nil { // coverage-ignore: prior forward-port editors and the helper's initial parse already validated this YAML
+				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 			}
 		}
 	}

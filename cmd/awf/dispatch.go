@@ -92,8 +92,6 @@ func runCheckGroup(c *cmdCtx) error {
 		return runCheckStagedDrift(c.ctx, c.root, c.stdout)
 	case "staged commit":
 		return runCommitGate(c.ctx, c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
-	case "invariants":
-		return runInvariants(c.ctx, c.root, c.stdout)
 	default:
 		return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", c.sub, checkSubcommands(""))}
 	}
