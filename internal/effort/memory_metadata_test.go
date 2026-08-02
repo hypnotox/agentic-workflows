@@ -1,6 +1,7 @@
 package effort
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -46,6 +47,27 @@ func TestMemoryMetadataRejectsClosedSchemaHazards(t *testing.T) {
 	}
 	if _, _, err := readMemoryMetadata([]byte(strings.Repeat("x", maxMemoryBytes+1)), "sample"); err == nil {
 		t.Fatal("accepted oversized memory")
+	}
+}
+
+func TestUpdateMemoryRejectsOversizedResidentWithoutChangingBytes(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, nil)
+	if _, err := service.New(testContext(t), "Oversized update"); err != nil {
+		t.Fatal(err)
+	}
+	path := service.paths.memoryFile("oversized-update")
+	before := []byte(strings.Repeat("x", maxMemoryBytes+1))
+	if err := os.WriteFile(path, before, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	phase := "replacement"
+	if err := service.UpdateMemory("oversized-update", MemoryUpdate{Phase: &phase}); err == nil {
+		t.Fatal("accepted oversized memory resident")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(after, before) {
+		t.Fatalf("oversized update changed bytes: %v", err)
 	}
 }
 

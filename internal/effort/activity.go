@@ -20,6 +20,10 @@ const activitySchemaVersion = 1
 // queued old owner cannot overwrite or remove a successor claim.
 var activityLocks sync.Map // map[string]*sync.Mutex
 
+// activityBeforePublish is a deterministic test seam. Correctness comes from
+// identity-checked publication, not this process-local optimization.
+var activityBeforePublish func()
+
 func lockActivity(path string) func() {
 	value, _ := activityLocks.LoadOrStore(path, &sync.Mutex{})
 	lock := value.(*sync.Mutex)
@@ -131,6 +135,7 @@ type activityOperation string
 const (
 	activityResolve   activityOperation = "resolve"
 	activityAttach    activityOperation = "attach"
+	activityTakeover  activityOperation = "takeover"
 	activityHeartbeat activityOperation = "heartbeat"
 	activityCheckout  activityOperation = "checkout"
 	activityDetach    activityOperation = "detach"
@@ -170,92 +175,119 @@ func validActivityTime(v time.Time) bool {
 }
 func validActivityPath(v string) bool { return v != "" && filepath.IsAbs(v) && filepath.Clean(v) == v }
 
-func (s store) readActivity(path string) (*Activity, error) {
-	raw, err := readRegularNoFollowBounded(path, maxMemoryBytes)
-	if err != nil {
-		return nil, err
-	}
-	var a Activity
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&a); err != nil {
-		return nil, err
-	}
-	if err := requireJSONEOF(dec); err != nil {
-		return nil, err
-	}
-	if err := validActivity(a); err != nil {
-		return nil, err
-	}
-	return &a, nil
+type ActivityStorageError struct {
+	Operation activityOperation
+	Stage     string
+	Err       error
 }
-func (s store) replaceActivity(path string, a Activity) error {
+
+func (e *ActivityStorageError) Error() string {
+	return fmt.Sprintf("activity %s %s: %v", e.Operation, e.Stage, e.Err)
+}
+func (e *ActivityStorageError) Unwrap() error { return e.Err }
+
+type ActivityPublicationRefusal struct {
+	Operation activityOperation
+	Err       error
+}
+
+func (e *ActivityPublicationRefusal) Error() string {
+	return fmt.Sprintf("activity %s conditional-publication identity refusal: %v", e.Operation, e.Err)
+}
+func (e *ActivityPublicationRefusal) Unwrap() error { return e.Err }
+func activityStorageFailure(operation activityOperation, stage string, err error) error {
+	var identity *publicationIdentityError
+	if errors.As(err, &identity) {
+		return &ActivityPublicationRefusal{Operation: operation, Err: err}
+	}
+	return &ActivityStorageError{Operation: operation, Stage: stage, Err: err}
+}
+func (s store) replaceActivity(path string, a Activity, expected *fileIdentity, operation activityOperation) error {
 	raw, err := json.Marshal(a)
 	if err != nil { // coverage-ignore: Activity contains only JSON-native fields, so json.Marshal cannot fail
 		return err
 	}
-	return s.replaceResident(path, raw, "activity")
+	return s.replaceResidentExpected(path, raw, "activity", expected, operation)
 }
-func (s store) removeActivity(path string) error {
+func (s store) removeActivityExpected(path string, expected *fileIdentity) (returnErr error) {
+	operation := activityDetach
 	if err := s.hit("activity.remove"); err != nil {
-		return err
+		return activityStorageFailure(operation, "remove", err)
 	}
-	if err := os.Remove(path); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
+	if expected == nil {
+		if err := os.Remove(path); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+			return activityStorageFailure(operation, "remove", err)
 		}
-		return err
+	} else {
+		temp, err := os.CreateTemp(filepath.Dir(path), ".activity-remove-*.tmp")
+		if err != nil { // coverage-ignore: an effort-owned directory accepts temp creation; failure requires a storage fault outside injectable activity stages
+			return activityStorageFailure(operation, "remove", err)
+		}
+		tempPath := temp.Name()
+		if err := temp.Close(); err != nil { // coverage-ignore: closing a newly created empty local temporary requires a storage fault
+			return activityStorageFailure(operation, "remove", err)
+		}
+		defer func() { _ = os.Remove(tempPath) }()
+		if err := removeAtomic(tempPath, path, expected); err != nil {
+			return activityStorageFailure(operation, "remove", err)
+		}
 	}
 	if err := s.hit("activity.directory-fsync"); err != nil {
-		return err
+		return activityStorageFailure(operation, "directory-fsync", err)
 	}
-	return syncDirectory(filepath.Dir(path))
+	if err := syncDirectory(filepath.Dir(path)); err != nil { // coverage-ignore: the injected directory-fsync stage proves this boundary; a real sync failure requires a storage fault
+		return activityStorageFailure(operation, "directory-fsync", err)
+	}
+	return nil
 }
-func (s store) replaceResident(path string, raw []byte, label string) (returnErr error) {
+func (s store) replaceResidentExpected(path string, raw []byte, label string, expected *fileIdentity, operation activityOperation) (returnErr error) {
 	dir := filepath.Dir(path)
 	temp, err := os.CreateTemp(dir, "."+label+"-*.tmp")
 	if err != nil {
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
 	tempPath := temp.Name()
-	closed, published := false, false
+	closed := false
 	defer func() {
 		if !closed {
-			returnErr = errors.Join(returnErr, temp.Close())
+			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", temp.Close()))
 		}
-		if !published {
-			if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) { // coverage-ignore: the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault
-				returnErr = errors.Join(returnErr, e)
-			}
+		if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) { // coverage-ignore: the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault
+			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", e))
 		}
 	}()
 	if err = s.hit(label + ".write"); err != nil {
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
 	if _, err = temp.Write(raw); err != nil { // coverage-ignore: fault stages cover the write boundary; a local temporary write failure requires a kernel or storage fault
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = s.hit(label + ".fsync"); err != nil {
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = temp.Sync(); err != nil { // coverage-ignore: fault stages cover the fsync boundary; a local temporary sync failure requires a kernel or storage fault
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = temp.Close(); err != nil { // coverage-ignore: a close failure after a successful local write requires a kernel or storage fault
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
 	closed = true
 	if err = s.hit(label + ".rename"); err != nil {
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
-	if err = os.Rename(tempPath, path); err != nil {
-		return err
+	if err = publishAtomic(tempPath, path, expected); err != nil {
+		return activityStorageFailure(operation, "replace", err)
 	}
-	published = true
 	if err = s.hit(label + ".directory-fsync"); err != nil {
-		return err
+		return activityStorageFailure(operation, "replace", err)
 	}
-	return syncDirectory(dir)
+	if err := syncDirectory(dir); err != nil { // coverage-ignore: the injected directory-fsync stage proves this boundary; a real sync failure requires a storage fault
+		return activityStorageFailure(operation, "replace", err)
+	}
+	return nil
 }
 
 func (s *Service) activityEffort(slug string, operation activityOperation) (*ActivityEffort, *MemoryMetadata, *ActivityReply) {
@@ -387,11 +419,43 @@ func checkoutRefusalFor(operation activityOperation, err error) ActivityReply {
 	return refusalFor(operation, ActivityRepositoryMismatch, err, nil)
 }
 func (s *Service) activityCurrent(slug string) (*Activity, error) {
-	a, err := s.store.readActivity(s.paths.activityFile(slug))
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil //nolint:nilnil // no activity resident is the documented non-error state
-	}
+	a, _, err := s.activityCurrentIdentity(slug)
 	return a, err
+}
+func (s *Service) activityCurrentIdentity(slug string) (*Activity, *fileIdentity, error) {
+	raw, identity, err := readRegularNoFollowBoundedIdentity(s.paths.activityFile(slug), maxMemoryBytes)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil, nil
+	} //nolint:nilnil // absent activity is documented state
+	if err != nil { // coverage-ignore: a non-ENOENT failure after a bounded no-follow read requires a resident race or storage fault
+		return nil, nil, err
+	}
+	var a Activity
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&a); err != nil {
+		return nil, nil, err
+	}
+	if err := requireJSONEOF(dec); err != nil {
+		return nil, nil, err
+	}
+	if err := validActivity(a); err != nil {
+		return nil, nil, err
+	}
+	return &a, &identity, nil
+}
+func (s *Service) publicationRefusal(slug string, operation activityOperation, eff *ActivityEffort, err error) ActivityReply {
+	var refusal *ActivityPublicationRefusal
+	if !errors.As(err, &refusal) {
+		return refusalFor(operation, ActivityUnsafeResident, err, nil)
+	}
+	current, readErr := s.activityCurrent(slug)
+	if readErr != nil || current == nil { // coverage-ignore: a second change after a conditional-publication refusal requires another concurrent mutation
+		return refusalFor(operation, ActivityUnsafeResident, err, nil)
+	}
+	out := refusalFor(operation, ActivityNotOwner, refusal, nil)
+	out.Effort, out.Activity = eff, current
+	return out
 }
 
 func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) ActivityReply {
@@ -412,12 +476,19 @@ func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) A
 	if err := s.verifyActivityDestination(ctx, slug, a); err != nil {
 		return checkoutRefusalFor(activityAttach, err)
 	}
-	prior, err := s.activityCurrent(slug)
+	prior, identity, err := s.activityCurrentIdentity(slug)
 	if err != nil {
 		return refusalFor(activityAttach, ActivityUnsafeResident, err, nil)
 	}
-	if err := s.store.replaceActivity(s.paths.activityFile(slug), a); err != nil {
-		return refusalFor(activityAttach, ActivityUnsafeResident, err, nil)
+	operation := activityAttach
+	if prior != nil {
+		operation = activityTakeover
+	}
+	if activityBeforePublish != nil {
+		activityBeforePublish()
+	}
+	if err := s.store.replaceActivity(s.paths.activityFile(slug), a, identity, operation); err != nil {
+		return s.publicationRefusal(slug, operation, eff, err)
 	}
 	r := activityReply(ActivityAttached)
 	if prior != nil {
@@ -509,7 +580,7 @@ func (s *Service) DetachActivity(slug, owner string) ActivityReply {
 		}
 		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
 	}
-	a, err := s.activityCurrent(slug)
+	a, identity, err := s.activityCurrentIdentity(slug)
 	if err != nil {
 		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
 	}
@@ -524,8 +595,11 @@ func (s *Service) DetachActivity(slug, owner string) ActivityReply {
 		out.Activity = a
 		return out
 	}
-	if err := s.store.removeActivity(s.paths.activityFile(slug)); err != nil {
-		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
+	if activityBeforePublish != nil {
+		activityBeforePublish()
+	}
+	if err := s.store.removeActivityExpected(s.paths.activityFile(slug), identity); err != nil {
+		return s.publicationRefusal(slug, activityDetach, &ActivityEffort{slug, r.Title}, err)
 	}
 	out := activityReply(ActivityDetached)
 	out.Effort = &ActivityEffort{slug, r.Title}
@@ -539,7 +613,7 @@ func (s *Service) mutateActivity(slug, owner string, operation activityOperation
 	if bad != nil {
 		return *bad
 	}
-	a, err := s.activityCurrent(slug)
+	a, identity, err := s.activityCurrentIdentity(slug)
 	if err != nil {
 		return refusalFor(operation, ActivityUnsafeResident, err, nil)
 	}
@@ -556,8 +630,11 @@ func (s *Service) mutateActivity(slug, owner string, operation activityOperation
 	if err := validActivity(*a); err != nil {
 		return refusalFor(operation, ActivityRepositoryMismatch, err, nil)
 	}
-	if err := s.store.replaceActivity(s.paths.activityFile(slug), *a); err != nil {
-		return refusalFor(operation, ActivityUnsafeResident, err, nil)
+	if activityBeforePublish != nil {
+		activityBeforePublish()
+	}
+	if err := s.store.replaceActivity(s.paths.activityFile(slug), *a, identity, operation); err != nil {
+		return s.publicationRefusal(slug, operation, eff, err)
 	}
 	r.Effort = eff
 	r.Memory = m

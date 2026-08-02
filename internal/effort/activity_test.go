@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -84,6 +86,103 @@ func TestActivityConcurrentTakeoverCannotBeOverwrittenOrDeletedByOldOwner(t *tes
 	}
 }
 
+func TestActivityCrossProcessTakeoverRefusesStaleMutations(t *testing.T) {
+	if os.Getenv("AWF_ACTIVITY_HELPER") != "" {
+		root, owner := os.Getenv("AWF_ACTIVITY_ROOT"), os.Getenv("AWF_ACTIVITY_OWNER")
+		service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+		if got := service.AttachActivity(testContext(t), "cross-process", activityFor(root, owner)); got.Condition != ActivityTakenOver {
+			t.Fatalf("helper takeover = %#v", got)
+		}
+		return
+	}
+	for _, test := range []struct {
+		name   string
+		mutate func(*Service, string) ActivityReply
+	}{
+		{"takeover", func(s *Service, owner string) ActivityReply {
+			return s.AttachActivity(testContext(t), "cross-process", activityFor(s.paths.roots.InvokingRoot, owner))
+		}},
+		{"heartbeat", func(s *Service, owner string) ActivityReply { return s.HeartbeatActivity("cross-process", owner) }},
+
+		{"checkout", func(s *Service, owner string) ActivityReply {
+			return s.CheckoutActivity(testContext(t), "cross-process", owner, s.paths.roots.InvokingRoot, CheckoutReceiving)
+		}},
+		{"detach", func(s *Service, owner string) ActivityReply { return s.DetachActivity("cross-process", owner) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := initEffortRepo(t)
+			service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+			if _, err := service.New(testContext(t), "Cross process"); err != nil {
+				t.Fatal(err)
+			}
+			if got := service.AttachActivity(testContext(t), "cross-process", activityFor(root, testIDA)); got.Condition != ActivityAttached {
+				t.Fatalf("initial attach = %#v", got)
+			}
+			activityBeforePublish = func() {
+				cmd := exec.Command(os.Args[0], "-test.run=^TestActivityCrossProcessTakeoverRefusesStaleMutations$")
+				cmd.Env = append(os.Environ(), "AWF_ACTIVITY_HELPER=1", "AWF_ACTIVITY_ROOT="+root, "AWF_ACTIVITY_OWNER="+testIDB)
+				if output, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("helper takeover: %v: %s", err, output)
+				}
+			}
+			t.Cleanup(func() { activityBeforePublish = nil })
+			got := test.mutate(service, testIDA)
+			if got.Condition != ActivityNotOwner || got.Activity == nil || got.Activity.Owner != testIDB {
+				t.Fatalf("stale %s = %#v", test.name, got)
+			}
+			current, err := service.activityCurrent("cross-process")
+			if err != nil || current == nil || current.Owner != testIDB {
+				t.Fatalf("successor changed or deleted: %#v, %v", current, err)
+			}
+		})
+	}
+}
+
+func TestActivityStorageFailuresIdentifyOperationAndStage(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+	if _, err := service.New(testContext(t), "Storage context"); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name  string
+		stage string
+		call  func() ActivityReply
+	}{
+		{"attach", "activity.write", func() ActivityReply {
+			return service.AttachActivity(testContext(t), "storage-context", activityFor(root, testIDA))
+		}},
+		{"takeover", "activity.rename", func() ActivityReply {
+			return service.AttachActivity(testContext(t), "storage-context", activityFor(root, testIDB))
+		}},
+		{"heartbeat", "activity.fsync", func() ActivityReply { return service.HeartbeatActivity("storage-context", testIDA) }},
+		{"checkout", "activity.directory-fsync", func() ActivityReply {
+			return service.CheckoutActivity(testContext(t), "storage-context", testIDA, root, CheckoutReceiving)
+		}},
+		{"detach", "activity.remove", func() ActivityReply { return service.DetachActivity("storage-context", testIDA) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if test.name != "attach" {
+				service.store.fault = nil
+				if got := service.AttachActivity(testContext(t), "storage-context", activityFor(root, testIDA)); got.Condition != ActivityAttached && got.Condition != ActivityTakenOver {
+					t.Fatalf("seed = %#v", got)
+				}
+			}
+			service.store.fault = func(stage string) error {
+				if stage == test.stage {
+					return errors.New("injected")
+				}
+				return nil
+			}
+			got := test.call()
+			if got.Outcome == nil || !strings.Contains(got.Outcome.Cause, "activity "+test.name) {
+				t.Fatalf("%s outcome = %#v", test.name, got)
+			}
+			service.store.fault = nil
+		})
+	}
+}
+
 func TestActivityProtocolValidationAndCheckoutResolutionError(t *testing.T) {
 	cause := errors.New("retained cause")
 	for _, kind := range []CheckoutResolutionKind{CheckoutUnsafe, CheckoutRepositoryMismatch} {
@@ -107,6 +206,15 @@ func TestActivityProtocolValidationAndCheckoutResolutionError(t *testing.T) {
 			}()
 			test.call()
 		})
+	}
+	publication := publicationIdentityRefusal(cause)
+	wrapped := activityStorageFailure(activityHeartbeat, "replace", publication)
+	var refusal *ActivityPublicationRefusal
+	if !errors.As(wrapped, &refusal) || !errors.Is(wrapped, cause) || !errors.Is(refusal, cause) {
+		t.Fatalf("identity refusal wrapping = %v", wrapped)
+	}
+	if !errors.Is((&publicationIdentityError{err: cause}), cause) {
+		t.Fatal("publication identity unwrap lost cause")
 	}
 	for _, bad := range []Activity{
 		{SchemaVersion: 2},
@@ -203,7 +311,7 @@ func TestActivityResolutionDefensesAndResidentCodec(t *testing.T) {
 		t.Fatal(err)
 	}
 	slug := "resolution-defenses"
-	if _, err := service.store.readActivity(service.paths.activityFile(slug)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := readRegularNoFollowBounded(service.paths.activityFile(slug), maxMemoryBytes); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing read = %v", err)
 	}
 	for _, raw := range [][]byte{[]byte(`{"schemaVersion":1,"owner":"bad"}`), []byte(`{} {}`), []byte(`{"schemaVersion":1,"owner":"00000000-0000-4000-8000-000000000000","attachedAt":"2026-08-02T12:00:00Z","heartbeatAt":"2026-08-02T12:00:00Z","cwd":"/x","receivingCheckout":"/x","role":"other","extra":true}`)} {
@@ -376,17 +484,17 @@ func TestActivityDestinationAndPersistenceFaultBoundaries(t *testing.T) {
 		}
 		return nil
 	}
-	if err := service.store.removeActivity(path); err == nil {
+	if err := service.store.removeActivityExpected(path, nil); err == nil {
 		t.Fatal("remove fault accepted")
 	}
 	service.store.fault = nil
-	if err := service.store.removeActivity(path); err != nil {
+	if err := service.store.removeActivityExpected(path, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.store.removeActivity(path); err != nil {
+	if err := service.store.removeActivityExpected(path, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.store.replaceResident(filepath.Join(root, "missing", "activity.json"), []byte("x"), "activity"); err == nil {
+	if err := service.store.replaceResidentExpected(filepath.Join(root, "missing", "activity.json"), []byte("x"), "activity", nil, activityAttach); err == nil {
 		t.Fatal("missing parent accepted")
 	}
 }
@@ -472,13 +580,13 @@ func TestActivityPersistenceFaultStagesAndOwnerBoundaries(t *testing.T) {
 	if err := os.Mkdir(bad, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.store.replaceResident(bad, []byte("data"), "activity"); err == nil {
+	if err := service.store.replaceResidentExpected(bad, []byte("data"), "activity", nil, activityAttach); err == nil {
 		t.Fatal("directory rename target accepted")
 	}
 	if err := os.WriteFile(filepath.Join(bad, "child"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.store.removeActivity(bad); err == nil {
+	if err := service.store.removeActivityExpected(bad, nil); err == nil {
 		t.Fatal("nonempty directory removed as activity")
 	}
 }
@@ -648,7 +756,7 @@ func TestActivityUncoveredPolicyBranches(t *testing.T) {
 	if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.store.removeActivity(path); err == nil {
+	if err := service.store.removeActivityExpected(path, nil); err == nil {
 		t.Fatal("directory fsync fault accepted")
 	}
 	missing := openTestService(t, root, nil)
@@ -675,14 +783,14 @@ func TestActivityCodecAndResolutionEdgeCases(t *testing.T) {
 		if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := service.store.readActivity(path); err == nil {
+		if _, err := service.activityCurrent(slug); err == nil {
 			t.Fatalf("accepted malformed activity %q", raw)
 		}
 	}
 	if err := os.WriteFile(path, []byte(valid), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.store.readActivity(path); err != nil {
+	if _, err := service.activityCurrent(slug); err != nil {
 		t.Fatal(err)
 	}
 	if got := service.CheckoutActivity(testContext(t), slug, testIDA, root, CheckoutReceiving); got.Condition != ActivityCheckoutUpdated {

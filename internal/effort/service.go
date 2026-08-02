@@ -154,7 +154,7 @@ func (s *Service) UpdateMemory(slug string, update MemoryUpdate) error {
 		return err
 	}
 	path := s.paths.memoryFile(slug)
-	raw, err := readRegularNoFollow(path)
+	raw, err := readRegularNoFollowBounded(path, maxMemoryBytes)
 	if err != nil {
 		return &CorruptError{Path: path, Err: err}
 	}

@@ -5,6 +5,7 @@ package effort
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"golang.org/x/sys/unix"
 )
@@ -26,5 +27,23 @@ func publishAtomic(tempPath, path string, expected *fileIdentity) error {
 	if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil { // coverage-ignore: requires a second namespace race or kernel fault during immediate rollback
 		return errors.Join(mismatch, fmt.Errorf("restore unexpected destination at %s after refused publication: %w", path, rollbackErr))
 	}
-	return mismatch
+	return publicationIdentityRefusal(mismatch)
+}
+
+func removeAtomic(tempPath, path string, expected *fileIdentity) error {
+	if err := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); err != nil {
+		return err
+	}
+	displaced, err := lstatRegular(tempPath)
+	mismatch := unexpectedPublicationIdentity(path, expected, displaced, err)
+	if mismatch == nil {
+		if err := os.Remove(tempPath); err != nil {
+			return err
+		}
+		return os.Remove(path)
+	}
+	if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil { // coverage-ignore: requires a second namespace race or kernel fault during immediate rollback
+		return errors.Join(publicationIdentityRefusal(mismatch), fmt.Errorf("restore unexpected destination at %s after refused removal: %w", path, rollbackErr))
+	}
+	return publicationIdentityRefusal(mismatch)
 }
