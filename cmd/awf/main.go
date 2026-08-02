@@ -69,13 +69,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
 		if a == "help" && len(args) >= 3 {
 			if spec, ok := clispec.Lookup(args[2]); ok {
-				// `awf help <group> <child>` prints the child's body; an absent
-				// or unknown child falls back to the group's own help.
-				if len(args) >= 4 {
-					if child, childOK := spec.Child(args[3]); childOK {
-						fmt.Fprint(stdout, child.HelpBody)
-						return 0
+				// Walk declared nesting so help follows the same leaf grammar as
+				// parsing. An absent or unknown descendant falls back to the last
+				// recognized group's own help.
+				for _, name := range args[3:] {
+					child, childOK := spec.Child(name)
+					if !childOK {
+						break
 					}
+					spec = child
 				}
 				fmt.Fprint(stdout, spec.HelpBody)
 				return 0

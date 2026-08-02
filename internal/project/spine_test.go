@@ -1612,7 +1612,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("%s retains standalone memory path", label)
 		}
 	}
-	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
+	for _, detailed := range []string{"`phase`", "`next`", "`updated`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
 		if !strings.Contains(workflow, detailed) {
 			t.Errorf("workflow protocol missing %q", detailed)
 		}

@@ -10,9 +10,31 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
+
+func TestEffortCheckoutResolutionAdapterNormalizesGitErrors(t *testing.T) {
+	for category, want := range map[string]effort.CheckoutResolutionKind{
+		"symlink": effort.CheckoutUnsafe, "foreign-owner": effort.CheckoutUnsafe, "file-type": effort.CheckoutUnsafe, "resident-permissions": effort.CheckoutUnsafe,
+		"repository-identity": effort.CheckoutRepositoryMismatch, "bare-repository": effort.CheckoutRepositoryMismatch, "missing-primary": effort.CheckoutRepositoryMismatch, "ambiguous-primary": effort.CheckoutRepositoryMismatch, "unconfined": effort.CheckoutRepositoryMismatch,
+	} {
+		err := normalizeCheckoutResolutionError(&awfgit.HardSafetyError{Category: category})
+		if err.Kind() != want || errors.Unwrap(err) == nil {
+			t.Fatalf("%s = %#v", category, err)
+		}
+		var hard *awfgit.HardSafetyError
+		if errors.As(err, &hard) {
+			t.Fatalf("%s leaked HardSafetyError", category)
+		}
+	}
+	err := normalizeCheckoutResolutionError(&awfgit.CommandError{Args: []string{"worktree", "list"}, ExitCode: 1, Stderr: "failed"})
+	var command *awfgit.CommandError
+	if errors.As(err, &command) {
+		t.Fatalf("command error leaked: %v", err)
+	}
+}
 
 func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	ctx := testContext(t)
@@ -86,6 +108,108 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	}
 	if _, err := os.Stat(resident); !os.IsNotExist(err) {
 		t.Fatalf("finished resident remains: %v", err)
+	}
+}
+
+func TestEffortNestedGrammarDispatch(t *testing.T) {
+	cmd, top, sub, rest, ok := resolve([]string{"effort", "activity", "heartbeat", "example", "--owner", "018f47a0-7b3d-4c52-8f1a-123456789abc", "--json"})
+	if !ok || top.Name != "effort" || cmd.Name != "heartbeat" || sub != "activity heartbeat" {
+		t.Fatalf("nested resolve = cmd=%#v top=%#v sub=%q ok=%v", cmd, top, sub, ok)
+	}
+	if _, err := parseArgs(cmd, rest); err != nil {
+		t.Fatalf("valid activity grammar rejected: %v", err)
+	}
+	if _, err := parseArgs(cmd, []string{"example", "--owner", "owner", "--json", "--cwd", "/irrelevant"}); err == nil {
+		t.Fatal("irrelevant activity flag accepted")
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"awf", "help", "effort", "activity", "attach"}, &stdout, &stderr); code != 0 || stdout.String() != "Usage: awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json\n" || stderr.Len() != 0 {
+		t.Fatalf("nested help code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
+// invariant: tooling/cli:effort-command-contract (TestEffortMemoryAndActivityCLIContract)
+func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
+	primary := filepath.Join(t.TempDir(), "primary")
+	fixture := gitfixture.InitNativeAt(t, primary)
+	if err := os.WriteFile(filepath.Join(primary, "tracked.txt"), []byte("base\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.NativeAdd(t, fixture, "tracked.txt")
+	gitfixture.NativeCommit(t, fixture, "base")
+	linked := filepath.Join(filepath.Dir(primary), "linked")
+	gitfixture.NativeWorktreeAddDetached(t, fixture, linked, "HEAD")
+
+	runEffortCommand(t, primary, "new", []string{"Activity contract"}, map[string]bool{"--no-worktree": true})
+	phase, next := "Implementing", "Exercise the attached checkout."
+	owner := "018f47a0-7b3d-4c52-8f1a-123456789abc"
+	var memoryOut bytes.Buffer
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: "memory update", inv: invocation{positionals: []string{"activity-contract"}, bools: map[string]bool{}, values: map[string]string{"--phase": phase, "--next": next}}, stdout: &memoryOut}, openEffortComposition); err != nil || memoryOut.Len() != 0 {
+		t.Fatalf("memory update error=%v stdout=%q", err, memoryOut.String())
+	}
+
+	reply := runActivityCommand(t, linked, "activity resolve", map[string]string{"--destination": "receiving"})
+	assertActivityFields(t, reply, effort.ActivityReady, "effort", "memory", "destination")
+	reply = runActivityCommand(t, linked, "activity attach", map[string]string{"--owner": owner, "--cwd": linked, "--role": "receiving", "--receiving-checkout": linked})
+	assertActivityFields(t, reply, effort.ActivityAttached, "effort", "memory", "activity")
+	reply = runActivityCommand(t, primary, "activity heartbeat", map[string]string{"--owner": owner})
+	assertActivityFields(t, reply, effort.ActivityHeartbeat, "effort", "memory", "activity")
+	reply = runActivityCommand(t, linked, "activity checkout", map[string]string{"--owner": owner, "--cwd": linked, "--role": "receiving"})
+	assertActivityFields(t, reply, effort.ActivityCheckoutUpdated, "effort", "memory", "activity")
+	reply = runActivityCommand(t, primary, "activity detach", map[string]string{"--owner": owner})
+	assertActivityFields(t, reply, effort.ActivityDetached, "effort")
+
+	for _, test := range []struct {
+		sub    string
+		values map[string]string
+	}{
+		{"memory update", nil},
+		{"activity resolve", nil},
+		{"activity attach", map[string]string{"--owner": owner}},
+		{"activity heartbeat", nil},
+		{"activity checkout", map[string]string{"--owner": owner}},
+		{"activity detach", nil},
+	} {
+		var stdout bytes.Buffer
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: test.sub, inv: invocation{positionals: []string{"activity-contract"}, bools: map[string]bool{}, values: test.values}, stdout: &stdout}, openEffortComposition)
+		if err == nil || stdout.Len() != 0 {
+			t.Errorf("%s malformed invocation error=%v stdout=%q", test.sub, err, stdout.String())
+		}
+	}
+}
+
+func runActivityCommand(t *testing.T, root, sub string, values map[string]string) map[string]json.RawMessage {
+	t.Helper()
+	var stdout bytes.Buffer
+	err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: invocation{positionals: []string{"activity-contract"}, bools: map[string]bool{"--json": true}, values: values}, stdout: &stdout}, openEffortComposition)
+	if err != nil {
+		t.Fatalf("%s: %v", sub, err)
+	}
+	var reply map[string]json.RawMessage
+	if err := json.Unmarshal(stdout.Bytes(), &reply); err != nil {
+		t.Fatalf("%s JSON %q: %v", sub, stdout.String(), err)
+	}
+	return reply
+}
+
+func assertActivityFields(t *testing.T, reply map[string]json.RawMessage, condition effort.ActivityCondition, present ...string) {
+	t.Helper()
+	var gotCondition effort.ActivityCondition
+	if err := json.Unmarshal(reply["condition"], &gotCondition); err != nil || gotCondition != condition {
+		t.Fatalf("condition=%q err=%v reply=%v", gotCondition, err, reply)
+	}
+	if _, ok := reply["schemaVersion"]; !ok {
+		t.Fatalf("reply has no schemaVersion: %v", reply)
+	}
+	want := map[string]bool{}
+	for _, name := range present {
+		want[name] = true
+	}
+	for _, name := range []string{"effort", "memory", "destination", "activity", "priorClaim", "outcome"} {
+		_, got := reply[name]
+		if got != want[name] {
+			t.Errorf("%s presence=%v want %v in %v", name, got, want[name], reply)
+		}
 	}
 }
 
@@ -201,6 +325,49 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 	}
 	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "unknown", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
 		t.Fatal("unknown effort child accepted")
+	}
+}
+
+func TestEffortCompositionGrammarAndPresentationBranches(t *testing.T) {
+	if _, err := resolveEffortCheckout(testContext(t), t.TempDir()); err == nil {
+		t.Fatal("checkout resolution accepted a non-checkout")
+	}
+	if got := effortValue(invocation{values: map[string]string{}}, "--phase"); got != nil {
+		t.Fatalf("absent effort value = %q", *got)
+	}
+	for _, test := range []struct {
+		sub  string
+		want string
+	}{
+		{sub: "memory", want: "usage: awf effort memory update <slug> [--phase <text>] [--next <text>]"},
+		{sub: "activity", want: "usage: awf effort activity <resolve|attach|heartbeat|checkout|detach>"},
+	} {
+		if err := validateEffortGrammar(&cmdCtx{sub: test.sub, inv: invocation{bools: map[string]bool{}, values: map[string]string{}}}); err == nil || err.Error() != test.want {
+			t.Fatalf("%s grammar = %v", test.sub, err)
+		}
+	}
+	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{}}}); err == nil || err.Error() != "usage: awf effort activity attach requires --owner" {
+		t.Fatalf("activity required-flag grammar = %v", err)
+	}
+
+	record := effort.Record{SchemaVersion: effort.SchemaVersion, Slug: "presentation", Title: "Presentation", MemoryPath: ".awf/efforts/presentation/memory.md"}
+	var jsonOut bytes.Buffer
+	if err := writeEffortNew(&jsonOut, record, worktree.Result{}, true); err != nil {
+		t.Fatal(err)
+	}
+	var reply struct {
+		Worktree *effortWorktreeFacts `json:"worktree"`
+	}
+	if err := json.Unmarshal(jsonOut.Bytes(), &reply); err != nil || reply.Worktree != nil {
+		t.Fatalf("no-worktree JSON = %q, reply=%#v, err=%v", jsonOut.String(), reply, err)
+	}
+	var textOut bytes.Buffer
+	result := worktree.Result{Path: "/managed/presentation", Branch: "awf/presentation", Condition: "managed"}
+	if err := writeEffortNew(&textOut, record, result, false); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(textOut.String(), "worktree=/managed/presentation branch=awf/presentation") {
+		t.Fatalf("managed-worktree text = %q", textOut.String())
 	}
 }
 

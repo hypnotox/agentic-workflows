@@ -32,9 +32,9 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix or merely because a boundary was reached, and once the outcome is concrete and non-minimal it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
+Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix or merely because a boundary was reached, and once the outcome is concrete and non-minimal it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, runs structured memory update for phase, next action, and time, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone and validates identity only.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`

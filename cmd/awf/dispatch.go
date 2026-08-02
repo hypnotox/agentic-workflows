@@ -193,27 +193,31 @@ func isKindToken(s string) bool {
 	return ok
 }
 
-// resolve looks up args[0] as a top-level command. For a group command (new)
-// whose next token names a child, it returns the child as cmd (so parseArgs
-// validates against the child's flag spec and --help prints the child help),
-// with sub set to the child token and rest the tokens after it. A leaf, or a
-// group with no or an unknown child, returns itself as cmd with sub "" and rest
-// args[1:] - the group's handler then owns the missing/unknown-child messages.
-// top is always the top-level command (== cmd for a leaf, the group for a
-// resolved child). The handler key stays a top-level property, but gating and
-// the current-state exemption are read from cmd (falling back to top for
-// gating), so a child can carry its own.
+// resolve looks up args[0] as a top-level command. The effort group has
+// declared nested grammar, so its recognized descendants are resolved to their
+// leaf spec before parseArgs sees flags. Its sub path is space-separated for the
+// effort handler; other groups retain their established one-level dispatch.
 func resolve(args []string) (cmd, top clispec.Command, sub string, rest []string, ok bool) {
 	top, found := clispec.Lookup(args[0])
 	if !found {
 		return clispec.Command{}, clispec.Command{}, "", nil, false
 	}
-	if len(top.Children) > 0 && len(args) > 1 {
-		if child, childOK := top.Child(args[1]); childOK {
-			return child, top, args[1], args[2:], true
+	cmd = top
+	index := 1
+	var path []string
+	for index < len(args) && len(cmd.Children) > 0 {
+		child, childOK := cmd.Child(args[index])
+		if !childOK {
+			break
+		}
+		cmd = child
+		path = append(path, args[index])
+		index++
+		if top.Name != "effort" {
+			break
 		}
 	}
-	return top, top, "", args[1:], true
+	return cmd, top, strings.Join(path, " "), args[index:], true
 }
 
 // wantsHelp reports whether a --help or -h token appears among a command's args,

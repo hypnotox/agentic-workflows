@@ -207,7 +207,7 @@ func (s store) create(record Record) error {
 	if err != nil {
 		return err
 	}
-	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(record.Slug), "memory"); err != nil {
+	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(record.Slug, record.CreatedAt), "memory"); err != nil {
 		return err
 	}
 	raw, err := json.Marshal(persisted(record))
@@ -222,6 +222,60 @@ func (s store) create(record Record) error {
 	}
 	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: fault injection covers the ordered root-sync boundary; an actual failure requires a kernel or storage fault
 		return fmt.Errorf("fsync efforts root after publishing %s: %w", dir, err)
+	}
+	return nil
+}
+
+// replaceMemory publishes a fully synced sibling and then atomically replaces
+// the old memory. All injected failures before rename leave the old bytes.
+func (s store) replaceMemory(path string, raw []byte) (returnErr error) {
+	dir := filepath.Dir(path)
+	temp, err := os.CreateTemp(dir, ".memory-update-*.tmp")
+	if err != nil { // coverage-ignore: the owned effort directory is validated before update; CreateTemp failure requires a concurrent permission change or storage fault
+		return fmt.Errorf("create sibling temporary memory: %w", err)
+	}
+	tempPath := temp.Name()
+	closed, published := false, false
+	defer func() {
+		if !closed {
+			returnErr = errors.Join(returnErr, temp.Close())
+		}
+		if !published {
+			if err := os.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) { // coverage-ignore: the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault
+				returnErr = errors.Join(returnErr, err)
+			}
+		}
+	}()
+	if err := s.hit("memory-update.write"); err != nil {
+		return err
+	}
+	if n, err := temp.Write(raw); err != nil { // coverage-ignore: injected write stages cover the boundary; a local temporary write failure requires a kernel or storage fault
+		return fmt.Errorf("write temporary memory: %w", err)
+	} else if n != len(raw) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested
+		return io.ErrShortWrite
+	}
+	if err := s.hit("memory-update.fsync"); err != nil {
+		return err
+	}
+	if err := temp.Sync(); err != nil { // coverage-ignore: injected fsync stages cover the boundary; a local temporary sync failure requires a kernel or storage fault
+		return fmt.Errorf("fsync temporary memory: %w", err)
+	}
+	if err := temp.Close(); err != nil { // coverage-ignore: a close failure after a successful local write requires a kernel or storage fault
+		return fmt.Errorf("close temporary memory: %w", err)
+	}
+	closed = true
+	if err := s.hit("memory-update.rename"); err != nil {
+		return err
+	}
+	if err := os.Rename(tempPath, path); err != nil { // coverage-ignore: the validated resident parent and sibling temporary make a rename failure a concurrent namespace or storage fault
+		return fmt.Errorf("replace memory atomically: %w", err)
+	}
+	published = true
+	if err := s.hit("memory-update.directory-fsync"); err != nil {
+		return err
+	}
+	if err := syncDirectory(dir); err != nil { // coverage-ignore: injected directory-fsync stages cover the durability boundary; a real failure requires a kernel or storage fault
+		return fmt.Errorf("fsync effort directory after memory update: %w", err)
 	}
 	return nil
 }
@@ -305,7 +359,7 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 	if err != nil { // coverage-ignore: validateOwnedDirectory just proved a readable owned directory; failure requires a concurrent namespace or storage fault
 		return Record{}, &CorruptError{Path: dir, Err: err}
 	}
-	allowed := map[string]bool{"state.json": true, "memory.md": true}
+	allowed := map[string]bool{"state.json": true, "memory.md": true, "activity.json": true}
 	for _, entry := range entries {
 		if !allowed[entry.Name()] {
 			return Record{}, &CorruptError{Path: filepath.Join(dir, entry.Name()), Err: errors.New("foreign leaf in effort resident")}
@@ -334,8 +388,8 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 		if err != nil {
 			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has absent or invalid owned memory: %w", err)}
 		}
-		if !strings.HasPrefix(string(memory), "Effort: "+expectedSlug+"\n") {
-			return Record{}, &CorruptError{Path: memoryPath, Err: errors.New("published state has memory with a mismatched effort identity")}
+		if err := readMemoryIdentity(memory, expectedSlug); err != nil {
+			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has memory with a mismatched effort identity: %w", err)}
 		}
 	}
 	return s.logical(value), nil

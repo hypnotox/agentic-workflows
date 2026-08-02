@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: associate-pi-sessions-with-efforts-and-live-checkout-context
-status: Accepted
+status: Implementing
 date: 2026-08-02
 ---
 # ADR-associate-pi-sessions-with-efforts-and-live-checkout-context: Associate Pi sessions with efforts and live checkout context
@@ -318,3 +318,5 @@ APIs.
 - 2026-08-02: Proposed
 - 2026-08-02: Accepted; content-sha256: 7ce4df8ed04b71c447ecd1ed0bf0d7b50620b5107b71b358d2fd374d715d7d51
 - 2026-08-02: Amended; content-sha256: 13c681481627dbe1c084409ad708ea8c0b803374cf143dea285b1ce47b50f4b0
+- 2026-08-02: Implementing; content-sha256: 13c681481627dbe1c084409ad708ea8c0b803374cf143dea285b1ce47b50f4b0
+- 2026-08-02: Applied; operations: update `tooling/cli:effort-command-contract`, update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:memory-skeleton-purpose-partition`, update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`

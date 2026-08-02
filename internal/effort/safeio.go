@@ -67,14 +67,27 @@ func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, 
 }
 
 func readRegularNoFollow(path string) ([]byte, error) {
+	return readRegularNoFollowBounded(path, -1)
+}
+
+// readRegularNoFollowBounded preserves the resident no-follow/current-owner
+// proof while rejecting an oversized advisory record before decoding it.
+func readRegularNoFollowBounded(path string, limit int64) ([]byte, error) {
 	file, identity, err := openRegularNoFollow(path, false, 0)
 	if err != nil {
 		return nil, err
 	}
-	raw, readErr := io.ReadAll(file)
+	var reader io.Reader = file
+	if limit >= 0 {
+		reader = io.LimitReader(file, limit+1)
+	}
+	raw, readErr := io.ReadAll(reader)
 	closeErr := file.Close()
 	if readErr != nil { // coverage-ignore: a validated local regular file read fails only on a kernel or storage fault
 		return nil, fmt.Errorf("read %s: %w", path, readErr)
+	}
+	if limit >= 0 && int64(len(raw)) > limit {
+		return nil, fmt.Errorf("read %s: exceeds %d byte bound", path, limit)
 	}
 	if closeErr != nil { // coverage-ignore: closing a read-only descriptor after successful ReadAll has no userspace failure trigger
 		return nil, fmt.Errorf("close %s after read: %w", path, closeErr)

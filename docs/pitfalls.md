@@ -1844,9 +1844,9 @@ exactly `.awf/efforts/<slug>/memory.md`, repository-relative or in an absolute s
 that normalizes to it; anything else fails with `memoryPath must be exactly
 .awf/efforts/<slug>/memory.md`. ADR-0175 replaced the earlier standalone
 `.awf/memory/<effort-id>.md` form, so a handoff copied from older guidance fails on the
-prefix alone. The slug is validated too, and the file must begin with the line
-`Effort: <slug>`, so pointing at another effort's memory is rejected rather than
-silently accepted. Before invoking the tool, pass no repository-root prefix,
+prefix alone. The slug is validated too, and identity must be either the exact legacy line
+`Effort: <slug>` or canonical frontmatter `effort: <slug>`, so pointing at another
+effort's memory is rejected rather than silently accepted. Before invoking the tool, pass no repository-root prefix,
 backslashes, empty components, `.` or `..` components, or symlink components; the leaf
 must be a bounded singly-linked regular file of valid UTF-8 (ADR-0145, ADR-0175).
 

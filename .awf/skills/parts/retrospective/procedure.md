@@ -1,6 +1,6 @@
 ## Procedure
 
-1. **Validate closure context.** Carry the exact effort slug and `.awf/efforts/<slug>/memory.md`, confirm `Effort: <slug>`, and remain the one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden.
+1. **Validate closure context.** Carry the exact effort slug and `.awf/efforts/<slug>/memory.md`, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, and remain the one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden.
 
 2. **Reflect and record worthy observations.** Read the effort memory's `## Observations` and `## Decision log` as primary input alongside this session's implementation and terminal-review findings and friction, and confirm every user-provenance decision either landed in a durable artifact or was explicitly re-decided. Record a first occurrence at the appropriate durable rung; recording observations in memory during the effort is the expected path, and a lesson must land at a durable rung before finish deletes the file.
 

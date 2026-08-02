@@ -20,7 +20,7 @@ This is a **support skill**: it sits off the workflow chain.
 
 ## Procedure
 
-A minimal simple graduation may remain effort-free. Once graduation is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, keep one user-managed writer, and carry slug/path into ADR or implementation review. Repository sources and current-state documentation outrank checkpoint prose, children never edit memory, and standalone memory is forbidden.
+A minimal simple graduation may remain effort-free. Once graduation is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort; it always owns `.awf/efforts/<slug>/memory.md`. Confirm either legacy `Effort: <slug>` or canonical frontmatter `effort: <slug>` identity, keep one user-managed writer, and carry slug/path into ADR or implementation review. Repository sources and current-state documentation outrank checkpoint prose, children never edit memory, and standalone memory is forbidden.
 
 <!-- awf:edit identify-entry: default; create .awf/skills/parts/roadmap-graduation/identify-entry.md to override -->
 ### 1. Identify the roadmap entry

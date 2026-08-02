@@ -153,19 +153,36 @@ func TestLookup(t *testing.T) {
 		t.Errorf("topic flags = %q", got)
 	}
 	effort, ok := Lookup("effort")
-	if !ok || len(effort.Children) != 6 {
+	if !ok || len(effort.Children) != 8 {
 		t.Fatalf("effort spec = %#v, found %v", effort, ok)
 	}
 	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--json,--no-worktree" || strings.Join(newEffort.ValueFlags, ",") != "--base" {
 		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
 	}
-	wantEffortChildren := []string{"new", "list", "show", "finish", "worktree", "integrate"}
+	wantEffortChildren := []string{"new", "list", "show", "finish", "worktree", "integrate", "memory", "activity"}
 	for index, name := range wantEffortChildren {
 		if effort.Children[index].Name != name {
 			t.Errorf("effort child %d = %q, want %q", index, effort.Children[index].Name, name)
 		}
 	}
-	for _, removed := range []string{"rename", "memory", "complete", "abandon", "reopen", "repair", "integrated"} {
+	memory, found := effort.Child("memory")
+	if !found || len(memory.Children) != 1 || memory.Children[0].Name != "update" || strings.Join(memory.Children[0].ValueFlags, ",") != "--phase,--next" {
+		t.Fatalf("effort memory spec = %#v, found %v", memory, found)
+	}
+	activity, found := effort.Child("activity")
+	activityNames := make([]string, len(activity.Children))
+	for i, action := range activity.Children {
+		activityNames[i] = action.Name
+	}
+	if !found || strings.Join(activityNames, ",") != "resolve,attach,heartbeat,checkout,detach" {
+		t.Fatalf("effort activity spec = %#v, found %v", activity, found)
+	}
+	for _, action := range activity.Children {
+		if !strings.Contains(strings.Join(action.BoolFlags, ","), "--json") || !strings.Contains(action.HelpBody, "Usage: awf effort activity "+action.Name) {
+			t.Errorf("activity %s does not declare JSON-only grammar: %#v", action.Name, action)
+		}
+	}
+	for _, removed := range []string{"rename", "complete", "abandon", "reopen", "repair", "integrated"} {
 		if _, found := effort.Child(removed); found {
 			t.Errorf("removed effort child %q remains", removed)
 		}
