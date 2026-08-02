@@ -48,10 +48,10 @@ instead of rotting.
   its own work, and are report-only. The `explorer` and `grounding-checker` agents are
   report-only too. The `implementer` agent carries the contract for
   dispatched implementation work, as either a commit-capable phase owner or a
-  commit-disabled path-confined helper. Agents are format-neutral: each runtime gets
-  them in its own dialect (frontmatter Markdown for most, a TOML profile for Codex).
-- **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` or `GEMINI.md` bridge where the
-  runtime expects one), workflow and documentation standards, plus opt-in project docs:
+  commit-disabled path-confined helper. Agents are format-neutral before each target
+  emits them in its declared native representation; both built-in targets use Markdown.
+- **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` bridge for Claude Code),
+  workflow and documentation standards, plus opt-in project docs:
   architecture, testing, development, debugging, pitfalls, releasing, glossary, roadmap.
 - **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
   declare (`awf enable domain rendering`): your hand-authored current-state narrative
@@ -72,11 +72,10 @@ instead of rotting.
   exact awf version the repo was rendered with, for hooks and CI.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state and `memory.md`; optional managed worktrees use Git-authoritative path, registration, and branch topology. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
 
-awf renders for six runtimes: Pi, [Claude Code](https://www.anthropic.com/claude-code),
-Codex, GitHub Copilot, Cursor, and Gemini. Each gets skills and agents in its own native
-paths and dialect: Codex agents are TOML profiles, while Claude Code and Gemini receive a
-bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your team
-uses.
+awf renders for Pi and [Claude Code](https://www.anthropic.com/claude-code). Each gets
+skills and agents at descriptor-owned paths; Claude Code also receives its `CLAUDE.md`
+bridge, while Pi owns its runtime extensions. `targets` defaults to `[claude]`; select
+one or both built-in runtimes for the project.
 
 A compatible Pi 0.81.1+ build exposing the required queued-command and persisted-session APIs receives trusted project-extension factories for subagents and handoff. The subagent extension registers `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
@@ -189,9 +188,9 @@ Adopting this release from an older awf is a one-time sealed cutover handled by 
 upgrade` (with `awf upgrade --recover` for an interrupted one); the mechanics live in
 [`AGENTS.md`](AGENTS.md).
 
-The rendered paths above show the default `claude` target; each enabled runtime gets its
-own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into
-`.codex/`, Pi keeps both under `.pi/skills/`). `awf list target` shows the roster.
+The rendered paths above show the default `claude` target; each enabled runtime keeps
+its descriptor-owned layout, and Pi places its artifacts and extensions under `.pi/`.
+`awf list target` shows the roster.
 
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't

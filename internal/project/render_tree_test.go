@@ -187,14 +187,14 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 // A local skill must exist with valid frontmatter at EVERY enabled target's path
 // (ADR-0037): one present, the other absent, is a fail at the missing target.
 func TestLocalFrontmatterEveryTarget(t *testing.T) {
-	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\ntargets:\n  - claude\n  - cursor\n"
+	cfg := "prefix: example\nintegrationBranch: main\nskills: [my-local]\nagents: []\ntargets:\n  - claude\n  - pi\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	valid := "---\nname: my-local\ndescription: a local skill\n---\nbody\n"
-	// Only the claude copy present → the cursor path is flagged absent.
+	// Only the claude copy present -> the Pi path is flagged absent.
 	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-my-local/SKILL.md"), valid)
 	var fails []string
 	op, err := p.OutputPlan(testContext(t))
@@ -202,11 +202,11 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.localReservations(op, func(path string, _ error) { fails = append(fails, path) })
-	if len(fails) != 1 || fails[0] != ".cursor/skills/example-my-local/SKILL.md" {
-		t.Errorf("expected only the cursor path flagged absent, got %v", fails)
+	if len(fails) != 1 || fails[0] != ".pi/skills/example-my-local/SKILL.md" {
+		t.Errorf("expected only the Pi path flagged absent, got %v", fails)
 	}
-	// Both copies present → clean.
-	testsupport.WriteFile(t, filepath.Join(root, ".cursor/skills/example-my-local/SKILL.md"), valid)
+	// Both copies present -> clean.
+	testsupport.WriteFile(t, filepath.Join(root, ".pi/skills/example-my-local/SKILL.md"), valid)
 	fails = nil
 	op, err = p.OutputPlan(testContext(t))
 	if err != nil {

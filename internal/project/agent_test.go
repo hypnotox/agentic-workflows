@@ -1,14 +1,10 @@
 package project
 
 import (
-	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
@@ -62,45 +58,49 @@ func TestEncodeAgentRejectsInvalidMetadata(t *testing.T) {
 		if _, err := encodeMarkdownAgent(a); err == nil {
 			t.Fatalf("encodeMarkdownAgent(%#v) succeeded", a)
 		}
-		if _, err := encodeTOMLAgent(a); err == nil {
-			t.Fatalf("encodeTOMLAgent(%#v) succeeded", a)
-		}
 	}
 }
 
-func TestValidateTOMLAgentRejectsInvalidProfiles(t *testing.T) {
-	t.Parallel()
-
-	for _, content := range []string{
-		"name =\n",
-		"name = \"reviewer\"\ndescription = \"description\"\nextra = \"nope\"\n",
-		"name = \"\"\ndescription = \"description\"\ndeveloper_instructions = \"body\"\n",
-	} {
-		if err := validateTOMLAgent([]byte(content)); err == nil {
-			t.Fatalf("validateTOMLAgent(%q) succeeded", content)
-		}
-	}
-}
-
+// invariant: rendering/catalog-and-targets:structured-agent-encoding (TestProjectRendersStandardAgentMetadataAndBody)
 func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nagents:\n  - code-reviewer\n")
-	p, err := Open(testContext(t), root)
+	p := &Project{Cat: &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
+		"reviewer": {Name: "literal-reviewer", Description: "Rendered {{ .audience }} description."},
+	}}}
+	// The body deliberately begins with valid but conflicting frontmatter. A
+	// structured encoder preserves it as instructions; an implementation that
+	// reparses an intermediate Markdown artifact would substitute this decoy.
+	body := "---\nname: body-decoy\ndescription: body decoy\n---\n\n# independently-rendered-body\n\nReview this body.\n"
+	encoded, err := p.encodeAgent(piTarget, "reviewer", body, map[string]any{"audience": "target"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
+	var fm skillFrontmatter
+	parsedBody, found, err := frontmatter.Parse([]byte(encoded), &fm)
+	if err != nil || !found {
+		t.Fatalf("parse encoded agent: found=%t err=%v", found, err)
+	}
+	if fm.Name != "literal-reviewer" || fm.Description != "Rendered target description." || string(parsedBody) != "\n"+body {
+		t.Fatalf("structured agent = name %q description %q body %q", fm.Name, fm.Description, parsedBody)
+	}
+
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	project, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := findByTID(files, "agents/code-reviewer.md.tmpl")
-	if len(got) != 1 {
-		t.Fatalf("standard agent files = %d, want 1", len(got))
+	files, err := project.RenderAll()
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, want := range []string{"name: code-reviewer", "Independent fresh-context reviewer for example", "# code-reviewer"} {
-		if !strings.Contains(got[0].Content, want) {
-			t.Errorf("missing %q in:\n%s", want, got[0].Content)
+	for i := range files {
+		if files[i].Path == ".pi/extensions/awf-context-usage/index.ts" {
+			if files[i].Encoder != PlainAgentDialect {
+				t.Fatalf("Pi target-owned encoder = %q", files[i].Encoder)
+			}
+			return
 		}
 	}
+	t.Fatal("missing Pi target-owned plain output")
 }
 
 func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
@@ -122,46 +122,5 @@ func TestProjectEncodeMarkdownAgentRejectsInvalidDescriptionTemplate(t *testing.
 	}}}
 	if _, err := p.encodeAgent(claudeTarget, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeMarkdownAgent accepted an invalid description template")
-	}
-}
-
-func TestTOMLEncoderDoesNotDependOnMarkdownParser(t *testing.T) {
-	t.Parallel()
-
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate agent_test.go")
-	}
-	src, err := os.ReadFile(filepath.Join(filepath.Dir(file), "agent.go"))
-	if err != nil {
-		t.Fatalf("read agent.go: %v", err)
-	}
-	if strings.Contains(string(src), "frontmatter.") {
-		t.Fatal("TOML encoder must not parse rendered Markdown frontmatter")
-	}
-}
-
-// invariant: rendering/catalog-and-targets:structured-agent-encoding (TestEncodeTOMLAgentRoundTripsMultilineInstructions)
-func TestEncodeTOMLAgentRoundTripsMultilineInstructions(t *testing.T) {
-	t.Parallel()
-
-	want := agent{
-		Name:        "reviewer",
-		Description: "Reviews \"quoted\" changes.",
-		Body:        "# reviewer\n\nUse \"care\".\n",
-	}
-	got, err := encodeTOMLAgent(want)
-	if err != nil {
-		t.Fatalf("encodeTOMLAgent: %v", err)
-	}
-	var profile codexAgentProfile
-	if _, err := toml.Decode(got, &profile); err != nil {
-		t.Fatalf("decode TOML: %v", err)
-	}
-	if profile != (codexAgentProfile{Name: want.Name, Description: want.Description, DeveloperInstructions: want.Body}) {
-		t.Fatalf("profile = %#v", profile)
-	}
-	if !strings.Contains(got, "developer_instructions") {
-		t.Fatalf("TOML missing instructions: %q", got)
 	}
 }

@@ -567,18 +567,17 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 		out = append(out, rf)
-		// Bridge: each adapter that wants one imports AGENTS.md verbatim (ADR-0037).
-		// Gated on the agents-doc render above - a local (hand-maintained) AGENTS.md
-		// must not get a bridge pointing at an un-rendered file. cursor has an empty
-		// BridgeFile and emits nothing (inv: cursor-no-bridge).
-		// touches-state: rendering/project-output-plan:cursor-no-bridge - bridge suppression for an empty BridgeFile; proof in target_test.go
+		// Each descriptor-owned bridge is gated on the agents-doc render above: a
+		// local (hand-maintained) AGENTS.md emits no managed bridge. A target with an
+		// empty BridgeFile emits no bridge, so neutral instructions never point at
+		// an unrendered target-owned file.
 		for _, t := range p.Targets {
 			if t.BridgeFile == "" {
 				continue
 			}
-			brf, err := p.renderTarget("claude", "", t.BridgeTemplate,
+			brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
 				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
-			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
+			if err != nil {
 				return nil, err
 			}
 			out = append(out, brf)
@@ -748,7 +747,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
+	if kind != "target-output" && kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err
@@ -787,14 +786,10 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 		return "", err
 	}
 	a := agent{Name: p.Cat.Agents[name].Name, Description: description, Body: body}
-	switch t.AgentDialect {
-	case MarkdownAgentDialect:
-		return encodeMarkdownAgent(a)
-	case TOMLAgentDialect:
-		return encodeTOMLAgent(a)
-	default:
+	if t.AgentDialect != MarkdownAgentDialect {
 		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
 	}
+	return encodeMarkdownAgent(a)
 }
 
 // generateIndexMD renders the ADR INDEX for the project's decisions directory

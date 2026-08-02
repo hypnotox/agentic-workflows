@@ -67,7 +67,7 @@ case "$cmd" in
     go test ./... "$@"
     ;;
   clean-test-tmp)
-    go run ./cmd/testtmpclean "$@"
+    go run ./internal/testsupport/cmd/testtmpclean "$@"
     ;;
   render)
     # The rendered ./awf wrapper runs awf from source (awfInvokeCmd) so the

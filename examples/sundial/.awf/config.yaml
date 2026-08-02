@@ -41,10 +41,6 @@ docs:
   - testing
 targets:
   - claude
-  - codex
-  - copilot
-  - cursor
-  - gemini
   - pi
 audit:
   allowedScopes:
