@@ -67,9 +67,11 @@ not rewritten.
    outcome. `detached` carries no effort, memory, activity, or outcome fact. Each refusal condition
    requires exactly one outcome and forbids effort, memory, and activity facts. Handled refusal
    conditions are `not-owner`, `missing`, `invalid-memory`, and `unsafe-resident`; no reply field is
-   optional except the outcome cause described below. A refusal outcome carries its matching
-   condition, `changedActivity`, `changedMemory`, ordered executable next actions, and a cause
-   exactly when a mechanism call failed. Malformed invocation and failures that observe no managed
+   optional except the outcome cause described below. A refusal outcome carries category
+   `operation`, a separate bounded present-tense condition stating the observed state,
+   `changedActivity`, ordered independently executable next actions, and a cause exactly when a
+   mechanism call failed. The extension branches only on the top-level stable reply condition,
+   never the observed-condition prose. Malformed invocation and failures that observe no managed
    state retain the existing nonzero, empty-stdout, bounded-stderr CLI convention.
 
 3. `decision: recovery-attachment` Make explicit protocol-v2 attach the recovery boundary for
@@ -174,8 +176,8 @@ The activity binary, generated client, and extension lose destination resolution
 mutation, absolute path facts, role state, command queueing, global transfer coordination,
 replacement timeouts, `changeCwd` capability detection, and multi-phase recovery. The smaller
 state machine has fewer partial outcomes and no foreign runtime-replacement dependency. Protocol
-v2 also aligns outcome ownership with reality: awf reports only activity and memory axes it can
-observe.
+v2 also aligns outcome ownership with reality: awf reports only the activity axis it can mutate,
+while validated memory remains a returned fact rather than a mutation axis.
 
 The design deliberately trusts awf's fixed layout and the operational rule that Pi starts at the
 repository root. A Pi process started elsewhere may receive relative paths that are not meaningful;
