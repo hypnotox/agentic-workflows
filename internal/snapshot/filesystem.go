@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -60,7 +61,7 @@ func filesystemTree(ctx context.Context, root string, ops filesystemOps) (*Tree,
 			if markerErr == nil {
 				return filepath.SkipDir
 			}
-			if !os.IsNotExist(markerErr) {
+			if !errors.Is(markerErr, fs.ErrNotExist) {
 				return markerErr
 			}
 			return nil

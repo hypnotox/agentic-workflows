@@ -8,6 +8,8 @@ The tooling domain owns the command-line binary and local effort and worktree au
 
 The final bridge upgrade verifies its frozen version-1 attestation before its journal commits the replacement lock. Its historical routing payload is consumed as compatibility input and is not promoted.
 
+The gated `check` family is organized by subject universe. `check repo` aggregates drift, state, prose, and memory checks; `check staged` aggregates HEAD-to-index state and rendered-output drift, while its commit-message child remains direct-only because it requires a message file. Bare `check` runs both aggregates, and disabled prose or memory children disclose their enablement knobs without failing.
+
 
 ## Topics
 
