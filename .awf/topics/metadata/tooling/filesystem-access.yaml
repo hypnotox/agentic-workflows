@@ -1,0 +1,5 @@
+title: Filesystem access
+summary: Single-home root-confined filesystem access and its controlled test fault source.
+paths:
+  - internal/filesystem/**
+  - internal/testsupport/fsfixture/**

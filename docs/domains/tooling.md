@@ -22,6 +22,7 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 - [Context and topic](../topics/tooling/context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Effort management](../topics/tooling/effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.
+- [Filesystem access](../topics/tooling/filesystem-access.md): Single-home root-confined filesystem access and its controlled test fault source.
 - [Git access](../topics/tooling/git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
 - [Init and enablement](../topics/tooling/init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
 - [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
