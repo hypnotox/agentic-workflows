@@ -88,10 +88,14 @@ mapping. No second Markdown parser belongs in the command or project packages.
 6. The parser enforces the field relationships it can determine mechanically. A spike
    requires `Question`, has no prose body after its fields, forbids the batch-only fields,
    and makes Notes required; its Question is its complete task content. A batch requires
-   `Paths`, `Representative`, `Edge`, and `Post-check`.
-   `Paths` is also required whenever scope is ambiguous, but ambiguity and whether content
-   belongs to ADR-0209's closed exactness categories remain reviewer judgments. A `Paths`
-   value carrying wildcard or pathspec syntax requires `Post-check`. The parser validates
+   `Paths`, `Representative`, `Edge`, and `Post-check`. `Paths` is a JSON array of strings.
+   An unprefixed string is a repository-relative literal path, `glob:` introduces the
+   supported glob grammar, and `pathspec:` carries the remaining string as a Git pathspec
+   verbatim. Empty arrays, empty or duplicate entries, absolute paths, and entries escaping
+   the repository through `..` are refused. Any `glob:` or `pathspec:` entry requires
+   `Post-check`; a literal entry may not smuggle wildcard or Git magic syntax. `Paths` is
+   also required whenever scope is ambiguous, but ambiguity and whether content belongs to
+   ADR-0209's closed exactness categories remain reviewer judgments. The parser validates
    those structural implications; it does not attempt to infer contract-bearing prose or
    execute a post-check during plan validation.
 
