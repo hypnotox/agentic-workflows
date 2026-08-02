@@ -43,7 +43,10 @@ Codex runtime target and remain supported.
 1. The built-in runtime target set is exactly `claude` and `pi`. Remove the
    `codex`, `copilot`, `cursor`, and `gemini` descriptors and all live code,
    templates, dependencies, tests, fixtures, generated outputs, active
-   documentation, and obsolete roadmap material owned only by those adapters.
+   documentation, repository integration metadata, and obsolete roadmap
+   material owned only by those adapters. Audit target-specific `.gitignore`
+   comments and exceptions while preserving entries that still serve shared
+   repository infrastructure.
 
 2. Removal is immediate and complete. Do not add migrations, compatibility
    aliases, deprecation warnings, or silent configuration rewriting. A project
@@ -68,10 +71,12 @@ Codex runtime target and remain supported.
    accidental Claude sidecar or template association.
 
 6. Preserve generic multi-target, ordering, customization, output ownership,
-   and pruning coverage using Claude Code and Pi. Where removed adapter tests
-   carry invariant proof markers for retained or revised claims, move those
-   proofs to tests that exercise the surviving descriptors or an explicit
-   synthetic descriptor rather than weakening the claim.
+   pruning, and template missing-value coverage using Claude Code and Pi.
+   Surviving target and bridge templates keep missing-key-zero behavior and
+   emit no `<no value>` token when variables are empty. Where removed adapter
+   tests carry invariant proof markers for retained or revised claims, move
+   those proofs to tests that exercise the surviving descriptors or an
+   explicit synthetic descriptor rather than weakening the claim.
 
 7. Regenerate the root project and Sundial adopter from their authoring sources.
    Sundial enables only Claude Code and Pi after this change, and every managed
@@ -84,9 +89,11 @@ Codex runtime target and remain supported.
 
 ## State changes
 
+- add `rendering/catalog-and-targets:built-in-runtime-targets`
 - update `rendering/catalog-and-targets:structured-agent-encoding`
 - update `rendering/catalog-and-targets:target-dialect-render`
 - remove `rendering/project-output-plan:cursor-no-bridge`
+- add `rendering/project-output-plan:bridge-render-identity`
 - update `rendering/project-output-plan:multi-target-render`
 
 ## Consequences
@@ -98,7 +105,10 @@ Codex runtime target and remain supported.
   configuration before the new binary can open them. This is intentional; awf
   is pre-1.0 and no compatibility layer is retained.
 - The abstraction cost that supports real Claude Code and Pi differences
-  remains, as does the extension point for a future target.
+  remains, as does the extension point for a future target. Synthetic target
+  descriptors preserve structural customization coverage, but they cannot
+  validate future harness contracts as strongly as supported production
+  adapters did.
 - Removing TOML support simplifies agent encoding but does not justify erasing
   target-level encoding customization or Pi's plain TypeScript outputs.
 - The neutral bridge identity corrects an existing representation leak while
@@ -111,6 +121,7 @@ Codex runtime target and remain supported.
 
 | Alternative | Why not chosen |
 |---|---|
+| Retain all six supported adapters | Continues dependency, testing, documentation, and generated-output costs for four runtimes the project owner does not use. |
 | Remove the four targets only from the registry | Leaves unreachable implementations, templates, dependencies, tests, and documentation, preserving the unwanted maintenance cost. |
 | Hard-code separate Claude Code and Pi render paths | Discards customization already required by both surviving targets and makes a future adapter a render-loop rewrite. |
 | Purge the adapters while redesigning the whole target and encoding model | Mixes a bounded removal with speculative restructuring; the current generic seams can carry the change. |
