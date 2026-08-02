@@ -14,5 +14,20 @@ func (p *Project) ReadPlan(name, selector string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return plan.RenderProjection(selected, selector)
+	if selected.Format != "plan-v2" {
+		return plan.RenderProjection(selected, selector)
+	}
+	phase, task, err := selectedRefs(selected, selector)
+	if err != nil {
+		return nil, err
+	}
+	corpus, _, _, err := p.deriveOperationState()
+	if err != nil {
+		return nil, err
+	}
+	applying, context, err := resolveSelectedPlanDecisions(selected, corpus, phase, task)
+	if err != nil {
+		return nil, err
+	}
+	return plan.RenderProjectionInput(plan.ProjectionInput{Plan: selected, Selector: selector, Applying: applying, Context: context})
 }

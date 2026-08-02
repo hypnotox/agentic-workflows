@@ -11,6 +11,11 @@ query a single version or a range.
 ### Features
 
 - `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata, and protocol-1 advisory activity commands resolve, attach, heartbeat, update checkout, or detach Pi session activity without locking effort work. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the capability-gated `using_effort` skill and extension. Effort memories retain dual-format identity during migration; activity remains advisory and non-locking.
+
+- Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
+
+- New plans use `plan-v2`: task-scoped Applying and Context Decision references, slugged Definition-of-done outcomes, and phase Advances and Completes assignments are validated in working and staged universes. `awf read plan` orders only selected resolved Decisions and owning-phase outcomes, excludes whole-plan Definition of done, and adds task scope safety; plan-v1 remains byte-compatible.
+
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.

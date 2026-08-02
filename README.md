@@ -270,8 +270,8 @@ disk.
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
 | `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
-| `awf new plan "<title>"` | Scaffold a dated `plan-v1` plan under `docs/plans/`. |
-| `awf read plan <plan> <P[.T]>` | Resolve an exact plan filename/stem and print one phase or task executable closure; marker-absent historical plans remain legacy and are not projected. |
+| `awf new plan "<title>"` | Scaffold a dated `plan-v2` plan under `docs/plans/`. |
+| `awf read plan <plan> <P[.T]>` | Resolve an exact plan filename/stem and print one phase or task executable closure with selected Decisions and phase outcomes; marker-absent historical plans remain legacy and are not projected. |
 | `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
 | `awf effort new "<outcome>" [--json]` | Derive an immutable slug and publish schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; `list` and `show` expose the same protocol. |
 | `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. Pi's derived `using_effort` support remains capability-gated and advisory. |

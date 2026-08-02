@@ -69,5 +69,6 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `docs/workflow.md` for full plan lifecycle rules and the canonical workflow chain.
 - For V2 ADR work, require tasks to assign declared operations to pair-atomic batches and account for Applied, Remaining, and Canceled partitions.
+- For plan-v2, require retained pending ADR slugs, V4 stable `decision:` selectors, and frozen `#N` selectors only for pre-V4 records. Check Applying and Context omission-not-empty semantics, every plan-level Decision's substantive Applying assignment, and every DoD item's final Completes owner; Proposed coverage notes are advisory and historical Decision prose never replaces current-state authority.
 - The `plan-reviewer` is one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.
 - The plan-resync pass (post-ADR-review drift check) is a separate skill: `awf-reviewing-plan-resync`.

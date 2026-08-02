@@ -450,8 +450,8 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			text := string(body)
 			// Scaffolding uses the activation registry's current format, so a new
 			// record is V3 with its slug key regardless of existing ADR numbers.
-			if !strings.Contains(text, "format: current-state-v3\n") {
-				t.Fatalf("new ADR at next number %d is not current-state-v3", tc.nextNumber)
+			if !strings.Contains(text, "format: current-state-v4\n") {
+				t.Fatalf("new ADR at next number %d is not current-state-v4", tc.nextNumber)
 			}
 			start, end := strings.Index(text, "## State changes\n"), strings.Index(text, "## Consequences\n")
 			if start < 0 || end < 0 || end <= start {

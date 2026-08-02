@@ -97,6 +97,10 @@ schema retrofit may migrate its machine-readable encoding.
   amendment recorded the same way.
 - current-state-v1 records keep the prior rule: frozen once they leave Proposed.
 
+## Decision references
+
+V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker. Use that stable slug with the ADR number or retained pending ADR slug in plan references. Pre-V4 Decision items have no stable marker: use canonical `#N` only after their authored-format lifecycle freezes the record; never treat a legacy ordinal as a current-authority or supersession anchor.
+
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->

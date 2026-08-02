@@ -1,6 +1,6 @@
 <!-- awf:section frontmatter -->
 ---
-format: {{ with .adrFormat }}{{ . }}{{ else }}current-state-v3{{ end }}
+format: {{ with .adrFormat }}{{ . }}{{ else }}current-state-v4{{ end }}
 status: Proposed
 date: YYYY-MM-DD
 ---
@@ -19,8 +19,8 @@ The chosen approach, as column-zero numbered items sequential from 1, each a dis
 actionable commitment. Be precise enough that a reader can implement it correctly without
 further consultation.
 
-1. ...
-2. ...
+1. `decision: first-commitment` Describe the first commitment.
+2. `decision: second-commitment` Describe the second commitment.
 
 ## State changes
 

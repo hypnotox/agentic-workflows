@@ -83,10 +83,22 @@ func TestParseV3AcceptsBothIdentityForms(t *testing.T) {
 	if !numbered.HasV2Semantics() || !numbered.IsV3() || !numbered.IsGoverned() || numbered.IsV2() {
 		t.Fatalf("V3 format predicates = %#v", numbered.Format)
 	}
+	v4Body := strings.Replace(strings.Replace(pendingFixture("v4-pending"), adr.V3FormatMarker, adr.V4FormatMarker, 1), oneDecision, "1. `decision: v4-identity` V4 pending commitment.", 1)
+	v4, err := adr.ParseV4("v4-pending.md", []byte(v4Body))
+	if err != nil || !v4.IsPending() || v4.Identity() != "v4-pending" || !v4.IsV4() {
+		t.Fatalf("V4 pending identity = %#v, %v", v4, err)
+	}
 }
 
 // invariant: adr-system/adr-lifecycle:adr-slug-frontmatter-mandatory (TestParseV3RejectsMalformedSlugIdentity)
 func TestParseV3RejectsMalformedSlugIdentity(t *testing.T) {
+	v4 := strings.Replace(strings.Replace(pendingFixture("v4"), "current-state-v3", "current-state-v4", 1), "1. The only decision.", "1. `decision: v4-item` V4 commitment.", 1)
+	if _, err := adr.ParseV4("v4.md", []byte(v4)); err != nil {
+		t.Fatalf("valid V4 slug identity: %v", err)
+	}
+	if _, err := adr.ParseV4("v4.md", []byte(strings.Replace(v4, "slug: v4\n", "", 1))); err == nil || !strings.Contains(err.Error(), "slug") {
+		t.Fatalf("V4 missing slug = %v", err)
+	}
 	for _, tc := range []struct{ name, file, body, want string }{
 		{"missing slug", "no-slug.md",
 			strings.Replace(pendingFixture("no-slug"), "slug: no-slug\n", "", 1),
@@ -155,7 +167,7 @@ func TestParseRecordRoutesPendingAndV3(t *testing.T) {
 func TestParseDirRefusesStraysAndCarriesPendingRecords(t *testing.T) {
 	dir := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(dir, "0001-numbered.md"), "---\nstatus: Accepted\n---\n# ADR-0001: Numbered\n")
-	testsupport.WriteFile(t, filepath.Join(dir, "pending-one.md"), pendingFixture("pending-one"))
+	testsupport.WriteFile(t, filepath.Join(dir, "pending-one.md"), strings.Replace(strings.Replace(pendingFixture("pending-one"), "current-state-v3", "current-state-v4", 1), "1. The only decision.", "1. `decision: only-decision` The only decision.", 1))
 	for _, reserved := range []string{"README.md", "INDEX.md", "template.md"} {
 		testsupport.WriteFile(t, filepath.Join(dir, reserved), "# reserved\n")
 	}

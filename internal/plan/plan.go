@@ -4,7 +4,6 @@
 package plan
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,6 +20,7 @@ import (
 // ValidStatuses are the two plan lifecycle states (ADR-0097): mutable while
 // Proposed, frozen at Implemented.
 var ValidStatuses = map[string]bool{"Proposed": true, "Implemented": true}
+var proposedPlanStatus = []string{"Proposed"}[0]
 
 // FilenameRe matches a plan filename (YYYY-MM-DD-slug.md); it excludes
 // template.md and README.md just as adr.FilenameRe's numeric form does.
@@ -83,6 +83,9 @@ func (l ADRLink) Identity() string {
 	return fmt.Sprintf("%04d", l.Number)
 }
 
+// IsProposed reports whether this plan remains amendable and receives coverage notes.
+func (p Plan) IsProposed() bool { return p.Status == proposedPlanStatus }
+
 // Plan is a parsed plan record. HasFrontmatter is false for the grandfathered
 // pre-convention corpus (ADR-0098), which the checks skip.
 type Plan struct {
@@ -102,6 +105,7 @@ type Plan struct {
 	ArchitectureSummary string
 	Phases              []Phase
 	DefinitionOfDone    string
+	DoD                 []DoDItem
 	Notes               string
 	// CommitSubjects are the planned commit subjects a plan marks with ```commit
 	// fences (ADR-0111): the first non-empty line of each fenced block whose info
@@ -119,78 +123,11 @@ type planFrontmatter struct {
 // ParseDir scans dir for plan files (YYYY-MM-DD-*.md) and parses each. Files
 // without frontmatter parse to a Plan with HasFrontmatter false.
 func ParseDir(dir string) ([]Plan, error) {
-	resolvedDir, err := filepath.EvalSymlinks(dir)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
+	sources, err := parseDirSources(dir)
 	if err != nil {
-		return nil, fmt.Errorf("resolve plans directory %s: %w", dir, err)
+		return nil, err
 	}
-	matches, err := filepath.Glob(filepath.Join(dir, "*.md"))
-	if err != nil {
-		return nil, fmt.Errorf("glob %s: %w", dir, err)
-	}
-	var plans []Plan
-	var diagnostics []*Diagnostic
-	for _, path := range matches {
-		base := filepath.Base(path)
-		if !FilenameRe.MatchString(base) {
-			continue // skip template.md, README.md, and any non-plan file
-		}
-		resolvedPath, err := filepath.EvalSymlinks(path)
-		if err != nil {
-			return nil, fmt.Errorf("resolve %s: %w", base, err)
-		}
-		rel, err := filepath.Rel(resolvedDir, resolvedPath)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
-			diagnostics = append(diagnostics, &Diagnostic{Category: "path", Path: base, Detail: "plan path escapes plans directory"})
-			continue
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", base, err)
-		}
-		format, present, formatErr := frontmatterFormat(data)
-		if formatErr != nil {
-			var diagnostic *Diagnostic
-			if errors.As(formatErr, &diagnostic) {
-				diagnostic.Path = base
-				diagnostics = append(diagnostics, diagnostic)
-				continue
-			}
-			return nil, formatErr // coverage-ignore: frontmatterFormat returns only typed Diagnostic errors
-		}
-		var fm planFrontmatter
-		body, found, err := frontmatter.Parse(data, &fm)
-		if err != nil {
-			diagnostics = append(diagnostics, &Diagnostic{Category: "frontmatter", Path: base, Detail: err.Error()})
-			continue
-		}
-		pl := Plan{
-			Filename: base, Path: path, Date: fm.Date, ADRs: fm.ADRs,
-			Status: fm.Status, Format: fm.Format, HasFrontmatter: found,
-			Source: data, CommitSubjects: commitSubjects(string(data)),
-		}
-		if found && present {
-			if format != "plan-v1" {
-				diagnostics = append(diagnostics, &Diagnostic{Category: "frontmatter", Path: base, Detail: "format must be exactly plan-v1"})
-				continue
-			}
-			if err := parsePlanV1(base, string(data), string(body), &pl); err != nil {
-				var diagnostic *Diagnostic
-				if errors.As(err, &diagnostic) {
-					diagnostics = append(diagnostics, diagnostic)
-					continue
-				}
-				return nil, err // coverage-ignore: parsePlanV1 returns only typed Diagnostic errors
-			}
-		}
-		plans = append(plans, pl)
-	}
-	if len(diagnostics) > 0 {
-		return plans, &DiagnosticsError{Diagnostics: diagnostics}
-	}
-	return plans, nil
+	return ParseSources(sources)
 }
 
 // frontmatterFormat inspects the YAML node before decoding into planFrontmatter

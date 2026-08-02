@@ -921,6 +921,9 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"batch task",
 		"path-disjoint",
 		"dead-code escape",
+		"nonempty JSON `Applying:` or `Context:` array",
+		"stable `dod: <slug>` bullets",
+		"frozen `#N` only for pre-V4 Decision prose",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1006,6 +1009,9 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"commit-disabled helpers",
 		"report-only phase review",
 		"example-reviewing-impl",
+		"generated task scope notice",
+		"phase-owner context only",
+		"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1042,6 +1048,8 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"example-reviewing-impl",
 		"example-executing-plans",
 		"dirty-state inventory",
+		"generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
+		"never transfer commit, review, checkpoint, handoff, helper, or outcome authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1363,6 +1371,8 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"status transition",
 		"regenerate",
 		"Append-only",
+		"V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker",
+		"use canonical `#N` only after their authored-format lifecycle freezes the record",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1437,6 +1447,9 @@ func TestReviewingPlanTemplate(t *testing.T) {
 		"all universal lenses",
 		"per-phase ownership",
 		"helper partitions",
+		"V4 stable `decision:` selectors",
+		"Proposed coverage notes are advisory",
+		"historical Decision prose never replaces current-state authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1468,6 +1481,9 @@ func TestReviewingPlanResyncTemplate(t *testing.T) {
 		"doc-currency",
 		"per-phase ownership",
 		"helper partitions",
+		"V4 `decision:` selectors",
+		"final DoD Completes ownership",
+		"historical prose do not replace current-state authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
