@@ -33,7 +33,7 @@ func TestMemoryGateKnobOff(t *testing.T) {
 	_ = ctx
 	// A bare directory has no project config, so the knob cannot be consulted.
 	if err := runMemoryGate(ctx, t.TempDir(), io.Discard); err == nil {
-		t.Error("bare directory: want a staged-snapshot read error, got nil")
+		t.Error("bare directory: want a config-load error, got nil")
 	}
 	// Knob absent and knob explicitly false both disclose the disabled child and
 	// return nil without scanning, even with a citing file staged.

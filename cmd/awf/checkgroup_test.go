@@ -87,8 +87,8 @@ func TestCheckDisabledChildDisclosure(t *testing.T) {
 			t.Fatalf("check repo: %v", err)
 		}
 		for _, want := range []string{proseNote, memoryNote} {
-			if !strings.Contains(out.String(), want) {
-				t.Errorf("check repo output omits %q:\n%s", strings.TrimSpace(want), out.String())
+			if got := strings.Count(out.String(), want); got != 1 {
+				t.Errorf("check repo output contains %q %d times, want once:\n%s", strings.TrimSpace(want), got, out.String())
 			}
 		}
 	})
@@ -121,6 +121,25 @@ func TestCheckDisabledChildDisclosure(t *testing.T) {
 			}
 			if got := out.String(); got != tc.want {
 				t.Errorf("check repo %s output = %q, want %q", tc.child, got, tc.want)
+			}
+		}
+	})
+
+	t.Run("direct enabled child omits the disclosure", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
+		for _, tc := range []struct {
+			child    string
+			unwanted string
+		}{
+			{child: "prose", unwanted: proseNote},
+			{child: "memory", unwanted: memoryNote},
+		} {
+			var out, errb bytes.Buffer
+			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
+				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
+			}
+			if strings.Contains(out.String(), tc.unwanted) {
+				t.Errorf("check repo %s output contains %q:\n%s", tc.child, strings.TrimSpace(tc.unwanted), out.String())
 			}
 		}
 	})
