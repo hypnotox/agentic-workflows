@@ -49,7 +49,7 @@ Hard rules every change must respect:
 - **No working-memory citation in a durable record.** An ADR, a plan, and a commit-message body may name the `.awf/efforts/` directory or an angle-bracket placeholder path, never a concrete `.awf/efforts/<slug>/memory.md`: the file is ephemeral and deleted at finish, so a citation leaks false authority into a durable record. The opt-in `awf check repo memory` scans scannable staged decisions and plans, and `awf check staged commit` scans the git-cleaned message body without exemptions. Slash, backslash, link, code, prose, and normalized relative spellings are detected without reading resident files. (ADR-0158, ADR-0175)
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch. (ADR-0063)
-- **Binary-version gate.** Every gated command (`render`, `check`, `audit`, `effort`, `adr`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
+- **Binary-version gate.** Every gated command (`render`, `check`, `read`, `audit`, `effort`, `adr`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
@@ -104,6 +104,8 @@ awf upgrade: migrate the config tree to the current schema after upgrading awf
 awf audit: report workflow-conformance findings over an explicit commit range (advisory)
 awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered plans template
 ```
+
+`awf read plan <plan> <P[.T]>`: resolve an exact plan filename or stem and canonical positive phase or task selector, then print its source-ordered executable closure with frontmatter, title, Goal, Architecture summary, owning phase and execution mode, Phase close, Definition of done, and Notes when present; marker-absent historical plans remain legacy and are not projected.
 
 For managed `awf context` calls, follow the awf-orienting skill's context discipline: start bare, request only the named facets the active lens requires, never prescribe `--full`, and consume spill notices per the shared contract.
 

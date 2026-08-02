@@ -58,7 +58,7 @@ func parseStateChanges(body string) (ops []Operation, none bool, err error) {
 		}
 		id := m[2]
 		if seen[id] {
-			return nil, false, fmt.Errorf("state changes names %s more than once", id)
+			return nil, false, fmt.Errorf("state changes names %s more than once; amend an unapplied operation, use Reapplied to correct an applied add or update while operations remain, or use a follow-up ADR", id)
 		}
 		seen[id] = true
 		ops = append(ops, Operation{Verb: OpVerb(m[1]), ID: id, Slug: localSlug(id)})

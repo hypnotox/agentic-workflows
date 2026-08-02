@@ -8,8 +8,10 @@ import (
 // ApplicationBatch is one implicit or explicit application of declared state
 // operations. Operations are retained in declaration/event order.
 type ApplicationBatch struct {
-	Operations []Operation
-	Implicit   bool
+	Operations   []Operation
+	Kind         HistoryEventKind
+	HistoryIndex int
+	Implicit     bool
 }
 
 // AppliedOperation is one applied declaration and the index of its batch in
@@ -33,12 +35,15 @@ func (a ADR) ApplicationBatches() ([]ApplicationBatch, error) {
 		return []ApplicationBatch{}, nil
 	}
 	batches := []ApplicationBatch{}
-	for _, event := range a.History {
-		if event.Kind == HistoryApplied {
+	for historyIndex, event := range a.History {
+		if event.Kind == HistoryApplied || event.Kind == HistoryReapplied {
 			if !a.HasV2Semantics() {
 				return nil, fmt.Errorf("ADR-%s has an Applied event outside current-state-v2", a.Identity())
 			}
-			batches = append(batches, ApplicationBatch{Operations: slices.Clone(event.Operations)})
+			batches = append(batches, ApplicationBatch{
+				Operations: slices.Clone(event.Operations),
+				Kind:       event.Kind, HistoryIndex: historyIndex,
+			})
 		}
 	}
 	if len(batches) != 0 {
@@ -50,7 +55,10 @@ func (a ADR) ApplicationBatches() ([]ApplicationBatch, error) {
 	for i := len(a.History) - 1; i >= 0; i-- {
 		event := a.History[i]
 		if (event.Kind == HistoryStatus || (a.IsV1() && event.Kind == 0)) && event.Status == statusImplemented {
-			return []ApplicationBatch{{Operations: slices.Clone(a.Operations), Implicit: true}}, nil
+			return []ApplicationBatch{{
+				Operations: slices.Clone(a.Operations), Kind: HistoryApplied,
+				HistoryIndex: i, Implicit: true,
+			}}, nil
 		}
 	}
 	return nil, fmt.Errorf("ADR-%s has no Implemented status event", a.Identity())
@@ -80,11 +88,23 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 			if _, ok := declared[op]; !ok {
 				return OperationProgress{}, fmt.Errorf("ADR-%s applies undeclared operation %s `%s`", a.Identity(), op.Verb, op.ID)
 			}
-			if applied[op] {
-				return OperationProgress{}, fmt.Errorf("ADR-%s applies operation %s `%s` more than once", a.Identity(), op.Verb, op.ID)
+			switch batch.Kind {
+			case HistoryApplied:
+				if applied[op] {
+					return OperationProgress{}, fmt.Errorf("ADR-%s applies operation %s `%s` more than once; use a Reapplied event for a correction", a.Identity(), op.Verb, op.ID)
+				}
+				applied[op] = true
+				progress.Applied = append(progress.Applied, AppliedOperation{Operation: op, BatchIndex: i})
+			case HistoryReapplied:
+				if !applied[op] {
+					return OperationProgress{}, fmt.Errorf("ADR-%s reapplies operation %s `%s` without an earlier Applied occurrence", a.Identity(), op.Verb, op.ID)
+				}
+				if op.Verb == OpRemove {
+					return OperationProgress{}, fmt.Errorf("ADR-%s reapplies remove operation `%s`; only add or update may be reapplied", a.Identity(), op.ID)
+				}
+			default: // coverage-ignore: ApplicationBatches emits only Applied or Reapplied kinds
+				return OperationProgress{}, fmt.Errorf("ADR-%s has an invalid application batch kind", a.Identity())
 			}
-			applied[op] = true
-			progress.Applied = append(progress.Applied, AppliedOperation{Operation: op, BatchIndex: i})
 		}
 	}
 	var complement []Operation

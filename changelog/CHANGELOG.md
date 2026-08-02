@@ -12,6 +12,12 @@ query a single version or a range.
 
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
+- New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
+
+- Implementing V2 and V3 ADRs can now correct an already-applied add or update through explicit `Reapplied` history events while another operation remains. Each correction is material and atomic, preserves first-application provenance, retains its own occurrence in merge ordering, and leaves declaration progress counted once.
+
+- Plan authoring now treats qualifying implementation-ready instructions as the default, marks contract-bearing tasks with `Latitude: exact`, supports explicit spike and batch fields with affected-path and post-check contracts, and retires the duplicated whole-plan File structure section.
+
 - `awf check` now reports a non-failing advisory for glossary meanings longer than the terseness guideline, naming the term and its length. It evaluates the merged set, so shipped and project-authored vocabulary follow the same rule.
 
 - The glossary now renders one sorted table from two layers: awf's shipped standard vocabulary and project-authored `data.terms`. A project record overrides a shipped term with the same case-insensitive name, including to reword or retire it locally.
@@ -41,6 +47,8 @@ query a single version or a range.
   on upgrade.
 
 ### Breaking changes
+
+- The built-in runtime target set is now exactly `claude` and `pi`. The `codex`, `copilot`, `cursor`, and `gemini` target values, their renderers, and their generated outputs are removed immediately without a migration or compatibility alias; remove those names from `targets` before opening an adopted project with this release.
 
 - `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts it. Convert each pair by hand; an unconverted tree fails render with `data.terms: must be a list of {term, meaning} records`.
 

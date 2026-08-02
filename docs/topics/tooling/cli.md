@@ -80,6 +80,12 @@ A disabled prose or memory child prints one non-failing note naming the child an
 Origin: ADR-0210
 Backing: test
 
+### `invariant: plan-read-command`
+
+The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures list available exact values. Success writes the internal/plan-rendered executable closure unchanged: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected phase or task, Phase close, Definition of done, and Notes when present; it neither includes other phases nor mutates the source.
+Origin: ADR-0213
+Backing: test
+
 ### `invariant: single-os-exit`
 
 Within the cmd/awf package, os.Exit appears only in main.go's main function, whose body is the single os.Exit(run(...)) wrapper; no other production source in the package calls os.Exit and no fatal or fatalIf helpers exist.

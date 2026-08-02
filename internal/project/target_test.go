@@ -4,10 +4,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -23,51 +25,6 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 	if claudeTarget.BridgeFile != "CLAUDE.md" {
 		t.Fatalf("BridgeFile = %q", claudeTarget.BridgeFile)
-	}
-}
-
-// invariant: rendering/catalog-and-targets:claude-md-bridge (TestCodexTargetRendersTOMLAgents)
-// invariant: rendering/catalog-and-targets:target-dialect-render (TestCodexTargetRendersTOMLAgents)
-func TestCodexTargetRendersTOMLAgents(t *testing.T) {
-	if got := codexTarget.AgentPath("code-reviewer"); got != ".codex/agents/code-reviewer.toml" {
-		t.Fatalf("Codex AgentPath = %q", got)
-	}
-	root := scaffold(t, sampleYAML+"targets:\n  - codex\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got *RenderedFile
-	for i := range files {
-		if files[i].Path == ".codex/agents/code-reviewer.toml" {
-			got = &files[i]
-		}
-	}
-	if got == nil {
-		t.Fatal("Codex agent not rendered")
-	}
-	if err := validateArtifact([]byte(got.Content), TOMLAgentDialect); err != nil {
-		t.Fatalf("validate Codex profile: %v\n%s", err, got.Content)
-	}
-	if !strings.HasPrefix(got.Content, "# "+bannerText+"\n") {
-		t.Fatalf("Codex profile missing TOML banner:\n%s", got.Content)
-	}
-	if !strings.Contains(got.Content, "developer_instructions") {
-		t.Fatalf("Codex profile missing instructions:\n%s", got.Content)
-	}
-	for _, f := range files {
-		if f.TemplateID == "skills/tdd/SKILL.md.tmpl" {
-			if f.Path != ".agents/skills/example-tdd/SKILL.md" {
-				t.Fatalf("Codex skill path = %q", f.Path)
-			}
-			if !strings.Contains(f.Content, "<!-- "+bannerText+" -->") {
-				t.Fatalf("Codex markdown skill lost HTML provenance:\n%s", f.Content)
-			}
-		}
 	}
 }
 
@@ -259,6 +216,36 @@ func TestHandoffWorkflowKeepsPolicyOutsideRuntime(t *testing.T) {
 			t.Errorf("handoff runtime retains workflow policy %q", banned)
 		}
 	}
+
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{}, "targetSessionHandoff": true,
+	}
+	settled := map[string]string{
+		"executing-plans":             "Review settles before checkpointing.",
+		"subagent-driven-development": "checkpoints only after findings resolve",
+	}
+	for name, settledPhrase := range settled {
+		body := renderSkillGolden(t, name, data)
+		if !strings.Contains(body, "awf read plan <plan>") || !strings.Contains(body, "projection changes neither") {
+			t.Errorf("%s lacks fresh-owner projection guidance", name)
+		}
+		settledAt := strings.Index(body, settledPhrase)
+		checkpointAt := strings.Index(body, "**Routine checkpoint.**")
+		if settledAt < 0 || checkpointAt < settledAt {
+			t.Errorf("%s does not place routine checkpoint after settled phase persistence", name)
+		}
+		for _, banned := range []string{
+			"checkbox task", "after every heading-identified task", "after each heading-identified task",
+			"heading-identified task triggers", "projection triggers handoff", "handoff after projection",
+			"after every batch-helper return", "after each batch-helper return",
+			"batch-helper return triggers", "handoff after a helper return",
+		} {
+			if strings.Contains(strings.ToLower(body), banned) {
+				t.Errorf("%s retains task/helper handoff trigger %q", name, banned)
+			}
+		}
+	}
 }
 
 func TestTargetOutputRenderError(t *testing.T) {
@@ -275,6 +262,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiStructuredExplorationContractRender)
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
@@ -282,6 +270,16 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi subagent extension missing %q", want)
 		}
+	}
+	claude := explorationRenderedByPath(t, explorationFixtureConfig("claude"))
+	for path, content := range claude {
+		if strings.Contains(path, "/skills/") && (strings.Contains(content, "subagent_grounding") || strings.Contains(content, "subagent_explore")) {
+			t.Errorf("Claude target %s leaked Pi dispatch tools", path)
+		}
+	}
+	brainstorming := claude[".claude/skills/example-brainstorming/SKILL.md"]
+	if !strings.Contains(brainstorming, "`grounding-checker` agent") {
+		t.Fatal("Claude grounding dispatch lost its target-native agent")
 	}
 }
 
@@ -374,8 +372,8 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 		t.Fatal("exploring is not a core skill")
 	}
 	dirs := map[string]string{
-		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
-		"cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
+		"claude": ".claude/skills",
+		"pi":     ".pi/skills",
 	}
 	for _, target := range KnownTargets() {
 		t.Run(target, func(t *testing.T) {
@@ -520,10 +518,104 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 	return ""
 }
 
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestAllTargetPathsAndBridges)
+// invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestKnownTargets)
+func TestKnownTargets(t *testing.T) {
+	if got := KnownTargets(); strings.Join(got, ",") != "claude,pi" {
+		t.Fatalf("KnownTargets = %v", got)
+	}
+	for _, removed := range []string{"codex", "copilot", "cursor", "gemini"} {
+		_, err := resolveTargets([]string{removed})
+		if err == nil || !strings.Contains(err.Error(), `known: claude, pi`) {
+			t.Errorf("resolveTargets(%q) error = %v", removed, err)
+		}
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: ["+removed+"]\n")
+		if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), `known: claude, pi`) {
+			t.Errorf("Open target %q error = %v", removed, err)
+		}
+	}
+
+	synthetic := Target{Name: "synthetic", SkillDir: ".synthetic/skills", AgentDir: ".synthetic/agents", AgentDialect: MarkdownAgentDialect}
+	targetRegistry[synthetic.Name] = synthetic
+	defer delete(targetRegistry, synthetic.Name)
+	resolved, err := resolveTargets([]string{synthetic.Name})
+	if err != nil || len(resolved) != 1 || resolved[0].Name != synthetic.Name {
+		t.Fatalf("resolve synthetic target = %#v, %v", resolved, err)
+	}
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ntargets: [synthetic]\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(files, func(file RenderedFile) bool { return file.Path == ".synthetic/skills/example-tdd/SKILL.md" }) {
+		t.Fatal("registry-added synthetic target did not render through the generic target path")
+	}
+}
+
+// invariant: rendering/project-output-plan:multi-target-render (TestTargetDescriptorCustomization)
+func TestTargetDescriptorCustomization(t *testing.T) {
+	custom := Target{
+		Name:           "custom",
+		SkillDir:       ".custom/workflows",
+		AgentDir:       ".custom/reviewers",
+		AgentSuffix:    ".agent.md",
+		AgentDialect:   MarkdownAgentDialect,
+		BridgeFile:     "CUSTOM.md",
+		BridgeTemplate: bridgeTID,
+		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
+		Outputs: []TargetOutput{{
+			Path: ".custom/extension.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl",
+			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
+			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
+		}},
+	}
+	if err := custom.validate(); err != nil {
+		t.Fatal(err)
+	}
+	if custom.SkillPath("example", "tdd") != ".custom/workflows/example-tdd/SKILL.md" ||
+		custom.AgentPath("code-reviewer") != ".custom/reviewers/code-reviewer.agent.md" {
+		t.Fatal("custom descriptor paths were not preserved")
+	}
+	if custom.targetTemplateData()["targetSubagentTools"] != true || custom.targetTemplateData()["targetSessionHandoff"] != true {
+		t.Fatal("custom descriptor capabilities were not projected")
+	}
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Targets = []Target{custom}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]AgentDialect{
+		".custom/workflows/example-tdd/SKILL.md":   MarkdownAgentDialect,
+		".custom/reviewers/code-reviewer.agent.md": MarkdownAgentDialect,
+		"CUSTOM.md":            "",
+		".custom/extension.ts": PlainAgentDialect,
+	}
+	counts := map[string]int{}
+	for _, file := range files {
+		if encoder, ok := want[file.Path]; ok {
+			counts[file.Path]++
+			if file.Encoder != encoder {
+				t.Errorf("%s encoder = %q, want %q", file.Path, file.Encoder, encoder)
+			}
+		}
+	}
+	for path := range want {
+		if counts[path] != 1 {
+			t.Errorf("%s rendered %d times, want 1", path, counts[path])
+		}
+	}
+}
 
 func TestAllTargetPathsAndBridges(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - codex\n  - copilot\n  - cursor\n  - gemini\n  - pi\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -536,21 +628,15 @@ func TestAllTargetPathsAndBridges(t *testing.T) {
 	for _, f := range files {
 		paths[f.Path] = true
 	}
-	for _, want := range []string{"CLAUDE.md", "GEMINI.md"} {
-		if !paths[want] {
-			t.Errorf("missing bridge %q", want)
-		}
+	if !paths["CLAUDE.md"] {
+		t.Error("missing Claude bridge")
 	}
-	for _, absent := range []string{"CODEX.md", "COPILOT.md", "CURSOR.md", "PI.md"} {
-		if paths[absent] {
-			t.Errorf("unexpected bridge %q", absent)
-		}
-	}
-	if got := KnownTargets(); strings.Join(got, ",") != "claude,codex,copilot,cursor,gemini,pi" {
-		t.Fatalf("KnownTargets = %v", got)
+	if paths["PI.md"] {
+		t.Error("unexpected Pi bridge")
 	}
 }
 
+// invariant: rendering/catalog-and-targets:claude-md-bridge (TestClaudeMdBridgeRendered)
 func TestClaudeMdBridgeRendered(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(testContext(t), root)
@@ -578,12 +664,11 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 	}
 }
 
-// TestMultiTargetRender backs inv: multi-target-render and inv: cursor-no-bridge
-// (both declared in render.go): adapter artifacts render once per enabled target
-// with byte-identical bodies, neutral artifacts render once, and cursor emits no
-// bridge.
+// TestMultiTargetRender proves adapter artifacts render once per enabled target
+// at descriptor-owned paths while neutral artifacts render once.
+// invariant: rendering/catalog-and-targets:target-dialect-render (TestMultiTargetRender)
 func TestMultiTargetRender(t *testing.T) {
-	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
+	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -593,9 +678,11 @@ func TestMultiTargetRender(t *testing.T) {
 		t.Fatal(err)
 	}
 	byPath := map[string]string{}
+	pathCounts := map[string]int{}
 	agentsMd, bridges := 0, 0
 	for _, f := range files {
 		byPath[f.Path] = f.Content
+		pathCounts[f.Path]++
 		if f.Path == "AGENTS.md" {
 			agentsMd++
 		}
@@ -604,24 +691,27 @@ func TestMultiTargetRender(t *testing.T) {
 		}
 	}
 	// invariant: rendering/project-output-plan:multi-target-render (TestMultiTargetRender)
-	for _, pair := range [][2]string{
-		{".claude/skills/example-tdd/SKILL.md", ".cursor/skills/example-tdd/SKILL.md"},
-		{".claude/agents/code-reviewer.md", ".cursor/agents/code-reviewer.md"},
+	for _, path := range []string{
+		".claude/skills/example-tdd/SKILL.md",
+		".pi/skills/example-tdd/SKILL.md",
+		".claude/agents/code-reviewer.md",
+		".pi/agents/code-reviewer.md",
 	} {
-		a, b := byPath[pair[0]], byPath[pair[1]]
-		if a == "" || b == "" {
-			t.Fatalf("missing render: %q=%dB, %q=%dB", pair[0], len(a), pair[1], len(b))
+		content := byPath[path]
+		if content == "" || pathCounts[path] != 1 {
+			t.Fatalf("render %q count = %d, content bytes = %d", path, pathCounts[path], len(content))
 		}
-		if a != b {
-			t.Errorf("content differs between %q and %q", pair[0], pair[1])
+		if strings.Contains(path, "/agents/") {
+			if err := validateArtifact([]byte(content), MarkdownAgentDialect); err != nil {
+				t.Fatalf("validate %q: %v", path, err)
+			}
 		}
 	}
 	if agentsMd != 1 {
 		t.Errorf("AGENTS.md rendered %d times, want 1 (neutral)", agentsMd)
 	}
-	// invariant: rendering/project-output-plan:cursor-no-bridge (TestMultiTargetRender)
 	if bridges != 1 {
-		t.Errorf("bridge files = %d, want 1 (claude only; cursor has none)", bridges)
+		t.Errorf("bridge files = %d, want 1 (claude only)", bridges)
 	}
 	if _, ok := byPath["CLAUDE.md"]; !ok {
 		t.Error("CLAUDE.md (claude bridge) not rendered")

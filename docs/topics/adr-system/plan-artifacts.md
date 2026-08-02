@@ -48,8 +48,9 @@ Backing: test
 
 ### `invariant: plan-frontmatter-validated`
 
-awf check fails on a plan with present-but-malformed frontmatter (unparseable YAML, or a status outside Proposed and Implemented), while a plan with no frontmatter passes.
+awf check fails on present-but-malformed plan frontmatter. Exact `format: plan-v1` selects structured parsing; marker absence selects legacy parsing; and an empty, unknown, duplicate, or malformed format is a frontmatter error rather than a legacy plan. Both paths retain the Proposed and Implemented status enum.
 Origin: ADR-0098
+Revised-by: ADR-0213
 Backing: test
 
 ### `invariant: plan-new-unnumbered`
@@ -60,6 +61,19 @@ Backing: test
 
 ### `invariant: plans-template-taxonomy`
 
-The rendered plans template at docs/plans/template.md carries the date, adrs, and status frontmatter block and the plan section taxonomy: the # Plan: title, the four narrative header fields, at least one phase, and the optional Verification and Notes tails.
+The rendered plans template emits `format: plan-v1`, date, adrs, and status frontmatter; `# Plan:`; nonempty Goal and Architecture summary; sequential heading-identified phases and tasks with one execution mode and one final Phase close per phase; required Definition of done plain bullets; and optional Notes. File structure, Verification, and task checkboxes are not plan-v1 sections or task declarations. Marker-absent historical plans remain on the legacy taxonomy.
 Origin: ADR-0098
+Revised-by: ADR-0211, ADR-0213
+Backing: test
+
+### `invariant: plan-v1-structure-validated`
+
+A `plan-v1` document has nonempty Goal and Architecture summary sections, one or more sequential `## Phase P:` headings, one exact execution-mode declaration per phase, one or more sequential `### Task P.T:` headings followed by exactly one final `### Phase close`, a required Definition of done with one or more plain bullets, and optional Notes. Task fields are contiguous recognized `<Field>: <value>` lines directly below the heading; duplicate or unknown fields fail. Spike and batch relationships, JSON-array Paths entries, literal/glob/pathspec confinement, post-check triggers, phase-close placement, and its single commit fence are mechanically enforced. Ambiguous scope, contract-bearing exactness, baseline substance, and post-check execution remain reviewer or executor judgments. Marker-absent plans skip these structural rules.
+Origin: ADR-0213
+Backing: test
+
+### `invariant: plan-executable-projection`
+
+internal/plan owns exact filename-or-stem resolution, canonical positive `P` and `P.T` selectors, and projection rendering from the typed plan model. A phase projection contains every task in that phase; a task projection contains only that task; and both contain frontmatter, title, Goal, Architecture summary, owning phase and execution mode, Phase close, Definition of done, and Notes when present in source order. Errors list available exact names or selectors as appropriate. Projection includes no other phase, reparses no Markdown outside the model owner, and never mutates source bytes.
+Origin: ADR-0213
 Backing: test

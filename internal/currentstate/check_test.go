@@ -317,6 +317,10 @@ func v2batch(operations ...adr.Operation) adr.HistoryEvent {
 	return adr.HistoryEvent{Kind: adr.HistoryApplied, Date: "2026-01-02", Operations: operations}
 }
 
+func v2reapplied(operations ...adr.Operation) adr.HistoryEvent {
+	return adr.HistoryEvent{Kind: adr.HistoryReapplied, Date: "2026-01-03", Operations: operations}
+}
+
 // invariant: invariants/current-state-authority:implemented-impact-bidirectional (TestCheckV2AppliedAuthority)
 // invariant: invariants/current-state-authority:removed-claim-id-not-reused (TestCheckV2AppliedAuthority)
 func TestCheckV2AppliedAuthority(t *testing.T) {

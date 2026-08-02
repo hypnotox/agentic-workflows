@@ -13,7 +13,7 @@ const localSkillYAML = `prefix: example
 integrationBranch: main
 targets:
   - claude
-  - cursor
+  - pi
 skills:
   - my-skill
 `
@@ -47,7 +47,7 @@ func TestLocalSkillRendersFromBasePerTarget(t *testing.T) {
 	}
 	// invariant: rendering/local-artifacts:local-renders-from-base (TestLocalSkillRendersFromBasePerTarget)
 	got := findByTID(files, "skills/_base/SKILL.md.tmpl")
-	if len(got) != 2 { // one per enabled target (claude + cursor)
+	if len(got) != 2 { // one per enabled target (claude + pi)
 		t.Fatalf("expected 2 base-rendered files, got %d", len(got))
 	}
 	for _, f := range got {

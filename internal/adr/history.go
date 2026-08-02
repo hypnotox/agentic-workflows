@@ -15,6 +15,7 @@ type HistoryEventKind uint8
 const (
 	HistoryStatus HistoryEventKind = iota + 1
 	HistoryApplied
+	HistoryReapplied
 	HistoryAmended
 )
 
@@ -39,6 +40,7 @@ var (
 	v1HistoryHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): (Proposed|Accepted|Implemented|Abandoned)(;.*)?$`)
 	v2HistoryHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): (Proposed|Accepted|Implementing|Implemented|Abandoned)(;.*)?$`)
 	appliedHeadRe   = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Applied; (state-sequence: [1-9][0-9]*; )?operations: (.+)$`)
+	reappliedHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Reapplied; operations: (.+)$`)
 	amendedHeadRe   = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Amended; content-sha256: ([0-9a-f]{64})$`)
 	appliedOpRe     = regexp.MustCompile("^(add|update|remove) `(" + slugPart + "/" + slugPart + ":" + slugPart + ")`$")
 )
@@ -75,6 +77,14 @@ func parseHistory(body string, format Format, declared []Operation) ([]HistoryEv
 				entries = append(entries, HistoryEvent{Kind: HistoryApplied, Date: m[1], LegacySequence: m[2] != "", Operations: ops})
 				continue
 			}
+			if m := reappliedHeadRe.FindStringSubmatch(line); m != nil {
+				ops, err := parseQualifiedOperations(m[2], declared, "Reapplied")
+				if err != nil {
+					return nil, fmt.Errorf("Status history entry %q: %w", line, err)
+				}
+				entries = append(entries, HistoryEvent{Kind: HistoryReapplied, Date: m[1], Operations: ops})
+				continue
+			}
 			if m := amendedHeadRe.FindStringSubmatch(line); m != nil {
 				entries = append(entries, HistoryEvent{Kind: HistoryAmended, Date: m[1], Digest: m[2]})
 				continue
@@ -108,6 +118,10 @@ func exactNonBlankLines(body string) []string {
 }
 
 func parseAppliedOperations(list string, declared []Operation) ([]Operation, error) {
+	return parseQualifiedOperations(list, declared, "Applied")
+}
+
+func parseQualifiedOperations(list string, declared []Operation, event string) ([]Operation, error) {
 	parts := strings.Split(list, ", ")
 	declaredAt := make(map[Operation]int, len(declared))
 	for i, op := range declared {
@@ -119,18 +133,18 @@ func parseAppliedOperations(list string, declared []Operation) ([]Operation, err
 	for _, part := range parts {
 		m := appliedOpRe.FindStringSubmatch(part)
 		if m == nil {
-			return nil, fmt.Errorf("malformed Applied operation %q", part)
+			return nil, fmt.Errorf("malformed %s operation %q", event, part)
 		}
 		op := Operation{Verb: OpVerb(m[1]), ID: m[2], Slug: localSlug(m[2])}
 		position, ok := declaredAt[op]
 		if !ok {
-			return nil, fmt.Errorf("applied operation %s `%s` is not declared", op.Verb, op.ID)
+			return nil, fmt.Errorf("%s operation %s `%s` is not declared", strings.ToLower(event), op.Verb, op.ID)
 		}
 		if seen[op] {
-			return nil, fmt.Errorf("applied operation %s `%s` is duplicated", op.Verb, op.ID)
+			return nil, fmt.Errorf("%s operation %s `%s` is duplicated", strings.ToLower(event), op.Verb, op.ID)
 		}
 		if position <= previous {
-			return nil, errors.New("applied operations do not follow State changes declaration order")
+			return nil, fmt.Errorf("%s operations do not follow State changes declaration order", strings.ToLower(event))
 		}
 		seen[op] = true
 		previous = position

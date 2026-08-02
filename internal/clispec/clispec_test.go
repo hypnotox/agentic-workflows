@@ -28,6 +28,22 @@ func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
 	}
 }
 
+func TestReadPlanSpec(t *testing.T) {
+	read, ok := Lookup("read")
+	if !ok || read.Gating != Gated {
+		t.Fatalf("read spec = %#v, found %v", read, ok)
+	}
+	plan, ok := read.Child("plan")
+	if !ok || plan.MinPos != 2 || plan.MaxPos != 2 {
+		t.Fatalf("read plan spec = %#v, found %v", plan, ok)
+	}
+	for _, text := range []string{"Usage: awf read plan <plan> <P[.T]>", "exact filename", "canonical positive", "available"} {
+		if !strings.Contains(plan.HelpBody, text) {
+			t.Errorf("read plan help missing %q", text)
+		}
+	}
+}
+
 func TestContextHumanOnlyFacetSpec(t *testing.T) {
 	context, ok := Lookup("context")
 	if !ok {
@@ -129,7 +145,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "audit", "effort", "adr", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"render", "check", "read", "audit", "effort", "adr", "list", "config", "context", "topic", "new", "enable", "disable"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

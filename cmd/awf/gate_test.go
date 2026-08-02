@@ -227,6 +227,8 @@ var gatedProbes = map[string][]string{
 	"check repo prose":    {"awf", "check", "repo", "prose"},
 	"check repo memory":   {"awf", "check", "repo", "memory"},
 	"check staged commit": {"awf", "check", "staged", "commit"},
+	"read":                {"awf", "read"},
+	"read plan":           {"awf", "read", "plan", "2026-08-02-plan", "1"},
 	"audit":               {"awf", "audit"},
 	"effort":              {"awf", "effort", "list"},
 	"effort new":          {"awf", "effort", "new", "gate probe outcome"},

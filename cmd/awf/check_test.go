@@ -199,7 +199,7 @@ func repinLockVersion(t *testing.T, root, version string) {
 func TestRunCheckAheadNotice(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	root := syncedGitProject(t, checkYAML)
+	root := syncedGitProject(t)
 	repinLockVersion(t, root, "0.3.0")
 	var out bytes.Buffer
 	if err := runCheck(ctx, root, &out); err != nil {
@@ -212,7 +212,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 		t.Errorf("expected ahead notice, got %q", out.String())
 	}
 
-	root2 := syncedGitProject(t, checkYAML)
+	root2 := syncedGitProject(t)
 	repinLockVersion(t, root2, project.Version) // equal to the binary -> no notice
 	var out2 bytes.Buffer
 	if err := runCheck(ctx, root2, &out2); err != nil {

@@ -58,9 +58,9 @@ func TestSetArray(t *testing.T) {
 		want           string
 		wantErr        bool
 	}{
-		{"create absent key", "prefix: x\n", "targets", []string{"claude", "cursor"}, "prefix: x\ntargets:\n  - claude\n  - cursor\n", false},
-		{"replace existing", "targets:\n  - claude\n", "targets", []string{"claude", "cursor"}, "targets:\n  - claude\n  - cursor\n", false},
-		{"replace flow style", "targets: [cursor]\n", "targets", []string{"claude"}, "targets:\n  - claude\n", false},
+		{"create absent key", "prefix: x\n", "targets", []string{"claude", "pi"}, "prefix: x\ntargets:\n  - claude\n  - pi\n", false},
+		{"replace existing", "targets:\n  - claude\n", "targets", []string{"claude", "pi"}, "targets:\n  - claude\n  - pi\n", false},
+		{"replace flow style", "targets: [pi]\n", "targets", []string{"claude"}, "targets:\n  - claude\n", false},
 		{"parse error", "targets: [a, b\n", "targets", []string{"x"}, "", true},
 		{"non-mapping", "- a\n", "targets", []string{"x"}, "", true},
 	}

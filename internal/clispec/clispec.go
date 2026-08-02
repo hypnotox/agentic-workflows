@@ -130,6 +130,24 @@ runs it when the hooks artifact is enabled).
 	},
 
 	{
+		Name: "read", Summary: "Read an executable projection from a parsed artifact",
+		MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf read <subcommand>
+
+Read a bounded executable projection from a parsed project artifact.
+`,
+		Children: []Command{
+			{Name: "plan", Summary: "Read one exact plan phase or task projection", MinPos: 2, MaxPos: 2,
+				HelpBody: `Usage: awf read plan <plan> <P[.T]>
+
+Resolve <plan> as an exact filename or exact filename stem under the configured
+plans directory. P selects a complete phase; P.T selects one task plus its phase
+closure. Selectors are canonical positive integers, and failures list available
+exact plan names or selectors.
+`},
+		},
+	},
+	{
 		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)",
 		MaxPos: 1, Gating: Gated,
 		HelpBody: `Usage: awf audit <base>|<a>..<b>

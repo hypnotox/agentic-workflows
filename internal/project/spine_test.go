@@ -197,7 +197,7 @@ func TestPlanReviewerAgent(t *testing.T) {
 	planPhrases := []string{
 		"scope-completeness",
 		"executability",
-		"one declared closing commit and passes the gate on its own",
+		"one final `### Phase close` with a single commit fence and passes the gate on its own",
 		"maintainable-design",
 		"docs/maintainable-code-design.md",
 		"model, ownership, representations, translation boundaries, dependency direction, and test seams",
@@ -849,7 +849,7 @@ func TestWritingPlansTemplate(t *testing.T) {
 
 	// Assert load-bearing phrases unique to writing-plans
 	loadBearing := []string{
-		"Execution mode",
+		"exactly one execution mode: `inline` or `subagent-driven`",
 		"one independently green coherent implementation transaction",
 		"ordered steps",
 		"exact file paths",

@@ -19,6 +19,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 - `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or a nameless singleton (`bootstrap`, `hooks`, `runner`, given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
+- `awf read plan <plan> <P[.T]>`: resolve an exact filename or stem under the configured plans directory and print internal/plan's executable phase or task closure: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected content, Phase close, Definition of done, and Notes. Marker-absent historical plans retain legacy checking but have no executable projection.
 - `awf context <path>...`: report request-oriented impact. Bare directories provide tier-0 census, compact groups, classification, compact provenance, domains, topics, per-topic authority counts, and bounded pending summaries. Bare exact files and sorted staged/range-selected files add tier-1 direct `State`, `Touches`, and `Proofs` relationships from actual markers. Repeat `--show` with `relationships`, `invariants`, `all-rules`, `evidence`, `selectors`, `references`, `pending`, or `artifacts`; only `artifacts` may refine groups, evidence and references only enrich visible claims, and `--full` is their eight-facet union without restoring a census. `--json` is removed. Human output through 8,192 bytes writes unchanged; larger normal, static, or uncovered reports securely spill exact bytes outside the repository and return a two-line notice whose file the successful caller must delete.
 - `awf topic <domain>/<topic>[:<claim>]`: query one current-state topic or claim, active by default. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR operations with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. A removed claim identity resolves only with `--history` as historical-only operation detail without active prose, references, coverage, or a tombstone. `--json` changes only presentation.
 - `awf new adr "<title>"`: scaffold the next ADR in the activation registry's current authoring format.
@@ -67,7 +68,7 @@ field, and per-artifact data key is described in the generated
 [configuration reference](config-reference.md), including this project's live state: which
 vars are set, what consumes them, and what enabling would activate.
 
-**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter
+**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target pi`); adapter
 artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under
@@ -212,7 +213,7 @@ from base rates alongside context and output limits and capability markers, enfo
 project-local gitignore rule at save time, persists atomically, and leaves the file unchanged on
 cancellation. Long implementations select ownership independently per phase so one plan may mix modes. A
 subagent-driven phase has one commit-capable owner from a clean green baseline through staged check,
-gate, and its closing commit, while inline phases remain parent-owned. Checkbox tasks are ordered
+gate, and its closing commit, while inline phases remain parent-owned. Heading-identified tasks are ordered
 steps, not transaction or checkpoint boundaries. Explicit batch helpers stay sequential and
 commit-disabled, receive path-disjoint subsets, never own shared files, and return to the parent for
 integration. The parent owns report-only review settlement and checkpoints only after findings

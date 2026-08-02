@@ -32,9 +32,9 @@ Verify: A fixture with an Accepted update conflicting with its current claim kee
 
 ### `invariant: merge-transition-ordered-aggregate`
 
-A merge transition is validated as an ordered aggregate rather than one authoring step: several application batches are legal in ascending ADR-number and intra-ADR history order, a claim's operations across the pair must form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates, and an appended Status history must preserve the prior history as an exact prefix. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation per claim, and the fixed status-event shape. A newly introduced ADR in an older intrinsic format is provisional at the staged boundary that lacks merge-parent and message evidence; every other derivable transition check remains blocking, and definitive admission requires exact incoming-parent qualification at commit-msg.
+A merge transition is validated as an ordered aggregate rather than one authoring step: application and re-application batches remain distinct in ascending ADR-identity and intra-ADR history order; a claim's operations across the pair form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates; and appended Status history preserves the prior history as an exact prefix. Repeated updates from one ADR contribute that updater once and require a material endpoint; repeated adds by their originating ADR fold into the chain's first absent-to-present net add; a canceling update endpoint is refused. Per-occurrence materiality is proven by each authored commit, while aggregate validation checks the observable ordered net effect without inventing intermediate claim bytes. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation occurrence per claim, and the fixed status-event shape. A newly introduced ADR in an older intrinsic format is provisional at the staged boundary that lacks merge-parent and message evidence; every other derivable transition check remains blocking, and definitive admission requires exact incoming-parent qualification at commit-msg.
 Origin: ADR-0182
-Revised-by: ADR-0191, ADR-0206
+Revised-by: ADR-0191, ADR-0206, ADR-0212
 Backing: test
 
 ### `invariant: current-state-sole-active-authority`
@@ -106,8 +106,8 @@ Backing: test
 
 ### `invariant: update-requires-substance`
 
-An update preserves Origin and prior revision history, adds its ADR once at its canonical ascending position, and changes a canonical claim field other than formatting or provenance alone. Across a merge, where the intermediate claim states exist only in the branch's own commits and never in either compared universe, the substantive-change requirement is evaluated on the net effect of the claim's operation chain; per-step substance is enforced where it is verifiable, at the authored commits themselves.
+An update preserves Origin and prior revision history, carries its ADR once at its canonical ascending position, and changes a canonical claim field other than formatting or provenance alone. The once rule is satisfied by adding the ADR for its first application and by preserving that existing entry for a corrective re-application. Across a merge, where intermediate claim states exist only in authored commits and not in either compared universe, substance is evaluated on the net operation-chain endpoint; every authored application and re-application proves its own materiality.
 Origin: ADR-0135
-Revised-by: ADR-0182, ADR-0191
+Revised-by: ADR-0182, ADR-0191, ADR-0212
 Backing: unbacked
-Verify: Staged fixtures with Origin edits, revision deletion or reordering, whitespace-only, provenance-only, and substantive prose, reference, or backing changes satisfy an update only in the prefix-preserving substantive cases.
+Verify: Staged fixtures with Origin edits, revision deletion, duplication, or reordering, whitespace-only, provenance-only, first substantive update, and repeated substantive correction accept only the prefix-preserving materially changed cases with one canonical ADR entry.

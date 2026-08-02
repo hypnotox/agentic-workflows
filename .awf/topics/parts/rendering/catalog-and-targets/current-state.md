@@ -8,6 +8,12 @@ Each ADR-system singleton's catalog section list equals the awf:section markers 
 Origin: ADR-0021
 Backing: test
 
+### `invariant: built-in-runtime-targets`
+
+The built-in runtime target registry contains exactly `claude` and `pi` in deterministic `KnownTargets` order. Configured names outside that set fail through unknown-target validation, and descriptor-driven rendering and enablement remain generic rather than branching on the two names.
+Origin: ADR-0214
+Backing: test
+
 ### `invariant: catalog-defaults-generic-denylist`
 
 No default-data value carried by any catalog spec contains an awf-repo-specific token: neither the `./x` command prefix nor the `hypnotox/agentic-workflows` module path appears anywhere in the recursively walked default data.
@@ -67,14 +73,16 @@ Backing: test
 
 ### `invariant: structured-agent-encoding`
 
-Target encoders consume structured agent metadata, a literal name plus a rendered description and a rendered instruction body, and the Codex TOML encoder never parses a rendered Markdown agent artifact to produce its output.
+Agent rendering consumes structured metadata - a literal name, a separately rendered description, and a rendered instruction body - before a target encoder emits its artifact. The Markdown encoder never parses another rendered agent artifact, and arbitrary target-owned outputs retain their separately declared encoding.
 Origin: ADR-0122
+Revised-by: ADR-0214
 Backing: test
 
 ### `invariant: target-dialect-render`
 
-Each enabled target renders every skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format, for example a Codex agent rendering as valid TOML at .codex/agents/<name>.toml.
+Each enabled target renders every skill and agent exactly once at that descriptor's declared path and encoding, and the emitted artifact parses under the runtime's native format. The built-in Claude Code and Pi targets emit Markdown agents while retaining independent descriptor-owned paths, suffixes, capabilities, bridges, wording, and additional outputs.
 Origin: ADR-0122
+Revised-by: ADR-0214
 Backing: test
 
 ### `invariant: unified-doc-model`

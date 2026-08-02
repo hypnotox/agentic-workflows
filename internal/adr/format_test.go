@@ -455,6 +455,83 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 	}
 }
 
+// invariant: adr-system/adr-lifecycle:corrective-reapplication (TestCorrectiveReapplication)
+func TestCorrectiveReapplication(t *testing.T) {
+	changes := "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`\n- add `a/b:pending`"
+	digest := v2DigestFor(t, changes)
+	prefix := "- 2026-07-20: Proposed" +
+		"\n- 2026-07-21: Implementing; content-sha256: " + digest +
+		"\n- 2026-07-21: Applied; operations: add `a/b:first`, update `a/b:second`"
+	valid := prefix +
+		"\n- 2026-07-22: Reapplied; operations: add `a/b:first`, update `a/b:second`" +
+		"\n- 2026-07-23: Reapplied; operations: update `a/b:second`"
+
+	for _, tc := range []struct {
+		name, file, body string
+	}{
+		{"v2", "0137-test.md", buildV2("Implementing", changes, valid)},
+		{"v3", "corrective.md", buildV3Governed("corrective", "corrective", "Implementing", changes, valid)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var (
+				record adr.ADR
+				err    error
+			)
+			if tc.name == "v2" {
+				record, err = adr.ParseV2(tc.file, []byte(tc.body))
+			} else {
+				record, err = adr.ParseV3(tc.file, []byte(tc.body))
+			}
+			if err != nil {
+				t.Fatalf("parse corrective history: %v", err)
+			}
+			if len(record.History) != 5 || record.History[3].Kind != adr.HistoryReapplied || record.History[4].Kind != adr.HistoryReapplied {
+				t.Fatalf("corrective events = %#v", record.History)
+			}
+		})
+	}
+
+	cases := []struct{ name, status, history, want string }{
+		{"before first Applied", "Implementing", "- 2026-07-20: Proposed\n- 2026-07-21: Implementing; content-sha256: " + digest + "\n- 2026-07-21: Applied; operations: update `a/b:second`\n- 2026-07-22: Reapplied; operations: add `a/b:first`", "earlier Applied"},
+		{"remove", "Implementing", prefix + "\n- 2026-07-22: Applied; operations: remove `a/b:third`\n- 2026-07-23: Reapplied; operations: remove `a/b:third`", "only add or update"},
+		{"outside Implementing", "Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: " + digest + "\n- 2026-07-22: Reapplied; operations: add `a/b:first`", "only while Implementing"},
+		{"between final Applied and Implemented", "Implemented", prefix + "\n- 2026-07-22: Applied; operations: remove `a/b:third`, add `a/b:pending`\n- 2026-07-23: Reapplied; operations: add `a/b:first`\n- 2026-07-23: Implemented; content-sha256: " + digest, "final Applied event immediately before"},
+		{"duplicate within event", "Implementing", prefix + "\n- 2026-07-22: Reapplied; operations: add `a/b:first`, add `a/b:first`", "duplicated"},
+		{"declaration order", "Implementing", prefix + "\n- 2026-07-22: Reapplied; operations: update `a/b:second`, add `a/b:first`", "declaration order"},
+		{"second Applied", "Implementing", prefix + "\n- 2026-07-22: Applied; operations: add `a/b:first`", "already applied"},
+		{"malformed grammar", "Implementing", prefix + "\n- 2026-07-22: Reapplied operations: add `a/b:first`", "malformed Status history"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := adr.ParseV2("0137-test.md", []byte(buildV2(tc.status, changes, tc.history)))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want containing %q", err, tc.want)
+			}
+		})
+	}
+
+	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
+	applied := adr.HistoryEvent{Kind: adr.HistoryApplied, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "a/b:first", Slug: "first"}}}
+	reapplied := adr.HistoryEvent{Kind: adr.HistoryReapplied, Operations: applied.Operations}
+	before := adr.ADR{Format: adr.CurrentStateV2, Status: "Implementing", History: []adr.HistoryEvent{status("Proposed"), status("Implementing"), applied}}
+	after := before
+	after.History = append(append([]adr.HistoryEvent(nil), before.History...), reapplied)
+	if !adr.HistoryTransitionValid(before, after) {
+		t.Fatal("one same-status Reapplied event must be a valid authored transition")
+	}
+	outside := before
+	outside.Status = "Accepted"
+	if adr.HistoryTransitionValid(outside, adr.ADR{Format: adr.CurrentStateV2, Status: "Accepted", History: after.History}) {
+		t.Fatal("Reapplied outside Implementing must not be a valid authored transition")
+	}
+
+	duplicate := "- add `a/b:first`\n- update `a/b:first`"
+	_, err := adr.ParseV2("0137-test.md", []byte(buildV2("Proposed", duplicate, "- 2026-07-20: Proposed")))
+	if err == nil || !strings.Contains(err.Error(), "Reapplied") || !strings.Contains(err.Error(), "follow-up ADR") || !strings.Contains(err.Error(), "amend an unapplied") {
+		t.Fatalf("duplicate declaration route error = %v", err)
+	}
+}
+
 // TestParseV2StampChain covers the Amended event grammar and the digest stamp
 // chain: only an Amended event introduces a new digest, a status event repeats
 // the preceding stamp or establishes the first, and the latest stamp must equal

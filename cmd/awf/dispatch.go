@@ -106,6 +106,12 @@ var handlers = map[string]handler{
 	},
 	"render": func(c *cmdCtx) error { return runSync(c.ctx, c.root, c.stdout) },
 	"check":  runCheckGroup,
+	"read": func(c *cmdCtx) error {
+		if c.sub != "plan" { // coverage-ignore: clispec admits only the declared plan child before dispatch
+			return &usageErr{"usage: awf read plan <plan> <P[.T]>"}
+		}
+		return runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout)
+	},
 	"audit":  func(c *cmdCtx) error { return runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
 	"effort": func(c *cmdCtx) error { return runEffort(c, openEffortComposition) },
 	"adr":    runADR,

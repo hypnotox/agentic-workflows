@@ -1,4 +1,5 @@
 ---
+format: plan-v1
 date: YYYY-MM-DD
 adrs: []
 status: Proposed
@@ -9,58 +10,35 @@ status: Proposed
 <!-- awf:edit header: default; create .awf/parts/plans-template/header.md to override -->
 ## Goal
 
-What this plan achieves, in one or two sentences, and, in one line, what it explicitly does not do
-(its non-goals). When ADRs drive the work, link them in `adrs:` above and name them here; the design
-lives in the ADR(s), so this plan is the execution record, not a place to re-argue design.
+State the outcome and, in one line, its non-goals.
 
 ## Architecture summary
 
-The execution shape: the structural moves the phases make. Not the rationale (that lives in the
-linked ADR).
-
-## File structure
-
-- **Created:** new files.
-- **Modified:** changed files.
-- **Deleted:** removed files (or `none`).
+State the execution structure and dependency direction without repeating ADR rationale.
 
 <!-- awf:edit phases: default; create .awf/parts/plans-template/phases.md to override -->
 ## Phase 1: <name>
 
-**Execution mode: inline.** This phase is one independently green coherent implementation transaction.
-Checkbox tasks are ordered steps, not transaction boundaries. If this mode is changed to
-`subagent-driven`, declare the exact commands and expected terminal states that establish the clean
-and green starting baseline.
-- [ ] **Task 1.1: <what>.** Name exact file paths, relevant symbols, exact commands with expected
-  terminal states, and exact content/diffs or implementation-ready pseudocode covering behavior,
-  branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and
-  deterministic verification. Exact form remains mandatory for machine-consumed configuration and
-  manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical
-  replacements, required literal prose, and batch-task representative and edge transformations.
-  Non-contractual prose may use qualifying instructions; a mixed task may combine both forms. `TBD`,
-  `implement later`, outcome-only summaries, and hidden design choices are placeholders, never
-  pseudocode. The task remains executable with no prior conversation context.
-- [ ] **Task 1.2: <what>.** Continue the ordered implementation steps. A batch retains an exact
-  representative and edge, exhaustive affected-site set, and a deterministic post-check. An optional
-  exhaustive partition assigns every affected site to the parent or exactly one helper; helpers are
-  sequential and commit-disabled, helper subsets are path-disjoint, shared files remain parent-owned, and
-  each helper's focused mutating commands stay confined to its assigned subset.
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
-  phase-closing commit; it requires `awf check staged` and `./x gate` to pass,
-  enforced by a wired pre-commit hook or run manually first in a clone without one (checkable with `git config core.hooksPath`):
+**Execution mode: inline.**
+
+### Task 1.1: <what>
+
+Supply qualifying implementation-ready instructions. Immediately below a task heading, the recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`. Use `Latitude: exact` for a contract-bearing task; `Kind: spike` requires `Question`, no body, and an answer in Notes; `Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`; ambiguous scope requires `Paths`; and any batch, glob, or pathspec scope requires `Post-check`. Omit fields whose contracts do not apply.
+
+### Phase close
+
+Stage the complete transaction and create its one closing commit after `awf check staged` and `./x gate` pass.
 
 ```commit
 feat(scope): describe phase outcome
 ```
 
 <!-- awf:edit verification: default; create .awf/parts/plans-template/verification.md to override -->
-## Verification (optional)
+## Definition of done
 
-Whole-effort end-state checks beyond the per-phase gates: the acceptance criteria for "done".
+- State at least one concrete observable whole-plan end condition.
 
 <!-- awf:edit notes: default; create .awf/parts/plans-template/notes.md to override -->
-## Notes (optional)
+## Notes
 
-Out-of-scope items, follow-ups, and findings surfaced during implementation (a wrong diff, an
-unsliceable phase, a bad estimate). The `status: Implemented` flip in the deferred post-review
-transaction records these alongside the freeze.
+Record deviations, spike answers, follow-ups, and findings surfaced during implementation.

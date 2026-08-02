@@ -170,7 +170,8 @@ func HistoryTransitionValidAggregate(before, after ADR) bool {
 // history: equal histories at the same status, one same-status Applied batch
 // while Implementing, one same-status Amended event while Accepted or
 // Implementing (ADR-0188), or an exact before prefix plus the required event
-// shape when the status follows a legal lifecycle edge.
+// shape when the status follows a legal lifecycle edge. One same-status
+// Reapplied event is also legal while Implementing.
 func HistoryTransitionValid(before, after ADR) bool {
 	if !after.HasV2Semantics() {
 		if before.Status == after.Status {
@@ -192,7 +193,7 @@ func HistoryTransitionValid(before, after ADR) bool {
 			return false
 		}
 		switch added[0].Kind {
-		case HistoryApplied:
+		case HistoryApplied, HistoryReapplied:
 			return before.Status == statusImplementing
 		case HistoryAmended:
 			return before.Status == statusAccepted || before.Status == statusImplementing
@@ -228,7 +229,7 @@ func HistoriesEqual(before, after ADR) bool {
 func historiesEqual(a, b []HistoryEvent) bool {
 	return slices.EqualFunc(a, b, func(x, y HistoryEvent) bool {
 		return x.Kind == y.Kind && x.Date == y.Date && x.Status == y.Status &&
-			x.Digest == y.Digest && x.Rationale == y.Rationale &&
+			x.Digest == y.Digest && x.LegacySequence == y.LegacySequence && x.Rationale == y.Rationale &&
 			slices.Equal(x.Operations, y.Operations)
 	})
 }
@@ -509,6 +510,20 @@ func validateV2History(a ADR) error {
 			}
 			continue
 		}
+		if event.Kind == HistoryReapplied {
+			if current != statusImplementing {
+				return errors.New("reapplied event is allowed only while Implementing")
+			}
+			for _, op := range event.Operations {
+				if !applied[op] {
+					return fmt.Errorf("reapplied operation %s `%s` requires an earlier Applied occurrence", op.Verb, op.ID)
+				}
+				if op.Verb == OpRemove {
+					return fmt.Errorf("reapplied operation %s `%s` is invalid; only add or update may be reapplied", op.Verb, op.ID)
+				}
+			}
+			continue
+		}
 		if event.Kind == HistoryAmended {
 			if current != statusAccepted && current != statusImplementing {
 				return errors.New("amended event is allowed only while Accepted or Implementing")
@@ -519,7 +534,7 @@ func validateV2History(a ADR) error {
 			lastStamp = event.Digest
 			continue
 		}
-		if event.Kind != HistoryStatus { // coverage-ignore: the parser constructs only the three closed event kinds
+		if event.Kind != HistoryStatus { // coverage-ignore: the parser constructs only the four closed event kinds
 			return errors.New("Status history contains an unknown event kind")
 		}
 		if i > 0 && !v2TransitionLegal(current, event.Status) {

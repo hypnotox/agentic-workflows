@@ -133,13 +133,13 @@ func TestValidateFrontmatter(t *testing.T) {
 
 func TestLocalOutPaths(t *testing.T) {
 	// One path per enabled target; neutral kinds yield nil.
-	p := &Project{Cfg: &config.Config{Prefix: "ex"}, Targets: []Target{claudeTarget, cursorTarget}}
+	p := &Project{Cfg: &config.Config{Prefix: "ex"}, Targets: []Target{claudeTarget, piTarget}}
 	if got := p.localOutPaths("skills", "foo"); len(got) != 2 ||
-		got[0] != ".claude/skills/ex-foo/SKILL.md" || got[1] != ".cursor/skills/ex-foo/SKILL.md" {
+		got[0] != ".claude/skills/ex-foo/SKILL.md" || got[1] != ".pi/skills/ex-foo/SKILL.md" {
 		t.Errorf("skills localOutPaths = %q", got)
 	}
 	if got := p.localOutPaths("agents", "bar"); len(got) != 2 ||
-		got[0] != ".claude/agents/bar.md" || got[1] != ".cursor/agents/bar.md" {
+		got[0] != ".claude/agents/bar.md" || got[1] != ".pi/agents/bar.md" {
 		t.Errorf("agents localOutPaths = %q", got)
 	}
 	if got := p.localOutPaths("docs", "x"); got != nil {
