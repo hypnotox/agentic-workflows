@@ -4,7 +4,7 @@ slug: parsed-plan-artifacts-and-executable-projections
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-parsed-plan-artifacts-and-executable-projections: Parsed plan artifacts and executable projections
+# ADR-0213: Parsed plan artifacts and executable projections
 
 ## Context
 

@@ -217,4 +217,4 @@ _No decisions are in flight._
 - [ADR-0210: Fork the verification commands by universe into check repo and check staged](0210-fork-the-verification-commands-by-universe-into-check-repo-and-check-staged.md) (Implemented)
 - [ADR-0211: Sanction authoring latitude in plans](0211-sanction-authoring-latitude-in-plans.md) (Implemented)
 - [ADR-0212: Corrective re-application of an applied state operation](0212-corrective-re-application-of-an-applied-state-operation.md) (Implemented)
-- [ADR-parsed-plan-artifacts-and-executable-projections: Parsed plan artifacts and executable projections](parsed-plan-artifacts-and-executable-projections.md) (Implemented)
+- [ADR-0213: Parsed plan artifacts and executable projections](0213-parsed-plan-artifacts-and-executable-projections.md) (Implemented)

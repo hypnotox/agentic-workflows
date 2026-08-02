@@ -76,7 +76,7 @@ Backing: test
 ### `invariant: plan-read-command`
 
 The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures list available exact values. Success writes the internal/plan-rendered executable closure unchanged: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected phase or task, Phase close, Definition of done, and Notes when present; it neither includes other phases nor mutates the source.
-Origin: ADR-parsed-plan-artifacts-and-executable-projections
+Origin: ADR-0213
 Backing: test
 
 ### `invariant: single-os-exit`
