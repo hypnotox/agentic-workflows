@@ -53,6 +53,7 @@ Backing: test
 
 ### `invariant: plans-template-taxonomy`
 
-The rendered plans template at docs/plans/template.md carries the date, adrs, and status frontmatter block and the plan section taxonomy: the # Plan: title, the four narrative header fields, at least one phase, and the optional Verification and Notes tails.
+The rendered plans template at docs/plans/template.md carries the date, adrs, and status frontmatter block and the plan section taxonomy: the # Plan: title, Goal and Architecture summary, at least one phase, optional Verification, and Notes that is required when any task is a spike and optional otherwise. File structure is not a plan-level section; affected paths belong to tasks.
 Origin: ADR-0098
+Revised-by: ADR-0209
 Backing: test

@@ -30,7 +30,7 @@ Identify the plan path first: it is named in the just-settled ADR(s), or it is t
 {{ end }}
    - The absolute plan path, the effort slug and exact `.awf/efforts/<slug>/memory.md` read-only context, and the declared per-phase ownership, closing subjects, and helper partitions.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The remaining lenses already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
-   - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show invariants --show all-rules --show pending <those paths>` itself so the doc-currency lens receives the non-direct invariant summaries, additional topic rules, and pending changes it needs without unrelated facets. Pass the resolved paths, not pasted packet output.
+   - The affected context instruction: collect every task-level `Paths:` entry plus exact repository paths named in task titles and bodies, deduplicate the resolved set, and direct the reviewer to run `awf context --show invariants --show all-rules --show pending <those paths>` itself so the doc-currency lens receives the non-direct invariant summaries, additional topic rules, and pending changes it needs without unrelated facets. Do not infer a path from vague prose. Pass the resolved paths, not pasted packet output.
 <!-- awf:include context-spill -->
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 

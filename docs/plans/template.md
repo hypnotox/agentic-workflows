@@ -16,13 +16,8 @@ lives in the ADR(s), so this plan is the execution record, not a place to re-arg
 ## Architecture summary
 
 The execution shape: the structural moves the phases make. Not the rationale (that lives in the
-linked ADR).
-
-## File structure
-
-- **Created:** new files.
-- **Modified:** changed files.
-- **Deleted:** removed files (or `none`).
+linked ADR). File structure is not a plan-level section; declare affected paths on tasks where scope
+is not unambiguous.
 
 <!-- awf:edit phases: default; create .awf/parts/plans-template/phases.md to override -->
 ## Phase 1: <name>
@@ -31,20 +26,27 @@ linked ADR).
 Checkbox tasks are ordered steps, not transaction boundaries. If this mode is changed to
 `subagent-driven`, declare the exact commands and expected terminal states that establish the clean
 and green starting baseline.
-- [ ] **Task 1.1: <what>.** Name exact file paths, relevant symbols, exact commands with expected
-  terminal states, and exact content/diffs or implementation-ready pseudocode covering behavior,
+- [ ] **Task 1.1: <what>.** Qualifying implementation-ready instructions are the default: name exact
+  file paths, relevant symbols, exact commands with expected terminal states, and cover behavior,
   branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and
-  deterministic verification. Exact form remains mandatory for machine-consumed configuration and
-  manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical
-  replacements, required literal prose, and batch-task representative and edge transformations.
-  Non-contractual prose may use qualifying instructions; a mixed task may combine both forms. `TBD`,
+  deterministic verification without dictating non-contractual prose. Use `Latitude: exact` for
+  machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden
+  output, commands, mechanical replacements, required literal prose, and batch-task representative
+  and edge transformations; it may be used voluntarily elsewhere. Write applicable fields directly
+  beneath the task declaration and before prose. The vocabulary is `Kind: spike`, `Kind: batch`,
+  `Latitude: exact`, `Question:`, `Paths:`, `Representative:`, `Edge:`, and `Post-check:`. `TBD`,
   `implement later`, outcome-only summaries, and hidden design choices are placeholders, never
   pseudocode. The task remains executable with no prior conversation context.
-- [ ] **Task 1.2: <what>.** Continue the ordered implementation steps. A batch retains an exact
-  representative and edge, exhaustive affected-site set, and a deterministic post-check. An optional
-  exhaustive partition assigns every affected site to the parent or exactly one helper; helpers are
-  sequential and commit-disabled, helper subsets are path-disjoint, shared files remain parent-owned, and
-  each helper's focused mutating commands stay confined to its assigned subset.
+- [ ] **Task 1.2: <what>.** A `Kind: spike` task is question-only, carries `Question:`, has no
+  implementation body, records its answer in Notes, never owns a phase by itself, and puts dependent
+  work in a later phase. A `Kind: batch` task carries `Paths:`, exact `Representative:` and `Edge:`
+  transformations, and `Post-check:`. `Paths:` is required whenever affected scope is ambiguous,
+  including an ambiguous non-batch task; every batch is necessarily ambiguous. `Post-check:` is
+  required for every batch and whenever `Paths:` contains a `glob:` or `pathspec:` entry. Conditional
+  and optional tasks are forbidden: use a spike and sequence dependent work into a later phase instead.
+  An optional exhaustive partition assigns every affected site to the parent or exactly one helper;
+  helpers are sequential and commit-disabled, helper subsets are path-disjoint, shared files remain
+  parent-owned, and each helper's focused mutating commands stay confined to its assigned subset.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
   phase-closing commit; it requires `awf check --staged` and `./x gate` to pass,
   enforced by a wired pre-commit hook or run manually first in a clone without one (checkable with `git config core.hooksPath`):
@@ -59,8 +61,8 @@ feat(scope): describe phase outcome
 Whole-effort end-state checks beyond the per-phase gates: the acceptance criteria for "done".
 
 <!-- awf:edit notes: default; create .awf/parts/plans-template/notes.md to override -->
-## Notes (optional)
+## Notes (required when any task is a spike; optional otherwise)
 
-Out-of-scope items, follow-ups, and findings surfaced during implementation (a wrong diff, an
-unsliceable phase, a bad estimate). The `status: Implemented` flip in the deferred post-review
-transaction records these alongside the freeze.
+Spike answers, out-of-scope items, follow-ups, and findings surfaced during implementation (a wrong
+diff, an unsliceable phase, a bad estimate). The `status: Implemented` flip in the deferred
+post-review transaction records these alongside the freeze.

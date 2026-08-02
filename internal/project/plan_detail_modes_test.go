@@ -74,17 +74,9 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 	policy = strings.Join(strings.Fields(policy), " ")
 
 	for _, clause := range []string{
-		"exact content/diffs",
-		"implementation-ready pseudocode",
-		"exact file paths",
-		"relevant symbols",
-		"expected terminal states",
-		"behavior, branches, ordering, failures",
-		"constraints",
-		"forbidden behavior",
-		"tests",
-		"acceptance assertions",
-		"deterministic verification",
+		"qualifying implementation-ready",
+		"default",
+		"`Latitude: exact`",
 		"machine-consumed",
 		"configuration",
 		"manifests",
@@ -95,10 +87,20 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 		"mechanical replacements",
 		"required literal prose",
 		"representative and edge",
-		"affected-site set",
-		"post-check",
-		"Non-contractual prose",
-		"mixed task",
+		"directly beneath",
+		"`Kind: spike`",
+		"`Question:`",
+		"Notes",
+		"later phase",
+		"`Kind: batch`",
+		"`Paths:`",
+		"ambiguous",
+		"every batch",
+		"`Post-check:`",
+		"glob",
+		"pathspec",
+		"conditional",
+		"optional tasks",
 		"`TBD`",
 		"`implement later`",
 		"outcome-only summaries",
@@ -113,8 +115,58 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 		"shared files",
 		"confined",
 	} {
-		if !strings.Contains(policy, clause) {
+		if !strings.Contains(strings.ToLower(policy), strings.ToLower(clause)) {
 			t.Errorf("%s plan-policy section missing clause %q:\n%s", surface.name, clause, policy)
 		}
 	}
+	if strings.Contains(policy, "<no value>") {
+		t.Errorf("%s plan-policy section leaked missingkey output:\n%s", surface.name, policy)
+	}
+}
+
+func TestPlanContextPathsComeFromTasks(t *testing.T) {
+	defaultWriter := renderSkillGolden(t, "writing-plans", map[string]any{
+		"prefix": "example", "vars": map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans", "plansTemplate": "docs/plans/template.md", "maintainableCodeDesign": "docs/maintainable-code-design.md", "workflowRef": "docs/workflow.md"},
+		"data":   map[string]any{},
+	})
+	defaultReviewer := renderSkillGolden(t, "reviewing-plan", map[string]any{
+		"prefix": "example", "vars": map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans", "workflowRef": "docs/workflow.md"},
+		"data":   map[string]any{}, "skills": map[string]bool{},
+	})
+	defaultResync := renderSkillGolden(t, "reviewing-plan-resync", map[string]any{
+		"prefix": "example", "vars": map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans"},
+		"data":   map[string]any{}, "skills": map[string]bool{},
+	})
+
+	root := testsupport.RepoRoot(t)
+	for _, surface := range []struct {
+		name string
+		body string
+	}{
+		{"default writing skill", defaultWriter},
+		{"default reviewing skill", defaultReviewer},
+		{"default resync skill", defaultResync},
+		{"rendered writing skill", readPlanPolicyFile(t, root, ".pi/skills/awf-writing-plans/SKILL.md")},
+		{"rendered reviewing skill", readPlanPolicyFile(t, root, ".pi/skills/awf-reviewing-plan/SKILL.md")},
+		{"rendered resync skill", readPlanPolicyFile(t, root, ".pi/skills/awf-reviewing-plan-resync/SKILL.md")},
+	} {
+		body := strings.Join(strings.Fields(surface.body), " ")
+		for _, clause := range []string{"every task-level `Paths:` entry", "exact repository paths named in task titles and bodies", "deduplicate", "Do not infer a path from vague prose"} {
+			if !strings.Contains(body, clause) {
+				t.Errorf("%s missing context-path collection clause %q", surface.name, clause)
+			}
+		}
+	}
+}
+
+func readPlanPolicyFile(t *testing.T, root, name string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(root, name))
+	if err != nil {
+		t.Fatalf("read rendered policy surface %s: %v", name, err)
+	}
+	return string(body)
 }

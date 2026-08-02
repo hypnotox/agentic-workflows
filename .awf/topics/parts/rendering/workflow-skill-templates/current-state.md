@@ -65,9 +65,9 @@ Backing: test
 
 ### `invariant: plan-task-detail-modes`
 
-The rendered plan-authoring skill, plan reviewer, implementation-plans README, and plan template accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, require one coherent green transaction and an inline or subagent-driven owner per phase, reject coupled phases, and require any optional helper partition to be exhaustive, path-disjoint, shared-file-safe, and command-confined. Every surface renders coherently with empty variables.
+The rendered plan-authoring skill, plan reviewer, implementation-plans README, and plan template use qualifying implementation-ready instructions as the default task-content form; require `Latitude: exact` for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and batch representative and edge transformations; and permit that marker voluntarily elsewhere. They define contiguous task fields for exactness, spikes, batches, affected paths, and deterministic post-checks; require `Paths:` whenever scope is ambiguous, always including a batch; require `Post-check:` for every batch and every glob or pathspec scope; preserve the no-placeholder boundary for implementation tasks; forbid conditional and optional tasks; require one coherent green transaction and an inline or subagent-driven owner per phase; and keep any helper partition exhaustive, path-disjoint, shared-file-safe, and command-confined. A spike is question-only, records its answer in Notes, cannot own a phase, and sequences dependent work into a later phase. Every surface renders coherently with empty variables.
 Origin: ADR-0148
-Revised-by: ADR-0157, ADR-0166
+Revised-by: ADR-0157, ADR-0166, ADR-0209
 Backing: test
 
 ### `invariant: reviewers-report-only`

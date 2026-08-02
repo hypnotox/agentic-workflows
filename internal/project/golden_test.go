@@ -46,9 +46,10 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 
-	// The plans-template singleton renders the ADR-0097 taxonomy, narrowed to the
-	// three-field header by ADR-0108: frontmatter spine + canonical headings,
-	// section-assembly markers stripped, no unresolved template value.
+	// The plans-template singleton renders the legacy taxonomy after ADR-0209:
+	// frontmatter spine, Goal and Architecture summary, phases, the optional
+	// Verification and Notes tails, no File structure snapshot, section-assembly
+	// markers stripped, and no unresolved template value.
 	// invariant: adr-system/plan-artifacts:plans-template-taxonomy (TestEndToEndGolden)
 	plansTemplate, err := os.ReadFile(filepath.Join(root, "docs/plans/template.md"))
 	if err != nil {
@@ -57,13 +58,13 @@ func TestEndToEndGolden(t *testing.T) {
 	for _, want := range []string{
 		"date:", "adrs:", "status:",
 		"# Plan:", "## Goal", "## Architecture summary",
-		"## File structure", "## Phase", "## Verification", "## Notes",
+		"## Phase", "## Verification", "## Notes",
 	} {
 		if !strings.Contains(string(plansTemplate), want) {
 			t.Errorf("plans-template missing taxonomy element %q:\n%s", want, plansTemplate)
 		}
 	}
-	for _, bad := range []string{"awf:section", "awf:end", "{{", "}}"} {
+	for _, bad := range []string{"## File structure", "awf:section", "awf:end", "{{", "}}"} {
 		if strings.Contains(string(plansTemplate), bad) {
 			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
 		}

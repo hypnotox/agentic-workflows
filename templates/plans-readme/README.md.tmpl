@@ -2,8 +2,8 @@
 
 <!-- awf:section intro -->
 A plan is the step-by-step execution record for a complex change: reviewable tasks, exact file
-paths and commands, and implementation-ready detail supplied as exact content/diffs or qualifying
-pseudocode. The design rationale lives in the linked ADR (when one exists); a plan links to it
+paths and commands, and qualifying implementation-ready detail by default, with exact content for
+contract-bearing work. The design rationale lives in the linked ADR (when one exists); a plan links to it
 (structurally, via its `adrs:` frontmatter) rather than restating it.
 <!-- awf:end -->
 
@@ -26,32 +26,41 @@ where the date is the day the plan is written (ISO-8601). Example:
 - Frontmatter: `date`, `adrs: []` (the linked ADRs, each entry either a number or the slug of a
   record still awaiting its number, so a link survives numbering without the plan being rewritten),
   and a two-state `status`.
-- A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical
-  header sections: Goal, Architecture summary, and File structure (created / modified /
-  deleted).
+- A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the two canonical
+  header sections: Goal and Architecture summary. File structure is not a plan-level section;
+  affected paths belong to tasks.
 - Phases each declare **Execution mode: `inline`** or **`subagent-driven`** independently. A
   subagent-driven phase also declares the exact commands and expected terminal states that establish
-  its clean and green starting baseline. A phase is one independently green coherent implementation transaction; its `- [ ]` checkbox tasks are ordered
-  steps, not default dispatch, review, checkpoint, or commit boundaries. Each task names exact file
-  paths, relevant symbols, exact commands with expected terminal states, and exact content/diffs or
-  implementation-ready pseudocode specifying behavior, branches, ordering, failures, constraints,
-  forbidden behavior, tests, acceptance assertions, and deterministic verification.
-- Exact form remains mandatory for machine-consumed configuration and manifests, contract-bearing
-  declarations, fixtures, golden output, commands, mechanical replacements, required literal prose,
-  and batch-task representative and edge transformations. Non-contractual prose may use qualifying
-  instructions; a mixed task may combine both forms. `TBD`, `implement later`, outcome-only summaries,
-  and hidden design choices are placeholders, never pseudocode. Every task remains executable with no
-  prior conversation context.
-- A batch task retains an exact representative and edge, exhaustive affected-site set, and
-  deterministic post-check. Optional helpers are sequential and commit-disabled: an exhaustive
-  partition assigns each site to the parent or exactly one helper, helper subsets are path-disjoint,
-  shared files remain parent-owned, and focused mutating commands stay confined to the assigned subset.
+  its clean and green starting baseline. A phase is one independently green coherent implementation
+  transaction; its `- [ ]` checkbox tasks are ordered steps, not default dispatch, review, checkpoint,
+  or commit boundaries. Qualifying implementation-ready instructions are the default: each task names
+  exact file paths, relevant symbols, exact commands with expected terminal states, and covers behavior,
+  branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and
+  deterministic verification without dictating non-contractual prose.
+- Use `Latitude: exact` for machine-consumed configuration and manifests, contract-bearing declarations,
+  fixtures, golden output, commands, mechanical replacements, required literal prose, and batch-task
+  representative and edge transformations; it may be used voluntarily elsewhere. Write applicable
+  fields directly beneath the task declaration and before prose. The vocabulary is `Kind: spike`,
+  `Kind: batch`, `Latitude: exact`, `Question:`, `Paths:`, `Representative:`, `Edge:`, and `Post-check:`.
+- A `Kind: spike` task is question-only, carries `Question:`, has no implementation body, records its
+  answer in Notes, never owns a phase by itself, and puts dependent work in a later phase. A
+  `Kind: batch` task carries `Paths:`, exact `Representative:` and `Edge:` transformations, and
+  `Post-check:`. `Paths:` is required whenever affected scope is ambiguous, including an ambiguous
+  non-batch task; every batch is necessarily ambiguous. `Post-check:` is required for every batch and
+  whenever `Paths:` contains a `glob:` or `pathspec:` entry. Conditional and optional tasks are
+  forbidden: use a spike and sequence dependent work into a later phase instead. `TBD`, `implement
+  later`, outcome-only summaries, and hidden design choices are placeholders, never pseudocode. Every
+  task remains executable with no prior conversation context.
+- Optional helpers are sequential and commit-disabled: an exhaustive partition assigns each site to
+  the parent or exactly one helper, helper subsets are path-disjoint, shared files remain parent-owned,
+  and focused mutating commands stay confined to the assigned subset.
 - Each phase declares one phase-closing commit and stages the complete transaction; the commit requires
   `awf check --staged` and the gate to pass, enforced by a wired pre-commit hook or run manually first
   in a clone without one (checkable with `git config core.hooksPath`). Definitions land with
   first production use; no dead-code exception exists.
-- Optionally, two trailing sections after the phases: **Verification** (whole-effort acceptance
-  checks) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation).
+- Two trailing sections may follow the phases: **Verification** is optional (whole-effort acceptance
+  checks), while **Notes** is required when any task is a spike and optional otherwise (spike answers,
+  out-of-scope items, follow-ups, and findings surfaced during implementation).
 
 A plan carries its own two-state lifecycle, independent of any linked ADR: it is mutable while
 `status: Proposed` (through review and implementation, where findings are noted as they surface)

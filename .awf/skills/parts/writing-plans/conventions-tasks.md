@@ -10,4 +10,5 @@
   phase. Prefer "the finding count reaches zero", "this grep returns no output", "`awf check` is
   clean". Where a magnitude genuinely helps a reader plan the work, mark it as indicative and keep
   it out of the verification step. The same rule governs prose about the repo's own shape: see the
-  pitfalls entry on hard-coded counts drifting.
+  pitfalls entry on hard-coded counts drifting. For a batch or glob/pathspec `Paths:` scope, make
+  `Post-check:` assert the terminal set or clean result rather than freezing its authoring-time count.

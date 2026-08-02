@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Accepted
+status: Implemented
 date: 2026-08-01
 ---
 # ADR-0209: Sanction authoring latitude in plans
@@ -215,3 +215,4 @@ count or date cutoff.
 
 - 2026-08-01: Proposed
 - 2026-08-02: Accepted; content-sha256: f23e94070174eca282aafbde5f4589c17d314c6ce5f5d576fa0e07a4bb736e4c
+- 2026-08-02: Implemented; content-sha256: f23e94070174eca282aafbde5f4589c17d314c6ce5f5d576fa0e07a4bb736e4c
