@@ -1703,6 +1703,16 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	routine := renderSkillGolden(t, "executing-plans", data)
 	approval := renderSkillGolden(t, "brainstorming", data)
+	genericWorkingMemory := strings.Index(workflow, "## Working memory")
+	if genericWorkingMemory < 0 {
+		t.Fatal("generic workflow lost the Working memory boundary")
+	}
+	genericChain := workflow[:genericWorkingMemory]
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(genericChain, want) {
+			t.Errorf("generic workflow chain confirmation route missing %q", want)
+		}
+	}
 	for label, body := range map[string]string{"workflow": workflow, "guide": guide, "routine": routine, "approval": approval} {
 		if !strings.Contains(body, ".awf/efforts/<slug>/memory.md") {
 			t.Errorf("%s missing unified owned-memory path", label)

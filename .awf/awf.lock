@@ -846,7 +846,7 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:8f25578cbce786fdbd502dd541a86abe2151ea29a1bc16fd7b13061be070a157",
+      "templateHash": "sha256:9913ae21201be4c7252bcd3ac2890aa2fd84149f24f76f0016a61a757e8efd29",
       "configHash": "sha256:9e7ca26cda408b0d07cacdf7487802615341c0a3b1567df20200637c17f5492a",
       "outputHash": "sha256:ed305a306a4f2622b3cfc304cb3714146498a4b248de619881070fb0dbd71124"
     },
