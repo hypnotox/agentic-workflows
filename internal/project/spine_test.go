@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -1993,6 +1994,38 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 				t.Errorf("empty-data render is not coherent:\n%s", out)
 			}
 		})
+	}
+}
+
+func TestEffortWorkflowTemplate(t *testing.T) { TestEffortWorkflowSkillContract(t) }
+
+// invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
+func TestEffortWorkflowSkillContract(t *testing.T) {
+	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
+	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "native persistent checkout or context tooling", "parallel harness-owned worktree", "memory update", "integration, managed-worktree removal, retrospective, then finish"} {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("effort-workflow missing %q", phrase)
+		}
+	}
+	for _, forbidden := range []string{"using_effort", "Pi"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("target-neutral effort workflow leaks %q", forbidden)
+		}
+	}
+	full, _, err := ScaffoldConfig("example", nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(full), "  - effort-workflow\n") {
+		t.Error("new untrimmed scaffold does not select effort-workflow")
+	}
+	trimmed := []string{"tdd"}
+	trim, _, err := ScaffoldConfig("example", nil, &config.CatalogTrim{Skills: &trimmed}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(trim), "effort-workflow") {
+		t.Error("explicit skill trim does not replace the core selection")
 	}
 }
 

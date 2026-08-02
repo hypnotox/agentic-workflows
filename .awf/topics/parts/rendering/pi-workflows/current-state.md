@@ -43,8 +43,21 @@ Backing: test
 
 ### `invariant: pi-native-workflow-skills`
 
-Pi renders every enabled standard and local skill at `.pi/skills/<prefix>-<name>/SKILL.md`; disabled skills or Pi disablement prune those paths, and no router or hidden workflow-body output remains.
+Pi renders every selected standard and local catalog skill at `.pi/skills/<prefix>-<name>/SKILL.md`; disabled skills or Pi disablement prune those paths, and no router or hidden workflow-body output remains. Selected `effort-workflow` additionally derives the Pi-target-owned `using-effort` skill at the same native skill path without making it a second catalog selection; deselecting `effort-workflow` or disabling Pi prunes that companion and its extension.
 Origin: ADR-0167
+Revised-by: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Backing: test
+
+### `invariant: pi-effort-session-association`
+
+When selected `effort-workflow` and an enabled Pi target render the generated `using-effort` skill and `using_effort` tool, they explicitly associate one running session with at most one effort, resolve managed or recorded/explicit receiving checkout through the awf binary, and queue command-only `changeCwd` before owner-checked activity commit; they never infer an effort, guess a receiving checkout, follow topology, create a conversation, or write residents directly. Immutable process-local snapshots and a one-shot runtime-replacement coordinator preserve the same-session association across a successful CWD rebind but never across process restart; missing capability visibly changes no CWD/activity/memory axis. Activity takeover warns and proceeds, heartbeat/metadata/name failures remain advisory, stale age never changes permission, Remote Pi publication uses complete `awf` metadata replacement plus negotiated transient name override/replay, and detach/restart restore the base identity without turning presence into authority or a lock.
+Origin: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Backing: test
+
+### `invariant: using-effort-skill`
+
+The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from selected `effort-workflow`; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. The skill documents the explicit tool arguments, validated managed/receiving switches, first-receiving-path repair, takeover warning, advisory heartbeat/metadata/name behavior, explicit detach, and the rule that activity is neither authority nor a lock.
+Origin: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`

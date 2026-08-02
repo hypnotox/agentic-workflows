@@ -32,6 +32,7 @@ var Standard = &Catalog{
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
 			"notes", "red-flags",
 		}},
+		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Use one awf effort through its existing managed worktree and lifecycle.", Trigger: "Use when starting, resuming, switching checkout context for, integrating, or finishing a non-minimal effort."}, Core: true},
 		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct", "executing-plans"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{

@@ -73,8 +73,9 @@ Backing: test
 
 ### `invariant: target-dialect-render`
 
-Each enabled target renders every skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format, for example a Codex agent rendering as valid TOML at .codex/agents/<name>.toml.
+Each enabled target renders every selected catalog skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A closed target descriptor may additionally declare a target-owned skill with a catalog-selection predicate; it uses the same target path, prefix, dialect, provenance, and policy machinery, is absent from every other target, and is planned and rendered by one resolved declaration path.
 Origin: ADR-0122
+Revised-by: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: unified-doc-model`

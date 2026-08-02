@@ -27,6 +27,7 @@ type Capability string
 const (
 	CapabilitySubagentTools  Capability = "subagent-tools"
 	CapabilitySessionHandoff Capability = "session-handoff"
+	CapabilityEffortSessions Capability = "effort-sessions"
 )
 
 type TargetOutputProducer string
@@ -42,7 +43,10 @@ type TargetOutputInput struct {
 
 // TargetOutput declares a target-owned non-catalog output such as a project extension.
 type TargetOutput struct {
-	Path           string
+	Path string
+	// SkillName derives a target-native skill path; exactly one of it and Path is set.
+	SkillName      string
+	RequiresSkill  string
 	TemplateID     string
 	Producer       TargetOutputProducer
 	Inputs         []TargetOutputInput
@@ -57,6 +61,7 @@ func (t Target) targetTemplateData() map[string]any {
 	return map[string]any{
 		"targetSubagentTools":  t.hasCapability(CapabilitySubagentTools),
 		"targetSessionHandoff": t.hasCapability(CapabilitySessionHandoff),
+		"targetEffortSessions": t.hasCapability(CapabilityEffortSessions),
 	}
 }
 
@@ -92,7 +97,7 @@ func targetDescriptorProjection(t Target) string {
 }
 
 func (t Target) validate() error {
-	known := map[Capability]bool{CapabilitySubagentTools: true, CapabilitySessionHandoff: true}
+	known := map[Capability]bool{CapabilitySubagentTools: true, CapabilitySessionHandoff: true, CapabilityEffortSessions: true}
 	for _, c := range t.Capabilities {
 		if !known[c] {
 			return fmt.Errorf("target %q has unknown capability %q", t.Name, c)
@@ -105,7 +110,7 @@ func (t Target) validate() error {
 		return fmt.Errorf("target %q has unknown agent encoder %q", t.Name, t.AgentDialect)
 	}
 	for _, out := range t.Outputs {
-		if out.Path == "" || out.TemplateID == "" || !filepath.IsLocal(filepath.FromSlash(out.Path)) {
+		if (out.Path == "") == (out.SkillName == "") || out.TemplateID == "" || (out.Path != "" && !filepath.IsLocal(filepath.FromSlash(out.Path))) {
 			return fmt.Errorf("target %q has unsafe output %q", t.Name, out.Path)
 		}
 		if out.Producer != TargetOutputTemplate {
@@ -218,12 +223,15 @@ var piTarget = Target{
 	AgentDir:     ".pi/agents",
 	AgentSuffix:  ".md",
 	AgentDialect: MarkdownAgentDialect,
-	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
+	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff, CapabilityEffortSessions},
 	Outputs: []TargetOutput{
 		{Path: ".pi/extensions/awf-handoff/index.ts", TemplateID: "pi/awf-handoff/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-effort/index.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-effort/client.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/client.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{SkillName: "using-effort", RequiresSkill: "effort-workflow", TemplateID: "skills/using-effort/SKILL.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, Policy: declaredPolicy("skills", true), PolicyDeclared: true},
 	},
 }
 

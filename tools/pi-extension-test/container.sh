@@ -101,7 +101,7 @@ fi
 printf 'pi-extension-test: setup/start %ss\n' "$((SECONDS - setup_start))"
 
 bin_path=/opt/awf-pi-test/node_modules/.bin
-test_command="c8 --all --include='.pi/extensions/awf-subagents/runner.ts' --include='.pi/extensions/awf-subagents/model-routing.ts' --include='.pi/extensions/awf-handoff/index.ts' --exclude='tools/pi-extension-test/tests/*.ts' --check-coverage --lines=100 --functions=100 --branches=100 node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts"
+test_command="c8 --all --include='.pi/extensions/awf-subagents/runner.ts' --include='.pi/extensions/awf-subagents/model-routing.ts' --include='.pi/extensions/awf-handoff/index.ts' --include='.pi/extensions/awf-effort/index.ts' --include='.pi/extensions/awf-effort/client.ts' --exclude='tools/pi-extension-test/tests/*.ts' --check-coverage --lines=100 --functions=100 --branches=100 node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts"
 
 # Copy only what the suite compiles and runs, about 470 KB. The superseded
 # `cp -a /source/. /workspace/repo/` moved 376 MB, raced concurrent git activity

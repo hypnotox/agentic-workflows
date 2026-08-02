@@ -4,10 +4,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -265,6 +267,132 @@ func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
+// invariant: rendering/project-output-plan:multi-target-render (TestEffortWorkflowTargetMatrix)
+// invariant: rendering/catalog-and-targets:target-dialect-render (TestEffortWorkflowTargetMatrix)
+func TestEffortWorkflowTargetMatrix(t *testing.T) {
+	selected := resolvedTargetOutputs(piTarget, "custom", []string{"effort-workflow"})
+	found := map[string]bool{}
+	for _, output := range selected {
+		found[output.Path] = true
+	}
+	for _, path := range []string{".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts", ".pi/skills/custom-using-effort/SKILL.md"} {
+		if !found[path] {
+			t.Errorf("selected effort workflow omits %s", path)
+		}
+	}
+	for _, output := range resolvedTargetOutputs(piTarget, "custom", nil) {
+		if output.RequiresSkill == "effort-workflow" {
+			t.Error("unselected effort workflow leaves target output")
+		}
+	}
+	for _, target := range []Target{claudeTarget, codexTarget, cursorTarget, geminiTarget, copilotTarget} {
+		for _, output := range resolvedTargetOutputs(target, "custom", []string{"effort-workflow"}) {
+			if output.RequiresSkill == "effort-workflow" {
+				t.Errorf("non-Pi target %s declares effort-session output %s", target.Name, output.Path)
+			}
+		}
+	}
+	if err := validateTargetOutputRequirements(piTarget, catalog.Standard); err != nil {
+		t.Fatalf("Pi descriptors: %v", err)
+	}
+	bad := piTarget
+	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs[0].RequiresSkill = "missing"
+	if err := validateTargetOutputRequirements(bad, catalog.Standard); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+		t.Fatalf("unknown target-output requirement = %v", err)
+	}
+	badProject := &Project{Cfg: &config.Config{Prefix: "example"}, Cat: catalog.Standard, Targets: []Target{bad}}
+	if _, err := badProject.targetOutputDeclarations(nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+		t.Fatalf("target-output declaration accepted unknown requirement: %v", err)
+	}
+
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude, pi]\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	planned := map[string]OutputNode{}
+	for _, node := range plan.Nodes {
+		planned[node.Path] = node
+	}
+	for _, path := range []string{".claude/skills/example-effort-workflow/SKILL.md", ".pi/skills/example-effort-workflow/SKILL.md", ".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
+		node, ok := planned[path]
+		if !ok || node.file == nil || node.Recipe.TemplateHash == "" || node.Recipe.ConfigHash == "" {
+			t.Errorf("selection does not plan hashed rendered output %s: %#v", path, node)
+		}
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [claude, pi]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
+		if _, err := os.Stat(filepath.Join(root, path)); !os.IsNotExist(err) {
+			t.Errorf("deselected effort-workflow did not prune %s: %v", path, err)
+		}
+	}
+}
+
+// invariant: rendering/pi-workflows:using-effort-skill (TestUsingEffortSkillPiOnly)
+// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestUsingEffortSkillPiOnly)
+func TestUsingEffortSkillPiOnly(t *testing.T) {
+	for _, target := range []Target{claudeTarget, codexTarget, cursorTarget, geminiTarget, copilotTarget} {
+		for _, output := range target.Outputs {
+			if output.SkillName == "using-effort" || strings.Contains(output.Path, "awf-effort") {
+				t.Errorf("non-Pi target %s declares Pi-only output %s", target.Name, output.Path)
+			}
+		}
+	}
+	if !slices.ContainsFunc(piTarget.Outputs, func(output TargetOutput) bool {
+		return output.SkillName == "using-effort" && output.RequiresSkill == "effort-workflow"
+	}) {
+		t.Error("Pi lacks derived using-effort skill")
+	}
+	out := renderGolden(t, "skills/using-effort/SKILL.md.tmpl", map[string]any{"prefix": "example"})
+	for _, want := range []string{"using_effort", "receiving", "takeover", "detach", "neither authority nor a lock"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("Pi companion misses %q", want)
+		}
+	}
+}
+
+// invariant: rendering/pi-workflows:pi-effort-session-association (TestPiEffortSessionAssociationContract)
+func TestPiEffortSessionAssociationContract(t *testing.T) {
+	contracts := map[string][]string{
+		"awf-effort/index.ts":  {"using_effort", "changeCwd", "activity", "remote-pi:metadata", "session_shutdown", "Symbol.for", "awf-using-effort-continue"},
+		"awf-effort/client.ts": {"./awf", "effort", "activity", "50 * 1024", "Object.freeze"},
+	}
+	for name, wants := range contracts {
+		out := renderPiExtensionFile(t, name)
+		for _, want := range wants {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s misses association contract %q", name, want)
+			}
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/using-effort.test.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"capability-degrades", "same-effort checkout", "restart begins detached", "fresh and stale takeover", "metadata-only fallback", "validates explicit inputs", "serializes heartbeat races"} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("TypeScript association suite misses %q", want)
+		}
+	}
+}
+
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
@@ -559,7 +687,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

@@ -42,8 +42,9 @@ Backing: test
 
 ### `invariant: multi-target-render`
 
-With multiple targets enabled, each adapter artifact (skill, agent) renders once per target to that target's descriptor-derived paths (for example .claude/skills/<prefix>-<name>/SKILL.md and .cursor/skills/<prefix>-<name>/SKILL.md), while neutral artifacts such as AGENTS.md render exactly once regardless of target count.
+With multiple targets enabled, every enabled catalog skill and agent renders once per target to that target's descriptor-derived path, while neutral artifacts such as AGENTS.md render exactly once regardless of target count. A target-owned skill or other output renders only for its declaring target when its closed catalog-selection predicate is satisfied; configured-prefix path derivation, declaration, rendering, coalescing, hashing, pruning, provenance, and policy all use the same resolved descriptor.
 Origin: ADR-0037
+Revised-by: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: output-plan-complete`

@@ -18,6 +18,8 @@ A complete worked example lives at
 full catalog enabled and every rendered file committed, kept in sync from source
 by this repository's own checks (ADR-0090).
 
+Core `effort-workflow` is selected in a new untrimmed scaffold. It renders for every enabled target and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` worktree. Existing adopters retain their chosen skills until an owner explicitly runs `awf enable skill effort-workflow`; it does not create a parallel harness-owned worktree or standalone memory.
+
 
 <!-- awf:edit commands: from .awf/parts/working-with-awf/commands.md -->
 A minimal simple fix uses no effort. For a concrete non-minimal outcome, run `awf effort new "<outcome>"`; the immutable slug identifies `.awf/efforts/<slug>/state.json`, its always-owned `.awf/efforts/<slug>/memory.md`, `.awf/worktrees/<slug>/`, and the `awf/<slug>` branch. Creation makes the managed worktree by default (`--no-worktree` opts out; `--base <ref>` selects the base); `awf effort worktree add <slug>` remains the standalone operation for efforts created without one. Git topology, not effort state, owns integration and removal facts; finish is restartable deletion and refuses until every managed path, registration, and branch is absent.
@@ -79,6 +81,10 @@ dirty stop is inventoried before the parent completes inline, restores and resta
 phase, or transfers the complete revised phase with completed and remaining work plus recovery
 verification. Checkbox tasks and helper returns are not transaction or checkpoint boundaries, and a
 blind task-level successor is forbidden. Every governed subagent dispatch chooses the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; the full tier definitions live in the agent guide's workflow section. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
+
+Core `effort-workflow` is selected only by new untrimmed scaffolds. Existing adopter selections remain byte-for-byte stable until their owner explicitly runs `awf enable skill effort-workflow`. The selected core guide renders for every enabled target and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` checkout. Pi additionally derives, rather than selects, `using-effort` and the `awf-effort` extension; non-Pi targets never receive or invoke them, claim activity, or create a parallel harness-owned worktree.
+
+Pi's explicit managed or receiving association resolves through the binary and capability-detects command-context `changeCwd` before changing any CWD, activity, or memory axis. A missing capability visibly refuses without a portable minimum-version claim. Successful same-conversation replacement transfers immutable association data through a one-shot process-local coordinator, then commits owner-checked advisory activity. Restart begins detached. Takeover, heartbeat, complete Remote Pi metadata replacement, and negotiated temporary naming are advisory: activity is neither authority nor a lock, missing name override stays metadata-only, and detach or restart restores the base identity.
 
 
 <!-- awf:edit placeholders: default; create .awf/parts/working-with-awf/placeholders.md to override -->

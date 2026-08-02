@@ -508,7 +508,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			}
 			out = append(out, rfs...)
 		}
-		for _, targetOutput := range t.Outputs {
+		for _, targetOutput := range resolvedTargetOutputs(t, p.Cfg.Prefix, p.Cfg.Skills) {
 			if targetOutputs[targetOutput.Path].canonical != t.Name {
 				continue
 			}

@@ -17,9 +17,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling Pi renders the handoff entrypoint and the subagent index, bounded model-routing module, and runner with provenance. The model-routing module owns pure preference parsing, merging, validation-state representation, and routing-card construction; the entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and all files follow normal render and cleanup semantics.
+Enabling Pi renders the handoff entrypoint and the subagent index, bounded model-routing module, and runner with provenance and normal render/prune semantics; selecting `effort-workflow` additionally renders the Pi-target-owned `using-effort` skill and `awf-effort` index/client pair through the same output predicate. The effort client alone invokes and decodes the awf activity protocol; its index owns the explicit `using_effort` tool, queued live-CWD orchestration, process-local transfer, heartbeat/shutdown lifecycle, and Remote Pi translation. The subagent model-routing module retains pure preference/routing construction while its entrypoint retains subagent runtime integration. No telemetry or workflow-router output renders.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`

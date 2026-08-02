@@ -46,9 +46,15 @@ Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
-Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, orientation, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, and exact slug/path continuity, and keeps repository-authority precedence, the standalone-memory ban, and the one-writer/report-only-child contract in force through its procedure preamble and the workflow doc's working-memory section. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
+Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, orientation, roadmap, and effort-workflow skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, and exact slug/path continuity, and keeps repository-authority precedence, the standalone-memory ban, and the one-writer/report-only-child contract in force through its procedure preamble and the workflow doc's working-memory section. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last. The core `effort-workflow` entry guide composes the workflow document and shared checkpoint partials as the single lifecycle-policy home, directs every target through the exact awf-managed worktree, and adds no runtime-specific association rule or second policy copy.
 Origin: ADR-0175
-Revised-by: ADR-0187, ADR-0197
+Revised-by: ADR-0187, ADR-0197, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Backing: test
+
+### `invariant: effort-workflow`
+
+Core `effort-workflow` is the single selectable cross-target entry guide for a non-minimal awf effort: new scaffolds select it by default, existing adopter selections change only through explicit enablement, and every enabled target renders it. It composes the workflow document and shared checkpoint policy, uses ordinary awf effort commands, directs native persistent checkout or context tooling to enter the exact existing `.awf/worktrees/<slug>` managed worktree, and preserves structured checkpoint, review, integration, removal, retrospective, and finish ordering. It never creates standalone memory or a parallel harness-owned worktree, infers topology, treats activity as authority, names Pi, or exposes `using_effort`.
+Origin: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`

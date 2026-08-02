@@ -70,7 +70,7 @@ instead of rotting.
   [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
-- **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state and `memory.md`; optional managed worktrees use Git-authoritative path, registration, and branch topology. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
+- **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-1 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
 
 awf renders for six runtimes: Pi, [Claude Code](https://www.anthropic.com/claude-code),
 Codex, GitHub Copilot, Cursor, and Gemini. Each gets skills and agents in its own native
@@ -86,7 +86,9 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. A separate `handoff_session` tool continues from an optional exact `.awf/efforts/<slug>/memory.md` file in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
+activity stays outside parent model content. Selecting core `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: an explicit managed or receiving destination rebinds the same conversation through capability-detected `changeCwd`, commits owner-checked activity only afterward, heartbeats after turns, and publishes advisory Remote Pi metadata plus a negotiated temporary effort name. Missing live-CWD support changes nothing and reports how to upgrade; missing Remote Pi name override remains metadata-only. Detach and restart restore base identity. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree. Existing adopters opt in with `awf enable skill effort-workflow`; no portable minimum release is claimed yet.
+
+A separate `handoff_session` tool continues from an optional exact `.awf/efforts/<slug>/memory.md` file in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
 
 ## The workflow it renders
 
@@ -273,7 +275,7 @@ disk.
 | `awf new plan "<title>"` | Scaffold a dated plan under `docs/plans/`. |
 | `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
 | `awf effort new "<outcome>" [--json]` | Derive an immutable slug and publish schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; `list` and `show` expose the same protocol. |
-| `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. |
+| `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. Pi's derived `using_effort` support remains capability-gated and advisory. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. It also replays stale-ADR authorization for schema-31-and-later merge commits. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf check invariants` | Report documented invariants that lack a backing comment in source. |
