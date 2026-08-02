@@ -511,8 +511,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:ea2b7fe392c4517ac58023e825bf795a64cdb735d3c7036aa9eef13ab0261f43",
-      "configHash": "sha256:ce7ebab289b6b833a7d4328ba65bbf7b08e80d74d6eb2c81c5e9fa562b0eebcf",
-      "outputHash": "sha256:3662889d857614c7132e9132828a098de3bee9d5abe4462408fff030ba000c7d"
+      "configHash": "sha256:6e4e0701db73a6d8133816787a9ecb2d684a0b2fa82bc7d88ed3c568afbe3105",
+      "outputHash": "sha256:9ee2058723fa1deb5f03af3506be4d7630e83a7cabfbc48b0e2fe2e59456e515"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
