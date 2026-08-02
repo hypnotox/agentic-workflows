@@ -143,11 +143,13 @@ not rewritten.
    behavior, absence of queued/CWD/TUI machinery, retained Remote Pi metadata/name replay, target
    render/prune behavior, strict TypeScript coverage, and the complete repository gate. Render
    tests exercise every changed template with empty optional values and require coherent generic
-   output with no `<no value>` or other unresolved-value token. The direct Implemented transaction
-   updates every behavior-stating authoring artifact, `AGENTS.md`, all declared claims with
-   preserved provenance, adopter-facing changelog text, and generated outputs in the same commit;
-   `./x render` regenerates `docs/decisions/INDEX.md` and the lock before that transaction is
-   staged.
+   output with no `<no value>` or other unresolved-value token. Each pre-review implementation
+   commit carries its matching tests, behavior-stating authoring artifacts, generated outputs,
+   `AGENTS.md` changes, and adopter-facing changelog text. After independent terminal review
+   settles, one deferred direct Implemented transaction applies all eight declared claim updates
+   with preserved provenance, flips this ADR and its linked plan to `Implemented`, and uses
+   `./x render` to regenerate the affected current-state documents, `docs/decisions/INDEX.md`, and
+   the lock before staging. The terminal flip contains no unreviewed production behavior.
 
 ## State changes
 
@@ -189,8 +191,8 @@ contract, while a new binary can recover directly from v1 without a repository m
 
 The implementation is cross-cutting despite deleting complexity. A forward ADR is necessary
 because eight implemented current-state claims change, and a reviewed plan is necessary to sequence
-the protocol, generated runtime, claims, documentation, rendering, and coverage work within the
-single application transaction.
+the protocol, generated runtime, documentation, rendering, and coverage implementation before the
+post-review direct claim/status transaction.
 
 ## Alternatives Considered
 
