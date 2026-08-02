@@ -50,7 +50,7 @@ Start from the canonical skeleton rather than a blank file: run `./awf new plan 
 
 <!-- awf:edit procedure-write-plan: default; create .awf/skills/parts/writing-plans/procedure-write-plan.md to override -->
 2. **Write the plan file in one go.** Per `docs/maintainable-code-design.md`, convert the settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation into ordered executable tasks. The plan must be self-contained: every step executable by an agent with no prior conversation context. Collect every task-level `Paths:` entry plus exact repository paths named in task titles and bodies, deduplicate the resolved set, and run `awf context <those paths>` so task content is grounded in current authority rather than reconstructed from memory. Do not infer a path from vague prose.
-Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
+Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 
 <!-- awf:edit doc-currency-check: default; create .awf/skills/parts/writing-plans/doc-currency-check.md to override -->

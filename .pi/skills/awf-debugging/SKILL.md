@@ -46,7 +46,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 4. **Establish effort ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search; a minimal simple known-root fix stays effort-free. Once evidence confirms a concrete non-minimal fix outcome, carry the one effort slug and exact `.awf/efforts/<slug>/memory.md` path onward; exploring children receive them read-only and never edit memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
 
 5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline. Before writing the test, run `awf context <the suspect paths>`.
-Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
+Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 
 

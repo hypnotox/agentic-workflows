@@ -22,7 +22,7 @@ If the root cause is not yet known, invoke `awf-debugging` first.
 A minimal simple known-root fix uses no effort. For a concrete non-minimal fix, carry the effort slug and exact `.awf/efforts/<slug>/memory.md` path through TDD and review; children receive them read-only and never edit shared memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
 
 1. **Ensure a regression test exists that fails for the right reason.** Invoke `awf-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix. Before writing the test, run `awf context <the implementation and test paths>`.
-Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
+Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 
 2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. For materially larger work, ask the user whether to

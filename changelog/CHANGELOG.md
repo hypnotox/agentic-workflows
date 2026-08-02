@@ -418,6 +418,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Managed context instructions now require explicit paths (or a staged/range selection) and describe the initial query as omitting detail flags, avoiding the ambiguous "start bare" wording that could lead agents to invoke `awf context` without its required selection.
+
 - Pi `handoff_session` now emits Remote Pi's optional continuation disposition after it successfully queues the replacement command. Compatible push integrations no longer report the intermediate parent run as a terminal completion, while listener failures remain isolated from handoff execution.
 
 - `awf check` no longer refuses an integration whose effort branch was forked before schema

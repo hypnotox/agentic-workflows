@@ -29,7 +29,7 @@ A record predating the slug format has no slug to be numbered by, and merging th
 
 `awf read plan <plan> <P[.T]>` resolves an exact filename or stem under the configured plans directory and prints the executable phase or task closure with frontmatter, title, Goal, Architecture summary, owning phase and execution mode, Phase close, Definition of done, and Notes. Marker-absent historical plans retain legacy checks and have no executable projection.
 
-For `awf context`, bare directories provide tier-0 census, compact grouping, provenance, topic counts, and bounded pending orientation; bare exact, staged, and range-selected files additionally provide tier-1 `State`, `Touches`, and `Proofs` relationships from actual markers. The eight named facets expand directory relationships, non-direct authority, evidence, selectors, references, pending operations, or artifacts; only `artifacts` refines groups, and `--full` is their union. Output above 8,192 bytes retains secure caller-owned spill delivery.
+For `awf context`, explicit directories queried without detail flags provide tier-0 census, compact grouping, provenance, topic counts, and bounded pending orientation; exact, staged, and range-selected files queried without detail flags additionally provide tier-1 `State`, `Touches`, and `Proofs` relationships from actual markers. The eight named facets expand directory relationships, non-direct authority, evidence, selectors, references, pending operations, or artifacts; only `artifacts` refines groups, and `--full` is their union. Output above 8,192 bytes retains secure caller-owned spill delivery.
 
 ### Context spill notices
 
