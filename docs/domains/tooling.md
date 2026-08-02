@@ -21,7 +21,7 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 - [Audit commands](../topics/tooling/audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
 - [CLI](../topics/tooling/cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](../topics/tooling/changelog-and-release.md): The changelog pipeline and release-notes contracts.
-- [Commit policy](../topics/tooling/commit-policy.md): Current project contracts for this topic.
+- [Commit policy](../topics/tooling/commit-policy.md): Opt-in author, committer, and SSH-signature policy for exact Git commit objects.
 - [Context and topic](../topics/tooling/context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Effort management](../topics/tooling/effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.

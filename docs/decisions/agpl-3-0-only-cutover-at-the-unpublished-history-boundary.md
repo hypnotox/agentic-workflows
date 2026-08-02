@@ -31,52 +31,85 @@ re-sign the affected objects rather than claim their old signatures still apply.
 This is a high-consequence history operation. Existing worktrees include ordinary branches,
 detached scratch worktrees, dirty state, Git pseudorefs, and prior history-rewrite backup refs. A
 complete copied-tree rehearsal and an external recovery artifact are prerequisites, not optional
-optimizations.
+optimizations. Relicensing also requires authority over every affected contribution: an author label
+is evidence to investigate, not proof of copyright ownership, and notices required by retained
+third-party work survive a project-license change.
 
 ## Decision
 
 1. The project adopts AGPL-3.0-only for the first dedicated license commit after the final published
-   MIT boundary and for every project snapshot descended from that commit. Published ancestry
-   through that boundary remains byte-for-byte unchanged and retains its MIT grant.
+   MIT boundary and for every project snapshot descended from that commit. Execution freezes the
+   advertised heads, tags, and releases of every configured remote, records their object IDs in the
+   transaction manifest, and derives the common final published boundary from that complete set.
+   Every commit selected for recreation must descend from that boundary; a remote movement, unrelated
+   history, or selected commit outside the boundary aborts for explicit user disposition. Published
+   ancestry through the boundary remains byte-for-byte unchanged and retains its MIT grant.
 
-2. The canonical license bytes are SPDX license-list-data v3.27.0's
-   `AGPL-3.0-only.txt`, including its final newline, with SHA-256
-   `d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee`.
-   The boundary commit changes `LICENSE` and the license badge and footer in the boundary version of
-   `README.md`; dependency-license metadata is not project-license metadata and remains unchanged.
+2. The canonical license bytes are fetched, never transcribed, from SPDX license-list-data commit
+   `d46e94e2c78ceede1cfc63cfa0396472d2798d4c` at
+   `https://raw.githubusercontent.com/spdx/license-list-data/d46e94e2c78ceede1cfc63cfa0396472d2798d4c/text/AGPL-3.0-only.txt`.
+   The fetched file must be exactly 34,020 bytes, end with one newline, and have SHA-256
+   `d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee`;
+   any mismatch aborts rather than inviting a manual correction. The boundary commit changes
+   `LICENSE` and the license badge and footer in the boundary version of `README.md`;
+   dependency-license metadata is not project-license metadata and remains unchanged.
 
-3. The complete unpublished commit graph is recreated through one old-to-new mapping. The mapping
+3. Before rehearsal, the contributor-rights audit classifies every author, committer, imported file,
+   and retained notice in the selected graph. The cutover proceeds only if the project has relicensing
+   authority for every affected contribution or has obtained explicit permission. Required MIT or
+   other third-party notices remain with their contributions. Any unresolved ownership or notice case
+   stops for a user decision rather than being inferred from Git metadata.
+
+4. The complete unpublished commit graph is recreated through one old-to-new mapping. The mapping
    inserts exactly one license commit between the published boundary and its unpublished child or
    children, preserves parent order and merge topology after contracting that inserted node,
    preserves messages and timestamps, and preserves every tree byte except the intended per-snapshot
    `LICENSE` and `README.md` license transformations.
 
-4. The same recreation corrects every unpublished author or committer occurrence of the repository's
-   test-fixture identity to `Josua Müller <hypnotox@pm.me>` while leaving already-correct and genuine
-   third-party identities unchanged. Every recreated commit and the inserted boundary commit receives
-   a fresh valid SSH signature from the configured allowed signer; no old signature is copied onto a
-   changed object.
+5. The same recreation corrects every unpublished author or committer occurrence of the repository's
+   test-fixture identity to `Josua Müller <hypnotox@pm.me>` while leaving already-correct and audited
+   genuine third-party identities unchanged. Every recreated commit and the inserted boundary commit
+   receives a fresh valid SSH signature from the configured allowed signer; no old signature is
+   copied onto a changed object.
 
-5. Before any live ref moves, the migration is executed end to end in a copied repository containing
+6. Before any live ref moves, the migration is executed end to end in a copied repository containing
    the complete ref and object universe. The rehearsal records the selected mechanism and proves the
    published boundary, ref mapping, topology, trees, identities, signatures, worktree-state handling,
    and recovery procedure. A mechanism that cannot satisfy every assertion is rejected rather than
    repaired during the live transaction.
 
-6. The live transaction starts only after every agent has stopped and every worktree, detached head,
-   ref namespace, pseudoref, tag, index, and uncommitted path has been inventoried and either
-   checkpointed or explicitly classified. It creates an external Git bundle and separate recovery
-   material for any uncommitted state before changing refs, then updates all selected refs with
-   expected-old object IDs so concurrent movement aborts the transaction.
+7. The live transaction starts only after every agent has stopped and every local branch, linked or
+   detached worktree HEAD, lightweight or annotated tag, custom ref namespace, remote-tracking ref,
+   `refs/original/*` backup, pseudoref, index, and uncommitted path has one manifest disposition.
+   Active branches, active worktree heads, and tags that present selected unpublished commits are
+   recreated through the one map; annotated tags are recreated and re-signed when their target moves.
+   Remote-tracking refs remain frozen evidence of advertised remote state. Recovery-only refs and
+   pseudorefs are archived externally and either updated when they remain operationally meaningful or
+   removed from active presentation after acceptance. No class is silently selected or ignored.
 
-7. Temporary backup refs remain until the rewritten repository passes its structural, signature,
+8. The transaction creates an external Git bundle and separate patches or archives for every retained
+   uncommitted state before changing refs. Ref updates use expected-old object IDs so concurrent
+   movement aborts. Repository-local and worktree-local `user.name` and `user.email` overrides are
+   removed or corrected, and every worktree must resolve the approved effective author and committer
+   identity before work resumes.
+
+9. Temporary backup refs remain until the rewritten repository passes its structural, signature,
    content, render, and project gates and the user accepts the result. They are then removed so no
    ordinary local ref presents the superseded unpublished MIT graph as active history; the external
    recovery bundle is retained until the user deliberately retires it.
 
+10. The implementation transaction that activates this decision authors
+    `tooling/changelog-and-release:project-license-agpl` as a `Backing: test` invariant together with
+    `TestProjectLicenseAGPL` and its proof marker. The test pins the exact `LICENSE` hash and newline,
+    README badge and footer, release-package license inclusion, and absence of obsolete project MIT
+    references while excluding dependency metadata. The same transaction carries every
+    project-license artifact, the matching Applied and Implemented history, and rendered authored
+    `.awf/` sources so `docs/decisions/INDEX.md` and all generated documentation are current before
+    acceptance.
+
 ## State changes
 
-None.
+- add `tooling/changelog-and-release:project-license-agpl`
 
 ## Consequences
 
@@ -91,9 +124,10 @@ any out-of-band commit citations must therefore be mapped or reconciled. Existin
 survive the rewrite, but the replacement history is uniformly signed and the false fixture identity
 is removed at the same unavoidable object-recreation boundary.
 
-The copied-tree rehearsal, external bundle, expected-old ref updates, and delayed backup cleanup make
-failure recoverable and concurrent movement detectable. They add preparation and validation cost,
-but avoid resolving surprises against the only live copy of a thousand-commit graph.
+The copied-tree rehearsal, contributor-rights audit, external bundle, expected-old ref updates, and
+delayed backup cleanup make failure recoverable and concurrent movement detectable. They add
+preparation and validation cost, but avoid resolving surprises against the only live copy of a
+thousand-commit graph or silently removing notices the project must retain.
 
 AGPL obligations may reduce permissive adoption and do not prohibit compliant commercial use. The
 project accepts that trade-off in exchange for copyleft coverage, including the network-use clause.

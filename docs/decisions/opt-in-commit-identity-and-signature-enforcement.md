@@ -35,72 +35,126 @@ clear activation guidance, and actionable failures rather than silently repairin
 
 ## Decision
 
-1. awf adds an optional top-level `commitPolicy` configuration block. `allowedIdentities` is a
-   nonempty list of exact `{name, email}` pairs when present. `requireSignedCommits` defaults to
-   `false`; when true, `allowedSigners` is a nonempty list of exact `{principal, key}` SSH signer
-   records. `allowedSigners` while signing is disabled and an enabled signing requirement without
-   signers are invalid. The two enforcement families are otherwise independent, and an absent block
-   preserves current behavior.
+1. awf adds an optional top-level `commitPolicy` configuration block with a required
+   `grandfatheredThrough` full commit object ID whenever the block is present. Commits reachable from
+   that baseline are tolerated ancestry; every commit reachable from a checked target but not from
+   the baseline is policy-era work. `allowedIdentities` is a nonempty list of exact `{name, email}`
+   pairs when present. `requireSignedCommits` defaults to `false`; when true, `allowedSigners` is a
+   nonempty list of exact `{principal, key}` SSH signer records. `allowedSigners` while signing is
+   disabled and an enabled signing requirement without signers are invalid. The two enforcement
+   families are otherwise independent, and an absent block preserves current behavior.
 
-2. Identity enforcement evaluates the exact author and committer fields of each selected commit.
+2. `internal/config` owns parsing and structural validation, `internal/configspec` owns public field
+   documentation, the render data and manifest include the block through their existing config
+   projections, and schema generation advances once with a no-op migration for absent blocks. Older
+   binaries refuse the newer lock generation under the existing version gate; existing adopters gain
+   no policy or generated behavior until they author the block and wire its hooks. Upgrade never
+   invents an identity, signer, key, or baseline.
+
+3. Every configured name and email is nonempty valid UTF-8, has no leading or trailing whitespace,
+   and contains no control character. Identity pairs are unique. `grandfatheredThrough` is lowercase
+   hexadecimal of the repository's full object-ID width and must resolve to a commit at runtime.
+   Each signer principal is one nonempty ASCII authorization token containing only letters, digits,
+   `.`, `_`, `@`, `+`, or `-`, and signer records are unique. Each key is exactly one option-free,
+   comment-free OpenSSH public-key record accepted by `ssh-keygen`, with no newline, trailing record,
+   or unsupported key algorithm. A principal authorizes its associated key; it is not an identity
+   asserted by the signed commit.
+
+4. Identity enforcement evaluates the exact author and committer fields of each selected commit.
    Both must match one configured pair byte-for-byte. It does not infer identity from a signature,
    rewrite metadata, treat author and committer differently, or accept a name-only or email-only
    match.
 
-3. Signature enforcement requires exactly the ordinary Git SSH signature semantics: the commit must
+5. Signature enforcement requires exactly the ordinary Git SSH signature semantics: the commit must
    carry a signature that `git verify-commit` validates against a temporary allowed-signers file
    derived from the configured principals and public keys. A signature header without successful
    cryptographic verification is not signed for policy purposes. GPG and X.509 signer configuration
    are outside the first capability rather than being accepted without an explicit trust model.
 
-4. One public `awf check commit-policy <revision-or-range>...` command resolves explicit commits
-   through the shared Git boundary, deduplicates them, and reports every violating commit. This is
-   the common verifier for human preview, generated hooks, tests, and diagnostics; hook scripts do
-   not reimplement identity parsing or signature verification. With no configured policy it succeeds
-   with one explicit disabled-policy note.
+6. A cohesive `internal/commitpolicy` package owns the typed policy, commit facts, violation set, and
+   operational-refusal outcomes, and evaluates facts supplied through a consumer-local interface.
+   The existing `internal/git` boundary owns object resolution, revision walking, and `verify-commit`
+   mechanics. `internal/project` composes one operation-scoped verifier from project configuration;
+   `cmd/awf` renders typed outcomes for humans and owns no policy. Hooks and tests consume the same
+   project operation rather than parsing CLI prose or duplicating evaluation.
 
-5. The hooks singleton renders a `reference-transaction.sh` payload in addition to its existing
+7. One public `awf check commit-policy <revision-or-range>...` command resolves explicit targets
+   through the shared Git boundary, expands each target to commits reachable after
+   `grandfatheredThrough`, deduplicates them, and reports every violation. This is the common verifier
+   for human preview, generated hooks, tests, and diagnostics; hook scripts do not reimplement
+   identity parsing or signature verification. With no configured policy it succeeds with one
+   explicit disabled-policy note.
+
+8. The hooks singleton renders a `reference-transaction.sh` payload in addition to its existing
    payloads. In the hook's `prepared` phase it reads all `<old-oid> <new-oid> <ref>` records, selects
-   commit objects introduced onto local branch refs, deduplicates them, and invokes the common
-   commit-policy check before Git moves any selected ref. Deletion-only updates and backward-only
-   movement introduce no commit and remain outside the check. Any other hook state exits without
-   re-evaluating policy. awf still does not activate or edit Git configuration; adopters wire the
-   payload as `reference-transaction` when they opt in.
+   policy-era commits reachable from new local branch targets but not their old targets, deduplicates
+   them, and invokes the common commit-policy check before Git moves any selected ref. A new branch
+   checks all commits after `grandfatheredThrough`; deletion-only and backward-only updates introduce
+   no commit. Any other hook state exits without re-evaluating policy. awf still does not activate or
+   edit Git configuration; adopters wire the payload as `reference-transaction` when they opt in.
 
-6. The generated pre-push payload reads the standard ref-update stream and verifies policy-applicable
-   commits being introduced to the named remote before running the configured project gate. Updates
-   use the remote-old to local-new range; branch creation excludes commits reachable from the local
-   remote-tracking namespace and may conservatively inspect a documented superset when the cache is
-   stale. Missing objects or an unresolvable range fail closed with reconciliation guidance. Deletion
-   updates add no commit. The verifier does not claim that local remote-tracking refs are an
-   authoritative copy of every advertised remote ref.
+9. The generated pre-push payload reads every standard ref-update record and verifies all policy-era
+   commits reachable from each nonzero local target before running the configured project gate. A
+   branch target is expanded directly. An annotated tag is peeled recursively and its reachable
+   commits are expanded; a lightweight tag is handled by its target type. A non-commit target that
+   cannot reach a commit adds no commit but is reported as such in verbose diagnostics. Missing
+   objects, a peel failure, or an unresolvable baseline fails closed with reconciliation guidance.
+   Deletion updates add no commit. Because `grandfatheredThrough` defines the tolerated ancestry, the
+   hook may safely check a superset of commits newly introduced to the remote and never treats stale
+   remote-tracking refs as authority.
 
-7. Before enabling either hook, adopters run the commit-policy command over the exact unpublished
-   range they intend to publish. Enabling policy never rewrites, amends, resets, or re-signs an
-   existing commit. A nonconforming pre-existing commit remains the adopter's explicit choice to
-   publish before activation, recreate, retain only on an unprotected ref, or leave unpublished.
+10. Before enabling either hook, adopters set `grandfatheredThrough` to the last commit they
+    deliberately tolerate and run the commit-policy command over every unpublished target they intend
+    to retain or publish. Enabling policy never rewrites, amends, resets, or re-signs an existing
+    commit. A nonconforming commit after the baseline remains the adopter's explicit choice to
+    recreate, move behind a later reviewed baseline, retain only on an unprotected ref, or leave
+    unpublished; diagnostics never perform that choice.
 
-8. Every refusal names the violating commit and condition, prints the complete configured allowlist
-   relevant to that condition, and gives a concrete next action. Identity failures say that the
-   observed identity is not allowed and list the allowed identities. Missing or invalid signatures
-   say that commits must be signed by an allowed signer and list the allowed principals. Configuration,
-   object-resolution, linked-worktree, and remote-range failures distinguish their cause rather than
-   collapsing into a generic hook failure.
+11. Every violation names the commit, observed condition, and complete relevant allowlist. Identity
+    failures say `identity <name> <email> is not allowed`, distinguish author from committer, list
+    `allowed identities: ...`, and direct the user to correct Git identity and rerun the refused
+    operation. Missing or invalid signatures say `commits must be signed by an allowed signer`, list
+    `allowed signers: ...`, and direct the user to configure `commit.gpgSign`, `gpg.format`, and
+    `user.signingKey` before rerunning. Multiple violations are stable and complete.
 
-9. Hook path resolution is explicit for linked worktrees. The executing payload derives its own
-   payload and trust-material directory from its script path, while project checks run against the
-   invoking worktree's root. Tests cover a primary checkout and a linked worktree so an absolute
-   shared `core.hooksPath` cannot silently mix one branch's policy files with another branch's
-   generated payload.
+12. `internal/commitpolicy` also owns typed operational refusals following the project's actionable
+    outcome protocol: category, condition, whether refs or the index changed, preserved cause, and
+    ordered next action. Configuration, baseline, object-resolution, tag-peel, linked-worktree, and
+    signature-process failures remain distinguishable. A reference-transaction refusal explicitly
+    reports that refs did not move and how to rerun; presentation is centralized rather than assembled
+    independently by both hooks.
 
-10. This repository opts into both identity and SSH-signature enforcement for
-    `Josua Müller <hypnotox@pm.me>` and its existing SSH signing key, wires both generated payloads,
-    and keeps GitHub's required-signed-commit protection on `main` as the final remote boundary.
+13. Hook path resolution is explicit for linked worktrees. The wiring script path locates only stable
+    executable wiring. Policy configuration, generated payloads, and temporary trust material resolve
+    from the invoking worktree root reported by Git, so an absolute shared `core.hooksPath` cannot mix
+    the primary checkout's policy files into a linked branch. Tests cover absolute and relative hook
+    paths with deliberately different primary and linked-worktree configurations.
+
+14. This repository opts into both identity and SSH-signature enforcement for
+    `Josua Müller <hypnotox@pm.me>` and its existing SSH signing key, with the final published MIT
+    boundary as `grandfatheredThrough`. The activation transaction removes repository-local and
+    worktree-local identity overrides, verifies the effective identity in every worktree, wires both
+    generated payloads, and keeps GitHub's required-signed-commit protection on `main` as the final
+    remote boundary.
+
+15. Each implementation batch updates its authored `.awf/` sources, schema and migration, config
+    reference, CLI help and command documentation, hook guidance, AGENTS conventions, README,
+    architecture and testing docs, changelog, example adopter, destination claims and backing tests,
+    templates, rendered outputs, and `docs/decisions/INDEX.md` in the same commit that makes the
+    corresponding behavior true.
+
+16. `config/validation:commit-policy`, `tooling/commit-policy:exact-commit-enforcement`, the updated
+    `rendering/singletons-and-payloads:hook-payloads-rendered`, and
+    `rendering/singletons-and-payloads:commit-policy-hook-payloads` are all `Backing: test` claims.
+    Their proof units are respectively `TestCommitPolicyValidation`,
+    `TestExactCommitEnforcement`, the existing `TestHookPayloadsRendered`, and
+    `TestCommitPolicyHookPayloads`; each matching test file carries the required invariant marker.
 
 ## State changes
 
 - add `config/validation:commit-policy`
 - add `tooling/commit-policy:exact-commit-enforcement`
+- update `rendering/singletons-and-payloads:hook-payloads-rendered`
 - add `rendering/singletons-and-payloads:commit-policy-hook-payloads`
 
 ## Consequences

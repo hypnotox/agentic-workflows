@@ -1,5 +1,4 @@
 title: Commit policy
-summary: Current project contracts for this topic.
+summary: Opt-in author, committer, and SSH-signature policy for exact Git commit objects.
 paths:
-    - replace/with/project/path/**
-# EDIT: replace the path placeholder above with anchored project paths.
+  - internal/commitpolicy/**
