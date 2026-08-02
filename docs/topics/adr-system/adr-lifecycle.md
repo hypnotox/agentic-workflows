@@ -11,7 +11,7 @@ The adr package parses decision records, derives their identity, and validates t
 
 ### `invariant: intrinsic-format-routing`
 
-A numbered ADR is parsed by its authored format marker, independent of its number: `current-state-v1`, `current-state-v2`, `current-state-v3`, and `current-state-v4` select their matching frozen parser, while marker absence selects the legacy parser. An unknown, duplicate, empty, or malformed marker is refused rather than treated as legacy. A pending ADR is valid only in the running binary's current authoring format, and `awf new adr` emits that format from the activation registry.
+A numbered ADR is parsed by its authored format marker, independent of its number: `current-state-v1`, `current-state-v2`, `current-state-v3`, and `current-state-v4` select their matching frozen parser, while marker absence selects the legacy parser. An unknown, duplicate, empty, or malformed marker is refused rather than treated as legacy. A retained in-flight V3 pending ADR continues to route by its authored `current-state-v3` marker; after generation 33, newly introduced pending ADRs must use the running binary's current V4 authoring format, which `awf new adr` emits from the activation registry.
 Origin: ADR-0206
 Revised-by: ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test
@@ -98,7 +98,7 @@ Backing: test
 
 ### `invariant: adr-status-enum-and-matrix`
 
-Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2, V3, and V4 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
+Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2, V3, and V4 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A retained in-flight V3 pending record satisfies its authored marker's pending-identity rules; after generation 33, a newly introduced pending record must declare current V4.
 Origin: ADR-0135
 Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0212, ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test
@@ -153,7 +153,7 @@ Backing: test
 
 ### `invariant: decision-item-stable-identity`
 
-A V4 Decision item begins exactly `N. ` followed by `` `decision: <lowercase-kebab-slug>` `` and nonempty commitment prose. `internal/adr` retains each complete authored item source block byte-for-byte from its opener through the next item or section boundary, including continuations, nested lists, fences, and final newlines, and retains a unique per-record slug lookup. Frozen pre-V4 records remain compatible through canonical `#N` ordinal navigation only; amendable ordinal selection is refused. Neither a Decision slug nor ordinal implies supersession, currentness, or active authority.
+A V4 Decision item begins exactly `N. ` followed by `` `decision: <lowercase-kebab-slug>` `` and nonempty commitment prose. `internal/adr` retains each complete authored item source block byte-for-byte from its opener through the next item or section boundary, including continuations, nested lists, fences, and final newlines, and owns a unique package-private per-record slug index and exact-slug semantic lookup. Frozen pre-V4 records remain compatible through canonical `#N` ordinal navigation only; amendable ordinal selection is refused. Neither a Decision slug nor ordinal implies supersession, currentness, or active authority.
 Origin: ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test
 
@@ -180,7 +180,7 @@ Backing: test
 
 ### `invariant: pending-adr-slug-identity`
 
-A current-state-v3 or current-state-v4 ADR authored before it is numbered is a pending record: the file is `<slug>.md`, the heading is `# ADR-<slug>: <Title>`, and its identity form is `ADR-<slug>`. The slug is the filename derivation of the title, frozen at scaffold time and never tracking later title edits. A numberless file routes into the corpus by its `current-state-v3` marker, and the reserved README.md, INDEX.md, and template.md basenames are never records. Numbering prepends the number to the filename and rewrites the heading, leaving the slug key in place. The decision index sorts numbered records first by number and pending records after, alphabetically by slug.
+A current-state-v3 or current-state-v4 ADR authored before it is numbered is a pending record: the file is `<slug>.md`, the heading is `# ADR-<slug>: <Title>`, and its identity form is `ADR-<slug>`. The slug is the filename derivation of the title, frozen at scaffold time and never tracking later title edits. A retained in-flight numberless V3 file routes by its `current-state-v3` marker, while generation 33 permits newly introduced pending files only with the current `current-state-v4` marker; the reserved README.md, INDEX.md, and template.md basenames are never records. Numbering prepends the number to the filename and rewrites the heading, leaving the slug key in place. The decision index sorts numbered records first by number and pending records after, alphabetically by slug.
 Origin: ADR-0202
 Revised-by: ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test

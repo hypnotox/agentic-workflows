@@ -80,7 +80,7 @@ func v2TransitionLegal(from, to string) bool { return v2Transitions[from][to] }
 // TransitionLegal reports whether from -> to is legal for the selected format.
 // Omitting format preserves the V1 behavior used by existing callers.
 func TransitionLegal(from, to string, format ...Format) bool {
-	if len(format) > 0 && (format[0] == CurrentStateV2 || format[0] == CurrentStateV3) {
+	if len(format) > 0 && (format[0] == CurrentStateV2 || format[0] == CurrentStateV3 || format[0] == CurrentStateV4) {
 		return v2TransitionLegal(from, to)
 	}
 	return v1TransitionLegal(from, to)

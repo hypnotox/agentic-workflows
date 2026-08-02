@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
+
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
 
 - Implementing V2 and V3 ADRs can now correct an already-applied add or update through explicit `Reapplied` history events while another operation remains. Each correction is material and atomic, preserves first-application provenance, retains its own occurrence in merge ordering, and leaves declaration progress counted once.

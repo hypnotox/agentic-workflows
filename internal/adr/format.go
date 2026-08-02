@@ -119,9 +119,9 @@ func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 		return ADR{}, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Format: format, Status: fm.Status, Date: fm.Date, Slug: fm.Slug, Sections: parsed.bodies, Filename: name, Source: string(data)}
+	a := ADR{Format: format, Status: fm.Status, Date: fm.Date, Slug: fm.Slug, Sections: parsed.bodies, Filename: name, source: string(data)}
 	if decision, ok := parsed.ranges["Decision"]; ok {
-		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
+		a.decisionStart, a.decisionEnd = decision.start, decision.end
 	}
 	retainDecisionItems(&a)
 	for _, line := range strings.Split(string(body), "\n") {

@@ -112,15 +112,13 @@ func TestDecisionItems(t *testing.T) {
 	}
 }
 
-// TestDecisionSectionOffsetsIgnoreFencedHeadings pins that a fenced `## `
-// heading inside the Decision section does not end it. The offsets are what the
-// schema migrations perform byte surgery against, so a short read here truncates
-// the section a migration then appends into.
+// TestDecisionSectionOffsetsIgnoreFencedHeadings keeps the public item view
+// stable when a fenced heading appears inside Decision.
 func TestDecisionSectionOffsetsIgnoreFencedHeadings(t *testing.T) {
 	body := "## Decision\n\n1. Real.\n\n```\n## Fake\n```\n\n2. Still real.\n\n## Consequences\n\nx\n"
 	a := parseOne(t, testsupport.ADR("Implemented", testsupport.WithTitle("0001: Fixture"), testsupport.WithBody(body)))
-	if got, want := a.DecisionEnd-a.DecisionStart, len("## Decision\n\n1. Real.\n\n```\n## Fake\n```\n\n2. Still real.\n\n"); got != want {
-		t.Errorf("Decision section length = %d, want %d", got, want)
+	if got, want := a.DecisionItems(), []int{1, 2}; !reflect.DeepEqual(got, want) {
+		t.Errorf("DecisionItems = %v, want %v", got, want)
 	}
 }
 

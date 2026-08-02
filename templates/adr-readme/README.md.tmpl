@@ -79,7 +79,7 @@ are terminal. Implementing means a nonempty strict subset is applied. Abandonmen
 operations historical and cancels the remainder; its terminal event carries a rationale.
 
 Every ADR is routed by its authored format, independent of its number: markerless records use the
-frozen legacy parser, and `current-state-v1`, `current-state-v2`, and `current-state-v4` select
+frozen legacy parser, and `current-state-v1`, `current-state-v2`, `current-state-v3`, and `current-state-v4` select
 their matching governed parsers. A pending record must declare the running binary's current format,
 which is how it joins the corpus before it is numbered. Adding a future format means adding its
 parser and transition matrix, registering its schema activation and current marker, updating

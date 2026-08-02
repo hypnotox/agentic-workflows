@@ -3,6 +3,7 @@ package adr_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -28,6 +29,7 @@ func TestParseRecordRoutesByIntrinsicFormat(t *testing.T) {
 		{"V1 after former cutoffs", "9999-v1.md", strings.Replace(v1, "ADR-0005", "ADR-9999", 1), adr.CurrentStateV1},
 		{"V2 before former cutoffs", "0001-v2.md", strings.Replace(v2, "ADR-0005", "ADR-0001", 1), adr.CurrentStateV2},
 		{"V3 after former cutoffs", "9999-v3.md", buildV3("9999", "v3"), adr.CurrentStateV3},
+		{"V4 after former cutoffs", "9999-v4.md", strings.Replace(strings.Replace(buildV3("9999", "v4"), adr.V3FormatMarker, adr.V4FormatMarker, 1), oneDecision, "1. `decision: v4-item` V4 commitment.", 1), adr.CurrentStateV4},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			a, err := adr.ParseRecord(tc.file, []byte(tc.doc))
@@ -121,11 +123,10 @@ func TestFormatAtGeneration(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/adr-lifecycle:decision-item-stable-identity (TestDecisionItemStableIdentity)
-func TestDecisionItemStableIdentity(t *testing.T) {
+func TestDecisionItemStableIdentityRouting(t *testing.T) {
 	v4 := strings.Replace(strings.Replace(pendingFixture("stable"), "current-state-v3", "current-state-v4", 1), "1. The only decision.", "1. `decision: stable-item` A stable commitment.\n\n   Continuation.\n\n   ```go\n   1. fenced content\n   ```", 1)
 	a, err := adr.ParseV4("stable.md", []byte(v4))
-	if err != nil || !strings.Contains(a.Source, "1. `decision: stable-item` A stable commitment.") {
+	if err != nil || !a.IsV4() || !reflect.DeepEqual(a.DecisionItems(), []int{1}) {
 		t.Fatalf("V4 stable identity parse: %#v err=%v", a, err)
 	}
 	for _, bad := range []string{
@@ -523,6 +524,16 @@ func TestCorrectiveReapplication(t *testing.T) {
 			}
 		})
 	}
+	v4Scaffold := strings.Replace(strings.Replace(buildV3Governed("corrective-v4", "corrective-v4", "Proposed", changes, "- 2026-07-20: Proposed"), adr.V3FormatMarker, adr.V4FormatMarker, 1), oneDecision, "1. `decision: corrective` The only decision.", 1)
+	v4Proposed, err := adr.ParseV4("corrective-v4.md", []byte(v4Scaffold))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v4 := strings.Replace(strings.Replace(buildV3Governed("corrective-v4", "corrective-v4", "Implementing", changes, valid), adr.V3FormatMarker, adr.V4FormatMarker, 1), oneDecision, "1. `decision: corrective` The only decision.", 1)
+	v4 = strings.ReplaceAll(v4, digest, adr.ContentDigest(v4Proposed.Sections))
+	if record, err := adr.ParseV4("corrective-v4.md", []byte(v4)); err != nil || len(record.History) != 5 || record.History[3].Kind != adr.HistoryReapplied {
+		t.Fatalf("V4 corrective history = %#v, %v", record.History, err)
+	}
 
 	cases := []struct{ name, status, history, want string }{
 		{"before first Applied", "Implementing", "- 2026-07-20: Proposed\n- 2026-07-21: Implementing; content-sha256: " + digest + "\n- 2026-07-21: Applied; operations: update `a/b:second`\n- 2026-07-22: Reapplied; operations: add `a/b:first`", "earlier Applied"},
@@ -559,7 +570,7 @@ func TestCorrectiveReapplication(t *testing.T) {
 	}
 
 	duplicate := "- add `a/b:first`\n- update `a/b:first`"
-	_, err := adr.ParseV2("0137-test.md", []byte(buildV2("Proposed", duplicate, "- 2026-07-20: Proposed")))
+	_, err = adr.ParseV2("0137-test.md", []byte(buildV2("Proposed", duplicate, "- 2026-07-20: Proposed")))
 	if err == nil || !strings.Contains(err.Error(), "Reapplied") || !strings.Contains(err.Error(), "follow-up ADR") || !strings.Contains(err.Error(), "amend an unapplied") {
 		t.Fatalf("duplicate declaration route error = %v", err)
 	}
@@ -643,6 +654,16 @@ func TestFormatSpecificTransitionMatrices(t *testing.T) {
 			"Accepted>Implementing": true, "Accepted>Implemented": true, "Accepted>Abandoned": true,
 			"Implementing>Implemented": true, "Implementing>Abandoned": true,
 		}},
+		{"v3", adr.CurrentStateV3, map[string]bool{
+			"Proposed>Accepted": true, "Proposed>Implementing": true, "Proposed>Implemented": true, "Proposed>Abandoned": true,
+			"Accepted>Implementing": true, "Accepted>Implemented": true, "Accepted>Abandoned": true,
+			"Implementing>Implemented": true, "Implementing>Abandoned": true,
+		}},
+		{"v4", adr.CurrentStateV4, map[string]bool{
+			"Proposed>Accepted": true, "Proposed>Implementing": true, "Proposed>Implemented": true, "Proposed>Abandoned": true,
+			"Accepted>Implementing": true, "Accepted>Implemented": true, "Accepted>Abandoned": true,
+			"Implementing>Implemented": true, "Implementing>Abandoned": true,
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, from := range statuses {
@@ -692,6 +713,16 @@ func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 		{"amend after abandoned", record("Abandoned", p, accepted, abandoned), record("Abandoned", p, accepted, abandoned, amended), false},
 		{"amend riding a flip", record("Accepted", p, accepted), record("Implemented", p, accepted, amended, done), false},
 		{"same-status extra status event", record("Accepted", p, accepted), record("Accepted", p, accepted, status("Accepted")), false},
+		{"V4 prefix append", func() adr.ADR { r := record("Implementing", p, i, applied); r.Format = adr.CurrentStateV4; return r }(), func() adr.ADR {
+			r := record("Implementing", p, i, applied, appliedNext)
+			r.Format = adr.CurrentStateV4
+			return r
+		}(), true},
+		{"V4 prefix mutation", func() adr.ADR { r := record("Implementing", p, i, applied); r.Format = adr.CurrentStateV4; return r }(), func() adr.ADR {
+			r := record("Implementing", p, i, appliedNext)
+			r.Format = adr.CurrentStateV4
+			return r
+		}(), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := adr.HistoryTransitionValid(tc.before, tc.after); got != tc.want {

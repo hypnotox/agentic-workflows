@@ -1,0 +1,91 @@
+package adr
+
+import (
+	"strings"
+	"testing"
+)
+
+func decisionFixture(format, name, slug, status, decision string) string {
+	frontmatter := "---\nformat: " + format + "\nstatus: " + status + "\ndate: 2026-08-02\n"
+	identity := strings.TrimSuffix(name, ".md")
+	if slug != "" {
+		frontmatter += "slug: " + slug + "\n"
+		if Number := FilenameRe.FindStringSubmatch(name); Number != nil {
+			identity = Number[1]
+		}
+	}
+	return frontmatter + "---\n# ADR-" + identity + ": Decision fixture\n\n" +
+		"## Context\n\nContext.\n\n## Decision\n\n" + decision + "\n\n" +
+		"## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n" +
+		"## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: " + status + "\n"
+}
+
+// invariant: adr-system/adr-lifecycle:decision-item-stable-identity (TestDecisionItemStableIdentity)
+func TestDecisionItemStableIdentity(t *testing.T) {
+	first := "1. `decision: stable-one` First commitment.\n\n   Continuation bytes.\n\n   - nested list\n\n   ```go\n   1. backtick fence stays in the first item\n   ```\n\n"
+	second := "2. `decision: stable-two` Second commitment.\n\n   ~~~text\n   2. tilde fence stays in the second item\n   ~~~\n"
+	v4Bytes := decisionFixture(V4FormatMarker, "pending.md", "pending", statusProposed, first+second)
+	before := v4Bytes
+	v4, err := ParseV4("pending.md", []byte(v4Bytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v4.decisions) != 2 || v4.decisions[0].source != first || v4.decisions[1].source != second+"\n\n" {
+		t.Fatalf("retained V4 items = %#v", v4.decisions)
+	}
+	if v4.source != before || v4.decisionStart == 0 || v4.decisionEnd == 0 {
+		t.Fatal("V4 source or Decision bounds changed during parsing")
+	}
+	for selector, want := range map[string]string{"stable-one": first, "stable-two": second + "\n\n"} {
+		item, err := v4.decisionBySelector(selector)
+		if err != nil || item.source != want {
+			t.Fatalf("V4 selector %q = %#v, %v", selector, item, err)
+		}
+	}
+	if _, err := v4.decisionBySelector("#1"); err == nil {
+		t.Fatal("V4 ordinal selector was accepted")
+	}
+	if _, err := v4.decisionBySelector("missing"); err == nil {
+		t.Fatal("unknown V4 selector was accepted")
+	}
+	if v4.source != before {
+		t.Fatal("lookup mutated retained source")
+	}
+
+	for _, tc := range []struct {
+		format, name, slug string
+		parse              func(string, []byte) (ADR, error)
+	}{
+		{V1FormatMarker, "0001-v1.md", "", ParseV1},
+		{V2FormatMarker, "0002-v2.md", "", ParseV2},
+		{V3FormatMarker, "0003-v3.md", "v3", ParseV3},
+	} {
+		t.Run(tc.format, func(t *testing.T) {
+			doc := decisionFixture(tc.format, tc.name, tc.slug, statusProposed, "1. Legacy ordinal.\n")
+			a, err := tc.parse(tc.name, []byte(doc))
+			if err != nil || len(a.decisions) != 1 || a.decisions[0].ordinal != 1 || a.decisions[0].source != "1. Legacy ordinal.\n\n\n" {
+				t.Fatalf("pre-V4 retention = %#v, %v", a.decisions, err)
+			}
+			if _, err := a.decisionBySelector("#1"); err == nil {
+				t.Fatal("amendable pre-V4 ordinal selector was accepted")
+			}
+			frozen := a
+			frozen.Status = statusImplemented
+			item, err := frozen.decisionBySelector("#1")
+			if err != nil || item.ordinal != 1 {
+				t.Fatalf("frozen #1 = %#v, %v", item, err)
+			}
+			for _, incompatible := range []string{"1", "#01", "stable-one"} {
+				if _, err := frozen.decisionBySelector(incompatible); err == nil {
+					t.Fatalf("incompatible selector %q was accepted", incompatible)
+				}
+			}
+			if _, err := frozen.decisionBySelector("#2"); err == nil {
+				t.Fatal("unknown frozen pre-V4 ordinal was accepted")
+			}
+		})
+	}
+	if strings.Contains(strings.ToLower(v4.decisions[0].slug), "supersed") || strings.Contains(strings.ToLower(v4.decisions[0].slug), "current") {
+		t.Fatal("selector acquired semantics beyond identity")
+	}
+}

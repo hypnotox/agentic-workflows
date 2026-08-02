@@ -1038,9 +1038,9 @@
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
-      "templateHash": "sha256:76638f38628df07552c93c0b92369e1073cbbc00987b3852e1b934da5ea6cc36",
+      "templateHash": "sha256:84e0b0ce95ac5c9371df5a31220d3e0615c8df1e51b120ac830457531ba11d72",
       "configHash": "sha256:b71bc5b36c463765c145d43875252f585a48df962fbd6749274dbaed5737a168",
-      "outputHash": "sha256:3c448f98e4a1466d3fb02ccb55d79326bec5d3b0ae0d7cabab6c010cb8f7a3ab"
+      "outputHash": "sha256:cf30f12502aca3045a49629c488883d0d687616623da83cc8f51e35a6dec846c"
     },
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",

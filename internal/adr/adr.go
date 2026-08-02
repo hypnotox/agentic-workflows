@@ -18,20 +18,21 @@ import (
 
 // ADR is a parsed ADR record.
 type ADR struct {
-	Number        string            // e.g. "0001"
-	Title         string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
-	Status        string            // e.g. "Accepted"
-	Date          string            // frontmatter date, retained verbatim as YYYY-MM-DD text
-	Filename      string            // e.g. "0001-template-overlay-rendering-engine.md"
-	Path          string            // path as globbed
-	Domains       []string          // `domains:` frontmatter (ADR-0014)
-	Tags          []string          // `tags:` frontmatter (keyword labels)
-	Related       []int             // `related:` frontmatter (ADR numbers)
-	Sections      map[string]string // `## ` heading -> non-fenced section body
-	DecisionStart int               // raw file byte offset of the Decision heading; 0 when absent
-	DecisionEnd   int               // raw file byte offset immediately after the Decision section; 0 when absent
-	Source        string            // exact authored ADR bytes, retained for Decision source blocks
-	decisions     []decisionItem    // package-owned parsed Decision items
+	Number         string            // e.g. "0001"
+	Title          string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
+	Status         string            // e.g. "Accepted"
+	Date           string            // frontmatter date, retained verbatim as YYYY-MM-DD text
+	Filename       string            // e.g. "0001-template-overlay-rendering-engine.md"
+	Path           string            // path as globbed
+	Domains        []string          // `domains:` frontmatter (ADR-0014)
+	Tags           []string          // `tags:` frontmatter (keyword labels)
+	Related        []int             // `related:` frontmatter (ADR numbers)
+	Sections       map[string]string // `## ` heading -> non-fenced section body
+	decisions      []decisionItem    // package-owned parsed Decision items
+	decisionBySlug map[string]int
+	source         string
+	decisionStart  int
+	decisionEnd    int
 
 	// Governed fields are populated only for a record carrying a recognized
 	// intrinsic format marker. A legacy-format record leaves them zero.
@@ -155,6 +156,13 @@ func (a ADR) DecisionItems() []int {
 	return items
 }
 
+// DecisionBounds returns the exact Decision section byte bounds for the three
+// historical migrations that perform surgical source rewrites. General corpus
+// consumers must use semantic queries instead of raw ADR bytes.
+func (a ADR) DecisionBounds() (start, end int, ok bool) {
+	return a.decisionStart, a.decisionEnd, a.decisionEnd != 0
+}
+
 // FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
 var FilenameRe = regexp.MustCompile(`^(\d{4})-.+\.md$`)
 
@@ -251,7 +259,7 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		return ADR{}, found, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Slug: fm.Slug, Sections: parsed.bodies, Source: string(data)}
+	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Slug: fm.Slug, Sections: parsed.bodies, source: string(data)}
 	switch fm.Format {
 	case V1FormatMarker:
 		a.Format = CurrentStateV1
@@ -263,7 +271,7 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		a.Format = CurrentStateV4
 	}
 	if decision, ok := parsed.ranges["Decision"]; ok {
-		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
+		a.decisionStart, a.decisionEnd = decision.start, decision.end
 	}
 	retainDecisionItems(&a)
 	for _, line := range strings.Split(string(body), "\n") {

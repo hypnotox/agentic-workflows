@@ -127,10 +127,11 @@ func applyRetirementTokens(root string, out io.Writer) error {
 				n = items[len(items)-1] + 1
 			}
 			item := fmt.Sprintf("%d. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,\n   ADR-0120).** This ADR retires %s.\n", n, strings.Join(tokens, ", "))
-			if a.DecisionEnd == 0 {
+			_, end, ok := a.DecisionBounds()
+			if !ok {
 				return fmt.Errorf("retirement-tokens: %s: no Decision section to append the bookkeeping item to", a.Filename)
 			}
-			at := a.DecisionEnd - removed
+			at := end - removed
 			if at == len(raw) {
 				raw += "\n" + item
 			} else {
