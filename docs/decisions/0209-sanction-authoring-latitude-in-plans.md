@@ -76,11 +76,11 @@ commit `fb1f392d`, so the claim has contradicted its proof since migration.
    contract-bearing task omitting the field is a defect the reviewer flags, not a task
    that has become qualifying.
 
-3. Every field this decision introduces is written as a nested line directly beneath its
-   task's checkbox bullet, spelled `<Field>: <value>`, before the task's prose body. Fixing
-   the position is what lets a reviewer find every declaration without reading the prose,
-   and it is authored-format vocabulary rather than a parsing concern, so it is settled
-   here.
+3. Every field this decision introduces is written as a line directly beneath its task
+   declaration, spelled `<Field>: <value>`, before the task's prose body. Fixing the
+   position is what lets a reviewer find every declaration without reading the prose. This
+   decision owns the field position; the parsed-plan decision owns the task declaration's
+   structural spelling.
 
 4. Plans gain a spike task form for investigation, declared with `Kind: spike`. A spike
    task carries a `Question:` field stating what must be learned, carries no implementation
@@ -190,9 +190,10 @@ spike carries no implementation content and cannot stand in for one: work depend
 answer sequences into a later phase, so a plan that spikes its way through a design shows
 that shape plainly to its reviewer.
 
-Removing a section from a taxonomy claim while 72 existing plans still carry it constrains
-any later structural check, which must tolerate the section on plans predating this
-decision.
+Existing plans may retain the retired section. Any later structural check must select new
+plans through an explicit authored-format boundary and keep marker-absent plans on their
+legacy parsing path rather than retrofit the historical corpus or route it by a drifting
+count or date cutoff.
 
 ## Alternatives Considered
 
