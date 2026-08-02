@@ -123,9 +123,11 @@ complete selected file set.
 
 11. Synthetic benchmarks cover code-only, authority-heavy, and merge-heavy
     ranges of at least 50 commits. Real-repository before-and-after measurements
-    guide any follow-up. Structural sharing or incremental corpus parsing is
-    added only if profiling the reduced pipeline shows that it is still
-    material.
+    are reported, with less than 10 seconds considered a substantial improvement
+    and less than 2 seconds an aspirational outcome for a representative 50-plus
+    commit span. Neither duration is a hard acceptance threshold: measurements
+    and profiles determine whether structural sharing or incremental corpus
+    parsing warrants a follow-up.
 
 12. The implementation updates the authored architecture description and the
     tooling domain current-state source in the same implementation transaction
@@ -165,7 +167,9 @@ rather than reuses.
 
 No persistent cache, cache invalidation command, audit database, or working-tree
 shortcut is introduced. Performance remains reproducible from committed Git
-evidence. Wall-clock benchmarks remain diagnostic rather than a flaky gate.
+evidence. Wall-clock benchmarks remain diagnostic rather than a flaky gate, so
+the first architecture correction can land with its measured result instead of
+being held to a target chosen before its remaining costs are profiled.
 
 ## Alternatives Considered
 
