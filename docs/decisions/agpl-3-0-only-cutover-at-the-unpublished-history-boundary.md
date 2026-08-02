@@ -98,14 +98,19 @@ third-party work survive a project-license change.
    ordinary local ref presents the superseded unpublished MIT graph as active history; the external
    recovery bundle is retained until the user deliberately retires it.
 
-10. The implementation transaction that activates this decision authors
-    `tooling/project-license:project-license-agpl` as a `Backing: test` invariant together with
-    `TestProjectLicenseAGPL` and its proof marker. The test pins the exact `LICENSE` hash and newline,
-    README badge and footer, release-package license inclusion, and absence of obsolete project MIT
-    references while excluding dependency metadata. The same transaction carries every
-    project-license artifact, the matching Applied and Implemented history, and rendered authored
-    `.awf/` sources so `docs/decisions/INDEX.md` and all generated documentation are current before
-    acceptance.
+10. The historical cutover and the current-state application form one ordered activation with a
+    dedicated-boundary exception. The rewrite transaction first inserts the Decision 2 boundary
+    commit, whose tree changes only `LICENSE` and the README license badge and footer, so it cannot
+    also carry later current-state machinery. After that rewritten history is validated, one
+    application transaction authors `tooling/project-license:project-license-agpl` as a
+    `Backing: test` invariant together with `TestProjectLicenseAGPL` and its proof marker. The test
+    pins the exact `LICENSE` hash and newline, README badge and footer, release-package license
+    inclusion, and absence of obsolete project MIT references while excluding dependency metadata.
+    That application transaction carries every remaining project-license artifact, the matching
+    Applied and Implemented history, and rendered authored `.awf/` sources so
+    `docs/decisions/INDEX.md` and all generated documentation are current before acceptance. Neither
+    transaction may be accepted independently: failure before the application transaction completes
+    retains the recovery posture and blocks acceptance.
 
 ## State changes
 
