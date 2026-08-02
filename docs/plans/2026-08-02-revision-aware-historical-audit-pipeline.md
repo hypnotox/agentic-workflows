@@ -31,6 +31,7 @@ Create `internal/audit/history_test.go` in package `audit` with controlled direc
 Add an audit-level fixture proving an empty range still runs the live cleanliness rule once and does not derive a revision. Run `go test ./internal/audit -run 'TestHistoryOperation|Test.*EmptyRange'`; the new tests must fail before the operation exists.
 
 ### Task 1.2: Introduce the invocation-owned history operation and one range walk
+Latitude: exact
 Paths: ["internal/audit/history.go", "internal/audit/audit.go", "internal/project/project.go", "internal/project/currentstate.go", "internal/project/staged_test.go", "internal/project/mergeaggregate_test.go", "internal/audit/audit_test.go", "internal/audit/history_test.go"]
 
 Create `internal/audit/history.go`. Define one unexported history operation constructed with the immutable collected `[]git.Commit`, revision/parent lookup, and direct load functions selected by `Run`. Its revision cache stores both successful state and error identity and never outlives `Run`. In this phase a cache miss may use existing complete `snapshot.CommitTree` evidence and the existing broad historical loader; the sparse replacement belongs to Phase 4.
@@ -81,6 +82,7 @@ In `internal/currentstate/load_test.go`, add `TestLoadUniverseFromTreeMatchesPol
 In `internal/audit/history_test.go`, add `TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits`. Cover a code-only commit, a malformed marker-only Go change, a malformed domain-sidecar change, `.awf/config.yaml` change, topic metadata/part change, default and custom decisions-directory ADR changes, deletion/rename paths, a root, a first parent outside the range, and a merge. Assert only inputs to the approved historical projection cause state derivation and that ordinary commit findings are unchanged. The tests must fail against the broad loader and no-reuse operation.
 
 ### Task 2.2: Separate topic authority assembly from marker and domain-path loading
+Latitude: exact
 Paths: ["internal/topic/tree.go", "internal/topic/tree_test.go", "internal/currentstate/load.go", "internal/currentstate/load_test.go"]
 
 Refactor `internal/topic/tree.go` so metadata/part discovery and `assembleCorpus` remain single-homed. Add documented `LoadAuthorityCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error)` as the concrete first consumer of the split: it parses topic metadata and current-state parts, validates configured domain membership, claim identity, provenance, references, and operation application, but supplies empty domain ownership and does not call `markerIndexFromTreeFiles`. Keep `LoadCorpusFromTree` behavior byte-for-byte compatible by adding domain sidecars and marker indexing after the shared authority assembly.
@@ -96,6 +98,7 @@ Add contract cases for a new `(*git.Repo).FirstParentChangedPaths(ctx, rev) ([]s
 Register `FirstParentChangedPaths` in `internal/git/entrypoints_test.go` against the semantic contract suite. Run the focused Git tests and the history relevance test; they must fail before production implementation.
 
 ### Task 2.4: Implement conservative relevance and parent-state reuse
+Latitude: exact
 Paths: ["internal/git/walk.go", "internal/git/git.go", "internal/audit/history.go", "internal/audit/history_test.go", "internal/audit/audit.go"]
 
 Implement `FirstParentChangedPaths` inside the Git seam with go-git tree comparison, not one native Git subprocess per commit. Do not populate `Commit.Changes` for merges. Reuse the seam's rerooting, cancellation, safe-path, symlink/gitlink, and opaque-error conventions.
@@ -137,9 +140,10 @@ refactor(tooling): narrow historical audit authority
 ### Task 3.1: Write cancellation regressions before the fix
 Paths: ["internal/audit/history_test.go", "internal/audit/git_context_test.go"]
 
-Add `TestAuditPropagatesHistoricalCancellation` with subtests for `context.Canceled` and `context.DeadlineExceeded` returned while deriving a transition result, first parent, merge changed paths, and a state shared with stale-merge replay. Assert `errors.Is` identity, no conversion to a `current-state-transition` Warning, no later state derivation or live cleanliness call after cancellation is observed, and no retry of the canceled cached result. Retain tests showing an ordinary non-context parse/load error is still a transition Warning and a stale-merge evidence error is still fatal. Run the focused test and require it to fail because transition replay currently converts cancellation into a finding.
+Add `TestAuditPropagatesHistoricalCancellation` with subtests for `context.Canceled` and `context.DeadlineExceeded` returned by range collection, transition result derivation, first-parent derivation, merge changed paths, a state shared with stale-merge replay, stale-merge-only evidence, and live cleanliness. Assert `errors.Is` identity, no conversion to a `current-state-transition` Warning, no later state derivation or rule/live call after cancellation is observed, and no retry of the canceled cached result. Retain tests showing an ordinary non-context parse/load error is still a transition Warning and a stale-merge evidence error is still fatal. Run the focused test and require it to fail because transition replay currently converts cancellation into a finding. Phase 4 extends this same named regression with committed-entry enumeration and selected-blob read cancellation before the claim receives terminal backing.
 
 ### Task 3.2: Make context termination an operation failure
+Latitude: exact
 Paths: ["internal/audit/history.go", "internal/audit/audit.go", "internal/audit/history_test.go", "internal/audit/git_context_test.go"]
 
 At each historical orchestration boundary, detect cancellation and deadline errors with `errors.Is` and return them immediately. Do not string-match, wrap them into findings, or continue to later commits/rules. Preserve useful operation context with `%w` wrapping. Keep all non-context transition load errors advisory and all non-context stale-merge evidence errors fatal as before. Ensure the Git seam remains the sole mechanism boundary and every lower-level cancellation is reachable through the operation result.
@@ -181,19 +185,21 @@ Add backend-neutral contract coverage for two new methods:
 - `(*git.Repo).CommitEntries(ctx, rev) ([]git.TreeEntry, error)` returns sorted project-relative entries with `Path` and existing `BlobMode` for regular, executable, and symlink files; it skips gitlinks, reads no blob contents, honors a nested-project handle prefix, and propagates cancellation and missing/corrupt revision errors.
 - `(*git.Repo).CommitBlobsAt(ctx, rev, paths []string) ([]git.IndexBlob, error)` accepts a duplicate-free set of canonical project-relative paths, returns sorted immutable bytes and modes for exactly those paths, rejects unsafe or duplicate requests, and errors rather than silently omitting a requested missing, gitlink, outside-prefix, or unsupported entry.
 
-Cover empty selection, regular/executable/symlink modes, nested directories, subdirectory rerooting, missing selection, duplicate and unsafe input, cancellation before and during reads, and a large unselected blob whose bytes are never requested. Register both entrypoints in `internal/git/entrypoints_test.go` against the semantic suite. Run focused tests and require failure before production definitions exist.
+Cover empty selection, regular/executable/symlink modes, nested directories, subdirectory rerooting, missing selection, duplicate and unsafe input, and cancellation before and during reads. Make the no-eager-read clause observable with a loose-object fixture: commit one selected and one unselected blob, remove only the unselected blob object from the isolated fixture after the commit, and prove `CommitEntries` plus `CommitBlobsAt` for the selected path still succeed while selecting the removed path fails. Register both entrypoints in `internal/git/entrypoints_test.go` against the semantic suite. Run focused tests and require failure before production definitions exist.
 
 ### Task 4.2: Add an explicit immutable snapshot selection
+Latitude: exact
 Paths: ["internal/snapshot/selection.go", "internal/snapshot/selection_test.go", "internal/snapshot/snapshot.go"]
 
-Create `snapshot.Selection` as a distinct immutable type, not an alias or wrapper exposing conversion to `*snapshot.Tree`. `NewSelection([]snapshot.File)` validates the same modes and canonical path safety as `NewTree`, rejects duplicates, clones all bytes, and records the exact selected file set. `Lookup` and `List` return cloned bytes. Keep complete `Tree` constructors and consumers unchanged; do not add a method that materializes a Selection as a Tree or makes absence in a Selection mean repository absence.
+Create `snapshot.Selection` as a distinct immutable type, not an alias or wrapper exposing conversion to `*snapshot.Tree`. Factor one unexported snapshot file-set construction core that validates modes and canonical path safety, rejects duplicates, clones bytes, and sorts paths; both `NewTree` and `NewSelection` must consume that one core while returning distinct public types. `Selection.Lookup` and `Selection.List` return cloned bytes. Keep complete `Tree` consumers unchanged; do not add a method that materializes a Selection as a Tree or makes absence in a Selection mean repository absence.
 
 Add `TestSelectionOwnsExplicitFileSet` for construction, ordering, lookup/list clone isolation, modes, duplicate/unsafe rejection, and compile-time-distinct API use through helpers accepting only `*Selection` or only `*Tree`. The proof marker is deferred to Phase 5. Run `go test ./internal/snapshot -run TestSelectionOwnsExplicitFileSet`; it must fail before `Selection` exists.
 
 ### Task 4.3: Implement selected Git evidence and the sparse historical loader
-Paths: ["internal/git/git.go", "internal/git/handle.go", "internal/git/git_test.go", "internal/git/walk_test.go", "internal/git/entrypoints_test.go", "internal/snapshot/selection.go", "internal/snapshot/selection_test.go", "internal/audit/history.go", "internal/audit/history_test.go", "internal/currentstate/load.go", "internal/currentstate/load_test.go"]
+Latitude: exact
+Paths: ["internal/git/git.go", "internal/git/handle.go", "internal/git/git_test.go", "internal/git/walk_test.go", "internal/git/entrypoints_test.go", "internal/snapshot/index.go", "internal/snapshot/selection.go", "internal/snapshot/selection_test.go", "internal/audit/history.go", "internal/audit/history_test.go", "internal/audit/git_context_test.go", "internal/currentstate/load.go", "internal/currentstate/load_test.go"]
 
-Implement `TreeEntry`, `CommitEntries`, and `CommitBlobsAt` inside `internal/git` using go-git tree metadata and exact blob lookup. No backend representation crosses the exported signatures. Reuse `BlobMode`, rerooting, context checks, and opaque error translation. Enumeration must not call a blob reader. Selected loading must read each requested blob once and return owned bytes.
+Implement `TreeEntry`, `CommitEntries`, and `CommitBlobsAt` inside `internal/git` using go-git tree metadata and exact blob lookup. No backend representation crosses the exported signatures. Reuse `BlobMode`, rerooting, context checks, and opaque error translation. Enumeration must not call a blob reader. Selected loading must read each requested blob once and return owned bytes. In `internal/snapshot/index.go`, factor the existing `git.IndexBlob` to `snapshot.File` mode/byte translation into one unexported helper used by both complete `treeFromBlobs` and sparse-selection construction; `internal/audit` must not duplicate the mode switch.
 
 Refactor the reduced parser core in `internal/currentstate` to accept an exact `[]snapshot.File` authority set without duplicating parsing. Existing `LoadUniverseFromTree` delegates with `tree.List()`; add `LoadUniverseFromSelection(selection *snapshot.Selection, cfg *config.Config)` as the historical consumer and keep full `LoadFromTree` unchanged.
 
@@ -204,9 +210,10 @@ On a historical cache miss, `internal/audit` performs this fixed two-stage selec
 
 Do not select domain sidecars, marker-source Go/templates, generated topic/domain documents, unrelated Markdown, lock-generated outputs, or arbitrary repository files. A symlink at a required authority path remains non-scannable and produces the same policy-relevant error. Missing optional lock remains supported. A selected blob disappearing or changing between enumeration and read is a committed-object error, never a working-tree race.
 
-Add `TestHistoricalStateSelectsOnlyAuthorityBlobs` using direct counting dependencies to assert the exact selected path set for default/custom docs directories, no read of a large unrelated blob or malformed marker source, one config/lock read per derived revision, and reuse across irrelevant commits. Cover absent config, absent lock, symlinked authority, nested adopted-project paths that are outside the root project's authority, and historical schema migration. Keep complete snapshot APIs in use by current/staged checks.
+Add `TestHistoricalStateSelectsOnlyAuthorityBlobs` using direct counting dependencies to assert the exact selected path set for default/custom docs directories, no read of an unrelated blob or malformed marker source, one config/lock read per derived revision, and reuse across irrelevant commits. Cover absent config, absent lock, symlinked authority, nested adopted-project paths that are outside the root project's authority, and historical schema migration. Extend `TestAuditPropagatesHistoricalCancellation` with committed-entry enumeration and selected-blob read cancellation cases, proving immediate abort and no later read or rule call. Keep complete snapshot APIs in use by current/staged checks.
 
 ### Task 4.4: Add deterministic benchmarks and report real-repository measurements
+Latitude: exact
 Paths: ["internal/audit/history_benchmark_test.go", "docs/plans/2026-08-02-revision-aware-historical-audit-pipeline.md"]
 
 Create `internal/audit/history_benchmark_test.go` with `BenchmarkAuditHistoryCodeOnly50`, `BenchmarkAuditHistoryAuthorityHeavy50`, and `BenchmarkAuditHistoryMergeHeavy50`. Build deterministic Git fixtures before `b.ResetTimer`, use a prebuilt/adopted project configuration, call the production `audit.Run`, use `b.ReportAllocs`, and assert setup validity outside the timed loop. The code-only shape changes unrelated Go files; authority-heavy changes ADR/topic authority legally; merge-heavy contains integrated side-branch commits and qualifying merge evidence. Do not assert elapsed time in tests.
@@ -245,9 +252,10 @@ perf(tooling): select historical audit authority blobs
 
 ### Task 5.1: Apply the final claim and terminal lifecycle events
 Latitude: exact
-Paths: [".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", "internal/snapshot/selection_test.go", "internal/git/git_test.go", "internal/audit/history_test.go", "docs/decisions/revision-aware-historical-audit-pipeline.md", "docs/plans/2026-08-02-revision-aware-historical-audit-pipeline.md", ".awf/awf.lock", "docs/topics/tooling/audit-and-snapshots.md", "docs/decisions/INDEX.md"]
+Paths: ["glob:docs/decisions/[0-9][0-9][0-9][0-9]-revision-aware-historical-audit-pipeline.md", ".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", "internal/snapshot/selection_test.go", "internal/git/git_test.go", "internal/audit/history_test.go", "docs/plans/2026-08-02-revision-aware-historical-audit-pipeline.md", ".awf/awf.lock", "docs/topics/tooling/audit-and-snapshots.md", "docs/decisions/INDEX.md"]
+Post-check: `set -- docs/decisions/[0-9][0-9][0-9][0-9]-revision-aware-historical-audit-pipeline.md; test "$#" -eq 1 && test -f "$1" && ./x check`
 
-After terminal implementation review settles and the branch is integrated and ADR-numbered, add this exact final claim:
+This phase's path base is the integrated primary checkout `/home/hypno/Projects/agentic-workflows`, not the managed-worktree base used by Phases 1 through 4. After terminal implementation review settles, integration completes, and ADR numbering commits, resolve the numbered ADR deterministically with `set -- docs/decisions/[0-9][0-9][0-9][0-9]-revision-aware-historical-audit-pipeline.md; test "$#" -eq 1 && test -f "$1"; adr_path=$1`; use only `$adr_path` for lifecycle edits. Then add this exact final claim:
 
 ```markdown
 ### `invariant: sparse-snapshot-explicit-selection`
