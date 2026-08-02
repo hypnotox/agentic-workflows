@@ -151,15 +151,26 @@ Downgrade compatibility is not a goal.
    `--next` are independently optional and at least one is required. The operation preserves
    immutable effort identity, rewrites only the selected values, and always writes the
    current UTC instant to `updated`. On the first update of a legacy memory, it accepts the
-   exact four-line `Effort:`, `Phase:`, `Next:`, and `Updated:` header, including the
-   `Updated: Not yet updated.` sentinel, and atomically migrates it to canonical frontmatter.
-   Serialization quotes values as needed rather than restricting otherwise valid punctuation.
+   exact four-line `Effort:`, `Phase:`, `Next:`, and `Updated:` header and atomically migrates
+   it to canonical frontmatter. Legacy identity must match the slug, Phase and Next satisfy
+   the canonical nonblank bounds, and Updated is either a UTC timestamp or the exact
+   `Not yet updated.` sentinel. Attachment publishes that sentinel verbatim until a structured
+   update normalizes it. Serialization quotes values as needed rather than restricting
+   otherwise valid punctuation.
+
+   The update operation may safely repair a missing or invalid Phase or Next only when the
+   corresponding flag supplies its replacement, and it always repairs Updated. Repair still
+   requires a bounded recognizable metadata boundary and an unambiguous effort identity that
+   matches the command slug; it never guesses or changes identity. Unsafe structure or
+   identity requires manual repair rather than destructive normalization.
 
 8. Restrict the new memory-metadata gate to `using_effort`. Attachment reads the effort
    title from immutable state and validates either canonical closed frontmatter or the exact
-   legacy four-line header, failing that tool call with the exact `awf effort memory update`
-   repair when invalid. Subsequent metadata refresh may report memory metadata unavailable
-   if the metadata was manually damaged, while preserving the activity association. No show,
+   legacy four-line header. For repairable metadata it gives the complete `awf effort memory
+   update` invocation, including every required replacement flag. For unsafe structure or
+   identity it gives bounded manual-repair instructions instead of claiming the command can
+   repair it. Subsequent metadata refresh may report memory metadata unavailable if the
+   metadata was manually damaged, while preserving the activity association. No show,
    list, worktree, integrate, remove, finish, render, check, or other effort operation
    acquires this validation precondition. Handoff's bounded identity validation accepts both
    the legacy first-line `Effort: <slug>` and canonical frontmatter `effort: <slug>` during
