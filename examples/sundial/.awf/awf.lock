@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.30.0",
-  "schemaVersion": 32,
+  "schemaVersion": 33,
   "files": {
     ".agents/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -1038,15 +1038,15 @@
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
-      "templateHash": "sha256:9dd14fbc31e1a6a015cbab97b29b7648cd1e13f4684e91e6cc4acb1fd6d94478",
+      "templateHash": "sha256:76638f38628df07552c93c0b92369e1073cbbc00987b3852e1b934da5ea6cc36",
       "configHash": "sha256:b71bc5b36c463765c145d43875252f585a48df962fbd6749274dbaed5737a168",
-      "outputHash": "sha256:585b6a19a618c29acc5a605709e26d98ce20cade28fa1496c0434d015e82af75"
+      "outputHash": "sha256:3c448f98e4a1466d3fb02ccb55d79326bec5d3b0ae0d7cabab6c010cb8f7a3ab"
     },
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",
-      "templateHash": "sha256:2e66298bf10c1c7bf913077e8460536626e9ebaed75eaf576d1c70012cd85e3a",
+      "templateHash": "sha256:81318392c6ca13f6fbcf2d6fbb7e7e0fc12185ad0ea55f074b6de786b24f4fdd",
       "configHash": "sha256:75ec99f566290b83f62ce7c312ad41bd6283ea2622d42e0702b8102b62814f14",
-      "outputHash": "sha256:daf09836a462f2b5e205cc120557fc3adfd1980cfc96205a08d965ded6f92792"
+      "outputHash": "sha256:e81e5aaedb38f1774dd68b0bc4c66f3e18ca790094be903499f87d0335cc12a3"
     },
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",

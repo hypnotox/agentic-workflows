@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.30.0",
-  "schemaVersion": 32,
+  "schemaVersion": 33,
   "files": {
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",
@@ -383,8 +383,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:08e4c8b9dc7a4c7390e24c36339a582150d0d22f177dc30b04ea434c5ef08924",
-      "outputHash": "sha256:0dbb5850569d4df5de630413b29f83566d4e275b389410ff2c04c53706e61a04"
+      "configHash": "sha256:baa5499b1ceeafb1e1d4e11aa3627762eafe8f9e4eb1fdc3a5317152b0d67f4b",
+      "outputHash": "sha256:5be1204b2acc7d6b3e9c7e81a0b43d4cc04df11888bc83abac295e0534a0997e"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -397,20 +397,20 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:4ea7bdedf6cb8df32245ec771bd47966e929f601de002a16be8f0110258beb5a",
+      "outputHash": "sha256:ac1f0b5c7d02dbd747e62a73774fbf57c6f8fa48732d08fb2a4fc6d1004ed56d",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
-      "templateHash": "sha256:9dd14fbc31e1a6a015cbab97b29b7648cd1e13f4684e91e6cc4acb1fd6d94478",
-      "configHash": "sha256:6851ddeff5daac987a969adb2d0fb68969a3ac604c12029fece22d55e0c63f81",
-      "outputHash": "sha256:63357b409c87ace8ba7dd7d741a5c510648eb5cb0c1ea1525311cfb491696181"
+      "templateHash": "sha256:76638f38628df07552c93c0b92369e1073cbbc00987b3852e1b934da5ea6cc36",
+      "configHash": "sha256:23e51af1ac21b21e314f66f5810ebad78848e59776e187de82b622e9094d3ba5",
+      "outputHash": "sha256:e81a7ce7d38b48e1d7968aaaf968ecb21f8af6c0c8f57d85626f38e8e370df0e"
     },
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",
-      "templateHash": "sha256:2e66298bf10c1c7bf913077e8460536626e9ebaed75eaf576d1c70012cd85e3a",
-      "configHash": "sha256:5955c46be69fea8edd6cbd731f0ed4a5e1a4e11e09686492ba626f229b6b6b76",
-      "outputHash": "sha256:042c699719efce242eac3cb5bcc589ee7bfc2bc2262c4a822167fedafdc75c90"
+      "templateHash": "sha256:81318392c6ca13f6fbcf2d6fbb7e7e0fc12185ad0ea55f074b6de786b24f4fdd",
+      "configHash": "sha256:9ae00eff23647e3abbcb4dee0b169165e7e004192faf621ba2183e8bd0f32ef9",
+      "outputHash": "sha256:5a1d5e3f19e3c4e689c5d5ab7dcc4f7176d2abb21e7d76bfc47a03c2a729da11"
     },
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
@@ -428,7 +428,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:e876e3fac4cf0a4b1d808ca351d386b5dc3a6fc3e00b9b96430860a036956efd",
+      "outputHash": "sha256:fb500c10f94656476e19d28d0d1e26e434bbf7265bb541227ea55dec64c2b69e",
       "regenChecked": true
     },
     "docs/domains/code-design.md": {
@@ -517,8 +517,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:1c54c09aeafd271881119340d4147c5ef96033d2c62c30bb8fb97a977fa79d22",
-      "outputHash": "sha256:47dd73ac22493f2fbf1fbfaf45dbf616d3681f1987de222f03b281bee346a161"
+      "configHash": "sha256:cd5efd911de2b712f015cfc454256c335c0d86fe1aafa5a81ead688e787559f9",
+      "outputHash": "sha256:f6ada62111322fcc5d2fe82a8a78894d408d24e7971d2e0e69c0e5127a3d88b3"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",

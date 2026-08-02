@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: task-scoped-plan-decision-context-and-phase-outcomes
-status: Accepted
+status: Implementing
 date: 2026-08-02
 ---
 # ADR-task-scoped-plan-decision-context-and-phase-outcomes: Task-scoped plan decision context and phase outcomes
@@ -225,3 +225,5 @@ boundaries support the work without an enabling refactor.
 
 - 2026-08-02: Proposed
 - 2026-08-02: Accepted; content-sha256: cebe1b41b700ffd88c6c3c5aafdc82d3e6b0afdb5eb73ffba9642394a71facdf
+- 2026-08-02: Implementing; content-sha256: cebe1b41b700ffd88c6c3c5aafdc82d3e6b0afdb5eb73ffba9642394a71facdf
+- 2026-08-02: Applied; operations: update `adr-system/adr-lifecycle:intrinsic-format-routing`, update `adr-system/adr-lifecycle:adr-amendable-until-terminal`, update `adr-system/adr-lifecycle:adr-slug-frontmatter-mandatory`, update `adr-system/adr-lifecycle:corrective-reapplication`, update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`, update `adr-system/adr-lifecycle:applied-history-events-append-only`, update `adr-system/adr-lifecycle:corpus-single-identity-key`, update `adr-system/adr-lifecycle:decision-items-enumerable`, update `adr-system/adr-lifecycle:pending-adr-slug-identity`, add `adr-system/adr-lifecycle:decision-item-stable-identity`

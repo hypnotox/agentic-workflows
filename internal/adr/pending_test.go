@@ -155,7 +155,7 @@ func TestParseRecordRoutesPendingAndV3(t *testing.T) {
 func TestParseDirRefusesStraysAndCarriesPendingRecords(t *testing.T) {
 	dir := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(dir, "0001-numbered.md"), "---\nstatus: Accepted\n---\n# ADR-0001: Numbered\n")
-	testsupport.WriteFile(t, filepath.Join(dir, "pending-one.md"), pendingFixture("pending-one"))
+	testsupport.WriteFile(t, filepath.Join(dir, "pending-one.md"), strings.Replace(strings.Replace(pendingFixture("pending-one"), "current-state-v3", "current-state-v4", 1), "1. The only decision.", "1. `decision: only-decision` The only decision.", 1))
 	for _, reserved := range []string{"README.md", "INDEX.md", "template.md"} {
 		testsupport.WriteFile(t, filepath.Join(dir, reserved), "# reserved\n")
 	}

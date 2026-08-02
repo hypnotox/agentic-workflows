@@ -1,13 +1,3 @@
-<!-- awf:section frontmatter -->
----
-format: {{ with .adrFormat }}{{ . }}{{ else }}current-state-v4{{ end }}
-status: Proposed
-date: YYYY-MM-DD
----
-# ADR-NNNN: Title
-<!-- awf:end -->
-
-<!-- awf:section body -->
 ## Context
 
 What situation prompted this decision? What constraints, forces, or prior art shaped the
@@ -64,4 +54,3 @@ add. For example:
 ## Status history
 
 - YYYY-MM-DD: Proposed
-<!-- awf:end -->

@@ -33,8 +33,8 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 	data, err := os.ReadFile(want)
 	if err != nil {
 		t.Errorf("created file not found: %v", err)
-	} else if !strings.Contains(string(data), "format: current-state-v3\nslug: my-new-title\n") {
-		t.Errorf("activated scaffold is not V3 with its frozen slug:\n%s", data)
+	} else if !strings.Contains(string(data), "format: current-state-v4\nslug: my-new-title\n") {
+		t.Errorf("activated scaffold is not V4 with its frozen slug:\n%s", data)
 	}
 }
 

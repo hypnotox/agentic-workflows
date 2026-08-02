@@ -223,7 +223,7 @@ Fixture context.
 
 ## Decision
 
-1. Use the fixture decision.
+1. DECISION_MARKER Use the fixture decision.
 
 ## State changes
 
@@ -244,7 +244,7 @@ Fixture alternative.
 
 func writeTemplateFixture(t *testing.T, dir string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(adrTemplateFixture), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(strings.ReplaceAll(adrTemplateFixture, "DECISION_MARKER", "`decision: use-fixture-decision`")), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -313,8 +313,8 @@ func TestNewFileHappyPath(t *testing.T) {
 	if clockCalls != 1 {
 		t.Errorf("clock calls = %d, want 1", clockCalls)
 	}
-	if _, err := adr.ParseV3(filepath.Base(path), got); err != nil {
-		t.Fatalf("scaffolded ADR does not parse as current-state-v3: %v", err)
+	if _, err := adr.ParseV4(filepath.Base(path), got); err != nil {
+		t.Fatalf("scaffolded ADR does not parse as current-state-v4: %v", err)
 	}
 }
 
@@ -337,7 +337,7 @@ func TestNewFileUsesCurrentRegisteredFormat(t *testing.T) {
 	if !strings.Contains(string(data), "format: "+adr.CurrentFormatMarker()) {
 		t.Fatalf("scaffold did not emit current marker:\n%s", data)
 	}
-	if _, err := adr.ParseV3(filepath.Base(path), data); err != nil {
+	if _, err := adr.ParseV4(filepath.Base(path), data); err != nil {
 		t.Fatalf("current scaffold does not parse: %v", err)
 	}
 }
@@ -424,13 +424,13 @@ func TestNewPendingFileWritesSlugIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"format: current-state-v3\n", "slug: pending-record-here\n", "# ADR-pending-record-here: Pending Record Here"} {
+	for _, want := range []string{"format: current-state-v4\n", "slug: pending-record-here\n", "# ADR-pending-record-here: Pending Record Here"} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("pending scaffold missing %q:\n%s", want, body)
 		}
 	}
 	// The record it just wrote parses as a pending member of the corpus.
-	parsed, err := adr.ParseV3(filepath.Base(path), body)
+	parsed, err := adr.ParseV4(filepath.Base(path), body)
 	if err != nil {
 		t.Fatalf("scaffolded pending record does not parse: %v", err)
 	}

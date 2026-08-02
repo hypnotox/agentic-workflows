@@ -549,7 +549,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 			".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n",
 			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":31,"files":{}}`,
 			"docs/decisions/0001-first.md": `---
-format: current-state-v3
+format: current-state-v4
 slug: first
 status: Proposed
 date: 2026-01-01
@@ -562,7 +562,7 @@ First commit.
 
 ## Decision
 
-1. Adopt current format.
+1. ` + "`decision: adopt-current-format`" + ` Adopt current format.
 
 ## State changes
 

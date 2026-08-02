@@ -36,7 +36,7 @@ func TestParseRecordRoutesByIntrinsicFormat(t *testing.T) {
 			}
 		})
 	}
-	if pending, err := adr.ParseRecord("pending.md", []byte(pendingFixture("pending"))); err != nil || pending.Format != adr.CurrentFormat() {
+	if pending, err := adr.ParseRecord("pending.md", []byte(strings.Replace(strings.Replace(pendingFixture("pending"), "current-state-v3", "current-state-v4", 1), "1. The only decision.", "1. `decision: only-decision` The only decision.", 1))); err != nil || pending.Format != adr.CurrentFormat() {
 		t.Fatalf("pending current format = %#v err=%v", pending, err)
 	}
 	for _, tc := range []struct{ name, doc string }{
@@ -110,12 +110,45 @@ func TestFormatAtGeneration(t *testing.T) {
 		{28, adr.CurrentStateV2, true},
 		{29, adr.CurrentStateV3, true},
 		{31, adr.CurrentStateV3, true},
+		{32, adr.CurrentStateV3, true},
+		{33, adr.CurrentStateV4, true},
 	}
 	for _, tc := range cases {
 		got, ok := adr.FormatAtGeneration(tc.generation)
 		if got != tc.want || ok != tc.ok {
 			t.Errorf("FormatAtGeneration(%d) = %v, %t; want %v, %t", tc.generation, got, ok, tc.want, tc.ok)
 		}
+	}
+}
+
+// invariant: adr-system/adr-lifecycle:decision-item-stable-identity (TestDecisionItemStableIdentity)
+func TestDecisionItemStableIdentity(t *testing.T) {
+	v4 := strings.Replace(strings.Replace(pendingFixture("stable"), "current-state-v3", "current-state-v4", 1), "1. The only decision.", "1. `decision: stable-item` A stable commitment.\n\n   Continuation.\n\n   ```go\n   1. fenced content\n   ```", 1)
+	a, err := adr.ParseV4("stable.md", []byte(v4))
+	if err != nil || !strings.Contains(a.Source, "1. `decision: stable-item` A stable commitment.") {
+		t.Fatalf("V4 stable identity parse: %#v err=%v", a, err)
+	}
+	for _, bad := range []string{
+		strings.Replace(v4, "`decision: stable-item` ", "", 1),
+		strings.Replace(v4, "stable-item", "Stable", 1),
+		strings.Replace(v4, "1. `decision: stable-item` A stable commitment.", "1. `decision: stable-item` ", 1),
+		strings.Replace(v4, "1. `decision: stable-item` A stable commitment.", "1. `decision: stable-item` A stable commitment.\n2. `decision: stable-item` Another.", 1),
+	} {
+		if _, err := adr.ParseV4("stable.md", []byte(bad)); err == nil {
+			t.Fatal("invalid V4 Decision identity accepted")
+		}
+	}
+	if _, err := adr.ParseV3("stable.md", []byte(strings.Replace(v4, "current-state-v4", "current-state-v3", 1))); err != nil {
+		t.Fatalf("V3 compatibility: %v", err)
+	}
+	if _, err := adr.ParseV4("other.md", []byte(v4)); err == nil {
+		t.Fatal("V4 identity mismatch accepted")
+	}
+	if _, err := adr.ParseV4("bad.md", []byte("bad")); err == nil {
+		t.Fatal("malformed V4 accepted")
+	}
+	if _, _, err := adr.ParseBytes("legacy.md", []byte("# Legacy\n")); err != nil {
+		t.Fatalf("legacy source retention: %v", err)
 	}
 }
 
