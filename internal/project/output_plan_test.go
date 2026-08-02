@@ -231,6 +231,12 @@ func TestBridgeRenderIdentity(t *testing.T) {
 	if _, ok := byPath["PI.md"]; ok {
 		t.Error("Pi emitted a bridge despite its empty declaration")
 	}
+
+	custom.BridgeTemplate = "missing/custom-bridge.tmpl"
+	p.Targets = []Target{custom}
+	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
+		t.Fatalf("missing custom bridge template error = %v", err)
+	}
 }
 
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
@@ -302,7 +308,6 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/catalog-and-targets:target-dialect-render (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {

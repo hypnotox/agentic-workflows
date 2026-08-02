@@ -66,7 +66,10 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 	p := &Project{Cat: &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "literal-reviewer", Description: "Rendered {{ .audience }} description."},
 	}}}
-	body := "# independently-rendered-body\n\nReview this body.\n"
+	// The body deliberately begins with valid but conflicting frontmatter. A
+	// structured encoder preserves it as instructions; an implementation that
+	// reparses an intermediate Markdown artifact would substitute this decoy.
+	body := "---\nname: body-decoy\ndescription: body decoy\n---\n\n# independently-rendered-body\n\nReview this body.\n"
 	encoded, err := p.encodeAgent(piTarget, "reviewer", body, map[string]any{"audience": "target"})
 	if err != nil {
 		t.Fatal(err)

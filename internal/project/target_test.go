@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -532,8 +533,29 @@ func TestKnownTargets(t *testing.T) {
 			t.Errorf("Open target %q error = %v", removed, err)
 		}
 	}
+
+	synthetic := Target{Name: "synthetic", SkillDir: ".synthetic/skills", AgentDir: ".synthetic/agents", AgentDialect: MarkdownAgentDialect}
+	targetRegistry[synthetic.Name] = synthetic
+	defer delete(targetRegistry, synthetic.Name)
+	resolved, err := resolveTargets([]string{synthetic.Name})
+	if err != nil || len(resolved) != 1 || resolved[0].Name != synthetic.Name {
+		t.Fatalf("resolve synthetic target = %#v, %v", resolved, err)
+	}
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\ntargets: [synthetic]\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(files, func(file RenderedFile) bool { return file.Path == ".synthetic/skills/example-tdd/SKILL.md" }) {
+		t.Fatal("registry-added synthetic target did not render through the generic target path")
+	}
 }
 
+// invariant: rendering/project-output-plan:multi-target-render (TestTargetDescriptorCustomization)
 func TestTargetDescriptorCustomization(t *testing.T) {
 	custom := Target{
 		Name:           "custom",

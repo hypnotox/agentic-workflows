@@ -567,17 +567,17 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 		out = append(out, rf)
-		// Bridge: each adapter that wants one imports AGENTS.md verbatim (ADR-0037).
-		// Gated on the agents-doc render above - a local (hand-maintained) AGENTS.md
-		// A target with an empty BridgeFile emits no bridge, so neutral instructions
-		// never point at an unrendered target-owned file.
+		// Each descriptor-owned bridge is gated on the agents-doc render above: a
+		// local (hand-maintained) AGENTS.md emits no managed bridge. A target with an
+		// empty BridgeFile emits no bridge, so neutral instructions never point at
+		// an unrendered target-owned file.
 		for _, t := range p.Targets {
 			if t.BridgeFile == "" {
 				continue
 			}
 			brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
 				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
-			if err != nil { // coverage-ignore: built-in bridge templates are embedded, part-free, and publication-safe; synthetic descriptor coverage exercises neutral routing
+			if err != nil {
 				return nil, err
 			}
 			out = append(out, brf)
