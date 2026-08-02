@@ -33,7 +33,7 @@ No safety bypasses. No incidental refactors riding along; one concern per commit
    Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 
-3. **Verify via the gates.** `./x gate` is the default. Run `./x gate full` when regression-test placement warrants the full tier.
+3. **Verify via the gates.** `./x gate` is the default.
 
 4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
@@ -54,9 +54,9 @@ The oracle is non-negotiable. A fix that adjusts expected output instead of the 
 <!-- awf:edit memory-checkpoint: default; create .awf/skills/parts/bugfix/memory-checkpoint.md to override -->
 **Routine checkpoint.** At this boundary:
 1. Classify the outcome, not the boundary: a minimal simple fix uses no effort, and reaching a checkpoint never creates one. Once the work is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`.
-2. Validate the exact `<slug>` and owned path (a primary-root-relative spelling; the file lives under the primary checkout), confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, and continue in the effort's managed worktree when one exists. In its own writer-owned tool batch run `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; then set `Phase:` to the completed phase and `Next:` to the immediate next action, append any unrecorded settled decision and observation, and refresh `Updated:`.
+2. Validate the exact `<slug>` and owned path (a primary-root-relative spelling; the file lives under the primary checkout), confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), and continue in the effort's managed worktree when one exists. In its own writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Separately append any unrecorded settled decision and observation.
 3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
-4. Otherwise state a one-line continuity notice with the completed phase and immediate next action, including the exact slug and owned memory path for an effort-backed outcome; the notice is informational, never a stop. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. Authority precedence, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc's working-memory section.
+4. Otherwise state a one-line continuity notice with the completed phase and immediate next action, including the exact slug and owned memory path for an effort-backed outcome; the notice is informational, never a stop. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. Authority precedence, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc's working-memory section.
 
 ## Notes
 

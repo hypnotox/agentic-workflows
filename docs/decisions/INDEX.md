@@ -222,4 +222,6 @@
 - [ADR-0215: Test-support exports earn test consumers](0215-test-support-exports-earn-test-consumers.md) (Implemented)
 - [ADR-0216: Consumer-local contracts over single-home filesystem access](0216-consumer-local-contracts-over-single-home-filesystem-access.md) (Implemented)
 - [ADR-0217: Task-scoped plan decision context and phase outcomes](0217-task-scoped-plan-decision-context-and-phase-outcomes.md) (Implemented)
-- [ADR-associate-pi-sessions-with-efforts-and-live-checkout-context: Associate Pi sessions with efforts and live checkout context](associate-pi-sessions-with-efforts-and-live-checkout-context.md) (Implemented)
+- [ADR-0218: Associate Pi sessions with efforts and live checkout context](0218-associate-pi-sessions-with-efforts-and-live-checkout-context.md) (Implemented)
+- [ADR-0219: Correct Pi handoff and checkpoint authority](0219-correct-pi-handoff-and-checkpoint-authority.md) (Implemented)
+- [ADR-0220: Correct ADR-0219 reference and rendering handoff prose](0220-correct-adr-0219-reference-and-rendering-handoff-prose.md) (Implemented)

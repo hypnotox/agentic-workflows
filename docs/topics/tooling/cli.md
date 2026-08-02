@@ -135,5 +135,5 @@ Backing: test
 
 `awf effort` exposes schema-2 `new <outcome-title> [--json] [--no-worktree] [--base <ref>]`, `list [--json]`, `show <slug> [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, `integrate <slug>`, `memory update <slug> [--phase <text>] [--next <text>]`, and protocol-1 JSON-only `activity resolve|attach|heartbeat|checkout|detach` with the ADR-declared flags. Memory update requires at least one mutable field, preserves matching identity/body, migrates exact legacy metadata, and updates UTC time. Activity handled outcomes are typed newline-terminated JSON with explicit mutation axes; malformed/pre-state failures use empty stdout and actionable stderr, while state-observing mechanism failures use structured outcomes with cause. Existing protocol-2 new/show/list shapes, worktree behavior, primary-root-qualified memory paths, and unrelated command availability remain unchanged; there is no rename, standalone memory, lifecycle ledger, manual integration, authoritative assignment, or force command.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218
 Backing: test
