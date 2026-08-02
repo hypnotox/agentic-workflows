@@ -151,9 +151,24 @@ Apply these exact source replacements around that shared body:
 - In `.awf/parts/working-with-awf/config-and-overrides.md`, replace its first creation summary with `Discovery creates no effort. A concrete non-minimal outcome uses exactly one immutable slugged effort only after the labeled outcome and proposed title receive clear later user confirmation; an existing effort resumes under its fixed identity without title reconfirmation.` Retain the writer, authority, integration, removal, retrospective, and finish clauses. Add `Full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this confirmation boundary; default-template projection tests cannot inspect replacement prose.` to the override responsibility paragraph.
 - Set the glossary meaning exactly to `The chain's three hard stops: first-creation outcome/title confirmation, final grounded brainstorming approval, and settled ADR approval. Each stops for a later explicit user response; only the two final approvals persist a completed-phase summary.`
 
-Run the focused command from Task 1.1. It must pass before claim application.
+After authoring, run `git diff --check` and inspect each include site. Do not run a terminal
+actual-Sundial assertion against stale generated files; Task 1.3 renders those files before requiring
+the assertion to pass.
 
-### Task 1.3: Apply the first three claim updates and render every target
+### Task 1.3: Render the confirmation boundary before asserting generated output
+Kind: batch
+Latitude: exact
+Paths: [".awf/awf.lock", "AGENTS.md", "docs/workflow.md", "docs/working-with-awf.md", "docs/glossary.md", "pathspec:.pi/skills/awf-*", "pathspec:.claude/skills/awf-*", "examples/sundial/.awf/awf.lock", "pathspec:examples/sundial/AGENTS.md", "pathspec:examples/sundial/docs/*.md", "pathspec:examples/sundial/.pi/skills/sundial-*", "pathspec:examples/sundial/.claude/skills/sundial-*"]
+Representative: "Run `./x render` after every Phase 1 authoring source is complete, then inspect the generated Pi, Claude, project, and Sundial brainstorming confirmation sequence."
+Edge: "Verify final-approval and routine-checkpoint output contains no creation command, existing-effort resume needs no reconfirmation, and no generated file contains an unresolved-value token."
+Post-check: "Only after `./x render` completes, `go test ./internal/evals ./internal/project -run 'Test(UnifiedEffortWorkflowCoverage|MandatoryApprovalBoundaries|WorkingMemorySingleHomeSurfaces|CheckpointDigestShape|SundialConfirmedEffortBoundary)$'` passes and `./x check` reports clean drift."
+
+Run `./x render` before invoking the Post-check. This task owns the first generated-output update and
+establishes that both generic temporary projections and the actual committed Sundial projections
+satisfy the authored contract. A failing actual-Sundial assertion after render is a template or
+render-fan-out defect to fix in this task, never an accepted intermediate terminal state.
+
+### Task 1.4: Apply the first three claim updates and render every target
 Kind: batch
 Latitude: exact
 Paths: [".awf/topics/parts/rendering/guide-and-doc-templates/current-state.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", "docs/decisions/require-confirmed-outcomes-before-effort-creation.md", ".awf/awf.lock", "AGENTS.md", "docs/workflow.md", "docs/working-with-awf.md", "docs/glossary.md", "docs/topics/rendering/guide-and-doc-templates.md", "docs/topics/rendering/workflow-skill-templates.md", "docs/decisions/INDEX.md", "pathspec:.pi/skills/awf-*", "pathspec:.claude/skills/awf-*", "examples/sundial/.awf/awf.lock", "pathspec:examples/sundial/AGENTS.md", "pathspec:examples/sundial/docs/*.md", "pathspec:examples/sundial/.pi/skills/sundial-*", "pathspec:examples/sundial/.claude/skills/sundial-*"]
@@ -287,7 +302,7 @@ Latitude: exact
 Paths: ["templates/skills/tdd/SKILL.md.tmpl", "templates/skills/bugfix/SKILL.md.tmpl", "templates/skills/proposing-adr/SKILL.md.tmpl", "templates/skills/writing-plans/SKILL.md.tmpl", "templates/skills/executing-direct/SKILL.md.tmpl", "templates/skills/adr-lifecycle/SKILL.md.tmpl", "templates/skills/reviewing-adr/SKILL.md.tmpl", "templates/skills/reviewing-plan/SKILL.md.tmpl", "templates/skills/reviewing-plan-resync/SKILL.md.tmpl", "templates/skills/executing-plans/SKILL.md.tmpl", "templates/skills/subagent-driven-development/SKILL.md.tmpl", "templates/skills/reviewing-impl/SKILL.md.tmpl", "templates/skills/retrospective/SKILL.md.tmpl", "templates/skills/refactor-coupling-audit/SKILL.md.tmpl", "templates/skills/exploring/SKILL.md.tmpl", "templates/skills/orienting/SKILL.md.tmpl"]
 Representative: "Change TDD, ADR proposal, and plan writing from create-or-resume language to requiring an already-confirmed effort for non-minimal work and routing a missing effort back to the confirmation owner before tests or durable authoring."
 Edge: "Keep minimal known-root bug fixes effort-free; keep existing effort resume validation; keep orienting able to correct stale memory as the one writer; keep explorers and reviewers report-only toward memory; do not add the shared creation partial to a downstream or support path."
-Post-check: "`rg -n 'create or resume|creating the effort first|awf effort new' templates/skills templates/partials` returns matches only inside the shared outcome-confirmation partial or factual text explicitly asserting that another path must not create; `go test ./internal/evals ./internal/project -run 'Test(UnifiedEffortWorkflowCoverage|MandatoryApprovalBoundaries|PhaseTransactionOwnershipAcrossWorkflowSurfaces|SundialConfirmedEffortBoundary)$'` passes."
+Post-check: "`rg -n 'create or resume|creating the effort first|awf effort new' templates/skills templates/partials` returns matches only inside the shared outcome-confirmation partial or factual text explicitly asserting that another path must not create; `go test ./internal/evals -run 'Test(UnifiedEffortWorkflowCoverage|MandatoryApprovalBoundaries)$'` passes against temporary projections rendered from the authored sources. Actual committed Sundial assertions are deferred to Task 2.4 after its required render."
 
 Apply these exact transformation shapes and exhaustive assignments:
 
@@ -303,7 +318,7 @@ Do not spread the full discovery protocol beyond `brainstorming`, `debugging`, a
 Run the Post-check after the batch and inspect every remaining grep match for the intended ownership
 class rather than suppressing it with alternate wording.
 
-### Task 2.4: Publish adopter guidance and render the complete fan-out
+### Task 2.4: Render the complete fan-out, then publish and prove it
 Kind: batch
 Latitude: exact
 Paths: ["changelog/CHANGELOG.md", ".awf/awf.lock", "AGENTS.md", "docs/workflow.md", "docs/working-with-awf.md", "docs/glossary.md", "pathspec:.pi/skills/awf-*", "pathspec:.claude/skills/awf-*", "examples/sundial/.awf/awf.lock", "pathspec:examples/sundial/AGENTS.md", "pathspec:examples/sundial/docs/*.md", "pathspec:examples/sundial/.pi/skills/sundial-*", "pathspec:examples/sundial/.claude/skills/sundial-*"]
@@ -317,10 +332,11 @@ Add this exact bullet under `[Unreleased]` Features:
 - Discovery now remains effort-free until the agent presents a labeled concrete outcome and proposed effort title, stops without mutation, and receives clear confirmation in a later user response; existing efforts resume under their fixed identity without reconfirmation, and no CLI or schema migration occurs. Adopters with full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this first-creation boundary because default-template projection tests cannot inspect replacement prose.
 ```
 
-Run `./x render` once after all authored skill changes; never hand-edit generated target or Sundial
-outputs. Inspect the generated brainstorming, debugging, roadmap, TDD, ADR proposal, plan writing,
-final approval, routine checkpoint, orientation, and exploration bodies for both targets. Add the
-changelog entry with the adopter replacement warning required by the ADR. Keep the ADR at
+Add the changelog entry first, then run `./x render` once after all authored skill changes; never
+hand-edit generated target or Sundial outputs. Only after that render, run the Task 2.4 Post-check and
+inspect the generated brainstorming, debugging, roadmap, TDD, ADR proposal, plan writing, final
+approval, routine checkpoint, orientation, and exploration bodies for both targets. A failing actual-
+Sundial assertion after render is fixed here before the task completes. Keep the ADR at
 `Implementing`: the final `unified-effort-workflow-coverage` operation remains unapplied until
 terminal implementation review settles.
 
