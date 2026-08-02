@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: task-scoped-plan-decision-context-and-phase-outcomes
-status: Implementing
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-0217: Task-scoped plan decision context and phase outcomes
@@ -232,3 +232,5 @@ boundaries support the work without an enabling refactor.
 - 2026-08-02: Reapplied; operations: update `adr-system/plan-artifacts:plans-template-taxonomy`, update `adr-system/plan-artifacts:plan-executable-projection`, add `adr-system/plan-artifacts:plan-v2-decision-references`, add `adr-system/plan-artifacts:plan-v2-phase-outcomes`, add `adr-system/plan-artifacts:plan-v2-assignment-advisories`, update `tooling/cli:plan-read-command`
 - 2026-08-02: Reapplied; operations: update `adr-system/plan-artifacts:plan-executable-projection`, add `adr-system/plan-artifacts:plan-v2-decision-references`
 - 2026-08-02: Applied; operations: update `rendering/workflow-skill-templates:phase-transaction-ownership`
+- 2026-08-02: Applied; operations: update `rendering/workflow-skill-templates:plan-task-detail-modes`
+- 2026-08-02: Implemented; content-sha256: cebe1b41b700ffd88c6c3c5aafdc82d3e6b0afdb5eb73ffba9642394a71facdf

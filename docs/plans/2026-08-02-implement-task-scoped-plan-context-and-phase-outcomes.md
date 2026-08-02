@@ -3,7 +3,7 @@ format: plan-v1
 date: 2026-08-02
 adrs:
   - task-scoped-plan-decision-context-and-phase-outcomes
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement task-scoped plan context and phase outcomes
 
@@ -248,6 +248,8 @@ feat(rendering): roll out task-scoped plan context
 - Every implementation phase closes with `./awf check staged` and `./x gate` green; terminal implementation review settles before the final operation, ADR Implemented event, and plan freeze land together.
 
 ## Notes
+
+Implementation review found and corrected three read-composition gaps: first-authored Decision order now survives later Context-to-Applying promotion, selected Applying references must belong to plan-level `adrs:`, and read failures retain exact phase/task coordinates. The current governed terminal flow also required integration, numbering as ADR-0217, and renewed review before this deferred flip rather than after it; both terminal reviews settled clean and numbering retained this plan's slug link.
 
 The terminal workflow is not another implementation phase. After Phase 4, invoke `awf-reviewing-impl` over every commit after the settled plan-review baseline. Resolve mechanical and reasoned findings in new green commits and stop for any user-decision finding. Once terminal review establishes every Definition-of-done outcome, apply the final declaration-ordered operation `rendering/workflow-skill-templates:plan-task-detail-modes`: update its claim to enumerate plan-v2 Applying/Context, slugged DoD, Advances/Completes, omission-not-empty arrays, reviewer coverage, and task scope safety; preserve its Origin and existing proof marker and append this ADR once to Revised-by. In the same terminal transaction append the final Applied event and Implemented status event with the canonical digest, change this plan to `status: Implemented`, record deviations here, run `./x render`, explicitly stage the regenerated `docs/decisions/INDEX.md` and `.awf/awf.lock` with the terminal transition, and require `./awf check staged` and `./x gate` before committing `docs(plans): complete task-scoped plan context`.
 

@@ -397,7 +397,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:222de229b19e2c9eee79658e8c2451f0411b80f57f10cc8a18f99cca35b0efd1",
+      "outputHash": "sha256:3495e7efcc0955b4730f3ec196d698d6f2813f9cf8a19d06d0e72d46cd6b8722",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -727,8 +727,8 @@
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:c7cdf0547290120eb07744540a8526b53a6763284291775bf816a5b10f24028f",
-      "outputHash": "sha256:76f114d3db78c519793b6ee8a446dacb4a05f9fc5904ace4b57ea39628425d0a"
+      "configHash": "sha256:2e2dc2c44a2ae357e33b703bdea66c9e2080c07b304cdb7d8a589c7146e8bb0d",
+      "outputHash": "sha256:26c0f9d204b778d19adf34165e0672d51f3c9e72dffe851e400cc6f0fc4f835a"
     },
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",
