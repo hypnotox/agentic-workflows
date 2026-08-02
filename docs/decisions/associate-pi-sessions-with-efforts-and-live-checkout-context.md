@@ -264,6 +264,7 @@ Downgrade compatibility is not a goal.
 - update `rendering/pi-runtime:pi-real-runtime-smoke`
 - update `rendering/pi-workflows:pi-session-handoff-lifecycle`
 - update `rendering/pi-workflows:pi-session-handoff-public-contract`
+- update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
 - add `rendering/pi-workflows:pi-effort-session-association`
 
 ## Consequences
@@ -316,3 +317,4 @@ APIs.
 
 - 2026-08-02: Proposed
 - 2026-08-02: Accepted; content-sha256: 7ce4df8ed04b71c447ecd1ed0bf0d7b50620b5107b71b358d2fd374d715d7d51
+- 2026-08-02: Amended; content-sha256: 13c681481627dbe1c084409ad708ea8c0b803374cf143dea285b1ce47b50f4b0
