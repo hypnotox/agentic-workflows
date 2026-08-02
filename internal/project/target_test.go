@@ -192,7 +192,6 @@ func TestPiMinimumRuntime(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestHandoffLifecycleIndependentOfEffortState)
 func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined", "getSessionFile()"} {
@@ -200,13 +199,8 @@ func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 			t.Errorf("handoff lifecycle output missing %q", want)
 		}
 	}
-	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
-	if err != nil || !strings.Contains(string(body), "handoff counts down, cancels, and retains pending lifecycle guards") {
-		t.Fatalf("TypeScript lifecycle behavior proof missing: %v", err)
-	}
 }
 
-// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestHandoffPublicProseContract)
 func TestHandoffPublicProseContract(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{"Type.Object({kickoff:Type.String({maxLength:1000})},{additionalProperties:false})", "typeof params.kickoff!==\"string\"", "params.kickoff.trim().length===0", "params.kickoff.length>1000", "kickoff:params.kickoff", "sendUserMessage(kickoff)", "setEditorText(kickoff)"} {
@@ -224,6 +218,8 @@ func TestHandoffPublicProseContract(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
