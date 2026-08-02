@@ -197,7 +197,7 @@ func TestPlanReviewerAgent(t *testing.T) {
 	planPhrases := []string{
 		"scope-completeness",
 		"executability",
-		"one declared closing commit and passes the gate on its own",
+		"one final `### Phase close` with a single commit fence and passes the gate on its own",
 		"maintainable-design",
 		"docs/maintainable-code-design.md",
 		"model, ownership, representations, translation boundaries, dependency direction, and test seams",

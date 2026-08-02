@@ -49,6 +49,8 @@ git reset --hard HEAD~1 && git merge <integrationBranch> && awf adr number
 
 A record predating the slug format has no slug to be numbered by, and merging the integration branch in can bring a record that has taken its number. Renaming it is the one sanctioned exception to the paragraph above, and it is done by hand: no command performs it. The transition pairs the two ends by their canonical content digest, which covers the five body sections and excludes the frontmatter and the heading, so the rename must touch the filename and the heading line and nothing else. A file-wide substitution of the old number moves the digest, dissolves the pairing, and is reported as an unrelated deletion and addition rather than as a rename. For the same reason a rename and a content amendment cannot share a commit: rename first, amend second. Rename one record per commit as well: the pairing reads two records exchanging numbers as two ordinary renames and accepts it, so a crossed rename is the one mistake in this area no check reports. The record keeps its authored format across the rename because parser selection is intrinsic rather than number-based.
 
+`awf read plan <plan> <P[.T]>` resolves an exact filename or stem under the configured plans directory and prints the executable phase or task closure with frontmatter, title, Goal, Architecture summary, owning phase and execution mode, Phase close, Definition of done, and Notes. Marker-absent historical plans retain legacy checks and have no executable projection.
+
 For `awf context`, bare directories provide tier-0 census, compact grouping, provenance, topic counts, and bounded pending orientation; bare exact, staged, and range-selected files additionally provide tier-1 `State`, `Touches`, and `Proofs` relationships from actual markers. The eight named facets expand directory relationships, non-direct authority, evidence, selectors, references, pending operations, or artifacts; only `artifacts` refines groups, and `--full` is their union. Output above 8,192 bytes retains secure caller-owned spill delivery.
 
 ### Context spill notices
@@ -72,6 +74,8 @@ Rendering recognizes exactly two repository-wide resident roots, `.awf/efforts` 
 
 A minimal simple fix uses no effort. A concrete non-minimal outcome uses exactly one immutable slugged effort whose memory is `.awf/efforts/<slug>/memory.md`, with one user-managed writer. Repository authority outranks the checkpoint. Worktree-backed efforts integrate after terminal review, renew review after a divergent merge, remove all managed topology, run retrospective, and finish last.
 
+New plan scaffolds carry `format: plan-v1`, sequential phase and task headings, one final Phase close per phase, and required Definition of done bullets. Marker-absent historical plans retain legacy checks and are not projected. `awf read plan <plan> <P[.T]>` accepts an exact filename or stem and canonical positive numeric selector, then prints the source-ordered executable closure: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected content, Phase close, Definition of done, and Notes when present.
+
 Plan execution selects `inline` or `subagent-driven` ownership independently per phase. One
 commit-capable owner takes a complete subagent-driven phase from a clean green baseline through its
 staged check, gate, and closing commit; the parent owns inline phases, integration, report-only
@@ -79,7 +83,7 @@ review settlement, and the settled-phase checkpoint. Optional batch helpers are 
 commit-disabled, receive path-disjoint subsets, and never own shared files or the closing commit. A
 dirty stop is inventoried before the parent completes inline, restores and restarts the complete
 phase, or transfers the complete revised phase with completed and remaining work plus recovery
-verification. Checkbox tasks and helper returns are not transaction or checkpoint boundaries, and a
+verification. Heading-identified tasks, executable projections, and helper returns are not transaction or checkpoint boundaries, and a
 blind task-level successor is forbidden. Every governed subagent dispatch chooses the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; the full tier definitions live in the agent guide's workflow section. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
 
 

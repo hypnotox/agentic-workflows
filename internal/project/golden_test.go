@@ -46,10 +46,10 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 
-	// The plans-template singleton renders the legacy taxonomy after ADR-0209:
-	// frontmatter spine, Goal and Architecture summary, phases, the optional
-	// Verification and Notes tails, no File structure snapshot, section-assembly
-	// markers stripped, and no unresolved template value.
+	// The plans-template singleton renders plan-v1: its intrinsic marker,
+	// narrative spine, heading-identified phase and task, Phase close commit
+	// fence, Definition of done, optional Notes, no retired sections or task
+	// checkboxes, stripped section-assembly markers, and no unresolved value.
 	// invariant: adr-system/plan-artifacts:plans-template-taxonomy (TestEndToEndGolden)
 	plansTemplate, err := os.ReadFile(filepath.Join(root, "docs/plans/template.md"))
 	if err != nil {
@@ -60,14 +60,6 @@ func TestEndToEndGolden(t *testing.T) {
 		if strings.Contains(string(plansTemplate), bad) {
 			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
 		}
-	}
-	// ADR-0108: the gate reference interpolates the configured gateCmd (the
-	// fixture sets `make gate`), never a hard-coded "the gate" literal.
-	if !strings.Contains(string(plansTemplate), "make gate") {
-		t.Errorf("plans-template did not interpolate gateCmd:\n%s", plansTemplate)
-	}
-	if strings.Contains(string(plansTemplate), "the gate") {
-		t.Errorf("plans-template leaked hard-coded gate literal:\n%s", plansTemplate)
 	}
 
 	// A fresh check on the synced tree is clean.
@@ -88,8 +80,9 @@ func planTemplateTaxonomyProblems(text string) []string {
 	var problems []string
 	previous := -1
 	for _, token := range []string{
-		"date:", "adrs:", "status:", "# Plan:", "## Goal", "## Architecture summary",
-		"## Phase", "## Verification", "## Notes",
+		"format: plan-v1", "date:", "adrs:", "status:", "# Plan:", "## Goal",
+		"## Architecture summary", "## Phase 1:", "**Execution mode: inline.**",
+		"### Task 1.1:", "### Phase close", "```commit", "## Definition of done", "## Notes",
 	} {
 		at := strings.Index(text, token)
 		if at < 0 {
@@ -101,14 +94,14 @@ func planTemplateTaxonomyProblems(text string) []string {
 		}
 		previous = at
 	}
-	if strings.Contains(text, "## File structure") {
-		problems = append(problems, "File structure remains a plan-level section")
+	for _, retired := range []string{"## File structure", "## Verification", "- [ ] **Task"} {
+		if strings.Contains(text, retired) {
+			problems = append(problems, "retired plan-v1 declaration remains: "+retired)
+		}
 	}
-	if !strings.Contains(text, "File structure is not a plan-level section; declare affected paths on tasks where scope") {
-		problems = append(problems, "missing task-level affected-path ownership")
-	}
-	if !strings.Contains(text, "## Notes (required when any task is a spike; optional otherwise)") {
-		problems = append(problems, "missing spike-conditioned Notes contract")
+	const vocabulary = "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`"
+	if !strings.Contains(text, vocabulary) {
+		problems = append(problems, "missing exact task field vocabulary")
 	}
 	return problems
 }
@@ -120,16 +113,20 @@ func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
 	for _, mutation := range []struct {
 		name, from, to string
 	}{
+		{"frontmatter format", "format: plan-v1", "format: legacy"},
 		{"frontmatter date", "date:", "written:"},
 		{"frontmatter adrs", "adrs:", "decisions:"},
 		{"frontmatter status", "status:", "state:"},
 		{"title", "# Plan:", "# Procedure:"},
 		{"goal", "## Goal", "## Outcome"},
 		{"architecture", "## Architecture summary", "## Design"},
-		{"phase", "## Phase", "## Batch"},
-		{"verification", "## Verification", "## Checks"},
-		{"notes requiredness", "## Notes (required when any task is a spike; optional otherwise)", "## Notes (optional)"},
-		{"file ownership", "File structure is not a plan-level section; declare affected paths on tasks where scope", "## File structure"},
+		{"phase", "## Phase 1:", "## Batch 1:"},
+		{"execution mode", "**Execution mode: inline.**", "**Owner: inline.**"},
+		{"task", "### Task 1.1:", "### Step 1.1:"},
+		{"phase close", "### Phase close", "### Finish"},
+		{"commit fence", "```commit", "```text"},
+		{"definition", "## Definition of done", "## Verification"},
+		{"field vocabulary", "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			if !strings.Contains(text, mutation.from) {

@@ -287,6 +287,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "new.go", owner: "newLocal", name: "project.Open"}:                    1,
 		{file: "new.go", owner: "newPlan", name: "project.Open"}:                     1,
 		{file: "new.go", owner: "newTopic", name: "project.Open"}:                    1,
+		{file: "read.go", owner: "runReadPlan", name: "project.Open"}:                1,
 		{file: "topic.go", owner: "runTopic", name: "project.Open"}:                  1,
 	}
 	got := map[call]int{}

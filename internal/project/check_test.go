@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -45,6 +46,15 @@ func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
 		t.Fatalf("derive operation state: %v", err)
 	}
 	return eff
+}
+
+func mustParsePlans(t *testing.T, p *Project) []plan.Plan {
+	t.Helper()
+	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	if err != nil {
+		t.Fatalf("parse plans: %v", err)
+	}
+	return plans
 }
 
 const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n"
@@ -399,10 +409,7 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	write("2026-07-12-bad-slug-link.md", "---\ndate: 2026-07-12\nadrs: [never-authored]\nstatus: Proposed\n---\n# Plan: Bad Slug Link\n")
 	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
-	drift, err := p.checkPlans(mustDeriveCorpus(t, p))
-	if err != nil {
-		t.Fatalf("checkPlans: %v", err)
-	}
+	drift := p.checkPlans(mustDeriveCorpus(t, p), mustParsePlans(t, p))
 
 	got := map[string]string{}
 	for _, d := range drift {
@@ -575,19 +582,45 @@ func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
 	}
 }
 
-// TestCheckPlansPropagatesPlanParseError covers checkPlans' plan.ParseDir error
-// branch: malformed plan frontmatter is a hard error (the unparseable-YAML half
-// of plan-frontmatter-validated), not silent drift.
-func TestCheckPlansPropagatesPlanParseError(t *testing.T) {
+// TestCheckReportMapsPlanDiagnostics proves malformed plan frontmatter reaches
+// the stable drift channel while valid sibling plans remain checkable.
+func TestCheckReportMapsPlanDiagnostics(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-12-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	if _, err := p.checkPlans(mustDeriveCorpus(t, p)); err == nil {
-		t.Fatal("expected plan.ParseDir error for malformed frontmatter, got nil")
+	report, err := p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatalf("CheckReport: %v", err)
+	}
+	if !slices.ContainsFunc(report.Drift, func(d manifest.Drift) bool {
+		return d.Path == "docs/plans/2026-07-12-broken.md" && d.Kind == "plan-frontmatter" && strings.Contains(d.Detail, "yaml")
+	}) {
+		t.Fatalf("plan diagnostic did not reach drift: %#v", report.Drift)
+	}
+}
+
+func TestCheckReportPropagatesPlanDirectoryReadError(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	bad := filepath.Join(root, "docs/plans/2026-07-12-directory.md")
+	if err := os.Mkdir(bad, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.CheckReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "read 2026-07-12-directory.md") {
+		t.Fatalf("CheckReport error = %v, want plan read failure", err)
 	}
 }
 
@@ -612,10 +645,7 @@ func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 	write("2026-07-14-scope.md", fm+"```commit\nfeat(nope): unknown scope\n```\n")
 	write("2026-07-14-ok.md", fm+"```commit\nfeat(awf): fine\n```\n")
 
-	drift, err := p.checkPlans(mustDeriveCorpus(t, p))
-	if err != nil {
-		t.Fatalf("checkPlans: %v", err)
-	}
+	drift := p.checkPlans(mustDeriveCorpus(t, p), mustParsePlans(t, p))
 	got := map[string]bool{}
 	for _, d := range drift {
 		if d.Kind == "plan-commit-subject" {
@@ -655,19 +685,9 @@ func TestPlanCommitScopeNotes(t *testing.T) {
 	// note count stays 1.
 	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
-	notes, err := p.planCommitScopeNotes()
-	if err != nil {
-		t.Fatalf("planCommitScopeNotes: %v", err)
-	}
+	notes := p.planCommitScopeNotes(mustParsePlans(t, p))
 	if len(notes) != 1 || !strings.Contains(notes[0], "2026-07-14-scope.md") || !strings.Contains(notes[0], "disallowed scope") {
 		t.Fatalf("want one scope note, got %#v", notes)
-	}
-
-	// A malformed plan makes ParseDir fail.
-	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-broken.md"),
-		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	if _, err := p.planCommitScopeNotes(); err == nil {
-		t.Fatal("expected ParseDir error for malformed frontmatter, got nil")
 	}
 }
 
@@ -687,9 +707,9 @@ func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
 	}
 }
 
-// TestCheckPropagatesPlanError covers Check's propagation of a checkPlans error:
-// a synced, otherwise-clean project with a malformed plan makes full Check fail.
-func TestCheckPropagatesPlanError(t *testing.T) {
+// TestCheckProjectsPlanDiagnostics proves Check's compatibility projection
+// exposes malformed plan frontmatter as drift rather than a process error.
+func TestCheckProjectsPlanDiagnostics(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -700,8 +720,12 @@ func TestCheckPropagatesPlanError(t *testing.T) {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-12-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	if _, err := p.Check(testContext(t)); err == nil {
-		t.Fatal("expected Check to propagate the checkPlans parse error, got nil")
+	drift, err := p.Check(testContext(t))
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if !slices.ContainsFunc(drift, func(d manifest.Drift) bool { return d.Kind == "plan-frontmatter" }) {
+		t.Fatalf("Check omitted plan-frontmatter drift: %#v", drift)
 	}
 }
 

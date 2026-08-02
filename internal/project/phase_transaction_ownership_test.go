@@ -89,10 +89,9 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"parent or exactly one helper", "path-disjoint", "shared files parent-owned",
 			"mutating commands confined to the assigned subset")
 		assertAll("template",
-			"**Execution mode: inline.**", "exactly one execution mode: `inline` or `subagent-driven`", "clean and green starting baseline",
-			"exact commands and expected terminal states", "parent or exactly one", "path-disjoint",
-			"shared files parent-owned", "mutating commands confined to the assigned subset", "Phase-close",
-			"awf check --staged", "phase-closing commit")
+			"format: plan-v1", "**Execution mode: inline.**", "### Task 1.1:",
+			"### Phase close", "Stage the complete transaction", "one closing commit",
+			"staged check and gate pass", "```commit", "## Definition of done")
 
 		for _, name := range []string{"inline", "subagent"} {
 			body := surfaces[name]
@@ -106,9 +105,9 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			}
 		}
 		phase := surfaces["template"]
-		assertOrderedPhrases(t, phase, "Task 1.1", "Task 1.2", "Phase-close", "phase-closing commit", "awf check --staged", gatePhrase)
-		if got := strings.Count(phase, "awf check --staged"); got != 1 {
-			t.Errorf("%s representative multi-task phase has %d staged-check boundaries, want one", variant, got)
+		assertOrderedPhrases(t, phase, "Task 1.1", "Phase close", "Stage the complete transaction", "```commit", "Definition of done")
+		if got := strings.Count(phase, "staged check"); got != 1 {
+			t.Errorf("%s representative phase has %d staged-check boundaries, want one", variant, got)
 		}
 		if got := strings.Count(phase, "```commit"); got != 1 {
 			t.Errorf("%s representative multi-task phase has %d closing commit blocks, want one", variant, got)

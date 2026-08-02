@@ -26,19 +26,16 @@ func runCheck(ctx context.Context, root string, staged bool, stdout io.Writer) e
 	if err != nil {
 		return err
 	}
-	notes, err := p.AdvisoryNotes(ctx)
+	check, err := p.CheckReport(ctx)
 	if err != nil {
 		return err
 	}
 	// Advisories are printed before drift and never feed the failure count -
 	// unauthored stub content cannot fail a gated command (ADR-0070).
-	for _, n := range notes {
+	for _, n := range check.Notes {
 		fmt.Fprintf(stdout, "note: %s\n", n)
 	}
-	drift, err := p.Check(ctx)
-	if err != nil {
-		return err
-	}
+	drift := check.Drift
 	report, err := p.CheckCurrentState(ctx)
 	if err != nil {
 		return err

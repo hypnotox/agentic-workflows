@@ -224,6 +224,8 @@ var gatedProbes = map[string][]string{
 	"check drift":      {"awf", "check", "drift"},
 	"check state":      {"awf", "check", "state"},
 	"check invariants": {"awf", "check", "invariants"},
+	"read":             {"awf", "read"},
+	"read plan":        {"awf", "read", "plan", "2026-08-02-plan", "1"},
 	"audit":            {"awf", "audit"},
 	"effort":           {"awf", "effort", "list"},
 	"effort new":       {"awf", "effort", "new", "gate probe outcome"},

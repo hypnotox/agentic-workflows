@@ -267,8 +267,8 @@ func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 			t.Errorf("%s does not place its sole Pi handoff after settled phase persistence", name)
 		}
 		for _, banned := range []string{
-			"after every checkbox task", "after each checkbox task", "after any checkbox task",
-			"checkbox task triggers", "after every batch-helper return", "after each batch-helper return",
+			"checkbox task", "after every heading-identified task", "after each heading-identified task",
+			"heading-identified task triggers", "after every batch-helper return", "after each batch-helper return",
 			"batch-helper return triggers", "handoff after a helper return",
 		} {
 			if strings.Contains(strings.ToLower(body), banned) {

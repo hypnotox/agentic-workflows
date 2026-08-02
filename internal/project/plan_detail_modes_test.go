@@ -38,18 +38,19 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	for _, surface := range []planPolicySurface{
 		{"default writing skill", defaultWriter, "- **Phases and tasks:**", "- **Self-contained"},
 		{"default plan reviewer", defaultReviewer, "1. **executability**", "1. **doc-currency"},
-		{"default plans README", defaultReadme, "- Each phase independently", "- Each phase declares"},
-		{"default plan template", defaultPlanTemplate, "**Execution mode", "- [ ] **Phase-close"},
+		{"default plans README", defaultReadme, "- Each phase independently declares", "A plan stays"},
 	} {
 		assertPlanTaskDetailContract(t, surface)
 	}
+	assertPlanScaffoldDetailContract(t, planPolicySurface{
+		"default plan template", defaultPlanTemplate, "### Task 1.1:", "### Phase close",
+	})
 
 	root := testsupport.RepoRoot(t)
 	for _, surface := range []planPolicySurface{
 		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Phases and tasks:**", end: "- **Self-contained"},
 		{name: ".pi/agents/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
-		{name: "docs/plans/README.md", start: "- Each phase independently", end: "- Each phase declares"},
-		{name: "docs/plans/template.md", start: "**Execution mode", end: "- [ ] **Phase-close"},
+		{name: "docs/plans/README.md", start: "- Each phase independently declares", end: "A plan stays"},
 	} {
 		body, err := os.ReadFile(filepath.Join(root, surface.name))
 		if err != nil {
@@ -58,6 +59,10 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		surface.output = string(body)
 		assertPlanTaskDetailContract(t, surface)
 	}
+	assertPlanScaffoldDetailContract(t, planPolicySurface{
+		name: "docs/plans/template.md", output: readPlanPolicyFile(t, root, "docs/plans/template.md"),
+		start: "### Task 1.1:", end: "### Phase close",
+	})
 }
 
 var planTaskDetailContractClauses = []string{
@@ -73,8 +78,8 @@ var planTaskDetailContractClauses = []string{
 	"conditional and optional tasks are forbidden",
 	"`tbd`, `implement later`, outcome-only summaries, and hidden design choices are placeholders, never pseudocode",
 	"no prior conversation context",
-	"each phase independently declares exactly one execution mode: `inline` or `subagent-driven`",
-	"checkbox tasks are ordered steps",
+	"independently declares exactly one execution mode: `inline` or `subagent-driven`",
+	"ordered steps",
 	"one independently green coherent implementation transaction",
 	"any helper partition exhaustively assigns every affected site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the assigned subset",
 }
@@ -88,6 +93,39 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 	if strings.Contains(policy, "<no value>") {
 		t.Errorf("%s plan-policy section leaked missingkey output:\n%s", surface.name, policy)
 	}
+}
+
+var planScaffoldDetailContractClauses = []string{
+	"supply qualifying implementation-ready instructions",
+	"recognized fields are `kind`, `latitude`, `question`, `paths`, `representative`, `edge`, and `post-check`",
+	"use `latitude: exact` for a contract-bearing task",
+	"`kind: spike` requires `question`, no body, and an answer in notes",
+	"`kind: batch` requires json-array `paths`, `representative`, `edge`, and `post-check`",
+	"ambiguous scope requires `paths`",
+	"any batch, glob, or pathspec scope requires `post-check`",
+	"omit fields whose contracts do not apply",
+}
+
+func assertPlanScaffoldDetailContract(t *testing.T, surface planPolicySurface) {
+	t.Helper()
+	policy := strings.ToLower(planPolicySection(t, surface))
+	for _, clause := range missingPlanScaffoldDetailClauses(policy) {
+		t.Errorf("%s scaffold missing contractual phrase %q:\n%s", surface.name, clause, policy)
+	}
+	if strings.Contains(policy, "<no value>") {
+		t.Errorf("%s scaffold leaked missingkey output:\n%s", surface.name, policy)
+	}
+}
+
+func missingPlanScaffoldDetailClauses(policy string) []string {
+	policy = strings.ToLower(strings.Join(strings.Fields(policy), " "))
+	var missing []string
+	for _, clause := range planScaffoldDetailContractClauses {
+		if !strings.Contains(policy, clause) {
+			missing = append(missing, clause)
+		}
+	}
+	return missing
 }
 
 func planPolicySection(t *testing.T, surface planPolicySurface) string {
@@ -120,26 +158,26 @@ func TestPlanTaskDetailContractRejectsInversions(t *testing.T) {
 	})
 	policy := planPolicySection(t, planPolicySurface{
 		name: "default plan template", output: output,
-		start: "**Execution mode", end: "- [ ] **Phase-close",
+		start: "### Task 1.1:", end: "### Phase close",
 	})
 	for _, mutation := range []struct {
 		name, from, to string
 	}{
-		{"default inverted", "Qualifying implementation-ready instructions are the default", "Exact instructions are the default"},
-		{"exactness optional", "Require `Latitude: exact` for machine-consumed", "Permit `Latitude: exact` for machine-consumed"},
-		{"spike answer optional", "records its answer in Notes", "may omit its answer from Notes"},
-		{"post-check optional", "`Post-check:` is required for every batch", "`Post-check:` is optional for every batch"},
-		{"conditional tasks allowed", "Conditional and optional tasks are forbidden", "Conditional and optional tasks are permitted"},
-		{"placeholders allowed", "are placeholders, never pseudocode", "are acceptable placeholders"},
-		{"ownership widened", "exactly one execution mode: `inline` or `subagent-driven`", "any execution mode"},
-		{"helper partition partial", "exhaustively assigns every affected site", "may assign some affected sites"},
+		{"qualifying instructions removed", "Supply qualifying implementation-ready instructions", "Supply exact instructions"},
+		{"field vocabulary narrowed", "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"exactness optional", "Use `Latitude: exact` for a contract-bearing task", "Permit `Latitude: exact` for a contract-bearing task"},
+		{"spike body allowed", "`Kind: spike` requires `Question`, no body, and an answer in Notes", "`Kind: spike` permits a body"},
+		{"batch edge omitted", "`Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`", "`Kind: batch` requires JSON-array `Paths`"},
+		{"ambiguous paths optional", "ambiguous scope requires `Paths`", "ambiguous scope may omit `Paths`"},
+		{"post-check optional", "any batch, glob, or pathspec scope requires `Post-check`", "batch scopes may omit `Post-check`"},
+		{"inapplicable fields retained", "Omit fields whose contracts do not apply", "Retain every field"},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			if !strings.Contains(policy, mutation.from) {
 				t.Fatalf("mutation source %q is absent", mutation.from)
 			}
 			mutated := strings.Replace(policy, mutation.from, mutation.to, 1)
-			if missing := missingPlanTaskDetailClauses(mutated); len(missing) == 0 {
+			if missing := missingPlanScaffoldDetailClauses(mutated); len(missing) == 0 {
 				t.Fatalf("contract accepted semantic inversion %q", mutation.to)
 			}
 		})

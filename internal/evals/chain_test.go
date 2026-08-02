@@ -415,7 +415,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 // checkpointBoundarySentence is the authoritative statement of which boundaries
 // are checkpoints. Its absence, or any sentence adding a task or helper
 // trigger, breaks the claim.
-const checkpointBoundarySentence = "checkbox tasks and helper returns are not checkpoint boundaries"
+const checkpointBoundarySentence = "heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries"
 
 func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	t.Helper()
@@ -427,7 +427,7 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 		if !strings.Contains(sentence, "checkpoint") {
 			continue
 		}
-		mentionsTaskOrHelper := strings.Contains(sentence, "checkbox task") || strings.Contains(sentence, "helper return")
+		mentionsTaskOrHelper := strings.Contains(sentence, "heading-identified task") || strings.Contains(sentence, "executable projection") || strings.Contains(sentence, "helper return")
 		// "not commit, dispatch, review, or checkpoint boundaries" negates just
 		// as well as the exact phrase, so the check accepts any negated form.
 		negates := strings.Contains(sentence, "not ") && strings.Contains(sentence, "checkpoint boundaries")

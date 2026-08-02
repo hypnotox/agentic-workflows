@@ -28,8 +28,8 @@ func gitProjectFiles(t *testing.T, configYAML string, files map[string]string) s
 
 // syncedGitProject creates a git-backed project and runs sync so the tree is
 // drift-clean, the common fixture for runCheck's clean path.
-func syncedGitProject(t *testing.T, configYAML string) string {
-	return syncedGitProjectFiles(t, configYAML, nil)
+func syncedGitProject(t *testing.T) string {
+	return syncedGitProjectFiles(t, checkYAML, nil)
 }
 
 // syncedGitProjectFiles writes the given files, then syncs, so the tree is

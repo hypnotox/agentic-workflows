@@ -39,9 +39,9 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix or merely because a boundary was reached, and once the outcome is concrete and non-minimal it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
+Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix or merely because a boundary was reached, and once the outcome is concrete and non-minimal it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol. Routine implementation checkpoints remain after the phase-closing commit and settled report-only review, never after heading-identified tasks or helper returns; an executable plan projection does not create a checkpoint boundary; Pi handoff carries the exact owned path alone.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-parsed-plan-artifacts-and-executable-projections
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
@@ -66,8 +66,9 @@ Backing: test
 
 ### `invariant: phase-transaction-ownership`
 
-A rendered plan phase is one independently green coherent implementation transaction with an explicit per-phase inline or subagent-driven owner; checkbox tasks are ordered steps rather than default dispatch, review, checkpoint, or commit boundaries. One commit-capable implementer owns a complete subagent-driven phase from a known green baseline through staged check, gate, and closing commit, while the parent owns inline integration, sequential commit-disabled batch helpers, report-only review settlement, phase checkpointing, and explicit dirty-state recovery without blind task-level succession.
+A rendered plan phase is one independently green coherent implementation transaction with an explicit per-phase inline or subagent-driven owner; heading-identified tasks are ordered steps rather than completion state or default dispatch, review, checkpoint, or commit boundaries. A fresh phase or task owner may consume `awf read plan`'s executable closure without changing ownership. One commit-capable implementer owns a complete subagent-driven phase from a known green baseline through staged check, gate, and Phase close commit, while the parent owns inline integration, sequential commit-disabled batch helpers, report-only review settlement, phase checkpointing, and explicit dirty-state recovery without blind task-level succession.
 Origin: ADR-0166
+Revised-by: ADR-parsed-plan-artifacts-and-executable-projections
 Backing: test
 
 ### `invariant: plan-task-detail-modes`

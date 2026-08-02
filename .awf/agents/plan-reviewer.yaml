@@ -34,11 +34,11 @@ data:
               brace guard)
         - name: section-taxonomy
           description: >-
-              the plan follows the canonical shape, a `# Plan:` H1 title, the `date`/`adrs`/`status`
-              frontmatter, the two header sections (Goal and Architecture summary), the phases,
-              optional Verification, and Notes required when any task is a spike and optional
-              otherwise; File structure is not a plan-level section, because affected paths belong
-              to tasks
+              the plan follows plan-v1: `format: plan-v1` plus `date`/`adrs`/`status` frontmatter,
+              a `# Plan:` H1, nonempty Goal and Architecture summary, sequential phase and task
+              headings, exact execution modes, one final Phase close and commit fence per phase,
+              required Definition of done plain bullets, and optional Notes; File structure,
+              Verification, and task checkboxes are not plan-v1 declarations
         - name: lifecycle-freeze
           description: >-
               the plan's two-state `status:` lifecycle is honoured; mutable while `Proposed`, flipped
