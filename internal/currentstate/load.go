@@ -34,11 +34,7 @@ type Loaded struct {
 // single-universe load. It does not run Check or EvaluateCoverage; the command
 // layer applies eligibility filters and routes findings.
 func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
-	records, sources, err := adrsFromTree(tree, cfg.DocsDir)
-	if err != nil {
-		return Loaded{}, err
-	}
-	corpus, err := adr.NewCorpus(records)
+	records, sources, corpus, err := authorityFromTree(tree, cfg)
 	if err != nil {
 		return Loaded{}, err
 	}
@@ -47,6 +43,33 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 		return Loaded{}, err
 	}
 	return Loaded{ADRs: records, Sources: sources, Corpus: corpus, Topics: topics}, nil
+}
+
+// LoadUniverseFromTree assembles only the immutable ADR and topic authority
+// used by historical transition policy. Unlike LoadFromTree, it deliberately
+// does not load marker sites or domain ownership sidecars.
+func LoadUniverseFromTree(tree *snapshot.Tree, cfg *config.Config) (Universe, error) {
+	records, sources, corpus, err := authorityFromTree(tree, cfg)
+	if err != nil {
+		return Universe{}, err
+	}
+	topics, err := topic.LoadAuthorityCorpusFromTree(tree, cfg, corpus)
+	if err != nil {
+		return Universe{}, err
+	}
+	return Universe{ADRs: records, Sources: sources, Topics: topics.All()}, nil
+}
+
+func authorityFromTree(tree *snapshot.Tree, cfg *config.Config) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
+	records, sources, err := adrsFromTree(tree, cfg.DocsDir)
+	if err != nil {
+		return nil, nil, adr.Corpus{}, err
+	}
+	corpus, err := adr.NewCorpus(records)
+	if err != nil {
+		return nil, nil, adr.Corpus{}, err
+	}
+	return records, sources, corpus, nil
 }
 
 // adrsFromTree parses every top-level ADR decision file in the snapshot with the

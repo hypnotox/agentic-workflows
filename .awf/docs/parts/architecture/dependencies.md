@@ -12,8 +12,10 @@
   of `internal/git` and nothing else: no other production package may import the library or
   construct a git subprocess, and `internal/testsupport/gitfixture` is the single exception on
   the test side, which the zero-internal-deps rule forces rather than permits. Historical audit
-  currently obtains complete committed snapshots through this seam once per required revision
-  and caches the resulting state only for its invocation; later pipeline phases narrow those reads.
+  obtains committed configuration, schema, ADR, and topic authority through this seam and caches
+  the resulting state only for its invocation. First-parent changed paths are separate merge relevance
+  evidence and never populate ordinary commit changes; current and staged checks retain their full
+  marker, coverage, and domain-sidecar projection.
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`

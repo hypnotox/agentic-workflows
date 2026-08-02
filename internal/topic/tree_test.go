@@ -253,6 +253,42 @@ func TestLoadCorpusFromTreeMatchesFilesystem(t *testing.T) {
 	assertSameCorpus(t, fsCorpus, treeCorpus)
 }
 
+// invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths)
+func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
+	files := map[string]string{
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+		".awf/domains/alpha.yaml":                      "unknown: [\n",
+		"internal/invalid_test.go":                     "package invalid\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
+	}
+	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
+	tree := treeFrom(t, files)
+
+	got, err := LoadAuthorityCorpusFromTree(tree, cfg, oneImplementedADR())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.All()) != 1 || got.All()[0].ID.String() != "alpha/one" || len(got.All()[0].Claims) != 1 {
+		t.Fatalf("authority topics = %#v", got.All())
+	}
+	if got.DomainPaths != nil || len(got.Markers.All()) != 0 {
+		t.Fatalf("reduced corpus retained omitted projections: paths=%#v markers=%#v", got.DomainPaths, got.Markers.All())
+	}
+	if _, err := LoadCorpusFromTree(tree, cfg, oneImplementedADR()); err == nil ||
+		!strings.Contains(err.Error(), "parse domain sidecar alpha") {
+		t.Fatalf("full corpus accepted malformed domain sidecar: %v", err)
+	}
+	markerOnly := treeFrom(t, map[string]string{
+		".awf/topics/metadata/alpha/one.yaml":          files[".awf/topics/metadata/alpha/one.yaml"],
+		".awf/topics/parts/alpha/one/current-state.md": files[".awf/topics/parts/alpha/one/current-state.md"],
+		"internal/invalid_test.go":                     files["internal/invalid_test.go"],
+	})
+	if _, err := LoadCorpusFromTree(markerOnly, cfg, oneImplementedADR()); err == nil ||
+		!strings.Contains(err.Error(), "unknown claim ID") {
+		t.Fatalf("full corpus accepted malformed proof marker: %v", err)
+	}
+}
+
 // assertSameCorpus checks that two corpora carry identical semantic content -
 // topics, metadata, claims, ownership globs, and marker sites - ignoring only
 // the source paths, which legitimately differ between an absolute filesystem

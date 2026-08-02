@@ -8,6 +8,12 @@ One `awf audit` invocation collects its requested commit range exactly once and 
 Origin: ADR-revision-aware-historical-audit-pipeline
 Backing: test
 
+### `invariant: audit-history-policy-projection`
+
+Historical transition and stale-merge replay derive only committed configuration and schema boundaries, ADR records and source bytes, and topic definitions and claims. Marker indexes, test-glob backing, coverage paths, and domain ownership sidecars stay owned by repository and staged checks; malformed bytes exclusive to those omitted projections do not create historical findings or failures. An in-range revision proven not to change this authority reuses its first-parent state, with merge relevance derived separately from first-parent paths and ambiguous evidence forcing a reload.
+Origin: ADR-revision-aware-historical-audit-pipeline
+Backing: test
+
 ### `invariant: audit-adr-status-cochange`
 
 awf audit raises an Error finding when a range commit adds a current-state-v1 ADR or changes its status without also changing `docs/decisions/INDEX.md`, and raises none when the same change co-changes the index. Legacy-format ADR transitions are outside this rule.

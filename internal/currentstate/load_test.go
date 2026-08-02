@@ -1,6 +1,7 @@
 package currentstate_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -154,6 +155,94 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 	_, err := currentstate.LoadFromTree(tree, loadCfg(t))
 	if err == nil {
 		t.Fatal("expected a topic metadata parse error")
+	}
+}
+
+// invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadUniverseFromTreeMatchesPolicyProjection)
+func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
+	cfg, err := config.Parse("/nonexistent", []byte(loadCfgBody+"currentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := treeFrom(t, map[string]string{
+		"docs/decisions/0001-first.md":                 legacyADR(),
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		".awf/domains/alpha.yaml":                      "paths: [\"internal/**\"]\n",
+		"internal/proof_test.go":                       "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
+	})
+	_, err = currentstate.LoadFromTree(valid, cfg)
+	if err == nil {
+		t.Fatal("full loader accepted malformed marker source")
+	}
+	// The policy projection retains exactly the transition inputs that a valid
+	// full view would expose: records, source bytes, and assembled topics.
+	clean := treeFrom(t, map[string]string{
+		"docs/decisions/0001-first.md":                 legacyADR(),
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		".awf/domains/alpha.yaml":                      "paths: [\"internal/**\"]\n",
+	})
+	full, err := currentstate.LoadFromTree(clean, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := full.Universe()
+	got, err := currentstate.LoadUniverseFromTree(clean, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("policy universe = %#v, want %#v", got, want)
+	}
+	for _, changed := range []map[string]string{
+		{
+			"docs/decisions/0001-first.md":                 legacyADR(),
+			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+			".awf/domains/alpha.yaml":                      "unknown: [\n",
+		},
+		{
+			"docs/decisions/0001-first.md":                 legacyADR(),
+			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+			"internal/proof_test.go":                       "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
+		},
+	} {
+		got, err := currentstate.LoadUniverseFromTree(treeFrom(t, changed), cfg)
+		if err != nil || !reflect.DeepEqual(got, want) {
+			t.Fatalf("omitted bytes changed policy universe: %#v, %v", got, err)
+		}
+	}
+	for name, broken := range map[string]map[string]string{
+		"ADR": {
+			"docs/decisions/0001-first.md": "---\nformat: unknown\n---\n# Invalid\n",
+		},
+		"topic metadata": {
+			"docs/decisions/0001-first.md":                 legacyADR(),
+			".awf/topics/metadata/alpha/one.yaml":          "title: [\n",
+			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		},
+		"topic part": {
+			"docs/decisions/0001-first.md":        legacyADR(),
+			".awf/topics/metadata/alpha/one.yaml": "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+		},
+		"claim provenance": {
+			"docs/decisions/0001-first.md":                 legacyADR(),
+			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("9999"),
+		},
+		"claim reference": {
+			"docs/decisions/0001-first.md":                 legacyADR(),
+			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+			".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule.\nOrigin: ADR-0001\nReferences: alpha/missing:r\n",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := currentstate.LoadUniverseFromTree(treeFrom(t, broken), cfg); err == nil {
+				t.Fatal("policy loader accepted malformed required authority")
+			}
+		})
 	}
 }
 

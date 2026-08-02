@@ -19,15 +19,39 @@ const (
 	treePartSuffix     = "/current-state.md"
 )
 
-// LoadCorpusFromTree parses the current-state topic corpus from an immutable
-// snapshot instead of the live filesystem, so a working-tree, index, or commit
-// universe yields exactly the corpus that tree encodes. Topic metadata, parts,
-// domain ownership, and marker sources are all read from tree; cfg supplies the
-// configured domains and marker-source families (parse it from the same tree
-// for a single-universe load). It shares assembleCorpus and the marker
-// scan/validate core with the filesystem LoadCorpus, so both loaders enforce
-// identical rules over identically shaped bytes.
+// LoadCorpusFromTree parses the complete current-state topic corpus from an
+// immutable snapshot. It retains domain ownership and marker validation for
+// callers that need the complete repository projection.
 func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+	files := scannableTreeFiles(tree)
+	domainPaths := map[string][]string{}
+	for _, d := range cfg.Domains {
+		paths, err := domainPathsFromTree(tree, d)
+		if err != nil {
+			return Corpus{}, err
+		}
+		domainPaths[d] = paths
+	}
+	c, err := authorityCorpusFromTreeFiles(files, cfg, adrs, domainPaths)
+	if err != nil {
+		return Corpus{}, err
+	}
+	markers, err := markerIndexFromTreeFiles(files, c, cfg.CurrentState)
+	if err != nil {
+		return Corpus{}, err
+	}
+	c.Markers = markers
+	return c, nil
+}
+
+// LoadAuthorityCorpusFromTree parses only topic authority from an immutable
+// snapshot. It validates metadata, parts, configured domains, claims, and ADR
+// provenance, but deliberately omits domain ownership and marker validation.
+func LoadAuthorityCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+	return authorityCorpusFromTreeFiles(scannableTreeFiles(tree), cfg, adrs, nil)
+}
+
+func scannableTreeFiles(tree *snapshot.Tree) []snapshot.File {
 	allFiles := tree.List()
 	files := make([]snapshot.File, 0, len(allFiles))
 	for _, f := range allFiles {
@@ -35,6 +59,10 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 			files = append(files, f)
 		}
 	}
+	return files
+}
+
+func authorityCorpusFromTreeFiles(files []snapshot.File, cfg *config.Config, adrs adr.Corpus, domainPaths map[string][]string) (Corpus, error) {
 	metadata := map[string]metaEntry{}
 	parts := map[string]partEntry{}
 	for _, f := range files {
@@ -55,24 +83,7 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 			parts[(TopicID{seg[0], seg[1]}).String()] = partEntry{data: f.Bytes, path: f.Path}
 		}
 	}
-	domainPaths := map[string][]string{}
-	for _, d := range cfg.Domains {
-		paths, err := domainPathsFromTree(tree, d)
-		if err != nil {
-			return Corpus{}, err
-		}
-		domainPaths[d] = paths
-	}
-	c, err := assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
-	if err != nil {
-		return Corpus{}, err
-	}
-	markers, err := markerIndexFromTreeFiles(files, c, cfg.CurrentState)
-	if err != nil {
-		return Corpus{}, err
-	}
-	c.Markers = markers
-	return c, nil
+	return assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
 }
 
 // domainPathsFromTree reads one domain sidecar's ownership globs from the

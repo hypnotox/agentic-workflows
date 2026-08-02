@@ -23,17 +23,19 @@ const currentStateTransitionRule = "current-state-transition"
 
 type rangeCollector func(context.Context, string, string) ([]awfgit.Commit, error)
 type revisionLoader func(context.Context, string) (*revisionState, error)
+type firstParentPaths func(context.Context, string) ([]string, error)
 type liveEvaluator func(context.Context) ([]Finding, error)
 
 // historyOperation owns every historical input and derived revision state for
 // one audit invocation. Nothing on it is retained by Project or shared with a
 // later invocation.
 type historyOperation struct {
-	commits      []awfgit.Commit
-	inputs       Inputs
-	loadRevision revisionLoader
-	live         liveEvaluator
-	states       map[string]revisionResult
+	commits          []awfgit.Commit
+	inputs           Inputs
+	loadRevision     revisionLoader
+	firstParentPaths firstParentPaths
+	live             liveEvaluator
+	states           map[string]revisionResult
 }
 
 type revisionResult struct {
@@ -56,20 +58,30 @@ type revisionState struct {
 	universeReady bool
 	universe      currentstate.Universe
 	universeErr   error
+
+	loadConfig  func() (*config.Config, error)
+	configReady bool
+	config      *config.Config
+	configErr   error
 }
 
-func newHistoryOperation(ctx context.Context, base, head string, in Inputs, collect rangeCollector, load revisionLoader, live liveEvaluator) (*historyOperation, error) {
+func newHistoryOperation(ctx context.Context, base, head string, in Inputs, collect rangeCollector, load revisionLoader, paths firstParentPaths, live liveEvaluator) (*historyOperation, error) {
 	commits, err := collect(ctx, base, head)
 	if err != nil {
 		return nil, err
 	}
+	return newHistoryOperationWithRelevance(commits, in, load, paths, live), nil
+}
+
+func newHistoryOperationWithRelevance(commits []awfgit.Commit, in Inputs, load revisionLoader, paths firstParentPaths, live liveEvaluator) *historyOperation {
 	return &historyOperation{
-		commits:      slices.Clone(commits),
-		inputs:       in,
-		loadRevision: load,
-		live:         live,
-		states:       map[string]revisionResult{},
-	}, nil
+		commits:          slices.Clone(commits),
+		inputs:           in,
+		loadRevision:     load,
+		firstParentPaths: paths,
+		live:             live,
+		states:           map[string]revisionResult{},
+	}
 }
 
 func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
@@ -99,6 +111,69 @@ func (h *historyOperation) state(ctx context.Context, revision string) (*revisio
 	return state, err
 }
 
+// stateForCommit reuses the first-parent state only after committed path
+// evidence proves this revision cannot affect the reduced policy authority.
+func (h *historyOperation) stateForCommit(ctx context.Context, commit awfgit.Commit) (*revisionState, error) {
+	if cached, ok := h.states[commit.Revision]; ok {
+		return cached.state, cached.err
+	}
+	if len(commit.Parents) == 0 || h.firstParentPaths == nil {
+		return h.state(ctx, commit.Revision)
+	}
+	parent, parentErr := h.state(ctx, commit.Parents[0])
+	if parentErr != nil {
+		return h.state(ctx, commit.Revision)
+	}
+	docsDir, err := parent.committedDocsDir()
+	if err != nil {
+		return h.state(ctx, commit.Revision)
+	}
+	var paths []string
+	if commit.IsMerge {
+		paths, err = h.firstParentPaths(ctx, commit.Revision)
+	} else {
+		paths = changedPaths(commit.Changes)
+	}
+	if err != nil || policyRelevant(paths, docsDir) {
+		return h.state(ctx, commit.Revision)
+	}
+	// Alias the immutable parent result, including a previously cached error;
+	// neither the value nor its slices/maps are mutated by this operation.
+	h.states[commit.Revision] = h.states[commit.Parents[0]]
+	return parent, nil
+}
+
+func changedPaths(changes []awfgit.FileChange) []string {
+	paths := make([]string, 0, len(changes)*2)
+	for _, change := range changes {
+		if change.OldPath != "" {
+			paths = append(paths, change.OldPath)
+		}
+		if change.Path != "" {
+			paths = append(paths, change.Path)
+		}
+	}
+	return paths
+}
+
+func policyRelevant(paths []string, docsDir string) bool {
+	if docsDir == "" {
+		return true
+	}
+	for _, path := range paths {
+		if path == "" || path == config.DirName || strings.HasPrefix(path, config.DirName+"/") {
+			return true
+		}
+		if strings.HasPrefix(path, docsDir+"/decisions/") {
+			rel := strings.TrimPrefix(path, docsDir+"/decisions/")
+			if rel != "" && !strings.Contains(rel, "/") && strings.HasSuffix(rel, ".md") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (s *revisionState) lockEvidence() (*manifest.Lock, bool, error) {
 	if !s.lockReady {
 		s.lock, s.lockFound, s.lockErr = s.loadLock()
@@ -115,6 +190,24 @@ func (s *revisionState) currentState() (currentstate.Universe, error) {
 	return s.universe, s.universeErr
 }
 
+func (s *revisionState) committedConfig() (*config.Config, error) {
+	if !s.configReady {
+		if s.loadConfig != nil {
+			s.config, s.configErr = s.loadConfig()
+		}
+		s.configReady = true
+	}
+	return s.config, s.configErr
+}
+
+func (s *revisionState) committedDocsDir() (string, error) {
+	cfg, err := s.committedConfig()
+	if err != nil || cfg == nil {
+		return "", err
+	}
+	return cfg.DocsDir, nil
+}
+
 func loadCompleteRevision(ctx context.Context, root string, repo *awfgit.Repo, revision string) (*revisionState, error) {
 	tree, err := snapshot.CommitTree(ctx, repo, revision)
 	if err != nil {
@@ -125,15 +218,20 @@ func loadCompleteRevision(ctx context.Context, root string, repo *awfgit.Repo, r
 
 func revisionStateFromTree(root string, tree *snapshot.Tree) *revisionState {
 	state := &revisionState{}
-	state.loadLock = func() (*manifest.Lock, bool, error) {
-		return auditLockFromTree(tree)
-	}
-	state.loadUniverse = func() (currentstate.Universe, error) {
+	state.loadLock = func() (*manifest.Lock, bool, error) { return auditLockFromTree(tree) }
+	state.loadConfig = func() (*config.Config, error) {
 		lock, _, err := state.lockEvidence()
 		if err != nil {
+			return nil, err
+		}
+		return auditConfig(root, tree, lock)
+	}
+	state.loadUniverse = func() (currentstate.Universe, error) {
+		cfg, err := state.committedConfig()
+		if err != nil || cfg == nil {
 			return currentstate.Universe{}, err
 		}
-		return auditUniverse(root, tree, lock)
+		return currentstate.LoadUniverseFromTree(tree, cfg)
 	}
 	return state
 }
@@ -141,7 +239,7 @@ func revisionStateFromTree(root string, tree *snapshot.Tree) *revisionState {
 func (h *historyOperation) transitionFindings(ctx context.Context) []Finding {
 	var out []Finding
 	for _, commit := range h.commits {
-		afterState, err := h.state(ctx, commit.Revision)
+		afterState, err := h.stateForCommit(ctx, commit)
 		if err != nil {
 			out = append(out, transitionLoadWarning(commit, err))
 			continue
@@ -188,7 +286,7 @@ func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, e
 		if !commit.IsMerge {
 			continue
 		}
-		resultState, err := h.state(ctx, commit.Revision)
+		resultState, err := h.stateForCommit(ctx, commit)
 		if err != nil {
 			return nil, fmt.Errorf("load merge result %s: %w", commit.Hash, err)
 		}
@@ -282,13 +380,14 @@ func auditLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	return lock, true, err
 }
 
-func auditUniverse(root string, tree *snapshot.Tree, lock *manifest.Lock) (currentstate.Universe, error) {
+func auditConfig(root string, tree *snapshot.Tree, lock *manifest.Lock) (*config.Config, error) {
 	file, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {
-		return currentstate.Universe{}, nil
+		//nolint:nilnil // an absent committed config means an empty historical universe, not a load failure
+		return nil, nil
 	}
 	if !file.Scannable() {
-		return currentstate.Universe{}, fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)
+		return nil, fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)
 	}
 	schema := migrate.Current()
 	if lock != nil {
@@ -296,20 +395,16 @@ func auditUniverse(root string, tree *snapshot.Tree, lock *manifest.Lock) (curre
 	}
 	data, err := migrate.ConfigForCurrentSchema(file.Bytes, schema)
 	if err != nil {
-		return currentstate.Universe{}, err
+		return nil, err
 	}
 	cfg, err := config.ParseTree(config.RootDir(root), data, auditSnapshotReader{tree})
 	if err != nil {
-		return currentstate.Universe{}, err
+		return nil, err
 	}
 	if err := cfg.Validate(); err != nil {
-		return currentstate.Universe{}, err
+		return nil, err
 	}
-	loaded, err := currentstate.LoadFromTree(tree, cfg)
-	if err != nil {
-		return currentstate.Universe{}, err
-	}
-	return loaded.Universe(), nil
+	return cfg, nil
 }
 
 type auditSnapshotReader struct{ tree *snapshot.Tree }

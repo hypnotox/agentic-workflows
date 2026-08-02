@@ -70,10 +70,11 @@ var entrypointSuites = map[string]suite{
 	"MergeNoCommit":    {"internal/git", "TestMergeEntrypointsAdvanceAndStageWithoutCommitting"},
 
 	// Commit-range walking.
-	"RangeCommits":      {"internal/git", "TestRangeCommitsLinearRangeCarriesChangesAndText"},
-	"RangeChangedPaths": {"internal/git", "TestRangeNativeReadOperations"},
-	"RangeDiffText":     {"internal/git", "TestRangeNativeReadOperations"},
-	"ChangedPaths":      {"internal/git", "TestChangedPathsStaged"},
+	"RangeCommits":            {"internal/git", "TestRangeCommitsLinearRangeCarriesChangesAndText"},
+	"FirstParentChangedPaths": {"internal/git", "TestFirstParentChangedPathsContracts"},
+	"RangeChangedPaths":       {"internal/git", "TestRangeNativeReadOperations"},
+	"RangeDiffText":           {"internal/git", "TestRangeNativeReadOperations"},
+	"ChangedPaths":            {"internal/git", "TestChangedPathsStaged"},
 
 	// Free entrypoints: each precedes an opened repository or does without one.
 	"Open":                      {"internal/git", "TestOpenRepo"},

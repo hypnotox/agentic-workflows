@@ -29,14 +29,15 @@ func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(testsupport.Context(t))
 	cancel()
 	for name, call := range map[string]func() error{
-		"changed":  func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
-		"head":     func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
-		"hash":     func() error { _, err := gitRepo(t, dir).HeadHash(ctx); return err },
-		"branches": func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
-		"working":  func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
-		"index":    func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
-		"commit":   func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
-		"range":    func() error { _, _, err := gitRepo(t, dir).RangeBlobs(ctx, "HEAD"); return err },
+		"changed":      func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
+		"head":         func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
+		"hash":         func() error { _, err := gitRepo(t, dir).HeadHash(ctx); return err },
+		"branches":     func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
+		"working":      func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
+		"index":        func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
+		"commit":       func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
+		"range":        func() error { _, _, err := gitRepo(t, dir).RangeBlobs(ctx, "HEAD"); return err },
+		"first-parent": func() error { _, err := gitRepo(t, dir).FirstParentChangedPaths(ctx, "HEAD"); return err },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := call(); !errors.Is(err, context.Canceled) {
@@ -103,6 +104,10 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 	})
 	assertCanceled("commit blobs", 2, func(ctx context.Context) error {
 		_, err := repo.CommitBlobs(ctx, "HEAD")
+		return err
+	})
+	assertCanceled("first-parent paths", 2, func(ctx context.Context) error {
+		_, err := repo.FirstParentChangedPaths(ctx, "HEAD")
 		return err
 	})
 }

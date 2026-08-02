@@ -394,6 +394,81 @@ func TestRangeNativeReadOperations(t *testing.T) {
 	}
 }
 
+func TestFirstParentChangedPathsContracts(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	base := gitfixture.Commit(t, repo, "base", map[string]string{
+		"changed.txt": "before\n", "deleted.txt": "gone\n", "renamed.txt": "rename\n", "nested/inside.txt": "old\n", "outside.txt": "old\n",
+	})
+	head := gitfixture.Commit(t, repo, "change", map[string]string{
+		"changed.txt": "after\n", "added.txt": "added\n", "renamed-new.txt": "rename\n", "nested/inside.txt": "new\n", "outside.txt": "new\n",
+	}, "deleted.txt", "renamed.txt")
+	handle := walkRepo(t, dir)
+	paths, err := handle.FirstParentChangedPaths(testContext(t), head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(paths, ","), "added.txt,changed.txt,deleted.txt,nested/inside.txt,outside.txt,renamed-new.txt,renamed.txt"; got != want {
+		t.Fatalf("first-parent paths = %q, want %q", got, want)
+	}
+	rootPaths, err := handle.FirstParentChangedPaths(testContext(t), base)
+	if err != nil || strings.Join(rootPaths, ",") != "changed.txt,deleted.txt,nested/inside.txt,outside.txt,renamed.txt" {
+		t.Fatalf("root first-parent paths = %v, %v", rootPaths, err)
+	}
+	nested, err := walkRepo(t, filepath.Join(dir, "nested")).FirstParentChangedPaths(testContext(t), head)
+	if err != nil || strings.Join(nested, ",") != "inside.txt" {
+		t.Fatalf("nested first-parent paths = %v, %v", nested, err)
+	}
+
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feature", map[string]string{"feature.txt": "feature\n"})
+	lifecycleGit(t, dir, "checkout", "master")
+	gitfixture.Stage(t, repo, map[string]string{"feature.txt": "feature\n"})
+	merge := gitfixture.Merge(t, repo, "Merge feature", head, feature)
+	mergePaths, err := handle.FirstParentChangedPaths(testContext(t), merge)
+	if err != nil || strings.Join(mergePaths, ",") != "feature.txt" {
+		t.Fatalf("merge first-parent paths = %v, %v", mergePaths, err)
+	}
+	commits, err := handle.RangeCommits(testContext(t), head, merge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mergeCommit *Commit
+	for i := range commits {
+		if commits[i].Revision == merge {
+			mergeCommit = &commits[i]
+		}
+	}
+	if mergeCommit == nil || !mergeCommit.IsMerge || len(mergeCommit.Changes) != 0 {
+		t.Fatalf("range commits exposed merge changes: %#v", commits)
+	}
+
+	cancelled, cancel := context.WithCancel(testContext(t))
+	cancel()
+	if _, err := handle.FirstParentChangedPaths(cancelled, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled first-parent paths = %v", err)
+	}
+	if _, err := handle.FirstParentChangedPaths(testContext(t), "missing-revision"); err == nil {
+		t.Fatal("first-parent paths accepted a missing revision")
+	}
+}
+
+func TestFirstParentChangedPathsReportsShallowMissingParent(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	for _, n := range []string{"one", "two", "three"} {
+		gitfixture.Commit(t, repo, n, map[string]string{"a.txt": n + "\n"})
+	}
+	shallow := filepath.Join(t.TempDir(), "shallow")
+	if out, err := exec.CommandContext(t.Context(), "git", "clone", "--depth", "1", "file://"+dir, shallow).CombinedOutput(); err != nil {
+		t.Skipf("shallow clone unavailable: %v: %s", err, out)
+	}
+	head := gitfixture.NativeRevParse(t, gitfixture.At(shallow), "HEAD")
+	if _, err := walkRepo(t, shallow).FirstParentChangedPaths(testContext(t), head); err == nil {
+		t.Fatal("first-parent paths accepted a missing shallow parent")
+	}
+}
+
 func TestSplitWalkMessage(t *testing.T) {
 	if subject, body := splitMessage("subject  \n\nbody\n"); subject != "subject" || body != "body" {
 		t.Fatalf("split = %q / %q", subject, body)

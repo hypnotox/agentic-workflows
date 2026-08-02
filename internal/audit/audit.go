@@ -83,12 +83,11 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 		return nil, 0, fmt.Errorf("open repo: %w", err)
 	}
 	op, err := newHistoryOperation(ctx, base, head, in,
-		func(ctx context.Context, base, head string) ([]awfgit.Commit, error) {
-			return repo.RangeCommits(ctx, base, head)
-		},
+		repo.RangeCommits,
 		func(ctx context.Context, revision string) (*revisionState, error) {
 			return loadCompleteRevision(ctx, repoRoot, repo, revision)
 		},
+		repo.FirstParentChangedPaths,
 		func(ctx context.Context) ([]Finding, error) {
 			return ruleUncommittedChanges(ctx, repo, in)
 		})

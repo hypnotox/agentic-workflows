@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -45,7 +46,7 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 		return nil, nil
 	}
 
-	op, err := newHistoryOperation(ctx, "base", "head", Inputs{}, collect, load, live)
+	op, err := newHistoryOperation(ctx, "base", "head", Inputs{}, collect, load, nil, live)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +70,7 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 			t.Fatalf("loads[%s] = %d, want %d", revision, got, want)
 		}
 	}
-	second, err := newHistoryOperation(ctx, "base", "head", Inputs{}, collect, load, live)
+	second, err := newHistoryOperation(ctx, "base", "head", Inputs{}, collect, load, nil, live)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,6 +97,7 @@ func TestHistoryOperationRootTransitionUsesEmptyUniverse(t *testing.T) {
 			}
 			return fixedRevisionState(nil, false, after), nil
 		},
+		nil,
 		func(context.Context) ([]Finding, error) { return nil, nil })
 	if err != nil {
 		t.Fatal(err)
@@ -160,6 +162,7 @@ func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T
 	op, err := newHistoryOperation(ctx, "base", "head", Inputs{},
 		func(context.Context, string, string) ([]awfgit.Commit, error) { return commits, nil },
 		load,
+		nil,
 		func(context.Context) ([]Finding, error) {
 			liveCalls++
 			return []Finding{{Severity: severity.Error, Rule: "live-cleanliness"}}, nil
@@ -194,7 +197,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 	boom := errors.New("boom")
 	emptyLive := func(context.Context) ([]Finding, error) { return nil, nil }
 	if _, err := newHistoryOperation(ctx, "base", "head", Inputs{},
-		func(context.Context, string, string) ([]awfgit.Commit, error) { return nil, boom }, nil, emptyLive); !errors.Is(err, boom) {
+		func(context.Context, string, string) ([]awfgit.Commit, error) { return nil, boom }, nil, nil, emptyLive); !errors.Is(err, boom) {
 		t.Fatalf("collection error = %v", err)
 	}
 
@@ -203,7 +206,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 		func(context.Context, string) (*revisionState, error) {
 			//nolint:nilnil // this deliberately malformed dependency exercises the operation's fail-closed guard
 			return nil, nil
-		}, emptyLive)
+		}, nil, emptyLive)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,9 +214,23 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 		t.Fatalf("nil revision state error = %v", err)
 	}
 
+	parentLoads := map[string]int{}
+	parentErrorOp := newHistoryOperationWithRelevance([]awfgit.Commit{{Revision: "child", Parents: []string{"parent"}, Changes: []awfgit.FileChange{{Path: "code.go"}}}}, Inputs{},
+		func(_ context.Context, revision string) (*revisionState, error) {
+			parentLoads[revision]++
+			if revision == "parent" {
+				return nil, boom
+			}
+			return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+		}, func(context.Context, string) ([]string, error) { return nil, nil }, emptyLive)
+	if _, err := parentErrorOp.stateForCommit(ctx, parentErrorOp.commits[0]); err != nil || parentLoads["parent"] != 1 || parentLoads["child"] != 1 {
+		t.Fatalf("ambiguous parent error did not reload child: loads=%#v err=%v", parentLoads, err)
+	}
+
 	liveOp, err := newHistoryOperation(ctx, "base", "head", Inputs{},
 		func(context.Context, string, string) ([]awfgit.Commit, error) { return nil, nil },
 		func(context.Context, string) (*revisionState, error) { return nil, boom },
+		nil,
 		func(context.Context) ([]Finding, error) { return nil, boom })
 	if err != nil {
 		t.Fatal(err)
@@ -226,7 +243,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 		func(context.Context, string, string) ([]awfgit.Commit, error) {
 			return []awfgit.Commit{{Hash: "merge", Revision: "bad", IsMerge: true}}, nil
 		},
-		func(context.Context, string) (*revisionState, error) { return nil, boom }, emptyLive)
+		func(context.Context, string) (*revisionState, error) { return nil, boom }, nil, emptyLive)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +283,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			op, err := newHistoryOperation(ctx, "base", "head", Inputs{},
-				func(context.Context, string, string) ([]awfgit.Commit, error) { return []awfgit.Commit{tc.commit}, nil }, tc.load, emptyLive)
+				func(context.Context, string, string) ([]awfgit.Commit, error) { return []awfgit.Commit{tc.commit}, nil }, tc.load, nil, emptyLive)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -287,7 +304,7 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 				return result, nil
 			}
 			return nil, boom
-		}, emptyLive)
+		}, nil, emptyLive)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,6 +320,60 @@ func fixedRevisionState(lock *manifest.Lock, found bool, universe currentstate.U
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits)
+func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testing.T) {
+	ctx := testContext(t)
+	outside := awfgit.Commit{Revision: "outside"}
+	commits := []awfgit.Commit{
+		{Revision: "code", Parents: []string{outside.Revision}, Changes: []awfgit.FileChange{{Path: "internal/code.go", Action: awfgit.Modified}}},
+		{Revision: "marker", Parents: []string{"code"}, Changes: []awfgit.FileChange{{Path: "internal/proof_test.go", Action: awfgit.Modified}}},
+		{Revision: "sidecar", Parents: []string{"marker"}, Changes: []awfgit.FileChange{{Path: ".awf/domains/alpha.yaml", Action: awfgit.Modified}}},
+		{Revision: "config", Parents: []string{"sidecar"}, Changes: []awfgit.FileChange{{Path: ".awf/config.yaml", Action: awfgit.Modified}}},
+		{Revision: "topic", Parents: []string{"config"}, Changes: []awfgit.FileChange{{Path: ".awf/topics/metadata/alpha/one.yaml", Action: awfgit.Modified}, {Path: ".awf/topics/parts/alpha/one/current-state.md", Action: awfgit.Modified}}},
+		{Revision: "default-adr", Parents: []string{"topic"}, Changes: []awfgit.FileChange{{Path: "docs/decisions/0001-one.md", Action: awfgit.Modified}}},
+		{Revision: "custom-config", Parents: []string{"default-adr"}, Changes: []awfgit.FileChange{{Path: ".awf/config.yaml", Action: awfgit.Modified}}},
+		{Revision: "custom-adr", Parents: []string{"custom-config"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Modified}}},
+		{Revision: "delete", Parents: []string{"custom-adr"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Deleted}}},
+		{Revision: "rename", Parents: []string{"delete"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Deleted}, {Path: "records/decisions/0003-three.md", Action: awfgit.Added}}},
+		{Revision: "merge", Parents: []string{"rename", "incoming"}, IsMerge: true},
+	}
+	loads := map[string]int{}
+	load := func(_ context.Context, revision string) (*revisionState, error) {
+		loads[revision]++
+		state := fixedRevisionState(nil, false, currentstate.Universe{})
+		state.configReady = true
+		state.config = &config.Config{DocsDir: "docs"}
+		switch revision {
+		case "custom-config", "custom-adr", "delete", "rename", "merge":
+			state.config.DocsDir = "records"
+		}
+		return state, nil
+	}
+	firstParentPaths := func(_ context.Context, revision string) ([]string, error) {
+		if revision != "merge" {
+			t.Fatalf("first-parent paths requested for %q", revision)
+		}
+		return []string{"records/decisions/0004-merge.md"}, nil
+	}
+	op := newHistoryOperationWithRelevance(commits, Inputs{}, load, firstParentPaths, func(context.Context) ([]Finding, error) { return nil, nil })
+	for _, commit := range commits {
+		if _, err := op.stateForCommit(ctx, commit); err != nil {
+			t.Fatalf("state for %s: %v", commit.Revision, err)
+		}
+	}
+	if loads["outside"] != 1 || loads["code"] != 0 || loads["marker"] != 0 {
+		t.Fatalf("irrelevant code or marker changes reloaded state: %#v", loads)
+	}
+	for _, revision := range []string{"sidecar", "config", "topic", "default-adr", "custom-config", "custom-adr", "delete", "rename", "merge"} {
+		if loads[revision] != 1 {
+			t.Errorf("loads[%s] = %d, want 1", revision, loads[revision])
+		}
+	}
+	if loads["incoming"] != 0 {
+		t.Errorf("incoming merge parent was loaded during first-parent relevance: %#v", loads)
+	}
+}
+
 func TestHistoryOperationEmptyRangeRunsLiveOnce(t *testing.T) {
 	loads, liveCalls := 0, 0
 	op, err := newHistoryOperation(testContext(t), "same", "same", Inputs{},
@@ -311,6 +382,7 @@ func TestHistoryOperationEmptyRangeRunsLiveOnce(t *testing.T) {
 			loads++
 			return fixedRevisionState(nil, false, currentstate.Universe{}), nil
 		},
+		nil,
 		func(context.Context) ([]Finding, error) {
 			liveCalls++
 			return nil, nil

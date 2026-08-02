@@ -115,6 +115,51 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 	return commits, nil
 }
 
+// FirstParentChangedPaths returns sorted, unique paths changed by rev relative
+// to its first parent. Roots compare against the empty tree and merges compare
+// only against their first parent. Paths are rerooted to the handle root.
+func (r *Repo) FirstParentChangedPaths(ctx context.Context, rev string) ([]string, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	commit, err := r.resolveCommit(rev)
+	if err != nil {
+		return nil, err
+	}
+	current, err := commit.Tree()
+	if err != nil { // coverage-ignore: a resolved commit always has a readable tree
+		return nil, opaqueError(err)
+	}
+	var parent *object.Tree
+	if commit.NumParents() > 0 {
+		first, err := commit.Parent(0)
+		if err != nil {
+			return nil, opaqueError(err)
+		}
+		parent, err = first.Tree()
+		if err != nil { // coverage-ignore: a resolved parent commit always has a readable tree
+			return nil, opaqueError(err)
+		}
+	}
+	changes, err := object.DiffTree(parent, current)
+	if err != nil { // coverage-ignore: diffing resolved trees does not fail
+		return nil, opaqueError(err)
+	}
+	paths := map[string]bool{}
+	for _, change := range changes {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
+		if path, ok := rerootPath(change.From.Name, r.prefix); ok && path != "" {
+			paths[path] = true
+		}
+		if path, ok := rerootPath(change.To.Name, r.prefix); ok && path != "" {
+			paths[path] = true
+		}
+	}
+	return sortedPaths(paths), nil
+}
+
 // FileText reads path from rev. path is relative to the handle root. A missing
 // path returns found false; revision and object failures remain errors.
 func (r *Repo) FileText(ctx context.Context, rev, path string) (text string, found bool, err error) {
