@@ -134,6 +134,13 @@ delayed backup cleanup make failure recoverable and concurrent movement detectab
 preparation and validation cost, but avoid resolving surprises against the only live copy of a
 thousand-commit graph or silently removing notices the project must retain.
 
+The dedicated-boundary exception creates a controlled interim state after rewritten history is
+presented and before the application transaction lands. During that interval the trees carry the
+canonical AGPL bytes, but the ordinary project gates do not yet prove the complete project-license
+invariant and the ADR is not terminal. The repository therefore remains unaccepted: temporary backup
+refs and external recovery artifacts stay retained, publication stays blocked, and any application
+failure returns to reconciliation rather than permitting cleanup or acceptance.
+
 AGPL obligations may reduce permissive adoption and do not prohibit compliant commercial use. The
 project accepts that trade-off in exchange for copyleft coverage, including the network-use clause.
 This record documents project intent and implementation boundaries; it is not legal advice to users
