@@ -4,4 +4,4 @@
 # wired into a hook setup you own, e.g. a .git/hooks/pre-push stub containing:
 #   exec bash .awf/hooks/pre-push.sh "$@"
 set -euo pipefail
-./x gate full
+./x gate

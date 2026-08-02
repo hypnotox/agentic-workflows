@@ -1,7 +1,6 @@
 prefix: sundial
 vars:
   gateCmd: ./x gate
-  gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...
   testCmd: ./x test
 skills:

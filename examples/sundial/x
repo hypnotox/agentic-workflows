@@ -7,7 +7,10 @@ shift || true
 
 case "$cmd" in
   gate)
-    # `full` is accepted for pre-push hook compatibility; no slower tier exists.
+    if [ "$#" -ne 0 ]; then
+      echo "usage: ./x gate" >&2
+      exit 2
+    fi
     go test ./...
     go vet ./... ;;
   test)

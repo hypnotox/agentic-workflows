@@ -65,9 +65,9 @@ not gate steps: the pre-commit hook payload runs them locally and CI is their en
 backstop (ADR-0196).
 
 Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
-hook payload (see the local-hooks section below). And there is no slower tier; `./x gate full`
-runs the identical steps, and `full` is accepted only as a no-op legacy argument that no
-rendered artifact passes (see [docs/testing.md](testing.md)).
+hook payload (see the local-hooks section below). There is no slower tier. `./x gate timings`
+runs the identical sequential gate while reporting each stage's elapsed wall time (see
+[docs/testing.md](testing.md)).
 
 The current-state cutover deliberately sits outside this gate. The preceding bridge release sealed the
 prepared tree, and this binary's plain `awf upgrade` consumes that seal through a recoverable journal;

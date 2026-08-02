@@ -93,7 +93,7 @@ Run focused regression commands first:
 - `./x test ./internal/project` prints the exact Pi omission guidance and exits zero without Docker;
 - `./x render && ./x check` exits zero with clean root and Sundial state.
 
-Then run `./x gate timings` once. It must exit zero, write the valid durable `coverage.out`, execute the Pi container once through the enabled runtime smoke, and emit every stable stage label. Compare its stage output with the brainstorm baseline recorded in the effort memory (profiled Go suite about 121.5s, explicit Pi lane about 9.5s, total measured components about 151s); treat those figures as indicative only and record the new observed timings under this plan's Notes. Do not add a machine-dependent duration assertion or fail the change merely because host load causes variance. Use the invocation log regression, invariant checks, coverage floor, and clean gate as the deterministic equivalence criteria. After recording the observed timings and any deviations, change this plan's frontmatter from `status: Proposed` to `status: Implemented` so the Phase close commit freezes the completed plan.
+Then run `./x gate timings` once. It must exit zero, write the valid durable `coverage.out`, execute the Pi container once through the enabled runtime smoke, and emit every stable stage label. Compare its stage output with the brainstorm baseline recorded in the effort memory (profiled Go suite about 121.5s, explicit Pi lane about 9.5s, total measured components about 151s); treat those figures as indicative only and record the new observed timings under this plan's Notes. Do not add a machine-dependent duration assertion or fail the change merely because host load causes variance. Use the invocation log regression, invariant checks, coverage floor, and clean gate as the deterministic equivalence criteria. Record the observed timings and any deviations, but keep this plan `status: Proposed` through implementation and terminal review; the post-review deferred flip transaction changes it to `status: Implemented` and freezes it.
 
 ### Phase close
 
@@ -114,4 +114,8 @@ refactor(tooling): deduplicate and instrument the gate
 
 ## Notes
 
-Record the final `./x gate timings` stage output and any implementation deviation here. The pre-change measurements are indicative: the warm gate components totaled about 151 seconds, including about 121.5 seconds for the profiled Go suite and 9.5 seconds for the explicit Pi lane; an earlier whole-gate run took about 302 seconds, so no hard wall-time target is contractual.
+The final `./x gate timings` run passed with these whole-second stage measurements: `go-test` 72s, `covercheck` 1s, `pi-runtime-smoke` 14s, `vet` 1s, `build-linux-arm64` 1s, `build-darwin-amd64` 1s, `build-darwin-arm64` 1s, `build-windows-amd64` 1s, `build-windows-arm64` 2s, `lint` 8s, `deadcode` 3s, and `pincheck` 0s. The measured stage sum was about 105 seconds, compared with the indicative pre-change warm component sum of about 151 seconds. Host load and cache state remain variable, so no hard wall-time target is contractual.
+
+Implementation followed the approved design. The initial timed gate exposed errorlint and unparam findings in the new runner tests; those test assertions were corrected before the recorded passing run.
+
+The plan review had instructed the Phase close to freeze the plan, but current `docs/plans/README.md` requires plans to remain Proposed through implementation and terminal review. Repository authority prevailed: the implementation transaction keeps this plan Proposed, and the post-review deferred flip freezes it.

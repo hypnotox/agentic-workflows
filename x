@@ -17,24 +17,50 @@ cleanup() {
 }
 trap cleanup EXIT
 
+gate_timings=false
+run_gate_step() {
+  local label="$1"
+  shift
+  local started=$SECONDS status
+  if "$@"; then
+    status=0
+  else
+    status=$?
+  fi
+  if "$gate_timings"; then
+    printf 'gate timing: %s %ss\n' "$label" "$((SECONDS - started))" >&2
+  fi
+  return "$status"
+}
+
+run_deadcode_gate() {
+  go tool deadcode -json ./... | go run ./cmd/deadcodecheck
+}
+
 cmd="${1:-}"
 shift || true
 
 case "$cmd" in
   gate)
-    # Full gate: profiled tests + 100% coverage check + vet + lint. The optional
-    # `full` arg is accepted as a no-op legacy argument; no rendered artifact
-    # passes it, and awf has no slower tier. The coverage step (ADR-0012) fails
-    # below 100% of non-ignored statements; -coverpkg=./... so every package
-    # contributes.
+    if [ "$#" -eq 1 ] && [ "$1" = timings ]; then
+      gate_timings=true
+    elif [ "$#" -ne 0 ]; then
+      echo "usage: ./x gate [timings]" >&2
+      exit 2
+    fi
+    # Sequential gate: profiled tests + 100% coverage check + the explicitly
+    # enabled uncached Pi runtime smoke + vet + lint. The coverage step
+    # (ADR-0012) fails below 100% of non-ignored statements; -coverpkg=./... so
+    # every package contributes. Ordinary Go runs skip the Docker-backed smoke;
+    # this gate invokes that proving unit exactly once below.
     # The profile is durable (gitignored via *.out) so CI can upload it to
     # Codecov without rerunning the suite, and an interrupted run leaks no
     # tmpfs file (ADR-0196).
     prof="coverage.out"
-    go test ./... -coverpkg=./... -coverprofile="$prof"
-    go run ./cmd/covercheck "$prof"
-    tools/pi-extension-test/container.sh run
-    go vet ./...
+    run_gate_step go-test go test ./... -coverpkg=./... -coverprofile="$prof"
+    run_gate_step covercheck go run ./cmd/covercheck "$prof"
+    run_gate_step pi-runtime-smoke env AWF_PI_RUNTIME_SMOKE=1 go test ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1
+    run_gate_step vet go vet ./...
     # Cross-compile gate: the suite only ever runs on the host platform, so a
     # package that stops building for a contributor's platform is otherwise
     # invisible until they clone. The matrix is the released set
@@ -45,12 +71,12 @@ case "$cmd" in
     host="$(go env GOOS)/$(go env GOARCH)"
     for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
       if [ "$target" != "$host" ]; then
-        GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+        run_gate_step "build-${target//\//-}" env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
       fi
     done
-    go tool golangci-lint run
-    go tool deadcode -json ./... | go run ./cmd/deadcodecheck
-    go run ./cmd/pincheck
+    run_gate_step lint go tool golangci-lint run
+    run_gate_step deadcode run_deadcode_gate
+    run_gate_step pincheck go run ./cmd/pincheck
     ;;
   lint)
     go tool golangci-lint run "$@"
@@ -64,6 +90,7 @@ case "$cmd" in
     go tool golangci-lint fmt "$@"
     ;;
   test)
+    echo "test: Pi container skipped; run './x pi-test run' alone or './x gate' to include it" >&2
     go test ./... "$@"
     ;;
   clean-test-tmp)
@@ -157,7 +184,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run|reset>|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [timings]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run|reset>|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac
