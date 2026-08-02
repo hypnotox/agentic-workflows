@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-08-01
 ---
 # ADR-0210: Corrective re-application of an applied state operation
@@ -243,3 +243,4 @@ include two ordered Reapplied events for one operation.
 ## Status history
 
 - 2026-08-01: Proposed
+- 2026-08-02: Accepted; content-sha256: 463defd27b7b68de43e89810c4c84262c100af4afdf5443598b073eb85d54047

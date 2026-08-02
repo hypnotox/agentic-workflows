@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: parsed-plan-artifacts-and-executable-projections
-status: Proposed
+status: Accepted
 date: 2026-08-02
 ---
 # ADR-parsed-plan-artifacts-and-executable-projections: Parsed plan artifacts and executable projections
@@ -220,3 +220,4 @@ records that progression.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-02: Accepted; content-sha256: 9610999c432173b32b556709cdd1192c889ab391d89d1f96b74f1db131cfd52b
