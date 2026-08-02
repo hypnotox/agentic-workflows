@@ -1028,6 +1028,31 @@ func TestCheckPropagatesLocalGlossaryError(t *testing.T) {
 	}
 }
 
+// A local glossary with valid authored terms passes the blocking glossary check,
+// while malformed standardTerms remains an advisory-only merged-layer fault.
+// CheckReport must propagate that later failure rather than treating its shared
+// output plan as proof that every advisory input was validated.
+func TestCheckReportPropagatesAdvisoryOnlyGlossaryError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: []\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/glossary.yaml"),
+		"local: true\ndata:\n  terms:\n    - term: t\n      meaning: m\n  standardTerms: just a string\n")
+	reopened, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reopened.CheckReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "standard vocabulary is malformed") || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected CheckReport to propagate the advisory standardTerms error, got %v", err)
+	}
+}
+
 // A local: true pitfalls sidecar is skipped by the render pass before its
 // data.pitfalls transform runs, but checkPitfalls reads it regardless, so a
 // structurally invalid entry list reaches Check's wiring branch rather than
