@@ -58,6 +58,7 @@ For non-trivial work, brainstorming is often useful; select any enabled skill wh
 
 Enabled skills:
 
+- `awf-effort-workflow` (support): Use one awf effort through its existing managed worktree and lifecycle. Trigger: Use when starting, resuming, switching checkout context for, integrating, or finishing a non-minimal effort.
 - `awf-adr-lifecycle` (support): Apply an ADR lifecycle transition correctly. Trigger: Use when transitioning an ADR between lifecycle states. Usually follows: proposing-adr, reviewing-adr. Common follow-ups: executing-plans, writing-plans.
 - `awf-brainstorming` (chain): Clarify an outcome and settle a grounded design. Trigger: Use for non-trivial work before deciding its design. Common follow-ups: proposing-adr, writing-plans, executing-direct.
 - `awf-bugfix` (task): Apply a fix with a known root cause. Trigger: Use when applying a fix whose root cause is already known. Usually follows: debugging. Common follow-ups: reviewing-impl.

@@ -1,0 +1,12 @@
+---
+name: {{ .prefix }}-effort-workflow
+description: Use one awf effort through its existing managed worktree and lifecycle.
+---
+
+# {{ .prefix }} effort workflow
+
+Use this entry guide for a concrete non-minimal effort. The workflow document and its shared checkpoint guidance are the single policy home. Repository sources and current-state documentation outrank checkpoint prose, and one user-managed writer owns the effort memory.
+
+Create or resume an effort with ordinary `awf effort` commands. Its owned path is `.awf/efforts/<slug>/memory.md`. When it has a managed worktree, use this runtime's native persistent checkout or context tooling only to enter the exact existing `.awf/worktrees/<slug>` worktree. Do not create a parallel harness-owned worktree, standalone memory is forbidden, infer topology, or treat activity as authority.
+
+Update checkpoints with `awf effort memory update <slug> --phase ... --next ...`. Preserve the workflow ordering: review, integration, managed-worktree removal, retrospective, then finish.

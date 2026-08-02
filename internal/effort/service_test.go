@@ -19,6 +19,50 @@ func noTopology(deps *Dependencies) {
 	deps.BranchExists = func(context.Context, string) (bool, error) { return false, nil }
 }
 
+func TestOpenRequiresCheckoutResolutionDependency(t *testing.T) {
+	root := initEffortRepo(t)
+	roots, deps := testWiring(t, root)
+	deps.ResolveCheckout = nil
+	defer func() {
+		if got := recover(); got != "effort Service: missing checkout resolution dependency" {
+			t.Fatalf("panic = %v", got)
+		}
+	}()
+	_, _ = Open(roots, deps)
+}
+
+func TestUpdateMemoryRefusesInvalidResidentsAndUnrepairedMetadata(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, nil)
+	value := "replacement"
+	if err := service.UpdateMemory("bad_slug", MemoryUpdate{Phase: &value}); err == nil || !strings.Contains(err.Error(), "invalid effort slug") {
+		t.Fatalf("invalid slug = %v", err)
+	}
+	if err := service.UpdateMemory("missing-effort", MemoryUpdate{Phase: &value}); err == nil {
+		t.Fatal("missing resident accepted")
+	}
+	if _, err := service.New(testContext(t), "Update faults"); err != nil {
+		t.Fatal(err)
+	}
+	memory := filepath.Join(root, ".awf", "efforts", "update-faults", "memory.md")
+	if err := os.Remove(memory); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UpdateMemory("update-faults", MemoryUpdate{Phase: &value}); err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing memory = %v", err)
+	}
+	if err := os.WriteFile(memory, []byte("---\neffort: update-faults\nphase: old\nnext: old\nupdated: invalid\n---\nbody\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UpdateMemory("update-faults", MemoryUpdate{Phase: &value, Next: &value}); err != nil {
+		t.Fatalf("canonical metadata refresh = %v", err)
+	}
+	raw, err := os.ReadFile(memory)
+	if err != nil || !strings.Contains(string(raw), "updated: ") || strings.Contains(string(raw), "updated: invalid") {
+		t.Fatalf("canonical metadata refresh bytes=%q err=%v", raw, err)
+	}
+}
+
 func TestFinishRenamesCleansAndRetries(t *testing.T) {
 	// invariant: tooling/effort-management:effort-record-authority (TestFinishRenamesCleansAndRetries)
 	root := initEffortRepo(t)

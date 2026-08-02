@@ -200,6 +200,44 @@ Manage the fixed .awf/worktrees/<slug> checkout and awf/<slug> branch without st
 `},
 			{Name: "integrate", Summary: "Integrate a managed worktree", MinPos: 1, MaxPos: 1,
 				HelpBody: "Usage: awf effort integrate <slug>\n\nIntegrate into the invoking clean target checkout without committing, reviewing, removing, or finishing.\n"},
+			{Name: "memory", Summary: "Update bounded effort memory metadata", MaxPos: 0,
+				HelpBody: `Usage: awf effort memory update <slug> [--phase <text>] [--next <text>]
+
+Update one or both mutable memory metadata fields. At least one of --phase and
+--next is required.
+`,
+				Children: []Command{
+					{Name: "update", Summary: "Update memory phase or next action", ValueFlags: []string{"--phase", "--next"}, MinPos: 1, MaxPos: 1,
+						HelpBody: `Usage: awf effort memory update <slug> [--phase <text>] [--next <text>]
+
+Update one or both mutable memory metadata fields. At least one of --phase and
+--next is required.
+`},
+				},
+			},
+			{Name: "activity", Summary: "Resolve or mutate advisory Pi session activity", MaxPos: 0,
+				HelpBody: `Usage: awf effort activity resolve <slug> --destination <managed|receiving> [--receiving-checkout <absolute-path>] --json
+       awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json
+       awf effort activity heartbeat <slug> --owner <uuid> --json
+       awf effort activity checkout <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --json
+       awf effort activity detach <slug> --owner <uuid> --json
+
+Activity replies are protocol-1 JSON only. Each action accepts only the flags
+shown in its usage form.
+`,
+				Children: []Command{
+					{Name: "resolve", Summary: "Resolve a validated activity destination", BoolFlags: []string{"--json"}, ValueFlags: []string{"--destination", "--receiving-checkout"}, MinPos: 1, MaxPos: 1,
+						HelpBody: "Usage: awf effort activity resolve <slug> --destination <managed|receiving> [--receiving-checkout <absolute-path>] --json\n"},
+					{Name: "attach", Summary: "Attach or take over an advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner", "--cwd", "--role", "--receiving-checkout"}, MinPos: 1, MaxPos: 1,
+						HelpBody: "Usage: awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json\n"},
+					{Name: "heartbeat", Summary: "Heartbeat an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1,
+						HelpBody: "Usage: awf effort activity heartbeat <slug> --owner <uuid> --json\n"},
+					{Name: "checkout", Summary: "Update an owned advisory activity checkout", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner", "--cwd", "--role"}, MinPos: 1, MaxPos: 1,
+						HelpBody: "Usage: awf effort activity checkout <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --json\n"},
+					{Name: "detach", Summary: "Detach an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1,
+						HelpBody: "Usage: awf effort activity detach <slug> --owner <uuid> --json\n"},
+				},
+			},
 		},
 	},
 	{

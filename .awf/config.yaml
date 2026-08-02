@@ -55,6 +55,7 @@ currentState:
   maxTopicsPerPath: 8
 prefix: awf
 skills:
+  - effort-workflow
   - adr-lifecycle
   - brainstorming
   - bugfix

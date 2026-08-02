@@ -23,7 +23,6 @@ Origin: ADR-0148
 Revised-by: ADR-0165, ADR-0174
 Backing: unbacked
 Verify: On a fixture with indirect claims, mixed directory and file requests, references, pending operations, and history, compare bare output and each of `relationships`, `invariants`, `all-rules`, `evidence`, `selectors`, `references`, `pending`, and `artifacts` independently; each projection contains only its declared tier or enrichment.
-
 ### `invariant: context-concise-projection`
 
 Context renders each topic summary and active invariant/rule count once. Direct claim summaries deduplicate globally with sorted request-index and marker-kind sources; non-direct invariant and rule summaries require their respective facets. Every visible claim has a deterministic bounded summary and occupies only its closest category: direct, invariant, additional rule, referenced context, then pending.

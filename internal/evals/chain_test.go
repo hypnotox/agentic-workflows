@@ -284,7 +284,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"subagent-driven-development": "execution", "reviewing-impl": "terminal-review",
 		"retrospective": "finish", "debugging": "conditional-creation", "bugfix": "conditional-creation",
 		"tdd": "conditional-creation", "refactor-coupling-audit": "report", "exploring": "report",
-		"orienting": "report", "roadmap-graduation": "conditional-creation",
+		"orienting": "report", "roadmap-graduation": "conditional-creation", "effort-workflow": "carry",
 	}
 	if len(roles) != len(cat.Skills) {
 		t.Fatalf("unified-effort classification has %d skills, enabled catalog has %d", len(roles), len(cat.Skills))
@@ -382,6 +382,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		// only Pi may name the handoff tool.
 		for _, name := range routineCheckpointSkills {
 			body := read(t, pathFor(name))
+			assertMemoryCheckpointIdentityAndUpdate(t, target+"/"+name, body, "<immediate next action>")
 			ordered := append([]string{}, routineOrdered...)
 			if target == "pi" {
 				ordered = append(ordered,
@@ -466,6 +467,20 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	}
 }
 
+// assertMemoryCheckpointIdentityAndUpdate proves the two alternative immutable
+// identities and the exact structured update batch at every checkpoint surface.
+func assertMemoryCheckpointIdentityAndUpdate(t *testing.T, label, body, next string) {
+	t.Helper()
+	for _, clause := range []string{
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+		"./awf effort memory update <slug> --phase \"<completed phase>\" --next \"" + next + "\"",
+	} {
+		if !strings.Contains(body, clause) {
+			t.Errorf("%s missing memory checkpoint clause %q", label, clause)
+		}
+	}
+}
+
 // TestMandatoryApprovalBoundaries asserts the two approval-boundary skills stop
 // for explicit approval, persist it, and only then continue target-natively,
 // and that the approval stop renders nowhere else (ADR-0152).
@@ -493,6 +508,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	}
 	for _, name := range approvalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
+		assertMemoryCheckpointIdentityAndUpdate(t, "pi/"+name, piBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
 			"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
 			"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
@@ -505,6 +521,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		}
 		assertNoCheckpointTimeHandoffLog(t, "pi/"+name, piBody)
 		claudeBody := read(t, skillPath(nonPiRoot, name))
+		assertMemoryCheckpointIdentityAndUpdate(t, "claude/"+name, claudeBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
 			"Then continue through the target-native successor without claiming session replacement",
 			"the workflow doc's working-memory section",

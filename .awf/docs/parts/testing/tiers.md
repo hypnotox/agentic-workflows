@@ -1,5 +1,6 @@
 ## Tiers
 
+awf has a single tier: `./x gate` runs everything, including protocol parity, the in-memory Pi three-factory runtime seam, repository-runtime cache and launcher tests, and strict full-coverage tests for the selection-gated effort association extension. The latter prove capability degradation: companion capability presence is final authority, with no foreign package publication, installation topology, or version floor. `./x gate full` runs the
 awf has a single tier: `./x gate` runs everything, including protocol parity, the pinned in-memory Pi 0.81.1
 two-extension-factory runtime seam that proves real-request context-line refresh after active-branch compaction, and the pinned repository-runtime cache and launcher tests. `./x gate full` runs the
 identical Go and containerized TypeScript steps; the `full` argument is accepted only as a

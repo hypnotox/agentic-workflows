@@ -35,7 +35,6 @@ address the residue before retrying.
 Origin: ADR-0199
 Backing: unbacked
 Verify: For each changed outcome site, check the category against the vocabulary, the condition's tense against observed state, each changed axis against what the operation could move, the rendering against the one-line numbered form, and the remedy against the movement rule: condition-only steps when nothing moved, residue-first steps when anything did.
-
 ### `invariant: typed-outcome-for-caller-branching`
 
 A cause a caller must branch on in new or deliberately converted code is a distinct error
@@ -45,7 +44,6 @@ production control flow never branches on message substrings.
 Origin: ADR-0199
 Backing: unbacked
 Verify: For each changed branching site, confirm the branch tests identity through errors.Is or errors.As on a declared type or sentinel, and that no substring match on an error message decides production control flow.
-
 ### `invariant: errors-is-over-os-predicates`
 
 New or deliberately converted code matches a standard-library condition with the
@@ -55,7 +53,6 @@ unwrap.
 Origin: ADR-0199
 Backing: unbacked
 Verify: Search the changed files for os.IsNotExist, os.IsExist, and os.IsPermission; any occurrence in a new or deliberately converted site fails.
-
 ### `invariant: consumed-identity`
 
 A new or deliberately converted exported error identity arrives in the same green
@@ -66,7 +63,6 @@ caller is named and documented in the same transaction. This specializes
 Origin: ADR-0199
 Backing: unbacked
 Verify: For each newly exported error type or sentinel in the diff, find the errors.Is or errors.As consumer in the same commit, or the named and documented consuming caller; absent both, the identity fails.
-
 ### `invariant: test-identity-assertions`
 
 A new or deliberately converted test asserts a produced error's identity through

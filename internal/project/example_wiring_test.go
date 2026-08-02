@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -290,6 +291,9 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 			path := root + "/" + rel
 			raw, err := os.ReadFile(path)
 			if err != nil {
+				if root != "../.." && errors.Is(err, fs.ErrNotExist) {
+					continue
+				}
 				t.Fatalf("read governed extension %s: %v", path, err)
 			}
 			lines := strings.Split(string(raw), "\n")

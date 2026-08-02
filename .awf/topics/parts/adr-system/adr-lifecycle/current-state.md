@@ -36,7 +36,6 @@ Origin: ADR-0042
 Revised-by: ADR-0202
 Backing: unbacked
 Verify: Read scaffoldRecord in internal/adr/adr.go, which both NewFile and NewPendingFile delegate to, and confirm it stats the computed target path and returns an already-exists error before performing any write.
-
 ### `invariant: adr-new-sequential-numbering`
 
 awf new adr allocates its identity from the branch: on the configured integrationBranch it takes the highest existing ADR number in the decisions directory plus one and never reuses a number already present there, and on any other outcome - a different branch, a detached HEAD, or a repository it cannot read - it writes a slug-identified pending record carrying no number at all.
@@ -156,7 +155,6 @@ The generated decision index separates in-flight work from compact history and n
 Origin: ADR-0135
 Backing: unbacked
 Verify: Fixtures rendered in every legal status produce the exact INDEX.md sections with no anchor annotations.
-
 ### `invariant: decision-items-enumerable`
 
 Parsing an ADR fails when its Decision section has no column-0 numbered items or when its item numbers are not sequential from 1 (a gap, duplicate, or restart). V4 additionally requires each sequential item to carry its unique stable `decision:` marker and nonempty commitment prose, while V1 through V3 retain their existing ordinal grammar.

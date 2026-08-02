@@ -12,10 +12,7 @@ query a single version or a range.
 
 - `awf audit` now enumerates committed metadata without eager blob reads, then loads only its exact configuration, ADR, and topic authority into a type-distinct immutable selection. Repository and staged checks retain complete snapshots and the full marker, coverage, and domain-sidecar validation boundary, while revisions outside historical authority can reuse their first-parent state. Context cancellation and deadline expiry abort immediately with preserved error identity instead of becoming transition warnings.
 
-- Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
-
-- New plans use `plan-v2`: task-scoped Applying and Context Decision references, slugged Definition-of-done outcomes, and phase Advances and Completes assignments are validated in working and staged universes. `awf read plan` orders only selected resolved Decisions and owning-phase outcomes, excludes whole-plan Definition of done, and adds task scope safety; plan-v1 remains byte-compatible.
-
+- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata, and protocol-1 advisory activity commands resolve, attach, heartbeat, update checkout, or detach Pi session activity without locking effort work. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the capability-gated `using_effort` skill and extension. Pi handoffs carry dual-format effort identity during migration; activity remains advisory and non-locking.
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.

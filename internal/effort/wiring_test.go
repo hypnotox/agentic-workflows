@@ -1,6 +1,8 @@
 package effort
 
 import (
+	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -28,6 +30,13 @@ func testWiring(t *testing.T, root string) (awfgit.ControlRoots, Dependencies) {
 		BranchExists: repo.BranchExists,
 		ValidateRef:  repo.ValidateRefName,
 		RemoveTree:   os.RemoveAll,
+		ResolveCheckout: func(ctx context.Context, path string) (CheckoutFacts, error) {
+			roots, err := awfgit.ResolveControlRoots(ctx, path)
+			if err != nil {
+				return CheckoutFacts{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New(err.Error()))
+			}
+			return CheckoutFacts{InvokingRoot: roots.InvokingRoot, PrimaryRoot: roots.PrimaryRoot}, nil
+		},
 	}
 }
 
