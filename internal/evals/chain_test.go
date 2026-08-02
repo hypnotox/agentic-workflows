@@ -369,6 +369,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		// only Pi may name the handoff tool.
 		for _, name := range routineCheckpointSkills {
 			body := read(t, pathFor(name))
+			assertMemoryCheckpointIdentityAndUpdate(t, target+"/"+name, body, "<immediate next action>")
 			ordered := append([]string{}, routineOrdered...)
 			if target == "pi" {
 				ordered = append(ordered,
@@ -437,6 +438,20 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	}
 }
 
+// assertMemoryCheckpointIdentityAndUpdate proves the two alternative immutable
+// identities and the exact structured update batch at every checkpoint surface.
+func assertMemoryCheckpointIdentityAndUpdate(t *testing.T, label, body, next string) {
+	t.Helper()
+	for _, clause := range []string{
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+		"./awf effort memory update <slug> --phase \"<completed phase>\" --next \"" + next + "\"",
+	} {
+		if !strings.Contains(body, clause) {
+			t.Errorf("%s missing memory checkpoint clause %q", label, clause)
+		}
+	}
+}
+
 // TestMandatoryApprovalBoundaries asserts the two approval-boundary skills stop
 // for explicit approval, persist it, and only then continue target-natively,
 // and that the approval stop renders nowhere else (ADR-0152).
@@ -463,6 +478,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	}
 	for _, name := range approvalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
+		assertMemoryCheckpointIdentityAndUpdate(t, "pi/"+name, piBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
 			"invoke `handoff_session` alone",
 			"unless the user cancels during the five-second window",
@@ -473,6 +489,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			t.Errorf("pi/%s names handoff_session before the approval request", name)
 		}
 		claudeBody := read(t, skillPath(nonPiRoot, name))
+		assertMemoryCheckpointIdentityAndUpdate(t, "claude/"+name, claudeBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
 			"Then continue through the target-native successor without claiming session replacement",
 			"the workflow doc's working-memory section",

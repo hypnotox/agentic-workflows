@@ -179,9 +179,9 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	phase, next := "Implementing", "Exercise the attached checkout."
-	var memoryOut bytes.Buffer
-	if err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: "memory update", inv: invocation{positionals: []string{slug}, bools: map[string]bool{}, values: map[string]string{"--phase": phase, "--next": next}}, stdout: &memoryOut}, openEffortComposition); err != nil || memoryOut.Len() != 0 {
-		t.Fatalf("memory update error=%v stdout=%q", err, memoryOut.String())
+	code, memoryOut, memoryErr := runEffortCLI(t, primary, "effort", "memory", "update", slug, "--phase", phase, "--next", next)
+	if code != 0 || memoryOut != "" || memoryErr != "" {
+		t.Fatalf("memory update code=%d stdout=%q stderr=%q", code, memoryOut, memoryErr)
 	}
 	migrated, err := os.ReadFile(memoryPath)
 	if err != nil || !strings.HasPrefix(string(migrated), "---\neffort: activity-contract\n") || !strings.Contains(string(migrated), "phase: Implementing\n") || !strings.Contains(string(migrated), "next: Exercise the attached checkout.\n") || !strings.Contains(string(migrated), "updated: \"") || !strings.Contains(string(migrated), "Z\"\n---\n") || !strings.HasSuffix(string(migrated), body) {
@@ -212,23 +212,22 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 	assertActivityFields(t, reply, effort.ActivityDetached, "effort")
 
 	for _, test := range []struct {
-		sub    string
-		slug   string
-		values map[string]string
-		want   string
+		args []string
+		want string
 	}{
-		{"memory update", slug, nil, "usage: awf effort memory update"},
-		{"memory update", "missing-effort", map[string]string{"--phase": phase}, "next action"},
-		{"activity resolve", slug, nil, "requires --json"},
-		{"activity attach", slug, map[string]string{"--owner": owner}, "requires --json"},
-		{"activity heartbeat", slug, nil, "requires --json"},
-		{"activity checkout", slug, map[string]string{"--owner": owner}, "requires --json"},
-		{"activity detach", slug, nil, "requires --json"},
+		{[]string{"effort", "memory", "update", slug}, "usage: awf effort memory update"},
+		{[]string{"effort", "memory", "update", "missing-effort", "--phase", phase}, "next action"},
+		{[]string{"effort", "activity", "resolve", slug, "--destination", "receiving"}, "requires --json"},
+		{[]string{"effort", "activity", "attach", slug, "--owner", owner}, "requires --json"},
+		{[]string{"effort", "activity", "heartbeat", slug, "--owner", owner}, "requires --json"},
+		{[]string{"effort", "activity", "checkout", slug, "--owner", owner}, "requires --json"},
+		{[]string{"effort", "activity", "detach", slug, "--owner", owner}, "requires --json"},
+		{[]string{"effort", "activity", "heartbeat", slug, "--owner", owner, "--json", "--json"}, "given more than once"},
+		{[]string{"effort", "activity", "heartbeat", slug, "--owner", owner, "--cwd", primary, "--json"}, "unknown flag"},
 	} {
-		var stdout bytes.Buffer
-		err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: test.sub, inv: invocation{positionals: []string{test.slug}, bools: map[string]bool{}, values: test.values}, stdout: &stdout}, openEffortComposition)
-		if err == nil || stdout.Len() != 0 || !strings.Contains(err.Error(), test.want) {
-			t.Errorf("%s failure error=%v stdout=%q", test.sub, err, stdout.String())
+		code, stdout, stderr := runEffortCLI(t, primary, test.args...)
+		if code == 0 || stdout != "" || !strings.Contains(stderr, test.want) {
+			t.Errorf("%q failure code=%d stdout=%q stderr=%q", test.args, code, stdout, stderr)
 		}
 	}
 
@@ -280,16 +279,34 @@ func assertActivityRefusal(t *testing.T, reply map[string]json.RawMessage, condi
 
 func runActivityCommand(t *testing.T, root, sub string, values map[string]string) map[string]json.RawMessage {
 	t.Helper()
-	var stdout bytes.Buffer
-	err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: invocation{positionals: []string{"activity-contract"}, bools: map[string]bool{"--json": true}, values: values}, stdout: &stdout}, openEffortComposition)
-	if err != nil {
-		t.Fatalf("%s: %v", sub, err)
+	args := []string{"effort"}
+	args = append(args, strings.Fields(sub)...)
+	args = append(args, "activity-contract")
+	for _, flag := range []string{"--destination", "--owner", "--cwd", "--role", "--receiving-checkout"} {
+		if value, ok := values[flag]; ok {
+			args = append(args, flag, value)
+		}
+	}
+	args = append(args, "--json")
+	code, stdout, stderr := runEffortCLI(t, root, args...)
+	if code != 0 || stderr != "" {
+		t.Fatalf("%s: code=%d stdout=%q stderr=%q", sub, code, stdout, stderr)
 	}
 	var reply map[string]json.RawMessage
-	if err := json.Unmarshal(stdout.Bytes(), &reply); err != nil {
-		t.Fatalf("%s JSON %q: %v", sub, stdout.String(), err)
+	if err := json.Unmarshal([]byte(stdout), &reply); err != nil {
+		t.Fatalf("%s JSON %q: %v", sub, stdout, err)
 	}
 	return reply
+}
+
+// runEffortCLI exercises the public driver, including nested resolution,
+// parse-once validation, project guards, gates, and effort dispatch.
+func runEffortCLI(t *testing.T, root string, args ...string) (int, string, string) {
+	t.Helper()
+	t.Chdir(root)
+	var stdout, stderr bytes.Buffer
+	code := run(append([]string{"awf"}, args...), &stdout, &stderr)
+	return code, stdout.String(), stderr.String()
 }
 
 func assertActivityFields(t *testing.T, reply map[string]json.RawMessage, condition effort.ActivityCondition, present ...string) {

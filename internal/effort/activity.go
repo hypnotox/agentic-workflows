@@ -31,10 +31,13 @@ func lockActivity(path string) func() {
 	return lock.Unlock
 }
 
+// CheckoutRole identifies the checkout role used by an activity claim.
 type CheckoutRole string
 
 const (
-	CheckoutManaged   CheckoutRole = "managed"
+	// CheckoutManaged identifies the effort's managed worktree.
+	CheckoutManaged CheckoutRole = "managed"
+	// CheckoutReceiving identifies the checkout receiving continued work.
 	CheckoutReceiving CheckoutRole = "receiving"
 )
 
@@ -44,18 +47,23 @@ type CheckoutFacts struct {
 	PrimaryRoot  string
 }
 
+// CheckoutResolutionKind classifies a checkout-resolution refusal.
 type CheckoutResolutionKind string
 
 const (
-	CheckoutUnsafe             CheckoutResolutionKind = "unsafe"
+	// CheckoutUnsafe reports an unsafe checkout resident.
+	CheckoutUnsafe CheckoutResolutionKind = "unsafe"
+	// CheckoutRepositoryMismatch reports a checkout outside the effort repository.
 	CheckoutRepositoryMismatch CheckoutResolutionKind = "repository-mismatch"
 )
 
+// CheckoutResolutionError retains a classified checkout-resolution cause.
 type CheckoutResolutionError struct {
 	kind  CheckoutResolutionKind
 	cause error
 }
 
+// NewCheckoutResolutionError constructs a classified checkout-resolution error.
 func NewCheckoutResolutionError(kind CheckoutResolutionKind, cause error) *CheckoutResolutionError {
 	if kind != CheckoutUnsafe && kind != CheckoutRepositoryMismatch {
 		panic("effort CheckoutResolutionError: invalid kind")
@@ -65,6 +73,8 @@ func NewCheckoutResolutionError(kind CheckoutResolutionKind, cause error) *Check
 	}
 	return &CheckoutResolutionError{kind: kind, cause: cause}
 }
+
+// Kind returns the refusal classification.
 func (e *CheckoutResolutionError) Kind() CheckoutResolutionKind { return e.kind }
 func (e *CheckoutResolutionError) Error() string {
 	return fmt.Sprintf("checkout resolution %s: %v", e.kind, e.cause)
@@ -81,22 +91,36 @@ type Activity struct {
 	ReceivingCheckout string       `json:"receivingCheckout"`
 	Role              CheckoutRole `json:"role"`
 }
+
+// ActivityCondition classifies an activity operation result.
 type ActivityCondition string
 
 const (
-	ActivityReady              ActivityCondition = "ready"
-	ActivityAttached           ActivityCondition = "attached"
-	ActivityTakenOver          ActivityCondition = "taken-over"
-	ActivityHeartbeat          ActivityCondition = "heartbeat"
-	ActivityCheckoutUpdated    ActivityCondition = "checkout-updated"
-	ActivityDetached           ActivityCondition = "detached"
-	ActivityNotOwner           ActivityCondition = "not-owner"
-	ActivityMissing            ActivityCondition = "missing"
-	ActivityInvalidMemory      ActivityCondition = "invalid-memory"
-	ActivityUnsafeResident     ActivityCondition = "unsafe-resident"
+	// ActivityReady reports a resolvable destination without mutation.
+	ActivityReady ActivityCondition = "ready"
+	// ActivityAttached reports a newly recorded activity claim.
+	ActivityAttached ActivityCondition = "attached"
+	// ActivityTakenOver reports replacement of a prior activity claim.
+	ActivityTakenOver ActivityCondition = "taken-over"
+	// ActivityHeartbeat reports a renewed owner claim.
+	ActivityHeartbeat ActivityCondition = "heartbeat"
+	// ActivityCheckoutUpdated reports a changed owner checkout.
+	ActivityCheckoutUpdated ActivityCondition = "checkout-updated"
+	// ActivityDetached reports removal of an activity claim.
+	ActivityDetached ActivityCondition = "detached"
+	// ActivityNotOwner reports an action requested by a non-owner.
+	ActivityNotOwner ActivityCondition = "not-owner"
+	// ActivityMissing reports an absent effort or activity claim.
+	ActivityMissing ActivityCondition = "missing"
+	// ActivityInvalidMemory reports invalid owned-memory metadata.
+	ActivityInvalidMemory ActivityCondition = "invalid-memory"
+	// ActivityUnsafeResident reports an unsafe effort resident.
+	ActivityUnsafeResident ActivityCondition = "unsafe-resident"
+	// ActivityRepositoryMismatch reports incompatible checkout topology.
 	ActivityRepositoryMismatch ActivityCondition = "repository-mismatch"
 )
 
+// ActivityReply is the protocol-1 JSON result of an activity operation.
 type ActivityReply struct {
 	SchemaVersion int                  `json:"schemaVersion"`
 	Condition     ActivityCondition    `json:"condition"`
@@ -107,15 +131,21 @@ type ActivityReply struct {
 	PriorClaim    *Activity            `json:"priorClaim,omitempty"`
 	Outcome       *ActionableOutcome   `json:"outcome,omitempty"`
 }
+
+// ActivityEffort identifies the effort in an activity reply.
 type ActivityEffort struct {
 	Slug  string `json:"slug"`
 	Title string `json:"title"`
 }
+
+// ActivityDestination describes where continued work should occur.
 type ActivityDestination struct {
 	CWD               string       `json:"cwd"`
 	Role              CheckoutRole `json:"role"`
 	ReceivingCheckout string       `json:"receivingCheckout"`
 }
+
+// ActionableOutcome describes a refusal and its safe next action.
 type ActionableOutcome struct {
 	Category        string   `json:"category"`
 	Condition       string   `json:"condition"`
@@ -168,7 +198,7 @@ func changedActivityForFailure(operation activityOperation, cause error) bool {
 	if operation != activityAttach && operation != activityTakeover && operation != activityHeartbeat && operation != activityCheckout && operation != activityDetach {
 		return false
 	}
-	var storage *ActivityStorageError
+	var storage *activityStorageError
 	return errors.As(cause, &storage) && storage.Stage == "directory-fsync"
 }
 
@@ -183,32 +213,32 @@ func validActivityTime(v time.Time) bool {
 }
 func validActivityPath(v string) bool { return v != "" && filepath.IsAbs(v) && filepath.Clean(v) == v }
 
-type ActivityStorageError struct {
+type activityStorageError struct {
 	Operation activityOperation
 	Stage     string
 	Err       error
 }
 
-func (e *ActivityStorageError) Error() string {
+func (e *activityStorageError) Error() string {
 	return fmt.Sprintf("activity %s %s: %v", e.Operation, e.Stage, e.Err)
 }
-func (e *ActivityStorageError) Unwrap() error { return e.Err }
+func (e *activityStorageError) Unwrap() error { return e.Err }
 
-type ActivityPublicationRefusal struct {
+type activityPublicationRefusal struct {
 	Operation activityOperation
 	Err       error
 }
 
-func (e *ActivityPublicationRefusal) Error() string {
+func (e *activityPublicationRefusal) Error() string {
 	return fmt.Sprintf("activity %s conditional-publication identity refusal: %v", e.Operation, e.Err)
 }
-func (e *ActivityPublicationRefusal) Unwrap() error { return e.Err }
+func (e *activityPublicationRefusal) Unwrap() error { return e.Err }
 func activityStorageFailure(operation activityOperation, stage string, err error) error {
 	var identity *publicationIdentityError
 	if errors.As(err, &identity) {
-		return &ActivityPublicationRefusal{Operation: operation, Err: err}
+		return &activityPublicationRefusal{Operation: operation, Err: err}
 	}
-	return &ActivityStorageError{Operation: operation, Stage: stage, Err: err}
+	return &activityStorageError{Operation: operation, Stage: stage, Err: err}
 }
 func (s store) replaceActivity(path string, a Activity, expected *fileIdentity, operation activityOperation) error {
 	raw, err := json.Marshal(a)
@@ -342,6 +372,7 @@ func invalidMemoryRefusal(operation activityOperation, slug, title string, raw [
 }
 
 // ResolveActivity validates the named destination but does not mutate an activity claim.
+// ResolveActivity resolves a safe destination without changing activity state.
 func (s *Service) ResolveActivity(ctx context.Context, slug string, role CheckoutRole, receiving string) ActivityReply {
 	facts, err := s.resolveCheckout(ctx, s.paths.roots.InvokingRoot)
 	if err != nil {
@@ -462,7 +493,7 @@ func (s *Service) activityCurrentIdentity(slug string) (*Activity, *fileIdentity
 	return &a, &identity, nil
 }
 func (s *Service) publicationRefusal(slug string, operation activityOperation, eff *ActivityEffort, err error) ActivityReply {
-	var refusal *ActivityPublicationRefusal
+	var refusal *activityPublicationRefusal
 	if !errors.As(err, &refusal) {
 		return refusalFor(operation, ActivityUnsafeResident, err, nil)
 	}
@@ -475,6 +506,7 @@ func (s *Service) publicationRefusal(slug string, operation activityOperation, e
 	return out
 }
 
+// AttachActivity records an activity claim after validating its destination.
 func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) ActivityReply {
 	unlock := lockActivity(s.paths.activityFile(slug))
 	defer unlock()
@@ -517,9 +549,13 @@ func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) A
 	r.Activity = &a
 	return r
 }
+
+// HeartbeatActivity renews the claim belonging to owner.
 func (s *Service) HeartbeatActivity(slug, owner string) ActivityReply {
 	return s.mutateActivity(slug, owner, activityHeartbeat, ActivityHeartbeat, func(a *Activity) { a.HeartbeatAt = s.now().UTC() })
 }
+
+// CheckoutActivity changes the owning claim's validated checkout destination.
 func (s *Service) CheckoutActivity(ctx context.Context, slug, owner, cwd string, role CheckoutRole) ActivityReply {
 	// Revalidate the current claim before deciding the only legal destination.
 	prior, err := s.activityCurrent(slug)
@@ -587,6 +623,8 @@ func (s *Service) verifyActivityDestination(ctx context.Context, slug string, a 
 	}
 	return NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("managed checkout is not registered"))
 }
+
+// DetachActivity removes the activity claim belonging to owner.
 func (s *Service) DetachActivity(slug, owner string) ActivityReply {
 	unlock := lockActivity(s.paths.activityFile(slug))
 	defer unlock()

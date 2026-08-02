@@ -248,7 +248,7 @@ func TestActivityProtocolValidationAndCheckoutResolutionError(t *testing.T) {
 	}
 	publication := publicationIdentityRefusal(cause)
 	wrapped := activityStorageFailure(activityHeartbeat, "replace", publication)
-	var refusal *ActivityPublicationRefusal
+	var refusal *activityPublicationRefusal
 	if !errors.As(wrapped, &refusal) || !errors.Is(wrapped, cause) || !errors.Is(refusal, cause) {
 		t.Fatalf("identity refusal wrapping = %v", wrapped)
 	}

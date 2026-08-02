@@ -195,23 +195,49 @@ func TestPiMinimumRuntime(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestHandoffLifecycleIndependentOfEffortState)
 func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined"} {
+	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined", "hasMatchingMemoryIdentity", "Effort: ${slug}", "canonicalEffortScalar"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff lifecycle output missing %q", want)
 		}
 	}
 	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
-	if err != nil || !strings.Contains(string(body), "handoff counts down, cancels, cleans pending, and links parent before setup kickoff") {
-		t.Fatalf("TypeScript lifecycle behavior proof missing: %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"handoff counts down, cancels, cleans pending, and links parent before setup kickoff",
+		"handoff accepts only bounded dual-format memory identities",
+		"Effort: work\\ncheckpoint\\n",
+		"effort: work\\nphase: [deliberately invalid",
+		"effort: 'work'",
+		"Effort: work\\r\\ncheckpoint",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("TypeScript lifecycle behavior contract missing %q", want)
+		}
 	}
 }
 
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestHandoffPublicOwnedMemoryContract)
 func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", ".awf/efforts/", "/memory.md", "1048576", "TextDecoder", "sameIdentity", "Effort: ${slug}", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
+	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", ".awf/efforts/", "/memory.md", "1048576", "TextDecoder", "sameIdentity", "Effort: ${slug}", "canonicalEffortScalar", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff public contract missing %q", want)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"handoff accepts only bounded dual-format memory identities",
+		"effort: work\\n---\\n",
+		"effort: work\\neffort: work",
+		"effort: 123", "effort: true", "effort: [work]", "effort: other",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("TypeScript public-contract behavior case missing %q", want)
 		}
 	}
 	for _, banned := range []string{"runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
