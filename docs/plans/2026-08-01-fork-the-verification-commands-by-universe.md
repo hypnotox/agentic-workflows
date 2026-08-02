@@ -27,7 +27,7 @@ now-enabled gates keep quiet.
 
 ADR-0207 is `Proposed`. Phase 1 appends its `Accepted` and `Implementing` status events and Applied
 batch 1; Phases 2 to 5 each append one further Applied batch in declaration order. The batch
-partition is 2 / 11 / 1 / 1 / 1 across the sixteen declared operations, and the ADR's State changes
+partition is 2 / 11 / 1 / 2 / 1 across the seventeen declared operations, and the ADR's State changes
 list is sequenced to match. Every batch task also flips the ADR's frontmatter `status:` field, which
 the parser cross-checks against the latest Status history entry. The `Implemented` flip lands in
 Phase 5's transaction alongside the final Applied batch, because an `Implementing` status with no
@@ -46,15 +46,16 @@ deferred to the post-terminal-review transaction.
   `internal/migrate/migrate.go`, `.awf/config.yaml`, `x`, `README.md`, `.githooks/check-nested-staged`,
   `templates/hooks/pre-commit.sh.tmpl`, `templates/docs/working-with-awf.md.tmpl`,
   `examples/sundial/.awf/config.yaml`, the authored `.awf/` inputs ADR-0207 items 6 and 12 name, the
-  test files each phase names, and the eight topic-claim part files the batches mutate:
+  test files each phase names, and the nine topic-claim part files the batches mutate:
   `.awf/topics/parts/tooling/cli/current-state.md`,
   `.awf/topics/parts/tooling/quality-gates/current-state.md`,
   `.awf/topics/parts/tooling/audit-and-snapshots/current-state.md`,
   `.awf/topics/parts/code-design/dependency-composition/current-state.md`,
   `.awf/topics/parts/rendering/catalog-and-targets/current-state.md`,
   `.awf/topics/parts/config/validation/current-state.md`,
-  `.awf/topics/parts/rendering/companion-scripts/current-state.md`, and
-  `.awf/topics/parts/rendering/sync-and-drift/current-state.md`.
+  `.awf/topics/parts/rendering/companion-scripts/current-state.md`,
+  `.awf/topics/parts/rendering/sync-and-drift/current-state.md`, and
+  `.awf/topics/parts/invariants/current-state-authority/current-state.md`.
 - **Deleted:** `cmd/awf/invariants.go`, `cmd/awf/invariants_test.go`.
 
 ## Phase 1: Gate the check family and remove the per-child gating mechanism
@@ -358,8 +359,11 @@ Phase 2's knob-first change binds only when a gate is off, which after this phas
   which pins the removed `x` line verbatim. Two further test files reference the deleted symbols and
   must be updated or the phase does not compile: `cmd/awf/run_test.go` (the `runInvariants` sites
   around :280, :799, :827, :836, and :1069-1070, including the dependency-composition wiring-table row
-  `{file: "invariants.go", owner: "runInvariants", ...}`) and `cmd/awf/gate_test.go` (the
-  `"check invariants"` gated-command table entry around :226). Verify with
+  `{file: "invariants.go", owner: "runInvariants", ...}`), `internal/project/currentstate_test.go`
+  (delete the removed report API's tests, then replace the
+  `invariants/current-state-authority:invariants-zero-slugs-clean` proof with a focused current-state
+  check asserting that a project with no invariant claims loads and reports no findings or error),
+  and `cmd/awf/gate_test.go` (the `"check invariants"` gated-command table entry around :226). Verify with
   `git grep -F 'check invariants' -- . ':!docs/decisions' ':!docs/plans' ':!changelog' ':!internal/migrate/renameretiredcommands.go' ':!internal/migrate/renameretiredcommands_test.go'`
   returning no output; the two migrate files are excluded because ADR-0207 item 11 freezes the
   18-to-19 migration, which contractually keeps the retired spelling. Also confirm `./x gate`'s
@@ -401,12 +405,16 @@ Phase 2's knob-first change binds only when a gate is off, which after this phas
   carried-forward check-architecture cleanup in `.awf/docs/parts/roadmap/ideas.md`; resolve the
   deferred entry noting `awf check drift` and `awf check state` as uninvoked. The two gate-composition
   parts are NOT here: Task 2.8 rewrites them in the phase that retires what they describe.
-- [ ] **Task 4.5: Apply ADR-0207 batch 4.** Append one `Applied` event for
-  `update tooling/quality-gates:example-adopter-checked`, and rewrite that claim's prose to drop
-  `awf check invariants` from what `./x check` runs inside the example, to record that `./x check`
-  invokes the repo universe there, and to record that the example runs with both opt-in gates
-  enabled. Append `ADR-0207` to its `Revised-by`. All three changes are why this claim's single update
-  lives here.
+- [ ] **Task 4.5: Apply ADR-0207 batch 4.** Append one `Applied` event listing, in declaration order,
+  `update invariants/current-state-authority:invariants-zero-slugs-clean` and
+  `update tooling/quality-gates:example-adopter-checked`. Rewrite `invariants-zero-slugs-clean` to
+  state that a project declaring no invariant claims loads successfully and `awf check repo state`
+  reports no backing findings or error; preserve its Origin, append `ADR-0207` to `Revised-by`, and
+  place its proof marker on Task 4.1's focused current-state check. Rewrite `example-adopter-checked`
+  to drop `awf check invariants` from what `./x check` runs inside the example, record that `./x check`
+  invokes the repo universe there, and record that the example runs with both opt-in gates enabled.
+  Append `ADR-0207` to its `Revised-by`. Those three example changes are why that claim's single
+  update lives here.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -463,7 +471,7 @@ feat(tooling): disclose a disabled opt-in check
   plan names, and the dead-code step with `runInvariants`, `CurrentStateInvariants`, `InvariantReport`,
   and `UngatedGroupChildren` all gone.
 - ADR-0207 carries `Accepted`, `Implementing`, five `Applied` events, and `Implemented`, whose
-  operations, concatenated in order, equal its declared sixteen.
+  operations, concatenated in order, equal its declared seventeen.
 
 ## Notes
 
