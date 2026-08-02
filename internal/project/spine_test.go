@@ -1328,6 +1328,9 @@ func TestProposingAdrTemplate(t *testing.T) {
 	// Assert load-bearing phrases unique to proposing-adr
 	loadBearing := []string{
 		"one decision per ADR",
+		"before any ADR-file mutation",
+		"Read the exact file it creates",
+		"Never create or replace an ADR by any other mechanism",
 		"Context",
 		"Consequences",
 		"status: Proposed",
