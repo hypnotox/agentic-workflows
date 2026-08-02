@@ -25,7 +25,7 @@ No one-off migration state is stored in `internal/manifest`, which remains the r
 ## Phase 1: Accept authority and prove the complete migration in a copied repository
 
 **Execution mode: inline.**
-Completes: ["copied-migration-proven", "relicensing-authority-cleared", "recovery-proven"]
+Advances: ["copied-migration-proven", "relicensing-authority-cleared", "recovery-proven"]
 
 ### Task 1.1: Accept both reviewed decisions without applying state changes
 Latitude: exact
@@ -163,7 +163,7 @@ feat(tooling): verify exact commit provenance
 
 **Execution mode: inline.**
 Advances: ["project-license-agpl", "repository-policy-active"]
-Completes: ["published-history-unchanged", "unpublished-dag-recreated", "identity-and-signatures-correct"]
+Completes: ["copied-migration-proven", "relicensing-authority-cleared", "recovery-proven", "published-history-unchanged", "unpublished-dag-recreated", "identity-and-signatures-correct"]
 
 ### Task 4.1: Stop writers and freeze the live transaction manifest
 Latitude: exact
