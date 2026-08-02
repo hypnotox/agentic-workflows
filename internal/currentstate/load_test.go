@@ -195,6 +195,14 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("policy universe = %#v, want %#v", got, want)
 	}
+	for _, docsDir := range []string{"./docs", "docs/"} {
+		spelled := *cfg
+		spelled.DocsDir = docsDir
+		got, err := currentstate.LoadUniverseFromTree(clean, &spelled)
+		if err != nil || !reflect.DeepEqual(got, want) {
+			t.Fatalf("docsDir %q policy universe = %#v, %v; want %#v", docsDir, got, err, want)
+		}
+	}
 	for _, changed := range []map[string]string{
 		{
 			"docs/decisions/0001-first.md":                 legacyADR(),

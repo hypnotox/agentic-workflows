@@ -1,6 +1,7 @@
 package currentstate
 
 import (
+	"path"
 	"slices"
 	"strings"
 
@@ -78,7 +79,7 @@ func authorityFromTree(tree *snapshot.Tree, cfg *config.Config) ([]adr.ADR, map[
 // routing is enforced by adr.ParseRecord, which also rejects a non-reserved file
 // that is neither form.
 func adrsFromTree(tree *snapshot.Tree, docsDir string) ([]adr.ADR, map[string][]byte, error) {
-	prefix := docsDir + "/decisions/"
+	prefix := path.Join(docsDir, "decisions") + "/"
 	var records []adr.ADR
 	sources := map[string][]byte{}
 	for _, f := range tree.List() {

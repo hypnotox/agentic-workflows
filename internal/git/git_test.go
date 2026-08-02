@@ -110,6 +110,19 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 		_, err := repo.FirstParentChangedPaths(ctx, "HEAD")
 		return err
 	})
+	assertCanceled("first-parent diff paths", 4, func(ctx context.Context) error {
+		_, err := repo.FirstParentChangedPaths(ctx, "HEAD")
+		return err
+	})
+
+	nestedFixture := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, nestedFixture, "base", map[string]string{"nested/inside.txt": "inside", "root.txt": "root"})
+	gitfixture.Commit(t, nestedFixture, "head", map[string]string{"root.txt": "changed"})
+	nestedRepo := gitRepo(t, nestedFixture.Root())
+	assertCanceled("first-parent recursive paths", 3, func(ctx context.Context) error {
+		_, err := nestedRepo.FirstParentChangedPaths(ctx, "HEAD")
+		return err
+	})
 }
 
 func TestWorkingPaths(t *testing.T) {

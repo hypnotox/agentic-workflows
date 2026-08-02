@@ -11,6 +11,7 @@ import (
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -450,6 +451,66 @@ func TestFirstParentChangedPathsContracts(t *testing.T) {
 	}
 	if _, err := handle.FirstParentChangedPaths(testContext(t), "missing-revision"); err == nil {
 		t.Fatal("first-parent paths accepted a missing revision")
+	}
+}
+
+func TestFirstParentChangedPathsReportsCorruptTreeEvidence(t *testing.T) {
+	for _, target := range []string{"current tree", "parent tree", "parent subtree", "changed subtree"} {
+		t.Run(target, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			dir := repo.Root()
+			base := gitfixture.Commit(t, repo, "base", map[string]string{"nested/base.txt": "base\n"})
+			head := gitfixture.Commit(t, repo, "head", map[string]string{"nested/head.txt": "head\n"})
+			var removeHash string
+			switch target {
+			case "current tree":
+				removeHash = gitfixture.TreeHash(t, repo, head)
+			case "parent tree":
+				removeHash = gitfixture.TreeHash(t, repo, base)
+			case "parent subtree":
+				commit := walkCommitObject(t, dir, base)
+				tree, err := commit.Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				subtree, err := tree.Tree("nested")
+				if err != nil {
+					t.Fatal(err)
+				}
+				removeHash = subtree.Hash.String()
+			case "changed subtree":
+				backend := openWalkRepo(t, dir)
+				top := &object.Tree{Entries: []object.TreeEntry{{Name: "nested", Mode: filemode.Dir, Hash: plumbing.NewHash(strings.Repeat("1", 40))}}}
+				encodedTree := backend.Storer.NewEncodedObject()
+				if err := top.Encode(encodedTree); err != nil {
+					t.Fatal(err)
+				}
+				treeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "corrupt subtree\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(base)}}
+				encodedCommit := backend.Storer.NewEncodedObject()
+				if err := commit.Encode(encodedCommit); err != nil {
+					t.Fatal(err)
+				}
+				commitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head = commitHash.String()
+			}
+			if removeHash != "" {
+				if err := os.Remove(filepath.Join(dir, ".git", "objects", removeHash[:2], removeHash[2:])); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if paths, err := walkRepo(t, dir).FirstParentChangedPaths(testContext(t), head); err == nil {
+				t.Fatalf("first-parent paths accepted missing tree evidence: %#v", paths)
+			} else if errors.Is(err, plumbing.ErrObjectNotFound) {
+				t.Fatalf("first-parent paths leaked backend error identity: %v", err)
+			}
+		})
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -323,6 +324,28 @@ func fixedRevisionState(lock *manifest.Lock, found bool, universe currentstate.U
 // invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits)
 func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testing.T) {
 	ctx := testContext(t)
+	t.Run("production reduced loader preserves ordinary findings", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
+			".awf/config.yaml": "prefix: test\nintegrationBranch: master\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
+		})
+		gitfixture.Commit(t, repo, "not conventional", map[string]string{"internal/code.go": "package internal\n"})
+		gitfixture.Commit(t, repo, "feat(awf): malformed marker", map[string]string{
+			"internal/proof_test.go": "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
+		})
+		gitfixture.Commit(t, repo, "feat(awf): malformed sidecar", map[string]string{".awf/domains/alpha.yaml": "unknown: [\n"})
+
+		findings, _, err := Run(ctx, repo.Root(), base, "HEAD", Inputs{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if countRule(findings, "conventional-commits", severity.Error) != 1 {
+			t.Fatalf("ordinary commit findings changed: %#v", findings)
+		}
+		if countRule(findings, currentStateTransitionRule, severity.Warn) != 0 {
+			t.Fatalf("marker/domain-only historical bytes produced transition warnings: %#v", findings)
+		}
+	})
 	outside := awfgit.Commit{Revision: "outside"}
 	commits := []awfgit.Commit{
 		{Revision: "code", Parents: []string{outside.Revision}, Changes: []awfgit.FileChange{{Path: "internal/code.go", Action: awfgit.Modified}}},
@@ -336,6 +359,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		{Revision: "delete", Parents: []string{"custom-adr"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Deleted}}},
 		{Revision: "rename", Parents: []string{"delete"}, Changes: []awfgit.FileChange{{Path: "records/decisions/0002-two.md", Action: awfgit.Deleted}, {Path: "records/decisions/0003-three.md", Action: awfgit.Added}}},
 		{Revision: "merge", Parents: []string{"rename", "incoming"}, IsMerge: true},
+		{Revision: "merge-ambiguous", Parents: []string{"merge", "incoming-two"}, IsMerge: true},
 	}
 	loads := map[string]int{}
 	load := func(_ context.Context, revision string) (*revisionState, error) {
@@ -350,10 +374,15 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		return state, nil
 	}
 	firstParentPaths := func(_ context.Context, revision string) ([]string, error) {
-		if revision != "merge" {
+		switch revision {
+		case "merge":
+			return []string{"records/decisions/0004-merge.md"}, nil
+		case "merge-ambiguous":
+			return nil, errors.New("first-parent evidence unavailable")
+		default:
 			t.Fatalf("first-parent paths requested for %q", revision)
+			return nil, nil
 		}
-		return []string{"records/decisions/0004-merge.md"}, nil
 	}
 	op := newHistoryOperationWithRelevance(commits, Inputs{}, load, firstParentPaths, func(context.Context) ([]Finding, error) { return nil, nil })
 	for _, commit := range commits {
@@ -364,13 +393,31 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 	if loads["outside"] != 1 || loads["code"] != 0 || loads["marker"] != 0 {
 		t.Fatalf("irrelevant code or marker changes reloaded state: %#v", loads)
 	}
-	for _, revision := range []string{"sidecar", "config", "topic", "default-adr", "custom-config", "custom-adr", "delete", "rename", "merge"} {
+	for _, revision := range []string{"sidecar", "config", "topic", "default-adr", "custom-config", "custom-adr", "delete", "rename", "merge", "merge-ambiguous"} {
 		if loads[revision] != 1 {
 			t.Errorf("loads[%s] = %d, want 1", revision, loads[revision])
 		}
 	}
-	if loads["incoming"] != 0 {
+	if loads["incoming"] != 0 || loads["incoming-two"] != 0 {
 		t.Errorf("incoming merge parent was loaded during first-parent relevance: %#v", loads)
+	}
+
+	canonicalLoads := map[string]int{}
+	parent := fixedRevisionState(nil, false, currentstate.Universe{})
+	parent.configReady = true
+	parent.config = &config.Config{DocsDir: "./docs/"}
+	canonical := newHistoryOperationWithRelevance(
+		[]awfgit.Commit{{Revision: "canonical-child", Parents: []string{"canonical-parent"}, Changes: []awfgit.FileChange{{Path: "docs/decisions/0001-one.md"}}}},
+		Inputs{},
+		func(_ context.Context, revision string) (*revisionState, error) {
+			canonicalLoads[revision]++
+			if revision == "canonical-parent" {
+				return parent, nil
+			}
+			return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+		}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if _, err := canonical.stateForCommit(ctx, canonical.commits[0]); err != nil || canonicalLoads["canonical-child"] != 1 {
+		t.Fatalf("non-canonical docsDir reused stale state: loads=%#v err=%v", canonicalLoads, err)
 	}
 }
 

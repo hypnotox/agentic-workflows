@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -160,12 +161,13 @@ func policyRelevant(paths []string, docsDir string) bool {
 	if docsDir == "" {
 		return true
 	}
-	for _, path := range paths {
-		if path == "" || path == config.DirName || strings.HasPrefix(path, config.DirName+"/") {
+	decisionsPrefix := path.Join(filepath.ToSlash(docsDir), "decisions") + "/"
+	for _, changed := range paths {
+		if changed == "" || changed == config.DirName || strings.HasPrefix(changed, config.DirName+"/") {
 			return true
 		}
-		if strings.HasPrefix(path, docsDir+"/decisions/") {
-			rel := strings.TrimPrefix(path, docsDir+"/decisions/")
+		if strings.HasPrefix(changed, decisionsPrefix) {
+			rel := strings.TrimPrefix(changed, decisionsPrefix)
 			if rel != "" && !strings.Contains(rel, "/") && strings.HasSuffix(rel, ".md") {
 				return true
 			}

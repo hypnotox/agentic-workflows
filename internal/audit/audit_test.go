@@ -559,29 +559,6 @@ func TestRunEmptyRangeStillEvaluatesLiveCleanliness(t *testing.T) {
 	}
 }
 
-func TestAuditHistoricalPolicyProjectionIgnoresOmittedBytes(t *testing.T) {
-	repo := gitfixture.InitRepo(t)
-	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
-		".awf/config.yaml": "prefix: test\nintegrationBranch: master\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n",
-	})
-	gitfixture.Commit(t, repo, "not conventional", map[string]string{"internal/code.go": "package internal\n"})
-	gitfixture.Commit(t, repo, "feat(awf): malformed marker", map[string]string{
-		"internal/proof_test.go": "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
-	})
-	gitfixture.Commit(t, repo, "feat(awf): malformed sidecar", map[string]string{".awf/domains/alpha.yaml": "unknown: [\n"})
-
-	findings, _, err := Run(testContext(t), repo.Root(), base, "HEAD", Inputs{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if countRule(findings, "conventional-commits", severity.Error) != 1 {
-		t.Fatalf("ordinary commit findings changed: %#v", findings)
-	}
-	if countRule(findings, currentStateTransitionRule, severity.Warn) != 0 {
-		t.Fatalf("marker/domain-only historical bytes produced transition warnings: %#v", findings)
-	}
-}
-
 // invariant: tooling/audit-and-snapshots:stale-merge-trailer-replay (TestAuditReplaysStaleMergeTrailers)
 func TestAuditReplaysStaleMergeTrailers(t *testing.T) {
 	cases := []struct {

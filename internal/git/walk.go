@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -127,7 +128,10 @@ func (r *Repo) FirstParentChangedPaths(ctx context.Context, rev string) ([]strin
 		return nil, err
 	}
 	current, err := commit.Tree()
-	if err != nil { // coverage-ignore: a resolved commit always has a readable tree
+	if err != nil {
+		return nil, opaqueError(err)
+	}
+	if err := validateChangedPathTree(ctx, current); err != nil {
 		return nil, opaqueError(err)
 	}
 	var parent *object.Tree
@@ -137,12 +141,15 @@ func (r *Repo) FirstParentChangedPaths(ctx context.Context, rev string) ([]strin
 			return nil, opaqueError(err)
 		}
 		parent, err = first.Tree()
-		if err != nil { // coverage-ignore: a resolved parent commit always has a readable tree
+		if err != nil {
+			return nil, opaqueError(err)
+		}
+		if err := validateChangedPathTree(ctx, parent); err != nil {
 			return nil, opaqueError(err)
 		}
 	}
 	changes, err := object.DiffTree(parent, current)
-	if err != nil { // coverage-ignore: diffing resolved trees does not fail
+	if err != nil { // coverage-ignore: both trees were recursively enumerated immediately above, so their tree objects are complete
 		return nil, opaqueError(err)
 	}
 	paths := map[string]bool{}
@@ -158,6 +165,25 @@ func (r *Repo) FirstParentChangedPaths(ctx context.Context, rev string) ([]strin
 		}
 	}
 	return sortedPaths(paths), nil
+}
+
+func validateChangedPathTree(ctx context.Context, tree *object.Tree) error {
+	for _, entry := range tree.Entries {
+		if err := checkContext(ctx); err != nil {
+			return err
+		}
+		if entry.Mode != filemode.Dir {
+			continue
+		}
+		child, err := tree.Tree(entry.Name)
+		if err != nil {
+			return err
+		}
+		if err := validateChangedPathTree(ctx, child); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // FileText reads path from rev. path is relative to the handle root. A missing
