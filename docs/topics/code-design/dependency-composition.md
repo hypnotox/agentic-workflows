@@ -18,10 +18,11 @@ Verify: For each changed constructor and executable wiring site, trace productio
 
 ### `invariant: consumer-owned-contracts`
 
-Each new or deliberately converted seam is the narrowest contract owned by its consumer and is named for the semantic operation rather than a filesystem, process, Git-command, or other mechanism representation.
+When substitution is needed around a shared concrete implementation, the consumer declares the smallest cohesive structural interface locally and names its dependency for the semantic operation it needs. The provider exports the concrete implementation and neutral values its mechanism yields, never a universal consumer interface. Consumer-local helpers and values may translate the imported capability into readable business policy but never reimplement the shared concern; a direct concrete dependency remains legal when substitution is unnecessary.
 Origin: ADR-0178
+Revised-by: ADR-consumer-local-contracts-over-single-home-filesystem-access
 Backing: unbacked
-Verify: For each changed seam, identify its consumer, required operations, and mechanism boundary; confirm the contract contains no operation or representation the consumer does not need.
+Verify: For each changed dependency boundary, inspect the provider's exported surface, the consumer-local interface and helpers, and production wiring; confirm the interface is the consumer's narrow cohesive view, policy remains local, no provider-owned universal interface or function-field renaming layer appears, and a direct concrete dependency is used when no substitution boundary is needed.
 
 ### `invariant: mechanism-adapters`
 
@@ -44,6 +45,12 @@ Origin: ADR-0178
 Revised-by: ADR-test-support-exports-earn-test-consumers
 Backing: unbacked
 Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
+
+### `invariant: upgrade-attestation-filesystem-wiring`
+
+Public upgrade attestation `Verify` opens and closes the production root-confined filesystem handle at its outer boundary, passes that handle through the private consumer-owned structural contract, and no digest or collection helper constructs, discovers, or defaults the dependency.
+Origin: ADR-consumer-local-contracts-over-single-home-filesystem-access
+Backing: test
 
 ### `invariant: dependency-composition-commit-classification`
 

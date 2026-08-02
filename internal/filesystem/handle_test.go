@@ -1,0 +1,384 @@
+package filesystem
+
+import (
+	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+)
+
+func openFixture(t *testing.T) (*Handle, string) {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "dir", "file"), []byte("contents"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := h.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return h, root
+}
+
+// invariant: tooling/filesystem-access:root-confined-paths (TestHandleConfinesPaths)
+func TestHandleConfinesPaths(t *testing.T) {
+	h, root := openFixture(t)
+	if _, err := h.Read("."); err == nil {
+		t.Fatal("Read dot succeeded")
+	}
+	if _, err := h.Read("dir/file"); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"", "/x", "..", "a//b"} {
+		if _, err := h.Read(path); err == nil {
+			t.Fatalf("Read(%q) succeeded", path)
+		}
+	}
+	if err := os.Symlink("dir", filepath.Join(root, "inside")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "outside"), []byte("no"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	seen := map[string]bool{}
+	modes := map[string]fs.FileMode{}
+	if err := h.Walk(".", func(path string, info fs.FileInfo) (bool, error) {
+		seen[path] = true
+		modes[path] = info.Mode()
+		if filepath.IsAbs(path) || strings.Contains(path, "\\") {
+			t.Fatalf("walk path is not slash-relative: %q", path)
+		}
+		return path != "dir", nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"inside", "escape"} {
+		if !seen[path] {
+			t.Fatalf("missing symlink %s", path)
+		}
+		if modes[path]&fs.ModeSymlink == 0 {
+			t.Fatalf("walk metadata for %s = %v, want symlink", path, modes[path])
+		}
+	}
+	if seen["dir/file"] || seen["inside/file"] || seen["escape/outside"] {
+		t.Fatal("walk descent/links escaped policy")
+	}
+	sentinel := errors.New("callback")
+	for _, subtree := range []string{"inside", "escape"} {
+		calls := 0
+		if err := h.Walk(subtree, func(path string, info fs.FileInfo) (bool, error) {
+			calls++
+			if path != subtree || info.Mode()&fs.ModeSymlink == 0 {
+				t.Fatalf("Walk(%q) = %q %v", subtree, path, info.Mode())
+			}
+			return true, nil
+		}); err != nil {
+			t.Fatalf("Walk(%q): %v", subtree, err)
+		}
+		if calls != 1 {
+			t.Fatalf("Walk(%q) callbacks = %d, want 1", subtree, calls)
+		}
+		if err := h.Walk(subtree, func(string, fs.FileInfo) (bool, error) { return true, sentinel }); !errors.Is(err, sentinel) {
+			t.Fatalf("Walk(%q) callback identity: %v", subtree, err)
+		}
+	}
+	if _, err := h.Read("inside/file"); err != nil {
+		t.Fatalf("inside symlink: %v", err)
+	}
+	if _, err := h.Read("escape/outside"); err == nil {
+		t.Fatal("escaping symlink read succeeded")
+	}
+	if err := h.Walk(".", func(string, fs.FileInfo) (bool, error) { return false, sentinel }); !errors.Is(err, sentinel) {
+		t.Fatalf("callback identity: %v", err)
+	}
+	if err := h.Walk("missing", func(string, fs.FileInfo) (bool, error) { return true, nil }); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("root operation identity: %v", err)
+	}
+}
+
+func TestHandleOperations(t *testing.T) {
+	h, root := openFixture(t)
+	if _, err := h.Info("dir/file"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("dir/file", filepath.Join(root, "link")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	link, err := h.LinkInfo("link")
+	if err != nil || link.Mode()&fs.ModeSymlink == 0 {
+		t.Fatalf("link info: %v %v", link, err)
+	}
+	info, err := h.Info("link")
+	if err != nil || !info.Mode().IsRegular() {
+		t.Fatalf("info: %v %v", info, err)
+	}
+	// The descent flag is ignored for a non-directory entry.
+	seenFile := false
+	if err := h.Walk("dir/file", func(string, fs.FileInfo) (bool, error) { seenFile = true; return false, nil }); err != nil || !seenFile {
+		t.Fatalf("nondirectory walk: %v seen=%t", err, seenFile)
+	}
+	if err := h.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Read("dir/file"); err == nil {
+		t.Fatal("use after close succeeded")
+	}
+}
+
+func TestOpenFailureAndWalkErrors(t *testing.T) {
+	if _, err := Open(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Fatal("open missing succeeded")
+	}
+	h, _ := openFixture(t)
+	if err := h.Walk("", func(string, fs.FileInfo) (bool, error) { return true, nil }); err == nil {
+		t.Fatal("invalid walk succeeded")
+	}
+	for _, operation := range []func(string) error{func(path string) error { _, err := h.Info(path); return err }, func(path string) error { _, err := h.LinkInfo(path); return err }} {
+		if err := operation(".."); err == nil {
+			t.Fatal("invalid metadata path succeeded")
+		}
+		if err := operation("missing"); err == nil {
+			t.Fatal("missing metadata path succeeded")
+		}
+	}
+}
+
+// TestRootConfinedFilesystemSingleHome is intentionally structural: production root handles have one home.
+// invariant: tooling/filesystem-access:single-production-handle (TestRootConfinedFilesystemSingleHome)
+func TestRootConfinedFilesystemSingleHome(t *testing.T) {
+	var consumers []string
+	filesystemSources := map[string]string{}
+	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
+		if strings.HasPrefix(rel, "internal/filesystem/") {
+			filesystemSources[rel] = string(body)
+		}
+		if finding := rootSourceFinding(rel, string(body)); finding != "" {
+			t.Fatalf("production root ownership: %s", finding)
+		}
+		if finding := filesystemConsumerFinding(rel, string(body)); finding != "" {
+			t.Fatalf("production filesystem consumer: %s", finding)
+		} else if rel != "internal/filesystem/handle.go" && strings.Contains(string(body), "internal/filesystem") {
+			consumers = append(consumers, rel)
+		}
+	})
+	if finding := filesystemPackageFinding(filesystemSources); finding != "" {
+		t.Fatalf("filesystem package shape: %s", finding)
+	}
+	if len(consumers) == 0 {
+		t.Fatal("no outside-package production constructor/capability flow imports filesystem")
+	}
+	for _, tc := range []struct {
+		name, path, src, want string
+	}{
+		{"canonical handle", "internal/filesystem/handle.go", "package filesystem\nimport \"os\"\ntype Handle struct { root *os.Root }\nfunc Open(x string) { os.OpenRoot(x) }", ""},
+		{"outside root constructor", "internal/other/other.go", "package other\nimport root \"os\"\nfunc Open(x string) { root.OpenRoot(x) }", "outside filesystem concrete root use"},
+		{"outside root storage", "internal/other/other.go", "package other\nimport root \"os\"\ntype x struct { r *root.Root }", "outside filesystem concrete root use"},
+		{"second handle", "internal/filesystem/handle.go", "package filesystem\ntype Other struct{}\ntype Handle struct{}", "exported concrete Other"},
+		{"provider interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype Filesystem interface{ Read(string) }", "exported interface Filesystem"},
+		{"compile-only reference", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Open", "filesystem import without constructor/capability flow"},
+		{"arbitrary selector", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Handle", "filesystem import without constructor/capability flow"},
+	} {
+		got := rootSourceFinding(tc.path, tc.src)
+		if got == "" {
+			got = filesystemConsumerFinding(tc.path, tc.src)
+		}
+		if got == "" && strings.HasPrefix(tc.path, "internal/filesystem/") {
+			got = filesystemPackageFinding(map[string]string{tc.path: tc.src})
+		}
+		if !strings.Contains(got, tc.want) {
+			t.Fatalf("%s finding = %q, want category %q", tc.name, got, tc.want)
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		src  map[string]string
+		want string
+	}{
+		{"cross-file extra concrete", map[string]string{"internal/filesystem/handle.go": "package filesystem\ntype Handle struct{}", "internal/filesystem/extra.go": "package filesystem\ntype Extra struct{}"}, "exported concrete Extra"},
+		{"cross-file interface", map[string]string{"internal/filesystem/handle.go": "package filesystem\ntype Handle struct{}", "internal/filesystem/contract.go": "package filesystem\ntype Contract interface{}"}, "exported interface Contract"},
+	} {
+		if got := filesystemPackageFinding(tc.src); !strings.Contains(got, tc.want) {
+			t.Fatalf("%s finding = %q, want category %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func rootSourceFinding(rel, src string) string {
+	f, err := parser.ParseFile(token.NewFileSet(), rel, src, 0)
+	if err != nil {
+		return rel + ": parse: " + err.Error()
+	}
+	osNames := map[string]bool{}
+	for _, im := range f.Imports {
+		if strings.Trim(im.Path.Value, `"`) == "os" {
+			name := "os"
+			if im.Name != nil {
+				name = im.Name.Name
+			}
+			osNames[name] = true
+		}
+	}
+	rootUses := false
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.CallExpr:
+			if s, ok := n.Fun.(*ast.SelectorExpr); ok && s.Sel.Name == "OpenRoot" && importedOS(s.X, osNames) {
+				rootUses = true
+			}
+		case *ast.StarExpr:
+			if s, ok := n.X.(*ast.SelectorExpr); ok && s.Sel.Name == "Root" && importedOS(s.X, osNames) {
+				rootUses = true
+			}
+		}
+		return true
+	})
+	if rel == "internal/testsupport/fsfixture/fsfixture.go" || strings.HasPrefix(rel, "internal/filesystem/") {
+		return ""
+	}
+	if rootUses {
+		return rel + ": outside filesystem concrete root use"
+	}
+	return ""
+}
+
+func filesystemConsumerFinding(rel, src string) string {
+	f, err := parser.ParseFile(token.NewFileSet(), rel, src, 0)
+	if err != nil {
+		return rel + ": parse: " + err.Error()
+	}
+	if rel == "internal/filesystem/handle.go" {
+		return ""
+	}
+	imports := map[string]bool{}
+	for _, im := range f.Imports {
+		if strings.Trim(im.Path.Value, `"`) != "github.com/hypnotox/agentic-workflows/internal/filesystem" {
+			continue
+		}
+		name := "filesystem"
+		if im.Name != nil {
+			name = im.Name.Name
+		}
+		imports[name] = true
+	}
+	if len(imports) == 0 {
+		return ""
+	}
+	bound := map[string]bool{}
+	capability := false
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.AssignStmt:
+			for i, rhs := range n.Rhs {
+				call, ok := rhs.(*ast.CallExpr)
+				if !ok || !isFilesystemConstructor(call, imports) || i >= len(n.Lhs) {
+					continue
+				}
+				if id, ok := n.Lhs[i].(*ast.Ident); ok {
+					bound[id.Name] = true
+				}
+			}
+		case *ast.CallExpr:
+			if s, ok := n.Fun.(*ast.SelectorExpr); ok {
+				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
+					capability = true
+				}
+			}
+			for _, arg := range n.Args {
+				if id, ok := arg.(*ast.Ident); ok && bound[id.Name] {
+					capability = true
+				}
+			}
+		}
+		return true
+	})
+	if !capability {
+		return rel + ": filesystem import without constructor/capability flow"
+	}
+	return ""
+}
+
+func filesystemPackageFinding(sources map[string]string) string {
+	handles := 0
+	rootUses := false
+	for rel, src := range sources {
+		f, err := parser.ParseFile(token.NewFileSet(), rel, src, 0)
+		if err != nil {
+			return rel + ": parse: " + err.Error()
+		}
+		if f.Name.Name != "filesystem" {
+			return rel + ": wrong package"
+		}
+		osNames := map[string]bool{}
+		for _, im := range f.Imports {
+			if strings.Trim(im.Path.Value, `"`) == "os" {
+				name := "os"
+				if im.Name != nil {
+					name = im.Name.Name
+				}
+				osNames[name] = true
+			}
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			s, ok := n.(*ast.SelectorExpr)
+			if ok && s.Sel.Name == "OpenRoot" && importedOS(s.X, osNames) {
+				rootUses = true
+			}
+			return true
+		})
+		for _, decl := range f.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range gen.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok || !typeSpec.Name.IsExported() {
+					continue
+				}
+				if _, ok := typeSpec.Type.(*ast.InterfaceType); ok {
+					return rel + ": exported interface " + typeSpec.Name.Name
+				}
+				if typeSpec.Name.Name != "Handle" {
+					return rel + ": exported concrete " + typeSpec.Name.Name
+				}
+				if _, ok := typeSpec.Type.(*ast.StructType); !ok {
+					return rel + ": Handle is not concrete"
+				}
+				handles++
+			}
+		}
+	}
+	if handles != 1 || !rootUses {
+		return "internal/filesystem: expected one concrete Handle and root use"
+	}
+	return ""
+}
+
+func isFilesystemConstructor(call *ast.CallExpr, imports map[string]bool) bool {
+	s, ok := call.Fun.(*ast.SelectorExpr)
+	return ok && s.Sel.Name == "Open" && importedOS(s.X, imports)
+}
+
+func importedOS(expr ast.Expr, names map[string]bool) bool {
+	id, ok := expr.(*ast.Ident)
+	return ok && names[id.Name]
+}

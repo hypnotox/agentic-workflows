@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
@@ -22,6 +23,16 @@ const attestationVersion = 1
 // is trusted through this unchanged seal alone, because the current-state binary
 // ships no inventory, approval parser, or cross-schema adapter to recompute it.
 func Verify(ctx context.Context, root string, att *manifest.BridgeAttestation) error {
+	tree, err := filesystem.Open(root)
+	if err != nil {
+		return err
+	}
+	// ADR-consumer-local-contracts-over-single-home-filesystem-access: a read-only close failure has no durable state implication.
+	defer tree.Close()
+	return verifyWithFilesystem(ctx, root, att, tree)
+}
+
+func verifyWithFilesystem(ctx context.Context, root string, att *manifest.BridgeAttestation, tree attestationTree) error {
 	if att.Version != attestationVersion {
 		return fmt.Errorf("unsupported current-state attestation version %d", att.Version)
 	}
@@ -36,8 +47,8 @@ func Verify(ctx context.Context, root string, att *manifest.BridgeAttestation) e
 	if head != att.PreparedHead {
 		return fmt.Errorf("HEAD %s does not match the sealed prepared head %s; %s", head, att.PreparedHead, gitRestorationGuidance)
 	}
-	digest, err := treeDigest(root)
-	if err != nil { // coverage-ignore: a matching PreparedHead means the sealed config parsed at seal time; re-reading that same committed tree does not fault here
+	digest, err := treeDigest(root, tree)
+	if err != nil {
 		return err
 	}
 	if digest != att.TreeDigest {
