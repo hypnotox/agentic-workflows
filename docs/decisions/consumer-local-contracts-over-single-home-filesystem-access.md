@@ -75,14 +75,17 @@ claim operations must apply before the fixture export lands.
    test temporary directory. The composition boundary owns handle lifetime and defers `Close`; a
    read-only close failure has no durable state implication and is not promoted into upgrade policy.
 
-4. Give the initial handle exactly four consumer capabilities: walk a subtree while supplying each
-   slash-relative path and resolved `fs.FileInfo` to a callback whose boolean result controls descent;
-   read one file's bytes; inspect metadata while following a final symlink; and inspect metadata
-   without following the final symlink. Naming may use `Walk`, `Read`, `Info`, and `LinkInfo`, but the
-   contract is behavioral: traversal resolves entry metadata inside the adapter, reports traversal
-   and entry-info failures, never exposes absolute paths or `filepath.SkipDir`, and does not follow a
-   directory symlink during the walk. Pure path comparison and attestation selection stay outside the
-   handle.
+4. Give the initial handle exactly four consumer capabilities: `Walk`, `Read`, `Info`, and
+   `LinkInfo`. `Walk` has the behavioral shape
+   `Walk(subtree string, visit func(path string, info fs.FileInfo) (descend bool, err error)) error`.
+   It supplies slash-relative paths and metadata describing each entry itself without following a
+   final symlink. For a directory, `descend = true` visits its children and `false` skips them; the
+   value is ignored for a nondirectory. A callback error aborts traversal and is returned through the
+   handle's normal operation/path wrapping with its identity preserved; it takes precedence over the
+   descent value. A traversal or entry-info failure returns without invoking the callback for that
+   entry. `Read` returns one file's bytes, `Info` follows a final symlink, and `LinkInfo` does not.
+   Traversal never exposes absolute paths or `filepath.SkipDir` and never follows a directory symlink.
+   Pure path comparison and attestation selection stay outside the handle.
 
 5. Update `code-design/dependency-composition:consumer-owned-contracts` to formalize the general
    pattern. When substitution is needed around a shared concrete implementation, the consumer
@@ -119,11 +122,13 @@ claim operations must apply before the fixture export lands.
    boundary-probe, and read failures propagate.
 
 10. Add `internal/testsupport/fsfixture` as the one kernel-backed controlled filesystem fault source.
-    It remains a standard-library-only leaf, opens its own `os.Root`, satisfies consumer structural
-    contracts through the same standard-library method signatures, and lets tests select a fault by
-    operation and slash-relative path before delegating every unselected operation to the real root.
-    It is not an in-memory filesystem and owns no production or attestation policy. Its package and
-    implementation comments reference this ADR's distinct-source reasoning, as required by
+    It remains a standard-library-only leaf, opens its own `os.Root`, and satisfies the same
+    consumer-local structural interface through neutral standard-library value and error types. A
+    configured fault names an operation, a slash-relative path, and a caller-supplied error. The
+    selected operation returns that error through the fixture's normal operation/path wrapping with
+    identity preserved; every unselected operation delegates to the real root. It is not an
+    in-memory filesystem and owns no production or attestation policy. Its package and implementation
+    comments reference this ADR's distinct-source reasoning, as required by
     `code-design/single-home:single-implementation`.
 
 11. Introduce only fault operations used by upgrade tests in the same transaction. The fixture's
@@ -136,10 +141,14 @@ claim operations must apply before the fixture export lands.
 12. Prove successful digest bytes and path selection remain unchanged, then cover missing optional
     subtrees, traversal failure, entry-info failure, non-regular entries, content-read failure,
     post-read metadata failure, nested Git boundary inspection failure, nested awf boundary
-    inspection failure, and propagation through verification. Run the relevant behavior contract
-    against both the production handle and fault source where parity matters. Reassess every
-    `coverage-ignore` in `internal/upgrade/digest.go`, deleting each exclusion made reachable by the
-    seam and retaining only one with an independent unreachable or race-only justification.
+    inspection failure, and propagation through verification. Add explicit cases for absent
+    `.awf/config.yaml`, a non-missing config read fault, preservation of the `not an awf project` and
+    `read config` context categories, and `errors.Is` identity through `treeDigest` and the unexported
+    verification path. Run the relevant behavior contract against both the production handle and
+    fault source where parity matters, and assert caller-supplied fault identity with `errors.Is`.
+    Reassess every `coverage-ignore` in `internal/upgrade/digest.go`, deleting each exclusion made
+    reachable by the seam and retaining only exclusions still independently justified as unrelated,
+    genuinely unreachable, or race-only.
 
 13. Keep this conversion narrow. Do not convert project sync, historical migration, upgrade journal
     mutation, snapshot capture, clock, environment, working directory, subprocess, or unrelated
@@ -147,12 +156,28 @@ claim operations must apply before the fixture export lands.
     production handle rather than adding another root-confined implementation when the contract
     fits.
 
-14. Apply ADR-test-support-exports-earn-test-consumers before exporting the fixture, then implement
-    this decision through a reviewed multi-package plan. Update the tooling domain map, topic
-    metadata and claims, the dependency-composition claim, managed architecture component source,
-    rendered documentation, and proof markers in the same checked transactions as their code. The
-    implementation uses the `code-design` commit scope for cross-package structure and preserves the
-    prerequisite ADR's declared operation order.
+14. Accept ADR-test-support-exports-earn-test-consumers before accepting this ADR, and number that
+    prerequisite first when the records reach the integration branch. Apply all three prerequisite
+    operations in their declared order before exporting the fixture. The fixture export, its full
+    introduced fault capability, and its outside-package upgrade test first consumer land atomically.
+    No operation declared by this ADR applies before that prerequisite batch is complete.
+
+15. Implement this decision through a reviewed multi-package plan. The updated
+    `consumer-owned-contracts` claim remains `Backing: unbacked` and gains Verify prose that inspects
+    the provider, local structural contract, and policy helpers. Back
+    `upgrade-attestation-filesystem-wiring` with `TestVerifyUsesInjectedFilesystem` in
+    `internal/upgrade/digest_test.go`, `single-production-handle` with
+    `TestRootConfinedFilesystemSingleHome` and `root-confined-paths` with
+    `TestHandleConfinesPaths` in `internal/filesystem/handle_test.go`, and `single-fault-source` with
+    `TestFilesystemFaultSourceSingleHome` in
+    `internal/testsupport/fsfixture/fsfixture_test.go`; each proof marker and named test land with its
+    claim. Apply
+    all five operations in declaration order as one final checked batch because the ownership,
+    confinement, fault source, and first-consumer wiring describe one indivisible completed boundary.
+    Update the tooling domain map, topic metadata and claims, managed architecture component source,
+    and rendered documentation in the matching transactions. Run `./x render` and include
+    `docs/decisions/INDEX.md` and lock changes at every Accepted, Implementing, and Implemented
+    transition. Cross-package structural commits use the `code-design` scope.
 
 ## State changes
 
