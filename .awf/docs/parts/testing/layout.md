@@ -7,3 +7,5 @@ Parallelism is applied per package rather than swept. `internal/snapshot`, `inte
 Test shape is judgment guided by three defaults (`code-design/test-design` carries the claims; this is the taste beside them). A table test earns its table when the cases share one act-and-assert shape and differ only in data; scenarios with divergent setup or divergent assertions read better flat, and a one-row table is a flat test wearing scaffolding. `t.Fatal` ends a test whose remaining checks depend on the failed step, while `t.Error` lets independent checks accumulate evidence in one run; the choice states a dependency, not a severity. A test stays focused on one observable behaviour: a name that needs "and" to say what it checks is naming two tests, and splitting it is cheaper than reading it twice.
 
 The isolated-TMPDIR real-hook regression proves the hand-written stub removes its staged slice before rendered-payload handoff.
+
+The Pi extension suite covers transient context usage independently from handoff and subagents, including fresh copied messages, tool-follow-up refresh, active-branch-only compactions, and the shared runtime guard.

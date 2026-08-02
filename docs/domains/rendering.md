@@ -14,6 +14,8 @@ The catalog-derived mandatory Maintainable Code Design guide renders as an exten
 
 Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff remains lifecycle-independent: workflow templates own effort checkpoint, approval, safe-point, reorientation, and handoff-log policy; bounded kickoff carries instructions while replacement mechanics own no memory policy.
 
+Pi rendering governs five TypeScript outputs. Context usage is observational and transient: its unavailable form is publication-safe, model-window terminology is neutral, active-branch compactions are counted, and it has no warning or pressure action.
+
 
 ## Topics
 

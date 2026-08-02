@@ -50,3 +50,5 @@ untrustworthy (it can hide a real survivor), so the command itself exits non-zer
 mutant times out. Raise the timeout coefficient and rerun; you never need to eyeball the
 `Timed out:` count. It stays advisory (never part of the gate) and every survivor still
 needs you to judge whether it is a real gap or an unkillable equivalent mutant.
+
+The strict container lane includes the standalone context-usage output and covers its local formatting, unavailable model-window form, active-branch compactions, per-call refresh, and silent supported operation.

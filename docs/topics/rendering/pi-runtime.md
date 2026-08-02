@@ -22,11 +22,17 @@ Origin: ADR-0148
 Revised-by: ADR-0151
 Backing: test
 
+### `invariant: pi-context-usage-injection`
+
+Before every Pi model call, including tool-follow-up calls, the standalone context-usage extension appends exactly one non-persisted model-facing line reporting current tokens against the active model window and the compaction count from the active session branch. It formats finite values below 1,000 as rounded integers, values from 1,000 in trimmed one-decimal base-1,000 `k` units, and values from 1,000,000 in trimmed one-decimal base-1,000,000 `m` units; computes percentage by rounding `tokens / contextWindow * 100`; and emits the deterministic unknown-token or unavailable-window form. The extension never persists a message or entry, writes a file or telemetry record, changes UI, triggers a model turn, compaction, warning, or handoff, or recommends a pressure threshold.
+Origin: ADR-context-aware-discretionary-pi-handoffs
+Backing: test
+
 ### `invariant: pi-extension-target-render`
 
-Enabling Pi renders the handoff entrypoint and the subagent index, bounded model-routing module, and runner with provenance. The model-routing module owns pure preference parsing, merging, validation-state representation, and routing-card construction; the entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and all files follow normal render and cleanup semantics.
+Enabling Pi renders the standalone context-usage and handoff entrypoints plus the subagent index, bounded model-routing module, and runner with provenance. Context usage owns transient per-model-call fact injection, handoff owns parent-linked main-session replacement, model routing owns pure preference policy, and the subagent entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and every file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics; a target set without Pi renders none of them.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-context-aware-discretionary-pi-handoffs
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -37,9 +43,9 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-Generated Pi extension entrypoints require the minimum Pi runtime APIs used by the retained subagent and handoff contracts, report one actionable incompatibility notice, and fail before registering functional hooks when required APIs are absent.
+Every generated Pi extension entrypoint requires the minimum Pi runtime APIs used by its retained contract, reports the shared single actionable incompatibility notice, and fails before registering functional hooks when required APIs are absent. Supported context-usage, handoff, and subagent operation emits no compatibility, pressure, or handoff warning.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167
+Revised-by: ADR-0162, ADR-0167, ADR-context-aware-discretionary-pi-handoffs
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`

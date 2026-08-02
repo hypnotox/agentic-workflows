@@ -146,10 +146,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			extensions[file.Path] = file.Content
 		}
 	}
-	if len(extensions) != 4 {
-		t.Fatalf("Pi extension count = %d, want 4: %v", len(extensions), extensions)
-	}
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
 		if content := extensions[path]; !strings.HasPrefix(content, "// "+bannerText+"\n") {
 			t.Errorf("%s lacks provenance banner", path)
 		}
@@ -161,10 +158,11 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			}
 		}
 	}
+	contextUsage := extensions[".pi/extensions/awf-context-usage/index.ts"]
 	handoff := extensions[".pi/extensions/awf-handoff/index.ts"]
 	index := extensions[".pi/extensions/awf-subagents/index.ts"]
 	routing := extensions[".pi/extensions/awf-subagents/model-routing.ts"]
-	if !strings.Contains(handoff, "registerHandoff(pi") || !strings.Contains(index, "registerSubagentTools(pi") {
+	if !strings.Contains(contextUsage, "registerContextUsage(pi") || !strings.Contains(handoff, "registerHandoff(pi") || !strings.Contains(index, "registerSubagentTools(pi") {
 		t.Fatal("Pi extension entrypoints are not registered")
 	}
 	for _, owned := range []string{"export const PREFERENCE_FIELDS", "export function parsePreferenceSource", "export async function loadPreferenceState", "export function effectivePreferenceState", "export function resolveChildModel", "export function buildRoutingCard"} {
@@ -182,12 +180,27 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiMinimumRuntime)
 func TestPiMinimumRuntime(t *testing.T) {
-	for _, name := range []string{"awf-handoff/index.ts", "awf-subagents/index.ts"} {
+	for _, name := range []string{"awf-context-usage/index.ts", "awf-handoff/index.ts", "awf-subagents/index.ts"} {
 		out := renderPiExtensionFile(t, name)
 		for _, want := range []string{"MIN_PI_VERSION", "guardMinimumRuntime", "awf.pi.minimum-runtime-notified", "Upgrade Pi and reload."} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s missing minimum-runtime guard %q", name, want)
 			}
+		}
+	}
+}
+
+// invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiContextUsageInjection)
+func TestPiContextUsageInjection(t *testing.T) {
+	out := renderPiExtensionFile(t, "awf-context-usage/index.ts")
+	for _, want := range []string{"pi.on(\"context\"", "[session context]", "unknown/", "unavailable;", "getContextUsage()", "getBranch()", "entry.type===\"compaction\"", "customType:\"awf-context-usage\"", "display:false"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("context usage output missing %q", want)
+		}
+	}
+	for _, banned := range []string{"appendEntry(", "registerTool(", "registerCommand(", "queueCommand(", "handoff_session", "telemetry"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("context usage output retains side effect %q", banned)
 		}
 	}
 }

@@ -386,7 +386,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			if target == "pi" {
 				ordered = append(ordered,
 					"safe resumable point whose immediate successor can start independently",
-					"judge retained-context relevance and successor work from currently available context and compaction evidence",
+					"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
 					"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
 					"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work",
 					"Cancellation or failure that leaves the old session active appends no handoff log",
@@ -494,7 +494,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	for _, name := range approvalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
-			"judge retained-context relevance and successor work from currently available context and compaction evidence",
+			"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
 			"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
 			"invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work",
 			"Cancellation or failure that leaves the old session active appends no handoff log",

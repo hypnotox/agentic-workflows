@@ -7,6 +7,8 @@ How a project assembles its render set, output plan, drift check, and prune beha
 
 The project package assembles the full render set, computes the output plan and config hash, checks drift, and prunes stale outputs. The claims below capture the current output-plan and render-orchestration contracts.
 
+The Pi target descriptor is the sole declaration of the five Pi TypeScript outputs: context usage, handoff, and subagent index, model-routing, and runner; non-Pi target sets render and prune none of them.
+
 ## Claims
 
 ### `invariant: catalog-trim-applied`

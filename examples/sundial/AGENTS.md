@@ -110,3 +110,4 @@ go run ./cmd/sundial 52.5 13.4: print this week's sun table for Berlin
 - **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers
 - **README.md:** [README.md](README.md), what sundial is and how this example repository is generated
+Pi provides transient `[session context]` facts before each model call: current tokens against the active model window and active-branch compactions. They inform discretionary continuation judgment only; they do not persist, warn, or trigger pressure action.

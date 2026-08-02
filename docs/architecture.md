@@ -6,6 +6,8 @@ awf renders tracked workflow guidance from `.awf/`, while its binary owns immuta
 
 Schema-31 migration retires lock-resident ADR routing values; authored ADR format remains the parser authority.
 
+Pi context usage is a standalone observation extension: it injects current model-window and active-branch compaction facts before each model call; handoff retains replacement mechanics and subagents retain child execution.
+
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 - `internal/testsupport` owns isolated TestMain-home allocation, conservative stale cleanup, logical-byte accounting, and deterministic human result rendering while remaining a standard-library-only leaf. `cmd/testtmpclean` owns only the repo-private cleanup command's parsing, force warning, output routing, and exit mapping; `internal/testsupport` retains cleanup policy and summary rendering.
@@ -23,11 +25,15 @@ Schema-31 migration retires lock-resident ADR routing values; authored ADR forma
 - `cmd/awf` is the composition root for top-level and post-mutation render: the `runSync` family selects the production config loader, standard catalog, and semantic resident-root resolver before constructing `internal/project.Loader`. It also exposes protocol-2 effort JSON and line-oriented mutation diagnostics, and routes bounded project checks; for context it parses flags, selects the renderer, and maps exits while the owning package renders the report. `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, `cmd/repoaudit`, and `cmd/testtmpclean` provide the repo-owned supporting checks.
 - `internal/manifest` accepts retired ADR routing keys only for schema-30-and-earlier compatibility decoding; `internal/migrate` generation 31 removes them without rewriting ADRs, while `internal/upgrade` discards the frozen bridge payload at its existing journal commit point.
 
+- Generated Pi extensions have separate owners: context usage injects transient model-window and active-branch compaction facts, handoff replaces the parent session, and subagents manage child execution and routing.
+
 
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
 The invoking checkout supplies tracked configuration and native workflow skills. For render and post-mutation render, `runSync` selects config-tree loading, the immutable standard catalog, and semantic resident-root resolution at the executable boundary, then injects them into `internal/project.Loader`; the Loader validates configuration, resolves targets, derives the effective catalog, and checks conformance. Native Git resolves one primary control root. Effort creation derives and exclusively reserves a slug directory, publishes `memory.md` before static `state.json`, syncs each boundary, and then by default orchestrates the standalone managed-worktree Add, rolling back through restartable finish only on proven-absent topology; enumeration ignores unpublished directories but preserves foreign bytes. Managed worktree commands derive path and branch from the slug and re-read actual Git path, registration, branch, cleanliness, operation, identity, and ancestry facts before each mutation. Pi handoff revalidates only its pending request and persisted session; workflow guidance owns checkpoint reorientation. `internal/resident` holds the one table naming the resident roots the primary control root owns, `.awf/efforts` and `.awf/worktrees`, and output planning, render, drift, backup detection, current-state and context discovery, sweep, nested-adopter filtering, install, and uninstall all read it through that package; each root contributes exactly one governed self-ignoring `.gitignore`, and no consumer recurses into or deletes a dynamic descendant. Retiring a root is a schema migration: generation 22 classifies every legacy leaf read-only, refuses while any legacy managed worktree fact or unprovable resident remains, and otherwise quarantines the proven residents in one journaled transaction whose final lock replacement is the commit point. For context requests, the project snapshot classifies selected paths, preserves actual `State`, `Touches`, and `Proofs` relationships, expands authority only through the requested tier or facets, and delivers direct or secure spill output unchanged.
 
 A schema-30 lock crosses generation 31 through compatibility parsing: migration writes a lock without retired ADR routing keys and does not rewrite ADR files. For committed generation-31-and-later merges, audit reads the result and ordered parent trees, derives the format active at the result generation, and replays the shared cleaned-message trailer parser plus incoming-parent qualification; it does not alter first-parent range semantics.
+
+Pi context events sample the current model window and active branch at request time, copy request messages, and append one hidden transient line; no context fact is persisted or turns into pressure action.
 
 
 <!-- awf:edit dependencies: from .awf/docs/parts/architecture/dependencies.md -->
@@ -71,4 +77,6 @@ A schema-30 lock crosses generation 31 through compatibility parsing: migration 
   (ADR-0066). Advisory only; never part of the gate. This repo only, not part of the rendered standard.
 
 `internal/manifest` owns schema-sensitive lock decoding, while `internal/migrate` owns generation-31 removal of retired ADR routing payload.
+
+- The generated context-usage extension uses the same pinned Pi runtime floor as handoff and subagents, but owns its local formatter rather than sharing subagent presentation code.
 

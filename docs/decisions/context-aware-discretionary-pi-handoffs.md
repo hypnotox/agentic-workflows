@@ -211,3 +211,4 @@ when automatic kickoff submission fails.
 - 2026-08-02: Amended; content-sha256: 03f0a8150b3a0467dcb0dd01ea809c91ef80a06d95a534b58b88a7428224a254
 - 2026-08-02: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-workflow`
 - 2026-08-02: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`
+- 2026-08-02: Applied; operations: add `rendering/pi-runtime:pi-context-usage-injection`, update `rendering/pi-runtime:pi-extension-target-render`, update `rendering/pi-runtime:pi-minimum-runtime`

@@ -7,6 +7,8 @@ Coverage, prose, working-memory citations, and the command-runner gate machinery
 
 These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, working-memory citations, and the gate tiers. The claims below capture the current gate contracts.
 
+The Pi container lane enforces 100% line, function, and branch coverage for every generated Pi extension, including context usage, without reachable-branch ignores.
+
 ## Claims
 
 ### `invariant: coverage-gate-100`

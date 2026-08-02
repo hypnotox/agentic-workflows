@@ -38,3 +38,5 @@
   (ADR-0066). Advisory only; never part of the gate. This repo only, not part of the rendered standard.
 
 `internal/manifest` owns schema-sensitive lock decoding, while `internal/migrate` owns generation-31 removal of retired ADR routing payload.
+
+- The generated context-usage extension uses the same pinned Pi runtime floor as handoff and subagents, but owns its local formatter rather than sharing subagent presentation code.

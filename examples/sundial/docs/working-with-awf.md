@@ -332,3 +332,5 @@ sites referencing renamed or relocated rendered files, stale version prose in yo
 parts, and newly rendered surfaces worth wiring up (fresh hook payloads, for example). `awf
 changelog --since <previous version>` lists every adopter-facing change in between. Then run the
 drift check and commit the config and rendered files together.
+
+Pi renders five governed TypeScript outputs: context usage, handoff, and subagent index, routing, and runner. Context usage is a standalone transient observation with a deterministic unavailable form; it neither persists facts nor triggers a pressure action.

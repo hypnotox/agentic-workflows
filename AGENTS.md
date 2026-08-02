@@ -29,6 +29,8 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 
 `awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks multi-runtime skills, agents, docs, and this agent guide from a committed `.awf/` config tree, and mechanically guards drift, frontmatter, current-state provenance, and invariant backing. The project-owned workflow chain is rendered in each target's native form, and Pi receives generated subagent and handoff extensions. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
 
+Pi supplies five governed TypeScript outputs: standalone context-usage observation, handoff replacement, and the subagent index, routing, and runner. Context usage injects neutral transient session facts and never persists, warns, or acts on pressure.
+
 
 <!-- awf:edit invariants: default; create .awf/parts/agents-doc/invariants.md to override -->
 ## Invariants
@@ -88,6 +90,8 @@ Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](doc
 
 A minimal simple fix uses no effort. Once work becomes a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. The effort's managed worktree is the default execution location (`--no-worktree` is the explicit exception), while the owned memory stays under the primary checkout. Carry the slug and exact owned path through mandatory checkpoints. A routine checkpoint persists the effort and then permits a discretionary eligible Pi replacement choice; a safe resumable point has an immediate successor that can start independently. A replacement session records the actual boundary in the handoff log before substantive work, while continuing in-session, cancellation, or a failure that leaves the old session active records none. Mandatory approval still stops for explicit approval before its persisted approval and next action can continue. Repository sources and current-state documentation outrank checkpoint prose. One effort has one user-managed writer: report-only reviewers, explorers, grounding children, and helpers never edit shared memory. Standalone memory is forbidden, and an effort finishes only after terminal review, any required worktree integration and removal, and retrospective.
 
+At an eligible Pi continuation choice, use the current `[session context]` model-window and active-branch-compaction facts with retained-context relevance and upcoming work; they inform judgment only and never impose a threshold or automatic action.
+
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->
 ## Commands
@@ -125,3 +129,4 @@ Command specifics, effort and lifecycle contracts, and upgrade behaviour: see do
 - **Releasing:** [docs/releasing.md](docs/releasing.md), how to cut a release: versioning, artifacts, and the publish process
 - **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers
+Pi provides transient `[session context]` facts before each model call: current tokens against the active model window and active-branch compactions. They inform discretionary continuation judgment only; they do not persist, warn, or trigger pressure action.

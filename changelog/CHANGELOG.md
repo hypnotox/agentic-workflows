@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Pi now renders a standalone context-usage extension that injects neutral transient session context facts before every model call, without persistence, warnings, telemetry, or automatic pressure action.
+
 - Mandatory workflow checkpoints now persist durable effort memory independently of discretionary Pi session replacement. Eligible Pi boundaries may continue in-session or replace the session, while only a replacement session records the actual handoff boundary.
 
 - `awf audit` now replays stale-ADR merge authorization for committed schema-31-and-later merges, using the same cleaned-message trailers and exact incoming-parent qualification as `awf check commit`. It reports malformed reserved trailers and unauthorized older-format imports while leaving pre-epoch merges, non-merges, and fast-forwards outside the rule.
