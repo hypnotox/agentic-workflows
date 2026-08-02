@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -200,6 +201,17 @@ func memoryUpdateCommand(slug string, invalid map[string]bool) string {
 		command += " --next <replacement-next>"
 	}
 	return command
+}
+
+func memoryRepairCommand(slug string, doc memoryDocument) string {
+	if doc.invalid["phase"] || doc.invalid["next"] {
+		return memoryUpdateCommand(slug, doc.invalid)
+	}
+	return "./awf effort memory update " + slug + " --phase " + shellQuote(doc.metadata.Phase)
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error) {

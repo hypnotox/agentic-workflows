@@ -157,11 +157,19 @@ func refusalFor(operation activityOperation, condition ActivityCondition, cause 
 	if len(nextActions) == 0 {
 		nextActions = []string{"inspect the effort resident and retry"}
 	}
-	r.Outcome = &ActionableOutcome{Category: category, Condition: string(condition), ChangedCWD: operation == activityAttach || operation == activityCheckout, NextActions: nextActions}
+	r.Outcome = &ActionableOutcome{Category: category, Condition: string(condition), ChangedActivity: changedActivityForFailure(operation, cause), ChangedCWD: operation == activityAttach || operation == activityCheckout, NextActions: nextActions}
 	if cause != nil {
 		r.Outcome.Cause = cause.Error()
 	}
 	return r
+}
+
+func changedActivityForFailure(operation activityOperation, cause error) bool {
+	if operation != activityAttach && operation != activityTakeover && operation != activityHeartbeat && operation != activityCheckout && operation != activityDetach {
+		return false
+	}
+	var storage *ActivityStorageError
+	return errors.As(cause, &storage) && storage.Stage == "directory-fsync"
 }
 
 func validActivity(a Activity) error {
@@ -279,13 +287,16 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = publishAtomic(tempPath, path, expected); err != nil {
+		if expected == nil && errors.Is(err, os.ErrExist) {
+			return activityStorageFailure(operation, "replace", publicationIdentityRefusal(err))
+		}
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = s.hit(label + ".directory-fsync"); err != nil {
-		return activityStorageFailure(operation, "replace", err)
+		return activityStorageFailure(operation, "directory-fsync", err)
 	}
 	if err := syncDirectory(dir); err != nil { // coverage-ignore: the injected directory-fsync stage proves this boundary; a real sync failure requires a storage fault
-		return activityStorageFailure(operation, "replace", err)
+		return activityStorageFailure(operation, "directory-fsync", err)
 	}
 	return nil
 }
@@ -317,8 +328,8 @@ func invalidMemoryRefusal(operation activityOperation, slug, title string, raw [
 	action := "repair .awf/efforts/" + slug + "/memory.md manually: preserve its body and restore a matching effort identity with a recognized canonical or legacy metadata boundary"
 	if !readFailure {
 		doc := inspectMemory(raw, slug)
-		if doc.boundary && doc.identity == slug && (doc.invalid["phase"] || doc.invalid["next"]) {
-			action = memoryUpdateCommand(slug, doc.invalid)
+		if doc.boundary && doc.identity == slug && (doc.invalid["phase"] || doc.invalid["next"] || doc.invalid["updated"]) {
+			action = memoryRepairCommand(slug, doc)
 		}
 	}
 	var cause error
@@ -363,6 +374,9 @@ func (s *Service) destination(ctx context.Context, slug string, role CheckoutRol
 		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("invalid checkout role"))
 	}
 	managed := filepath.Clean(s.paths.managedWorktree(slug))
+	if explicitReceiving != "" && !validActivityPath(explicitReceiving) {
+		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("explicit receiving checkout must be an absolute clean path"))
+	}
 	var receiving string
 	switch {
 	case prior != nil && prior.ReceivingCheckout != "":
@@ -373,6 +387,9 @@ func (s *Service) destination(ctx context.Context, slug string, role CheckoutRol
 		receiving = facts.InvokingRoot
 	default:
 		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("supply an explicit receiving checkout"))
+	}
+	if !validActivityPath(receiving) || filepath.Clean(receiving) == managed {
+		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("receiving checkout must be an absolute clean checkout other than the managed worktree"))
 	}
 	rf, err := s.resolveCheckout(ctx, receiving)
 	if err != nil {

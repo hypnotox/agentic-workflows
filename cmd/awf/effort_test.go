@@ -196,6 +196,12 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 	owner := "018f47a0-7b3d-4c52-8f1a-123456789abc"
 	reply := runActivityCommand(t, linked, "activity resolve", map[string]string{"--destination": "receiving"})
 	assertActivityFields(t, reply, effort.ActivityReady, "effort", "memory", "destination")
+	reply = runActivityCommand(t, linked, "activity resolve", map[string]string{"--destination": "receiving", "--receiving-checkout": "."})
+	assertActivityFields(t, reply, effort.ActivityRepositoryMismatch, "outcome")
+	var relativeOutcome effort.ActionableOutcome
+	if err := json.Unmarshal(reply["outcome"], &relativeOutcome); err != nil || relativeOutcome.ChangedActivity || relativeOutcome.ChangedMemory || relativeOutcome.ChangedCWD {
+		t.Fatalf("relative receiving checkout outcome=%#v err=%v", relativeOutcome, err)
+	}
 	reply = runActivityCommand(t, linked, "activity attach", map[string]string{"--owner": owner, "--cwd": linked, "--role": "receiving", "--receiving-checkout": linked})
 	assertActivityFields(t, reply, effort.ActivityAttached, "effort", "memory", "activity")
 	reply = runActivityCommand(t, primary, "activity heartbeat", map[string]string{"--owner": owner})

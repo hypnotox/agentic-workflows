@@ -138,6 +138,34 @@ func TestActivityCrossProcessTakeoverRefusesStaleMutations(t *testing.T) {
 	}
 }
 
+func TestActivityCrossProcessFirstAttachRefusesWinner(t *testing.T) {
+	if os.Getenv("AWF_ACTIVITY_FIRST_ATTACH_HELPER") != "" {
+		root := os.Getenv("AWF_ACTIVITY_ROOT")
+		service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+		if got := service.AttachActivity(testContext(t), "first-attach", activityFor(root, testIDB)); got.Condition != ActivityAttached {
+			t.Fatalf("helper first attach = %#v", got)
+		}
+		return
+	}
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+	if _, err := service.New(testContext(t), "First attach"); err != nil {
+		t.Fatal(err)
+	}
+	activityBeforePublish = func() {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestActivityCrossProcessFirstAttachRefusesWinner$")
+		cmd.Env = append(os.Environ(), "AWF_ACTIVITY_FIRST_ATTACH_HELPER=1", "AWF_ACTIVITY_ROOT="+root)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("helper first attach: %v: %s", err, output)
+		}
+	}
+	t.Cleanup(func() { activityBeforePublish = nil })
+	got := service.AttachActivity(testContext(t), "first-attach", activityFor(root, testIDA))
+	if got.Condition != ActivityNotOwner || got.Activity == nil || got.Activity.Owner != testIDB || got.Outcome == nil || got.Outcome.ChangedActivity {
+		t.Fatalf("first attach refusal = %#v", got)
+	}
+}
+
 func TestActivityStorageFailuresIdentifyOperationAndStage(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
@@ -145,21 +173,23 @@ func TestActivityStorageFailuresIdentifyOperationAndStage(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		name  string
-		stage string
-		call  func() ActivityReply
+		name      string
+		operation string
+		stage     string
+		call      func() ActivityReply
 	}{
-		{"attach", "activity.write", func() ActivityReply {
+		{"attach", "attach", "activity.write", func() ActivityReply {
 			return service.AttachActivity(testContext(t), "storage-context", activityFor(root, testIDA))
 		}},
-		{"takeover", "activity.rename", func() ActivityReply {
+		{"takeover", "takeover", "activity.rename", func() ActivityReply {
 			return service.AttachActivity(testContext(t), "storage-context", activityFor(root, testIDB))
 		}},
-		{"heartbeat", "activity.fsync", func() ActivityReply { return service.HeartbeatActivity("storage-context", testIDA) }},
-		{"checkout", "activity.directory-fsync", func() ActivityReply {
+		{"heartbeat", "heartbeat", "activity.fsync", func() ActivityReply { return service.HeartbeatActivity("storage-context", testIDA) }},
+		{"checkout-after-replace", "checkout", "activity.directory-fsync", func() ActivityReply {
 			return service.CheckoutActivity(testContext(t), "storage-context", testIDA, root, CheckoutReceiving)
 		}},
-		{"detach", "activity.remove", func() ActivityReply { return service.DetachActivity("storage-context", testIDA) }},
+		{"detach-before-remove", "detach", "activity.remove", func() ActivityReply { return service.DetachActivity("storage-context", testIDA) }},
+		{"detach-after-remove", "detach", "activity.directory-fsync", func() ActivityReply { return service.DetachActivity("storage-context", testIDA) }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if test.name != "attach" {
@@ -175,8 +205,17 @@ func TestActivityStorageFailuresIdentifyOperationAndStage(t *testing.T) {
 				return nil
 			}
 			got := test.call()
-			if got.Outcome == nil || !strings.Contains(got.Outcome.Cause, "activity "+test.name) {
+			if got.Outcome == nil || !strings.Contains(got.Outcome.Cause, "activity "+test.operation) || got.Outcome.ChangedActivity != (test.stage == "activity.directory-fsync") {
 				t.Fatalf("%s outcome = %#v", test.name, got)
+			}
+			if test.stage == "activity.directory-fsync" {
+				current, err := service.activityCurrent("storage-context")
+				if test.operation == "detach" && (err != nil || current != nil) {
+					t.Fatalf("detach published before directory fsync: activity=%#v err=%v", current, err)
+				}
+				if test.operation != "detach" && (err != nil || current == nil || current.Owner != testIDA) {
+					t.Fatalf("replace published before directory fsync: activity=%#v err=%v", current, err)
+				}
 			}
 			service.store.fault = nil
 		})
@@ -373,6 +412,14 @@ func TestActivityReviewFixReceivingResolutionNeverUsesDotAndValidatesRequestedCh
 	if got, err := service.destination(testContext(t), slug, CheckoutReceiving, filepath.Join(root, "explicit"), nil, managedFacts); err != nil || got.CWD != filepath.Join(root, "explicit") {
 		t.Fatalf("explicit receiving checkout was not resolved: destination=%#v err=%v", got, err)
 	}
+	for _, receiving := range []string{".", "relative", root + "/child/..", managed} {
+		if _, err := service.destination(testContext(t), slug, CheckoutReceiving, receiving, nil, managedFacts); err == nil {
+			t.Fatalf("unsafe explicit receiving checkout accepted: %q", receiving)
+		}
+	}
+	if _, err := service.destination(testContext(t), slug, CheckoutReceiving, "", &Activity{ReceivingCheckout: managed}, managedFacts); err == nil {
+		t.Fatal("managed selected receiving checkout accepted")
+	}
 
 	other := filepath.Join(root, "same-repository-different-checkout")
 	service.checkoutResolver = func(_ context.Context, path string) (CheckoutFacts, error) {
@@ -429,6 +476,19 @@ func TestActivityReviewFixRefusalsReportOperationAxesAndMemoryRemedies(t *testin
 			t.Fatalf("%s refusal axes = %#v", operation, got)
 		}
 	}
+	for name, raw := range map[string]string{
+		"canonical-missing": "---\neffort: outcome-review-fix\nphase: \"retained ' phase\"\nnext: retained next\n---\nbody\n",
+		"legacy-invalid":    "Effort: outcome-review-fix\nPhase: retained ' phase\nNext: retained next\nUpdated: invalid\n\nbody\n",
+	} {
+		if err := os.WriteFile(service.paths.memoryFile(slug), []byte(raw), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		got := service.ResolveActivity(testContext(t), slug, CheckoutReceiving, root)
+		const want = "./awf effort memory update outcome-review-fix --phase 'retained '\"'\"' phase'"
+		if got.Condition != ActivityInvalidMemory || got.Outcome == nil || len(got.Outcome.NextActions) != 1 || got.Outcome.NextActions[0] != want {
+			t.Fatalf("%s updated-only repair = %#v", name, got)
+		}
+	}
 	if err := os.WriteFile(service.paths.memoryFile(slug), []byte("broken"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -458,8 +518,8 @@ func TestActivityDestinationAndPersistenceFaultBoundaries(t *testing.T) {
 		t.Fatalf("managed = %#v %v", got, err)
 	}
 	prior := &Activity{ReceivingCheckout: root}
-	if got, err := service.destination(testContext(t), slug, CheckoutReceiving, ".", prior, facts); err != nil || got.ReceivingCheckout != root {
-		t.Fatalf("prior receiving = %#v %v", got, err)
+	if _, err := service.destination(testContext(t), slug, CheckoutReceiving, ".", prior, facts); err == nil {
+		t.Fatal("relative explicit receiving checkout accepted over recorded checkout")
 	}
 	service.checkoutResolver = func(context.Context, string) (CheckoutFacts, error) {
 		return CheckoutFacts{InvokingRoot: root, PrimaryRoot: "/other"}, nil
