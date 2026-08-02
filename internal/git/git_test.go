@@ -141,6 +141,11 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 		_, err := nestedRepo.FirstParentChangedPaths(ctx, "HEAD")
 		return err
 	})
+	nestedHandle := gitRepo(t, filepath.Join(nestedFixture.Root(), "nested"))
+	assertCanceled("commit entries nested prefix", 2, func(ctx context.Context) error {
+		_, err := nestedHandle.CommitEntries(ctx, "HEAD")
+		return err
+	})
 }
 
 func TestWorkingPaths(t *testing.T) {
@@ -1028,10 +1033,9 @@ func TestCommitEntriesAndBlobsAtContracts(t *testing.T) {
 		t.Fatal("unsupported entry accepted")
 	}
 
-	// A nonexistent adopted-project subdirectory remains a valid containing
-	// checkout, but has no corresponding commit subtree.
-	if _, err := gitRepo(t, filepath.Join(dir, "missing-project")).CommitEntries(testsupport.Context(t), head); err == nil {
-		t.Fatal("missing project subtree accepted")
+	// A nonexistent adopted-project subdirectory has no committed entries yet.
+	if entries, err := gitRepo(t, filepath.Join(dir, "missing-project")).CommitEntries(testsupport.Context(t), head); err != nil || len(entries) != 0 {
+		t.Fatalf("missing project entries = %#v, %v", entries, err)
 	}
 
 	// Tree metadata can name a missing descendant tree in a damaged object
@@ -1082,6 +1086,20 @@ func TestCommitEntriesAndBlobsAtContracts(t *testing.T) {
 	}
 
 	missingTree := plumbing.NewHash(strings.Repeat("f", 40))
+	missingPrefixTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "missing-project", Mode: filemode.Dir, Hash: missingTree}}})
+	missingPrefixCommit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "missing project tree\n", TreeHash: missingPrefixTree}
+	missingPrefixEncoded := backend.Storer.NewEncodedObject()
+	if err := missingPrefixCommit.Encode(missingPrefixEncoded); err != nil {
+		t.Fatal(err)
+	}
+	missingPrefixHash, err := backend.Storer.SetEncodedObject(missingPrefixEncoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitRepo(t, filepath.Join(dir, "missing-project")).CommitEntries(testsupport.Context(t), missingPrefixHash.String()); err == nil {
+		t.Fatal("missing project tree object accepted")
+	}
+
 	childTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "missing", Mode: filemode.Dir, Hash: missingTree}}})
 	outerTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "child", Mode: filemode.Dir, Hash: childTree}}})
 	brokenCommit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "broken tree\n", TreeHash: outerTree}

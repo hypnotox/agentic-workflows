@@ -948,6 +948,19 @@ func TestRunNestedAdopterFiltersAndReroots(t *testing.T) {
 	}
 }
 
+func TestRunNestedAdopterUsesEmptyStateBeforeCreation(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "feat(awf): containing repository", map[string]string{"outside.txt": "outside\n"})
+	head := gitfixture.Commit(t, repo, "feat(awf): create nested adopter", map[string]string{
+		"nested/.awf/config.yaml": "prefix: nested\nintegrationBranch: main\n",
+	})
+
+	findings, count, err := Run(testContext(t), filepath.Join(repo.Root(), "nested"), base, head, Inputs{})
+	if err != nil || count != 1 || len(findings) != 0 {
+		t.Fatalf("nested adopter creation = findings=%#v count=%d err=%v", findings, count, err)
+	}
+}
+
 // TestRunLoadsOnlySelectedCommittedBlobs proves production Run retains the
 // historical loader's sparse selection rather than widening it at composition.
 func TestRunLoadsOnlySelectedCommittedBlobs(t *testing.T) {

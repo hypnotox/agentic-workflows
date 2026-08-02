@@ -158,7 +158,6 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadUniverseFromTreeMatchesPolicyProjection)
 // TestLoadUniverseFromSelectionMatchesPolicyProjection proves the sparse
 // authority selection yields the same transition universe as the complete-tree
 // reduced parser, while malformed marker sources remain outside its boundary.
@@ -198,6 +197,7 @@ func TestLoadUniverseFromSelectionMatchesPolicyProjection(t *testing.T) {
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadUniverseFromTreeMatchesPolicyProjection)
 func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 	cfg, err := config.Parse("/nonexistent", []byte(loadCfgBody+"currentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
 	if err != nil {

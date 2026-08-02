@@ -7,6 +7,7 @@ import (
 	"os"
 	pathpkg "path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -510,10 +511,19 @@ func (r *Repo) commitTree(rev string) (*object.Tree, error) {
 // treeEntries walks tree metadata without constructing a file or blob object.
 func treeEntries(ctx context.Context, tree *object.Tree, prefix string) ([]TreeEntry, error) {
 	if prefix != "" {
-		var err error
-		tree, err = tree.Tree(prefix)
-		if err != nil {
-			return nil, err
+		for _, segment := range strings.Split(prefix, "/") {
+			if err := checkContext(ctx); err != nil {
+				return nil, err
+			}
+			entryIndex := slices.IndexFunc(tree.Entries, func(entry object.TreeEntry) bool { return entry.Name == segment })
+			if entryIndex < 0 || tree.Entries[entryIndex].Mode != filemode.Dir {
+				return []TreeEntry{}, nil
+			}
+			var err error
+			tree, err = tree.Tree(segment)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	out := []TreeEntry{}
