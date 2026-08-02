@@ -40,17 +40,34 @@ type TransferReceiver = Readonly<{
 }>;
 export type EffortTransferCoordinator = { pending?: Pending; receiver?: TransferReceiver };
 
+export type ChangeCwdReplacement = (ctx: CommandContext) => Promise<void>;
+export type ChangeCwdOptions = Readonly<{ withSession?: ChangeCwdReplacement }>;
+export type ChangeCwdResult = Readonly<{ changed: boolean; cwd?: string; sessionFile?: string }>;
 type CommandContext = {
   cwd: string;
-  changeCwd?: (
-    cwd: string,
-    options?: Readonly<{ withSession?: (ctx: CommandContext) => Promise<void> }>,
-  ) => Promise<Readonly<{ changed: boolean; cwd?: string; sessionFile?: string }>>;
+  changeCwd?: (cwd: string, options?: ChangeCwdOptions) => Promise<ChangeCwdResult>;
   ui?: {
     notify?(message: string, level?: "info" | "warning" | "error"): void;
     setStatus?(key: string, value: string | undefined): void;
   };
 };
+export type RemotePiMetadata = Readonly<{
+  effort: Readonly<{ slug: string; title: string }>;
+  memory: MemorySnapshot | null;
+  activity: Readonly<{ heartbeatAt: string; cwd: string; role: CheckoutRole }>;
+}>;
+export type RemotePiMetadataSetPayload = Readonly<{ namespace: "awf"; value: RemotePiMetadata | null }>;
+export type RemotePiMetadataReplayRequestPayload = Readonly<Record<string, never>>;
+export type RemotePiCapabilitiesRequestPayload = undefined;
+export type RemotePiCapabilitiesReplyPayload = Readonly<{
+  metadata?: Readonly<{ version?: unknown }>;
+  nameOverride?: Readonly<{ version?: unknown; namespaces?: unknown }>;
+}>;
+export type RemotePiNameOverrideSetPayload = Readonly<{ namespace: "awf"; value: string | null }>;
+export type RemotePiNameOverrideReplayRequestPayload = Readonly<Record<string, never>>;
+export type RemotePiAssignedNameDiagnosticPayload = Readonly<{
+  namespace?: unknown; requested?: unknown; assigned?: unknown; active?: unknown; changed?: unknown;
+}>;
 type EventBus = {
   emit(name: string, payload?: unknown): unknown;
   on?(name: string, handler: (payload: unknown, ctx?: CommandContext) => void): unknown;
@@ -156,17 +173,21 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
   };
   const publishCurrent = (ctx: CommandContext): void => {
     const attached = current!;
-    const metadata = {
+    const metadata: RemotePiMetadata = {
       effort: { slug: attached.slug, title: attached.title },
       memory: attached.memory,
       activity: { heartbeatAt: attached.heartbeatAt, cwd: attached.cwd, role: attached.role },
     };
-    if (!emit("remote-pi:metadata:set", { namespace: "awf", value: metadata })) advisory(ctx, "Effort metadata publication is unavailable; the activity claim remains advisory and attached.");
-    if (nameOverrideAvailable && !emit("remote-pi:name-override:set", { namespace: "awf", value: attached.slug })) advisory(ctx, "Effort peer-name publication is unavailable; the activity claim remains attached.");
+    const metadataSet: RemotePiMetadataSetPayload = { namespace: "awf", value: metadata };
+    if (!emit("remote-pi:metadata:set", metadataSet)) advisory(ctx, "Effort metadata publication is unavailable; the activity claim remains advisory and attached.");
+    const nameOverrideSet: RemotePiNameOverrideSetPayload = { namespace: "awf", value: attached.slug };
+    if (nameOverrideAvailable && !emit("remote-pi:name-override:set", nameOverrideSet)) advisory(ctx, "Effort peer-name publication is unavailable; the activity claim remains attached.");
   };
   const publishClear = (ctx: CommandContext): void => {
-    if (!emit("remote-pi:metadata:set", { namespace: "awf", value: null })) advisory(ctx, "Effort metadata cleanup is unavailable; local association is detached.");
-    if (nameOverrideAvailable && !emit("remote-pi:name-override:set", { namespace: "awf", value: null })) advisory(ctx, "Effort peer-name cleanup is unavailable; local association is detached.");
+    const metadataSet: RemotePiMetadataSetPayload = { namespace: "awf", value: null };
+    if (!emit("remote-pi:metadata:set", metadataSet)) advisory(ctx, "Effort metadata cleanup is unavailable; local association is detached.");
+    const nameOverrideSet: RemotePiNameOverrideSetPayload = { namespace: "awf", value: null };
+    if (nameOverrideAvailable && !emit("remote-pi:name-override:set", nameOverrideSet)) advisory(ctx, "Effort peer-name cleanup is unavailable; local association is detached.");
   };
   const clear = (ctx: CommandContext): void => {
     current = undefined;
@@ -327,7 +348,8 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
         advisory(ctx, "The queued using_effort request is no longer current; no state changed.");
         return;
       }
-      if (typeof ctx.changeCwd !== "function") {
+      const hasChangeCwd = typeof ctx.changeCwd === "function";
+      if (!hasChangeCwd) {
         delete shared.pending;
         advisory(ctx, "using_effort requires Pi command-context changeCwd; changedCwd=false changedActivity=false changedMemory=false. Upgrade Pi and reload.");
         return;
@@ -399,21 +421,31 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
     return enqueue(() => detachCurrent(ctx));
   });
 
-  pi.events?.on?.("remote-pi:metadata:request", (_event, ctx) => { if (current) publishCurrent(ctx ?? { cwd: current.cwd }); });
-  pi.events?.on?.("remote-pi:name-override:request", (_event, ctx) => { if (current && nameOverrideAvailable) publishCurrent(ctx ?? { cwd: current.cwd }); });
+  pi.events?.on?.("remote-pi:metadata:request", (payload, ctx) => {
+    const _request = payload as RemotePiMetadataReplayRequestPayload;
+    if (current) publishCurrent(ctx ?? { cwd: current.cwd });
+  });
+  pi.events?.on?.("remote-pi:name-override:request", (payload, ctx) => {
+    const _request = payload as RemotePiNameOverrideReplayRequestPayload;
+    if (current && nameOverrideAvailable) publishCurrent(ctx ?? { cwd: current.cwd });
+  });
   pi.events?.on?.("remote-pi:capabilities", (payload, ctx) => {
-    const capabilities = payload as { metadata?: { version?: unknown }; nameOverride?: { version?: unknown; namespaces?: unknown } } | undefined;
+    const capabilities = payload as RemotePiCapabilitiesReplyPayload | undefined;
     if (capabilities?.metadata?.version !== 1) return;
     nameOverrideAvailable = capabilities.nameOverride?.version === 1 && Array.isArray(capabilities.nameOverride.namespaces) && capabilities.nameOverride.namespaces.includes("awf");
     if (current) publishCurrent(ctx ?? { cwd: current.cwd });
-    else if (nameOverrideAvailable) emit("remote-pi:name-override:set", { namespace: "awf", value: null });
+    else if (nameOverrideAvailable) {
+      const nameOverrideSet: RemotePiNameOverrideSetPayload = { namespace: "awf", value: null };
+      emit("remote-pi:name-override:set", nameOverrideSet);
+    }
   });
   pi.events?.on?.("remote-pi:name-override:assigned", (payload, ctx) => {
-    const assigned = payload as { namespace?: unknown; requested?: unknown; assigned?: unknown; active?: unknown; changed?: unknown } | undefined;
+    const assigned = payload as RemotePiAssignedNameDiagnosticPayload | undefined;
     if (!current || assigned?.namespace !== "awf" || assigned.active !== true || assigned.changed !== true || !bounded(assigned.assigned)) return;
     advisory(ctx ?? { cwd: current.cwd }, `Effort peer name was collision-assigned as ${assigned.assigned}; addresses remain opaque and metadata is not authority.`);
   });
-  emit("remote-pi:capabilities:request", undefined);
+  const capabilityRequest: RemotePiCapabilitiesRequestPayload = undefined;
+  emit("remote-pi:capabilities:request", capabilityRequest);
 }
 
 export default function effortExtension(pi: PiLike): void {

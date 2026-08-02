@@ -1,12 +1,39 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { activity, EffortProtocolError, type ActivityCondition, type ActivityReply } from "../../../.pi/extensions/awf-effort/client.ts";
-import effortExtension, { registerEffort, type EffortTransferCoordinator } from "../../../.pi/extensions/awf-effort/index.ts";
+import effortExtension, {
+  registerEffort,
+  type EffortTransferCoordinator,
+  type RemotePiAssignedNameDiagnosticPayload,
+  type RemotePiCapabilitiesReplyPayload,
+  type RemotePiCapabilitiesRequestPayload,
+  type RemotePiMetadataReplayRequestPayload,
+  type RemotePiMetadataSetPayload,
+  type RemotePiNameOverrideReplayRequestPayload,
+  type RemotePiNameOverrideSetPayload,
+} from "../../../.pi/extensions/awf-effort/index.ts";
 
 const T0 = "2026-08-02T00:00:00Z";
 const T1 = "2026-08-02T01:00:00.123456789Z";
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const PRIOR = "00000000-0000-4000-8000-000000000099";
+const remotePiStructuralFixtures: Readonly<{
+  metadataSet: RemotePiMetadataSetPayload;
+  metadataReplay: RemotePiMetadataReplayRequestPayload;
+  capabilityRequest: RemotePiCapabilitiesRequestPayload;
+  capabilityReply: RemotePiCapabilitiesReplyPayload;
+  nameOverrideSet: RemotePiNameOverrideSetPayload;
+  nameOverrideReplay: RemotePiNameOverrideReplayRequestPayload;
+  assignedDiagnostic: RemotePiAssignedNameDiagnosticPayload;
+}> = {
+  metadataSet: { namespace: "awf", value: null },
+  metadataReplay: {},
+  capabilityRequest: undefined,
+  capabilityReply: { metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } },
+  nameOverrideSet: { namespace: "awf", value: "demo" },
+  nameOverrideReplay: {},
+  assignedDiagnostic: { namespace: "awf", requested: "demo", assigned: "demo#2", active: true, changed: true },
+};
 
 function fact(owner = OWNER, cwd = "/repo", role: "managed" | "receiving" = "managed", heartbeatAt = T1) {
   return { schemaVersion: 1, owner, attachedAt: T0, heartbeatAt, cwd, receivingCheckout: "/repo", role } as const;
@@ -117,7 +144,7 @@ function makeUUIDSource(start = 1) {
   let next = start;
   return () => `00000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
 }
-function makeHarness(options: { cwd?: string; shared?: EffortTransferCoordinator; overrides?: Record<string, ReplyOverride[]>; uuid?: () => string; now?: () => Date; wait?: (milliseconds: number) => Promise<void>; emitThrows?: Set<string> } = {}) {
+function makeHarness(options: { cwd?: string; shared?: EffortTransferCoordinator; overrides?: Record<string, ReplyOverride[]>; uuid?: () => string; now?: () => Date; wait?: (milliseconds: number) => Promise<void>; emitThrows?: Set<string>; events?: boolean } = {}) {
   const tools = new Map<string, any>();
   const commands = new Map<string, any>();
   const hooks = new Map<string, any>();
@@ -132,10 +159,10 @@ function makeHarness(options: { cwd?: string; shared?: EffortTransferCoordinator
     registerCommand: (name: string, command: any) => commands.set(name, command),
     queueCommand: (name: string, argument: string) => queued.push([name, argument]),
     on: (name: string, handler: any) => hooks.set(name, handler),
-    events: {
+    ...(options.events === false ? {} : { events: {
       emit: (name: string, payload: any) => { if (options.emitThrows?.has(name)) throw new Error("event failure"); events.push([name, payload]); },
       on: (name: string, handler: any) => listeners.set(name, handler),
-    },
+    } }),
     exec: async (_command: string, argv: readonly string[]) => {
       (calls as string[][]).push([...argv]);
       const action = argv[2]!;
@@ -203,10 +230,19 @@ test("using_effort validates explicit inputs, queues only a private command, and
   assert.equal(h.queued[0]?.[0], "awf-using-effort-continue");
   delete h.ctx.changeCwd;
   await continueRequest(h);
-  assert.match(h.notices.join(" "), /changedCwd=false changedActivity=false changedMemory=false/);
+  assert.match(h.notices.join(" "), /using_effort requires Pi command-context changeCwd; changedCwd=false changedActivity=false changedMemory=false/);
+  assert.equal(h.ctx.cwd, "/repo");
+  assert.equal(h.calls.length, 0);
+  await h.hooks.get("turn_end")({}, h.ctx);
   assert.equal(h.calls.length, 0);
   await continueRequest(h, "stale-token");
   assert.match(h.notices.join(" "), /no longer current/);
+});
+
+test("named awf-owned Remote Pi structural fixtures require no Remote Pi import", () => {
+  assert.equal(remotePiStructuralFixtures.metadataSet.namespace, "awf");
+  assert.equal(remotePiStructuralFixtures.capabilityReply.nameOverride?.version, 1);
+  assert.equal(remotePiStructuralFixtures.nameOverrideSet.value, "demo");
 });
 
 test("same-checkout attach, heartbeat, replay, collision diagnostics, and explicit detach use advisory publication", async () => {
@@ -236,6 +272,20 @@ test("same-checkout attach, heartbeat, replay, collision diagnostics, and explic
   await continueRequest(h);
   assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value, null);
   await h.hooks.get("turn_end")({}, h.ctx);
+});
+
+test("complete Remote Pi absence preserves local resolve, switching, heartbeat, and detach", async () => {
+  const h = makeHarness({ events: false });
+  await request(h, { effort: "demo", destination: "receiving", receivingCheckout: "/repo" });
+  await continueRequest(h);
+  await request(h, { effort: "demo", destination: "managed" });
+  await continueRequest(h);
+  await h.hooks.get("turn_end")({}, h.ctx);
+  await request(h, { detach: true });
+  await continueRequest(h);
+  assert.deepEqual(h.calls.map((argv) => argv[2]), ["resolve", "attach", "resolve", "checkout", "heartbeat", "detach"]);
+  assert.equal(h.events.length, 0);
+  assert.equal(h.listeners.size, 0);
 });
 
 test("receiving attach, same-effort checkout, and different-effort switch use resolved facts and ordered owner operations", async () => {

@@ -192,6 +192,43 @@ func TestPiMinimumRuntime(t *testing.T) {
 			}
 		}
 	}
+	companion := renderPiExtensionFile(t, "awf-effort/index.ts")
+	for _, want := range []string{
+		"export type ChangeCwdReplacement", "export type ChangeCwdOptions", "export type ChangeCwdResult",
+		"typeof ctx.changeCwd === \"function\"", "changedCwd=false changedActivity=false changedMemory=false",
+		"RemotePiMetadataSetPayload", "RemotePiCapabilitiesReplyPayload", "RemotePiAssignedNameDiagnosticPayload",
+		"pi.events?.on?", "metadata?.version !== 1", "namespaces.includes(\"awf\")",
+	} {
+		if !strings.Contains(companion, want) {
+			t.Errorf("using_effort companion misses publication-free capability contract %q", want)
+		}
+	}
+	partial, err := os.ReadFile(filepath.Join(repoRootDir(t), "templates/partials/pi-minimum-runtime.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Retained subagent and handoff entrypoints use this floor.",
+		"structural changeCwd and Remote-event capability presence as final authority",
+		"no foreign package publication, installation topology, or version floor",
+	} {
+		if !strings.Contains(string(partial), want) {
+			t.Errorf("minimum-runtime partial misses %q", want)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/using-effort.test.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"using_effort requires Pi command-context changeCwd; changedCwd=false changedActivity=false changedMemory=false",
+		"complete Remote Pi absence preserves local resolve, switching, heartbeat, and detach",
+		"events: false", "RemotePiMetadataSetPayload",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("using_effort capability proof misses %q", want)
+		}
+	}
 }
 
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestHandoffLifecycleIndependentOfEffortState)
