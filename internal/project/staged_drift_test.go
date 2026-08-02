@@ -75,6 +75,12 @@ func TestCheckStagedDriftErrorPaths(t *testing.T) {
 func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: ".awf/efforts/.gitignore", Mode: snapshot.Regular, Bytes: []byte("resident edit")},
+		{Path: ".awf/orphan.yaml", Mode: snapshot.Regular, Bytes: []byte("config hygiene orphan")},
+		{Path: "stale.awf-bak", Mode: snapshot.Regular, Bytes: []byte("stale backup")},
+		{Path: "dead-reference.md", Mode: snapshot.Regular, Bytes: []byte("[missing](absent.md)")},
+		{Path: "invalid-frontmatter.md", Mode: snapshot.Regular, Bytes: []byte("not frontmatter")},
+		{Path: "missing-provenance.md", Mode: snapshot.Regular, Bytes: []byte("no generated banner")},
+		{Path: "bad-attribution.md", Mode: snapshot.Regular, Bytes: []byte("unattributed")},
 		{Path: "regen-stale", Mode: snapshot.Regular, Bytes: []byte("old")},
 		{Path: "regen-edit", Mode: snapshot.Regular, Bytes: []byte("old")},
 		{Path: "regen-clean", Mode: snapshot.Regular, Bytes: []byte("same")},
@@ -94,6 +100,10 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		"ordinary-edit":           {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
 		"ordinary-clean":          {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
 		"ordinary-missing":        {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
+		"dead-reference.md":       {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("[missing](absent.md)"))},
+		"invalid-frontmatter.md":  {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("not frontmatter"))},
+		"missing-provenance.md":   {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("no generated banner"))},
+		"bad-attribution.md":      {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("unattributed"))},
 	}}
 	rendered := map[string]RenderedFile{
 		".awf/efforts/.gitignore": {Path: ".awf/efforts/.gitignore", TemplateHash: "new-template", ConfigHash: "config"},
@@ -104,12 +114,19 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		"ordinary-edit":           {Path: "ordinary-edit", TemplateHash: "template", ConfigHash: "config"},
 		"ordinary-clean":          {Path: "ordinary-clean", TemplateHash: "template", ConfigHash: "config"},
 		"ordinary-missing":        {Path: "ordinary-missing", TemplateHash: "template", ConfigHash: "config"},
+		"dead-reference.md":       {Path: "dead-reference.md", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ScanReferences: true}},
+		"invalid-frontmatter.md":  {Path: "invalid-frontmatter.md", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ValidateFrontmatter: true}},
+		"missing-provenance.md":   {Path: "missing-provenance.md", TemplateHash: "template", ConfigHash: "config"},
+		"bad-attribution.md":      {Path: "bad-attribution.md", TemplateHash: "template", ConfigHash: "config"},
 	}
 
 	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The exact result also proves the named repo-only fixtures above stay
+	// silent: config hygiene, backup, dead-reference, frontmatter, provenance,
+	// attribution, and orphaned-lock inputs produce no additional kind.
 	want := []manifest.Drift{
 		{Path: "ordinary-edit", Kind: "hand-edited", Detail: "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"},
 		{Path: "ordinary-stale", Kind: "stale", Detail: "template or config changed; run awf render"},
