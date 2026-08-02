@@ -70,7 +70,9 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"clean green baseline", "one coherent green transaction", "shared files parent-owned")
 		assertAll("inline",
 			"mixed plan can hand subagent-driven phases", "Iterate phases, not tasks",
-			"awf read plan <plan> <P[.T]>", "projection changes neither phase ownership nor checkpoint boundaries",
+			"awf read plan <plan> <P[.T]>", "generated task scope notice", "phase-owner context only", "Advances and Completes outcomes",
+			"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
+			"projection changes neither phase ownership nor checkpoint boundaries",
 			"parent owns every ordered task", "sequential commit-disabled helpers",
 			"reject out-of-subset writes", "retain shared-file ownership", "report-only phase review",
 			"Review settles before checkpointing", "**Routine checkpoint.**", "completed and remaining work",
@@ -78,7 +80,8 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"complete revised phase", "recovery verification", "blind successor instruction")
 		assertAll("subagent",
 			"plan may mix modes", "hand inline phases", "known clean and green baseline",
-			"awf read plan <plan> <P>", "projection changes neither ownership nor checkpoint boundaries",
+			"awf read plan <plan> <P>", "generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
+			"never transfer commit, review, checkpoint, handoff, helper, or outcome authority", "projection changes neither ownership nor checkpoint boundaries",
 			"one implementation child alone", "state commit-capable phase-owner mode in the brief", "complete phase",
 			"stages the complete transaction", "declared phase-closing commit", "awf check staged", gatePhrase,
 			"report-only phase review", "focused settlement commits",
