@@ -89,9 +89,10 @@ mapping. No second Markdown parser belongs in the command or project packages.
    requires `Question`, has no prose body after its fields, forbids the batch-only fields,
    and makes Notes required; its Question is its complete task content. A batch requires
    `Paths`, `Representative`, `Edge`, and `Post-check`. `Paths` is a JSON array of strings.
-   An unprefixed string is a repository-relative literal path, `glob:` introduces the
-   supported glob grammar, and `pathspec:` carries the remaining string as a Git pathspec
-   verbatim. Empty arrays, empty or duplicate entries, absolute paths, and entries escaping
+   An unprefixed string is a repository-relative literal path. After its prefix is removed,
+   `glob:` uses `internal/pathglob`'s anchored, slash-separated doublestar grammar, while
+   `pathspec:` carries the remaining string as a Git pathspec verbatim. Empty arrays, empty
+   or duplicate entries, absolute paths, and entries escaping
    the repository through `..` are refused. Any `glob:` or `pathspec:` entry requires
    `Post-check`; a literal entry may not smuggle wildcard or Git magic syntax. `Paths` is
    also required whenever scope is ambiguous, but ambiguity and whether content belongs to

@@ -142,11 +142,14 @@ continues to count the declaration once.
     first-parent and result universes and therefore validates the ordered event chain and
     its net effect rather than attempting to reconstruct intermediate claim bytes. For
     later update entries from the same ADR, the fold contributes that ADR to the updaters
-    list once and requires a material net update. For later add entries, the fold produces
-    one net add attributed to the chain's first step and requires a material net difference
-    from that add's initial claim. An aggregate whose corrections cancel completely has no
-    material net mutation and is refused. The requirement that an add be the chain's first
-    operation is satisfied by that fold rather than violated by a correction. Both
+    list once and requires a material endpoint update. For later add entries, the fold
+    produces one endpoint net add attributed to the chain's first step and validates the
+    observable absent-to-present shape and its provenance; it does not compare the endpoint
+    with intermediate claim bytes the aggregate cannot observe. Per-occurrence materiality
+    remains proven by each authored Reapplied commit. An update aggregate whose corrections
+    cancel completely has no material endpoint mutation and is refused. The requirement
+    that an add be the chain's first operation is satisfied by that fold rather than
+    violated by a correction. Both
     prohibitions are about the execution chain, which is why this decision must change them
     rather than leave them standing.
 
