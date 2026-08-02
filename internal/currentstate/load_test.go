@@ -159,6 +159,45 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 }
 
 // invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadUniverseFromTreeMatchesPolicyProjection)
+// TestLoadUniverseFromSelectionMatchesPolicyProjection proves the sparse
+// authority selection yields the same transition universe as the complete-tree
+// reduced parser, while malformed marker sources remain outside its boundary.
+func TestLoadUniverseFromSelectionMatchesPolicyProjection(t *testing.T) {
+	cfg, err := config.Parse("/nonexistent", []byte(loadCfgBody+"currentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"docs/decisions/0001-first.md":                 legacyADR(),
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		"internal/proof_test.go":                       "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
+	}
+	complete := treeFrom(t, files)
+	want, err := loadUniverseFromTree(complete, cfg)
+	if err != nil {
+		t.Fatalf("LoadUniverseFromTree: %v", err)
+	}
+	selection, err := snapshot.NewSelection([]snapshot.File{
+		{Path: "docs/decisions/0001-first.md", Mode: snapshot.Regular, Bytes: []byte(files["docs/decisions/0001-first.md"])},
+		{Path: ".awf/topics/metadata/alpha/one.yaml", Mode: snapshot.Regular, Bytes: []byte(files[".awf/topics/metadata/alpha/one.yaml"])},
+		{Path: ".awf/topics/parts/alpha/one/current-state.md", Mode: snapshot.Regular, Bytes: []byte(files[".awf/topics/parts/alpha/one/current-state.md"])},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := currentstate.LoadUniverseFromSelection(selection, cfg)
+	if err != nil {
+		t.Fatalf("LoadUniverseFromSelection: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("selection universe = %#v, want complete reduced universe %#v", got, want)
+	}
+	if _, err := currentstate.LoadFromTree(complete, cfg); err == nil {
+		t.Fatal("LoadFromTree stopped indexing malformed marker sources")
+	}
+}
+
 func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 	cfg, err := config.Parse("/nonexistent", []byte(loadCfgBody+"currentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
 	if err != nil {
@@ -188,7 +227,7 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := full.Universe()
-	got, err := currentstate.LoadUniverseFromTree(clean, cfg)
+	got, err := loadUniverseFromTree(clean, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +237,7 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 	for _, docsDir := range []string{"./docs", "docs/"} {
 		spelled := *cfg
 		spelled.DocsDir = docsDir
-		got, err := currentstate.LoadUniverseFromTree(clean, &spelled)
+		got, err := loadUniverseFromTree(clean, &spelled)
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Fatalf("docsDir %q policy universe = %#v, %v; want %#v", docsDir, got, err, want)
 		}
@@ -217,7 +256,7 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 			"internal/proof_test.go":                       "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
 		},
 	} {
-		got, err := currentstate.LoadUniverseFromTree(treeFrom(t, changed), cfg)
+		got, err := loadUniverseFromTree(treeFrom(t, changed), cfg)
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Fatalf("omitted bytes changed policy universe: %#v, %v", got, err)
 		}
@@ -247,11 +286,19 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := currentstate.LoadUniverseFromTree(treeFrom(t, broken), cfg); err == nil {
+			if _, err := loadUniverseFromTree(treeFrom(t, broken), cfg); err == nil {
 				t.Fatal("policy loader accepted malformed required authority")
 			}
 		})
 	}
+}
+
+func loadUniverseFromTree(tree *snapshot.Tree, cfg *config.Config) (currentstate.Universe, error) {
+	selection, err := snapshot.NewSelection(tree.List())
+	if err != nil {
+		return currentstate.Universe{}, err
+	}
+	return currentstate.LoadUniverseFromSelection(selection, cfg)
 }
 
 // v3Pending is a valid Proposed pending current-state-v3 record: slug identity,

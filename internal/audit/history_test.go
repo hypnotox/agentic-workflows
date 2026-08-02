@@ -386,7 +386,7 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 				op := newHistoryOperationWithRelevance(
 					[]awfgit.Commit{{Hash: "committed", Revision: "HEAD", Subject: "feat(awf): committed evidence"}}, Inputs{},
 					func(ctx context.Context, revision string) (*revisionState, error) {
-						return loadCompleteRevision(ctx, repo.Root(), handle, revision)
+						return loadSelectedRevision(ctx, repo.Root(), revision, handle.CommitEntries, handle.CommitBlobsAt)
 					}, nil,
 					func(context.Context) ([]Finding, error) { return nil, nil })
 				findings, err := op.run(ctx)
@@ -395,6 +395,40 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 				}
 				if countRule(findings, currentStateTransitionRule, severity.Warn) != 0 {
 					t.Fatalf("committed evidence termination became a warning: %#v", findings)
+				}
+			})
+		}
+	})
+
+	t.Run("selected historical evidence", func(t *testing.T) {
+		for _, termination := range []error{context.Canceled, context.DeadlineExceeded} {
+			t.Run(termination.Error(), func(t *testing.T) {
+				var events []string
+				entryRead := func(context.Context, string) ([]awfgit.TreeEntry, error) {
+					events = append(events, "enumerate")
+					return nil, termination
+				}
+				blobRead := func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
+					events = append(events, "later blob read")
+					return nil, nil
+				}
+				_, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", entryRead, blobRead)
+				if !errors.Is(err, termination) || !slices.Equal(events, []string{"enumerate"}) {
+					t.Fatalf("enumeration cancellation = %v; events=%v", err, events)
+				}
+
+				events = nil
+				_, err = loadSelectedRevision(testContext(t), t.TempDir(), "revision",
+					func(context.Context, string) ([]awfgit.TreeEntry, error) {
+						events = append(events, "enumerate")
+						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
+					},
+					func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
+						events = append(events, "selected blob read")
+						return nil, termination
+					})
+				if !errors.Is(err, termination) || !slices.Equal(events, []string{"enumerate", "selected blob read"}) {
+					t.Fatalf("selected-read cancellation = %v; events=%v", err, events)
 				}
 			})
 		}
@@ -426,7 +460,7 @@ func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := loadCompleteRevision(ctx, repo.Root(), handle, "HEAD"); !errors.Is(err, context.Canceled) {
+	if _, err := loadSelectedRevision(ctx, repo.Root(), "HEAD", handle.CommitEntries, handle.CommitBlobsAt); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled complete revision load = %v", err)
 	}
 }
@@ -554,9 +588,15 @@ func TestHistoryOperationErrorPaths(t *testing.T) {
 		t.Fatalf("stale error = %v", err)
 	}
 
-	malformedLock := revisionStateFromTree(t.TempDir(), auditTree(t, []snapshot.File{{
-		Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{"),
-	}}))
+	malformedLock := &revisionState{
+		loadLock: func() (*manifest.Lock, bool, error) {
+			return nil, true, errors.New("malformed lock")
+		},
+	}
+	malformedLock.loadUniverse = func() (currentstate.Universe, error) {
+		_, _, err := malformedLock.lockEvidence()
+		return currentstate.Universe{}, err
+	}
 	if _, err := malformedLock.currentState(); err == nil {
 		t.Fatal("current state accepted malformed cached lock")
 	}
@@ -778,6 +818,214 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
 	if _, err := canonical.stateForCommit(ctx, canonical.commits[0]); err != nil || canonicalLoads["canonical-child"] != 1 {
 		t.Fatalf("non-canonical docsDir reused stale state: loads=%#v err=%v", canonicalLoads, err)
+	}
+}
+
+// TestHistoricalStateSelectsOnlyAuthorityBlobs pins the two-stage committed
+// authority projection without a Git fixture: its dependencies record exactly
+// which metadata and object reads the historical loader requests.
+func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
+	const configPath = ".awf/config.yaml"
+	const lockPath = ".awf/awf.lock"
+	const lock = `{"awfVersion":"v0.18.0","schemaVersion":31,"files":{}}`
+	base := []awfgit.TreeEntry{
+		{Path: configPath, Mode: awfgit.BlobRegular},
+		{Path: lockPath, Mode: awfgit.BlobRegular},
+		{Path: ".awf/topics/metadata/alpha/one.yaml", Mode: awfgit.BlobRegular},
+		{Path: ".awf/topics/parts/alpha/one/current-state.md", Mode: awfgit.BlobRegular},
+		{Path: "docs/decisions/0001-one.md", Mode: awfgit.BlobRegular},
+		{Path: "internal/bad_marker_test.go", Mode: awfgit.BlobRegular},
+		{Path: ".awf/domains/alpha.yaml", Mode: awfgit.BlobRegular},
+		{Path: "nested/.awf/config.yaml", Mode: awfgit.BlobRegular},
+		{Path: "nested/docs/decisions/0002-nested.md", Mode: awfgit.BlobRegular},
+	}
+	bodies := map[string][]byte{
+		configPath:                            []byte("prefix: test\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\n"),
+		lockPath:                              []byte(lock),
+		".awf/topics/metadata/alpha/one.yaml": []byte("title: One\nsummary: O.\npaths: [\"internal/**\"]\n"),
+		".awf/topics/parts/alpha/one/current-state.md": []byte(historicalTopicPart("0001")),
+		"docs/decisions/0001-one.md":                   []byte(historicalLegacyADR()),
+		"internal/bad_marker_test.go":                  []byte("package internal\n// invariant: broken\n"),
+	}
+
+	for _, tc := range []struct {
+		name       string
+		entries    []awfgit.TreeEntry
+		configBody string
+		lockBody   string
+		wantReads  [][]string
+		wantErr    bool
+	}{
+		{"default", base, string(bodies[configPath]), lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
+		{"custom docs", append(append([]awfgit.TreeEntry{}, base[:4]...), awfgit.TreeEntry{Path: "records/decisions/0001-one.md", Mode: awfgit.BlobRegular}), "prefix: test\nintegrationBranch: main\ntargets: [claude]\ndomains: [alpha]\ndocsDir: records\n", lock, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "records/decisions/0001-one.md"}}, false},
+		{"absent config", base[1:], "", lock, nil, false},
+		{"absent lock", append([]awfgit.TreeEntry{base[0]}, base[2:]...), string(bodies[configPath]), "", [][]string{{configPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
+		{"symlink authority", append([]awfgit.TreeEntry{{Path: configPath, Mode: awfgit.BlobSymlink}}, base[1:]...), string(bodies[configPath]), lock, [][]string{{configPath, lockPath}}, true},
+		{"historical schema", base, "prefix: test\ndomains: [alpha]\nskills: []\nworkflowTelemetry:\n  retention:\n    maxCompletedEffortAgeDays: 1\n", `{"awfVersion":"v0.18.0","schemaVersion":19,"files":{}}`, [][]string{{configPath, lockPath}, {".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "docs/decisions/0001-one.md"}}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var reads [][]string
+			read := func(_ context.Context, _ string, paths []string) ([]awfgit.IndexBlob, error) {
+				reads = append(reads, slices.Clone(paths))
+				blobs := make([]awfgit.IndexBlob, 0, len(paths))
+				for _, p := range paths {
+					if p == configPath && tc.configBody != "" {
+						blobs = append(blobs, awfgit.IndexBlob{Path: p, Mode: awfgit.BlobRegular, Bytes: []byte(tc.configBody)})
+						continue
+					}
+					if p == lockPath && tc.lockBody != "" {
+						blobs = append(blobs, awfgit.IndexBlob{Path: p, Mode: awfgit.BlobRegular, Bytes: []byte(tc.lockBody)})
+						continue
+					}
+					if p == "records/decisions/0001-one.md" {
+						blobs = append(blobs, awfgit.IndexBlob{Path: p, Mode: awfgit.BlobRegular, Bytes: []byte(historicalLegacyADR())})
+						continue
+					}
+					blobs = append(blobs, awfgit.IndexBlob{Path: p, Mode: awfgit.BlobRegular, Bytes: slices.Clone(bodies[p])})
+				}
+				return blobs, nil
+			}
+			state, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", func(context.Context, string) ([]awfgit.TreeEntry, error) {
+				return slices.Clone(tc.entries), nil
+			}, read)
+			if err != nil {
+				t.Fatalf("loadSelectedRevision: %v", err)
+			}
+			if state == nil {
+				t.Fatal("loader returned no state")
+			}
+			_, stateErr := state.currentState()
+			if tc.wantErr {
+				if stateErr == nil {
+					t.Fatal("symlink authority was accepted")
+				}
+				if !slices.EqualFunc(reads, tc.wantReads, slices.Equal[[]string]) {
+					t.Fatalf("selected reads before symlink error = %#v, want %#v", reads, tc.wantReads)
+				}
+				return
+			}
+			if stateErr != nil {
+				t.Fatalf("derived current state: %v", stateErr)
+			}
+			if !slices.EqualFunc(reads, tc.wantReads, slices.Equal[[]string]) {
+				t.Fatalf("selected reads = %#v, want %#v", reads, tc.wantReads)
+			}
+			if tc.name == "absent config" && len(reads) != 0 {
+				t.Fatalf("absent config read blobs: %#v", reads)
+			}
+		})
+	}
+
+	entries, reads := 0, 0
+	loader := func(ctx context.Context, revision string) (*revisionState, error) {
+		return loadSelectedRevision(ctx, t.TempDir(), revision, func(context.Context, string) ([]awfgit.TreeEntry, error) {
+			entries++
+			return slices.Clone(base), nil
+		}, func(_ context.Context, _ string, paths []string) ([]awfgit.IndexBlob, error) {
+			reads += len(paths)
+			out := make([]awfgit.IndexBlob, 0, len(paths))
+			for _, p := range paths {
+				out = append(out, awfgit.IndexBlob{Path: p, Mode: awfgit.BlobRegular, Bytes: slices.Clone(bodies[p])})
+			}
+			return out, nil
+		})
+	}
+	op := newHistoryOperationWithRelevance([]awfgit.Commit{{Revision: "parent"}, {Revision: "irrelevant", Parents: []string{"parent"}, Changes: []awfgit.FileChange{{Path: "internal/code.go"}}}}, Inputs{}, loader, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if _, err := op.stateForCommit(testContext(t), op.commits[1]); err != nil {
+		t.Fatal(err)
+	}
+	if entries != 1 || reads != 5 {
+		t.Fatalf("irrelevant commit did not reuse derived state: entry reads=%d blob reads=%d, want 1 and 5", entries, reads)
+	}
+}
+
+func historicalLegacyADR() string {
+	return "---\nstatus: Implemented\ndate: 2026-07-20\n---\n# Historical decision\n"
+}
+
+func historicalTopicPart(origin string) string {
+	return "Historical topic authority.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-" + origin + "\n"
+}
+
+// TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence exercises
+// sparse-loader failures before they can become a partial policy universe.
+func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T) {
+	const configPath = ".awf/config.yaml"
+	entries := []awfgit.TreeEntry{
+		{Path: configPath, Mode: awfgit.BlobRegular},
+		{Path: "docs/decisions/0001-one.md", Mode: awfgit.BlobRegular},
+	}
+	configBlob := awfgit.IndexBlob{Path: configPath, Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nintegrationBranch: main\ntargets: [claude]\ndomains: []\n")}
+	load := func(blobs ...[]awfgit.IndexBlob) func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
+		calls := 0
+		return func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
+			got := blobs[calls]
+			calls++
+			return got, nil
+		}
+	}
+	entryRead := func(ctx context.Context, _ string) ([]awfgit.TreeEntry, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return entries, nil
+	}
+
+	t.Run("invalid controls selection", func(t *testing.T) {
+		_, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", entryRead,
+			load([]awfgit.IndexBlob{{Path: configPath, Mode: awfgit.BlobMode(99)}}))
+		if err == nil {
+			t.Fatal("invalid selected controls accepted")
+		}
+	})
+	t.Run("authority read failure", func(t *testing.T) {
+		boom := errors.New("authority object missing")
+		calls := 0
+		state, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", entryRead,
+			func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
+				calls++
+				if calls == 1 {
+					return []awfgit.IndexBlob{configBlob}, nil
+				}
+				return nil, boom
+			})
+		if err == nil {
+			_, err = state.currentState()
+		}
+		if !errors.Is(err, boom) {
+			t.Fatalf("authority read error = %v, want %v", err, boom)
+		}
+	})
+	for name, authority := range map[string][]awfgit.IndexBlob{
+		"invalid authority selection": {{Path: "docs/decisions/0001-one.md", Mode: awfgit.BlobMode(99)}},
+		"symlink authority":           {{Path: "docs/decisions/0001-one.md", Mode: awfgit.BlobSymlink, Bytes: []byte("target")}},
+		"duplicate final selection":   {configBlob},
+	} {
+		t.Run(name, func(t *testing.T) {
+			state, err := loadSelectedRevision(testContext(t), t.TempDir(), "revision", entryRead,
+				load([]awfgit.IndexBlob{configBlob}, authority))
+			if err == nil {
+				_, err = state.currentState()
+			}
+			if err == nil {
+				t.Fatal("invalid sparse authority accepted")
+			}
+		})
+	}
+
+	state := revisionStateWithConfigError(errors.New("config is a symlink"))
+	if _, err := state.currentState(); err == nil {
+		t.Fatal("configuration error did not prevent current-state loading")
+	}
+	controls, err := snapshot.NewSelection([]snapshot.File{
+		{Path: configPath, Mode: snapshot.Regular, Bytes: configBlob.Bytes},
+		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("not a lock")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := revisionStateFromControls(t.TempDir(), controls).currentState(); err == nil {
+		t.Fatal("malformed lock did not prevent current-state loading")
 	}
 }
 

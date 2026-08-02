@@ -48,11 +48,11 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 	return c, nil
 }
 
-// LoadAuthorityCorpusFromTree parses only topic authority from an immutable
-// snapshot. It validates metadata, parts, configured domains, claims, and ADR
-// provenance, but deliberately omits domain ownership and marker validation.
-func LoadAuthorityCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
-	metadata, parts, err := authorityEntriesFromTreeFiles(scannableTreeFiles(tree))
+// LoadAuthorityCorpusFromFiles parses the reduced topic authority from the
+// supplied snapshot files. Historical selections use this exact byte-fed core
+// without materializing a complete Tree.
+func LoadAuthorityCorpusFromFiles(files []snapshot.File, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+	metadata, parts, err := authorityEntriesFromTreeFiles(files)
 	if err != nil {
 		return Corpus{}, err
 	}

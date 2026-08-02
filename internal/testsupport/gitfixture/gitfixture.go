@@ -57,14 +57,14 @@ func (f Fixture) Root() string { return f.root }
 func At(root string) Fixture { return Fixture{root: root} }
 
 // InitRepo creates a fresh git repository in a new t.TempDir().
-func InitRepo(t *testing.T) Fixture {
+func InitRepo(t testing.TB) Fixture {
 	t.Helper()
 	return InitRepoAt(t, t.TempDir())
 }
 
 // InitRepoAt creates a git repository in root, which may already hold files a
 // test wrote before the repository existed.
-func InitRepoAt(t *testing.T, root string) Fixture {
+func InitRepoAt(t testing.TB, root string) Fixture {
 	t.Helper()
 	if _, err := git.PlainInit(root, false); err != nil { // coverage-ignore: PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger
 		t.Fatalf("init: %v", err)
@@ -76,14 +76,14 @@ func InitRepoAt(t *testing.T, root string) Fixture {
 // directories) and adds them to the index without committing, so a test can
 // exercise a staged-but-uncommitted index universe distinct from the working
 // tree.
-func Stage(t *testing.T, f Fixture, write map[string]string) {
+func Stage(t testing.TB, f Fixture, write map[string]string) {
 	t.Helper()
 	stageInto(t, worktree(t, f), f.root, write)
 }
 
 // StageFile writes one path with an explicit file mode and stages it, so a
 // fixture can pin an executable bit the index must preserve.
-func StageFile(t *testing.T, f Fixture, name, content string, mode os.FileMode) {
+func StageFile(t testing.TB, f Fixture, name, content string, mode os.FileMode) {
 	t.Helper()
 	writeUnder(t, f.root, name, content, mode)
 	Add(t, f, name)
@@ -91,14 +91,14 @@ func StageFile(t *testing.T, f Fixture, name, content string, mode os.FileMode) 
 
 // Add stages paths that already exist in the worktree, including a symlink the
 // test created itself.
-func Add(t *testing.T, f Fixture, paths ...string) {
+func Add(t testing.TB, f Fixture, paths ...string) {
 	t.Helper()
 	addAll(t, worktree(t, f), paths)
 }
 
 // AddAll stages every change in the worktree, matching `git add -A` at the
 // repository root.
-func AddAll(t *testing.T, f Fixture) {
+func AddAll(t testing.TB, f Fixture) {
 	t.Helper()
 	if err := worktree(t, f).AddWithOptions(&git.AddOptions{All: true}); err != nil { // coverage-ignore: staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger
 		t.Fatalf("add all: %v", err)
@@ -107,14 +107,14 @@ func AddAll(t *testing.T, f Fixture) {
 
 // StageRemoval stages the deletion of tracked paths without committing, so a
 // test can distinguish a staged deletion from a working-tree one.
-func StageRemoval(t *testing.T, f Fixture, names ...string) {
+func StageRemoval(t testing.TB, f Fixture, names ...string) {
 	t.Helper()
 	removeFrom(t, worktree(t, f), names)
 }
 
 // StageGitlink appends a gitlink (submodule) index entry, which carries no
 // regular file content and so exercises the readers' skip path.
-func StageGitlink(t *testing.T, f Fixture, name string) {
+func StageGitlink(t testing.TB, f Fixture, name string) {
 	t.Helper()
 	appendIndexEntry(t, f, &indexformat.Entry{
 		Name: name,
@@ -125,14 +125,14 @@ func StageGitlink(t *testing.T, f Fixture, name string) {
 
 // StageUnmerged appends a conflicted (stage-2) index entry, so a test can drive
 // the unmerged-index refusal.
-func StageUnmerged(t *testing.T, f Fixture, name string) {
+func StageUnmerged(t testing.TB, f Fixture, name string) {
 	t.Helper()
 	appendIndexEntry(t, f, &indexformat.Entry{Name: name, Mode: filemode.Regular, Stage: indexformat.OurMode})
 }
 
 // Commit writes/removes the given paths in the fixture's worktree, stages them,
 // and commits with Sig, returning the commit's hex hash.
-func Commit(t *testing.T, f Fixture, msg string, write map[string]string, remove ...string) string {
+func Commit(t testing.TB, f Fixture, msg string, write map[string]string, remove ...string) string {
 	t.Helper()
 	wt := worktree(t, f)
 	stageInto(t, wt, f.root, write)
@@ -149,7 +149,7 @@ func Commit(t *testing.T, f Fixture, msg string, write map[string]string, remove
 // first-parent range semantics. It allows an empty commit, so a merge can
 // integrate a branch whose tree already matches HEAD, and with no parents named
 // it simply commits the index on top of HEAD.
-func Merge(t *testing.T, f Fixture, msg string, parents ...string) string {
+func Merge(t testing.TB, f Fixture, msg string, parents ...string) string {
 	t.Helper()
 	h, err := worktree(t, f).Commit(msg, &git.CommitOptions{
 		Parents:           hashes(parents),
@@ -167,7 +167,7 @@ func Merge(t *testing.T, f Fixture, msg string, parents ...string) string {
 // parents as given, without moving any reference. It builds the shapes an
 // ordinary commit cannot reach, such as a merge whose tree deliberately differs
 // from its first parent's.
-func Graft(t *testing.T, f Fixture, msg, treeFrom string, parents ...string) string {
+func Graft(t testing.TB, f Fixture, msg, treeFrom string, parents ...string) string {
 	t.Helper()
 	commit := &object.Commit{
 		Author:       *Sig,
@@ -189,7 +189,7 @@ func Graft(t *testing.T, f Fixture, msg, treeFrom string, parents ...string) str
 }
 
 // TreeHash reports the hex tree hash of the commit named by rev.
-func TreeHash(t *testing.T, f Fixture, rev string) string {
+func TreeHash(t testing.TB, f Fixture, rev string) string {
 	t.Helper()
 	commit, err := open(t, f).CommitObject(plumbing.NewHash(rev))
 	if err != nil { // coverage-ignore: reading back a commit the fixture just wrote cannot fail
@@ -200,7 +200,7 @@ func TreeHash(t *testing.T, f Fixture, rev string) string {
 
 // CheckoutNewBranch creates a branch at the given commit and checks it out, so
 // a fixture can put history on a branch other than the initial one.
-func CheckoutNewBranch(t *testing.T, f Fixture, name, at string) {
+func CheckoutNewBranch(t testing.TB, f Fixture, name, at string) {
 	t.Helper()
 	options := &git.CheckoutOptions{
 		Hash:   plumbing.NewHash(at),
@@ -214,7 +214,7 @@ func CheckoutNewBranch(t *testing.T, f Fixture, name, at string) {
 
 // appendIndexEntry adds a raw index entry, the escape hatch for index states
 // (gitlink, conflicted) that no worktree operation produces.
-func appendIndexEntry(t *testing.T, f Fixture, entry *indexformat.Entry) {
+func appendIndexEntry(t testing.TB, f Fixture, entry *indexformat.Entry) {
 	t.Helper()
 	repo := open(t, f)
 	idx, err := repo.Storer.Index()
@@ -228,7 +228,7 @@ func appendIndexEntry(t *testing.T, f Fixture, entry *indexformat.Entry) {
 }
 
 // stageInto writes and stages a whole path set through one open worktree.
-func stageInto(t *testing.T, wt *git.Worktree, root string, write map[string]string) {
+func stageInto(t testing.TB, wt *git.Worktree, root string, write map[string]string) {
 	t.Helper()
 	for name, content := range write {
 		writeUnder(t, root, name, content, 0o644)
@@ -237,7 +237,7 @@ func stageInto(t *testing.T, wt *git.Worktree, root string, write map[string]str
 }
 
 // addAll stages existing paths through an already-open worktree.
-func addAll(t *testing.T, wt *git.Worktree, paths []string) {
+func addAll(t testing.TB, wt *git.Worktree, paths []string) {
 	t.Helper()
 	for _, name := range paths {
 		if _, err := wt.Add(name); err != nil { // coverage-ignore: Add of a path the caller asserts exists cannot fail in a test fixture
@@ -247,7 +247,7 @@ func addAll(t *testing.T, wt *git.Worktree, paths []string) {
 }
 
 // removeFrom stages deletions through an already-open worktree.
-func removeFrom(t *testing.T, wt *git.Worktree, names []string) {
+func removeFrom(t testing.TB, wt *git.Worktree, names []string) {
 	t.Helper()
 	for _, name := range names {
 		if _, err := wt.Remove(name); err != nil { // coverage-ignore: Remove of a path the caller asserts is tracked cannot fail in a test fixture
@@ -257,7 +257,7 @@ func removeFrom(t *testing.T, wt *git.Worktree, names []string) {
 }
 
 // writeUnder writes content at name relative to root, creating parents.
-func writeUnder(t *testing.T, root, name, content string, mode os.FileMode) {
+func writeUnder(t testing.TB, root, name, content string, mode os.FileMode) {
 	t.Helper()
 	full := filepath.Join(root, name)
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { // coverage-ignore: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger
@@ -269,7 +269,7 @@ func writeUnder(t *testing.T, root, name, content string, mode os.FileMode) {
 }
 
 // open returns the go-git repository behind the fixture.
-func open(t *testing.T, f Fixture) *git.Repository {
+func open(t testing.TB, f Fixture) *git.Repository {
 	t.Helper()
 	repo, err := git.PlainOpen(f.root)
 	if err != nil { // coverage-ignore: opening a repository the fixture itself created cannot fail
@@ -279,7 +279,7 @@ func open(t *testing.T, f Fixture) *git.Repository {
 }
 
 // worktree returns the fixture repository's worktree.
-func worktree(t *testing.T, f Fixture) *git.Worktree {
+func worktree(t testing.TB, f Fixture) *git.Worktree {
 	t.Helper()
 	wt, err := open(t, f).Worktree()
 	if err != nil { // coverage-ignore: Worktree() on a non-bare fixture repository cannot fail

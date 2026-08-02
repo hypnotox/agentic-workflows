@@ -46,15 +46,18 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 	return Loaded{ADRs: records, Sources: sources, Corpus: corpus, Topics: topics}, nil
 }
 
-// LoadUniverseFromTree assembles only the immutable ADR and topic authority
-// used by historical transition policy. Unlike LoadFromTree, it deliberately
-// does not load marker sites or domain ownership sidecars.
-func LoadUniverseFromTree(tree *snapshot.Tree, cfg *config.Config) (Universe, error) {
-	records, sources, corpus, err := authorityFromTree(tree, cfg)
+// LoadUniverseFromSelection assembles historical policy authority from a sparse
+// selection. It does not materialize that selection as a Tree.
+func LoadUniverseFromSelection(selection *snapshot.Selection, cfg *config.Config) (Universe, error) {
+	return loadUniverseFromFiles(selection.List(), cfg)
+}
+
+func loadUniverseFromFiles(files []snapshot.File, cfg *config.Config) (Universe, error) {
+	records, sources, corpus, err := authorityFromFiles(files, cfg)
 	if err != nil {
 		return Universe{}, err
 	}
-	topics, err := topic.LoadAuthorityCorpusFromTree(tree, cfg, corpus)
+	topics, err := topic.LoadAuthorityCorpusFromFiles(files, cfg, corpus)
 	if err != nil {
 		return Universe{}, err
 	}
@@ -62,7 +65,11 @@ func LoadUniverseFromTree(tree *snapshot.Tree, cfg *config.Config) (Universe, er
 }
 
 func authorityFromTree(tree *snapshot.Tree, cfg *config.Config) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
-	records, sources, err := adrsFromTree(tree, cfg.DocsDir)
+	return authorityFromFiles(tree.List(), cfg)
+}
+
+func authorityFromFiles(files []snapshot.File, cfg *config.Config) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
+	records, sources, err := adrsFromFiles(files, cfg.DocsDir)
 	if err != nil {
 		return nil, nil, adr.Corpus{}, err
 	}
@@ -73,16 +80,16 @@ func authorityFromTree(tree *snapshot.Tree, cfg *config.Config) ([]adr.ADR, map[
 	return records, sources, corpus, nil
 }
 
-// adrsFromTree parses every top-level ADR decision file in the snapshot with the
-// intrinsic router. adr.NewCorpus subsequently enforces corpus-level identity
-// uniqueness that a per-file parse cannot see. Per-file legacy and governed
-// routing is enforced by adr.ParseRecord, which also rejects a non-reserved file
-// that is neither form.
-func adrsFromTree(tree *snapshot.Tree, docsDir string) ([]adr.ADR, map[string][]byte, error) {
+// adrsFromFiles parses every top-level ADR decision file in the supplied files
+// with the intrinsic router. adr.NewCorpus subsequently enforces corpus-level
+// identity uniqueness that a per-file parse cannot see. Per-file legacy and
+// governed routing is enforced by adr.ParseRecord, which also rejects a
+// non-reserved file that is neither form.
+func adrsFromFiles(files []snapshot.File, docsDir string) ([]adr.ADR, map[string][]byte, error) {
 	prefix := path.Join(docsDir, "decisions") + "/"
 	var records []adr.ADR
 	sources := map[string][]byte{}
-	for _, f := range tree.List() {
+	for _, f := range files {
 		if !f.Scannable() {
 			continue
 		}

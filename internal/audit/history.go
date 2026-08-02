@@ -226,30 +226,121 @@ func (s *revisionState) committedDocsDir() (string, error) {
 	return cfg.DocsDir, nil
 }
 
-func loadCompleteRevision(ctx context.Context, root string, repo *awfgit.Repo, revision string) (*revisionState, error) {
-	tree, err := snapshot.CommitTree(ctx, repo, revision)
+// loadSelectedRevision reads only the committed authority needed by historical
+// policy. Metadata first discovers the optional controls; config then determines
+// the exact ADR directory before the remaining authority blobs are read.
+func loadSelectedRevision(ctx context.Context, root, revision string, entryRead func(context.Context, string) ([]awfgit.TreeEntry, error), blobRead func(context.Context, string, []string) ([]awfgit.IndexBlob, error)) (*revisionState, error) {
+	entries, err := entryRead(ctx, revision)
 	if err != nil {
 		return nil, err
 	}
-	return revisionStateFromTree(root, tree), nil
+	byPath := make(map[string]awfgit.TreeEntry, len(entries))
+	for _, entry := range entries {
+		byPath[entry.Path] = entry
+	}
+	configPath := config.DirName + "/config.yaml"
+	configEntry, found := byPath[configPath]
+	if !found {
+		return emptyRevisionState(), nil
+	}
+	controls := []string{configPath}
+	if _, ok := byPath[config.DirName+"/awf.lock"]; ok {
+		controls = append(controls, config.DirName+"/awf.lock")
+	}
+	blobs, err := blobRead(ctx, revision, controls)
+	if err != nil {
+		return nil, err
+	}
+	controlSelection, err := snapshot.NewSelectionFromBlobs(blobs)
+	if err != nil {
+		return nil, err
+	}
+	configFile, ok := controlSelection.Lookup(configPath)
+	if !ok || !configFile.Scannable() || configEntry.Mode == awfgit.BlobSymlink {
+		return revisionStateWithConfigError(fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)), nil
+	}
+	lock, lockFound, lockErr := auditLockFromSelection(controlSelection)
+	if lockErr != nil {
+		return revisionStateFromControls(root, controlSelection), nil //nolint:nilerr // preserve malformed committed controls as lazy policy warnings, not fatal audit failure
+	}
+	cfg, configErr := auditConfig(root, controlSelection, lock)
+	if configErr != nil {
+		return revisionStateFromControls(root, controlSelection), nil //nolint:nilerr // preserve malformed committed controls as lazy policy warnings, not fatal audit failure
+	}
+	authorityPaths := selectedAuthorityPaths(entries, cfg.DocsDir)
+	blobs, err = blobRead(ctx, revision, authorityPaths)
+	if err != nil {
+		return nil, err
+	}
+	authority, err := snapshot.NewSelectionFromBlobs(blobs)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range authority.List() {
+		if !file.Scannable() {
+			return nil, fmt.Errorf("selected authority %q is not a scannable file", file.Path)
+		}
+	}
+	all := append(controlSelection.List(), authority.List()...)
+	selection, err := snapshot.NewSelection(all)
+	if err != nil {
+		return nil, err
+	}
+	return revisionStateFromSelection(selection, cfg, lock, lockFound), nil
 }
 
-func revisionStateFromTree(root string, tree *snapshot.Tree) *revisionState {
+func selectedAuthorityPaths(entries []awfgit.TreeEntry, docsDir string) []string {
+	decisions := path.Join(filepath.ToSlash(docsDir), "decisions") + "/"
+	var paths []string
+	for _, entry := range entries {
+		if (strings.HasPrefix(entry.Path, config.DirName+"/topics/metadata/") && strings.HasSuffix(entry.Path, ".yaml")) ||
+			(strings.HasPrefix(entry.Path, config.DirName+"/topics/parts/") && strings.HasSuffix(entry.Path, "/current-state.md")) {
+			paths = append(paths, entry.Path)
+			continue
+		}
+		rel, ok := strings.CutPrefix(entry.Path, decisions)
+		if ok && !strings.Contains(rel, "/") && strings.HasSuffix(rel, ".md") && !adr.IsReservedBasename(rel) {
+			paths = append(paths, entry.Path)
+		}
+	}
+	slices.Sort(paths)
+	return paths
+}
+
+func emptyRevisionState() *revisionState {
+	return &revisionState{lockReady: true, universeReady: true}
+}
+
+func revisionStateWithConfigError(err error) *revisionState {
+	state := &revisionState{configReady: true, configErr: err}
+	state.loadUniverse = func() (currentstate.Universe, error) {
+		_, err := state.committedConfig()
+		return currentstate.Universe{}, err
+	}
+	return state
+}
+
+func revisionStateFromControls(root string, selection *snapshot.Selection) *revisionState {
 	state := &revisionState{}
-	state.loadLock = func() (*manifest.Lock, bool, error) { return auditLockFromTree(tree) }
+	state.loadLock = func() (*manifest.Lock, bool, error) { return auditLockFromSelection(selection) }
 	state.loadConfig = func() (*config.Config, error) {
 		lock, _, err := state.lockEvidence()
 		if err != nil {
 			return nil, err
 		}
-		return auditConfig(root, tree, lock)
+		return auditConfig(root, selection, lock)
 	}
 	state.loadUniverse = func() (currentstate.Universe, error) {
-		cfg, err := state.committedConfig()
-		if err != nil || cfg == nil {
-			return currentstate.Universe{}, err
-		}
-		return currentstate.LoadUniverseFromTree(tree, cfg)
+		_, err := state.committedConfig()
+		return currentstate.Universe{}, err
+	}
+	return state
+}
+
+func revisionStateFromSelection(selection *snapshot.Selection, cfg *config.Config, lock *manifest.Lock, lockFound bool) *revisionState {
+	state := &revisionState{lockReady: true, lock: lock, lockFound: lockFound, configReady: true, config: cfg}
+	state.loadUniverse = func() (currentstate.Universe, error) {
+		return currentstate.LoadUniverseFromSelection(selection, cfg)
 	}
 	return state
 }
@@ -402,8 +493,8 @@ func staleAuthorizationSyntax(err error) (*commitmsg.SyntaxError, error) {
 	return syntax, nil
 }
 
-func auditLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
-	file, ok := tree.Lookup(config.DirName + "/awf.lock")
+func auditLockFromSelection(selection *snapshot.Selection) (*manifest.Lock, bool, error) {
+	file, ok := selection.Lookup(config.DirName + "/awf.lock")
 	if !ok {
 		return nil, false, nil
 	}
@@ -414,8 +505,8 @@ func auditLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	return lock, true, err
 }
 
-func auditConfig(root string, tree *snapshot.Tree, lock *manifest.Lock) (*config.Config, error) {
-	file, ok := tree.Lookup(config.DirName + "/config.yaml")
+func auditConfig(root string, selection *snapshot.Selection, lock *manifest.Lock) (*config.Config, error) {
+	file, ok := selection.Lookup(config.DirName + "/config.yaml")
 	if !ok {
 		//nolint:nilnil // an absent committed config means an empty historical universe, not a load failure
 		return nil, nil
@@ -431,7 +522,7 @@ func auditConfig(root string, tree *snapshot.Tree, lock *manifest.Lock) (*config
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := config.ParseTree(config.RootDir(root), data, auditSnapshotReader{tree})
+	cfg, err := config.ParseTree(config.RootDir(root), data, auditSelectionReader{selection})
 	if err != nil {
 		return nil, err
 	}
@@ -441,20 +532,20 @@ func auditConfig(root string, tree *snapshot.Tree, lock *manifest.Lock) (*config
 	return cfg, nil
 }
 
-type auditSnapshotReader struct{ tree *snapshot.Tree }
+type auditSelectionReader struct{ selection *snapshot.Selection }
 
-func (r auditSnapshotReader) ReadFile(path string) ([]byte, bool) {
-	file, ok := r.tree.Lookup(config.DirName + "/" + filepath.ToSlash(path))
+func (r auditSelectionReader) ReadFile(path string) ([]byte, bool) {
+	file, ok := r.selection.Lookup(config.DirName + "/" + filepath.ToSlash(path))
 	if !ok || !file.Scannable() {
 		return nil, false
 	}
 	return slices.Clone(file.Bytes), true
 }
 
-func (r auditSnapshotReader) Paths(prefix string) []string {
+func (r auditSelectionReader) Paths(prefix string) []string {
 	full := config.DirName + "/" + filepath.ToSlash(prefix)
 	var paths []string
-	for _, file := range r.tree.List() {
+	for _, file := range r.selection.List() {
 		if file.Scannable() && strings.HasPrefix(file.Path, full) {
 			paths = append(paths, strings.TrimPrefix(file.Path, config.DirName+"/"))
 		}

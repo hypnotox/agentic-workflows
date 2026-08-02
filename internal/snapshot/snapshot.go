@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-// Mode is the file mode a Tree preserves. Symlink bytes are inert targets.
+// Mode is the file mode a snapshot preserves. Symlink bytes are inert targets.
 type Mode uint8
 
 const (
@@ -28,8 +28,8 @@ const (
 	Symlink
 )
 
-// Construction faults. NewTree returns one of these when a File would make the
-// snapshot ambiguous or unsafe to address by path.
+// Construction faults. NewTree and NewSelection return one of these when a File
+// would make the snapshot ambiguous or unsafe to address by path.
 var (
 	// ErrUnsupportedMode reports a File whose Mode is not representable.
 	ErrUnsupportedMode = errors.New("snapshot: unsupported file mode")
@@ -40,7 +40,7 @@ var (
 	ErrDuplicatePath = errors.New("snapshot: duplicate path")
 )
 
-// File is one file in a Tree: a repo-relative slash path, its Mode, and a
+// File is one file in a snapshot: a repo-relative slash path, its Mode, and a
 // private copy of its bytes.
 type File struct {
 	Path  string
@@ -67,6 +67,16 @@ type Tree struct {
 // Tree. It rejects an unsupported mode, an unsafe path, or a duplicate path so
 // every file is addressable by exactly one canonical relative path.
 func NewTree(files []File) (*Tree, error) {
+	fileSet, err := newFileSet(files)
+	if err != nil {
+		return nil, err
+	}
+	return &Tree{files: fileSet}, nil
+}
+
+// newFileSet validates files, copies each one's bytes, and returns a
+// path-sorted immutable file set for a snapshot representation.
+func newFileSet(files []File) ([]File, error) {
 	out := make([]File, 0, len(files))
 	seen := make(map[string]bool, len(files))
 	for _, f := range files {
@@ -83,7 +93,7 @@ func NewTree(files []File) (*Tree, error) {
 		out = append(out, f.clone())
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
-	return &Tree{files: out}, nil
+	return out, nil
 }
 
 // Lookup returns the file at the exact path and whether it exists. The returned

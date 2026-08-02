@@ -85,7 +85,7 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 	op, err := newHistoryOperation(ctx, base, head, in,
 		repo.RangeCommits,
 		func(ctx context.Context, revision string) (*revisionState, error) {
-			return loadCompleteRevision(ctx, repoRoot, repo, revision)
+			return loadSelectedRevision(ctx, repoRoot, revision, repo.CommitEntries, repo.CommitBlobsAt)
 		},
 		repo.FirstParentChangedPaths,
 		func(ctx context.Context) ([]Finding, error) {

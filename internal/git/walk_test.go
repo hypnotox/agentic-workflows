@@ -302,6 +302,12 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 	if _, _, err := handle.FileText(ctx, "HEAD", "a.go"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("FileText cancellation = %v", err)
 	}
+	if _, err := handle.CommitEntries(ctx, "HEAD"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("CommitEntries cancellation = %v", err)
+	}
+	if _, err := handle.CommitBlobsAt(ctx, "HEAD", []string{"a.go"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("CommitBlobsAt cancellation = %v", err)
+	}
 	t.Run("base walk", func(t *testing.T) {
 		midWalk := &cancelAfterContext{Context: testContext(t), remaining: 2}
 		if _, err := handle.RangeCommits(midWalk, "HEAD", "HEAD"); !errors.Is(err, context.Canceled) {

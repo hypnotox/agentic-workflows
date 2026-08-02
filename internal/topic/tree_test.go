@@ -264,7 +264,7 @@ func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
 	tree := treeFrom(t, files)
 
-	got, err := LoadAuthorityCorpusFromTree(tree, cfg, oneImplementedADR())
+	got, err := LoadAuthorityCorpusFromFiles(tree.List(), cfg, oneImplementedADR())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -691,7 +691,7 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 		{Path: ".awf/parts/a.md", Mode: snapshot.Regular, Bytes: []byte("part")},
 		{Path: ".awf/parts/link.md", Mode: snapshot.Symlink, Bytes: []byte("part")},
 	})
-	reader := auditSnapshotReader{tree}
+	reader := auditSelectionReader{auditSelection(t, tree)}
 	got, ok := reader.ReadFile("parts/a.md")
 	if !ok || string(got) != "part" {
 		t.Fatalf("ReadFile = %q, %v", got, ok)
@@ -712,17 +712,17 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 	if paths := reader.Paths("missing"); len(paths) != 0 {
 		t.Fatalf("missing Paths = %v", paths)
 	}
-	if lock, found, err := auditLockFromTree(tree); err != nil || !found || lock.SchemaVersion != 31 {
+	if lock, found, err := auditLockFromSelection(auditSelection(t, tree)); err != nil || !found || lock.SchemaVersion != 31 {
 		t.Fatalf("lock = %#v, %v, %v", lock, found, err)
 	}
-	if _, found, err := auditLockFromTree(auditTree(t, nil)); err != nil || found {
+	if _, found, err := auditLockFromSelection(auditSelection(t, auditTree(t, nil))); err != nil || found {
 		t.Fatalf("missing lock found=%v err=%v", found, err)
 	}
 	for _, file := range []snapshot.File{
 		{Path: ".awf/awf.lock", Mode: snapshot.Symlink, Bytes: []byte("lock")},
 		{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")},
 	} {
-		if _, _, err := auditLockFromTree(auditTree(t, []snapshot.File{file})); err == nil {
+		if _, _, err := auditLockFromSelection(auditSelection(t, auditTree(t, []snapshot.File{file}))); err == nil {
 			t.Fatalf("bad lock %#v accepted", file)
 		}
 	}
@@ -745,6 +745,14 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 	}
 }
 
+func loadUniverseFromTree(tree *snapshot.Tree, cfg *config.Config) (currentstate.Universe, error) {
+	selection, err := snapshot.NewSelection(tree.List())
+	if err != nil {
+		return currentstate.Universe{}, err
+	}
+	return currentstate.LoadUniverseFromSelection(selection, cfg)
+}
+
 func auditTree(t *testing.T, files []snapshot.File) *snapshot.Tree {
 	t.Helper()
 	tree, err := snapshot.NewTree(files)
@@ -754,16 +762,29 @@ func auditTree(t *testing.T, files []snapshot.File) *snapshot.Tree {
 	return tree
 }
 
+func auditSelection(t *testing.T, tree *snapshot.Tree) *snapshot.Selection {
+	t.Helper()
+	selection, err := snapshot.NewSelection(tree.List())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return selection
+}
+
 func auditUniverseFromTree(root string, tree *snapshot.Tree) (currentstate.Universe, error) {
-	lock, _, err := auditLockFromTree(tree)
+	selection, err := snapshot.NewSelection(tree.List())
 	if err != nil {
 		return currentstate.Universe{}, err
 	}
-	cfg, err := auditConfig(root, tree, lock)
+	lock, _, err := auditLockFromSelection(selection)
+	if err != nil {
+		return currentstate.Universe{}, err
+	}
+	cfg, err := auditConfig(root, selection, lock)
 	if err != nil || cfg == nil {
 		return currentstate.Universe{}, err
 	}
-	return currentstate.LoadUniverseFromTree(tree, cfg)
+	return loadUniverseFromTree(tree, cfg)
 }
 
 func staleMergeFindingsForTest(t *testing.T, root string, repo *awfgit.Repo, commits []Commit) error {
@@ -771,11 +792,7 @@ func staleMergeFindingsForTest(t *testing.T, root string, repo *awfgit.Repo, com
 	op, err := newHistoryOperation(testContext(t), "base", "head", Inputs{},
 		func(context.Context, string, string) ([]Commit, error) { return commits, nil },
 		func(ctx context.Context, revision string) (*revisionState, error) {
-			tree, err := snapshot.CommitTree(ctx, repo, revision)
-			if err != nil {
-				return nil, err
-			}
-			return revisionStateFromTree(root, tree), nil
+			return loadSelectedRevision(ctx, root, revision, repo.CommitEntries, repo.CommitBlobsAt)
 		},
 		nil,
 		func(context.Context) ([]Finding, error) { return nil, nil })
