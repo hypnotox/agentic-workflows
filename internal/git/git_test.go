@@ -1049,6 +1049,38 @@ func TestCommitEntriesAndBlobsAtContracts(t *testing.T) {
 		}
 		return hash
 	}
+	// Write raw tree bytes because object.Tree.Encode correctly refuses the
+	// malformed name. The committed object must still fail closed at the
+	// treeEntries project-path boundary.
+	malformedEncoded := backend.Storer.NewEncodedObject()
+	malformedEncoded.SetType(plumbing.TreeObject)
+	writer, err := malformedEncoded.Writer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write(append([]byte("100644 ..\x00"), file.Hash[:]...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	malformedTreeHash, err := backend.Storer.SetEncodedObject(malformedEncoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	malformedCommit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "malformed tree\n", TreeHash: malformedTreeHash}
+	malformedCommitEncoded := backend.Storer.NewEncodedObject()
+	if err := malformedCommit.Encode(malformedCommitEncoded); err != nil {
+		t.Fatal(err)
+	}
+	malformedCommitHash, err := backend.Storer.SetEncodedObject(malformedCommitEncoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handle.CommitEntries(testsupport.Context(t), malformedCommitHash.String()); err == nil {
+		t.Fatal("unsafe encoded tree path accepted")
+	}
+
 	missingTree := plumbing.NewHash(strings.Repeat("f", 40))
 	childTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "missing", Mode: filemode.Dir, Hash: missingTree}}})
 	outerTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "child", Mode: filemode.Dir, Hash: childTree}}})
@@ -1081,58 +1113,56 @@ func TestCommitEntriesAndBlobsAtContracts(t *testing.T) {
 			}
 		})
 	}
-}
 
-// TestCommitEntriesAndBlobsAtNeverReadsUnselectedBlobs makes the sparse-read
-// contract observable with loose objects: tree metadata remains readable after
-// removing one blob, but that blob cannot be selected later.
-func TestCommitEntriesAndBlobsAtNeverReadsUnselectedBlobs(t *testing.T) {
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	head := gitfixture.Commit(t, repo, "two blobs", map[string]string{"selected.txt": "selected", "unselected.txt": "unselected"})
-	backend, err := gogit.PlainOpen(dir)
+	// The sparse-read contract remains observable with loose objects: tree
+	// metadata is readable after removing an unrelated blob, but selecting that
+	// blob later fails.
+	sparseRepo := gitfixture.InitRepo(t)
+	sparseDir := sparseRepo.Root()
+	sparseHead := gitfixture.Commit(t, sparseRepo, "two blobs", map[string]string{"selected.txt": "selected", "unselected.txt": "unselected"})
+	sparseBackend, err := gogit.PlainOpen(sparseDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commit, err := backend.CommitObject(plumbing.NewHash(head))
+	sparseCommit, err := sparseBackend.CommitObject(plumbing.NewHash(sparseHead))
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree, err := commit.Tree()
+	sparseTree, err := sparseCommit.Tree()
 	if err != nil {
 		t.Fatal(err)
 	}
-	unselected, err := tree.File("unselected.txt")
+	unselected, err := sparseTree.File("unselected.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	objectPath := filepath.Join(dir, ".git", "objects", unselected.Hash.String()[:2], unselected.Hash.String()[2:])
+	objectPath := filepath.Join(sparseDir, ".git", "objects", unselected.Hash.String()[:2], unselected.Hash.String()[2:])
 	if err := os.Remove(objectPath); err != nil {
 		t.Fatal(err)
 	}
 
-	handle := gitRepo(t, dir)
-	if entries, err := handle.CommitEntries(testsupport.Context(t), head); err != nil || len(entries) != 2 {
+	sparseHandle := gitRepo(t, sparseDir)
+	if entries, err := sparseHandle.CommitEntries(testsupport.Context(t), sparseHead); err != nil || len(entries) != 2 {
 		t.Fatalf("entries after removing unselected object = %#v, %v", entries, err)
 	}
-	if blobs, err := handle.CommitBlobsAt(testsupport.Context(t), head, []string{"selected.txt"}); err != nil || len(blobs) != 1 || string(blobs[0].Bytes) != "selected" {
+	if blobs, err := sparseHandle.CommitBlobsAt(testsupport.Context(t), sparseHead, []string{"selected.txt"}); err != nil || len(blobs) != 1 || string(blobs[0].Bytes) != "selected" {
 		t.Fatalf("selected blob after removing unselected object = %#v, %v", blobs, err)
 	}
-	if _, err := handle.CommitBlobsAt(testsupport.Context(t), head, []string{"unselected.txt"}); err == nil {
+	if _, err := sparseHandle.CommitBlobsAt(testsupport.Context(t), sparseHead, []string{"unselected.txt"}); err == nil {
 		t.Fatal("removed selected blob accepted")
 	}
 
-	treeHash := gitfixture.TreeHash(t, repo, head)
-	if err := os.Remove(filepath.Join(dir, ".git", "objects", treeHash[:2], treeHash[2:])); err != nil {
+	sparseTreeHash := gitfixture.TreeHash(t, sparseRepo, sparseHead)
+	if err := os.Remove(filepath.Join(sparseDir, ".git", "objects", sparseTreeHash[:2], sparseTreeHash[2:])); err != nil {
 		t.Fatal(err)
 	}
 	for name, call := range map[string]func() error{
 		"entries": func() error {
-			_, err := handle.CommitEntries(testsupport.Context(t), head)
+			_, err := sparseHandle.CommitEntries(testsupport.Context(t), sparseHead)
 			return err
 		},
 		"selected blobs": func() error {
-			_, err := handle.CommitBlobsAt(testsupport.Context(t), head, []string{"selected.txt"})
+			_, err := sparseHandle.CommitBlobsAt(testsupport.Context(t), sparseHead, []string{"selected.txt"})
 			return err
 		},
 	} {

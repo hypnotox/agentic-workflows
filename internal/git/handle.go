@@ -524,7 +524,7 @@ func treeEntries(ctx context.Context, tree *object.Tree, prefix string) ([]TreeE
 				return err
 			}
 			fullPath := prefixedPath(base, entry.Name)
-			if !safeProjectPath(fullPath) { // coverage-ignore: go-git rejects unsafe tree entry names while decoding committed tree objects
+			if !safeProjectPath(fullPath) {
 				return fmt.Errorf("read commit entries: unsafe tree path %q", fullPath)
 			}
 			if entry.Mode == filemode.Dir {

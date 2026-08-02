@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -429,6 +430,34 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 					})
 				if !errors.Is(err, termination) || !slices.Equal(events, []string{"enumerate", "selected blob read"}) {
 					t.Fatalf("selected-read cancellation = %v; events=%v", err, events)
+				}
+			})
+		}
+
+		for _, cancelAfterRead := range []int{1, 2} {
+			cancelAfterRead := cancelAfterRead
+			t.Run("reader returns data after cancellation/read "+strconv.Itoa(cancelAfterRead), func(t *testing.T) {
+				ctx, cancel := context.WithCancel(testContext(t))
+				defer cancel()
+				var events []string
+				_, err := loadSelectedRevision(ctx, t.TempDir(), "revision",
+					func(context.Context, string) ([]awfgit.TreeEntry, error) {
+						events = append(events, "enumerate")
+						return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
+					},
+					func(_ context.Context, _ string, _ []string) ([]awfgit.IndexBlob, error) {
+						events = append(events, "selected blob read")
+						if len(events)-1 == cancelAfterRead {
+							cancel()
+						}
+						return []awfgit.IndexBlob{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular, Bytes: []byte("prefix: test\nintegrationBranch: main\n")}}, nil
+					})
+				wantEvents := []string{"enumerate", "selected blob read"}
+				if cancelAfterRead == 2 {
+					wantEvents = append(wantEvents, "selected blob read")
+				}
+				if !errors.Is(err, context.Canceled) || !slices.Equal(events, wantEvents) {
+					t.Fatalf("data-after-cancellation = %v; events=%v, want %v", err, events, wantEvents)
 				}
 			})
 		}

@@ -948,6 +948,27 @@ func TestRunNestedAdopterFiltersAndReroots(t *testing.T) {
 	}
 }
 
+// TestRunLoadsOnlySelectedCommittedBlobs proves production Run retains the
+// historical loader's sparse selection rather than widening it at composition.
+func TestRunLoadsOnlySelectedCommittedBlobs(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
+		".awf/config.yaml": "prefix: test\nintegrationBranch: main\n",
+		"unrelated.txt":    "unselected committed bytes\n",
+	})
+	head := gitfixture.Commit(t, repo, "feat(awf): code", map[string]string{"code.go": "package code\n"})
+	unrelatedHash := gitfixture.NativeRevParse(t, repo, base+":unrelated.txt")
+	objectPath := filepath.Join(repo.Root(), ".git", "objects", unrelatedHash[:2], unrelatedHash[2:])
+	if err := os.Remove(objectPath); err != nil {
+		t.Fatal(err)
+	}
+
+	findings, count, err := Run(testContext(t), repo.Root(), base, head, Inputs{})
+	if err != nil || count != 1 || len(findings) != 0 {
+		t.Fatalf("Run after removing unrelated committed blob = findings=%#v count=%d err=%v", findings, count, err)
+	}
+}
+
 func TestRunPropagatesOpenAndWalkErrors(t *testing.T) {
 	if _, _, err := Run(testContext(t), t.TempDir(), "base", "HEAD", Inputs{}); err == nil {
 		t.Fatal("non-repository accepted")

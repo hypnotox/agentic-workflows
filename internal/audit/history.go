@@ -251,6 +251,9 @@ func loadSelectedRevision(ctx context.Context, root, revision string, entryRead 
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	controlSelection, err := snapshot.NewSelectionFromBlobs(blobs)
 	if err != nil {
 		return nil, err
@@ -270,6 +273,9 @@ func loadSelectedRevision(ctx context.Context, root, revision string, entryRead 
 	authorityPaths := selectedAuthorityPaths(entries, cfg.DocsDir)
 	blobs, err = blobRead(ctx, revision, authorityPaths)
 	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	authority, err := snapshot.NewSelectionFromBlobs(blobs)
