@@ -172,12 +172,13 @@ claim operations must apply before the fixture export lands.
     `TestFilesystemFaultSourceSingleHome` in
     `internal/testsupport/fsfixture/fsfixture_test.go`; each proof marker and named test land with its
     claim. Apply
-    all five operations in declaration order as one final checked batch because the ownership,
-    confinement, fault source, and first-consumer wiring describe one indivisible completed boundary.
-    Update the tooling domain map, topic metadata and claims, managed architecture component source,
-    and rendered documentation in the matching transactions. Run `./x render` and include
-    `docs/decisions/INDEX.md` and lock changes at every Accepted, Implementing, and Implemented
-    transition. Cross-package structural commits use the `code-design` scope.
+    all five operations in declaration order through one direct Accepted-to-Implemented checked batch
+    because the ownership, confinement, fault source, and first-consumer wiring describe one
+    indivisible completed boundary; do not enter `Implementing`, which would require a strict nonempty
+    subset. Update the tooling domain map, topic metadata and claims, managed architecture component
+    source, and rendered documentation in the matching transactions. Run `./x render` and include
+    `docs/decisions/INDEX.md` and lock changes at the Accepted and Implemented transitions actually
+    taken. Cross-package structural commits use the `code-design` scope.
 
 ## State changes
 
