@@ -908,6 +908,7 @@ func TestCommitEvidenceReads(t *testing.T) {
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:sparse-snapshot-explicit-selection (TestCommitEntriesAndBlobsAtContracts)
 func TestCommitEntriesAndBlobsAtContracts(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()

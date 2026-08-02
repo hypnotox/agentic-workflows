@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: revision-aware-historical-audit-pipeline
-status: Implementing
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-0221: Revision-aware historical audit pipeline
@@ -189,3 +189,5 @@ being held to a target chosen before its remaining costs are profiled.
 - 2026-08-02: Applied; operations: add `tooling/audit-and-snapshots:audit-history-operation-owned`
 - 2026-08-02: Applied; operations: add `tooling/audit-and-snapshots:audit-history-policy-projection`
 - 2026-08-02: Applied; operations: add `tooling/audit-and-snapshots:audit-cancellation-propagates`
+- 2026-08-02: Applied; operations: add `tooling/audit-and-snapshots:sparse-snapshot-explicit-selection`
+- 2026-08-02: Implemented; content-sha256: 757ce6f2a758c9f0b0a97f628f98ea4c0cd050eb9257a6c4aaa02fe2e026479a

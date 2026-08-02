@@ -8,6 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
+// invariant: tooling/audit-and-snapshots:sparse-snapshot-explicit-selection (TestSelectionOwnsExplicitFileSet)
 // TestSelectionOwnsExplicitFileSet verifies that an explicit selection owns its
 // exact, path-sorted set of regular, executable, and symlink files without
 // exposing its captured bytes.

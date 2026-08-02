@@ -3,7 +3,7 @@ format: plan-v1
 date: 2026-08-02
 adrs:
   - revision-aware-historical-audit-pipeline
-status: Proposed
+status: Implemented
 ---
 # Plan: Revision-aware Historical Audit Pipeline
 
@@ -310,3 +310,4 @@ feat(tooling): govern sparse historical audit
 - After Phase 4 closes, merge the current integration branch into the managed worktree and resolve or abort any conflict. Number the pending ADR with `./awf adr number revision-aware-historical-audit-pipeline`, render, stage only numbering/render output, require `./awf check staged && ./x gate`, and commit the numbering transaction. Invoke `awf-reviewing-impl` over every effort commit and settle findings in new green commits.
 - Integrate through `./awf effort integrate streamline-the-historical-audit-pipeline` from the clean primary checkout. Accept only an already-integrated or fast-forward result, or explicitly finish a clean staged divergent merge after `./awf check staged && ./x gate`. Re-run terminal implementation review over any target-side merge/fix history until no findings remain. Phase 5 runs only in the integrated primary checkout after that review settles.
 - After Phase 5, run `./awf effort worktree remove streamline-the-historical-audit-pipeline` without force. Require the managed worktree path, worktree registration, and effort branch to be absent before invoking `awf-retrospective`.
+- Terminal review found and settled a misplaced proof marker and nested-adopter pre-creation state handling; the verify pass returned no findings. Integration fast-forwarded after preserving concurrent historical state transitions in source order, and ADR-0221 was numbered before this final lifecycle transaction.

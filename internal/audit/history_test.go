@@ -850,6 +850,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:sparse-snapshot-explicit-selection (TestHistoricalStateSelectsOnlyAuthorityBlobs)
 // TestHistoricalStateSelectsOnlyAuthorityBlobs pins the two-stage committed
 // authority projection without a Git fixture: its dependencies record exactly
 // which metadata and object reads the historical loader requests.

@@ -20,6 +20,12 @@ When range collection, committed evidence, revision derivation, transition repla
 Origin: ADR-0221
 Backing: test
 
+### `invariant: sparse-snapshot-explicit-selection`
+
+Historical audit enumerates committed path and mode metadata without reading blob contents, then reads only its exact authority selection into an immutable snapshot Selection that is type-distinct from a complete snapshot Tree. Selected reads fail on an unsafe, duplicate, missing, outside-project, or unsupported requested path; full-tree consumers cannot treat an unselected path as repository absence, and current and staged checks retain complete snapshots.
+Origin: ADR-0221
+Backing: test
+
 ### `invariant: audit-adr-status-cochange`
 
 awf audit raises an Error finding when a range commit adds a current-state-v1 ADR or changes its status without also changing `docs/decisions/INDEX.md`, and raises none when the same change co-changes the index. Legacy-format ADR transitions are outside this rule.
