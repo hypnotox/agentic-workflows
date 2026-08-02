@@ -288,9 +288,14 @@ func rejectRetiredSections(path string, lines []string) error {
 }
 
 func hasPlainBullet(lines []string) bool {
+	inFence := false
 	for _, line := range lines {
 		text := lineText(line)
-		if strings.HasPrefix(text, "- ") && !strings.HasPrefix(text, "- [") && strings.TrimSpace(strings.TrimPrefix(text, "- ")) != "" {
+		if strings.HasPrefix(strings.TrimSpace(text), "```") {
+			inFence = !inFence
+			continue
+		}
+		if !inFence && strings.HasPrefix(text, "- ") && !strings.HasPrefix(text, "- [") && strings.TrimSpace(strings.TrimPrefix(text, "- ")) != "" {
 			return true
 		}
 	}
@@ -298,9 +303,14 @@ func hasPlainBullet(lines []string) bool {
 }
 
 func hasCheckbox(lines []string) bool {
+	inFence := false
 	for _, line := range lines {
 		text := strings.ToLower(strings.TrimSpace(lineText(line)))
-		if len(text) >= 5 && strings.ContainsRune("-*+", rune(text[0])) && (strings.HasPrefix(text[1:], " [ ]") || strings.HasPrefix(text[1:], " [x]")) {
+		if strings.HasPrefix(text, "```") {
+			inFence = !inFence
+			continue
+		}
+		if !inFence && len(text) >= 5 && strings.ContainsRune("-*+", rune(text[0])) && (strings.HasPrefix(text[1:], " [ ]") || strings.HasPrefix(text[1:], " [x]")) {
 			return true
 		}
 	}
@@ -315,7 +325,9 @@ func forbiddenTaskTitle(title string) bool {
 	}
 	for _, suffix := range []string{
 		" (optional)", " (conditional)", " [optional]", " [conditional]",
-		" if needed", " if applicable", " when needed", " when applicable",
+		" if needed", " if required", " if applicable",
+		" when needed", " when required", " when applicable",
+		" as needed", " where required", " where applicable",
 	} {
 		if strings.HasSuffix(title, suffix) {
 			return true

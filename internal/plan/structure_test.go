@@ -107,6 +107,7 @@ func TestPlanV1StructureValidated(t *testing.T) {
 	}
 	t.Run("diagnostics", TestPlanV1Diagnostics)
 	t.Run("path grammar", TestPlanV1PathGrammar)
+	t.Run("fenced list syntax", TestPlanV1FencedListSyntaxIsOpaque)
 	t.Run("legacy boundary", TestPlanV1AbsentFormatRemainsLegacy)
 	t.Run("fenced headings", TestPlanV1RetiredHeadingInsideFenceIsOpaque)
 }
@@ -185,12 +186,15 @@ func TestPlanV1Diagnostics(t *testing.T) {
 		{"plus checkbox in task body", replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n+ [x] Nested work"), "structure", "task checkboxes are not plan-v1 declarations"},
 		{"optional prefix task", replaceOnceForTest(v1Plan, "### Task 2.1: Add the reader", "### Task 2.1: Optional add the reader"), "structure", "conditional and optional task declarations are forbidden"},
 		{"conditional suffix task", replaceOnceForTest(v1Plan, "### Task 2.1: Add the reader", "### Task 2.1: Add the reader if needed"), "structure", "conditional and optional task declarations are forbidden"},
+		{"as-needed task", replaceOnceForTest(v1Plan, "### Task 2.1: Add the reader", "### Task 2.1: Add the reader as needed"), "structure", "conditional and optional task declarations are forbidden"},
+		{"if-required task", replaceOnceForTest(v1Plan, "### Task 2.1: Add the reader", "### Task 2.1: Add the reader if required"), "structure", "conditional and optional task declarations are forbidden"},
 		{"missing commit fence", replaceOnceForTest(v1Plan, "```commit\nfeat(plans): parse plans\n```", "No commit fence."), "phase-close", "phase 1 requires exactly one non-ignored commit fence in Phase close"},
 		{"unclosed commit fence", replaceOnceForTest(v1Plan, "```commit\nfeat(plans): parse plans\n```", "```commit\nfeat(plans): parse plans"), "phase-close", "phase 1 requires exactly one non-ignored commit fence in Phase close"},
 		{"task commit fence", replaceOnceForTest(v1Plan, "Implement the parser.", "Implement the parser.\n\n```commit\nfix(plans): wrong fence\n```"), "phase-close", "phase 1 requires exactly one non-ignored commit fence in Phase close"},
 		{"missing definition section", truncateBefore(v1Plan, "## Definition of done"), "structure", "expected ## Definition of done after final phase"},
 		{"unexpected section before notes", replaceOnceForTest(v1Plan, "## Notes\n\nThe spike", "## Goal\n\nUnexpected.\n\n## Notes\n\nThe spike"), "structure", "unexpected top-level section before Notes"},
 		{"no definition bullet", replaceOnceForTest(v1Plan, "- A valid plan parses and projects.", "A valid plan parses and projects."), "structure", "Definition of done requires a nonempty plain bullet"},
+		{"fenced fake definition bullet", replaceOnceForTest(v1Plan, "- A valid plan parses and projects.", "```markdown\n- A fenced example is not completion.\n```"), "structure", "Definition of done requires a nonempty plain bullet"},
 		{"definition checkbox", replaceOnceForTest(v1Plan, "- A valid plan parses and projects.", "- [ ] A valid plan parses and projects.\n- A second condition."), "structure", "Definition of done uses plain bullets, not checkboxes"},
 	}
 	for _, tc := range cases {
@@ -264,6 +268,16 @@ func TestPlanV1PathGrammar(t *testing.T) {
 				t.Fatalf("error = %v, diagnostic = %#v", err, diagnostic)
 			}
 		})
+	}
+}
+
+func TestPlanV1FencedListSyntaxIsOpaque(t *testing.T) {
+	body := replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n```markdown\n- [ ] A fenced checkbox example.\n```")
+	body = replaceOnceForTest(body, "- A valid plan parses and projects.", "- A real completion condition.\n\n```markdown\n- [ ] A fenced Definition-of-done example.\n```")
+	dir := t.TempDir()
+	writePlan(t, dir, "2026-08-02-fenced-lists.md", body)
+	if _, err := plan.ParseDir(dir); err != nil {
+		t.Fatalf("ParseDir: %v", err)
 	}
 }
 
