@@ -68,7 +68,7 @@ domains are derived from the `## State changes` operations. Any other key fails 
 <!-- awf:edit lifecycle: default; create .awf/parts/adr-readme/lifecycle.md to override -->
 ## Status and lifecycle
 
-V2 recognizes `Proposed`, `Accepted`, `Implementing`, `Implemented`, and `Abandoned`.
+V2 and V3 recognize `Proposed`, `Accepted`, `Implementing`, `Implemented`, and `Abandoned`.
 Proposed may move to any later state; Accepted may move to Implementing, Implemented, or
 Abandoned; Implementing may move only to Implemented or Abandoned. Implemented and Abandoned
 are terminal. Implementing means a nonempty strict subset is applied. Abandonment keeps applied
@@ -82,7 +82,7 @@ parser and transition matrix, registering its schema activation and current mark
 scaffolding, and proving older-format compatibility; it never means adding a number cutoff. There
 is no `Superseded` status.
 
-V2 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
+V2 and V3 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
 a terminal status: while Accepted or Implementing an amendment appends
 `- YYYY-MM-DD: Amended; content-sha256: <new digest>`, a status event repeats the latest stamp (or
 establishes the first), and the latest stamp always equals the current content, freezing permanently
@@ -92,7 +92,11 @@ batch uses exactly
 Operations are nonempty, previously unapplied, and declaration-ordered. Entering Implementing
 appends its status then the first Applied event; a middle pair appends one Applied event; the final
 pair appends the last Applied event then Implemented. Direct Implemented transitions use one
-implicit batch. Per-claim provenance is ordered by ascending final ADR number. Stable history is
+implicit batch. While operations remain, an already-applied add or update may be corrected with
+`- YYYY-MM-DD: Reapplied; operations: <verb> `<qualified-id>`[, ...]`. The operation must have an
+earlier Applied occurrence, each correction is one material checked batch, and provenance stays
+unchanged; Reapplied removes, terminal corrections, and corrections after the final Applied batch
+are refused. Per-claim provenance is ordered by ascending final ADR number. Stable history is
 corrected forward through a successor ADR, never by deleting or mutating a retained event.
 
 <!-- awf:edit state-changes: default; create .awf/parts/adr-readme/state-changes.md to override -->
@@ -111,9 +115,12 @@ inline code span:
 - `- update ` `` `<domain>/<topic>:<slug>` `` changes an existing claim.
 - `- remove ` `` `<domain>/<topic>:<slug>` `` retires an existing claim.
 
-One ADR may touch several topics and domains but names each id at most once. A rename or move
-is a remove plus an add; a split is one remove plus several adds; a merge is several removes
-plus one add. A removed id is never added again. For each newly appended batch, `awf check --staged` verifies every applied operation against its
+One ADR may touch several topics and domains but names each id at most once. Correct an unapplied
+operation by amending it; correct an already-applied add or update with a Reapplied event while the
+record remains in its correction window, not by declaring the operation twice. Otherwise use a
+follow-up ADR or, when identity must change, remove plus add. A rename or move is a remove plus an
+add; a split is one remove plus several adds; a merge is several removes plus one add. A removed id
+is never added again. For each newly appended batch, `awf check --staged` verifies every applied operation against its
 matching topic-claim mutation in the same HEAD-to-index pair. Applied operations authorize current
 or removed results immediately; Remaining operations are pending; Canceled operations provide no
 authority. Multiple ADR batches may share a pair only for distinct claim IDs.

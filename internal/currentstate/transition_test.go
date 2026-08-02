@@ -203,6 +203,74 @@ func TestCheckPairAmendedContent(t *testing.T) {
 	})
 }
 
+func TestAuthoredCorrectiveReapplication(t *testing.T) {
+	pending := op(adr.OpAdd, "d/t:pending")
+
+	t.Run("update preserves canonical provenance and changes substance", func(t *testing.T) {
+		update := op(adr.OpUpdate, "d/t:x")
+		base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))
+		beforeADR := v2rec("0141", "Implementing", []adr.Operation{update, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(update))
+		afterADR := beforeADR
+		afterADR.History = append(append([]adr.HistoryEvent(nil), beforeADR.History...), v2reapplied(update))
+		before := uni([]adr.ADR{base, beforeADR}, prosed(claim("d/t:x", "0137", "0141"), "first revision"))
+		afterClaim := prosed(claim("d/t:x", "0137", "0141"), "corrected revision")
+		firstCorrection := uni([]adr.ADR{base, afterADR}, afterClaim)
+		if f := currentstate.CheckPair(before, firstCorrection, currentstate.AuthoredCommit); len(f) != 0 {
+			t.Fatalf("corrective update rejected:\n%s", messages(f))
+		}
+		secondADR := afterADR
+		secondADR.History = append(append([]adr.HistoryEvent(nil), afterADR.History...), v2reapplied(update))
+		secondClaim := prosed(claim("d/t:x", "0137", "0141"), "corrected revision again")
+		if f := currentstate.CheckPair(firstCorrection, uni([]adr.ADR{base, secondADR}, secondClaim), currentstate.AuthoredCommit); len(f) != 0 {
+			t.Fatalf("second corrective update rejected:\n%s", messages(f))
+		}
+		if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, afterADR}, prosed(claim("d/t:x", "0137", "0141"), "first revision")), currentstate.AuthoredCommit)); !strings.Contains(got, "no canonical field changed") {
+			t.Fatalf("non-material corrective update not rejected:\n%s", got)
+		}
+		if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, afterADR}, prosed(claim("d/t:x", "0140", "0141"), "corrected revision")), currentstate.AuthoredCommit)); !strings.Contains(got, "must preserve Origin") {
+			t.Fatalf("corrective update Origin change not rejected:\n%s", got)
+		}
+	})
+
+	t.Run("add preserves origin and Revised-by", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		beforeADR := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add))
+		afterADR := beforeADR
+		afterADR.History = append(append([]adr.HistoryEvent(nil), beforeADR.History...), v2reapplied(add))
+		beforeClaim := prosed(claim("d/t:new", "0141"), "first wording")
+		afterClaim := prosed(claim("d/t:new", "0141"), "corrected wording")
+		before := uni([]adr.ADR{beforeADR}, beforeClaim)
+		if f := currentstate.CheckPair(before, uni([]adr.ADR{afterADR}, afterClaim), currentstate.AuthoredCommit); len(f) != 0 {
+			t.Fatalf("corrective add rejected:\n%s", messages(f))
+		}
+		if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{afterADR}), currentstate.AuthoredCommit)); !strings.Contains(got, "not present on both sides") {
+			t.Fatalf("corrective add missing endpoint not rejected:\n%s", got)
+		}
+		if got := messages(currentstate.CheckPair(uni([]adr.ADR{beforeADR}, beforeClaim), uni([]adr.ADR{afterADR}, prosed(claim("d/t:new", "0141"), "first wording")), currentstate.AuthoredCommit)); !strings.Contains(got, "no canonical field changed") {
+			t.Fatalf("non-material corrective add not rejected:\n%s", got)
+		}
+		wrong := prosed(claim("d/t:new", "0140", "0141"), "corrected wording")
+		got := messages(currentstate.CheckPair(uni([]adr.ADR{beforeADR}, beforeClaim), uni([]adr.ADR{afterADR}, wrong), currentstate.AuthoredCommit))
+		if !strings.Contains(got, "must preserve Origin") || !strings.Contains(got, "must preserve Revised-by byte-identically") {
+			t.Fatalf("corrective add provenance defects not rejected:\n%s", got)
+		}
+	})
+
+	t.Run("remove is refused", func(t *testing.T) {
+		remove := op(adr.OpRemove, "d/t:x")
+		beforeADR := v2rec("0141", "Implementing", []adr.Operation{remove, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(remove))
+		afterADR := beforeADR
+		afterADR.History = append(append([]adr.HistoryEvent(nil), beforeADR.History...), v2reapplied(remove))
+		got := messages(currentstate.CheckPair(uni([]adr.ADR{beforeADR}), uni([]adr.ADR{afterADR}), currentstate.AuthoredCommit))
+		if !strings.Contains(got, "only add or update may be reapplied") {
+			t.Fatalf("corrective remove not rejected:\n%s", got)
+		}
+	})
+}
+
 // TestCheckPairHistoryValid accepts Proposed edits before freezing and every
 // legal edge when Status history appends exactly one entry.
 func TestCheckPairHistoryValid(t *testing.T) {

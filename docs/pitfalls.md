@@ -2051,36 +2051,27 @@ syntax refuses rather than becoming inert prose. A proactive agent may use
 `git merge --no-commit --no-ff`, while a true fast-forward has no merge commit and needs
 no authorization.
 
-## Amending an ADR revises its prose but never re-authorizes a spent claim operation
+## An applied claim operation is corrected by Reapplied, not a second declaration
 
 _Domains: adr-system_
 
-_Related: ADR-0134, ADR-0188, ADR-0191_
+_Related: ADR-0134, ADR-0188, ADR-0191, ADR-0210_
 
-ADR-0188 makes a V2 body amendable until it goes terminal, and that rule reads as though it
-covers correcting a claim the ADR established. It does not, and nothing states the limit.
-Claim mutations are authorized only by an Applied batch newly appended in the same
-transition: `pairOps` derives its operation set from newly appended batches alone, so an
-`Amended` event authorizes nothing about claims however genuine it is. An ADR also declares
-any given operation at most once, enforced twice over, at parse time (`state changes names
-<id> more than once`) and again in `OperationProgress` (`applies operation ... more than
-once`). So once an ADR's single `update` for a claim is spent by an earlier batch, that ADR
-can never touch that claim's body again, and a later edit fails the staged check with
-`claim <id> was changed with no ADR update operation in this transition`.
-Three near-misses make this expensive to discover. A vacuous amendment is rejected
-separately (`amended event must record a digest different from the preceding stamp`), so an
-attempt that edits only the claim looks like a digest problem rather than an authorization
-one. Declaring the operation a second time fails at parse, before any claim check runs, so
-the two failures mask each other. And bare `awf check` stays clean throughout, because only
-`--staged` evaluates transitions: the tree looks healthy right up until the commit is
-refused.
-Practical consequence when wording a claim: the `update` an ADR spends on a claim is its
-one and only shot, so word the body no broader than the implementation and re-read it
-against the actual error strings before the batch lands. Once it is spent, the only way to
-change that claim is a successor ADR declaring its own `update`, which is the same
-mechanism invariant retirement already uses. Deferring the correction into an already
-planned decision is legitimate, but it leaves a claim that is read as current authority
-wrong in the meantime.
+An Amended event changes a non-terminal ADR's decision content but authorizes no claim
+mutation. If an operation has not been Applied, amend that declaration directly. If an add
+or update has already been Applied and the ADR remains Implementing with another operation
+still pending, append a `Reapplied; operations:` event in the same commit as one further
+material correction. The declaration remains unique, progress still counts it once, and
+provenance stays exactly as its first application wrote it: an update preserves the
+existing canonical Revised-by entry, while an add preserves its Origin and byte-identical
+Revised-by list. The same operation may be Reapplied again while the window remains open.
+Do not declare the operation twice or encode the correction as a second Applied event; both
+forms are refused and hide whether the repeat is intentional. Reapplied also refuses remove
+operations, an operation with no earlier Applied occurrence, and events after the final
+Applied batch or a terminal status. Those cases require a follow-up ADR or, when the claim
+identity itself must change, remove plus add. Remember that bare `awf check` examines the
+current tree, while `awf check --staged` proves the Reapplied event and its immediate claim
+mutation are one authored transaction.
 
 ## A stale merge first parent must parse under the result checker's marker grammar
 

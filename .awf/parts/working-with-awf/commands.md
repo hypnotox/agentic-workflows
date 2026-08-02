@@ -4,6 +4,8 @@ Pi's `handoff_session` accepts only the exact repository-relative `.awf/efforts/
 
 `awf new adr "<title>"` scaffolds by branch. On the configured `integrationBranch` it writes the next numbered record, `NNNN-<slug>.md`; on any other branch, and so in every managed worktree, it writes a pending record as `<slug>.md` headed `# ADR-<slug>: <title>`. A pending record is an ordinary corpus member that can be reviewed and implemented to completion, and the `slug:` frontmatter key it carries is retained forever, so a reference written while it was pending keeps resolving after it is numbered. `awf check` refuses a pending record on the integration branch, which is what forces numbering to happen at integration.
 
+When an ADR operation proves wrong during incremental implementation, choose the route from its application state. Amend an operation that no Applied event references. If an add or update is already Applied and another operation remains, append one `Reapplied; operations:` event with its material corrective claim mutation; the declaration and provenance stay unchanged, and the operation may be Reapplied again if needed. A remove, a correction after the final Applied batch, or any terminal-record correction requires a follow-up ADR or, when identity must change, remove plus add. Never declare the same claim operation twice.
+
 `awf adr number [<slug>...]` performs that numbering. Run it inside the effort's worktree, between merging the integration branch in and integrating, so the numbers are allocated against the corpus the record is about to join:
 
 ```

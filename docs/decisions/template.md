@@ -53,10 +53,14 @@ Include known risks and how they are mitigated.
 Append-only Status history starts with Proposed. Later status events carry the latest content stamp,
 and an Amended event records each post-Accepted amendment with its new digest. Incremental
 implementation first appends an Implementing status event, then appends Applied events in
-declaration order, one checked batch per commit. For example:
+declaration order, one checked batch per commit. Amend an unapplied operation directly. If an
+already-applied add or update needs correction while another operation remains, append one
+Reapplied event and its material claim correction; otherwise use a follow-up ADR or remove plus
+add. For example:
 
 - YYYY-MM-DD: Implementing; content-sha256: `<64 lowercase hex characters>`
 - YYYY-MM-DD: Applied; operations: update `<domain>/<topic>:<slug>`
+- YYYY-MM-DD: Reapplied; operations: update `<domain>/<topic>:<slug>`
 
 ## Status history
 

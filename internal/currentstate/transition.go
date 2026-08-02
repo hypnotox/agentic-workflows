@@ -171,8 +171,10 @@ func isNumberingPair(before, after adr.ADR) bool {
 // pairOp is one operation an ADR reaching Implemented across the pair declares
 // over a claim, tagged with the implementing ADR number.
 type pairOp struct {
-	verb adr.OpVerb
-	adr  string
+	verb       adr.OpVerb
+	adr        string
+	corrective bool
+	occurrence int
 	// updaters lists the updating ADRs of a folded net-update chain, in
 	// chain order. Empty for every other verb and for an authored commit,
 	// where the single updating ADR is `adr`.
@@ -200,7 +202,9 @@ func checkMutations(before, after Universe, pairs pairing, mode TransitionMode) 
 		acl, hasAfter := afterClaims[id]
 		switch {
 		case hasOp && op.verb == adr.OpAdd:
-			if hasBefore {
+			if op.corrective {
+				findings = append(findings, checkCorrectiveAdd(op.adr, id, bcl, acl, hasBefore, hasAfter)...)
+			} else if hasBefore {
 				findings = append(findings, Finding{fmt.Sprintf("ADR-%s adds claim %s, which already existed before this transition", op.adr, id)})
 			}
 		case hasOp && op.verb == adr.OpRemove:
@@ -248,9 +252,11 @@ type appendedBatch struct {
 	// with each other and the stable sort falls back to corpus order, which is
 	// the authored order the provenance claim gives slug entries among
 	// themselves; docs/roadmap.md records what that tie costs.
-	order    int
-	batchIdx int
-	ops      []adr.Operation
+	order      int
+	batchIdx   int
+	kind       adr.HistoryEventKind
+	occurrence int
+	ops        []adr.Operation
 }
 
 // pairOps derives only newly appended batches. It validates one batch per ADR
@@ -283,7 +289,10 @@ func pairOps(after []adr.ADR, pairs pairing, mode TransitionMode) (map[string]pa
 			findings = append(findings, Finding{fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Identity(), len(added))})
 		}
 		for j, batch := range added {
-			batches = append(batches, appendedBatch{adr: a.Identity(), order: adr.IdentityOrder(a.Identity()), batchIdx: beforeCount + j, ops: batch.Operations})
+			batches = append(batches, appendedBatch{
+				adr: a.Identity(), order: adr.IdentityOrder(a.Identity()), batchIdx: beforeCount + j,
+				kind: batch.Kind, occurrence: batch.HistoryIndex, ops: batch.Operations,
+			})
 		}
 	}
 	sort.SliceStable(batches, func(i, j int) bool {
@@ -301,7 +310,10 @@ func pairOps(after []adr.ADR, pairs pairing, mode TransitionMode) (map[string]pa
 			if _, seen := chains[operation.ID]; !seen {
 				order = append(order, operation.ID)
 			}
-			chains[operation.ID] = append(chains[operation.ID], pairOp{verb: operation.Verb, adr: batch.adr})
+			chains[operation.ID] = append(chains[operation.ID], pairOp{
+				verb: operation.Verb, adr: batch.adr,
+				corrective: batch.kind == adr.HistoryReapplied, occurrence: batch.occurrence,
+			})
 		}
 	}
 	sort.Strings(order)
@@ -350,35 +362,45 @@ func historyTransitionValid(before, after adr.ADR, mode TransitionMode) bool {
 // number of updates; an update after the remove is dominated history that joins
 // no updaters list and never alters the net effect, and the remove is absorbing,
 // so a net remove or net no-op is attributed to the removing ADR (ADR-0191).
-// One ADR may not actively update the same claim twice, which
-// update-requires-substance already forbids by requiring an update to add its
-// ADR once (ADR-0182 item 6).
+// A corrective add or update may repeat its owning operation. Provenance still
+// contributes that ADR once, while each occurrence remains ordered in chain.
 func foldChain(chain []pairOp) (pairOp, string) {
 	var updaters []string
-	var removeADR string
-	hasAdd, hasRemove := false, false
+	var removeADR, addADR string
+	hasAdd, hasRemove, correctiveAddOnly := false, false, false
 	for i, step := range chain {
 		switch step.verb {
 		case adr.OpAdd:
-			if i != 0 {
-				return pairOp{}, "an add must be the first operation"
+			if !hasAdd {
+				if i != 0 && !step.corrective {
+					return pairOp{}, "an add must be the first operation"
+				}
+				hasAdd, addADR, correctiveAddOnly = true, step.adr, step.corrective
+				continue
 			}
-			hasAdd = true
+			if !step.corrective || step.adr != addADR {
+				return pairOp{}, "an add must be the first operation unless it is a corrective re-application by the originating ADR"
+			}
 		case adr.OpRemove:
 			if hasRemove {
 				return pairOp{}, "at most one remove is allowed"
 			}
 			hasRemove = true
 			removeADR = step.adr
-		default:
+		case adr.OpUpdate:
 			if hasRemove {
 				// Dominated by the absorbing remove: retained history only.
 				continue
 			}
 			if slices.Contains(updaters, step.adr) {
-				return pairOp{}, fmt.Sprintf("ADR-%s updates it more than once", step.adr)
+				if !step.corrective {
+					return pairOp{}, fmt.Sprintf("ADR-%s updates it more than once without a corrective Reapplied event", step.adr)
+				}
+				continue
 			}
 			updaters = append(updaters, step.adr)
+		default: // coverage-ignore: parsed State changes admits only add, update, or remove
+			return pairOp{}, fmt.Sprintf("unsupported operation verb %q", step.verb)
 		}
 	}
 	last := chain[len(chain)-1]
@@ -386,7 +408,7 @@ func foldChain(chain []pairOp) (pairOp, string) {
 	case hasAdd && hasRemove:
 		return pairOp{verb: opNetNoop, adr: removeADR}, ""
 	case hasAdd:
-		return pairOp{verb: adr.OpAdd, adr: chain[0].adr}, ""
+		return pairOp{verb: adr.OpAdd, adr: addADR, corrective: correctiveAddOnly}, ""
 	case hasRemove:
 		return pairOp{verb: adr.OpRemove, adr: removeADR}, ""
 	default:
@@ -463,6 +485,26 @@ func numberedProvenance(c topic.Claim, renames map[string]string) (topic.Claim, 
 	}
 	c.RevisedBy = revised
 	return c, substituted
+}
+
+// checkCorrectiveAdd validates a Reapplied add against the claim that its
+// original Applied occurrence created. Provenance is byte-identical and the
+// correction must change a canonical non-provenance field.
+func checkCorrectiveAdd(adrNum, id string, before, after topic.Claim, hasBefore, hasAfter bool) []Finding {
+	if !hasBefore || !hasAfter {
+		return []Finding{{fmt.Sprintf("ADR-%s reapplies add for claim %s, which is not present on both sides of this transition", adrNum, id)}}
+	}
+	var out []Finding
+	if claimMateriallyEqual(before, after) {
+		out = append(out, Finding{fmt.Sprintf("ADR-%s reapplies add for claim %s, but no canonical field changed (a provenance- or formatting-only edit is not a correction)", adrNum, id)})
+	}
+	if before.Origin != after.Origin || after.Origin != adrNum {
+		out = append(out, Finding{fmt.Sprintf("ADR-%s corrective add of claim %s must preserve Origin ADR-%s naming the adding ADR", adrNum, id, adrNum)})
+	}
+	if !slices.Equal(before.RevisedBy, after.RevisedBy) {
+		out = append(out, Finding{fmt.Sprintf("ADR-%s corrective add of claim %s must preserve Revised-by byte-identically", adrNum, id)})
+	}
+	return out
 }
 
 // checkUpdate validates a declared update: the claim is present on both sides, a

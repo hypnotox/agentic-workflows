@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Implementing V2 and V3 ADRs can now correct an already-applied add or update through explicit `Reapplied` history events while another operation remains. Each correction is material and atomic, preserves first-application provenance, retains its own occurrence in merge ordering, and leaves declaration progress counted once.
+
 - Plan authoring now treats qualifying implementation-ready instructions as the default, marks contract-bearing tasks with `Latitude: exact`, supports explicit spike and batch fields with affected-path and post-check contracts, and retires the duplicated whole-plan File structure section.
 
 - `awf check` now reports a non-failing advisory for glossary meanings longer than the terseness guideline, naming the term and its length. It evaluates the merged set, so shipped and project-authored vocabulary follow the same rule.

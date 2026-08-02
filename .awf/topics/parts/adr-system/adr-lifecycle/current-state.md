@@ -80,11 +80,17 @@ A current-state-v3 record carries a mandatory `slug:` frontmatter key equal to t
 Origin: ADR-0202
 Backing: test
 
+### `invariant: corrective-reapplication`
+
+A current-state-v2 or current-state-v3 ADR in Implementing may append any number of `Reapplied; operations:` events for an add or update operation already named by an earlier Applied event. Each event is declaration-ordered, unique within the event, retained as its own ordered application occurrence, and reconciles one further material authored correction while operation progress continues to count the declaration once. A re-applied update preserves Origin and its existing canonical Revised-by entry; a re-applied add preserves its Origin naming the ADR and leaves Revised-by byte-identical. Remove operations, events before the first Applied occurrence, events outside Implementing, and events between the final Applied event and Implemented are refused.
+Origin: ADR-0210
+Backing: test
+
 ### `invariant: adr-status-enum-and-matrix`
 
-Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, and application-cardinality transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
+Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206
+Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0210
 Backing: test
 
 ### `invariant: applied-history-events-append-only`

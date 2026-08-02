@@ -72,7 +72,7 @@ Backing: test
 
 Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0210
+Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0210
 Backing: test
 ```
 
@@ -345,4 +345,6 @@ After the commit, require the effort worktree and branch to be absent through th
 
 ## Notes
 
-No deviations recorded at authoring time. The gamma activation is intentionally one large transaction: its eight operations interlock parser admission, scaffold output, projection reachability, CLI documentation, and current-state truth, so an apparently smaller split would cross a commit with either dead code, an advertised unusable format, or an inaccurate claim.
+- Phase 2 preserves ADR-0206 in the `adr-status-enum-and-matrix` Revised-by endpoint. The reviewed endpoint omitted that already-applied provenance entry; repository authority and the user-approved execution correction require retaining it before appending ADR-0210.
+
+The gamma activation is intentionally one large transaction: its eight operations interlock parser admission, scaffold output, projection reachability, CLI documentation, and current-state truth, so an apparently smaller split would cross a commit with either dead code, an advertised unusable format, or an inaccurate claim.
