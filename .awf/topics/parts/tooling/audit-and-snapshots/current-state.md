@@ -2,6 +2,12 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 ## Claims
 
+### `invariant: audit-history-operation-owned`
+
+One `awf audit` invocation collects its requested commit range exactly once and owns one immutable historical operation for that range. Transition replay and stale-merge replay share the operation's revision states and cached load errors, each required revision is derived at most once, and no cache survives the invocation or lives on Project.
+Origin: ADR-revision-aware-historical-audit-pipeline
+Backing: test
+
 ### `invariant: audit-adr-status-cochange`
 
 awf audit raises an Error finding when a range commit adds a current-state-v1 ADR or changes its status without also changing `docs/decisions/INDEX.md`, and raises none when the same change co-changes the index. Legacy-format ADR transitions are outside this rule.

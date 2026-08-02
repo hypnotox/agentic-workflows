@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: revision-aware-historical-audit-pipeline
-status: Proposed
+status: Implementing
 date: 2026-08-02
 ---
 # ADR-revision-aware-historical-audit-pipeline: Revision-aware historical audit pipeline
@@ -185,3 +185,5 @@ being held to a target chosen before its remaining costs are profiled.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-02: Implementing; content-sha256: 757ce6f2a758c9f0b0a97f628f98ea4c0cd050eb9257a6c4aaa02fe2e026479a
+- 2026-08-02: Applied; operations: add `tooling/audit-and-snapshots:audit-history-operation-owned`

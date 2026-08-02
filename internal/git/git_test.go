@@ -780,6 +780,37 @@ func TestObjectReadContracts(t *testing.T) {
 	if base == head {
 		t.Fatal("fixture transition did not create a new commit")
 	}
+	rootBefore, rootAfter, err := handle.RangeBlobs(testsupport.Context(t), base)
+	if err != nil || len(rootBefore) != 0 || len(rootAfter) != 2 {
+		t.Fatalf("root range blobs = before %#v after %#v, err=%v", rootBefore, rootAfter, err)
+	}
+	if _, _, err := handle.RangeBlobs(testsupport.Context(t), "missing"); err == nil {
+		t.Fatal("missing range revision succeeded")
+	}
+	backend, err := gogit.PlainOpen(repo.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseCommit, err := backend.CommitObject(plumbing.NewHash(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseTree, err := baseCommit.Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := baseTree.File("old.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := handle.RangeBlobs(testsupport.Context(t), blob.Hash.String()); err == nil {
+		t.Fatal("resolvable blob accepted as a range revision")
+	}
+	merge := gitfixture.Graft(t, repo, "merge", base, head, base)
+	mergeBefore, mergeAfter, err := handle.RangeBlobs(testsupport.Context(t), merge)
+	if err != nil || len(mergeBefore) != 1 || mergeBefore[0].Path != "renamed.txt" || len(mergeAfter) != 2 || mergeAfter[0].Path != "gone.txt" {
+		t.Fatalf("merge range blobs = before %#v after %#v, err=%v", mergeBefore, mergeAfter, err)
+	}
 }
 
 func TestCommitEvidenceReads(t *testing.T) {

@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -544,6 +546,19 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 	}
 }
 
+func TestRunEmptyRangeStillEvaluatesLiveCleanliness(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"a.txt": "clean\n"})
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("dirty\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	findings, count, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
+	if err != nil || count != 0 || len(findings) != 1 || findings[0].Rule != "uncommitted-changes" {
+		t.Fatalf("findings = %#v, count = %d, err = %v", findings, count, err)
+	}
+}
+
 // invariant: tooling/audit-and-snapshots:stale-merge-trailer-replay (TestAuditReplaysStaleMergeTrailers)
 func TestAuditReplaysStaleMergeTrailers(t *testing.T) {
 	cases := []struct {
@@ -711,7 +726,7 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 			t.Fatalf("bad lock %#v accepted", file)
 		}
 	}
-	if universe, err := auditUniverse(t.TempDir(), auditTree(t, nil)); err != nil || len(universe.ADRs) != 0 {
+	if universe, err := auditUniverseFromTree(t.TempDir(), auditTree(t, nil)); err != nil || len(universe.ADRs) != 0 {
 		t.Fatalf("absent config = %#v, %v", universe, err)
 	}
 	for _, files := range [][]snapshot.File{
@@ -721,11 +736,11 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: bad/test\nintegrationBranch: master\ntargets: [claude]\n")}},
 		{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: master\ntargets: [claude]\n")}, {Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte("{")}},
 	} {
-		if _, err := auditUniverse(t.TempDir(), auditTree(t, files)); err == nil {
+		if _, err := auditUniverseFromTree(t.TempDir(), auditTree(t, files)); err == nil {
 			t.Fatalf("invalid audit universe accepted: %#v", files)
 		}
 	}
-	if universe, err := auditUniverse(t.TempDir(), tree); err != nil || len(universe.ADRs) != 0 {
+	if universe, err := auditUniverseFromTree(t.TempDir(), tree); err != nil || len(universe.ADRs) != 0 {
 		t.Fatalf("full audit universe = %#v, %v", universe, err)
 	}
 }
@@ -737,6 +752,33 @@ func auditTree(t *testing.T, files []snapshot.File) *snapshot.Tree {
 		t.Fatal(err)
 	}
 	return tree
+}
+
+func auditUniverseFromTree(root string, tree *snapshot.Tree) (currentstate.Universe, error) {
+	lock, _, err := auditLockFromTree(tree)
+	if err != nil {
+		return currentstate.Universe{}, err
+	}
+	return auditUniverse(root, tree, lock)
+}
+
+func staleMergeFindingsForTest(t *testing.T, root string, repo *awfgit.Repo, commits []Commit) error {
+	t.Helper()
+	op, err := newHistoryOperation(testContext(t), "base", "head", Inputs{},
+		func(context.Context, string, string) ([]Commit, error) { return commits, nil },
+		func(ctx context.Context, revision string) (*revisionState, error) {
+			tree, err := snapshot.CommitTree(ctx, repo, revision)
+			if err != nil {
+				return nil, err
+			}
+			return revisionStateFromTree(root, tree), nil
+		},
+		func(context.Context) ([]Finding, error) { return nil, nil })
+	if err != nil {
+		return err
+	}
+	_, err = op.staleMergeFindings(testContext(t))
+	return err
 }
 
 func TestReplayStaleMergeAuthorizationErrorPaths(t *testing.T) {
@@ -760,7 +802,7 @@ func TestReplayStaleMergeAuthorizationErrorPaths(t *testing.T) {
 		{"missing parent", Commit{Hash: merge[:8], Revision: merge, IsMerge: true, Parents: []string{main, "missing"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := replayStaleMergeAuthorizations(testContext(t), repo.Root(), handle, []Commit{tc.commit}); err == nil {
+			if err := staleMergeFindingsForTest(t, repo.Root(), handle, []Commit{tc.commit}); err == nil {
 				t.Fatal("replay accepted broken commit evidence")
 			}
 		})
@@ -776,7 +818,7 @@ func TestReplayStaleMergeAuthorizationErrorPaths(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			broken := commit
 			broken.Parents = tc.parents
-			if _, err := replayStaleMergeAuthorizations(testContext(t), repo.Root(), handle, []Commit{broken}); err == nil {
+			if err := staleMergeFindingsForTest(t, repo.Root(), handle, []Commit{broken}); err == nil {
 				t.Fatal("replay accepted malformed parent config")
 			}
 		})
@@ -798,7 +840,7 @@ func TestReplayStaleMergeAuthorizationErrorPaths(t *testing.T) {
 
 	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": "{"})
 	badLock := gitfixture.Merge(t, repo, "Merge broken lock", main, feature)
-	if _, err := replayStaleMergeAuthorizations(testContext(t), repo.Root(), handle, []Commit{{Hash: badLock[:8], Revision: badLock, IsMerge: true, Parents: []string{main, feature}}}); err == nil {
+	if err := staleMergeFindingsForTest(t, repo.Root(), handle, []Commit{{Hash: badLock[:8], Revision: badLock, IsMerge: true, Parents: []string{main, feature}}}); err == nil {
 		t.Fatal("replay accepted malformed merge result lock")
 	}
 }
