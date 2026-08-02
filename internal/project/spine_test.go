@@ -872,6 +872,26 @@ func TestCheckpointDigestShape(t *testing.T) {
 			}
 		}
 	}
+
+	executingPlans, err := fs.ReadFile(templates.FS, "skills/executing-plans/SKILL.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	executionBody := string(executingPlans)
+	if got := strings.Count(executionBody, "1. Resolve the mutable plan"); got != 1 {
+		t.Errorf("executing-plans has %d plan-resolution steps, want exactly one", got)
+	}
+	for _, phrase := range []string{
+		"awf read plan <plan> <P[.T]>",
+		"projection changes neither phase ownership nor checkpoint boundaries",
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+		"legacy form is deprecated",
+		"until active efforts finish",
+	} {
+		if !strings.Contains(executionBody, phrase) {
+			t.Errorf("executing-plans missing checkpoint contract %q", phrase)
+		}
+	}
 }
 
 func TestWritingPlansTemplate(t *testing.T) {

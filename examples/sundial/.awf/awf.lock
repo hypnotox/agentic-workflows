@@ -118,9 +118,9 @@
     },
     ".claude/skills/sundial-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:7f589bc0a87141fd96af937f7c736afc89df2ef853466813162979cf0211fce2",
+      "templateHash": "sha256:06245f1ac28a87bab757ea4608f94767da90110636a423bada32dc0e04a94bd2",
       "configHash": "sha256:1d26d6fc741afc3bab691d1e7e4f81ac078705e8daac75f83e820da9c6069721",
-      "outputHash": "sha256:26de51929316d24b2ca1379327b3031fecf6ebac98810a7a6be3d002834a596f"
+      "outputHash": "sha256:72f294b3f5f29bb8d2fcabe7eee7ed521d62b16e1cb22fe56977993d5f4b75ef"
     },
     ".claude/skills/sundial-exploring/SKILL.md": {
       "templateId": "skills/exploring/SKILL.md.tmpl",
@@ -298,9 +298,9 @@
     },
     ".pi/skills/sundial-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:7f589bc0a87141fd96af937f7c736afc89df2ef853466813162979cf0211fce2",
+      "templateHash": "sha256:06245f1ac28a87bab757ea4608f94767da90110636a423bada32dc0e04a94bd2",
       "configHash": "sha256:1a9d8d7785d44cc1dcf199964b63603aab396ee860c9c6c2d6e8cab0bfa08265",
-      "outputHash": "sha256:546033372fd384a77ebaaff76ccffa9750d5be60c4ede45f567bc000fa2eb0c3"
+      "outputHash": "sha256:f5255c0e37cbad43c395df5a0c2b865908cc06cea94b8b18a921e11eb7228904"
     },
     ".pi/skills/sundial-exploring/SKILL.md": {
       "templateId": "skills/exploring/SKILL.md.tmpl",
@@ -542,9 +542,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:51d3c9e3c34a88268cd86fe92aa46a7b4b8d0aea985e60189606d459f3bcd1c7",
+      "templateHash": "sha256:0ee32e90ecd9778eadb208ee3ce54ed7dcfa0e924d5b5956ecfed1dbcb505398",
       "configHash": "sha256:ef8342ab0ac6b40eeff56fcbb3f03ff792367e222551f73f137c9eb2a7b8d3c2",
-      "outputHash": "sha256:14910d547da49798656b24e571837f5164f3d16eb9544efd8a8f5a2a707fbdf9"
+      "outputHash": "sha256:aeeb8b350ba91eb9952b4681900211a2a320dba68433a37b6aea439dd5153d07"
     }
   }
 }
