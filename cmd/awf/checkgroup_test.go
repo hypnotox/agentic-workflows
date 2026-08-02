@@ -51,7 +51,7 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 		want string
 	}{
 		{[]string{"awf", "check", "repo", "state"}, "awf check repo state: clean"},
-		{[]string{"awf", "check", "staged", "state"}, "awf check staged: clean"},
+		{[]string{"awf", "check", "staged", "state"}, "awf check staged state: clean"},
 	} {
 		var out, errb bytes.Buffer
 		if code := runAt(t, root, tc.args, &out, &errb); code != 0 {
@@ -261,8 +261,15 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	t.Run("open error", func(t *testing.T) {
-		// No .awf/ at all, so project.Open fails in both entry points.
-		if err := runCheckDrift(ctx, t.TempDir(), io.Discard); err == nil {
+		// No .awf/ or repository, so every direct child fails before checking.
+		root := t.TempDir()
+		if err := runCheckStagedState(ctx, root, io.Discard); err == nil {
+			t.Error("expected an Open error from check staged state")
+		}
+		if err := runCheckStagedDrift(ctx, root, io.Discard); err == nil {
+			t.Error("expected an Open error from check staged drift")
+		}
+		if err := runCheckDrift(ctx, root, io.Discard); err == nil {
 			t.Error("expected an Open error from check repo drift")
 		}
 		if err := runCheckState(ctx, t.TempDir(), io.Discard); err == nil {

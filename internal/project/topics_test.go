@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -173,7 +174,7 @@ func TestTopicHashIsRepositoryRelative(t *testing.T) {
 		part := filepath.Join(root, ".awf/topics/parts/rendering/same/current-state.md")
 		testsupport.WriteFile(t, metadata, "title: Same\nsummary: Same.\npaths: [x]\n")
 		testsupport.WriteFile(t, part, model.Part)
-		hash, err := topicHash(root, model, metadata, part)
+		hash, err := topicHash(root, filesystemProjectReader{root: root}, model, metadata, part)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,6 +182,36 @@ func TestTopicHashIsRepositoryRelative(t *testing.T) {
 	}
 	if hashes[0] != hashes[1] {
 		t.Fatalf("repository location changed topic hash: %q != %q", hashes[0], hashes[1])
+	}
+}
+
+func TestTopicHashReadsTheSelectedSnapshot(t *testing.T) {
+	root := t.TempDir()
+	metadataRel := ".awf/topics/metadata/rendering/same.yaml"
+	partRel := ".awf/topics/parts/rendering/same/current-state.md"
+	metadata := filepath.Join(root, filepath.FromSlash(metadataRel))
+	part := filepath.Join(root, filepath.FromSlash(partRel))
+	model := topic.TopicRenderModel{Title: "Snapshot", Summary: "Snapshot.", Part: "snapshot part\n"}
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: metadataRel, Mode: snapshot.Regular, Bytes: []byte("snapshot metadata\n")},
+		{Path: partRel, Mode: snapshot.Regular, Bytes: []byte(model.Part)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := snapshotTreeReader{tree: tree}
+	before, err := topicHash(root, read, model, metadata, part)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, metadata, "different working metadata\n")
+	testsupport.WriteFile(t, part, "different working part\n")
+	after, err := topicHash(root, read, model, metadata, part)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Fatalf("working files changed snapshot topic hash: %q != %q", before, after)
 	}
 }
 

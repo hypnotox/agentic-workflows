@@ -101,12 +101,14 @@ Run the repository universe: drift, current-state, prose, and memory checks.
 			{Name: "staged", Summary: "Verify staged transition properties", MaxPos: -1,
 				HelpBody: `Usage: awf check staged [subcommand]
 
-Run the staged transition check. The commit child is directly invoked by a
-commit-msg hook and is not part of the aggregate.
+Run the staged transition and rendered-output drift checks. The commit child is
+directly invoked by a commit-msg hook and is not part of the aggregate.
 `,
 				Children: []Command{
 					{Name: "state", Summary: "Report staged current-state transition findings", MaxPos: 0,
 						HelpBody: "Usage: awf check staged state\n\nValidate the HEAD-to-index current-state transition.\n"},
+					{Name: "drift", Summary: "Compare staged config with staged rendered output", MaxPos: 0,
+						HelpBody: "Usage: awf check staged drift\n\nReport stale or hand-edited rendered output in the staged tree.\n"},
 					{Name: "commit", Summary: "Validate one commit message and stale-ADR merge authorization, blocking", MaxPos: 1, StateExempt: true,
 						HelpBody: `Usage: awf check staged commit [FILE]
 

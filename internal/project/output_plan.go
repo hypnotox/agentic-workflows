@@ -84,6 +84,13 @@ func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
 	return out, nil // an in-memory tree has no read to fault
 }
 
+func (p *Project) projectTreeReader() ProjectTreeReader {
+	if p.read != nil {
+		return p.read
+	}
+	return filesystemProjectReader{root: p.Root}
+}
+
 type filesystemProjectReader struct{ root string }
 
 func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool) {

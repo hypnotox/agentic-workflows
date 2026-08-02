@@ -221,6 +221,7 @@ var gatedProbes = map[string][]string{
 	"check repo":          {"awf", "check", "repo"},
 	"check staged":        {"awf", "check", "staged"},
 	"check staged state":  {"awf", "check", "staged", "state"},
+	"check staged drift":  {"awf", "check", "staged", "drift"},
 	"check repo drift":    {"awf", "check", "repo", "drift"},
 	"check repo state":    {"awf", "check", "repo", "state"},
 	"check invariants":    {"awf", "check", "invariants"},

@@ -329,6 +329,46 @@ func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) strin
 	return dir
 }
 
+// invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestCheckStagedDriftRenderedOutput)
+func TestCheckStagedDriftRenderedOutput(t *testing.T) {
+	setup := func(t *testing.T) (string, gitfixture.Fixture) {
+		t.Helper()
+		root := scaffoldProject(t)
+		repo := gitfixture.At(root)
+		gitfixture.AddAll(t, repo)
+		gitfixture.Commit(t, repo, "rendered baseline", nil)
+		return root, repo
+	}
+
+	t.Run("config without rendered output reports stale", func(t *testing.T) {
+		root, repo := setup(t)
+		gitfixture.Stage(t, repo, map[string]string{".awf/config.yaml": strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: make gate full", 1)})
+		var out, errOut bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "check", "staged"}, &out, &errOut); code != 1 {
+			t.Fatalf("staged drift exit = %d, want 1; stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(out.String(), "stale") || !strings.Contains(errOut.String(), "awf check staged drift") {
+			t.Fatalf("staged drift did not report stale rendered output; stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
+
+	t.Run("fully staged render is clean", func(t *testing.T) {
+		root, repo := setup(t)
+		testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: make gate full", 1))
+		if err := runSync(testContext(t), root, io.Discard); err != nil {
+			t.Fatalf("render changed config: %v", err)
+		}
+		gitfixture.AddAll(t, repo)
+		var out, errOut bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "check", "staged", "drift"}, &out, &errOut); code != 0 {
+			t.Fatalf("staged drift exit = %d, want 0; stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(out.String(), "awf check staged drift: clean") {
+			t.Fatalf("clean staged drift output = %q", out.String())
+		}
+	})
+}
+
 // invariant: tooling/cli:check-universe-groups (TestRunCheckRunsStagedAfterRepoFailure)
 func TestRunCheckRunsStagedAfterRepoFailure(t *testing.T) {
 	root := stagedCheckProject(t,

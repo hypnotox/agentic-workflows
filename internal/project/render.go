@@ -1,11 +1,9 @@
 package project
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -204,15 +202,15 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 	// actually declares an in-place section - every other artifact avoids the read.
 	var output string
 	outputRead := false
-	readOutput := func() (string, error) {
+	readOutput := func() string {
 		if !outputRead {
-			b, rerr := os.ReadFile(filepath.Join(p.Root, outPath))
-			if rerr != nil && !errors.Is(rerr, os.ErrNotExist) { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses; absence is folded into an empty read
-				return "", rerr
+			b, ok := p.projectTreeReader().ReadFile(outPath)
+			if !ok {
+				b = nil
 			}
 			output, outputRead = string(b), true // "" when absent (first render)
 		}
-		return output, nil
+		return output
 	}
 	for _, s := range declared {
 		sp := render.SectionPlan{EditPath: p.partRel(kind, artifact, s)}
@@ -229,10 +227,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			} else if exists {
 				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
 			}
-			out, rerr := readOutput()
-			if rerr != nil { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses (NotExist is folded into an empty read above)
-				return nil, fmt.Errorf("read output %s: %w", outPath, rerr)
-			}
+			out := readOutput()
 			sp.InPlace = true
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
@@ -769,7 +764,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 		inPlaceRead = inPlaceRead || sp.InPlace
 	}
 	if inPlaceRead {
-		if _, ok := (filesystemProjectReader{root: p.Root}).ReadFile(outPath); ok {
+		if _, ok := p.projectTreeReader().ReadFile(outPath); ok {
 			inputs = append(inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
 		}
 	}

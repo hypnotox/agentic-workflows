@@ -84,8 +84,12 @@ func runCheckGroup(c *cmdCtx) error {
 		return runProseGate(c.ctx, c.root, c.stdout)
 	case "repo memory":
 		return runMemoryGate(c.ctx, c.root, c.stdout)
-	case "staged", "staged state":
+	case "staged":
 		return runCheckStaged(c.ctx, c.root, c.stdout)
+	case "staged state":
+		return runCheckStagedState(c.ctx, c.root, c.stdout)
+	case "staged drift":
+		return runCheckStagedDrift(c.ctx, c.root, c.stdout)
 	case "staged commit":
 		return runCommitGate(c.ctx, c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
 	case "invariants":
