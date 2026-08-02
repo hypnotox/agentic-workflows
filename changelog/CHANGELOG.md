@@ -392,6 +392,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Pi `handoff_session` now emits Remote Pi's optional continuation disposition after it successfully queues the replacement command. Compatible push integrations no longer report the intermediate parent run as a terminal completion, while listener failures remain isolated from handoff execution.
+
 - `awf check` no longer refuses an integration whose effort branch was forked before schema
   generation 29. Merging an integration branch that has already sealed the ADR v3 cutoff crosses
   that generation in one step, and the record being renumbered may land above the cutoff, which
