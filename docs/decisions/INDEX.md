@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-consumer-local-contracts-over-single-home-filesystem-access: Consumer-local contracts over single-home filesystem access](consumer-local-contracts-over-single-home-filesystem-access.md) (Proposed)
-- [ADR-test-support-exports-earn-test-consumers: Test-support exports earn test consumers](test-support-exports-earn-test-consumers.md) (Proposed)
+- [ADR-test-support-exports-earn-test-consumers: Test-support exports earn test consumers](test-support-exports-earn-test-consumers.md) (Accepted)
 
 ## History
 
