@@ -37,6 +37,23 @@ run_deadcode_gate() {
   go tool deadcode -json ./... | go run ./cmd/deadcodecheck
 }
 
+run_pi_runtime_smoke() {
+  local output status
+  if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1)"; then
+    status=0
+  else
+    status=$?
+  fi
+  printf '%s\n' "$output"
+  if [ "$status" -ne 0 ]; then
+    return "$status"
+  fi
+  if ! grep -q '"Action":"pass".*"Test":"TestPiRealRuntimeSmoke"' <<<"$output"; then
+    echo "gate: Pi runtime smoke did not run and pass" >&2
+    return 1
+  fi
+}
+
 cmd="${1:-}"
 shift || true
 
@@ -48,6 +65,7 @@ case "$cmd" in
       echo "usage: ./x gate [timings]" >&2
       exit 2
     fi
+    unset AWF_PI_RUNTIME_SMOKE
     # Sequential gate: profiled tests + 100% coverage check + the explicitly
     # enabled uncached Pi runtime smoke + vet + lint. The coverage step
     # (ADR-0012) fails below 100% of non-ignored statements; -coverpkg=./... so
@@ -57,9 +75,9 @@ case "$cmd" in
     # Codecov without rerunning the suite, and an interrupted run leaks no
     # tmpfs file (ADR-0196).
     prof="coverage.out"
-    run_gate_step go-test go test ./... -coverpkg=./... -coverprofile="$prof"
+    run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test ./... -coverpkg=./... -coverprofile="$prof"
     run_gate_step covercheck go run ./cmd/covercheck "$prof"
-    run_gate_step pi-runtime-smoke env AWF_PI_RUNTIME_SMOKE=1 go test ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1
+    run_gate_step pi-runtime-smoke run_pi_runtime_smoke
     run_gate_step vet go vet ./...
     # Cross-compile gate: the suite only ever runs on the host platform, so a
     # package that stops building for a contributor's platform is otherwise
@@ -91,7 +109,7 @@ case "$cmd" in
     ;;
   test)
     echo "test: Pi container skipped; run './x pi-test run' alone or './x gate' to include it" >&2
-    go test ./... "$@"
+    env -u AWF_PI_RUNTIME_SMOKE go test ./... "$@"
     ;;
   clean-test-tmp)
     go run ./internal/testsupport/cmd/testtmpclean "$@"

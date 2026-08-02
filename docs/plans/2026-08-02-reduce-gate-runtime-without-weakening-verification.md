@@ -38,11 +38,7 @@ Paths: ["x", "internal/project/target_test.go", "internal/project/example_wiring
 
 In `TestPiRealRuntimeSmoke`, retain all existing invariant markers and the real `./x pi-test run` subprocess. Before that subprocess, require `AWF_PI_RUNTIME_SMOKE=1`; otherwise call `t.Skip` with the same actionable guidance as the runner notice: `Pi container skipped; run './x pi-test run' alone or './x gate' to include it`. Do not move runtime-claim proof markers to rendered-source string tests.
 
-Refactor the root `gate` arm so its ordinary profiled `go test ./...` leaves the smoke skipped, then replace the direct `tools/pi-extension-test/container.sh run` stage with exactly:
-
-`env AWF_PI_RUNTIME_SMOKE=1 go test ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1`
-
-This named stage is the gate's sole Pi runtime execution. Preserve the durable `coverage.out`, the coverage checker, vet, host-derived released-platform build matrix, lint, deadcode pipeline, pincheck, and their current order. Keep `./x pi-test run|reset` as the direct standalone container interface.
+Refactor the root `gate` arm so it clears ambient `AWF_PI_RUNTIME_SMOKE` and its ordinary profiled `go test ./...` leaves the smoke skipped. Replace the direct `tools/pi-extension-test/container.sh run` stage with `run_gate_step pi-runtime-smoke run_pi_runtime_smoke`. That helper must execute `env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1`, preserve a nonzero test status, and refuse a zero-status result unless the structured output contains the passing `TestPiRealRuntimeSmoke` event. This named stage is the gate's sole Pi runtime execution. Preserve the durable `coverage.out`, the coverage checker, vet, host-derived released-platform build matrix, lint, deadcode pipeline, pincheck, and their current order. Keep `./x pi-test run|reset` as the direct standalone container interface.
 
 Add the exact stderr notice from Task 1.1 to the `test` arm before its forwarded Go command. The gate arm must not print the skip notice because it runs the enabled smoke later. The runner notice is the guaranteed non-verbose surface; the `t.Skip` reason exposes the same guidance under direct `go test -v`, while direct non-verbose `go test` remains silent because the Go driver suppresses successful skipped-test output.
 
@@ -119,3 +115,5 @@ The final `./x gate timings` run passed with these whole-second stage measuremen
 Implementation followed the approved design. The initial timed gate exposed errorlint and unparam findings in the new runner tests; those test assertions were corrected before the recorded passing run.
 
 The plan review had instructed the Phase close to freeze the plan, but current `docs/plans/README.md` requires plans to remain Proposed through implementation and terminal review. Repository authority prevailed: the implementation transaction keeps this plan Proposed, and the post-review deferred flip freezes it.
+
+Terminal review found that an ambient `AWF_PI_RUNTIME_SMOKE=1` could reach ordinary tests and that a skipped or unmatched targeted test could still return zero. The user approved clearing the ambient value at ordinary boundaries. The fix clears it for the gate transaction and `./x test`, enables it only inside the targeted helper, requires a structured pass event, strengthens exact cross-target and timing assertions, and exercises failures from both sides of the deadcode pipeline.

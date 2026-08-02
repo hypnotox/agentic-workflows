@@ -149,9 +149,18 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 		t.Fatal("./x must retain a closed gate arm")
 	}
 	gateArm := script[gateStart : gateStart+gateEnd]
-	const smoke = "run_gate_step pi-runtime-smoke env AWF_PI_RUNTIME_SMOKE=1 go test ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1"
+	const smoke = "run_gate_step pi-runtime-smoke run_pi_runtime_smoke"
 	if strings.Count(gateArm, smoke) != 1 {
 		t.Errorf("./x gate must wire one explicit uncached pi-extension smoke, count=%d", strings.Count(gateArm, smoke))
+	}
+	for _, want := range []string{
+		"env -u AWF_PI_RUNTIME_SMOKE go test ./...",
+		"env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1",
+		`"Action":"pass".*"Test":"TestPiRealRuntimeSmoke"`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("./x Pi runtime ownership lost %q", want)
+		}
 	}
 	if strings.Contains(gateArm, "tools/pi-extension-test/container.sh run") {
 		t.Error("./x gate must not invoke the Pi container beside the explicit runtime smoke")
