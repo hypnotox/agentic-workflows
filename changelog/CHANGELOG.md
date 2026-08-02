@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Features
 
-- `awf audit` now derives historical transition and stale-merge state from committed configuration, ADRs, and topic claims without validating marker-only or domain-sidecar-only history. Repository and staged checks retain the full marker, coverage, and domain-sidecar validation boundary, while revisions outside that authority can reuse their first-parent state.
+- `awf audit` now derives historical transition and stale-merge state from committed configuration, ADRs, and topic claims without validating marker-only or domain-sidecar-only history. Repository and staged checks retain the full marker, coverage, and domain-sidecar validation boundary, while revisions outside that authority can reuse their first-parent state. Context cancellation and deadline expiry now abort the operation immediately with preserved error identity instead of becoming transition warnings.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
 

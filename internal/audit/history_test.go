@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -364,6 +365,57 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 			})
 		}
 	}
+
+	t.Run("production committed evidence", func(t *testing.T) {
+		repo, _ := staleAuditRepo(t, 31)
+		handle, _, err := awfgit.OpenContaining(repo.Root())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, termination := range []error{context.Canceled, context.DeadlineExceeded} {
+			t.Run(termination.Error(), func(t *testing.T) {
+				var ctx context.Context
+				var cancel context.CancelFunc
+				if errors.Is(termination, context.Canceled) {
+					ctx, cancel = context.WithCancel(context.Background())
+					cancel()
+				} else {
+					ctx, cancel = context.WithDeadline(context.Background(), time.Time{})
+					defer cancel()
+				}
+				op := newHistoryOperationWithRelevance(
+					[]awfgit.Commit{{Hash: "committed", Revision: "HEAD", Subject: "feat(awf): committed evidence"}}, Inputs{},
+					func(ctx context.Context, revision string) (*revisionState, error) {
+						return loadCompleteRevision(ctx, repo.Root(), handle, revision)
+					}, nil,
+					func(context.Context) ([]Finding, error) { return nil, nil })
+				findings, err := op.run(ctx)
+				if !errors.Is(err, termination) {
+					t.Fatalf("committed evidence error = %v, want %v; findings=%#v", err, termination, findings)
+				}
+				if countRule(findings, currentStateTransitionRule, severity.Warn) != 0 {
+					t.Fatalf("committed evidence termination became a warning: %#v", findings)
+				}
+			})
+		}
+	})
+
+	t.Run("non-context transition failure stays advisory", func(t *testing.T) {
+		boom := errors.New("ordinary transition failure")
+		op := newHistoryOperationWithRelevance(
+			[]awfgit.Commit{{Hash: "ordinary", Revision: "ordinary", Subject: "feat(awf): ordinary failure"}}, Inputs{},
+			func(context.Context, string) (*revisionState, error) {
+				return &revisionState{lockReady: true, universeReady: true, universeErr: boom}, nil
+			}, nil,
+			func(context.Context) ([]Finding, error) { return nil, nil })
+		findings, err := op.run(testContext(t))
+		if err != nil {
+			t.Fatalf("ordinary transition failure became fatal: %v", err)
+		}
+		if countRule(findings, currentStateTransitionRule, severity.Warn) != 1 || !strings.Contains(findings[0].Detail, boom.Error()) {
+			t.Fatalf("ordinary transition findings = %#v", findings)
+		}
+	})
 }
 
 func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
