@@ -410,11 +410,28 @@ func TestPlanV2DecisionReferences(t *testing.T) {
 			}
 		})
 	}
-	malformed := strings.Replace(body, "Applying: [", "Applying:[", 1)
+	for name, tc := range map[string]struct{ field, replacement string }{
+		"whitespace before colon":           {"Applying", "Applying : ["},
+		"missing space after colon":         {"Applying", "Applying:["},
+		"tab after colon":                   {"Applying", "Applying:\t["},
+		"context whitespace before colon":   {"Context", "Context : ["},
+		"context missing space after colon": {"Context", "Context:["},
+		"context tab after colon":           {"Context", "Context:\t["},
+	} {
+		t.Run(name, func(t *testing.T) {
+			malformed := strings.Replace(body, tc.field+": [", tc.replacement, 1)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-malformed.md", malformed)
+			if _, err := plan.ParseDir(dir); err == nil {
+				t.Fatalf("malformed field %q accepted", tc.replacement)
+			}
+		})
+	}
+	prose := strings.Replace(body, "\n\nImplement the parser.", "\n\nApplying lessons: keep task prose legal.\nContext remains prose without a field separator.\n\nImplement the parser.", 1)
 	dir = t.TempDir()
-	writePlan(t, dir, "2026-08-02-malformed.md", malformed)
-	if _, err := plan.ParseDir(dir); err == nil {
-		t.Fatal("malformed Applying field accepted")
+	writePlan(t, dir, "2026-08-02-prose.md", prose)
+	if _, err := plan.ParseDir(dir); err != nil {
+		t.Fatalf("ordinary prose beginning with reserved words: %v", err)
 	}
 }
 

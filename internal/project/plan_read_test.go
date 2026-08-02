@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -130,6 +131,33 @@ func TestProjectReadPlanV2RejectsMissingSelector(t *testing.T) {
 	}
 	if _, err := p.ReadPlan("2026-08-02-selector", "9"); err == nil || !strings.Contains(err.Error(), "selector") {
 		t.Fatalf("missing v2 selector error = %v", err)
+	}
+}
+
+func TestProjectReadPlanV2SelectorErrorsPrecedeMalformedCorpus(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	body := strings.Replace(projectPlanV1, "format: plan-v1", "format: plan-v2", 1)
+	body = strings.Replace(body, "- The configured plan reads exactly.", "- `dod: complete` Done.", 1)
+	body = strings.Replace(body, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nCompletes: [\"complete\"]", 1)
+	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-08-02-selector-precedence.md"), body)
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"), "---\nstatus: [\n---\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, selector := range []string{"01", "9"} {
+		_, err := p.ReadPlan("2026-08-02-selector-precedence", selector)
+		if selector == "01" {
+			var invalid *plan.InvalidSelectorError
+			if !errors.As(err, &invalid) || invalid.Value != selector || !reflect.DeepEqual(invalid.Available, []string{"1", "1.1"}) {
+				t.Fatalf("invalid selector error = %#v", err)
+			}
+			continue
+		}
+		var missing *plan.NotFoundError
+		if !errors.As(err, &missing) || missing.Kind != "selector" || missing.Value != selector || !reflect.DeepEqual(missing.Available, []string{"1", "1.1"}) {
+			t.Fatalf("missing selector error = %#v", err)
+		}
 	}
 }
 

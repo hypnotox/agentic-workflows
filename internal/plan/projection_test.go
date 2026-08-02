@@ -92,7 +92,6 @@ const projectionTail = `## Definition of done
 The spike established stable typed diagnostics.
 `
 
-// invariant: adr-system/plan-artifacts:plan-executable-projection (TestPlanExecutableProjection)
 func TestPlanExecutableProjection(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "2026-08-02-example.md")
@@ -257,6 +256,7 @@ func TestPlanProjectionSelectorsAreTypedAndCanonical(t *testing.T) {
 	}
 }
 
+// invariant: adr-system/plan-artifacts:plan-executable-projection (TestPlanV2ProjectionOrdersPromotesAndScopes)
 func TestPlanV2ProjectionOrdersPromotesAndScopes(t *testing.T) {
 	body := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
 	body = strings.Replace(body, "- A valid plan parses and projects.", "- `dod: advanced` Advance.\n- `dod: complete` Complete.", 1)

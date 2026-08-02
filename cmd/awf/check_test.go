@@ -42,6 +42,7 @@ func (w *mutatingWriter) Write(p []byte) (int, error) {
 }
 
 // invariant: tooling/cli:check-universe-groups (TestRunCheckCleanThenDirty)
+// invariant: adr-system/plan-artifacts:plan-v2-assignment-advisories (TestRunCheckCleanThenDirty)
 func TestRunCheckCleanThenDirty(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -108,6 +109,19 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 	if strings.Contains(implemented.String(), "2026-08-03-check-v2.md Decision") || strings.Contains(implemented.String(), "no outcome assignment") {
 		t.Fatalf("Implemented plan must be silent in plan assignment advisories: %q", implemented.String())
+	}
+
+	// The index now carries the Proposed source while working bytes restore the
+	// Implemented source. The one surviving note proves the staged universe reads
+	// its own bytes; a working edit can neither remove nor add that staged note.
+	gitfixture.Stage(t, gitfixture.At(implementedRoot), map[string]string{planPath: validPlan})
+	testsupport.WriteFile(t, filepath.Join(implementedRoot, planPath), strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1))
+	var stagedProposed bytes.Buffer
+	if err := runCheck(ctx, implementedRoot, &stagedProposed); err != nil {
+		t.Fatalf("staged Proposed plan advisory must stay green: %v\n%s", err, stagedProposed.String())
+	}
+	if got := strings.Count(stagedProposed.String(), proposedNote); got != 1 {
+		t.Fatalf("staged Proposed advisory note count = %d, want 1: %q", got, stagedProposed.String())
 	}
 
 	// Hand-edit the rendered skill.

@@ -563,7 +563,7 @@ func parseTask(path string, lines []string, start, phase, want int, v2 bool) (Ta
 	for i < len(lines) {
 		line := lineText(lines[i])
 		name, value, field, malformed := parseField(line)
-		if v2 && (strings.HasPrefix(line, "Applying:") || strings.HasPrefix(line, "Context:")) && !field {
+		if v2 && malformedDecisionField(line) && !field {
 			malformed = true
 		}
 		if malformed {
@@ -657,6 +657,22 @@ func parseField(line string) (name, value string, field, malformed bool) {
 		return name, "", false, knownField(name)
 	}
 	return name, strings.TrimSpace(strings.TrimPrefix(rest, " ")), true, false
+}
+
+// malformedDecisionField reserves Applying and Context only when their name is
+// followed by optional horizontal whitespace and a colon. Ordinary prose that
+// merely begins with either word remains task body text.
+func malformedDecisionField(line string) bool {
+	for _, name := range []string{"Applying", "Context"} {
+		rest, ok := strings.CutPrefix(line, name)
+		if !ok {
+			continue
+		}
+		if strings.HasPrefix(strings.TrimLeft(rest, " \t"), ":") {
+			return true
+		}
+	}
+	return false
 }
 
 func knownField(name string) bool {

@@ -1050,36 +1050,98 @@ func TestPlanArtifactReportEnforcesDecisionReferenceContracts(t *testing.T) {
 	}
 }
 
+// invariant: adr-system/plan-artifacts:plan-v2-decision-references (TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector)
 func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
-	source := "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-02\nslug: fixture\n---\n# ADR-fixture: Fixture\n\n## Context\n\nContext.\n\n## Decision\n\n1. `decision: first` First.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: Proposed\n"
-	record, err := adr.ParseV4("fixture.md", []byte(source))
+	v4Source := "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-02\nslug: fixture\n---\n# ADR-0001: Fixture\n\n## Context\n\nContext.\n\n## Decision\n\n1. `decision: first` First.\n\n2. `decision: zeta` Zeta.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: Proposed\n"
+	v4, err := adr.ParseV4("0001-fixture.md", []byte(v4Source))
 	if err != nil {
 		t.Fatal(err)
 	}
-	frozen := record
-	frozen.Status = "Accepted"
-	corpus, err := adr.NewCorpus([]adr.ADR{frozen})
+	v3Source := strings.Replace(v4Source, "current-state-v4", "current-state-v3", 1)
+	v3Source = strings.Replace(v3Source, "1. `decision: first` First.\n\n2. `decision: zeta` Zeta.", "1. First.\n\n2. Zeta.", 1)
+	v3, err := adr.ParseV3("0001-fixture.md", []byte(v3Source))
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := plan.Plan{Filename: "v2.md"}
-	refs := []plan.DecisionRef{{Authored: "fixture:first", ADR: "fixture", Selector: "first", Kind: "Applying"}}
-	resolved, err := resolvePlanDecisions(p, corpus, refs, false)
-	if err != nil || len(resolved) != 1 || resolved[0].Key != "fixture:first" {
-		t.Fatalf("resolved = %#v, %v", resolved, err)
+
+	resolve := func(record adr.ADR, link plan.ADRLink, ref plan.DecisionRef, context, selectorError bool) ([]plan.ResolvedDecision, error) {
+		t.Helper()
+		corpus, err := adr.NewCorpus([]adr.ADR{record})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := plan.Plan{Filename: "v2.md", Path: "docs/plans/v2.md", Format: "plan-v2", ADRs: []plan.ADRLink{link}, Phases: []plan.Phase{{Number: 1, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{Applying: []plan.DecisionRef{ref}}}}}}}
+		if context {
+			p.Phases[0].Tasks[0].Fields.Applying = nil
+			p.Phases[0].Tasks[0].Fields.Context = []plan.DecisionRef{ref}
+		}
+		drift, _ := planArtifactReport([]plan.Plan{p}, corpus)
+		switch {
+		case context && record.IsContentAmendable():
+			if len(drift) != 1 || !strings.Contains(drift[0].Detail, "Context requires frozen ADR") {
+				t.Fatalf("amendable Context drift = %#v", drift)
+			}
+		case !selectorError && len(drift) != 0:
+			t.Fatalf("planArtifactReport drift = %#v", drift)
+		case selectorError && len(drift) != 1:
+			t.Fatalf("selector planArtifactReport drift = %#v", drift)
+		}
+		return resolvePlanDecisions(p, corpus, []plan.DecisionRef{ref}, context)
 	}
-	refs[0].Selector, refs[0].Authored = "missing", "fixture:missing"
-	if _, err := resolvePlanDecisions(p, corpus, refs, false); err == nil || !strings.Contains(err.Error(), "unknown V4 Decision selector") {
-		t.Fatalf("selector error = %v", err)
+
+	// Numbered links and retained-slug task references resolve the same V4 ADR,
+	// and the reverse spelling produces the same projection record.
+	applySlug := plan.DecisionRef{Authored: "fixture:first", ADR: "fixture", Selector: "first", Kind: "Applying"}
+	applyNumber := plan.DecisionRef{Authored: "0001:first", ADR: "0001", Selector: "first", Kind: "Applying"}
+	bySlug, err := resolve(v4, plan.ADRLink{Number: 1}, applySlug, false, false)
+	if err != nil || len(bySlug) != 1 {
+		t.Fatalf("number link / slug ref = %#v, %v", bySlug, err)
 	}
-	proposedCorpus, err := adr.NewCorpus([]adr.ADR{record})
+	byNumber, err := resolve(v4, plan.ADRLink{Slug: "fixture"}, applyNumber, false, false)
+	if err != nil || len(byNumber) != 1 || bySlug[0] != byNumber[0] {
+		t.Fatalf("slug link / number ref = %#v, %v; want %#v", byNumber, err, bySlug)
+	}
+
+	// V4 decision IDs are stable while content is amendable, but Context needs a
+	// frozen record. Copies model lifecycle states without invalidating fixtures.
+	contextRef := plan.DecisionRef{Authored: "fixture:first", ADR: "fixture", Selector: "first", Kind: "Context"}
+	if _, err := resolve(v4, plan.ADRLink{Slug: "fixture"}, contextRef, true, false); err == nil || !strings.Contains(err.Error(), "requires frozen ADR") {
+		t.Fatalf("amendable V4 Context error = %v", err)
+	}
+	frozenV4 := v4
+	frozenV4.Status = "Implemented"
+	if resolved, err := resolve(frozenV4, plan.ADRLink{Slug: "fixture"}, contextRef, true, false); err != nil || len(resolved) != 1 {
+		t.Fatalf("frozen V4 Context = %#v, %v", resolved, err)
+	}
+
+	frozenV3 := v3
+	frozenV3.Status = "Implemented"
+	ordinal := plan.DecisionRef{Authored: "fixture:#1", ADR: "fixture", Selector: "#1", Kind: "Applying"}
+	if resolved, err := resolve(frozenV3, plan.ADRLink{Slug: "fixture"}, ordinal, false, false); err != nil || len(resolved) != 1 {
+		t.Fatalf("frozen pre-V4 ordinal = %#v, %v", resolved, err)
+	}
+	amendableV3, err := adr.NewCorpus([]adr.ADR{v3})
 	if err != nil {
 		t.Fatal(err)
 	}
-	refs[0].Selector, refs[0].Authored = "first", "fixture:first"
-	if _, err := resolvePlanDecisions(p, proposedCorpus, refs, true); err == nil || !strings.Contains(err.Error(), "requires frozen ADR") {
-		t.Fatalf("context error = %v", err)
+	amendablePlan := plan.Plan{Filename: "v2.md", Path: "docs/plans/v2.md", Format: "plan-v2", ADRs: []plan.ADRLink{{Slug: "fixture"}}, Phases: []plan.Phase{{Number: 1, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{Applying: []plan.DecisionRef{ordinal}}}}}}}
+	if drift, _ := planArtifactReport([]plan.Plan{amendablePlan}, amendableV3); len(drift) != 1 || !strings.Contains(drift[0].Detail, adr.ErrDecisionSelectorAmendable.Error()) {
+		t.Fatalf("amendable pre-V4 ordinal drift = %#v", drift)
 	}
+	if _, err := resolvePlanDecisions(amendablePlan, amendableV3, []plan.DecisionRef{ordinal}, false); err == nil || !errors.Is(err, adr.ErrDecisionSelectorAmendable) {
+		t.Fatalf("amendable pre-V4 ordinal error = %v", err)
+	}
+
+	assertSelector := func(selector string, cause error) {
+		t.Helper()
+		_, err := resolve(frozenV4, plan.ADRLink{Slug: "fixture"}, plan.DecisionRef{Authored: "fixture:" + selector, ADR: "fixture", Selector: selector, Kind: "Applying"}, false, true)
+		var typed *adr.DecisionSelectorError
+		if !errors.Is(err, cause) || !errors.As(err, &typed) || !slices.IsSorted(typed.Available) || strings.Join(typed.Available, ",") != "first,zeta" {
+			t.Fatalf("selector %q error = %#v", selector, err)
+		}
+	}
+	assertSelector("#1", adr.ErrDecisionSelectorIncompatible)
+	assertSelector("missing", adr.ErrDecisionSelectorUnknown)
 }
 
 func TestPlanArtifactReportValidatesSelectorsAndAssignments(t *testing.T) {

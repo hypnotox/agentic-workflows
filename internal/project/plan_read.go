@@ -17,11 +17,11 @@ func (p *Project) ReadPlan(name, selector string) ([]byte, error) {
 	if selected.Format != "plan-v2" {
 		return plan.RenderProjection(selected, selector)
 	}
-	corpus, _, _, err := p.deriveOperationState()
+	phase, task, err := selectedRefs(selected, selector)
 	if err != nil {
 		return nil, err
 	}
-	phase, task, err := selectedRefs(selected, selector)
+	corpus, _, _, err := p.deriveOperationState()
 	if err != nil {
 		return nil, err
 	}

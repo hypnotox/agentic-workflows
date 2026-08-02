@@ -383,8 +383,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:4b51200768433ed98eed60408ad732f9dd643304509ec61f9d456c4ddbd17b8d",
-      "outputHash": "sha256:86396d2f0d8624a48cf614ff904144ab2f940f09f372af04b6ed52817c57541e"
+      "configHash": "sha256:5d5478ec56ddfcb82c4b0e06bc03c0b1b06537c8e5ff47c224adc27f99e642c2",
+      "outputHash": "sha256:3ea2b9748120a1e0db915b5494d1626107a38d85616de71b7fd98429cfea1369"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -486,9 +486,9 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:e49d5796c4a2932bb455d3fe2258d7608480dd625a27dc9c7b7da1d6064b9df0",
+      "templateHash": "sha256:0bf18f7ab2a87b22b3b1aa9164de128ba4c528b91a1d76c71c9747378ba12494",
       "configHash": "sha256:33f22ebf6e3ea2d21a20556ee4c1a018dc97a0d3676a78a4cdef60e2148b054d",
-      "outputHash": "sha256:ff252be001cf04d5caa40bfc41b99f2059f9b45713b158cb9b6a0ac00dbda23d"
+      "outputHash": "sha256:4563c01bc725ae9e29cd64e11b3ff2ceaf0a8bcbe66ab43ff27824a77285d664"
     },
     "docs/plans/template.md": {
       "templateId": "plans-template/template.md.tmpl",
@@ -535,8 +535,8 @@
     "docs/topics/adr-system/plan-artifacts.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:6e2eb75c8dd2fe2daed94077c90aa6a374f76a303d47acf4797f4fd29eb6af46",
-      "outputHash": "sha256:b07332bdc994cc3e535cbf73aa2a6acdc86c79e0ec08470395c510e3687c0d75"
+      "configHash": "sha256:934285192c84120118aac3bff1cfc3c9f152889174656d6cb95906c587ca5d5c",
+      "outputHash": "sha256:749045563f9d6ba0bd2da5d943e1a378ef74f5c206ffc8a4908c1509ee58805d"
     },
     "docs/topics/code-design/dependency-composition.md": {
       "templateId": "topics/topic.md.tmpl",

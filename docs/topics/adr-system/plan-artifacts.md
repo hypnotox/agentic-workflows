@@ -74,7 +74,7 @@ Backing: test
 
 ### `invariant: plan-v2-decision-references`
 
-Plan-v2 parses nonempty unique Applying and Context JSON references with a four-digit-or-retained-slug ADR identity, lowercase-kebab V4 selector, or canonical positive frozen pre-V4 `#N` selector; malformed field-like lines block. The project resolves every plan-level ADR link through the corpus identity map, compares Applying membership by resolved record identity, permits Applying to amendable V4 ADRs, requires Context to be frozen, and retains frozen pre-V4 `#N` compatibility.
+Plan-v2 parses nonempty unique Applying and Context JSON references with a four-digit-or-retained-slug ADR identity, lowercase-kebab V4 selector, or canonical positive frozen pre-V4 `#N` selector; malformed Applying or Context field lookalikes, including a nonexact colon separator, block before task prose. The project resolves every plan-level ADR link through the corpus identity map, compares Applying membership by resolved record identity, permits Applying to amendable V4 ADRs, requires Context to be frozen, and retains frozen pre-V4 `#N` compatibility.
 Origin: ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test
 
@@ -92,7 +92,7 @@ Backing: test
 
 ### `invariant: plan-executable-projection`
 
-internal/plan owns exact filename-or-stem resolution, canonical positive `P` and `P.T` selectors, and projection rendering from typed plan-owned inputs. Plan-v2 orders frontmatter/title, Goal, Architecture summary, Applying then Context Decisions, owning phase/execution mode, selected work, Phase close, its phase-owner-context advanced then completed outcomes, and Notes; it excludes whole-plan Definition of done, deduplicates resolved keys in first-authored order, and promotes Context to Applying. Plan-v1 bytes, including Definition of done, remain unchanged. Errors retain exact selector identities and available values. Projection includes no other phase, reparses no Markdown outside the model owner, and never mutates source bytes.
+internal/plan owns exact filename-or-stem resolution, canonical positive `P` and `P.T` selectors, and projection rendering from typed plan-owned inputs; plan-v2 validates its selector before the project loads the ADR corpus, preserving its typed error and exact available selectors. Plan-v2 orders frontmatter/title, Goal, Architecture summary, Applying then Context Decisions, owning phase/execution mode, selected work, Phase close, its phase-owner-context advanced then completed outcomes, and Notes; it excludes whole-plan Definition of done, deduplicates resolved keys in first-authored order, and promotes Context to Applying. Plan-v1 bytes, including Definition of done, remain unchanged. Errors retain exact selector identities and available values. Projection includes no other phase, reparses no Markdown outside the model owner, and never mutates source bytes.
 Origin: ADR-0213
 Revised-by: ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test

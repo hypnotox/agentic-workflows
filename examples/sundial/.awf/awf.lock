@@ -1094,9 +1094,9 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:e49d5796c4a2932bb455d3fe2258d7608480dd625a27dc9c7b7da1d6064b9df0",
+      "templateHash": "sha256:0bf18f7ab2a87b22b3b1aa9164de128ba4c528b91a1d76c71c9747378ba12494",
       "configHash": "sha256:4830f8b6e7bfec83f22c767db8387ea7faf0f071324c41fc87fb2e28b460fdae",
-      "outputHash": "sha256:ff252be001cf04d5caa40bfc41b99f2059f9b45713b158cb9b6a0ac00dbda23d"
+      "outputHash": "sha256:4563c01bc725ae9e29cd64e11b3ff2ceaf0a8bcbe66ab43ff27824a77285d664"
     },
     "docs/plans/template.md": {
       "templateId": "plans-template/template.md.tmpl",
