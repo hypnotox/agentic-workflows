@@ -91,7 +91,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"parent or exactly one helper", "path-disjoint", "shared files parent-owned",
 			"mutating commands confined to the assigned subset")
 		assertAll("template",
-			"format: plan-v1", "**Execution mode: inline.**", "### Task 1.1:",
+			"format: plan-v2", "**Execution mode: inline.**", "Completes: [\"plan-outcome\"]", "### Task 1.1:",
 			"### Phase close", "Stage the complete transaction", "one closing commit",
 			"awf check staged", "```commit", "## Definition of done")
 

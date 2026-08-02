@@ -360,7 +360,7 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	// nested re-derivation is a failure rather than an invisible regression.
 	wantEntries := map[string]bool{
 		"CheckReport": true, "syncReport": true, "AdvisoryNotes": true,
-		"ConfigReferenceModel": true, "OutputPlan": true,
+		"ConfigReferenceModel": true, "OutputPlan": true, "ReadPlan": true,
 	}
 	entries := derivingEntries(production)
 	for name, count := range entries {

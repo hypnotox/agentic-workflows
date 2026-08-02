@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/plan"
@@ -240,6 +241,58 @@ func TestPlanProjectionSelectorsAreTypedAndCanonical(t *testing.T) {
 		if !errors.As(err, &notFound) || notFound.Kind != "selector" || notFound.Value != selector || !reflect.DeepEqual(notFound.Available, wantAvailable) {
 			t.Errorf("selector %q error = %#v", selector, err)
 		}
+	}
+}
+
+func TestPlanV2ProjectionOrdersPromotesAndScopes(t *testing.T) {
+	body := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
+	body = strings.Replace(body, "- A valid plan parses and projects.", "- `dod: advanced` Advance.\n- `dod: complete` Complete.", 1)
+	body = strings.Replace(body, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nAdvances: [\"advanced\"]\nCompletes: [\"complete\"]", 1)
+	dir := t.TempDir()
+	writePlan(t, dir, "2026-08-02-v2.md", body)
+	p, err := plan.Resolve(dir, "2026-08-02-v2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := plan.ResolvedDecision{Key: "a:first", ADRIdentity: "a", Title: "First", Status: "Accepted", Markdown: "1. First.\n"}
+	second := plan.ResolvedDecision{Key: "b:second", ADRIdentity: "b", Title: "Second", Status: "Implemented", Markdown: "2. Second.\n"}
+	got, err := plan.RenderProjectionInput(plan.ProjectionInput{Plan: p, Selector: "1.1", Applying: []plan.ResolvedDecision{first, first}, Context: []plan.ResolvedDecision{first, second}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(got)
+	for _, want := range []string{"## Applying decisions", "### ADR-a: First (Accepted)", "## Context decisions", "### ADR-b: Second (Implemented)", "Scope notice: only this task is in scope", "### Advanced outcomes", "- `dod: advanced` Advance.", "### Completed outcomes", "- `dod: complete` Complete."} {
+		if !strings.Contains(text, want) {
+			t.Errorf("projection missing %q:\n%s", want, text)
+		}
+	}
+	if strings.Count(text, "First.") != 1 || strings.Index(text, "First.") > strings.Index(text, "Second.") || strings.Contains(text, "### Task 1.2") {
+		t.Fatalf("projection did not dedupe/promote/scope:\n%s", text)
+	}
+}
+
+func TestProjectionRejectsIncompleteInputAndRendersEmptyV2Context(t *testing.T) {
+	_, err := plan.RenderProjectionInput(plan.ProjectionInput{Plan: plan.Plan{Filename: "incomplete.md", Format: "plan-v2"}, Selector: "1"})
+	var diagnostic *plan.Diagnostic
+	if !errors.As(err, &diagnostic) || diagnostic.Category != "projection" {
+		t.Fatalf("incomplete projection error = %#v", err)
+	}
+
+	body := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
+	body = strings.Replace(body, "- A valid plan parses and projects.", "- `dod: done` Done.", 1)
+	body = strings.Replace(body, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nCompletes: [\"done\"]", 1)
+	dir := t.TempDir()
+	writePlan(t, dir, "2026-08-02-empty-context.md", body)
+	p, err := plan.Resolve(dir, "2026-08-02-empty-context")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := plan.RenderProjectionInput(plan.ProjectionInput{Plan: p, Selector: "1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(got, []byte("decisions")) || !bytes.Contains(got, []byte("Completed outcomes")) {
+		t.Fatalf("empty context projection = %s", got)
 	}
 }
 

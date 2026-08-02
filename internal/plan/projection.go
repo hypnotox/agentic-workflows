@@ -87,11 +87,26 @@ func availablePlans(plans []Plan) []string {
 	return out
 }
 
-// RenderProjection renders an executable closure selected by canonical P or
-// P.T entirely from a validated plan-v1 model.
+// ResolvedDecision is plan-owned resolved Decision context for a projection.
+type ResolvedDecision struct{ Key, ADRIdentity, Title, Status, Markdown string }
+
+// ProjectionInput supplies a parsed plan and its selected resolved context.
+type ProjectionInput struct {
+	Plan              Plan
+	Selector          string
+	Applying, Context []ResolvedDecision
+}
+
+// RenderProjection renders an executable closure selected by canonical P or P.T.
 func RenderProjection(p Plan, selector string) ([]byte, error) {
+	return RenderProjectionInput(ProjectionInput{Plan: p, Selector: selector})
+}
+
+// RenderProjectionInput renders only the supplied plan-owned projection input.
+func RenderProjectionInput(input ProjectionInput) ([]byte, error) {
+	p, selector := input.Plan, input.Selector
 	available := availableSelectors(p)
-	if p.Format != "plan-v1" || p.Preamble == "" || len(p.Phases) == 0 {
+	if (p.Format != "plan-v1" && p.Format != "plan-v2") || p.Preamble == "" || len(p.Phases) == 0 {
 		return nil, &Diagnostic{Category: "projection", Path: p.Filename, Detail: "legacy or incomplete plans have no executable projection"}
 	}
 	phaseNumber, taskNumber, err := parseSelector(selector, available)
@@ -125,16 +140,80 @@ func RenderProjection(p Plan, selector string) ([]byte, error) {
 
 	var b strings.Builder
 	b.WriteString(p.Preamble)
+	if p.Format == "plan-v2" {
+		writeDecisions := func(heading string, values []ResolvedDecision) {
+			if len(values) == 0 {
+				return
+			}
+			b.WriteString("## " + heading + "\n\n")
+			for _, v := range values {
+				b.WriteString("### ADR-" + v.ADRIdentity + ": " + v.Title + " (" + v.Status + ")\n\n")
+				b.WriteString(v.Markdown)
+				if !strings.HasSuffix(v.Markdown, "\n") {
+					b.WriteByte('\n')
+				}
+			}
+			b.WriteByte('\n')
+		}
+		applying := dedupeDecisions(input.Applying)
+		seen := map[string]bool{}
+		for _, v := range applying {
+			seen[v.Key] = true
+		}
+		context := make([]ResolvedDecision, 0, len(input.Context))
+		for _, v := range input.Context {
+			if !seen[v.Key] {
+				context = append(context, v)
+			}
+		}
+		writeDecisions("Applying decisions", applying)
+		writeDecisions("Context decisions", context)
+	}
 	b.WriteString(p.Goal)
 	b.WriteString(p.ArchitectureSummary)
 	b.WriteString(phase.Prefix)
+	if taskNumber != 0 && p.Format == "plan-v2" {
+		b.WriteString("\n> Scope notice: only this task is in scope. Phase close and phase outcomes remain phase-owner context; transaction ownership does not transfer, and unselected tasks must not be performed merely to clear an outcome.\n\n")
+	}
 	for _, task := range selected {
 		b.WriteString(task.Content)
 	}
 	b.WriteString(phase.Close)
+	if p.Format == "plan-v2" {
+		writeOutcomes(&b, "Advanced outcomes", phase.Advances, p.DoD)
+		writeOutcomes(&b, "Completed outcomes", phase.Completes, p.DoD)
+	}
 	b.WriteString(p.DefinitionOfDone)
 	b.WriteString(p.Notes)
 	return []byte(b.String()), nil
+}
+
+func dedupeDecisions(in []ResolvedDecision) []ResolvedDecision {
+	seen := map[string]bool{}
+	out := make([]ResolvedDecision, 0, len(in))
+	for _, v := range in {
+		if !seen[v.Key] {
+			seen[v.Key] = true
+			out = append(out, v)
+		}
+	}
+	return out
+}
+func writeOutcomes(b *strings.Builder, heading string, slugs []string, items []DoDItem) {
+	if len(slugs) == 0 {
+		return
+	}
+	bySlug := map[string]DoDItem{}
+	for _, item := range items {
+		bySlug[item.Slug] = item
+	}
+	b.WriteString("\n### " + heading + "\n\n")
+	for _, slug := range slugs {
+		b.WriteString(bySlug[slug].Content)
+		if !strings.HasSuffix(bySlug[slug].Content, "\n") {
+			b.WriteByte('\n')
+		}
+	}
 }
 
 func parseSelector(value string, available []string) (int, int, error) {

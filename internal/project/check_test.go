@@ -481,7 +481,7 @@ Run the gate.
 	}
 	for _, tc := range []struct{ name, body, detail string }{
 		{"empty format", strings.Replace(structured, "format: plan-v1", `format: ""`, 1), "format must be a nonempty string"},
-		{"unknown format", strings.Replace(structured, "format: plan-v1", "format: plan-v2", 1), "format must be exactly plan-v1"},
+		{"unknown format", strings.Replace(structured, "format: plan-v1", "format: plan-v3", 1), "format must be exactly plan-v1 or plan-v2"},
 		{"duplicate format", strings.Replace(structured, "format: plan-v1", "format: plan-v1\nformat: plan-v1", 1), "duplicate format"},
 		{"malformed format", strings.Replace(structured, "format: plan-v1", "format: [plan-v1]", 1), "format must be a nonempty string"},
 	} {
@@ -943,6 +943,127 @@ func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 
 // A first adoption accepts an existing intrinsically governed record without
 // rewriting it or using its number to select a parser.
+// invariant: adr-system/plan-artifacts:plan-v2-assignment-advisories (TestPlanV2AssignmentAdvisories)
+func TestPlanV2AssignmentAdvisories(t *testing.T) {
+	plans := []plan.Plan{{Filename: "2026-08-02-v2.md", Path: "docs/plans/2026-08-02-v2.md", Format: "plan-v2", Status: "Proposed", DoD: []plan.DoDItem{{Slug: "complete"}}, Phases: []plan.Phase{{Number: 1, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{}}}}}}}
+	drift, notes := planArtifactReport(plans, adr.Corpus{})
+	if len(drift) != 0 || len(notes) != 1 || !strings.Contains(notes[0], "no outcome assignment") {
+		t.Fatalf("planArtifactReport = drift %#v, notes %#v", drift, notes)
+	}
+}
+
+func TestPlanArtifactReportFindsReferencesAndSortsNotes(t *testing.T) {
+	p := plan.Plan{
+		Filename: "2026-08-02-v2.md", Path: "docs/plans/2026-08-02-v2.md", Format: "plan-v2", Status: "Proposed",
+		ADRs: []plan.ADRLink{{Slug: "missing"}}, DoD: []plan.DoDItem{{Slug: "one"}, {Slug: "two"}},
+		Phases: []plan.Phase{
+			{Number: 1, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{Applying: []plan.DecisionRef{{Authored: "missing:item", ADR: "missing", Selector: "item", Kind: "Applying"}}}}}},
+			{Number: 2, Advances: []string{"one"}, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{Kind: plan.TaskSpike}}}},
+		},
+	}
+	drift, notes := planArtifactReport([]plan.Plan{p}, adr.Corpus{})
+	if len(drift) != 1 || !strings.Contains(drift[0].Detail, "ADR not found") {
+		t.Fatalf("hard findings = %#v", drift)
+	}
+	if !slices.IsSorted(notes) || len(notes) != 2 || !strings.Contains(strings.Join(notes, "\n"), "advanced but has no Completes") || !strings.Contains(strings.Join(notes, "\n"), "no outcome assignment") {
+		t.Fatalf("notes = %#v", notes)
+	}
+}
+
+func TestPlanContextHelpersRejectMissingReferencesAndSelectors(t *testing.T) {
+	p := plan.Plan{Filename: "v2.md", Phases: []plan.Phase{{Number: 1, Tasks: []plan.Task{{Number: 1}}}}}
+	if _, _, err := selectedRefs(p, "9"); err == nil {
+		t.Fatal("missing selector accepted")
+	}
+	phase, task, err := selectedRefs(p, "1.1")
+	if err != nil || phase.Number != 1 || task.Number != 1 {
+		t.Fatalf("selected refs = %#v %#v %v", phase, task, err)
+	}
+	_, err = resolvePlanDecisions(p, adr.Corpus{}, []plan.DecisionRef{{Authored: "missing:item", ADR: "missing", Selector: "item", Kind: "Applying"}}, false)
+	if err == nil || !strings.Contains(err.Error(), "ADR not found") {
+		t.Fatalf("missing reference = %v", err)
+	}
+}
+
+func TestPlanArtifactReportEnforcesDecisionReferenceContracts(t *testing.T) {
+	source := "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-02\nslug: fixture\n---\n# ADR-fixture: Fixture\n\n## Context\n\nContext.\n\n## Decision\n\n1. `decision: first` First.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: Proposed\n"
+	record, err := adr.ParseV4("fixture.md", []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := adr.NewCorpus([]adr.ADR{record})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := plan.Plan{
+		Filename: "v2.md", Path: "docs/plans/v2.md", Format: "plan-v2", ADRs: []plan.ADRLink{{Slug: "other"}},
+		Phases: []plan.Phase{{Number: 1, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{
+			Applying: []plan.DecisionRef{{Authored: "fixture:first", ADR: "fixture", Selector: "first", Kind: "Applying"}},
+		}}}}},
+	}
+	drift, _ := planArtifactReport([]plan.Plan{p}, corpus)
+	if len(drift) != 1 || !strings.Contains(drift[0].Detail, "Applying ADR is absent from adrs") {
+		t.Fatalf("Applying membership drift = %#v", drift)
+	}
+	p.ADRs = []plan.ADRLink{{Slug: "fixture"}}
+	p.Phases[0].Tasks[0].Fields.Applying = nil
+	p.Phases[0].Tasks[0].Fields.Context = []plan.DecisionRef{{Authored: "fixture:missing", ADR: "fixture", Selector: "missing", Kind: "Context"}}
+	drift, _ = planArtifactReport([]plan.Plan{p}, corpus)
+	if len(drift) != 1 || !strings.Contains(drift[0].Detail, "Context requires frozen ADR") {
+		t.Fatalf("context freeze drift = %#v", drift)
+	}
+}
+
+func TestResolvePlanDecisionsUsesFrozenCorpusIdentityAndSelector(t *testing.T) {
+	source := "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-02\nslug: fixture\n---\n# ADR-fixture: Fixture\n\n## Context\n\nContext.\n\n## Decision\n\n1. `decision: first` First.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: Proposed\n"
+	record, err := adr.ParseV4("fixture.md", []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	frozen := record
+	frozen.Status = "Accepted"
+	corpus, err := adr.NewCorpus([]adr.ADR{frozen})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := plan.Plan{Filename: "v2.md"}
+	refs := []plan.DecisionRef{{Authored: "fixture:first", ADR: "fixture", Selector: "first", Kind: "Applying"}}
+	resolved, err := resolvePlanDecisions(p, corpus, refs, false)
+	if err != nil || len(resolved) != 1 || resolved[0].Key != "fixture:first" {
+		t.Fatalf("resolved = %#v, %v", resolved, err)
+	}
+	refs[0].Selector, refs[0].Authored = "missing", "fixture:missing"
+	if _, err := resolvePlanDecisions(p, corpus, refs, false); err == nil || !strings.Contains(err.Error(), "unknown V4 Decision selector") {
+		t.Fatalf("selector error = %v", err)
+	}
+	proposedCorpus, err := adr.NewCorpus([]adr.ADR{record})
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs[0].Selector, refs[0].Authored = "first", "fixture:first"
+	if _, err := resolvePlanDecisions(p, proposedCorpus, refs, true); err == nil || !strings.Contains(err.Error(), "requires frozen ADR") {
+		t.Fatalf("context error = %v", err)
+	}
+}
+
+func TestPlanArtifactReportValidatesSelectorsAndAssignments(t *testing.T) {
+	source := "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-02\nslug: fixture\n---\n# ADR-fixture: Fixture\n\n## Context\n\nContext.\n\n## Decision\n\n1. `decision: first` First.\n\n2. `decision: second` Second.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: Proposed\n"
+	record, err := adr.ParseV4("fixture.md", []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Status = "Implemented"
+	corpus, err := adr.NewCorpus([]adr.ADR{record})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := plan.Plan{Filename: "v2.md", Path: "docs/plans/v2.md", Format: "plan-v2", Status: "Proposed", ADRs: []plan.ADRLink{{Slug: "fixture"}}, DoD: []plan.DoDItem{{Slug: "advanced"}, {Slug: "complete"}}, Phases: []plan.Phase{{Number: 1, Advances: []string{"advanced"}, Completes: []string{"complete"}, Tasks: []plan.Task{{Number: 1, Fields: plan.TaskFields{Applying: []plan.DecisionRef{{Authored: "fixture:first", ADR: "fixture", Selector: "first", Kind: "Applying"}}, Context: []plan.DecisionRef{{Authored: "fixture:missing", ADR: "fixture", Selector: "missing", Kind: "Context"}}}}, {Number: 2}}}}}
+	drift, notes := planArtifactReport([]plan.Plan{{Format: "plan-v1"}, p}, corpus)
+	if len(drift) != 1 || !strings.Contains(drift[0].Detail, "fixture:missing") || len(notes) != 3 || !strings.Contains(strings.Join(notes, "\n"), "task 1.2 has no Applying") || !strings.Contains(strings.Join(notes, "\n"), "fixture:second has no Applying") || !strings.Contains(strings.Join(notes, "\n"), "advanced but has no Completes") {
+		t.Fatalf("plan artifact report = drift %#v, notes %#v", drift, notes)
+	}
+}
+
 func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", "0001-governed.md"),

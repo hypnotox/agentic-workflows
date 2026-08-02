@@ -37,6 +37,8 @@ type CurrentStateReport struct {
 	Static      []currentstate.Finding
 	Provisional []currentstate.Introduction
 	Coverage    []topic.CoverageFinding
+	PlanDrift   []manifest.Drift
+	PlanNotes   []string
 }
 
 // Findings returns the blocking lines: every static handshake finding and every
@@ -50,6 +52,9 @@ func (r CurrentStateReport) Findings() []string {
 		if c.Severity == severity.Error {
 			out = append(out, coverageLine(c))
 		}
+	}
+	for _, d := range r.PlanDrift {
+		out = append(out, fmt.Sprintf("%s %s: %s", d.Kind, d.Path, d.Detail))
 	}
 	return out
 }
@@ -72,6 +77,7 @@ func (r CurrentStateReport) Notes() []string {
 			out = append(out, coverageLine(c))
 		}
 	}
+	out = append(out, r.PlanNotes...)
 	return out
 }
 
@@ -204,6 +210,14 @@ func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
 		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
 	}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
+	plans, planDrift, err := plansFromTree(afterTree, afterCfg.DocsDir)
+	if err != nil { // coverage-ignore: plansFromTree converts every validated plan parse failure into plan drift
+		return CurrentStateReport{}, err
+	}
+	report.PlanDrift = planDrift
+	artifactDrift, artifactNotes := planArtifactReport(plans, after.Corpus)
+	report.PlanDrift = append(report.PlanDrift, artifactDrift...)
+	report.PlanNotes = artifactNotes
 	return report, nil
 }
 

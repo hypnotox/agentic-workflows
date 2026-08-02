@@ -3,13 +3,20 @@ package adr
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-// decisionItem is the package-owned identity and exact source of one Decision
-// list item. It intentionally remains private until a production consumer needs
-// semantic lookup.
+// Decision is one resolved ADR Decision item. Markdown retains its exact source.
+type Decision struct {
+	Key         string
+	ADRIdentity string
+	Title       string
+	Status      string
+	Markdown    string
+}
+
 type decisionItem struct {
 	ordinal int
 	slug    string
@@ -26,14 +33,13 @@ func retainDecisionItems(a *ADR) {
 	}
 	section := a.source[a.decisionStart:a.decisionEnd]
 	newline := strings.IndexByte(section, '\n')
-	if newline < 0 { // coverage-ignore: a retained section range always includes its heading newline
+	if newline < 0 {
 		return
 	}
 	bodyOffset := a.decisionStart + newline + 1
 	var starts []int
 	var fence byte
-	var fenceLen int
-	pos := bodyOffset
+	var fenceLen, pos = 0, bodyOffset
 	for _, raw := range rangeLines(a.source[bodyOffset:a.decisionEnd]) {
 		line := strings.TrimSuffix(raw, "\n")
 		if marker, n, ok := fenceMarker(line); ok {
@@ -61,7 +67,6 @@ func retainDecisionItems(a *ADR) {
 		a.decisions = append(a.decisions, decisionItem{ordinal: n, source: a.source[start:end]})
 	}
 }
-
 func validateV4Decisions(a *ADR) error {
 	a.decisionBySlug = make(map[string]int, len(a.decisions))
 	for i := range a.decisions {
@@ -82,10 +87,6 @@ func validateV4Decisions(a *ADR) error {
 	}
 	return nil
 }
-
-// decisionBySelector is deliberately private until a cross-package production
-// consumer needs it. V4 selects only stable slugs; frozen older formats retain
-// canonical ordinal navigation, while amendable ordinal meanings are refused.
 func (a ADR) decisionBySelector(selector string) (decisionItem, error) {
 	if a.IsV4() {
 		i, ok := a.decisionBySlug[selector]
@@ -107,4 +108,47 @@ func (a ADR) decisionBySelector(selector string) (decisionItem, error) {
 		}
 	}
 	return decisionItem{}, fmt.Errorf("unknown pre-V4 Decision selector %q", selector)
+}
+
+// DecisionSelectors returns the stable selectors supported by this ADR in sorted order.
+func (a ADR) DecisionSelectors() []string {
+	out := make([]string, 0, len(a.decisions))
+	if a.IsV4() {
+		for _, item := range a.decisions {
+			out = append(out, item.slug)
+		}
+	} else if !a.IsContentAmendable() {
+		for _, item := range a.decisions {
+			out = append(out, "#"+strconv.Itoa(item.ordinal))
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// Decisions returns every Decision item addressable by this ADR in source order.
+// Amendable pre-V4 records have no stable item identity and therefore return none.
+func (a ADR) Decisions() []Decision {
+	if !a.IsV4() && a.IsContentAmendable() {
+		return nil
+	}
+	out := make([]Decision, 0, len(a.decisions))
+	for _, item := range a.decisions {
+		selector := item.slug
+		if !a.IsV4() {
+			selector = "#" + strconv.Itoa(item.ordinal)
+		}
+		out = append(out, Decision{Key: a.Identity() + ":" + selector, ADRIdentity: a.Identity(), Title: a.Title, Status: a.Status, Markdown: item.source})
+	}
+	return out
+}
+
+// LookupDecision resolves one compatible selector and preserves its exact Markdown.
+func (a ADR) LookupDecision(selector string) (Decision, error) {
+	item, err := a.decisionBySelector(selector)
+	if err != nil {
+		return Decision{}, fmt.Errorf("%w; available: %s", err, strings.Join(a.DecisionSelectors(), ", "))
+	}
+	key := a.Identity() + ":" + selector
+	return Decision{Key: key, ADRIdentity: a.Identity(), Title: a.Title, Status: a.Status, Markdown: item.source}, nil
 }

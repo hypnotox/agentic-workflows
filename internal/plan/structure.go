@@ -90,6 +90,20 @@ type PathEntry struct {
 	Value    string
 }
 
+// DecisionRef is a typed, unresolved plan-v2 Decision reference.
+type DecisionRef struct {
+	Authored string
+	ADR      string
+	Selector string
+	Kind     string
+}
+
+// DoDItem is one slugged complete plan-v2 definition-of-done bullet.
+type DoDItem struct {
+	Slug    string
+	Content string
+}
+
 // TaskFields is the typed field vocabulary directly beneath a task heading.
 type TaskFields struct {
 	Kind           TaskKind
@@ -99,6 +113,8 @@ type TaskFields struct {
 	Representative string
 	Edge           string
 	PostCheck      string
+	Applying       []DecisionRef
+	Context        []DecisionRef
 }
 
 // Phase is one ordered executable phase in a plan-v1 document. Prefix retains
@@ -109,6 +125,8 @@ type Phase struct {
 	Prefix        string
 	ExecutionMode ExecutionMode
 	Tasks         []Task
+	Advances      []string
+	Completes     []string
 	Close         string
 }
 
@@ -134,8 +152,15 @@ func structuralError(path, category, detail string) error {
 }
 
 func parsePlanV1(path string, source, body string, p *Plan) error {
+	return parsePlan(path, source, body, p, false)
+}
+
+func parsePlanV2(path string, source, body string, p *Plan) error {
+	return parsePlan(path, source, body, p, true)
+}
+
+func parsePlan(path string, source, body string, p *Plan, v2 bool) error {
 	p.Source = []byte(source)
-	p.Format = "plan-v1"
 	lines := splitLines(body)
 	if err := rejectRetiredSections(path, lines); err != nil {
 		return err
@@ -171,7 +196,7 @@ func parsePlanV1(path string, source, body string, p *Plan) error {
 	idx = archEnd
 
 	for idx < len(lines) && strings.HasPrefix(lineText(lines[idx]), "## Phase ") {
-		ph, next, err := parsePhase(path, lines, idx, len(p.Phases)+1)
+		ph, next, err := parsePhase(path, lines, idx, len(p.Phases)+1, v2)
 		if err != nil {
 			return err
 		}
@@ -199,7 +224,13 @@ func parsePlanV1(path string, source, body string, p *Plan) error {
 			return structuralError(path, "structure", "unexpected top-level section before Notes")
 		}
 	}
-	if !hasPlainBullet(lines[idx+1 : dodEnd]) {
+	if v2 {
+		items, err := parseDoD(path, lines[idx+1:dodEnd])
+		if err != nil {
+			return err
+		}
+		p.DoD = items
+	} else if !hasPlainBullet(lines[idx+1 : dodEnd]) {
 		return structuralError(path, "structure", "Definition of done requires a nonempty plain bullet")
 	}
 	if hasCheckbox(lines[idx+1 : dodEnd]) {
@@ -216,6 +247,26 @@ func parsePlanV1(path string, source, body string, p *Plan) error {
 	}
 	if idx != len(lines) { // coverage-ignore: the optional Notes branch consumes the entire remaining document
 		return structuralError(path, "structure", "unexpected top-level content")
+	}
+	if v2 {
+		known := map[string]bool{}
+		for _, item := range p.DoD {
+			known[item.Slug] = true
+		}
+		completed := map[string]bool{}
+		for _, ph := range p.Phases {
+			for _, slug := range append(append([]string{}, ph.Advances...), ph.Completes...) {
+				if !known[slug] {
+					return structuralError(path, "relationship", fmt.Sprintf("unknown DoD target %q", slug))
+				}
+			}
+			for _, slug := range ph.Completes {
+				if completed[slug] {
+					return structuralError(path, "relationship", fmt.Sprintf("duplicate Completes owner %q", slug))
+				}
+				completed[slug] = true
+			}
+		}
 	}
 	for _, ph := range p.Phases {
 		for _, task := range ph.Tasks {
@@ -384,7 +435,7 @@ func forbiddenTaskTitle(title string) bool {
 	return false
 }
 
-func parsePhase(path string, lines []string, start, want int) (Phase, int, error) {
+func parsePhase(path string, lines []string, start, want int, v2 bool) (Phase, int, error) {
 	m := phaseHeadingRe.FindStringSubmatch(lineText(lines[start]))
 	if m == nil {
 		return Phase{}, start, structuralError(path, "structure", "malformed phase heading")
@@ -407,6 +458,37 @@ func parsePhase(path string, lines []string, start, want int) (Phase, int, error
 		return ph, start, structuralError(path, "structure", fmt.Sprintf("phase %d requires exact execution mode", n))
 	}
 	i++
+	if v2 {
+		i = skipBlank(lines, i)
+		for i < len(lines) {
+			name, value, field, malformed := parseField(lineText(lines[i]))
+			if malformed || (field && name != "Advances" && name != "Completes") {
+				return ph, start, structuralError(path, "field", fmt.Sprintf("phase %d has malformed or unknown field", n))
+			}
+			if !field {
+				break
+			}
+			if value == "" {
+				return ph, start, structuralError(path, "field", fmt.Sprintf("phase %d field %s must be nonempty", n, name))
+			}
+			values, err := parseStringArray(value)
+			if err != nil {
+				return ph, start, structuralError(path, "field", err.Error())
+			}
+			if name == "Advances" {
+				if ph.Advances != nil {
+					return ph, start, structuralError(path, "field", "duplicate Advances")
+				}
+				ph.Advances = values
+			} else {
+				if ph.Completes != nil {
+					return ph, start, structuralError(path, "field", "duplicate Completes")
+				}
+				ph.Completes = values
+			}
+			i++
+		}
+	}
 	firstTask := skipBlank(lines, i)
 	if firstTask >= len(lines) || !strings.HasPrefix(lineText(lines[firstTask]), "### Task ") {
 		if firstTask < len(lines) && hasCheckbox(lines[firstTask:firstTask+1]) {
@@ -417,7 +499,7 @@ func parsePhase(path string, lines []string, start, want int) (Phase, int, error
 	ph.Prefix = strings.Join(lines[start:firstTask], "")
 	i = firstTask
 	for i < len(lines) && strings.HasPrefix(lineText(lines[i]), "### Task ") {
-		task, next, err := parseTask(path, lines, i, n, len(ph.Tasks)+1)
+		task, next, err := parseTask(path, lines, i, n, len(ph.Tasks)+1, v2)
 		if err != nil {
 			return ph, start, err
 		}
@@ -453,13 +535,16 @@ func parsePhase(path string, lines []string, start, want int) (Phase, int, error
 	if commitFenceSwallowsPlanBoundary(ph.Close) || countCompleteCommitFences(ph.Close) != 1 || countCompleteCommitFences(phaseContent) != 1 {
 		return ph, start, structuralError(path, "phase-close", fmt.Sprintf("phase %d requires exactly one non-ignored commit fence in Phase close", n))
 	}
+	if v2 && overlaps(ph.Advances, ph.Completes) {
+		return ph, start, structuralError(path, "relationship", fmt.Sprintf("phase %d cannot both advance and complete an outcome", n))
+	}
 	if len(ph.Tasks) == 1 && ph.Tasks[0].Fields.Kind == TaskSpike {
 		return ph, start, structuralError(path, "relationship", "spike cannot constitute a phase alone")
 	}
 	return ph, end, nil
 }
 
-func parseTask(path string, lines []string, start, phase, want int) (Task, int, error) {
+func parseTask(path string, lines []string, start, phase, want int, v2 bool) (Task, int, error) {
 	m := taskHeadingRe.FindStringSubmatch(lineText(lines[start]))
 	if m == nil {
 		return Task{}, start, structuralError(path, "structure", "malformed task heading")
@@ -480,7 +565,7 @@ func parseTask(path string, lines []string, start, phase, want int) (Task, int, 
 		if !field {
 			break
 		}
-		if !knownField(name) {
+		if !knownField(name) && (!v2 || (name != "Applying" && name != "Context")) {
 			return task, start, structuralError(path, "field", fmt.Sprintf("task %d.%d has unknown field %s", phase, num, name))
 		}
 		if seen[name] {
@@ -490,7 +575,17 @@ func parseTask(path string, lines []string, start, phase, want int) (Task, int, 
 			return task, start, structuralError(path, "field", fmt.Sprintf("task %d.%d field %s must be nonempty", phase, num, name))
 		}
 		seen[name] = true
-		if err := assignTaskField(path, &task.Fields, name, value); err != nil {
+		if v2 && (name == "Applying" || name == "Context") {
+			refs, err := parseDecisionRefs(value, name)
+			if err != nil {
+				return task, start, structuralError(path, "field", err.Error())
+			}
+			if name == "Applying" {
+				task.Fields.Applying = refs
+			} else {
+				task.Fields.Context = refs
+			}
+		} else if err := assignTaskField(path, &task.Fields, name, value); err != nil {
 			return task, start, err
 		}
 		i++
@@ -517,7 +612,7 @@ func parseTask(path string, lines []string, start, phase, want int) (Task, int, 
 			continue
 		}
 		name, _, field, _ := parseField(text)
-		if field && knownField(name) {
+		if field && (knownField(name) || (v2 && (name == "Applying" || name == "Context"))) {
 			return task, start, structuralError(path, "field", fmt.Sprintf("task %d.%d field %s is not contiguous below its heading", phase, num, name))
 		}
 	}
@@ -628,6 +723,72 @@ func validateTask(path string, task Task, body string) error {
 		return structuralError(path, "relationship", fmt.Sprintf("task %d.%d requires Post-check for batch, glob, or pathspec scope", task.Phase, task.Number))
 	}
 	return nil
+}
+
+var decisionRefRe = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*|[1-9][0-9]*):([a-z0-9][a-z0-9-]*|#[1-9][0-9]*)$`)
+var dodLeadRe = regexp.MustCompile("^[-*+] `dod: ([a-z0-9]+(?:-[a-z0-9]+)*)` .+")
+
+func parseStringArray(raw string) ([]string, error) {
+	var values []string
+	if err := json.Unmarshal([]byte(raw), &values); err != nil || len(values) == 0 {
+		return nil, errors.New("must be a nonempty JSON array of strings")
+	}
+	seen := map[string]bool{}
+	for _, value := range values {
+		if value == "" || seen[value] {
+			return nil, errors.New("JSON array entries must be nonempty and unique")
+		}
+		seen[value] = true
+	}
+	return values, nil
+}
+
+func parseDecisionRefs(raw, kind string) ([]DecisionRef, error) {
+	values, err := parseStringArray(raw)
+	if err != nil {
+		return nil, err
+	}
+	refs := make([]DecisionRef, 0, len(values))
+	for _, value := range values {
+		m := decisionRefRe.FindStringSubmatch(value)
+		if m == nil {
+			return nil, fmt.Errorf("invalid Decision reference %q", value)
+		}
+		refs = append(refs, DecisionRef{Authored: value, ADR: m[1], Selector: m[2], Kind: kind})
+	}
+	return refs, nil
+}
+
+func parseDoD(path string, lines []string) ([]DoDItem, error) {
+	var items []DoDItem
+	seen := map[string]bool{}
+	for _, line := range lines {
+		m := dodLeadRe.FindStringSubmatch(lineText(line))
+		if m == nil {
+			continue
+		}
+		if seen[m[1]] {
+			return nil, structuralError(path, "relationship", fmt.Sprintf("duplicate DoD slug %q", m[1]))
+		}
+		seen[m[1]] = true
+		items = append(items, DoDItem{Slug: m[1], Content: line})
+	}
+	if len(items) == 0 {
+		return nil, structuralError(path, "structure", "Definition of done requires slugged dod bullets")
+	}
+	return items, nil
+}
+func overlaps(a, b []string) bool {
+	seen := map[string]bool{}
+	for _, v := range a {
+		seen[v] = true
+	}
+	for _, v := range b {
+		if seen[v] {
+			return true
+		}
+	}
+	return false
 }
 
 func parsePathEntries(raw string) ([]PathEntry, error) {

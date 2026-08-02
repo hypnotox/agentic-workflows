@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func decisionFixture(format, name, slug, status, decision string) string {
-	frontmatter := "---\nformat: " + format + "\nstatus: " + status + "\ndate: 2026-08-02\n"
+func decisionFixture(format, name, slug, decision string) string {
+	frontmatter := "---\nformat: " + format + "\nstatus: " + statusProposed + "\ndate: 2026-08-02\n"
 	identity := strings.TrimSuffix(name, ".md")
 	if slug != "" {
 		frontmatter += "slug: " + slug + "\n"
@@ -17,14 +17,14 @@ func decisionFixture(format, name, slug, status, decision string) string {
 	return frontmatter + "---\n# ADR-" + identity + ": Decision fixture\n\n" +
 		"## Context\n\nContext.\n\n## Decision\n\n" + decision + "\n\n" +
 		"## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n" +
-		"## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: " + status + "\n"
+		"## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: " + statusProposed + "\n"
 }
 
 // invariant: adr-system/adr-lifecycle:decision-item-stable-identity (TestDecisionItemStableIdentity)
 func TestDecisionItemStableIdentity(t *testing.T) {
 	first := "1. `decision: current-context` First commitment.\n\n   Continuation bytes.\n\n   - nested list\n\n   ```go\n   1. backtick fence stays in the first item\n   ```\n\n"
 	second := "2. `decision: supersedes-history` Second commitment.\n\n   ~~~text\n   2. tilde fence stays in the second item\n   ~~~\n"
-	v4Bytes := decisionFixture(V4FormatMarker, "pending.md", "pending", statusProposed, first+second)
+	v4Bytes := decisionFixture(V4FormatMarker, "pending.md", "pending", first+second)
 	before := v4Bytes
 	v4, err := ParseV4("pending.md", []byte(v4Bytes))
 	if err != nil {
@@ -71,7 +71,7 @@ func TestDecisionItemStableIdentity(t *testing.T) {
 		{V3FormatMarker, "0003-v3.md", "v3", ParseV3},
 	} {
 		t.Run(tc.format, func(t *testing.T) {
-			doc := decisionFixture(tc.format, tc.name, tc.slug, statusProposed, "1. Legacy ordinal.\n")
+			doc := decisionFixture(tc.format, tc.name, tc.slug, "1. Legacy ordinal.\n")
 			a, err := tc.parse(tc.name, []byte(doc))
 			if err != nil || len(a.decisions) != 1 || a.decisions[0].ordinal != 1 || a.decisions[0].source != "1. Legacy ordinal.\n\n\n" {
 				t.Fatalf("pre-V4 retention = %#v, %v", a.decisions, err)
@@ -94,5 +94,57 @@ func TestDecisionItemStableIdentity(t *testing.T) {
 				t.Fatal("unknown frozen pre-V4 ordinal was accepted")
 			}
 		})
+	}
+}
+
+func TestRetainDecisionItemsIgnoresSectionWithoutBodyNewline(t *testing.T) {
+	a := ADR{source: "xDecision", decisionStart: 1, decisionEnd: len("xDecision")}
+	retainDecisionItems(&a)
+	if a.decisions != nil {
+		t.Fatalf("decisions = %#v", a.decisions)
+	}
+}
+
+func TestDecisionLookupPublicContract(t *testing.T) {
+	v4Source := decisionFixture(V4FormatMarker, "pending.md", "pending", "1. `decision: first` First.\n\n2. `decision: second` Second.\n")
+	v4, err := ParseV4("pending.md", []byte(v4Source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := v4.Decisions(); len(got) != 2 || got[1].Key != "pending:second" {
+		t.Fatalf("V4 decisions = %#v", got)
+	}
+	if got := v4.DecisionSelectors(); strings.Join(got, ",") != "first,second" {
+		t.Fatalf("selectors = %v", got)
+	}
+	item, err := v4.LookupDecision("first")
+	if err != nil || item.Key != "pending:first" || !strings.Contains(item.Markdown, "First.") {
+		t.Fatalf("LookupDecision = %#v, %v", item, err)
+	}
+	if _, err := v4.LookupDecision("#1"); err == nil || !strings.Contains(err.Error(), "available: first, second") {
+		t.Fatalf("V4 incompatible lookup = %v", err)
+	}
+
+	legacy, err := ParseV1("0001-legacy.md", []byte(decisionFixture(V1FormatMarker, "0001-legacy.md", "", "1. Legacy.\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy.Status = statusImplemented
+	if got := legacy.DecisionSelectors(); strings.Join(got, ",") != "#1" {
+		t.Fatalf("legacy selectors = %v", got)
+	}
+	if item, err := legacy.LookupDecision("#1"); err != nil || item.Key != "0001:#1" {
+		t.Fatalf("legacy LookupDecision = %#v, %v", item, err)
+	}
+	if got := legacy.Decisions(); len(got) != 1 || got[0].Key != "0001:#1" {
+		t.Fatalf("legacy decisions = %#v", got)
+	}
+	amendable := legacy
+	amendable.Status = statusProposed
+	if got := amendable.Decisions(); got != nil {
+		t.Fatalf("amendable legacy decisions = %#v", got)
+	}
+	if _, err := amendable.LookupDecision("#1"); err == nil || !strings.Contains(err.Error(), "amendable") {
+		t.Fatalf("amendable legacy lookup = %v", err)
 	}
 }

@@ -41,9 +41,9 @@ Backing: test
 
 ### `invariant: plan-frontmatter-validated`
 
-awf check fails on present-but-malformed plan frontmatter. Exact `format: plan-v1` selects structured parsing; marker absence selects legacy parsing; and an empty, unknown, duplicate, or malformed format is a frontmatter error rather than a legacy plan. Both paths retain the Proposed and Implemented status enum.
+awf check fails on present-but-malformed plan frontmatter. Exact `format: plan-v1` or `format: plan-v2` selects its structured parser; marker absence selects legacy parsing; and an empty, unknown, duplicate, or malformed format is a frontmatter error rather than a legacy plan. Both paths retain the Proposed and Implemented status enum.
 Origin: ADR-0098
-Revised-by: ADR-0213
+Revised-by: ADR-0213, ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test
 
 ### `invariant: plan-new-unnumbered`
@@ -54,9 +54,9 @@ Backing: test
 
 ### `invariant: plans-template-taxonomy`
 
-The rendered plans template emits `format: plan-v1`, date, adrs, and status frontmatter; `# Plan:`; nonempty Goal and Architecture summary; sequential heading-identified phases and tasks with one execution mode and one final Phase close per phase; required Definition of done plain bullets; and optional Notes. File structure, Verification, and task checkboxes are not plan-v1 sections or task declarations. Marker-absent historical plans remain on the legacy taxonomy.
+The rendered plans template emits `format: plan-v2`, date, adrs, and status frontmatter; `# Plan:`; nonempty Goal and Architecture summary; sequential heading-identified phases and tasks with one execution mode, a matching Completes assignment, and one final Phase close per phase; required slugged Definition of done bullets; and optional Notes. File structure, Verification, and task checkboxes are not plan-v2 sections or task declarations. Plan-v1 and marker-absent historical plans retain their compatibility taxonomies.
 Origin: ADR-0098
-Revised-by: ADR-0211, ADR-0213
+Revised-by: ADR-0211, ADR-0213, ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test
 
 ### `invariant: plan-v1-structure-validated`
@@ -65,8 +65,27 @@ A `plan-v1` document has nonempty Goal and Architecture summary sections, one or
 Origin: ADR-0213
 Backing: test
 
+### `invariant: plan-v2-decision-references`
+
+Plan-v2 parses nonempty unique Applying and Context JSON references, resolves them only at the project boundary, permits Applying to amendable V4 ADRs, requires Context to be frozen, and retains frozen pre-V4 `#N` compatibility.
+Origin: ADR-task-scoped-plan-decision-context-and-phase-outcomes
+Backing: test
+
+### `invariant: plan-v2-phase-outcomes`
+
+Plan-v2 parses unique slugged Definition-of-done bullets and optional ordered Advances and Completes arrays. Unknown outcomes, duplicate Completes owners, and same-phase advance plus complete fail.
+Origin: ADR-task-scoped-plan-decision-context-and-phase-outcomes
+Backing: test
+
+### `invariant: plan-v2-assignment-advisories`
+
+Proposed plan-v2 records emit sorted non-failing assignment notes from their selected working or staged universe; Implemented records emit none.
+Origin: ADR-task-scoped-plan-decision-context-and-phase-outcomes
+Backing: test
+
 ### `invariant: plan-executable-projection`
 
-internal/plan owns exact filename-or-stem resolution, canonical positive `P` and `P.T` selectors, and projection rendering from the typed plan model. A phase projection contains every task in that phase; a task projection contains only that task; and both contain frontmatter, title, Goal, Architecture summary, owning phase and execution mode, Phase close, Definition of done, and Notes when present in source order. Errors list available exact names or selectors as appropriate. Projection includes no other phase, reparses no Markdown outside the model owner, and never mutates source bytes.
+internal/plan owns exact filename-or-stem resolution, canonical positive `P` and `P.T` selectors, and projection rendering from typed plan-owned inputs. Plan-v2 emits Applying Decisions then Context Decisions, preserving first authored occurrence, deduplication, and Applying precedence; it includes selected phase outcomes and a task scope notice without transferring phase ownership. Plan-v1 bytes remain unchanged. Errors list available exact names or selectors as appropriate. Projection includes no other phase, reparses no Markdown outside the model owner, and never mutates source bytes.
 Origin: ADR-0213
+Revised-by: ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test
