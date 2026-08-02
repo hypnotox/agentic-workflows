@@ -227,4 +227,4 @@ _No decisions are in flight._
 - [ADR-0220: Correct ADR-0219 reference and rendering handoff prose](0220-correct-adr-0219-reference-and-rendering-handoff-prose.md) (Implemented)
 - [ADR-0221: Revision-aware historical audit pipeline](0221-revision-aware-historical-audit-pipeline.md) (Implemented)
 - [ADR-0222: Require confirmed outcomes before effort creation](0222-require-confirmed-outcomes-before-effort-creation.md) (Implemented)
-- [ADR-capability-planned-execution-for-multi-step-systems: Capability-planned execution for multi-step systems](capability-planned-execution-for-multi-step-systems.md) (Implemented)
+- [ADR-0223: Capability-planned execution for multi-step systems](0223-capability-planned-execution-for-multi-step-systems.md) (Implemented)

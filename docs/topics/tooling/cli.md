@@ -91,7 +91,7 @@ Backing: test
 ### `invariant: repo-check-capability-plan`
 
 The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index for enabled scanners; disabled or scanner-only selections acquire no unrelated capability. The aggregate preserves version, advisory, and step output order, continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
-Origin: ADR-capability-planned-execution-for-multi-step-systems
+Origin: ADR-0223
 Backing: test
 
 ### `invariant: single-os-exit`

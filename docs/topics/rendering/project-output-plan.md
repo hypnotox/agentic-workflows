@@ -60,7 +60,7 @@ Backing: test
 ### `invariant: check-report-single-plan`
 
 Project.CheckReport constructs one operation-owned OutputPlan after deriving its current state and parsed plans, threads that same plan to both drift and advisory projections, and never regenerates domain documents or the config reference inside either projection. Standalone Check, AdvisoryNotes, OutputPlan, and other direct project operations continue to derive their own operation-scoped inputs without a persistent cache.
-Origin: ADR-capability-planned-execution-for-multi-step-systems
+Origin: ADR-0223
 Backing: test
 
 ### `invariant: output-policy-explicit`

@@ -4,7 +4,7 @@ slug: capability-planned-execution-for-multi-step-systems
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-capability-planned-execution-for-multi-step-systems: Capability-planned execution for multi-step systems
+# ADR-0223: Capability-planned execution for multi-step systems
 
 ## Context
 
