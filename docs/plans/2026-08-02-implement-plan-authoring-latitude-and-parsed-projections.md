@@ -4,7 +4,7 @@ adrs:
   - 0211
   - 0212
   - parsed-plan-artifacts-and-executable-projections
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Plan Authoring Latitude and Parsed Projections
 
@@ -350,3 +350,7 @@ After the commit, require the effort worktree and branch to be absent through th
 - Phase 2 needed no byte change in `.awf/parts/adr-readme/index.md` or `.awf/parts/adr-template/frontmatter.md`. Those overrides own only INDEX guidance and scaffold frontmatter, neither of which carries operation-route prose; the applicable lifecycle and template-body sources changed and rendered instead. Adding Reapplied prose to either override would pollute an unrelated section.
 
 The gamma activation is intentionally one large transaction: its eight operations interlock parser admission, scaffold output, projection reachability, CLI documentation, and current-state truth, so an apparently smaller split would cross a commit with either dead code, an advertised unusable format, or an inaccurate claim.
+
+- Integration reconciled the two reviewed slugless V2 records from 0209/0210 to ADR-0211/ADR-0212 after main claimed their prior numbers, then numbered the retained-slug parsed-plan record as ADR-0213. The plan intentionally retains that record's slug link and frontmatter identity.
+- Main's concurrent context-aware handoff and check-universe work was merged before numbering. Conflict settlement preserved plan-v1 headings and projections while adopting discretionary handoffs and the `awf check staged` command family.
+- Terminal review strengthened D27's fence boundary to matching backtick or tilde delimiters with length-aware closers, made fenced task fields inert, accepted all three plain Markdown bullet markers, and retained exact early Phase-close commit-fence validation. No planned outcome remains incomplete and both audits reported no errors.
