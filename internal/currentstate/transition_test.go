@@ -232,6 +232,14 @@ func TestAuthoredCorrectiveReapplication(t *testing.T) {
 		if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, afterADR}, prosed(claim("d/t:x", "0140", "0141"), "corrected revision")), currentstate.AuthoredCommit)); !strings.Contains(got, "must preserve Origin") {
 			t.Fatalf("corrective update Origin change not rejected:\n%s", got)
 		}
+		deletedProvenance := prosed(claim("d/t:x", "0137"), "corrected revision")
+		if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, afterADR}, deletedProvenance), currentstate.AuthoredCommit)); !strings.Contains(got, "must preserve every prior Revised-by entry") {
+			t.Fatalf("corrective update Revised-by deletion not rejected:\n%s", got)
+		}
+		duplicatedProvenance := prosed(claim("d/t:x", "0137", "0141", "0141"), "corrected revision")
+		if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, afterADR}, duplicatedProvenance), currentstate.AuthoredCommit)); !strings.Contains(got, "duplicate-free") {
+			t.Fatalf("corrective update Revised-by duplication not rejected:\n%s", got)
+		}
 	})
 
 	t.Run("add preserves origin and Revised-by", func(t *testing.T) {
