@@ -324,6 +324,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent)
 func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -377,6 +378,7 @@ func TestCheckCleanAfterSync(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestCheckDetectsHandEdit)
 func TestCheckDetectsHandEdit(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)

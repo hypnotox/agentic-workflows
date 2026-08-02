@@ -116,6 +116,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 // still go green while orphaning one container, volume, and image per worktree.
 //
 // invariant: tooling/quality-gates:pi-extension-container-gate (TestPiExtensionContainerGateWiring)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiExtensionContainerGateWiring)
 func TestPiExtensionContainerGateWiring(t *testing.T) {
 	rawX, err := os.ReadFile("../../x")
 	if err != nil {
@@ -145,6 +146,9 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 		`reset)`,
 		// The docker binary stays injectable for testing.
 		`${AWF_PI_TEST_DOCKER:-docker}`,
+		// The standalone context entrypoint is explicitly measured at full coverage.
+		`--include='.pi/extensions/awf-context-usage/index.ts'`,
+		`--lines=100 --functions=100 --branches=100`,
 	} {
 		if !strings.Contains(sh, want) {
 			t.Errorf("container.sh lost %q (ADR-0198)", want)
@@ -248,6 +252,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 // skips the file, so only this static assertion enforces the coupling.
 //
 // invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip (TestPiExtensionEditorQuietStrip)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiExtensionEditorQuietStrip)
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	// Enumerate from the target descriptor, not from a directory walk, and check
 	// BOTH rendered roots. A walk cannot notice a governed file that stopped

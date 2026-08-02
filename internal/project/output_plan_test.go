@@ -38,6 +38,7 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 
 // invariant: rendering/project-output-plan:output-plan-complete (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
@@ -156,6 +157,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -224,8 +226,6 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/catalog-and-targets:target-dialect-render (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))

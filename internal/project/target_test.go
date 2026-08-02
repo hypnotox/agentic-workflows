@@ -146,9 +146,19 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			extensions[file.Path] = file.Content
 		}
 	}
+	expectedExtensions := map[string]bool{}
 	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
-		if content := extensions[path]; !strings.HasPrefix(content, "// "+bannerText+"\n") {
+		expectedExtensions[path] = true
+		content, ok := extensions[path]
+		if !ok {
+			t.Errorf("missing governed Pi extension %s", path)
+		} else if !strings.HasPrefix(content, "// "+bannerText+"\n") {
 			t.Errorf("%s lacks provenance banner", path)
+		}
+	}
+	for path := range extensions {
+		if !expectedExtensions[path] {
+			t.Errorf("unexpected Pi extension rendered: %s", path)
 		}
 	}
 	for _, banned := range []string{"awf-telemetry", "awf-workflow", "awf-workflows"} {
@@ -178,7 +188,6 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiMinimumRuntime)
 func TestPiMinimumRuntime(t *testing.T) {
 	for _, name := range []string{"awf-context-usage/index.ts", "awf-handoff/index.ts", "awf-subagents/index.ts"} {
 		out := renderPiExtensionFile(t, name)
@@ -190,7 +199,6 @@ func TestPiMinimumRuntime(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiContextUsageInjection)
 func TestPiContextUsageInjection(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-context-usage/index.ts")
 	for _, want := range []string{"pi.on(\"context\"", "[session context]", "unknown/", "unavailable;", "getContextUsage()", "getBranch()", "entry.type===\"compaction\"", "customType:\"awf-context-usage\"", "display:false"} {
@@ -233,6 +241,8 @@ func TestHandoffPublicProseContract(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")

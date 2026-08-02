@@ -24,8 +24,6 @@ import (
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: tooling/init-and-enablement:add-skill-pairs-agent (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
-// invariant: rendering/pi-runtime:pi-context-usage-injection (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion)
 func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.T) {
 	p, err := project.Open(testContext(t), filepath.Clean(filepath.Join("..", "..")))
