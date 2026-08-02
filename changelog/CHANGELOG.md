@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Features
 
-- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata, and protocol-1 advisory activity commands resolve, attach, heartbeat, update checkout, or detach Pi session activity without locking effort work. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the capability-gated `using_effort` skill and extension. Pi handoffs carry dual-format effort identity during migration; activity remains advisory and non-locking.
+- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata, and protocol-1 advisory activity commands resolve, attach, heartbeat, update checkout, or detach Pi session activity without locking effort work. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the capability-gated `using_effort` skill and extension. Effort memories retain dual-format identity during migration; activity remains advisory and non-locking.
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
