@@ -43,6 +43,18 @@ func TestCheckChildrenCleanLines(t *testing.T) {
 	}
 }
 
+// invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCheckRepoStateNoInvariantClaims)
+func TestCheckRepoStateNoInvariantClaims(t *testing.T) {
+	root := scaffoldProject(t)
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "check", "repo", "state"}, &out, &errb); code != 0 {
+		t.Fatalf("check repo state with no invariant claims exited %d: %s", code, errb.String())
+	}
+	if got := out.String(); got != "awf check repo state: clean\n" || strings.Contains(got, "backing") {
+		t.Fatalf("check repo state with no invariant claims = %q, want one clean line", got)
+	}
+}
+
 // invariant: tooling/cli:check-universe-groups (TestCheckStatePathsDispatchDistinctly)
 func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 	root := syncedGitProject(t, checkYAML)

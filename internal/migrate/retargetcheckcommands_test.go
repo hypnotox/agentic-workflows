@@ -13,6 +13,27 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestVarsMappingHasMerge(t *testing.T) {
+	for _, tc := range []struct {
+		name, src string
+		want      bool
+	}{
+		{"malformed", "[", false},
+		{"empty", "", false},
+		{"scalar", "plain\n", false},
+		{"no vars", "prefix: example\n", false},
+		{"non-mapping vars", "vars: []\n", false},
+		{"ordinary vars", "vars:\n  gateCmd: ./x gate\n", false},
+		{"merged vars", "vars:\n  defaults: &defaults\n    gateCmd: ./x gate\n  <<: *defaults\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := varsMappingHasMerge([]byte(tc.src)); got != tc.want {
+				t.Errorf("varsMappingHasMerge(%q) = %v, want %v", tc.src, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRewriteCheckCommand(t *testing.T) {
 	for _, tc := range []struct {
 		name, in, want string
@@ -113,6 +134,45 @@ vars:
 	}
 	if !bytes.Equal(after, before) || out.Len() != 0 {
 		t.Errorf("replay changed config or reported work: before %q after %q output %q", before, after, out.String())
+	}
+}
+
+func TestRetargetCheckCommandsMaterializesMergedVars(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	testsupport.WriteFile(t, cfg, `prefix: example
+vars:
+  defaults: &defaults
+    proseGateCmd: arbitrary
+    memoryGateCmd: ./awf check memory
+    commitGateCmd: ./awf check commit "$1"
+    helper: ./awf check prose --strict
+    other: ./x check memory
+  <<: *defaults
+`)
+	if err := applyRetargetCheckCommands(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	got := readMigratedVars(t, cfg)
+	if _, ok := got["proseGateCmd"]; ok {
+		t.Fatalf("merged proseGateCmd survived: %#v", got)
+	}
+	if _, ok := got["memoryGateCmd"]; ok {
+		t.Fatalf("merged memoryGateCmd survived: %#v", got)
+	}
+	for key, want := range map[string]string{
+		"commitGateCmd": "./awf check staged commit \"$1\"",
+		"helper":        "./awf check repo prose --strict",
+		"other":         "./x check memory",
+	} {
+		if got[key] != want {
+			t.Errorf("vars.%s = %#v, want %q", key, got[key], want)
+		}
+	}
+	if raw, err := os.ReadFile(cfg); err != nil {
+		t.Fatal(err)
+	} else if strings.Contains(string(raw), "<<:") {
+		t.Fatalf("vars merge survived materialization:\n%s", raw)
 	}
 }
 

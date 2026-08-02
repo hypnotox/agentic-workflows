@@ -17,6 +17,29 @@ var checkCommandRe = regexp.MustCompile(`^(\S+)(\s+)(check)(\s+)(prose|memory|co
 
 var retiredCheckCommandVars = []string{"proseGateCmd", "memoryGateCmd"}
 
+func varsMappingHasMerge(src []byte) bool {
+	var doc yaml.Node
+	if yaml.Unmarshal(src, &doc) != nil || len(doc.Content) == 0 {
+		return false
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value != "vars" || root.Content[i+1].Kind != yaml.MappingNode {
+			continue
+		}
+		vars := root.Content[i+1]
+		for j := 0; j+1 < len(vars.Content); j += 2 {
+			if vars.Content[j].Value == "<<" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func rewriteCheckCommand(value string) (string, bool, bool) {
 	m := checkCommandRe.FindStringSubmatch(value)
 	if m == nil || !awfInvocation(m[1]) {
@@ -58,6 +81,38 @@ func retargetCheckCommandBytes(src []byte) ([]byte, []string, error) {
 	parsed.Vars = nil
 	if err := yaml.Unmarshal(out, &parsed); err != nil { // coverage-ignore: the same valid YAML was changed only by config's validated node editor
 		return nil, nil, err
+	}
+	if varsMappingHasMerge(out) {
+		keys := make([]string, 0, len(parsed.Vars))
+		for key := range parsed.Vars {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			value, isString := parsed.Vars[key].(string)
+			if !isString || key == "proseGateCmd" || key == "memoryGateCmd" {
+				continue
+			}
+			seeded, err := config.SeedVarKey(out, key)
+			if err != nil { // coverage-ignore: out was parsed as a vars mapping above
+				return nil, nil, err
+			}
+			edited, err := config.SetMappingString(seeded, "vars", key, value)
+			if err != nil { // coverage-ignore: SeedVarKey returned validated YAML with a vars mapping
+				return nil, nil, err
+			}
+			out = edited
+		}
+		edited, err := config.RemoveMappingKey(out, "vars", "<<")
+		if err != nil { // coverage-ignore: the materialization edits above returned validated YAML
+			return nil, nil, err
+		}
+		out = edited
+		changes = append(changes, "materialized merged vars")
+		parsed.Vars = nil
+		if err := yaml.Unmarshal(out, &parsed); err != nil { // coverage-ignore: RemoveMappingKey returned validated YAML
+			return nil, nil, err
+		}
 	}
 	keys := make([]string, 0, len(parsed.Vars))
 	for key := range parsed.Vars {

@@ -305,7 +305,6 @@ func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 	}
 }
 
-// invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCheckCurrentStateNoInvariantClaims)
 func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
 	p := csRepo(t, "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{})
 	report, err := p.CheckCurrentState(testContext(t))
