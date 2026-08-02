@@ -838,9 +838,9 @@
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
-      "templateHash": "sha256:214e672b9668eef51d8319fa94cbdd54a4451b16d33e93ca22276831d7e64cba",
+      "templateHash": "sha256:5761d27b90cbe8ca156fe3282ab8ef4b997bb909ae6b77ae60288ce33288cba5",
       "configHash": "sha256:c2d0c5389c6bf2322256199fd881e0d05730cd408b50c9816f2300e133b247db",
-      "outputHash": "sha256:e9271cfa09557bfc62d0f25694c6d442f6c25320e1967de380d2c8d8e492c972"
+      "outputHash": "sha256:2cefda6d20d4bafd17d0c5c52e8f61dbf71333eb22cfece4bffc56088eff66f5"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",

@@ -371,8 +371,7 @@ func invalidMemoryRefusal(operation activityOperation, slug, title string, raw [
 	return r
 }
 
-// ResolveActivity validates the named destination but does not mutate an activity claim.
-// ResolveActivity resolves a safe destination without changing activity state.
+// ResolveActivity validates a safe destination without changing activity state.
 func (s *Service) ResolveActivity(ctx context.Context, slug string, role CheckoutRole, receiving string) ActivityReply {
 	facts, err := s.resolveCheckout(ctx, s.paths.roots.InvokingRoot)
 	if err != nil {
