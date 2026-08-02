@@ -31,13 +31,12 @@ func memoryGateRepo(t *testing.T, memoryCiteYAML string, stage map[string]string
 func TestMemoryGateKnobOff(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	// A bare directory is not a git repository, so the staged-snapshot read fails
-	// before any knob is consulted.
+	// A bare directory has no project config, so the knob cannot be consulted.
 	if err := runMemoryGate(ctx, t.TempDir(), io.Discard); err == nil {
 		t.Error("bare directory: want a staged-snapshot read error, got nil")
 	}
-	// Knob absent, and knob explicitly false: both no-op and return nil, even
-	// with a citing file staged.
+	// Knob absent and knob explicitly false both disclose the disabled child and
+	// return nil without scanning, even with a citing file staged.
 	for _, y := range []string{"", "memoryCite:\n  enabled: false\n"} {
 		root := memoryGateRepo(t, y, map[string]string{"docs/plans/p.md": cite() + "\n"})
 		if err := runMemoryGate(ctx, root, io.Discard); err != nil {

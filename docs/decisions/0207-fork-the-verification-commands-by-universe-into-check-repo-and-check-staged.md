@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0207: Fork the verification commands by universe into check repo and check staged
@@ -387,3 +387,5 @@ prevent.
 - 2026-08-01: Applied; operations: add `rendering/sync-and-drift:staged-drift-rendered-output`
 - 2026-08-02: Amended; content-sha256: 5d8c1f16c64ddaec7436dda0c6ef579b0fb8c297e844d9d4c470626a8657e248
 - 2026-08-02: Applied; operations: update `invariants/current-state-authority:invariants-zero-slugs-clean`, update `tooling/quality-gates:example-adopter-checked`
+- 2026-08-02: Applied; operations: add `tooling/cli:check-disabled-child-disclosure`
+- 2026-08-02: Implemented; content-sha256: 5d8c1f16c64ddaec7436dda0c6ef579b0fb8c297e844d9d4c470626a8657e248

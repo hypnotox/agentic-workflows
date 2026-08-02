@@ -75,6 +75,57 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:check-disabled-child-disclosure (TestCheckDisabledChildDisclosure)
+func TestCheckDisabledChildDisclosure(t *testing.T) {
+	const proseNote = "note: prose: disabled (proseGate.enabled)\n"
+	const memoryNote = "note: memory: disabled (memoryCite.enabled)\n"
+
+	t.Run("aggregate discloses disabled children", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML)
+		var out bytes.Buffer
+		if err := runCheckRepo(testContext(t), root, &out); err != nil {
+			t.Fatalf("check repo: %v", err)
+		}
+		for _, want := range []string{proseNote, memoryNote} {
+			if !strings.Contains(out.String(), want) {
+				t.Errorf("check repo output omits %q:\n%s", strings.TrimSpace(want), out.String())
+			}
+		}
+	})
+
+	t.Run("aggregate omits notes for enabled children", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
+		var out bytes.Buffer
+		if err := runCheckRepo(testContext(t), root, &out); err != nil {
+			t.Fatalf("check repo: %v", err)
+		}
+		for _, unwanted := range []string{proseNote, memoryNote} {
+			if strings.Contains(out.String(), unwanted) {
+				t.Errorf("check repo output contains %q:\n%s", strings.TrimSpace(unwanted), out.String())
+			}
+		}
+	})
+
+	t.Run("direct child uses the same disclosure", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML)
+		for _, tc := range []struct {
+			child string
+			want  string
+		}{
+			{child: "prose", want: proseNote},
+			{child: "memory", want: memoryNote},
+		} {
+			var out, errb bytes.Buffer
+			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
+				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
+			}
+			if got := out.String(); got != tc.want {
+				t.Errorf("check repo %s output = %q, want %q", tc.child, got, tc.want)
+			}
+		}
+	})
+}
+
 // An unrecognized positional lists the valid subcommands. MaxPos is -1 so the
 // handler owns this message rather than a generic arity error.
 func TestCheckUniverseUnknownSubcommand(t *testing.T) {

@@ -12,16 +12,17 @@ import (
 )
 
 // runMemoryGate scans the staged decision records for a citation of a specific
-// working-memory file (ADR-0158). It returns nil without scanning when the knob
-// is off, so a hook or a runner may invoke it unconditionally. The scanned
-// prefixes derive from the configured docs directory, so an adopter with a
-// custom docsDir gets their own decisions and plans directories.
+// working-memory file (ADR-0158). It reports the disabled child and returns nil
+// without scanning when the knob is off. The scanned prefixes derive from the
+// configured docs directory, so an adopter with a custom docsDir gets their own
+// decisions and plans directories.
 func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
 		return err
 	}
 	if cfg.MemoryCite == nil || !cfg.MemoryCite.Enabled {
+		fmt.Fprintln(stdout, "note: memory: disabled (memoryCite.enabled)")
 		return nil
 	}
 	tree, err := stagedTree(ctx, root)

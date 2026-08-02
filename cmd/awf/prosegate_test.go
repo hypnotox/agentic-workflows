@@ -31,7 +31,7 @@ func TestProseGateKnobOff(t *testing.T) {
 	if err := runProseGate(ctx, t.TempDir(), io.Discard); err == nil {
 		t.Error("no .awf: want a config-load error, got nil")
 	}
-	// Knob absent, and knob explicitly false: both no-op and return nil.
+	// Knob absent and knob explicitly false both disclose the disabled child and return nil.
 	for _, y := range []string{"", "proseGate:\n  enabled: false\n"} {
 		root := proseGateRepo(t, y, nil)
 		if err := runProseGate(ctx, root, io.Discard); err != nil {

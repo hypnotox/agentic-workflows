@@ -11,14 +11,15 @@ import (
 )
 
 // runProseGate scans the project's tracked text files for banned typographic
-// punctuation substitutes (ADR-0119). It returns nil without scanning when the
-// knob is off, so a hook or a runner may invoke it unconditionally.
+// punctuation substitutes (ADR-0119). It reports the disabled child and returns
+// nil without scanning when the knob is off.
 func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
 	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
 		return err
 	}
 	if cfg.ProseGate == nil || !cfg.ProseGate.Enabled {
+		fmt.Fprintln(stdout, "note: prose: disabled (proseGate.enabled)")
 		return nil
 	}
 	tree, err := stagedTree(ctx, root)

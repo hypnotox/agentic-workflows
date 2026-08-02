@@ -67,6 +67,12 @@ The check command groups checks by subject: repo aggregates drift, state, prose,
 Origin: ADR-0207
 Backing: test
 
+### `invariant: check-disabled-child-disclosure`
+
+A disabled prose or memory child prints one non-failing note naming the child and its enablement knob, both through the repo aggregate and when invoked directly; an enabled child prints no disabled note.
+Origin: ADR-0207
+Backing: test
+
 ### `invariant: single-os-exit`
 
 Within the cmd/awf package, os.Exit appears only in main.go's main function, whose body is the single os.Exit(run(...)) wrapper; no other production source in the package calls os.Exit and no fatal or fatalIf helpers exist.
