@@ -3,7 +3,7 @@
 
 Command dispatch and the behaviour of the awf command surfaces.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
 
 The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. Effort commands manage optional durable coordination, memory, and managed worktrees.
 
@@ -70,8 +70,9 @@ Backing: test
 
 ### `invariant: check-universe-groups`
 
-The check command groups checks by subject: repo aggregates drift, state, prose, and memory, while staged aggregates its HEAD-to-index state check and excludes the directly-invoked commit-message check. Bare awf check runs both aggregates, repo state and staged state dispatch to distinct handlers, and outside a git repository the bare form runs only repo and reports staged unavailable.
+The check command groups checks by subject: repo aggregates drift, state, prose, and memory, while staged aggregates its HEAD-to-index state check, plan-artifact findings and non-failing assignment notes, and excludes the directly-invoked commit-message check. Bare awf check runs both aggregates, repo state and staged state dispatch to distinct handlers, and outside a git repository the bare form runs only repo and reports staged unavailable.
 Origin: ADR-0210
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: check-disabled-child-disclosure`
@@ -82,8 +83,9 @@ Backing: test
 
 ### `invariant: plan-read-command`
 
-The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures list available exact values. Success writes the internal/plan-rendered executable closure unchanged: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected phase or task, Phase close, Definition of done, and Notes when present; it neither includes other phases nor mutates the source.
+The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures retain plan-owned selector identities and available exact values. Plan-v2 success writes the internal/plan-rendered ordered Applying then Context Decision and phase-owner outcome closure unchanged, with first-authored resolved-key deduplication, Applying precedence, task scope safety, whole-plan Definition-of-done exclusion, and preserved source; plan-v1 bytes remain unchanged. Blocking references fail while assignment notes remain non-blocking. It neither includes other phases nor mutates source.
 Origin: ADR-0213
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: single-os-exit`

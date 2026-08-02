@@ -127,18 +127,20 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
 		Static:      []currentstate.Finding{{Message: "handshake broke"}},
-		Provisional: []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}, {Identity: "0003", Format: adr.Legacy}},
+		Provisional: []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}, {Identity: "0003", Format: adr.Legacy}, {Identity: "0004", Format: adr.Format(999)}},
+		PlanDrift:   []manifest.Drift{{Path: "docs/plans/v2.md", Kind: "plan-reference", Detail: "missing ADR"}},
 		Coverage: []topic.CoverageFinding{
 			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
 			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},
+			{Path: "internal/c.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Warn},
 		},
 	}
 	findings := r.Findings()
-	if len(findings) != 2 || findings[0] != "handshake broke" || !strings.Contains(findings[1], "internal/a.go is owned by domain alpha") {
+	if len(findings) != 3 || findings[0] != "handshake broke" || !strings.Contains(findings[1], "internal/a.go is owned by domain alpha") || findings[2] != "plan-reference docs/plans/v2.md: missing ADR" {
 		t.Fatalf("findings = %#v", findings)
 	}
 	notes := r.Notes()
-	if len(notes) != 3 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "internal/b.go is matched by 3 path-scoped topics") {
+	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 path-scoped topics") || !strings.Contains(notes[4], "internal/c.go is owned by domain alpha") {
 		t.Fatalf("notes = %#v", notes)
 	}
 }

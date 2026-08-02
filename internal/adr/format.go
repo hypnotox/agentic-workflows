@@ -17,6 +17,7 @@ const (
 	V1FormatMarker = "current-state-v1"
 	V2FormatMarker = "current-state-v2"
 	V3FormatMarker = "current-state-v3"
+	V4FormatMarker = "current-state-v4"
 )
 
 // v1SectionOrder is the required exact, ordered section set of a
@@ -56,6 +57,21 @@ func ParseV2(name string, data []byte) (ADR, error) {
 	return parseGoverned(name, data, CurrentStateV2)
 }
 
+// ParseV4 parses a V4 ADR with V3 identity and V2 lifecycle semantics plus stable Decision slugs.
+func ParseV4(name string, data []byte) (ADR, error) {
+	a, err := parseGoverned(name, data, CurrentStateV4)
+	if err != nil {
+		return ADR{}, err
+	}
+	if err := validateV3Identity(a, name); err != nil {
+		return ADR{}, err
+	}
+	if err := validateV4Decisions(&a); err != nil {
+		return ADR{}, err
+	}
+	return a, nil
+}
+
 // ParseV3 parses and validates one current-state-v3 ADR in either identity
 // form: numbered `NNNN-<slug>.md` with a `# ADR-NNNN: <Title>` heading, or
 // pending `<slug>.md` with a `# ADR-<slug>: <Title>` heading. The record's body
@@ -67,25 +83,31 @@ func ParseV3(name string, data []byte) (ADR, error) {
 	if err != nil {
 		return ADR{}, err
 	}
+	if err := validateV3Identity(a, name); err != nil {
+		return ADR{}, err
+	}
+	return a, nil
+}
+
+func validateV3Identity(a ADR, name string) error {
 	if a.Slug == "" {
-		return ADR{}, errors.New("frontmatter slug is required for a current-state-v3 record")
+		return errors.New("frontmatter slug is required for a current-state-v3 record")
 	}
 	if canonical, err := slugify(a.Slug); err != nil || canonical != a.Slug {
-		return ADR{}, fmt.Errorf("frontmatter slug %q is not in slug form", a.Slug)
+		return fmt.Errorf("frontmatter slug %q is not in slug form", a.Slug)
 	}
-	fileSlug := strings.TrimSuffix(name, ".md")
-	identity := fileSlug
+	fileSlug, identity := strings.TrimSuffix(name, ".md"), strings.TrimSuffix(name, ".md")
 	if m := FilenameRe.FindStringSubmatch(name); m != nil {
 		fileSlug, identity = strings.TrimSuffix(strings.TrimPrefix(name, m[1]+"-"), ".md"), m[1]
 	}
 	if fileSlug != a.Slug {
-		return ADR{}, fmt.Errorf("filename %q does not carry the frontmatter slug %q", name, a.Slug)
+		return fmt.Errorf("filename %q does not carry the frontmatter slug %q", name, a.Slug)
 	}
 	prefix := "ADR-" + identity + ": "
 	if !strings.HasPrefix(a.Title, prefix) || strings.TrimSpace(strings.TrimPrefix(a.Title, prefix)) == "" {
-		return ADR{}, fmt.Errorf("heading must be `# %s<Title>`, got %q", prefix, "# "+a.Title)
+		return fmt.Errorf("heading must be `# %s<Title>`, got %q", prefix, "# "+a.Title)
 	}
-	return a, nil
+	return nil
 }
 
 func parseGoverned(name string, data []byte, format Format) (ADR, error) {
@@ -97,10 +119,11 @@ func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 		return ADR{}, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Format: format, Status: fm.Status, Date: fm.Date, Slug: fm.Slug, Sections: parsed.bodies, Filename: name}
+	a := ADR{Format: format, Status: fm.Status, Date: fm.Date, Slug: fm.Slug, Sections: parsed.bodies, Filename: name, source: string(data)}
 	if decision, ok := parsed.ranges["Decision"]; ok {
-		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
+		a.decisionStart, a.decisionEnd = decision.start, decision.end
 	}
+	retainDecisionItems(&a)
 	for _, line := range strings.Split(string(body), "\n") {
 		if title, ok := strings.CutPrefix(line, "# "); ok {
 			a.Title = title
@@ -247,6 +270,7 @@ var formatActivations = []formatActivation{
 	{CurrentStateV1, V1FormatMarker, 14},
 	{CurrentStateV2, V2FormatMarker, 15},
 	{CurrentStateV3, V3FormatMarker, 29},
+	{CurrentStateV4, V4FormatMarker, 33},
 }
 
 // CurrentFormat returns the format newly authored ADRs use.
@@ -315,6 +339,8 @@ func ParseRecord(name string, data []byte) (ADR, error) {
 		return ParseV2(name, data)
 	case V3FormatMarker:
 		return ParseV3(name, data)
+	case V4FormatMarker:
+		return ParseV4(name, data)
 	default:
 		return ADR{}, fmt.Errorf("unknown governed ADR format marker %q", marker)
 	}
@@ -367,7 +393,7 @@ func parseGovernedFrontmatter(data []byte, format Format) (v3Frontmatter, []byte
 	dec := yaml.NewDecoder(bytes.NewReader(block))
 	dec.KnownFields(true)
 	var fm v3Frontmatter
-	if format == CurrentStateV3 {
+	if format == CurrentStateV3 || format == CurrentStateV4 {
 		if err := dec.Decode(&fm); err != nil {
 			return v3Frontmatter{}, nil, fmt.Errorf("frontmatter: %w", err)
 		}

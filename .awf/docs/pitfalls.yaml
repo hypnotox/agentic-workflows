@@ -1208,7 +1208,7 @@ data:
         and the example adopter's own outputs; and because the change is adopter-facing, it also owes an
         `[Unreleased]` entry in `changelog/CHANGELOG.md`. In the ADR-0095 session all three slipped: the
         plan's `git add` named `awf-writing-plans` under sundial (which renders `sundial-writing-plans`,
-        prefix `sundial`), omitted the `.cursor/` output and the example lock, and scheduled no changelog
+        prefix `sundial`), omitted one target output and the example lock, and scheduled no changelog
         task; caught downstream by plan review, by reading `git status`, and by `./x audit-local`
         respectively, not up front. Two lessons: when a plan edits a catalog artifact, enumerate the fan-out
         explicitly (all targets × {root, example} × {rendered, lock}, plus a changelog task), and at

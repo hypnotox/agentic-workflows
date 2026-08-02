@@ -22,8 +22,6 @@
 - **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`
   all match through it (ADR-0077).
-- **`github.com/BurntSushi/toml`**: encodes and decodes the Codex adapter's TOML agent profiles
-  (`internal/project/agent.go`, the `codex` target's `TOMLAgentDialect`).
 - **`golangci-lint`**: pinned as a `go tool` dependency and run by the gate (`./x gate`); this
   repo only, not part of the rendered standard.
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate

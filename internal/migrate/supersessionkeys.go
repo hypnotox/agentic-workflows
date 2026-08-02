@@ -107,17 +107,18 @@ func applySupersessionKeys(root string, out io.Writer) error {
 			return err
 		}
 		raw := string(b)
-		if a.DecisionEnd == 0 {
+		start, end, ok := a.DecisionBounds()
+		if !ok {
 			continue // no Decision section: no tokens to rewrite
 		}
-		body := raw[a.DecisionStart:a.DecisionEnd]
+		body := raw[start:end]
 		rewritten := itemTokenRe.ReplaceAllString(body, "`refines: $1`")
 		if rewritten == body {
 			continue
 		}
 		n := strings.Count(body, "`supersedes: ADR-") - strings.Count(rewritten, "`supersedes: ADR-")
 		shift[a.Path] = len(rewritten) - len(body)
-		edited[a.Path] = []byte(raw[:a.DecisionStart] + rewritten + raw[a.DecisionEnd:])
+		edited[a.Path] = []byte(raw[:start] + rewritten + raw[end:])
 		fmt.Fprintf(out, "supersession-keys: %s: %d item token(s) downgraded to refines:\n", a.Filename, n)
 	}
 
@@ -238,10 +239,11 @@ func applySupersessionKeys(root string, out io.Writer) error {
 			}
 			item := fmt.Sprintf("%d. **Supersedence bookkeeping (migrated from supersedes: by awf upgrade,\n   ADR-0128).** This ADR retires every anchor of ADR-%s: %s\n",
 				n, strings.Join(predecessors, ", ADR-"), strings.Join(tokens, ", "))
-			if a.DecisionEnd == 0 {
+			_, end, ok := a.DecisionBounds()
+			if !ok {
 				return fmt.Errorf("supersession-keys: %s: no Decision section to append the bookkeeping item to", a.Filename)
 			}
-			at := a.DecisionEnd + shift[a.Path] - removed
+			at := end + shift[a.Path] - removed
 			if at == len(raw) {
 				raw += "\n" + item
 			} else {

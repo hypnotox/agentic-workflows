@@ -70,7 +70,8 @@ var planTaskDetailContractClauses = []string{
 	"require `latitude: exact` for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and batch representative and edge transformations",
 	"permit it voluntarily elsewhere",
 	"directly beneath the task declaration and before prose",
-	"the vocabulary is `kind: spike`, `kind: batch`, `latitude: exact`, `question:`, `paths:`, `representative:`, `edge:`, and `post-check:`",
+	"the vocabulary is `kind: spike`, `kind: batch`, `latitude: exact`, `question:`, `applying:`, `context:`, `paths:`, `representative:`, `edge:`, and `post-check:`",
+	"`applying:` and `context:` carry nonempty json string arrays and are omitted rather than written as `[]`",
 	"a `kind: spike` task is question-only, carries `question:`, has no implementation body, records its answer in notes, cannot own a phase, and sequences dependent work into a later phase",
 	"a `kind: batch` task carries `paths:`, `representative:`, `edge:`, and `post-check:`",
 	"`paths:` is required whenever affected scope is ambiguous, including an ambiguous non-batch task; every batch is necessarily ambiguous",
@@ -97,7 +98,8 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 
 var planScaffoldDetailContractClauses = []string{
 	"supply qualifying implementation-ready instructions",
-	"recognized fields are `kind`, `latitude`, `question`, `paths`, `representative`, `edge`, and `post-check`",
+	"recognized fields are `kind`, `latitude`, `question`, `applying`, `context`, `paths`, `representative`, `edge`, and `post-check`",
+	"`applying` and `context` require nonempty json string arrays and are omitted rather than written as `[]`",
 	"use `latitude: exact` for a contract-bearing task",
 	"`kind: spike` requires `question`, no body, and an answer in notes",
 	"`kind: batch` requires json-array `paths`, `representative`, `edge`, and `post-check`",
@@ -164,7 +166,8 @@ func TestPlanTaskDetailContractRejectsInversions(t *testing.T) {
 		name, from, to string
 	}{
 		{"qualifying instructions removed", "Supply qualifying implementation-ready instructions", "Supply exact instructions"},
-		{"field vocabulary narrowed", "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"field vocabulary narrowed", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"empty decision arrays allowed", "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`", "`Applying` and `Context` may be empty JSON arrays"},
 		{"exactness optional", "Use `Latitude: exact` for a contract-bearing task", "Permit `Latitude: exact` for a contract-bearing task"},
 		{"spike body allowed", "`Kind: spike` requires `Question`, no body, and an answer in Notes", "`Kind: spike` permits a body"},
 		{"batch edge omitted", "`Kind: batch` requires JSON-array `Paths`, `Representative`, `Edge`, and `Post-check`", "`Kind: batch` requires JSON-array `Paths`"},

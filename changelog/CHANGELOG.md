@@ -12,6 +12,12 @@ query a single version or a range.
 
 - `awf audit` now enumerates committed metadata without eager blob reads, then loads only its exact configuration, ADR, and topic authority into a type-distinct immutable selection. Repository and staged checks retain complete snapshots and the full marker, coverage, and domain-sidecar validation boundary, while revisions outside historical authority can reuse their first-parent state. Context cancellation and deadline expiry abort immediately with preserved error identity instead of becoming transition warnings.
 
+- Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
+
+- New plans use `plan-v2`: task-scoped Applying and Context Decision references, slugged Definition-of-done outcomes, and phase Advances and Completes assignments are validated in working and staged universes. `awf read plan` orders only selected resolved Decisions and owning-phase outcomes, excludes whole-plan Definition of done, and adds task scope safety; plan-v1 remains byte-compatible.
+
+- Root-confined upgrade attestation traversal now preserves established digest and error behavior.
+
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
 
 - Implementing V2 and V3 ADRs can now correct an already-applied add or update through explicit `Reapplied` history events while another operation remains. Each correction is material and atomic, preserves first-application provenance, retains its own occurrence in merge ordering, and leaves declaration progress counted once.
@@ -47,6 +53,8 @@ query a single version or a range.
   on upgrade.
 
 ### Breaking changes
+
+- The built-in runtime target set is now exactly `claude` and `pi`. The `codex`, `copilot`, `cursor`, and `gemini` target values, their renderers, and their generated outputs are removed immediately without a migration or compatibility alias; remove those names from `targets` before opening an adopted project with this release.
 
 - `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts it. Convert each pair by hand; an unconverted tree fails render with `data.terms: must be a list of {term, meaning} records`.
 
@@ -415,6 +423,8 @@ query a single version or a range.
   awf-verb vars already carry.
 
 ### Bug fixes
+
+- Managed context instructions now require explicit paths (or a staged/range selection) and describe the initial query as omitting detail flags, avoiding the ambiguous "start bare" wording that could lead agents to invoke `awf context` without its required selection.
 
 - Pi `handoff_session` now emits Remote Pi's optional continuation disposition after it successfully queues the replacement command. Compatible push integrations no longer report the intermediate parent run as a terminal completion, while listener failures remain isolated from handoff execution.
 

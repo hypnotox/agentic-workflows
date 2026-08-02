@@ -2,15 +2,14 @@ package upgrade
 
 import (
 	"bytes"
-	"errors"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -51,11 +50,26 @@ func sealedRepo(t *testing.T) (dir, head, digest string) {
 	if err != nil {
 		t.Fatalf("head: %v", err)
 	}
-	digest, err = treeDigest(dir)
+	digest = treeDigestForTest(t, dir)
+	return dir, head, digest
+}
+
+func treeDigestForTest(t *testing.T, root string) string {
+	t.Helper()
+	tree, err := filesystem.Open(root)
+	if err != nil {
+		t.Fatalf("open tree: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := tree.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	digest, err := treeDigest(root, tree)
 	if err != nil {
 		t.Fatalf("digest: %v", err)
 	}
-	return dir, head, digest
+	return digest
 }
 
 func sealedAtt(head, digest string) *manifest.BridgeAttestation {
@@ -64,9 +78,9 @@ func sealedAtt(head, digest string) *manifest.BridgeAttestation {
 
 func TestTreeDigestIsStableAndSensitive(t *testing.T) {
 	dir, _, digest := sealedRepo(t)
-	again, err := treeDigest(dir)
-	if err != nil || again != digest {
-		t.Fatalf("digest not stable: %q vs %q (%v)", digest, again, err)
+	again := treeDigestForTest(t, dir)
+	if again != digest {
+		t.Fatalf("digest not stable: %q vs %q", digest, again)
 	}
 	if !strings.HasPrefix(digest, "sha256:") {
 		t.Fatalf("digest prefix: %q", digest)
@@ -74,15 +88,25 @@ func TestTreeDigestIsStableAndSensitive(t *testing.T) {
 	// A change to any universe member moves the digest.
 	testsupport.WriteFile(t, filepath.Join(dir, ".awf/topics/parts/alpha/core/current-state.md"),
 		"Intro changed.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n")
-	moved, err := treeDigest(dir)
-	if err != nil || moved == digest {
-		t.Fatalf("digest did not move on content change: %v", err)
+	moved := treeDigestForTest(t, dir)
+	if moved == digest {
+		t.Fatal("digest did not move on content change")
 	}
 }
 
 func TestTreeDigestBranches(t *testing.T) {
 	// No config at all: config.Load fails.
-	if _, err := treeDigest(t.TempDir()); err == nil {
+	missing := t.TempDir()
+	tree, err := filesystem.Open(missing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := tree.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := treeDigest(missing, tree); err == nil {
 		t.Fatal("treeDigest accepted a tree with no config")
 	}
 	// A minimal tree (config only, no domains/topics/decisions subtrees, no
@@ -90,9 +114,7 @@ func TestTreeDigestBranches(t *testing.T) {
 	// branches without faulting.
 	min := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(min, ".awf/config.yaml"), "prefix: example\ndomains:\n  - alpha\n")
-	if _, err := treeDigest(min); err != nil {
-		t.Fatalf("minimal digest: %v", err)
-	}
+	_ = treeDigestForTest(t, min)
 	// A config with a marker source glob plus a matching file and a nested adopter
 	// project exercises the marker-source match and the nested-project skip.
 	full := t.TempDir()
@@ -101,9 +123,7 @@ func TestTreeDigestBranches(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(full, "internal/x.go"), "package x\n")
 	testsupport.WriteFile(t, filepath.Join(full, "sub/.awf/config.yaml"), "prefix: nested\n")
 	testsupport.WriteFile(t, filepath.Join(full, "sub/internal/y.go"), "package y\n")
-	if _, err := treeDigest(full); err != nil {
-		t.Fatalf("full digest: %v", err)
-	}
+	_ = treeDigestForTest(t, full)
 }
 
 func TestCollectMarkerSourcesPrunesNestedGitRoots(t *testing.T) {
@@ -125,7 +145,16 @@ func TestCollectMarkerSourcesPrunesNestedGitRoots(t *testing.T) {
 			testsupport.WriteFile(t, filepath.Join(base, "x.go"), "package nested\n")
 			universe := map[string]bool{}
 			sources := []config.CurrentStateSource{{Globs: []string{"internal/**"}}}
-			if err := collectMarkerSources(root, sources, universe); err != nil {
+			tree, err := filesystem.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := tree.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			if err := collectMarkerSources(tree, sources, universe); err != nil {
 				t.Fatal(err)
 			}
 			for path := range universe {
@@ -134,15 +163,6 @@ func TestCollectMarkerSourcesPrunesNestedGitRoots(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestCollectMarkerSourcesPropagatesGitBoundaryStatError(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(root, "internal/x.go"), "package x\n")
-	testsupport.SwapVar(t, &lstat, func(string) (fs.FileInfo, error) { return nil, errors.New("stat fault") })
-	if err := collectMarkerSources(root, nil, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "stat fault") {
-		t.Fatalf("boundary stat error = %v", err)
 	}
 }
 
@@ -173,6 +193,9 @@ func TestVerifyRejections(t *testing.T) {
 }
 
 func TestVerifyOutsideRepo(t *testing.T) {
+	if err := Verify(testContext(t), filepath.Join(t.TempDir(), "missing"), sealedAtt("x", "y")); err == nil {
+		t.Fatal("verify opened a missing root")
+	}
 	if err := Verify(testContext(t), t.TempDir(), sealedAtt("x", "y")); err == nil {
 		t.Fatal("verify accepted a non-repo")
 	}

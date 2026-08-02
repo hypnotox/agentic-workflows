@@ -112,15 +112,13 @@ func TestDecisionItems(t *testing.T) {
 	}
 }
 
-// TestDecisionSectionOffsetsIgnoreFencedHeadings pins that a fenced `## `
-// heading inside the Decision section does not end it. The offsets are what the
-// schema migrations perform byte surgery against, so a short read here truncates
-// the section a migration then appends into.
+// TestDecisionSectionOffsetsIgnoreFencedHeadings keeps the public item view
+// stable when a fenced heading appears inside Decision.
 func TestDecisionSectionOffsetsIgnoreFencedHeadings(t *testing.T) {
 	body := "## Decision\n\n1. Real.\n\n```\n## Fake\n```\n\n2. Still real.\n\n## Consequences\n\nx\n"
 	a := parseOne(t, testsupport.ADR("Implemented", testsupport.WithTitle("0001: Fixture"), testsupport.WithBody(body)))
-	if got, want := a.DecisionEnd-a.DecisionStart, len("## Decision\n\n1. Real.\n\n```\n## Fake\n```\n\n2. Still real.\n\n"); got != want {
-		t.Errorf("Decision section length = %d, want %d", got, want)
+	if got, want := a.DecisionItems(), []int{1, 2}; !reflect.DeepEqual(got, want) {
+		t.Errorf("DecisionItems = %v, want %v", got, want)
 	}
 }
 
@@ -223,7 +221,7 @@ Fixture context.
 
 ## Decision
 
-1. Use the fixture decision.
+1. DECISION_MARKER Use the fixture decision.
 
 ## State changes
 
@@ -244,7 +242,7 @@ Fixture alternative.
 
 func writeTemplateFixture(t *testing.T, dir string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(adrTemplateFixture), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(strings.ReplaceAll(adrTemplateFixture, "DECISION_MARKER", "`decision: use-fixture-decision`")), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -313,8 +311,8 @@ func TestNewFileHappyPath(t *testing.T) {
 	if clockCalls != 1 {
 		t.Errorf("clock calls = %d, want 1", clockCalls)
 	}
-	if _, err := adr.ParseV3(filepath.Base(path), got); err != nil {
-		t.Fatalf("scaffolded ADR does not parse as current-state-v3: %v", err)
+	if _, err := adr.ParseV4(filepath.Base(path), got); err != nil {
+		t.Fatalf("scaffolded ADR does not parse as current-state-v4: %v", err)
 	}
 }
 
@@ -337,7 +335,7 @@ func TestNewFileUsesCurrentRegisteredFormat(t *testing.T) {
 	if !strings.Contains(string(data), "format: "+adr.CurrentFormatMarker()) {
 		t.Fatalf("scaffold did not emit current marker:\n%s", data)
 	}
-	if _, err := adr.ParseV3(filepath.Base(path), data); err != nil {
+	if _, err := adr.ParseV4(filepath.Base(path), data); err != nil {
 		t.Fatalf("current scaffold does not parse: %v", err)
 	}
 }
@@ -424,13 +422,13 @@ func TestNewPendingFileWritesSlugIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"format: current-state-v3\n", "slug: pending-record-here\n", "# ADR-pending-record-here: Pending Record Here"} {
+	for _, want := range []string{"format: current-state-v4\n", "slug: pending-record-here\n", "# ADR-pending-record-here: Pending Record Here"} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("pending scaffold missing %q:\n%s", want, body)
 		}
 	}
 	// The record it just wrote parses as a pending member of the corpus.
-	parsed, err := adr.ParseV3(filepath.Base(path), body)
+	parsed, err := adr.ParseV4(filepath.Base(path), body)
 	if err != nil {
 		t.Fatalf("scaffolded pending record does not parse: %v", err)
 	}

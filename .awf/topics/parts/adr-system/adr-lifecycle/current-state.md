@@ -4,8 +4,9 @@ The adr package parses decision records, derives their identity, and validates t
 
 ### `invariant: intrinsic-format-routing`
 
-A numbered ADR is parsed by its authored format marker, independent of its number: `current-state-v1`, `current-state-v2`, and `current-state-v3` select their matching frozen parser, while marker absence selects the legacy parser. An unknown, duplicate, empty, or malformed marker is refused rather than treated as legacy. A pending ADR is valid only in the running binary's current authoring format, and `awf new adr` emits that format from the activation registry.
+A numbered ADR is parsed by its authored format marker, independent of its number: `current-state-v1`, `current-state-v2`, `current-state-v3`, and `current-state-v4` select their matching frozen parser, while marker absence selects the legacy parser. An unknown, duplicate, empty, or malformed marker is refused rather than treated as legacy. A retained in-flight V3 pending ADR continues to route by its authored `current-state-v3` marker; after generation 33, newly introduced pending ADRs must use the running binary's current V4 authoring format, which `awf new adr` emits from the activation registry.
 Origin: ADR-0206
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: older-format-incoming-parent-sanction`
@@ -16,9 +17,9 @@ Backing: test
 
 ### `invariant: adr-amendable-until-terminal`
 
-A current-state-v2 or current-state-v3 ADR has digest-covered content that is amendable while Proposed, Accepted, or Implementing and freezes permanently at a terminal status, independent of its assigned number. Post-Accepted amendment is recorded as a stamp chain: only an Amended event introduces a new digest, which must differ from the preceding stamp; a status event repeats the preceding stamp or establishes the first; the latest stamp must equal the computed content digest; and an amendment never alters or removes an operation already referenced by an Applied event.
+A current-state-v2, current-state-v3, or current-state-v4 ADR has digest-covered content that is amendable while Proposed, Accepted, or Implementing and freezes permanently at a terminal status, independent of its assigned number. Post-Accepted amendment is recorded as a stamp chain: only an Amended event introduces a new digest, which must differ from the preceding stamp; a status event repeats the preceding stamp or establishes the first; the latest stamp must equal the computed content digest; and an amendment never alters or removes an operation already referenced by an Applied event.
 Origin: ADR-0188
-Revised-by: ADR-0202, ADR-0206
+Revised-by: ADR-0202, ADR-0206, ADR-0217
 Backing: test
 
 ### `invariant: adr-new-heading-matches-file`
@@ -76,28 +77,30 @@ Backing: test
 
 ### `invariant: adr-slug-frontmatter-mandatory`
 
-A current-state-v3 record carries a mandatory `slug:` frontmatter key equal to the slug segment its filename derives, and retains that key forever once the record is numbered. The slug must already be in slug form, and it is unique across every slug-carrying record in the corpus, pending or numbered.
+A current-state-v3 or current-state-v4 record carries a mandatory `slug:` frontmatter key equal to the slug segment its filename derives, and retains that key forever once the record is numbered. The slug must already be in slug form, and it is unique across every slug-carrying record in the corpus, pending or numbered.
 Origin: ADR-0202
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: corrective-reapplication`
 
-A current-state-v2 or current-state-v3 ADR in Implementing may append any number of `Reapplied; operations:` events for an add or update operation already named by an earlier Applied event. Each event is declaration-ordered, unique within the event, retained as its own ordered application occurrence, and reconciles one further material authored correction while operation progress continues to count the declaration once. A re-applied update preserves Origin and its existing canonical Revised-by entry; a re-applied add preserves its Origin naming the ADR and leaves Revised-by byte-identical. Remove operations, events before the first Applied occurrence, events outside Implementing, and events between the final Applied event and Implemented are refused.
+A current-state-v2, current-state-v3, or current-state-v4 ADR in Implementing may append any number of `Reapplied; operations:` events for an add or update operation already named by an earlier Applied event. Each event is declaration-ordered, unique within the event, retained as its own ordered application occurrence, and reconciles one further material authored correction while operation progress continues to count the declaration once. A re-applied update preserves Origin and its existing canonical Revised-by entry; a re-applied add preserves its Origin naming the ADR and leaves Revised-by byte-identical. Remove operations, events before the first Applied occurrence, events outside Implementing, and events between the final Applied event and Implemented are refused.
 Origin: ADR-0212
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: adr-status-enum-and-matrix`
 
-Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
+Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2, V3, and V4 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A retained in-flight V3 pending record satisfies its authored marker's pending-identity rules; after generation 33, a newly introduced pending record must declare current V4.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0212
+Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0212, ADR-0217
 Backing: test
 
 ### `invariant: applied-history-events-append-only`
 
-Stable Status history in either governed digest format, V2 and V3, is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations, and a checked pair refuses deletion or mutation of any prior event. Numbering a pending record is no exception; it touches no history event.
+Stable Status history in either governed digest format, V2, V3, and V4, is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations, and a checked pair refuses deletion or mutation of any prior event. Numbering a pending record is no exception; it touches no history event.
 Origin: ADR-0143
-Revised-by: ADR-0191, ADR-0202
+Revised-by: ADR-0191, ADR-0202, ADR-0217
 Backing: test
 
 ### `invariant: audit-shares-adr-parser`
@@ -135,9 +138,16 @@ Backing: test
 
 ### `invariant: corpus-single-identity-key`
 
-Every parsed ADR has one identity key: the four-digit number taken from its NNNN-*.md filename prefix for a numbered record, and the retained slug for a current-state-v3 record that is not numbered yet. Under the decisions directory the reserved README.md, INDEX.md, and template.md are excluded; any other file that parses as neither identity form is a corpus error, and a duplicate of either key is a corpus error.
+Every parsed ADR has one identity key: the four-digit number taken from its NNNN-*.md filename prefix for a numbered record, and the retained slug for a current-state-v3 or current-state-v4 record that is not numbered yet. Under the decisions directory the reserved README.md, INDEX.md, and template.md are excluded; any other file that parses as neither identity form is a corpus error, and a duplicate of either key is a corpus error.
 Origin: ADR-0130
-Revised-by: ADR-0202
+Revised-by: ADR-0202, ADR-0217
+Backing: test
+
+
+### `invariant: decision-item-stable-identity`
+
+A V4 Decision item begins exactly `N. ` followed by `` `decision: <lowercase-kebab-slug>` `` and nonempty commitment prose. `internal/adr` retains each complete authored item source block byte-for-byte from its opener through the next item or section boundary, including continuations, nested lists, fences, and final newlines, and owns a unique package-private per-record slug index and exact-slug semantic lookup. Frozen pre-V4 records remain compatible through canonical `#N` ordinal navigation only; amendable ordinal selection is refused. Neither a Decision slug nor ordinal implies supersession, currentness, or active authority.
+Origin: ADR-0217
 Backing: test
 
 ### `invariant: decision-index-is-historical-not-authoritative`
@@ -149,8 +159,9 @@ Verify: Fixtures rendered in every legal status produce the exact INDEX.md secti
 
 ### `invariant: decision-items-enumerable`
 
-Parsing an ADR fails when its Decision section has no column-0 numbered items or when its item numbers are not sequential from 1 (a gap, duplicate, or restart).
+Parsing an ADR fails when its Decision section has no column-0 numbered items or when its item numbers are not sequential from 1 (a gap, duplicate, or restart). V4 additionally requires each sequential item to carry its unique stable `decision:` marker and nonempty commitment prose, while V1 through V3 retain their existing ordinal grammar.
 Origin: ADR-0120
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: numbering-transition-mode`
@@ -162,8 +173,9 @@ Backing: test
 
 ### `invariant: pending-adr-slug-identity`
 
-A current-state-v3 ADR authored before it is numbered is a pending record: the file is `<slug>.md`, the heading is `# ADR-<slug>: <Title>`, and its identity form is `ADR-<slug>`. The slug is the filename derivation of the title, frozen at scaffold time and never tracking later title edits. A numberless file routes into the corpus by its `current-state-v3` marker, and the reserved README.md, INDEX.md, and template.md basenames are never records. Numbering prepends the number to the filename and rewrites the heading, leaving the slug key in place. The decision index sorts numbered records first by number and pending records after, alphabetically by slug.
+A current-state-v3 or current-state-v4 ADR authored before it is numbered is a pending record: the file is `<slug>.md`, the heading is `# ADR-<slug>: <Title>`, and its identity form is `ADR-<slug>`. The slug is the filename derivation of the title, frozen at scaffold time and never tracking later title edits. A retained in-flight numberless V3 file routes by its `current-state-v3` marker, while generation 33 permits newly introduced pending files only with the current `current-state-v4` marker; the reserved README.md, INDEX.md, and template.md basenames are never records. Numbering prepends the number to the filename and rewrites the heading, leaving the slug key in place. The decision index sorts numbered records first by number and pending records after, alphabetically by slug.
 Origin: ADR-0202
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: pending-blocked-from-integration-branch`

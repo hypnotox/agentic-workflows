@@ -18,18 +18,21 @@ import (
 
 // ADR is a parsed ADR record.
 type ADR struct {
-	Number        string            // e.g. "0001"
-	Title         string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
-	Status        string            // e.g. "Accepted"
-	Date          string            // frontmatter date, retained verbatim as YYYY-MM-DD text
-	Filename      string            // e.g. "0001-template-overlay-rendering-engine.md"
-	Path          string            // path as globbed
-	Domains       []string          // `domains:` frontmatter (ADR-0014)
-	Tags          []string          // `tags:` frontmatter (keyword labels)
-	Related       []int             // `related:` frontmatter (ADR numbers)
-	Sections      map[string]string // `## ` heading -> non-fenced section body
-	DecisionStart int               // raw file byte offset of the Decision heading; 0 when absent
-	DecisionEnd   int               // raw file byte offset immediately after the Decision section; 0 when absent
+	Number         string            // e.g. "0001"
+	Title          string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
+	Status         string            // e.g. "Accepted"
+	Date           string            // frontmatter date, retained verbatim as YYYY-MM-DD text
+	Filename       string            // e.g. "0001-template-overlay-rendering-engine.md"
+	Path           string            // path as globbed
+	Domains        []string          // `domains:` frontmatter (ADR-0014)
+	Tags           []string          // `tags:` frontmatter (keyword labels)
+	Related        []int             // `related:` frontmatter (ADR numbers)
+	Sections       map[string]string // `## ` heading -> non-fenced section body
+	decisions      []decisionItem    // package-owned parsed Decision items
+	decisionBySlug map[string]int
+	source         string
+	decisionStart  int
+	decisionEnd    int
 
 	// Governed fields are populated only for a record carrying a recognized
 	// intrinsic format marker. A legacy-format record leaves them zero.
@@ -98,6 +101,9 @@ const (
 	// plus the mandatory retained slug identity and the pending record form
 	// (ADR-0202 item 1).
 	CurrentStateV3
+	// CurrentStateV4 adds stable Decision item slugs while retaining V3 identity
+	// and V2 lifecycle semantics.
+	CurrentStateV4
 )
 
 // IsV1 reports whether the record was parsed as current-state-v1.
@@ -109,10 +115,13 @@ func (a ADR) IsV2() bool { return a.Format == CurrentStateV2 }
 // IsV3 reports whether the record was parsed as current-state-v3.
 func (a ADR) IsV3() bool { return a.Format == CurrentStateV3 }
 
+// IsV4 reports whether the record was parsed as current-state-v4.
+func (a ADR) IsV4() bool { return a.Format == CurrentStateV4 }
+
 // HasV2Semantics reports whether the record uses the V2 heterogeneous history,
 // amendability, and digest rules. V3 inherits them unchanged, so every rule
 // keyed on "V2 or later" asks this rather than enumerating formats.
-func (a ADR) HasV2Semantics() bool { return a.IsV2() || a.IsV3() }
+func (a ADR) HasV2Semantics() bool { return a.IsV2() || a.IsV3() || a.IsV4() }
 
 // IsGoverned reports whether the record uses any current-state format.
 func (a ADR) IsGoverned() bool { return a.IsV1() || a.HasV2Semantics() }
@@ -127,25 +136,31 @@ func FormatMarker(format Format) string {
 		return V2FormatMarker
 	case CurrentStateV3:
 		return V3FormatMarker
+	case CurrentStateV4:
+		return V4FormatMarker
 	case Legacy:
 	}
 	return ""
 }
 
-// decisionItemRe matches a column-0 numbered Decision item lead. Column-0
-// anchoring is load-bearing: 0067 and 0115 carry indented numbered
-// sub-lists that must not enumerate (ADR-0120 item 2).
-var decisionItemRe = regexp.MustCompile(`(?m)^([0-9]+)\. `)
-
 // DecisionItems returns the numbers of the column-0 numbered items of the
 // Decision section, in order of appearance.
 func (a ADR) DecisionItems() []int {
-	var items []int
-	for _, m := range decisionItemRe.FindAllStringSubmatch(a.Sections["Decision"], -1) {
-		n, _ := strconv.Atoi(m[1])
-		items = append(items, n)
+	if len(a.decisions) == 0 {
+		return nil
+	}
+	items := make([]int, len(a.decisions))
+	for i, item := range a.decisions {
+		items[i] = item.ordinal
 	}
 	return items
+}
+
+// DecisionBounds returns the exact Decision section byte bounds for the three
+// historical migrations that perform surgical source rewrites. General corpus
+// consumers must use semantic queries instead of raw ADR bytes.
+func (a ADR) DecisionBounds() (start, end int, ok bool) {
+	return a.decisionStart, a.decisionEnd, a.decisionEnd != 0
 }
 
 // FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
@@ -206,7 +221,7 @@ func ParseDir(dir string) ([]ADR, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", base, err)
 		}
-		if a.Number == "" && a.Format != CurrentFormat() {
+		if a.Number == "" && a.Format != CurrentFormat() && !a.IsV3() {
 			return nil, ErrNotADRRecord(base)
 		}
 		a.Path = path
@@ -244,7 +259,7 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		return ADR{}, found, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Slug: fm.Slug, Sections: parsed.bodies}
+	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Slug: fm.Slug, Sections: parsed.bodies, source: string(data)}
 	switch fm.Format {
 	case V1FormatMarker:
 		a.Format = CurrentStateV1
@@ -252,10 +267,13 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		a.Format = CurrentStateV2
 	case V3FormatMarker:
 		a.Format = CurrentStateV3
+	case V4FormatMarker:
+		a.Format = CurrentStateV4
 	}
 	if decision, ok := parsed.ranges["Decision"]; ok {
-		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
+		a.decisionStart, a.decisionEnd = decision.start, decision.end
 	}
+	retainDecisionItems(&a)
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, "# ") {
 			a.Title = strings.TrimPrefix(line, "# ")
@@ -532,7 +550,7 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 	}
 	front := strings.Replace(string(block), "format: "+templateMarker, "format: "+marker, 1)
 	if format == CurrentFormat() {
-		// The slug is mandatory in V3 and frozen at scaffold time; it does not
+		// The slug is mandatory in V3 and later and frozen at scaffold time; it does not
 		// track later title edits (ADR-0202 item 2).
 		front = strings.Replace(front, "format: "+marker, "format: "+marker+"\nslug: "+slug, 1)
 	}

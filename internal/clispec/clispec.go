@@ -142,8 +142,9 @@ Read a bounded executable projection from a parsed project artifact.
 
 Resolve <plan> as an exact filename or exact filename stem under the configured
 plans directory. P selects a complete phase; P.T selects one task plus its phase
-closure. Selectors are canonical positive integers, and failures list available
-exact plan names or selectors.
+closure. Plan-v2 always includes task-scoped Decisions and phase outcomes; plan-v1
+retains its original closure. Selectors are canonical positive integers, and failures
+list available exact plan names or selectors.
 `},
 		},
 	},

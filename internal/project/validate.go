@@ -235,10 +235,7 @@ func validateFrontmatter(content []byte) error {
 
 // validateArtifact validates an artifact using its declared encoder, never a
 // filename suffix. This keeps policy routing independent of path spelling.
-func validateArtifact(content []byte, encoder AgentDialect) error {
-	if encoder == TOMLAgentDialect {
-		return validateTOMLAgent(content)
-	}
+func validateArtifact(content []byte, _ AgentDialect) error {
 	return validateFrontmatter(content)
 }
 

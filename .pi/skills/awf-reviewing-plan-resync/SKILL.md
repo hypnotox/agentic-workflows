@@ -62,7 +62,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-plan-resync/notes.md to override -->
 - Resync fixes never edit the repository beyond the plan file; ADR-implicating findings route through the ADR amendment + review skills instead (return edge, step 2).
-- Scope completeness includes every declared V2 operation and its intended direct, first, middle, final, or cancellation outcome; resync any batch partition or ADR-number and intra-ADR position ordering changed by ADR review.
+- Scope completeness includes every declared V2 operation and its intended direct, first, middle, final, or cancellation outcome; resync any batch partition or ADR-number and intra-ADR position ordering changed by ADR review. For plan-v2, retain pending ADR slugs, V4 `decision:` selectors, frozen pre-V4 `#N` selectors, Applying/Context omission semantics, substantive Applying coverage, and final DoD Completes ownership; Context and historical prose do not replace current-state authority.
 - The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The remaining lenses ran during `awf-reviewing-plan` and need not re-run.
 - The `plan-reviewer` is report-only, one lens-diverse subagent; this skill owns fix application and the single verify pass, and does not fan out per-lens subagents or specify per-lens model routing.
 - If the user asks to skip resync review, comply but warn that a chain step is being skipped.

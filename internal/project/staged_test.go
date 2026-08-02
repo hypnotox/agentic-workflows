@@ -73,6 +73,34 @@ func writeLock(t *testing.T, p *Project, lock *manifest.Lock) {
 // unchanged HEAD topic set: the transition is clean while the index coverage
 // reports the uncovered path, proving both sides load and the HEAD-to-index diff
 // runs.
+func TestPlansFromTreeUsesOnlySnapshotSources(t *testing.T) {
+	valid := strings.Replace(projectPlanV1, "format: plan-v1", "format: plan-v2", 1)
+	valid = strings.Replace(valid, "- The configured plan reads exactly.", "- `dod: complete` Done.", 1)
+	valid = strings.Replace(valid, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nCompletes: [\"complete\"]", 1)
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: "guide/plans/2026-08-02-v2.md", Mode: snapshot.Regular, Bytes: []byte(valid)}, {Path: "guide/plans/not-a-plan.md", Mode: snapshot.Regular, Bytes: []byte("ignored")}, {Path: "guide/plans/2026-08-03-broken.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: plan-v2\n---\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plans, drift, err := plansFromTree(tree, "guide")
+	if err != nil || len(plans) != 1 || plans[0].Filename != "2026-08-02-v2.md" || len(drift) != 1 || drift[0].Kind != "plan-structure" {
+		t.Fatalf("plansFromTree = %#v %#v %v", plans, drift, err)
+	}
+}
+
+func TestPlansFromTreeSkipsUnscannableAndNestedSources(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "guide/plans/2026-08-02-link.md", Mode: snapshot.Symlink, Bytes: []byte("outside")},
+		{Path: "guide/plans/nested/2026-08-02-nested.md", Mode: snapshot.Regular, Bytes: []byte("ignored")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plans, drift, err := plansFromTree(tree, "guide")
+	if err != nil || plans != nil || drift != nil {
+		t.Fatalf("plansFromTree ignored snapshot sources = %#v %#v %v", plans, drift, err)
+	}
+}
+
 func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	t.Parallel()
 	repo := gitfixture.InitRepo(t)
@@ -510,7 +538,7 @@ func TestCheckCommitAuthorizationPropagatesEvidenceErrors(t *testing.T) {
 			".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n",
 			".awf/awf.lock":    `{"awfVersion":"0.18.0","schemaVersion":31,"files":{}}`,
 			"docs/decisions/0001-first.md": `---
-format: current-state-v3
+format: current-state-v4
 slug: first
 status: Proposed
 date: 2026-01-01
@@ -523,7 +551,7 @@ First commit.
 
 ## Decision
 
-1. Adopt current format.
+1. ` + "`decision: adopt-current-format`" + ` Adopt current format.
 
 ## State changes
 

@@ -46,7 +46,7 @@ Every ADR starts with closed YAML frontmatter of exactly four keys:
 
 ```yaml
 ---
-format: current-state-v3
+format: current-state-v4
 slug: kebab-title
 status: Proposed
 date: YYYY-MM-DD
@@ -68,21 +68,21 @@ domains are derived from the `## State changes` operations. Any other key fails 
 <!-- awf:edit lifecycle: default; create .awf/parts/adr-readme/lifecycle.md to override -->
 ## Status and lifecycle
 
-V2 and V3 recognize `Proposed`, `Accepted`, `Implementing`, `Implemented`, and `Abandoned`.
+V2, V3, and V4 recognize `Proposed`, `Accepted`, `Implementing`, `Implemented`, and `Abandoned`.
 Proposed may move to any later state; Accepted may move to Implementing, Implemented, or
 Abandoned; Implementing may move only to Implemented or Abandoned. Implemented and Abandoned
 are terminal. Implementing means a nonempty strict subset is applied. Abandonment keeps applied
 operations historical and cancels the remainder; its terminal event carries a rationale.
 
 Every ADR is routed by its authored format, independent of its number: markerless records use the
-frozen legacy parser, and `current-state-v1`, `current-state-v2`, and `current-state-v3` select
+frozen legacy parser, and `current-state-v1`, `current-state-v2`, `current-state-v3`, and `current-state-v4` select
 their matching governed parsers. A pending record must declare the running binary's current format,
 which is how it joins the corpus before it is numbered. Adding a future format means adding its
 parser and transition matrix, registering its schema activation and current marker, updating
 scaffolding, and proving older-format compatibility; it never means adding a number cutoff. There
 is no `Superseded` status.
 
-V2 and V3 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
+V2, V3, and V4 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
 a terminal status: while Accepted or Implementing an amendment appends
 `- YYYY-MM-DD: Amended; content-sha256: <new digest>`, a status event repeats the latest stamp (or
 establishes the first), and the latest stamp always equals the current content, freezing permanently
@@ -102,9 +102,7 @@ corrected forward through a successor ADR, never by deleting or mutating a retai
 <!-- awf:edit state-changes: default; create .awf/parts/adr-readme/state-changes.md to override -->
 ## The Decision and State changes sections
 
-The `## Decision` section is column-zero numbered items sequential from 1, each a discrete,
-readable commitment. Item numbers order the decision for the reader; no machine treats them as
-anchors.
+The `## Decision` section is column-zero numbered items sequential from 1. V4 items begin with a unique `decision: lowercase-kebab-slug` marker followed by commitment prose. The slug is stable navigation identity only: it neither grants active authority nor implies supersession or currentness. Older frozen formats remain readable by ordinal only; no machine treats an item as an authority anchor.
 
 The `## State changes` section is the authoritative relationship between the ADR and the topic
 claims it governs. It is either the single word `None.` or a nonempty list, mutually exclusive.
@@ -134,3 +132,4 @@ fails if it is stale. It lists Proposed, Accepted, and Implementing ADRs under *
 Abandoned ADRs under a compact *History* by number, title, and status. After adding an ADR or
 changing a `status:` field, run `./x render` and stage the regenerated `INDEX.md` alongside your
 change.
+V4 Decision slugs are stable navigation identities, not active authority or supersession anchors; older frozen formats retain ordinal navigation only.

@@ -52,7 +52,7 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 // Adapter duplicates collapse: with two targets the same skill renders twice
 // under one template id and must produce a single note.
 func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: \"\", testCmd: \"\"}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: \"\", testCmd: \"\"}\ntargets: [claude, pi]\nskills: [tdd]\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
 	files := []RenderedFile{
 		{Path: ".claude/skills/example-a/SKILL.md", TemplateID: baseTID("skills"), assembled: "{{ .vars.alpha }}"},
 		{Path: ".claude/skills/example-b/SKILL.md", TemplateID: baseTID("skills"), assembled: "{{ .vars.beta }}"},
-		{Path: ".cursor/skills/example-b/SKILL.md", TemplateID: baseTID("skills"), assembled: "{{ .vars.beta }}"}, // adapter duplicate
+		{Path: ".pi/skills/example-b/SKILL.md", TemplateID: baseTID("skills"), assembled: "{{ .vars.beta }}"}, // adapter duplicate
 		{Path: ".claude/agents/reviewer.md", TemplateID: baseTID("agents"), assembled: "{{ .vars.gamma }}"},
 	}
 	notes := p.unsetVarNotes(files)
@@ -138,7 +138,7 @@ func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
 // per adapter target (inv: stub-notes-path-keyed).
 func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 	root := scaffoldFiles(t,
-		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n",
+		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, pi]\nskills: [tdd]\nagents: []\n",
 		map[string]string{
 			"skills/parts/tdd/notes.md": "<!-- awf:stub -->\nstarter notes\n",
 		})
@@ -161,7 +161,7 @@ func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 		t.Fatalf("expected one stub note per target path, got %d: %v", len(stub), notes)
 	}
 	joined := strings.Join(stub, "\n")
-	if !strings.Contains(joined, ".claude/") || !strings.Contains(joined, ".cursor/") {
+	if !strings.Contains(joined, ".claude/") || !strings.Contains(joined, ".pi/") {
 		t.Errorf("stub notes must name both adapter paths: %q", joined)
 	}
 }
@@ -244,7 +244,7 @@ func TestStubNotesDomainDocs(t *testing.T) {
 // once, under the part path, with the fencing remedy in the note text.
 func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
 	root := scaffoldFiles(t,
-		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n",
+		"prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, pi]\nskills: [tdd]\nagents: []\n",
 		map[string]string{
 			"skills/parts/tdd/notes.md": "some prose\n<!-- awf:section bogus -->\nmore prose\n",
 		})

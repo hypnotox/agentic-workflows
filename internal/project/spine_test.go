@@ -425,7 +425,8 @@ func TestGroundingCheckerAgent(t *testing.T) {
 		"domain docs under `docs/domains`",
 		"Current-state documentation is what binds",
 		"only when current state leaves what you are seeing unexplained",
-		"For managed context calls, start bare",
+		"For managed context calls, provide one or more explicit paths",
+		"omit `--show` and `--full` detail flags on the initial query",
 		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
 		"Assess whether the work needs a decision record",
@@ -677,6 +678,14 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		"tdd":                         "",
 		"writing-plans":               "",
 	}
+	clarifiedOrientationCallers := map[string]bool{
+		"bugfix":                  true,
+		"debugging":               true,
+		"refactor-coupling-audit": true,
+		"tdd":                     true,
+		"writing-plans":           true,
+	}
+	const clarifiedOrientation = "Start by querying the explicit paths named above without `--show` or `--full` detail flags"
 	spillBytes, err := fs.ReadFile(templates.FS, "partials/context-spill.md")
 	if err != nil {
 		t.Fatalf("read context spill partial: %v", err)
@@ -693,6 +702,9 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expand %s: %v", templateID, err)
 		}
+		if clarifiedOrientationCallers[name] && !strings.Contains(expanded, clarifiedOrientation) {
+			t.Errorf("%s lacks clarified explicit-path orientation", templateID)
+		}
 		callCount := 0
 		for lineNumber, line := range strings.Split(expanded, "\n") {
 			if !strings.Contains(line, "awf context") && !strings.Contains(line, "./x context") {
@@ -708,9 +720,18 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 			if strings.Contains(line, "--full") || strings.Contains(line, "--json") {
 				t.Errorf("%s:%d prescribes a retired context form: %s", templateID, lineNumber+1, line)
 			}
+			commandName := "awf context"
+			if strings.Contains(line, "./x context") {
+				commandName = "./x context"
+			}
+			commandTail := strings.SplitN(line, commandName, 2)[1]
+			commandTail = strings.SplitN(commandTail, "`", 2)[0]
+			if !strings.Contains(commandTail, "paths>") && !strings.Contains(commandTail, "$(") {
+				t.Errorf("%s:%d context invocation must select explicit paths or Git-selected files: %s", templateID, lineNumber+1, line)
+			}
 			if policy == "" {
 				if strings.Contains(line, "--show") {
-					t.Errorf("%s:%d orientation invocation must use bare context: %s", templateID, lineNumber+1, line)
+					t.Errorf("%s:%d orientation invocation must omit detail facets: %s", templateID, lineNumber+1, line)
 				}
 			} else if !strings.Contains(line, "awf context "+policy) {
 				t.Errorf("%s:%d invocation lacks policy %q: %s", templateID, lineNumber+1, policy, line)
@@ -857,6 +878,9 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"batch task",
 		"path-disjoint",
 		"dead-code escape",
+		"nonempty JSON `Applying:` or `Context:` array",
+		"stable `dod: <slug>` bullets",
+		"frozen `#N` only for pre-V4 Decision prose",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -942,6 +966,9 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"commit-disabled helpers",
 		"report-only phase review",
 		"example-reviewing-impl",
+		"generated task scope notice",
+		"phase-owner context only",
+		"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -978,6 +1005,8 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"example-reviewing-impl",
 		"example-executing-plans",
 		"dirty-state inventory",
+		"generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
+		"never transfer commit, review, checkpoint, handoff, helper, or outcome authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1178,7 +1207,7 @@ func TestOrientingSkillContract(t *testing.T) {
 				}
 			}
 			agent := files[adapter.AgentPath("grounding-checker")]
-			for _, want := range []string{"Ground guide-first, in order", "For managed context calls, start bare", "never prescribe `--full`", "AWF_CONTEXT_SPILL_V1"} {
+			for _, want := range []string{"Ground guide-first, in order", "For managed context calls, provide one or more explicit paths", "omit `--show` and `--full` detail flags on the initial query", "never prescribe `--full`", "AWF_CONTEXT_SPILL_V1"} {
 				if !strings.Contains(agent, want) {
 					t.Errorf("%s grounding-checker missing %q", target, want)
 				}
@@ -1299,6 +1328,8 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"status transition",
 		"regenerate",
 		"Append-only",
+		"V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker",
+		"use canonical `#N` only after their authored-format lifecycle freezes the record",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1373,6 +1404,9 @@ func TestReviewingPlanTemplate(t *testing.T) {
 		"all universal lenses",
 		"per-phase ownership",
 		"helper partitions",
+		"V4 stable `decision:` selectors",
+		"Proposed coverage notes are advisory",
+		"historical Decision prose never replaces current-state authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1404,6 +1438,9 @@ func TestReviewingPlanResyncTemplate(t *testing.T) {
 		"doc-currency",
 		"per-phase ownership",
 		"helper partitions",
+		"V4 `decision:` selectors",
+		"final DoD Completes ownership",
+		"historical prose do not replace current-state authority",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {

@@ -218,3 +218,7 @@
 - [ADR-0211: Sanction authoring latitude in plans](0211-sanction-authoring-latitude-in-plans.md) (Implemented)
 - [ADR-0212: Corrective re-application of an applied state operation](0212-corrective-re-application-of-an-applied-state-operation.md) (Implemented)
 - [ADR-0213: Parsed plan artifacts and executable projections](0213-parsed-plan-artifacts-and-executable-projections.md) (Implemented)
+- [ADR-0214: Retain Only Claude Code and Pi Runtime Targets](0214-retain-only-claude-code-and-pi-runtime-targets.md) (Implemented)
+- [ADR-0215: Test-support exports earn test consumers](0215-test-support-exports-earn-test-consumers.md) (Implemented)
+- [ADR-0216: Consumer-local contracts over single-home filesystem access](0216-consumer-local-contracts-over-single-home-filesystem-access.md) (Implemented)
+- [ADR-0217: Task-scoped plan decision context and phase outcomes](0217-task-scoped-plan-decision-context-and-phase-outcomes.md) (Implemented)
