@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: consumer-local-contracts-over-single-home-filesystem-access
-status: Proposed
+status: Accepted
 date: 2026-08-02
 ---
 # ADR-consumer-local-contracts-over-single-home-filesystem-access: Consumer-local contracts over single-home filesystem access
@@ -236,3 +236,4 @@ filesystem call.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-02: Accepted; content-sha256: 8f07957155c3e50fd4cda9ef7200ecbf0a7d82f81ef21cbe3c8eedc54f9f7e3f
