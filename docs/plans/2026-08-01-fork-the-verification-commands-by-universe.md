@@ -1,7 +1,7 @@
 ---
 date: 2026-08-01
 adrs: [210]
-status: Proposed
+status: Implemented
 ---
 # Plan: Fork the verification commands by universe
 
