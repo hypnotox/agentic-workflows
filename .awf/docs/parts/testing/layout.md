@@ -8,4 +8,4 @@ Test shape is judgment guided by three defaults (`code-design/test-design` carri
 
 The isolated-TMPDIR real-hook regression proves the hand-written stub removes its staged slice before rendered-payload handoff.
 
-The Pi extension suite covers transient context usage independently from handoff and subagents, including fresh copied messages, tool-follow-up refresh, active-branch-only compactions, and the shared runtime guard.
+The Pi extension suite covers transient context usage independently from handoff and subagents, including fresh copied messages, tool-follow-up refresh, active-branch-only compactions, and the shared runtime guard. Its pinned in-memory runtime smoke captures actual provider request contexts across two explicit prompts and proves the hidden context line refreshes after an active-branch compaction without persisting to session messages or entries.

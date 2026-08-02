@@ -499,8 +499,8 @@
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
       "templateHash": "sha256:0683f8ceca62d4c5c91ce1058d1e2970f4336aced06b298b7ea3ef8cc328d78c",
-      "configHash": "sha256:f5a9b8beede59326f981a374df78cf100694cb4872fbb7d111bf1456d5b83ccf",
-      "outputHash": "sha256:ed6f28b9dea088ee982689c5dedf742129b5831b4f1df7a5ef74fb7f8cd7af0d"
+      "configHash": "sha256:dd87ab1e18da74a330c96a1b42963b22b84e62a00c7a1d013ca55095052f88e5",
+      "outputHash": "sha256:c030b0ce02dc366f6709c55c3d68ec09d0d5d354ff365cd43131fc8b87dbadca"
     },
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
@@ -511,8 +511,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:ea2b7fe392c4517ac58023e825bf795a64cdb735d3c7036aa9eef13ab0261f43",
-      "configHash": "sha256:f6dae0e3679ce17fc99bc4804fe14d05cbf5440924a1a933b9bef3a4111c55b8",
-      "outputHash": "sha256:1ba87a4290c336889cfb548eb57ad9aa07495256039dfa40bf997ab633e7719a"
+      "configHash": "sha256:ce7ebab289b6b833a7d4328ba65bbf7b08e80d74d6eb2c81c5e9fa562b0eebcf",
+      "outputHash": "sha256:3662889d857614c7132e9132828a098de3bee9d5abe4462408fff030ba000c7d"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
