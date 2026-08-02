@@ -32,10 +32,11 @@ Verify: Inspect changed constructor parameters and nil handling, and reject an i
 
 ### `invariant: concrete-first-consumer`
 
-Every new composition capability lands in the same green transaction as exactly one named concrete first consumer; no adapter, constructor field, interface method, option, or helper is added only for anticipated reuse.
+Every new production composition capability lands in the same green transaction as exactly one named concrete production first consumer. A composition capability exported by a dedicated shared test-support package under `internal/testsupport/**` instead lands with exactly one named outside-package test first consumer. In either case the consumer uses the whole introduced capability, and no adapter, constructor field, interface method, option, helper, fault operation, or other composition surface is added only for anticipated reuse.
 Origin: ADR-0178
+Revised-by: ADR-test-support-exports-earn-test-consumers
 Backing: unbacked
-Verify: For each newly exported or shared composition symbol, trace its production callers in the same commit and confirm one concrete first consumer uses the whole introduced capability.
+Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
 
 ### `invariant: dependency-composition-commit-classification`
 

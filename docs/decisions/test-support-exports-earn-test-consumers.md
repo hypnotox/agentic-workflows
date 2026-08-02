@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: test-support-exports-earn-test-consumers
-status: Accepted
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-test-support-exports-earn-test-consumers: Test-support exports earn test consumers
@@ -101,3 +101,4 @@ scan prevents production code from turning the shared fixture home into a runtim
 
 - 2026-08-02: Proposed
 - 2026-08-02: Accepted; content-sha256: 498dc41c72649dd547e4ed9398153e2a75c7094f0966a2e533cc61765d381700
+- 2026-08-02: Implemented; content-sha256: 498dc41c72649dd547e4ed9398153e2a75c7094f0966a2e533cc61765d381700

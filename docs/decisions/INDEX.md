@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-consumer-local-contracts-over-single-home-filesystem-access: Consumer-local contracts over single-home filesystem access](consumer-local-contracts-over-single-home-filesystem-access.md) (Proposed)
-- [ADR-test-support-exports-earn-test-consumers: Test-support exports earn test consumers](test-support-exports-earn-test-consumers.md) (Accepted)
 
 ## History
 
@@ -216,3 +215,4 @@
 - [ADR-0208: Narrow the glossary-terms-validated claim to the implementation](0208-narrow-the-glossary-terms-validated-claim-to-the-implementation.md) (Implemented)
 - [ADR-0209: Context-aware discretionary Pi handoffs](0209-context-aware-discretionary-pi-handoffs.md) (Implemented)
 - [ADR-0210: Fork the verification commands by universe into check repo and check staged](0210-fork-the-verification-commands-by-universe-into-check-repo-and-check-staged.md) (Implemented)
+- [ADR-test-support-exports-earn-test-consumers: Test-support exports earn test consumers](test-support-exports-earn-test-consumers.md) (Implemented)

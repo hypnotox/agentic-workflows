@@ -23,7 +23,8 @@ Both records remain slug-identified in the managed branch. Before integration, r
 ## File structure
 
 - **Created:** `internal/filesystem/handle.go`, `internal/filesystem/handle_test.go`, `internal/testsupport/fsfixture/fsfixture.go`, `internal/testsupport/fsfixture/fsfixture_test.go`, `internal/upgrade/digest_test.go`.
-- **Modified:** `docs/decisions/test-support-exports-earn-test-consumers.md`, `docs/decisions/consumer-local-contracts-over-single-home-filesystem-access.md`, `internal/testsupport/deps_test.go`, `internal/upgrade/digest.go`, `internal/upgrade/upgrade.go`, `internal/upgrade/upgrade_test.go`, `.awf/domains/tooling.yaml`, `.awf/topics/parts/code-design/package-composition/current-state.md`, `.awf/topics/parts/code-design/dependency-composition/current-state.md`, `.awf/topics/parts/tooling/test-infrastructure/current-state.md`, `.awf/topics/parts/tooling/filesystem-access/current-state.md`, `.awf/docs/parts/architecture/components.md`, this plan at its deferred freeze, and rendered `.awf/awf.lock`, `docs/architecture.md`, `docs/decisions/INDEX.md`, `docs/domains/**`, and `docs/topics/**` outputs changed by those authored inputs.
+- **Modified:** `docs/decisions/test-support-exports-earn-test-consumers.md`, `docs/decisions/consumer-local-contracts-over-single-home-filesystem-access.md`, `internal/testsupport/deps_test.go`, `internal/upgrade/digest.go`, `internal/upgrade/upgrade.go`, `internal/upgrade/upgrade_test.go`, `x`, `.awf/domains/tooling.yaml`, `.awf/topics/parts/code-design/package-composition/current-state.md`, `.awf/topics/parts/code-design/dependency-composition/current-state.md`, `.awf/topics/parts/tooling/test-infrastructure/current-state.md`, `.awf/topics/parts/tooling/filesystem-access/current-state.md`, `.awf/docs/parts/architecture/components.md`, this plan at its deferred freeze, and rendered `.awf/awf.lock`, `docs/architecture.md`, `docs/decisions/INDEX.md`, `docs/domains/**`, and `docs/topics/**` outputs changed by those authored inputs.
+- **Moved:** `cmd/testtmpclean/main.go` and `cmd/testtmpclean/main_test.go` to `internal/testsupport/cmd/testtmpclean/` so the repo-private test-infrastructure command remains inside the boundary whose production sources it imports.
 - **Deleted:** none. Phase 4 deletes the `lstat` declaration and swap test, not a whole file.
 
 ## Phase 1: Accept the test-support consumer authority
@@ -52,7 +53,9 @@ docs(adr): accept test-support export consumers
 
   The test reports every path/import pair and the live scan reaches zero findings. Table cases pass synthetic path/source pairs and prove rejection for the root testsupport package, `internal/testsupport/fsfixture`, and an example-adopter production file; allowance for a standard-library import, another repository import, `_test.go`, and a `testdata` fixture; and parse-error propagation. Forbidden: invoking `go list`, Git, or another repository package from production testsupport code; the proof itself may import the root testsupport package because it is an external test file.
 
-- [ ] **Task 2.2: Update export eligibility exactly.** Replace the complete `export-earns-consumer` block in `.awf/topics/parts/code-design/package-composition/current-state.md` with this literal Markdown:
+- [ ] **Task 2.2: Relocate the repo-private cleanup command beneath test support.** The production-import proof exposes the pre-existing `cmd/testtmpclean` import of `internal/testsupport`, which contradicts the new absolute outside-boundary rule. Move that command and its tests without behavior changes to `internal/testsupport/cmd/testtmpclean`, update `x` and its structural command test to use the new path, and update the managed architecture component source to place the repo-private command inside the test-support boundary. The leaf proof continues to allow the command's import of its own parent package, while the new production-import proof excludes the complete `internal/testsupport/**` source boundary as designed. Run `go test ./internal/testsupport/cmd/testtmpclean` successfully.
+
+- [ ] **Task 2.3: Update export eligibility exactly.** Replace the complete `export-earns-consumer` block in `.awf/topics/parts/code-design/package-composition/current-state.md` with this literal Markdown:
 
   ```markdown
   ### `invariant: export-earns-consumer`
@@ -64,7 +67,7 @@ docs(adr): accept test-support export consumers
   Verify: For each new or deliberately converted export, classify its declaring package; trace an outside-package production consumer for a production-package export or a real outside-package test consumer for a dedicated `internal/testsupport/**` export in the same commit, then apply the named composition-capability or error-identity specialization where relevant.
   ```
 
-- [ ] **Task 2.3: Update concrete-first symmetry exactly.** Replace the complete `concrete-first-consumer` block in `.awf/topics/parts/code-design/dependency-composition/current-state.md` with this literal Markdown:
+- [ ] **Task 2.4: Update concrete-first symmetry exactly.** Replace the complete `concrete-first-consumer` block in `.awf/topics/parts/code-design/dependency-composition/current-state.md` with this literal Markdown:
 
   ```markdown
   ### `invariant: concrete-first-consumer`
@@ -76,7 +79,7 @@ docs(adr): accept test-support export consumers
   Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
   ```
 
-- [ ] **Task 2.4: Add the one-way test-infrastructure claim.** Append this claim to `.awf/topics/parts/tooling/test-infrastructure/current-state.md` and replace the topic preamble only as needed to mention both directions of the boundary:
+- [ ] **Task 2.5: Add the one-way test-infrastructure claim.** Append this claim to `.awf/topics/parts/tooling/test-infrastructure/current-state.md` and replace the topic preamble only as needed to mention both directions of the boundary:
 
   ```markdown
   ### `invariant: production-never-imports-test-support`
@@ -88,9 +91,9 @@ docs(adr): accept test-support export consumers
 
   Place the named proof marker from Task 2.1 on the test. Do not add `Verify:` to the backed claim.
 
-- [ ] **Task 2.5: Implement the prerequisite ADR atomically.** In `docs/decisions/test-support-exports-earn-test-consumers.md`, change frontmatter to `status: Implemented` and append only the terminal `Implemented` event, repeating the Accepted content stamp because the ADR body did not change. This direct Accepted-to-Implemented transition implicitly applies all three State changes in declaration order; do not append an explicit Applied event. Land all three claim mutations and the proof marker in this same checked transaction. Run `./x render` and stage the ADR, all three authored claim parts, `internal/testsupport/deps_test.go`, generated topic/domain/index outputs, and `.awf/awf.lock`.
+- [ ] **Task 2.6: Implement the prerequisite ADR atomically.** In `docs/decisions/test-support-exports-earn-test-consumers.md`, change frontmatter to `status: Implemented` and append only the terminal `Implemented` event, repeating the Accepted content stamp because the ADR body did not change. This direct Accepted-to-Implemented transition implicitly applies all three State changes in declaration order; do not append an explicit Applied event. Land all three claim mutations and the proof marker in this same checked transaction. Run `./x render` and stage the ADR, all three authored claim parts, `internal/testsupport/deps_test.go`, generated topic/domain/index outputs, and `.awf/awf.lock`.
 
-- [ ] **Task 2.6: Verify authority and proof behavior.** Run `go test ./internal/testsupport`, which exits zero. In a scratch edit, add `github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture` to a non-test Go file under `internal/` and confirm `go test ./internal/testsupport` fails naming that file and import; restore with `git restore` and rerun until clean. Run `./awf topic code-design/package-composition`, `./awf topic code-design/dependency-composition`, and `./awf topic tooling/test-infrastructure`; each renders the updated or added claim with correct provenance and backing. `./x check` and `./x gate` both exit zero.
+- [ ] **Task 2.7: Verify authority and proof behavior.** Run `go test ./internal/testsupport`, which exits zero. In a scratch edit, add `github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture` to a non-test Go file under `internal/` and confirm `go test ./internal/testsupport` fails naming that file and import; restore with `git restore` and rerun until clean. Run `./awf topic code-design/package-composition`, `./awf topic code-design/dependency-composition`, and `./awf topic tooling/test-infrastructure`; each renders the updated or added claim with correct provenance and backing. `./x check` and `./x gate` both exit zero.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete code, authority, proof, lifecycle, and rendered-output transaction. Confirm `./awf check staged` and `./x gate` exit zero, then create the one closing commit.
 
@@ -271,3 +274,4 @@ review settles according to the managed-worktree workflow.
 - Existing `internal/snapshot/filesystem.go` remains out of scope because it captures ordinary-tree symlink representation rather than providing root-confined repository access.
 - Phase 4 records any surviving `internal/upgrade/digest.go` coverage exclusions here with their final line and evidence. An empty survivor list is valid.
 - The fixture is deliberately not an in-memory filesystem and never becomes a production dependency.
+- During Phase 2, the required live production-import proof exposed the pre-existing repo-private cleanup command's import of `internal/testsupport`. The user approved moving that command beneath `internal/testsupport/cmd/` rather than weakening the absolute boundary or excluding a real production source from the proof.

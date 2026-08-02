@@ -119,7 +119,7 @@ func TestRepositoryCleanupCommandContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const dispatch = "  clean-test-tmp)\n    go run ./cmd/testtmpclean \"$@\"\n    ;;"
+	const dispatch = "  clean-test-tmp)\n    go run ./internal/testsupport/cmd/testtmpclean \"$@\"\n    ;;"
 	if strings.Count(string(x), dispatch) != 1 {
 		t.Errorf("x clean-test-tmp dispatch must be exactly %q", dispatch)
 	}
@@ -127,7 +127,7 @@ func TestRepositoryCleanupCommandContract(t *testing.T) {
 		t.Error("x usage missing clean-test-tmp [--all]")
 	}
 
-	commandDir := filepath.Join(root, "cmd", "testtmpclean")
+	commandDir := filepath.Join(root, "internal", "testsupport", "cmd", "testtmpclean")
 	entries, err := os.ReadDir(commandDir)
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +150,7 @@ func TestRepositoryCleanupCommandContract(t *testing.T) {
 
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}

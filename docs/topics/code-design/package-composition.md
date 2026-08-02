@@ -37,16 +37,11 @@ Verify: For each added or renamed production package or file, confirm the name s
 
 ### `invariant: export-earns-consumer`
 
-A new or deliberately converted exported symbol ships with an outside-package production
-consumer in the same green transaction; an `export_test.go` seam stays legal and a
-black-box `_test` package does not count as the consumer. For composition capabilities
-`code-design/dependency-composition:concrete-first-consumer` remains the first-consumer
-authority with the outside-package requirement added on top, and an exported error
-identity is governed by `code-design/outcome-modeling:consumed-identity` including its
-documented-consumer escape hatch.
+A new or deliberately converted exported symbol declared by a production package ships with an outside-package production consumer in the same green transaction; an `export_test.go` seam stays legal and a black-box `_test` package does not earn that production export. An exported symbol declared by a dedicated shared test-support package under `internal/testsupport/**` instead ships with an outside-package test consumer in the same green transaction, and a compile-only reference does not count. Composition capabilities remain governed by `code-design/dependency-composition:concrete-first-consumer`, and exported error identities remain governed by `code-design/outcome-modeling:consumed-identity` including its documented-consumer escape hatch.
 Origin: ADR-0200
+Revised-by: ADR-test-support-exports-earn-test-consumers
 Backing: unbacked
-Verify: For each newly exported symbol in the diff, trace an outside-package production caller in the same commit; absent one, confirm the symbol is an error identity with a documented consumer or should be unexported.
+Verify: For each new or deliberately converted export, classify its declaring package; trace an outside-package production consumer for a production-package export or a real outside-package test consumer for a dedicated `internal/testsupport/**` export in the same commit, then apply the named composition-capability or error-identity specialization where relevant.
 
 ### `invariant: exported-symbols-documented`
 
