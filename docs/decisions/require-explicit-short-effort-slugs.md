@@ -106,6 +106,10 @@ semantically distinct strings without positional transposition or duplicated pol
    workflow confirmation, active-signature synchronization, rendering, drift checks, and the full
    project gate.
 
+10. `decision: render-lifecycle-index` Run `./x render` for every transition of this record to
+    Accepted, Implementing, Implemented, or Abandoned, and stage the regenerated
+    `docs/decisions/INDEX.md` and lock output in the same commit.
+
 ## State changes
 
 - update `tooling/effort-management:effort-record-authority`
