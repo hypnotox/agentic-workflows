@@ -26,51 +26,6 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:claude-md-bridge (TestCodexTargetRendersTOMLAgents)
-// invariant: rendering/catalog-and-targets:target-dialect-render (TestCodexTargetRendersTOMLAgents)
-func TestCodexTargetRendersTOMLAgents(t *testing.T) {
-	if got := codexTarget.AgentPath("code-reviewer"); got != ".codex/agents/code-reviewer.toml" {
-		t.Fatalf("Codex AgentPath = %q", got)
-	}
-	root := scaffold(t, sampleYAML+"targets:\n  - codex\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got *RenderedFile
-	for i := range files {
-		if files[i].Path == ".codex/agents/code-reviewer.toml" {
-			got = &files[i]
-		}
-	}
-	if got == nil {
-		t.Fatal("Codex agent not rendered")
-	}
-	if err := validateArtifact([]byte(got.Content), TOMLAgentDialect); err != nil {
-		t.Fatalf("validate Codex profile: %v\n%s", err, got.Content)
-	}
-	if !strings.HasPrefix(got.Content, "# "+bannerText+"\n") {
-		t.Fatalf("Codex profile missing TOML banner:\n%s", got.Content)
-	}
-	if !strings.Contains(got.Content, "developer_instructions") {
-		t.Fatalf("Codex profile missing instructions:\n%s", got.Content)
-	}
-	for _, f := range files {
-		if f.TemplateID == "skills/tdd/SKILL.md.tmpl" {
-			if f.Path != ".agents/skills/example-tdd/SKILL.md" {
-				t.Fatalf("Codex skill path = %q", f.Path)
-			}
-			if !strings.Contains(f.Content, "<!-- "+bannerText+" -->") {
-				t.Fatalf("Codex markdown skill lost HTML provenance:\n%s", f.Content)
-			}
-		}
-	}
-}
-
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestNativePiSkillsAreDiscoverableAndPruned)
 func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [tdd, local]\nagents: []\ntargets: [pi]\n", map[string]string{
@@ -404,8 +359,8 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 		t.Fatal("exploring is not a core skill")
 	}
 	dirs := map[string]string{
-		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
-		"cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
+		"claude": ".claude/skills",
+		"pi":     ".pi/skills",
 	}
 	for _, target := range KnownTargets() {
 		t.Run(target, func(t *testing.T) {
@@ -552,8 +507,21 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestAllTargetPathsAndBridges)
 
+// invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestKnownTargets)
+func TestKnownTargets(t *testing.T) {
+	if got := KnownTargets(); strings.Join(got, ",") != "claude,pi" {
+		t.Fatalf("KnownTargets = %v", got)
+	}
+	for _, removed := range []string{"codex", "copilot", "cursor", "gemini"} {
+		_, err := resolveTargets([]string{removed})
+		if err == nil || !strings.Contains(err.Error(), `known: claude, pi`) {
+			t.Errorf("resolveTargets(%q) error = %v", removed, err)
+		}
+	}
+}
+
 func TestAllTargetPathsAndBridges(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - codex\n  - copilot\n  - cursor\n  - gemini\n  - pi\n")
+	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -566,21 +534,15 @@ func TestAllTargetPathsAndBridges(t *testing.T) {
 	for _, f := range files {
 		paths[f.Path] = true
 	}
-	for _, want := range []string{"CLAUDE.md", "GEMINI.md"} {
-		if !paths[want] {
-			t.Errorf("missing bridge %q", want)
-		}
+	if !paths["CLAUDE.md"] {
+		t.Error("missing Claude bridge")
 	}
-	for _, absent := range []string{"CODEX.md", "COPILOT.md", "CURSOR.md", "PI.md"} {
-		if paths[absent] {
-			t.Errorf("unexpected bridge %q", absent)
-		}
-	}
-	if got := KnownTargets(); strings.Join(got, ",") != "claude,codex,copilot,cursor,gemini,pi" {
-		t.Fatalf("KnownTargets = %v", got)
+	if paths["PI.md"] {
+		t.Error("unexpected Pi bridge")
 	}
 }
 
+// invariant: rendering/catalog-and-targets:claude-md-bridge (TestClaudeMdBridgeRendered)
 func TestClaudeMdBridgeRendered(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(testContext(t), root)
@@ -608,12 +570,11 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 	}
 }
 
-// TestMultiTargetRender backs inv: multi-target-render and inv: cursor-no-bridge
-// (both declared in render.go): adapter artifacts render once per enabled target
-// with byte-identical bodies, neutral artifacts render once, and cursor emits no
-// bridge.
+// TestMultiTargetRender proves adapter artifacts render once per enabled target
+// at descriptor-owned paths while neutral artifacts render once.
+// invariant: rendering/catalog-and-targets:target-dialect-render (TestMultiTargetRender)
 func TestMultiTargetRender(t *testing.T) {
-	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
+	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -634,24 +595,27 @@ func TestMultiTargetRender(t *testing.T) {
 		}
 	}
 	// invariant: rendering/project-output-plan:multi-target-render (TestMultiTargetRender)
-	for _, pair := range [][2]string{
-		{".claude/skills/example-tdd/SKILL.md", ".cursor/skills/example-tdd/SKILL.md"},
-		{".claude/agents/code-reviewer.md", ".cursor/agents/code-reviewer.md"},
+	for _, path := range []string{
+		".claude/skills/example-tdd/SKILL.md",
+		".pi/skills/example-tdd/SKILL.md",
+		".claude/agents/code-reviewer.md",
+		".pi/agents/code-reviewer.md",
 	} {
-		a, b := byPath[pair[0]], byPath[pair[1]]
-		if a == "" || b == "" {
-			t.Fatalf("missing render: %q=%dB, %q=%dB", pair[0], len(a), pair[1], len(b))
+		content := byPath[path]
+		if content == "" {
+			t.Fatalf("missing render %q", path)
 		}
-		if a != b {
-			t.Errorf("content differs between %q and %q", pair[0], pair[1])
+		if strings.Contains(path, "/agents/") {
+			if err := validateArtifact([]byte(content), MarkdownAgentDialect); err != nil {
+				t.Fatalf("validate %q: %v", path, err)
+			}
 		}
 	}
 	if agentsMd != 1 {
 		t.Errorf("AGENTS.md rendered %d times, want 1 (neutral)", agentsMd)
 	}
-	// invariant: rendering/project-output-plan:cursor-no-bridge (TestMultiTargetRender)
 	if bridges != 1 {
-		t.Errorf("bridge files = %d, want 1 (claude only; cursor has none)", bridges)
+		t.Errorf("bridge files = %d, want 1 (claude only)", bridges)
 	}
 	if _, ok := byPath["CLAUDE.md"]; !ok {
 		t.Error("CLAUDE.md (claude bridge) not rendered")

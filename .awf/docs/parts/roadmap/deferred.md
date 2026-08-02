@@ -56,12 +56,6 @@ read correctly and silently accepted four transitions the rule had refused, incl
 laundering a genuine deletion plus an unrelated pending addition into a rename, which is
 the fail-closed promise ADR-0204 item 4 makes explicitly.
 
-## Pi and shared Agent Skills discovery
-
-Resolve Pi's collision between its `.pi/skills/` output and the shared
-`.agents/skills/` workflow skills that Pi also discovers when Codex is enabled.
-Keep Pi's top-level reviewer skills available without duplicate workflow skill
-names. ADR-0122's Pi and Codex target layouts may need a successor decision.
 ## Mechanically detecting a nominal invariant proof
 
 `invariant-proof-exercises-its-claim` has now failed to prevent three sessions

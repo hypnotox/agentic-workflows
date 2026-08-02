@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: retain-only-claude-code-and-pi-runtime-targets
-status: Proposed
+status: Implementing
 date: 2026-08-02
 ---
 # ADR-retain-only-claude-code-and-pi-runtime-targets: Retain Only Claude Code and Pi Runtime Targets
@@ -130,3 +130,5 @@ Codex runtime target and remain supported.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-02: Implementing; content-sha256: 80168b260b1c709601e7ee14c98870b027bb9dddcfbea4b6c48d6f69ed05f412
+- 2026-08-02: Applied; operations: add `rendering/catalog-and-targets:built-in-runtime-targets`, update `rendering/catalog-and-targets:structured-agent-encoding`, update `rendering/catalog-and-targets:target-dialect-render`, remove `rendering/project-output-plan:cursor-no-bridge`

@@ -190,32 +190,32 @@ func TestRunTargetCLI(t *testing.T) {
 	_ = ctx
 	root := scaffoldedProject(t) // no targets: key → defaults to claude
 
-	// list target before any change: claude enabled, cursor available.
+	// list target before any change: claude enabled, pi available.
 	var buf bytes.Buffer
 	if err := runList(ctx, root, "target", &buf); err != nil {
 		t.Fatal(err)
 	}
 	if out := buf.String(); !strings.Contains(out, "claude") || !strings.Contains(out, "enabled") ||
-		!strings.Contains(out, "cursor") || !strings.Contains(out, "available") {
+		!strings.Contains(out, "pi") || !strings.Contains(out, "available") {
 		t.Errorf("list target (initial):\n%s", out)
 	}
 
-	// add cursor must materialize the full resolved list, not drop the defaulted claude.
-	if err := runEnable(ctx, root, "target", "cursor", false, io.Discard); err != nil {
-		t.Fatalf("add target cursor: %v", err)
+	// add pi must materialize the full resolved list, not drop the defaulted claude.
+	if err := runEnable(ctx, root, "target", "pi", false, io.Discard); err != nil {
+		t.Fatalf("add target pi: %v", err)
 	}
-	if cfg := readConfig(t, root); !strings.Contains(cfg, "- claude") || !strings.Contains(cfg, "- cursor") {
-		t.Errorf("expected targets [claude, cursor]:\n%s", cfg)
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "- claude") || !strings.Contains(cfg, "- pi") {
+		t.Errorf("expected targets [claude, pi]:\n%s", cfg)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".cursor", "skills")); err != nil {
-		t.Errorf("cursor tree not rendered after add: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".pi", "skills")); err != nil {
+		t.Errorf("pi tree not rendered after add: %v", err)
 	}
 
 	// Rejections.
 	if err := runEnable(ctx, root, "target", "nope", false, io.Discard); err == nil {
 		t.Error("expected unknown-target error")
 	}
-	if err := runEnable(ctx, root, "target", "cursor", false, io.Discard); err == nil {
+	if err := runEnable(ctx, root, "target", "pi", false, io.Discard); err == nil {
 		t.Error("expected already-enabled error")
 	}
 	if err := runDisable(ctx, root, "target", "nope", false, false, io.Discard); err == nil {
@@ -230,11 +230,11 @@ func TestRunTargetCLI(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(broken, ".awf", "config.yaml"), []byte("prefix: ["), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runEnable(ctx, broken, "target", "cursor", false, io.Discard); err == nil {
+	if err := runEnable(ctx, broken, "target", "pi", false, io.Discard); err == nil {
 		t.Error("expected project.Open error to surface from add target")
 	}
 
-	// remove claude → [cursor]; removing the last target is refused.
+	// remove claude -> [pi]; removing the last target is refused.
 	if err := runDisable(ctx, root, "target", "claude", false, false, io.Discard); err != nil {
 		t.Fatalf("remove target claude: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestRunTargetCLI(t *testing.T) {
 	if err := runDisable(ctx, root, "target", "claude", false, false, io.Discard); err == nil {
 		t.Error("expected not-enabled error")
 	}
-	if err := runDisable(ctx, root, "target", "cursor", false, false, io.Discard); err == nil {
+	if err := runDisable(ctx, root, "target", "pi", false, false, io.Discard); err == nil {
 		t.Error("expected cannot-remove-last-target error")
 	}
 }

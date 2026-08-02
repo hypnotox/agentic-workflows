@@ -111,7 +111,6 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 
 // invariant: rendering/project-output-plan:target-capabilities-closed (TestTargetDescriptorValidation)
 // invariant: rendering/pi-workflows:pi-subagent-progress-rendering (TestTargetDescriptorValidation)
-// invariant: rendering/project-output-plan:cursor-no-bridge (TestTargetDescriptorValidation)
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestTargetDescriptorValidation)
 // invariant: rendering/pi-workflows:pi-subagent-progress-bounds (TestTargetDescriptorValidation)
 // invariant: config/migrations-and-locks:close-enabled-set-migration (TestTargetDescriptorValidation)

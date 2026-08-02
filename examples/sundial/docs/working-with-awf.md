@@ -67,7 +67,7 @@ field, and per-artifact data key is described in the generated
 [configuration reference](config-reference.md), including this project's live state: which
 vars are set, what consumes them, and what enabling would activate.
 
-**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter
+**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target pi`); adapter
 artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under

@@ -569,9 +569,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		out = append(out, rf)
 		// Bridge: each adapter that wants one imports AGENTS.md verbatim (ADR-0037).
 		// Gated on the agents-doc render above - a local (hand-maintained) AGENTS.md
-		// must not get a bridge pointing at an un-rendered file. cursor has an empty
-		// BridgeFile and emits nothing (inv: cursor-no-bridge).
-		// touches-state: rendering/project-output-plan:cursor-no-bridge - bridge suppression for an empty BridgeFile; proof in target_test.go
+		// A target with an empty BridgeFile emits no bridge, so neutral instructions
+		// never point at an unrendered target-owned file.
 		for _, t := range p.Targets {
 			if t.BridgeFile == "" {
 				continue
@@ -787,14 +786,10 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 		return "", err
 	}
 	a := agent{Name: p.Cat.Agents[name].Name, Description: description, Body: body}
-	switch t.AgentDialect {
-	case MarkdownAgentDialect:
-		return encodeMarkdownAgent(a)
-	case TOMLAgentDialect:
-		return encodeTOMLAgent(a)
-	default:
+	if t.AgentDialect != MarkdownAgentDialect {
 		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
 	}
+	return encodeMarkdownAgent(a)
 }
 
 // generateIndexMD renders the ADR INDEX for the project's decisions directory

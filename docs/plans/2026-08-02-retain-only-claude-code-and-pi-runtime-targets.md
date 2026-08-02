@@ -30,7 +30,7 @@ Kind: batch
 Latitude: exact
 Paths: ["internal/project/target.go", "internal/project/agent.go", "internal/project/render.go", "internal/project/validate.go", "internal/project/banner.go", "internal/project/banner_test.go", "internal/render/render.go", "internal/render/render_test.go", "internal/project/target_test.go", "internal/project/agent_test.go", "internal/project/output_plan_test.go", "internal/project/coverage_test.go", "internal/project/notes_test.go", "internal/project/project_test.go", "internal/project/local_test.go", "internal/project/render_tree_test.go", "internal/project/subagent_model_selection_test.go", "internal/project/spine_test.go", "internal/contextq/adapter_outputs_test.go", "cmd/awf/list_add_test.go", "internal/config/edit_test.go", "internal/evals/chain_test.go", "go.mod", "go.sum"]
 Representative: First rewrite the exact six-target and Claude/Cursor fixtures around `claude`, `pi`, and synthetic descriptors; then remove the four production descriptors and Codex TOML machinery so the rewritten tests pass without collapsing the generic target seam.
-Edge: Remove removed-adapter assertions and TOML provenance/comment handling, but retain Pi OpenAI Codex provider/model strings, structured Markdown agents, `PlainAgentDialect`, Pi TypeScript outputs, generic closed-set validation, and descriptor-owned customization.
+Edge: Remove removed-adapter assertions, TOML provenance/comment handling, and awf's direct TOML dependency, but retain any transitive TOML module required independently by development tooling, Pi OpenAI Codex provider/model strings, structured Markdown agents, `PlainAgentDialect`, Pi TypeScript outputs, generic closed-set validation, and descriptor-owned customization.
 Post-check: The literal `gofmt -w` and `go mod tidy` commands below succeed; the scoped removed-symbol grep returns no output; and `go test ./internal/project ./internal/render ./internal/contextq ./cmd/awf ./internal/config ./internal/evals` passes.
 
 Start from the settled plan-review commit. Require `git status --short` to produce no output, `./x check` to finish clean, and `go test ./internal/project ./internal/contextq` to pass before edits.
@@ -46,17 +46,17 @@ Add or reshape focused tests before deleting production behavior:
 - Add explicit project-open and CLI failures for `codex`, `copilot`, `cursor`, and `gemini`; each uses the existing unknown-target identity and lists only the surviving known targets.
 - Delete the `cursor-no-bridge` proof marker with its claim-specific assertions. Preserve every unrelated proof marker carried by touched tests and keep each marker immediately above a test whose name occurs verbatim in that file.
 
-Then delete `codexTarget`, `copilotTarget`, `cursorTarget`, and `geminiTarget` plus their registry entries. Keep `KnownTargets()` registry-derived and deterministic. Remove only `TOMLAgentDialect`, `codexAgentProfile`, TOML encode/validate dispatch, TOML provenance/comment handling, and `github.com/BurntSushi/toml`. Do not add a migration, alias, warning, silent configuration rewrite, dead-code exemption, or coverage exemption.
+Then delete `codexTarget`, `copilotTarget`, `cursorTarget`, and `geminiTarget` plus their registry entries. Keep `KnownTargets()` registry-derived and deterministic. Remove only `TOMLAgentDialect`, `codexAgentProfile`, TOML encode/validate dispatch, TOML provenance/comment handling, and awf's direct `github.com/BurntSushi/toml` requirement. `go mod tidy` may retain it indirectly when independently required by development tooling. Do not add a migration, alias, warning, silent configuration rewrite, dead-code exemption, or coverage exemption.
 
 Run exactly:
 
 ```bash
 gofmt -w internal/project/target.go internal/project/agent.go internal/project/render.go internal/project/validate.go internal/project/banner.go internal/project/banner_test.go internal/render/render.go internal/render/render_test.go internal/project/target_test.go internal/project/agent_test.go internal/project/output_plan_test.go internal/project/coverage_test.go internal/project/notes_test.go internal/project/project_test.go internal/project/local_test.go internal/project/render_tree_test.go internal/project/subagent_model_selection_test.go internal/project/spine_test.go internal/contextq/adapter_outputs_test.go cmd/awf/list_add_test.go internal/config/edit_test.go internal/evals/chain_test.go
 go mod tidy
-git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|BurntSushi|TestCodexTargetRendersTOMLAgents' -- internal cmd go.mod go.sum
+git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|TestCodexTargetRendersTOMLAgents' -- internal cmd
 ```
 
-The final grep returns no output.
+The final grep returns no output. `go mod why -m github.com/BurntSushi/toml` may report only a development-tooling chain and must not report `internal/project`.
 
 ### Task 1.2: Purge adapter-only templates, active prose, and integration metadata
 Kind: batch
@@ -236,7 +236,7 @@ refactor(rendering): neutralize bridge render identity
 
 - `KnownTargets()` returns exactly `claude`, `pi`; all four removed names fail through normal unknown-target validation without migration, alias, warning, or rewrite behavior.
 - Claude and Pi retain descriptor-owned customization of paths, suffixes, encodings, bridges, capabilities, wording, and additional outputs, with synthetic coverage preventing the surviving implementation from collapsing those seams.
-- Codex TOML production code, validation, provenance style, tests, and module dependency are absent; structured Markdown agents and Pi plain TypeScript outputs remain covered.
+- Codex TOML production code, validation, provenance style, tests, and direct module dependency are absent; any remaining indirect TOML module is justified only by independent development tooling, while structured Markdown agents and Pi plain TypeScript outputs remain covered.
 - Generic bridge rendering and input observation use the neutral `target-bridge` identity, while Claude still emits `CLAUDE.md` and Pi emits no bridge.
 - Root and Sundial rendering/checks are clean; Sundial enables only Claude and Pi and contains no managed output or lock entry for a removed adapter.
 - Active source, documentation, roadmap, ignore metadata, and generated outputs contain no removed-adapter support residue except the explicitly pending old `multi-target-render` example, while immutable historical records and Pi OpenAI Codex model identifiers remain unchanged.
@@ -260,4 +260,5 @@ Backing: test
 
 - Until that terminal transaction, the old `multi-target-render` claim remains active and visibly pending correction. Do not edit its prose early or append the final Applied/Implemented events before review establishes completion.
 - Historical mentions of Codex, Copilot, Cursor, and Gemini are evidence of past support, not residue. Residue commands intentionally exclude immutable record paths and distinguish the removed Codex runtime adapter from retained OpenAI Codex model routing.
+- Implementation discovery: `go mod tidy` retains `github.com/BurntSushi/toml` only as an indirect dependency of the pinned golangci-lint toolchain (`go mod why -m github.com/BurntSushi/toml` reaches revive), not through awf runtime code. The purge removes awf's direct dependency and all runtime use; deleting an independently required transitive tool dependency is outside the adapter boundary.
 - Record implementation deviations, reviewer findings, and any newly discovered active residue here while the plan remains Proposed. A load-bearing scope change requires returning to the ADR rather than silently widening this plan.

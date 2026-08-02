@@ -23,12 +23,6 @@ A default curated awf init render passes awf check with zero dead-skill-referenc
 Origin: ADR-0046
 Backing: test
 
-### `invariant: cursor-no-bridge`
-
-The cursor target has an empty bridge-file path and emits no bridge file; its rendered skill and agent files are byte-identical in body and frontmatter to the claude target's files at their respective paths.
-Origin: ADR-0037
-Backing: test
-
 ### `invariant: inert-sidecar-field-rejected`
 
 Every gated command fails at project open when a non-domain sidecar carries a non-empty paths field, or a domain sidecar carries any non-paths field such as data, sections, or local, with a message naming the file and the required edit.

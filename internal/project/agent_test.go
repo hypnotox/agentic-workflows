@@ -1,18 +1,15 @@
 package project
 
 import (
-	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
+// invariant: rendering/catalog-and-targets:structured-agent-encoding (TestEncodeMarkdownAgent)
 func TestEncodeMarkdownAgent(t *testing.T) {
 	t.Parallel()
 
@@ -62,23 +59,6 @@ func TestEncodeAgentRejectsInvalidMetadata(t *testing.T) {
 		if _, err := encodeMarkdownAgent(a); err == nil {
 			t.Fatalf("encodeMarkdownAgent(%#v) succeeded", a)
 		}
-		if _, err := encodeTOMLAgent(a); err == nil {
-			t.Fatalf("encodeTOMLAgent(%#v) succeeded", a)
-		}
-	}
-}
-
-func TestValidateTOMLAgentRejectsInvalidProfiles(t *testing.T) {
-	t.Parallel()
-
-	for _, content := range []string{
-		"name =\n",
-		"name = \"reviewer\"\ndescription = \"description\"\nextra = \"nope\"\n",
-		"name = \"\"\ndescription = \"description\"\ndeveloper_instructions = \"body\"\n",
-	} {
-		if err := validateTOMLAgent([]byte(content)); err == nil {
-			t.Fatalf("validateTOMLAgent(%q) succeeded", content)
-		}
 	}
 }
 
@@ -122,46 +102,5 @@ func TestProjectEncodeMarkdownAgentRejectsInvalidDescriptionTemplate(t *testing.
 	}}}
 	if _, err := p.encodeAgent(claudeTarget, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeMarkdownAgent accepted an invalid description template")
-	}
-}
-
-func TestTOMLEncoderDoesNotDependOnMarkdownParser(t *testing.T) {
-	t.Parallel()
-
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate agent_test.go")
-	}
-	src, err := os.ReadFile(filepath.Join(filepath.Dir(file), "agent.go"))
-	if err != nil {
-		t.Fatalf("read agent.go: %v", err)
-	}
-	if strings.Contains(string(src), "frontmatter.") {
-		t.Fatal("TOML encoder must not parse rendered Markdown frontmatter")
-	}
-}
-
-// invariant: rendering/catalog-and-targets:structured-agent-encoding (TestEncodeTOMLAgentRoundTripsMultilineInstructions)
-func TestEncodeTOMLAgentRoundTripsMultilineInstructions(t *testing.T) {
-	t.Parallel()
-
-	want := agent{
-		Name:        "reviewer",
-		Description: "Reviews \"quoted\" changes.",
-		Body:        "# reviewer\n\nUse \"care\".\n",
-	}
-	got, err := encodeTOMLAgent(want)
-	if err != nil {
-		t.Fatalf("encodeTOMLAgent: %v", err)
-	}
-	var profile codexAgentProfile
-	if _, err := toml.Decode(got, &profile); err != nil {
-		t.Fatalf("decode TOML: %v", err)
-	}
-	if profile != (codexAgentProfile{Name: want.Name, Description: want.Description, DeveloperInstructions: want.Body}) {
-		t.Fatalf("profile = %#v", profile)
-	}
-	if !strings.Contains(got, "developer_instructions") {
-		t.Fatalf("TOML missing instructions: %q", got)
 	}
 }

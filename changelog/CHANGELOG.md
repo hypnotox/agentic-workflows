@@ -46,6 +46,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- The built-in runtime target set is now exactly `claude` and `pi`. The `codex`, `copilot`, `cursor`, and `gemini` target values, their renderers, and their generated outputs are removed immediately without a migration or compatibility alias; remove those names from `targets` before opening an adopted project with this release.
+
 - `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts it. Convert each pair by hand; an unconverted tree fails render with `data.terms: must be a list of {term, meaning} records`.
 
 - Pi `handoff_session` removes `memoryPath` and now exposes the exact closed `{kickoff}` schema for bounded replacement prose.
