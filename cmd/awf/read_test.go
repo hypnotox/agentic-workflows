@@ -115,11 +115,11 @@ func TestReadPlanCommandFailuresKeepStdoutEmpty(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-08-02-read-command.md"), readCommandPlan)
 	t.Chdir(root)
 	cases := []struct {
-		args           []string
-		availableValue string
+		args       []string
+		wantStderr string
 	}{
-		{[]string{"awf", "read", "plan", "missing", "1"}, "2026-08-02-read-command"},
-		{[]string{"awf", "read", "plan", "2026-08-02-read-command", "01"}, "1.1"},
+		{[]string{"awf", "read", "plan", "missing", "1"}, "awf: plan name \"missing\" not found; available: 2026-08-02-read-command, 2026-08-02-read-command.md\n"},
+		{[]string{"awf", "read", "plan", "2026-08-02-read-command", "01"}, "awf: plan selector \"01\" must be canonical positive P or P.T; available: 1, 1.1, 1.2\n"},
 		{[]string{"awf", "read", "plan", "2026-08-02-read-command"}, ""},
 	}
 	for _, tc := range cases {
@@ -127,8 +127,8 @@ func TestReadPlanCommandFailuresKeepStdoutEmpty(t *testing.T) {
 		if code := run(tc.args, &stdout, &stderr); code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
 			t.Errorf("run(%v) exit=%d stdout=%q stderr=%q", tc.args, code, stdout.String(), stderr.String())
 		}
-		if tc.availableValue != "" && (!strings.Contains(stderr.String(), "available:") || !strings.Contains(stderr.String(), tc.availableValue)) {
-			t.Errorf("run(%v) did not list exact available value %q: %q", tc.args, tc.availableValue, stderr.String())
+		if tc.wantStderr != "" && stderr.String() != tc.wantStderr {
+			t.Errorf("run(%v) stderr = %q, want exact available-values diagnostic %q", tc.args, stderr.String(), tc.wantStderr)
 		}
 	}
 }

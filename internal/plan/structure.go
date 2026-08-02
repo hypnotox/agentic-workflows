@@ -450,7 +450,7 @@ func parsePhase(path string, lines []string, start, want int) (Phase, int, error
 	if countExecutionModeDeclarations(phaseContent) != 1 {
 		return ph, start, structuralError(path, "structure", fmt.Sprintf("phase %d requires exactly one execution-mode declaration", n))
 	}
-	if countCompleteCommitFences(ph.Close) != 1 || countCompleteCommitFences(phaseContent) != 1 {
+	if commitFenceSwallowsPlanBoundary(ph.Close) || countCompleteCommitFences(ph.Close) != 1 || countCompleteCommitFences(phaseContent) != 1 {
 		return ph, start, structuralError(path, "phase-close", fmt.Sprintf("phase %d requires exactly one non-ignored commit fence in Phase close", n))
 	}
 	if len(ph.Tasks) == 1 && ph.Tasks[0].Fields.Kind == TaskSpike {
@@ -510,8 +510,13 @@ func parseTask(path string, lines []string, start, phase, want int) (Task, int, 
 			return task, start, structuralError(path, "structure", "unexpected top-level section inside task")
 		}
 	}
+	var fieldFence markdownFence
 	for _, line := range lines[i:end] {
-		name, _, field, _ := parseField(lineText(line))
+		text := lineText(line)
+		if fieldFence.consume(text) {
+			continue
+		}
+		name, _, field, _ := parseField(text)
 		if field && knownField(name) {
 			return task, start, structuralError(path, "field", fmt.Sprintf("task %d.%d field %s is not contiguous below its heading", phase, num, name))
 		}
@@ -787,23 +792,42 @@ func countCompleteCommitFences(content string) int {
 			counted = marker == '`' && isCommitInfo(line[indent+length:])
 			continue
 		}
-		if ok && marker == fence.marker && length >= fence.length {
-			if structuralFenceCloser(line, length) {
-				if counted {
-					count++
-				}
-				fence.marker, fence.length = 0, 0
-				counted = false
-				continue
+		if ok && marker == fence.marker && length >= fence.length && structuralFenceCloser(line, length) {
+			if counted {
+				count++
 			}
-			indent := len(line) - len(strings.TrimLeft(line, " "))
-			if counted && marker == '`' && isCommitInfo(line[indent+length:]) {
-				// A second commit opener before a closer cannot complete the
-				// required single Phase-close fence, even if a later closer
-				// would end the surrounding Markdown fence.
-				counted = false
-			}
+			fence.marker, fence.length = 0, 0
+			counted = false
 		}
 	}
 	return count
+}
+
+// commitFenceSwallowsPlanBoundary catches an unclosed exact commit fence before
+// it can make a later phase or Definition-of-done heading structurally opaque.
+// Other fenced examples retain ordinary Markdown opacity.
+func commitFenceSwallowsPlanBoundary(content string) bool {
+	var fence markdownFence
+	commitFence := false
+	for _, line := range strings.Split(content, "\n") {
+		marker, length, ok := structuralFenceMarker(line)
+		if fence.marker == 0 {
+			if !ok {
+				continue
+			}
+			fence.marker, fence.length = marker, length
+			indent := len(line) - len(strings.TrimLeft(line, " "))
+			commitFence = marker == '`' && isCommitInfo(line[indent+length:])
+			continue
+		}
+		if ok && marker == fence.marker && length >= fence.length && structuralFenceCloser(line, length) {
+			fence.marker, fence.length = 0, 0
+			commitFence = false
+			continue
+		}
+		if commitFence && (strings.HasPrefix(line, "## Phase ") || line == "## Definition of done") {
+			return true
+		}
+	}
+	return false
 }

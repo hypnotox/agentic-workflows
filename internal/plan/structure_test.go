@@ -284,8 +284,9 @@ func TestPlanV1FencedListSyntaxIsOpaque(t *testing.T) {
 }
 
 func TestPlanV1FenceGrammarIsOpaque(t *testing.T) {
-	body := replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n~~~markdown\n### Task 9.9: Optional fenced task\n- [ ] Fenced work.\n## Verification\n~~~")
+	body := replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n~~~markdown\n### Task 9.9: Optional fenced task\nKind: spike\n- [ ] Fenced work.\n## Verification\n~~~")
 	body = replaceOnceForTest(body, "Run the staged check and gate.", "~~~markdown\n```commit\nfix(plans): fenced example\n```\n~~~\n\nRun the staged check and gate.")
+	body = replaceOnceForTest(body, "feat(plans): parse plans\n```", "feat(plans): parse plans\n````commit\nThis longer run remains content.\n```")
 	body = replaceOnceForTest(body, "- A valid plan parses and projects.", "````markdown\n- A fenced example is not completion.\n```\n+ Still fenced after the shorter run.\n````\n\n* A real completion condition.")
 	dir := t.TempDir()
 	writePlan(t, dir, "2026-08-02-fence-grammar.md", body)
