@@ -9,7 +9,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
-// invariant: rendering/catalog-and-targets:structured-agent-encoding (TestEncodeMarkdownAgent)
 func TestEncodeMarkdownAgent(t *testing.T) {
 	t.Parallel()
 
@@ -62,8 +61,9 @@ func TestEncodeAgentRejectsInvalidMetadata(t *testing.T) {
 	}
 }
 
+// invariant: rendering/catalog-and-targets:structured-agent-encoding (TestProjectRendersStandardAgentMetadataAndBody)
 func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nagents:\n  - code-reviewer\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nagents:\n  - code-reviewer\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -80,6 +80,19 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 		if !strings.Contains(got[0].Content, want) {
 			t.Errorf("missing %q in:\n%s", want, got[0].Content)
 		}
+	}
+	if got[0].Encoder != MarkdownAgentDialect {
+		t.Fatalf("agent encoder = %q", got[0].Encoder)
+	}
+	var plain *RenderedFile
+	for i := range files {
+		if files[i].Path == ".pi/extensions/awf-context-usage/index.ts" {
+			plain = &files[i]
+			break
+		}
+	}
+	if plain == nil || plain.Encoder != PlainAgentDialect {
+		t.Fatalf("Pi target-owned plain output = %#v", plain)
 	}
 }
 

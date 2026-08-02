@@ -152,7 +152,7 @@ Both commands return no output. `(cd examples/sundial && go test ./...)` passes.
 Run the following scoped residue check:
 
 ```bash
-git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|BurntSushi|templates/gemini|GEMINI\.md|\.cursor/|\.codex/agents|\.agents/skills|\.gemini/skills|\.github/agents' -- ':!docs/decisions/**' ':!docs/plans/**' ':!docs/research/**' ':!changelog/**' ':!.awf/topics/parts/rendering/project-output-plan/current-state.md' ':!docs/topics/rendering/project-output-plan.md' ':!docs/domains/rendering.md' ':!templates/pi/**' ':!.pi/**' ':!examples/sundial/.pi/**'
+git grep -nE 'codexTarget|copilotTarget|cursorTarget|geminiTarget|TOMLAgentDialect|encodeTOMLAgent|validateTOMLAgent|TOMLComment|templates/gemini|GEMINI\.md|\.cursor/|\.codex/agents|\.agents/skills|\.gemini/skills|\.github/agents' -- ':!docs/decisions/**' ':!docs/plans/**' ':!docs/research/**' ':!changelog/**' ':!.awf/topics/parts/rendering/project-output-plan/current-state.md' ':!docs/topics/rendering/project-output-plan.md' ':!docs/domains/rendering.md' ':!templates/pi/**' ':!.pi/**' ':!examples/sundial/.pi/**'
 ```
 
 It returns no output. Inspect the three excluded current-state projections and require any removed-target path reference to belong only to the still-Remaining `multi-target-render` claim, never the removed `cursor-no-bridge` claim. Separately require `git grep -n 'openai-codex/' -- templates/pi .pi examples/sundial/.pi` to return retained routing matches.

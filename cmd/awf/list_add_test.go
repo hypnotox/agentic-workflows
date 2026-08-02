@@ -212,6 +212,12 @@ func TestRunTargetCLI(t *testing.T) {
 	}
 
 	// Rejections.
+	for _, removed := range []string{"codex", "copilot", "cursor", "gemini"} {
+		err := runEnable(ctx, root, "target", removed, false, io.Discard)
+		if err == nil || !strings.Contains(err.Error(), "known: claude, pi") {
+			t.Errorf("enable removed target %q error = %v", removed, err)
+		}
+	}
 	if err := runEnable(ctx, root, "target", "nope", false, io.Discard); err == nil {
 		t.Error("expected unknown-target error")
 	}

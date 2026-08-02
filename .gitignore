@@ -11,7 +11,9 @@
 # negate the user's global CLAUDE.md ignore so the rendered artifact commits.
 !CLAUDE.md
 
-# Keep the Pi adapter output visible despite common global ignores.
+# Keep shared repository infrastructure and Pi adapter output visible despite
+# common global ignores.
+!.github/
 !.pi/
 .pi/awf-subagents.local.json
 

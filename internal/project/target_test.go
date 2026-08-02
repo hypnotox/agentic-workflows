@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -505,8 +506,6 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 	return ""
 }
 
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestAllTargetPathsAndBridges)
-
 // invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestKnownTargets)
 func TestKnownTargets(t *testing.T) {
 	if got := KnownTargets(); strings.Join(got, ",") != "claude,pi" {
@@ -517,9 +516,72 @@ func TestKnownTargets(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), `known: claude, pi`) {
 			t.Errorf("resolveTargets(%q) error = %v", removed, err)
 		}
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: ["+removed+"]\n")
+		if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), `known: claude, pi`) {
+			t.Errorf("Open target %q error = %v", removed, err)
+		}
 	}
 }
 
+func TestTargetDescriptorCustomization(t *testing.T) {
+	custom := Target{
+		Name:           "custom",
+		SkillDir:       ".custom/workflows",
+		AgentDir:       ".custom/reviewers",
+		AgentSuffix:    ".agent.md",
+		AgentDialect:   MarkdownAgentDialect,
+		BridgeFile:     "CUSTOM.md",
+		BridgeTemplate: bridgeTID,
+		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
+		Outputs: []TargetOutput{{
+			Path: ".custom/extension.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl",
+			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
+			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
+		}},
+	}
+	if err := custom.validate(); err != nil {
+		t.Fatal(err)
+	}
+	if custom.SkillPath("example", "tdd") != ".custom/workflows/example-tdd/SKILL.md" ||
+		custom.AgentPath("code-reviewer") != ".custom/reviewers/code-reviewer.agent.md" {
+		t.Fatal("custom descriptor paths were not preserved")
+	}
+	if custom.targetTemplateData()["targetSubagentTools"] != true || custom.targetTemplateData()["targetSessionHandoff"] != true {
+		t.Fatal("custom descriptor capabilities were not projected")
+	}
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Targets = []Target{custom}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]AgentDialect{
+		".custom/workflows/example-tdd/SKILL.md":   MarkdownAgentDialect,
+		".custom/reviewers/code-reviewer.agent.md": MarkdownAgentDialect,
+		"CUSTOM.md":            "",
+		".custom/extension.ts": PlainAgentDialect,
+	}
+	counts := map[string]int{}
+	for _, file := range files {
+		if encoder, ok := want[file.Path]; ok {
+			counts[file.Path]++
+			if file.Encoder != encoder {
+				t.Errorf("%s encoder = %q, want %q", file.Path, file.Encoder, encoder)
+			}
+		}
+	}
+	for path := range want {
+		if counts[path] != 1 {
+			t.Errorf("%s rendered %d times, want 1", path, counts[path])
+		}
+	}
+}
+
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestAllTargetPathsAndBridges)
 func TestAllTargetPathsAndBridges(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
@@ -584,9 +646,11 @@ func TestMultiTargetRender(t *testing.T) {
 		t.Fatal(err)
 	}
 	byPath := map[string]string{}
+	pathCounts := map[string]int{}
 	agentsMd, bridges := 0, 0
 	for _, f := range files {
 		byPath[f.Path] = f.Content
+		pathCounts[f.Path]++
 		if f.Path == "AGENTS.md" {
 			agentsMd++
 		}
@@ -602,8 +666,8 @@ func TestMultiTargetRender(t *testing.T) {
 		".pi/agents/code-reviewer.md",
 	} {
 		content := byPath[path]
-		if content == "" {
-			t.Fatalf("missing render %q", path)
+		if content == "" || pathCounts[path] != 1 {
+			t.Fatalf("render %q count = %d, content bytes = %d", path, pathCounts[path], len(content))
 		}
 		if strings.Contains(path, "/agents/") {
 			if err := validateArtifact([]byte(content), MarkdownAgentDialect); err != nil {
