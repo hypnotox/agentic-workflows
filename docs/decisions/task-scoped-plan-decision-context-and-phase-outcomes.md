@@ -77,10 +77,12 @@ mapping. No preparatory package refactor is required.
    `Applying: ["<reference>", ...]` names Decision commitments the task directly implements,
    and `Context: ["<reference>", ...]` names historical or design constraints the task must
    understand but does not implement or mutate. Both values are one-line JSON arrays of unique
-   nonempty strings, following the `Paths:` representation precedent. `Applying` targets must
-   resolve to records in the plan-level `adrs:` set; membership compares resolved records so a
-   number and retained-slug spelling cannot disagree. `Context` may target any resolvable
-   frozen record. A Context assignment never satisfies implementation coverage.
+   nonempty strings, following the `Paths:` representation precedent. An authored array must be
+   nonempty; a task with no assignment omits the field rather than writing `[]`. `Applying`
+   targets must resolve to records in the plan-level `adrs:` set; membership compares resolved
+   records so a number and retained-slug spelling cannot disagree. `Context` may target any
+   resolvable frozen record. A Context assignment never satisfies implementation coverage, and
+   an omitted Applying field is the absence the Proposed-plan coverage note evaluates.
 
 6. Malformed JSON, an invalid or duplicate reference, a missing ADR or item, a selector
    incompatible with the target's format or freeze state, and an Applying target outside the
@@ -99,13 +101,14 @@ mapping. No preparatory package refactor is required.
 8. Each plain bullet in a plan-v2 `## Definition of done` begins with a unique inline
    `` `dod: <slug>` `` marker. Directly after its execution-mode declaration, a phase may carry
    `Advances: ["<dod-slug>", ...]`, `Completes: ["<dod-slug>", ...]`, both in that order, or
-   neither. These are one-line JSON arrays of unique nonempty strings. Any number of phases may
-   advance one outcome; at most one phase may complete it; one phase cannot both advance and
-   complete the same item. Missing DoD items, duplicate completion ownership, and conflicting
-   same-phase assignment are blocking. While Proposed, an item with neither assignment emits
-   a coverage note, while an item that is only advanced emits a distinct note that final
-   completion ownership is missing. Those coverage notes stop at Implemented. A phase is free
-   to own no DoD outcome.
+   neither. These are one-line JSON arrays of unique nonempty strings. An authored array must be
+   nonempty; a phase with no assignment omits that field rather than writing `[]`. Any number
+   of phases may advance one outcome; at most one phase may complete it; one phase cannot both
+   advance and complete the same item. Missing DoD items, duplicate completion ownership, and
+   conflicting same-phase assignment are blocking. While Proposed, an item with neither
+   assignment emits a coverage note, while an item that is only advanced emits a distinct note
+   that final completion ownership is missing. Those coverage notes stop at Implemented. A
+   phase is free to own no DoD outcome.
 
 9. `awf read plan <plan> <P[.T]>` always resolves plan-v2 Decision references; there is no
    opt-in flag. After frontmatter, title, Goal, and Architecture summary, the projection emits
@@ -138,13 +141,15 @@ mapping. No preparatory package refactor is required.
     directly.
 
 13. Authoring and execution surfaces move with the formats: ADR and plan templates, decision
-    and plan READMEs, ADR lifecycle, plan writing, plan review and resync, inline and
-    subagent-driven execution, reviewer contracts, command documentation, current-state claims,
-    generated targets, and the example adopter. The plan reviewer checks assignment substance,
-    detects Context used to evade Applying, and keeps historical context distinct from current
-    authority. Task execution guidance preserves the generated scope notice and phase ownership.
-    All rendered changes originate in `.awf/` sources and remain publication-safe with unset
-    variables.
+    and plan READMEs, the ADR-system domain document, architecture documentation, ADR lifecycle,
+    plan writing, plan review and resync, inline and subagent-driven execution, reviewer
+    contracts, command documentation, current-state claims, generated targets, and the example
+    adopter. Their authored `.awf/` sources change first; `./x render` regenerates every managed
+    output, including `docs/decisions/INDEX.md` in each transaction that changes the ADR's
+    lifecycle status. The plan reviewer checks assignment substance, detects Context used to
+    evade Applying, and keeps historical context distinct from current authority. Task execution
+    guidance preserves the generated scope notice and phase ownership. Every surface remains
+    publication-safe with unset variables.
 
 14. Tests mechanically cover V4 activation and older-format compatibility; pending slug
     numbering; slugged, multiline, and fenced Decision item retention; legacy frozen ordinal
@@ -158,8 +163,13 @@ mapping. No preparatory package refactor is required.
 
 - update `adr-system/adr-lifecycle:intrinsic-format-routing`
 - update `adr-system/adr-lifecycle:adr-amendable-until-terminal`
+- update `adr-system/adr-lifecycle:adr-slug-frontmatter-mandatory`
+- update `adr-system/adr-lifecycle:corrective-reapplication`
 - update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`
+- update `adr-system/adr-lifecycle:applied-history-events-append-only`
+- update `adr-system/adr-lifecycle:corpus-single-identity-key`
 - update `adr-system/adr-lifecycle:decision-items-enumerable`
+- update `adr-system/adr-lifecycle:pending-adr-slug-identity`
 - add `adr-system/adr-lifecycle:decision-item-stable-identity`
 - update `adr-system/plan-artifacts:plan-frontmatter-validated`
 - update `adr-system/plan-artifacts:plans-template-taxonomy`
@@ -203,6 +213,7 @@ boundaries support the work without an enabling refactor.
 | Keep plan-v1 and require executors to open linked ADRs separately | The advertised executable closure would still omit the design source plans intentionally avoid duplicating. |
 | Add `--decisions` to `awf read plan` | Task-scoped references already bound the result, and an opt-in would let the normal execution path silently miss governing commitments. |
 | Include every Decision from every plan-level ADR | It restores context by discarding the bounded task and phase projection that motivated ADR-0213. |
+| Extend `current-state-v3` with Decision slugs | Intrinsic authored formats have frozen parser semantics; schema-activated behavior belongs in a new format with explicit compatibility proofs. |
 | Use new Decision ordinals as durable selectors | Amendments can change positional meaning, and it would revive the anchor semantics ADR-0135 retired. |
 | Retrofit stable slugs into historical ADRs | Frozen historical bytes do not need mutation when their already-fixed ordinals provide adequate navigation. |
 | Encode task references or phase outcomes as nested Markdown lists | It breaks the contiguous field grammar and adds a second representation where one-line JSON string arrays already exist. |
