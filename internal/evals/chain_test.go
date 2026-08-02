@@ -242,9 +242,10 @@ var routineCheckpointSkills = []string{
 	"reviewing-impl", "bugfix", "debugging",
 }
 
-// approvalCheckpointSkills are the two mandatory approval boundaries: the end
-// of brainstorming and the settled ADR review (ADR-0152).
-var approvalCheckpointSkills = []string{"brainstorming", "reviewing-adr"}
+// finalApprovalCheckpointSkills are the two final approval boundaries: the end
+// of brainstorming and the settled ADR review. Brainstorming also carries the
+// distinct mandatory first-creation confirmation boundary.
+var finalApprovalCheckpointSkills = []string{"brainstorming", "reviewing-adr"}
 
 // phaseCheckpointSkills own a whole phase, so each renders exactly one routine
 // checkpoint. Skills that checkpoint per resumable change render more.
@@ -300,7 +301,8 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	routineOrdered := []string{
 		"**Routine checkpoint.**",
 		"minimal simple fix uses no effort",
-		"concrete non-minimal outcome",
+		"reaching a checkpoint never creates one",
+		"already-confirmed immutable slugged effort",
 		"always owns `.awf/efforts/<slug>/memory.md`",
 		"primary-root-relative spelling",
 		"Effort: <slug>",
@@ -466,18 +468,49 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	}
 }
 
-// TestMandatoryApprovalBoundaries asserts the two approval-boundary skills stop
-// for explicit approval, persist it, and only then continue target-natively,
-// and that the approval stop renders nowhere else (ADR-0152).
+// TestMandatoryApprovalBoundaries asserts first-creation confirmation plus the
+// two final approval boundaries, and that final approval renders nowhere else.
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMandatoryApprovalBoundaries)
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestMandatoryApprovalBoundaries)
 func TestMandatoryApprovalBoundaries(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
 	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
+	confirmationOrdered := []string{
+		"**Mandatory first-creation confirmation.**",
+		"Discovery creates no effort",
+		"direct concrete non-minimal request follows the same boundary",
+		"existing effort resumes under its fixed identity",
+		"only while work remains within its confirmed outcome",
+		"`Outcome: <concrete non-minimal outcome>`",
+		"`Effort title: <proposed title>`",
+		"Ask the user to confirm creation",
+		"end the turn without creating an effort",
+		"Only a clear response in a later turn confirms the pair",
+		"`awf effort new \"<confirmed title>\"`",
+		"requested change stays in discovery",
+		"an ambiguous response receives",
+		"creation fails while the pair and its later confirming response remain available",
+		"retry without another confirmation",
+		"context loss or session replacement makes that evidence unavailable",
+		"present and confirm the pair",
+	}
+	for _, targetBody := range []struct {
+		label string
+		body  string
+	}{
+		{"pi/brainstorming", read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-brainstorming", "SKILL.md"))},
+		{"claude/brainstorming", read(t, skillPath(nonPiRoot, "brainstorming"))},
+	} {
+		assertOrderedBody(t, targetBody.label+" first creation", targetBody.body, confirmationOrdered)
+		if confirm, design := strings.Index(targetBody.body, "**Mandatory first-creation confirmation.**"), strings.Index(targetBody.body, "Present the design in sections"); confirm < 0 || design < 0 || confirm > design {
+			t.Errorf("%s does not place first-creation confirmation before detailed design", targetBody.label)
+		}
+	}
+
 	ordered := []string{
 		"**Mandatory approval check-in.**",
-		"concrete non-minimal outcome",
+		"already-confirmed non-minimal outcome",
 		"exactly one immutable slugged effort",
 		"always owns `.awf/efforts/<slug>/memory.md`",
 		"primary-root-relative spelling",
@@ -491,7 +524,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"request approval again",
 		"After explicit approval, persist the approval and next action before continuing",
 	}
-	for _, name := range approvalCheckpointSkills {
+	for _, name := range finalApprovalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
 			"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
@@ -520,11 +553,11 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	}
 	for _, entry := range rendered {
 		name := strings.TrimPrefix(entry.Name(), evalPrefix+"-")
-		if slices.Contains(approvalCheckpointSkills, name) {
+		if slices.Contains(finalApprovalCheckpointSkills, name) {
 			continue
 		}
 		if strings.Contains(read(t, filepath.Join(root, ".pi", "skills", entry.Name(), "SKILL.md")), "explicitly request approval") {
-			t.Errorf("skill %q renders an approval stop outside the two mandatory boundaries", name)
+			t.Errorf("skill %q renders a final approval stop outside the two final approval boundaries", name)
 		}
 	}
 }

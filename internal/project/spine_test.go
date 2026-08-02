@@ -817,8 +817,9 @@ func TestCheckpointDigestShape(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", partial, err)
 		}
+		body := string(raw)
 		steps := 0
-		for _, line := range strings.Split(string(raw), "\n") {
+		for _, line := range strings.Split(body, "\n") {
 			trimmed := strings.TrimSpace(line)
 			if len(trimmed) > 1 && trimmed[0] >= '1' && trimmed[0] <= '9' && strings.HasPrefix(trimmed[1:], ". ") {
 				steps++
@@ -826,6 +827,22 @@ func TestCheckpointDigestShape(t *testing.T) {
 		}
 		if steps != 4 {
 			t.Errorf("%s renders %d numbered steps, want the four-step digest", partial, steps)
+		}
+		if strings.Contains(body, "awf effort new") {
+			t.Errorf("%s creates missing effort ownership", partial)
+		}
+	}
+	confirmation, err := fs.ReadFile(templates.FS, "partials/outcome-confirmation.md")
+	if err != nil {
+		t.Fatalf("read outcome confirmation partial: %v", err)
+	}
+	body := string(confirmation)
+	if strings.Count(body, "**Mandatory first-creation confirmation.**") != 1 {
+		t.Error("outcome confirmation partial must carry exactly one boundary header")
+	}
+	for _, want := range []string{"`Outcome: <concrete non-minimal outcome>`", "`Effort title: <proposed title>`", "clear response in a later turn", "awf effort new \"<confirmed title>\""} {
+		if !strings.Contains(body, want) {
+			t.Errorf("outcome confirmation partial missing %q", want)
 		}
 	}
 }
@@ -1625,6 +1642,30 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	for _, worktreeDefault := range []string{"managed worktree is the default execution location", "`--no-worktree` is the explicit exception", "stays under the primary checkout"} {
 		if !strings.Contains(guide, worktreeDefault) {
 			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
+		}
+	}
+	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(workflow, want) {
+			t.Errorf("workflow confirmation contract missing %q", want)
+		}
+	}
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("guide confirmation route missing %q", want)
+		}
+	}
+	for label, body := range map[string]string{"routine": routine, "approval": approval} {
+		boundary := "**Routine checkpoint.**"
+		if label == "approval" {
+			boundary = "**Mandatory approval check-in.**"
+		}
+		start := strings.Index(body, boundary)
+		if start < 0 {
+			t.Errorf("%s checkpoint missing boundary %q", label, boundary)
+			continue
+		}
+		if strings.Contains(body[start:], "awf effort new") {
+			t.Errorf("%s checkpoint creates missing ownership", label)
 		}
 	}
 	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {

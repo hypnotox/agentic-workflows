@@ -123,6 +123,60 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 }
 
+func TestSundialConfirmedEffortBoundary(t *testing.T) {
+	readExample := func(path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join("../../examples/sundial", path))
+		if err != nil {
+			t.Fatalf("read sundial %s: %v", path, err)
+		}
+		return string(raw)
+	}
+	assertOrdered := func(label, body string, wants ...string) {
+		t.Helper()
+		position := 0
+		for _, want := range wants {
+			next := strings.Index(body[position:], want)
+			if next < 0 {
+				t.Errorf("%s missing ordered phrase %q", label, want)
+				return
+			}
+			position += next + len(want)
+		}
+	}
+	for _, target := range []string{".pi", ".claude"} {
+		brainstorming := readExample(filepath.Join(target, "skills", "sundial-brainstorming", "SKILL.md"))
+		assertOrdered(target+" brainstorming", brainstorming,
+			"**Mandatory first-creation confirmation.**",
+			"`Outcome: <concrete non-minimal outcome>`",
+			"`Effort title: <proposed title>`",
+			"Ask the user to confirm creation",
+			"end the turn without creating an effort",
+			"clear response in a later turn",
+			"awf effort new \"<confirmed title>\"",
+			"Present the design in sections",
+		)
+		approvalStart := strings.Index(brainstorming, "**Mandatory approval check-in.**")
+		if approvalStart < 0 {
+			t.Errorf("%s brainstorming lost final approval checkpoint", target)
+		} else if strings.Contains(brainstorming[approvalStart:], "awf effort new") {
+			t.Errorf("%s final approval checkpoint creates missing ownership", target)
+		}
+	}
+	workflow := readExample("docs/workflow.md")
+	for _, want := range []string{"Discovery creates no effort", "existing effort resumes under its fixed identity", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(workflow, want) {
+			t.Errorf("sundial workflow missing %q", want)
+		}
+	}
+	guide := readExample("AGENTS.md")
+	for _, want := range []string{"proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("sundial guide missing %q", want)
+		}
+	}
+}
+
 // ADR-0198: the Pi-extension gate lane runs the extension suite inside a
 // content-fingerprinted ephemeral Docker environment, so a contributor needs no
 // host Node or npm, and it keeps an explicit reset cleanup command. Every
