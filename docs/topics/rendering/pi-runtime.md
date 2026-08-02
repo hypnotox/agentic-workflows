@@ -44,10 +44,9 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-Generated Pi extension entrypoints require the minimum Pi runtime APIs used by retained subagent and handoff contracts, report one actionable incompatibility notice, and fail before registering functional hooks when required APIs are absent. The `using_effort` companion has no foreign package-version floor: it structurally detects command-context `changeCwd` immediately before a queued switch, visibly refuses with CWD, activity, and memory unchanged when absent, and treats the optional Remote Pi event interface as advisory; without it, local association, switching, heartbeat, and detach remain available.
-Every generated Pi extension entrypoint requires the minimum Pi runtime APIs used by its retained contract, reports the shared single actionable incompatibility notice, and fails before registering functional hooks when required APIs are absent. Supported context-usage, handoff, and subagent operation emits no compatibility, pressure, or handoff warning.
+Generated Pi extension entrypoints require the minimum Pi runtime APIs used by retained subagent and handoff contracts, report one actionable incompatibility notice, and fail before registering functional hooks when required APIs are absent. The `using_effort` companion has no foreign package-version floor: it structurally detects command-context `changeCwd` immediately before a queued switch, visibly refuses with CWD, activity, and memory unchanged when absent, and treats the optional Remote Pi event interface as advisory; without it, local association, switching, heartbeat, and detach remain available. Supported context-usage, handoff, and subagent operation emits no compatibility, pressure, or handoff warning.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context, ADR-correct-pi-handoff-and-checkpoint-authority
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`

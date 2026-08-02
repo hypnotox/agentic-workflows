@@ -849,6 +849,28 @@ func TestCheckpointDigestShape(t *testing.T) {
 		if steps != 4 {
 			t.Errorf("%s renders %d numbered steps, want the four-step digest", partial, steps)
 		}
+		body := string(raw)
+		if got := strings.Count(body, "./awf effort memory update"); got != 1 {
+			t.Errorf("%s has %d structured memory updates, want exactly one", partial, got)
+		}
+		for _, phrase := range []string{
+			"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+			"canonical form is YAML",
+			"legacy form is deprecated",
+			"until active efforts finish",
+			"sole writer of phase, next action, and time",
+			"executable `awf read plan` projection never creates a checkpoint or handoff boundary",
+			"## Handoff log",
+		} {
+			if !strings.Contains(body, phrase) {
+				t.Errorf("%s missing checkpoint contract %q", partial, phrase)
+			}
+		}
+		for _, direct := range []string{"set `Phase:`", "set `Next:`", "refresh `Updated:`"} {
+			if strings.Contains(body, direct) {
+				t.Errorf("%s directly edits checkpoint metadata with %q", partial, direct)
+			}
+		}
 	}
 }
 

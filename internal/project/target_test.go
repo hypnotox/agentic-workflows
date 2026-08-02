@@ -821,7 +821,7 @@ func TestPiRoleContractLoader(t *testing.T) {
 
 func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined", "hasMatchingMemoryIdentity", "Effort: ${slug}", "canonicalEffortScalar"} {
+	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "if(pending!==request)", "pending=undefined"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff lifecycle output missing %q", want)
 		}
@@ -831,19 +831,9 @@ func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"handoff counts down, cancels, cleans pending, and links parent before setup kickoff",
-		"handoff accepts only bounded dual-format memory identities",
-		"Effort: work\\ncheckpoint\\n",
-		"effort: work\\nphase: [deliberately invalid",
-		"effort: 'work'",
-		"Effort: work\\r\\ncheckpoint",
-		`["1e3","---\neffort: 1e3\n---\n"]`,
-		`["2026-08-02","---\neffort: '2026-08-02'\n---\n"]`,
-		`["0b10","---\neffort: 0b10\n---\n"]`,
-		`["0o77","---\neffort: 0o77\n---\n"]`,
-		`["0b2","---\neffort: 0b2\n---\n"]`,
-		`["0babc","---\neffort: 0babc\n---\n"]`,
-		`["0o89","---\neffort: 0o89\n---\n"]`,
+		"handoff rejects a continuation whose pending request changes during countdown",
+		"wrong continuation token preserves the valid pending request",
+		"handoff preserves lineage and does not silently retry",
 	} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("TypeScript lifecycle behavior contract missing %q", want)
@@ -851,9 +841,9 @@ func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	}
 }
 
-func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
+func TestHandoffPublicKickoffContract(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", ".awf/efforts/", "/memory.md", "1048576", "TextDecoder", "sameIdentity", "Effort: ${slug}", "canonicalEffortScalar", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
+	for _, want := range []string{"kickoff:Type.String({maxLength:1000})", "params.kickoff.length>1000", "remote-pi:notification-disposition.v1", "additionalProperties:false"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff public contract missing %q", want)
 		}
@@ -863,24 +853,16 @@ func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"handoff accepts only bounded dual-format memory identities",
-		"effort: work\\n---\\n",
-		"effort: work\\neffort: work",
-		"effort: 123", "effort: true", "effort: [work]", "effort: other",
-		`["1e3","---\neffort: 1e3\n---\n"]`,
-		`["2026-08-02","---\neffort: 2026-08-02\n---\n"]`,
-		`["1e3","---\neffort: \"1e3\"\n---\n"]`,
-		`["0b10","---\neffort: 0b10\n---\n"]`,
-		`["0o77","---\neffort: 0o77\n---\n"]`,
-		`["0b2","---\neffort: 0b2\n---\n"]`,
-		`["0babc","---\neffort: 0babc\n---\n"]`,
-		`["0o89","---\neffort: 0o89\n---\n"]`,
+		"handoff schema exposes only required bounded kickoff prose",
+		`"😀".repeat(500)`,
+		`"😀".repeat(501)`,
+		"handoff marks a successfully queued continuation as non-terminal",
 	} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("TypeScript public-contract behavior case missing %q", want)
 		}
 	}
-	for _, banned := range []string{"runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
+	for _, banned := range []string{"memoryPath", "validateMemoryPath", "runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
 		if strings.Contains(out, banned) {
 			t.Errorf("handoff public contract retains %q", banned)
 		}

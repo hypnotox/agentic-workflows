@@ -4,10 +4,9 @@ Pi workflow contracts: governed subagent tools, session handoff, native skills, 
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-Pi handoff retains its single-use queue, countdown, cancellation, parent link, kickoff, child cleanup, editor fallback, and post-countdown revalidation. When supplied, memory must be the stable, current-owned, singly-linked, bounded valid-UTF-8 regular file at `.awf/efforts/<slug>/memory.md` with matching exact legacy `Effort: <slug>` identity or canonical frontmatter `effort: <slug>` identity and confined repository identity. Handoff validates identity only: it never validates mutable memory metadata, parses state/activity, selects or assigns an effort, invokes awf, or mutates memory.
-Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. Post-countdown revalidation covers only the pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
+Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. Post-countdown revalidation covers the matching pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context, ADR-correct-pi-handoff-and-checkpoint-authority
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -30,10 +29,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-Pi handoff accepts an optional exact repository-relative `.awf/efforts/<slug>/memory.md` path, or an absolute spelling that normalizes to it, plus a bounded kickoff; absent memory remains valid. Primary-control-root resolution and existing lexical/no-follow, ownership, hard-link, 1 MiB, fatal UTF-8, stable-identity, and repository-identity checks remain unchanged for primary and managed worktrees. Identity accepts exactly the legacy first line or canonical closed-frontmatter `effort` scalar matching the path slug while ignoring Phase/Next/Updated validity; malformed, duplicate, non-scalar, or mismatched identity refuses. Handoff never selects/assigns an effort, invokes awf, adopts checkpoints, or fabricates history.
 Pi handoff exposes exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and otherwise carries the prose unchanged into the replacement session, automatic submission, editor fallback, and recovery path. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context, ADR-correct-pi-handoff-and-checkpoint-authority
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`

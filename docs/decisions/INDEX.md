@@ -222,3 +222,4 @@ _No decisions are in flight._
 - [ADR-0215: Test-support exports earn test consumers](0215-test-support-exports-earn-test-consumers.md) (Implemented)
 - [ADR-0216: Consumer-local contracts over single-home filesystem access](0216-consumer-local-contracts-over-single-home-filesystem-access.md) (Implemented)
 - [ADR-associate-pi-sessions-with-efforts-and-live-checkout-context: Associate Pi sessions with efforts and live checkout context](associate-pi-sessions-with-efforts-and-live-checkout-context.md) (Implemented)
+- [ADR-correct-pi-handoff-and-checkpoint-authority: Correct Pi handoff and checkpoint authority](correct-pi-handoff-and-checkpoint-authority.md) (Implemented)
