@@ -186,9 +186,15 @@ the append-only column records what the commands were called when those decision
    `Project.CurrentStateInvariants`, and `InvariantReport`, whose only production caller it is.
    The false descriptions at `README.md:185` and `README.md:278` are removed rather than corrected,
    `templates/docs/working-with-awf.md.tmpl:34` drops the line it ships to every adopter,
-   `.awf/domains/parts/invariants/current-state.md:9` drops the sentence describing "the standalone
-   `awf check invariants` report", and `x:99` drops the invocation it runs inside `examples/sundial`,
+   `.awf/domains/parts/invariants/current-state.md:9` drops the sentence describing the standalone
+   `awf check invariants` report, and `x:99` drops the invocation it runs inside `examples/sundial`,
    which is the line the `tooling/quality-gates:example-adopter-checked` update removes.
+
+   The removal also updates `invariants/current-state-authority:invariants-zero-slugs-clean`. Its
+   current wording names the deleted invariant report and its only proof calls the deleted
+   `CurrentStateInvariants` API. The surviving contract is that a project declaring no invariant
+   claims loads successfully and `awf check repo state` reports no backing findings or error; the
+   update states that contract directly and moves its proof to the current-state check path.
 
 7. A disabled opt-in child prints a note stating it is disabled and naming the knob that disables it.
    Silence is not an acceptable report of a check that did not run.
@@ -316,6 +322,7 @@ the append-only column records what the commands were called when those decision
 - update `code-design/dependency-composition:dependency-composition-commit-classification`
 - update `tooling/quality-gates:prose-gate-refuses-without-git`
 - add `rendering/sync-and-drift:staged-drift-rendered-output`
+- update `invariants/current-state-authority:invariants-zero-slugs-clean`
 - update `tooling/quality-gates:example-adopter-checked`
 - add `tooling/cli:check-disabled-child-disclosure`
 
@@ -378,3 +385,4 @@ prevent.
 - 2026-08-01: Applied; operations: update `tooling/cli:gated-commands-generated`, remove `tooling/cli:group-child-gating-honored`
 - 2026-08-01: Applied; operations: update `tooling/cli:group-child-project-guard-exemption`, update `tooling/cli:help-lists-group-children`, update `tooling/cli:invariants-in-check`, add `tooling/cli:check-universe-groups`, update `rendering/catalog-and-targets:var-descriptor-set-pinned`, update `config/validation:hooks-commands-resolvable`, update `rendering/companion-scripts:hook-payloads-fallback-safe`, update `tooling/quality-gates:memory-citation-gate`, update `tooling/audit-and-snapshots:commit-gate-shared-rule`, update `code-design/dependency-composition:dependency-composition-commit-classification`, update `tooling/quality-gates:prose-gate-refuses-without-git`
 - 2026-08-01: Applied; operations: add `rendering/sync-and-drift:staged-drift-rendered-output`
+- 2026-08-02: Amended; content-sha256: 5d8c1f16c64ddaec7436dda0c6ef579b0fb8c297e844d9d4c470626a8657e248
