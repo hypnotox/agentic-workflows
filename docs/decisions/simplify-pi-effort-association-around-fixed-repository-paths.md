@@ -62,13 +62,15 @@ not rewritten.
    facts, prior checkout facts, the `ready`, `checkout-updated`, and `repository-mismatch`
    conditions, and the CWD mutation axis. A protocol-v2 activity fact contains exactly
    `schemaVersion: 2`, owner, `attachedAt`, and `heartbeatAt`. A protocol-v2 reply carries
-   `schemaVersion: 2`, a stable condition, and only the applicable effort, validated memory,
-   activity, or outcome facts. Handled conditions are `attached`, `taken-over`, `heartbeat`,
-   `detached`, `not-owner`, `missing`, `invalid-memory`, and `unsafe-resident`. A refusal outcome
-   carries its matching condition, `changedActivity`, `changedMemory`, ordered executable next
-   actions, and a cause exactly when a mechanism call failed. Malformed invocation and failures
-   that observe no managed state retain the existing nonzero, empty-stdout, bounded-stderr CLI
-   convention.
+   `schemaVersion: 2`, a stable condition, and an exact condition-specific fact set. `attached`,
+   `taken-over`, and `heartbeat` require effort, validated memory, and activity facts and forbid an
+   outcome. `detached` carries no effort, memory, activity, or outcome fact. Each refusal condition
+   requires exactly one outcome and forbids effort, memory, and activity facts. Handled refusal
+   conditions are `not-owner`, `missing`, `invalid-memory`, and `unsafe-resident`; no reply field is
+   optional except the outcome cause described below. A refusal outcome carries its matching
+   condition, `changedActivity`, `changedMemory`, ordered executable next actions, and a cause
+   exactly when a mechanism call failed. Malformed invocation and failures that observe no managed
+   state retain the existing nonzero, empty-stdout, bounded-stderr CLI convention.
 
 3. `decision: recovery-attachment` Make explicit protocol-v2 attach the recovery boundary for
    advisory activity. Under the per-effort activity lock, attach reads only the bounded regular
@@ -123,9 +125,12 @@ not rewritten.
    outcomes. Command code owns the three-operation grammar and JSON transport. The generated
    client strictly decodes v2 and invokes `./awf`; it does not write residents. The generated Pi
    extension owns process-local association, direct directory presence, transient context, and
-   optional Remote Pi translation. The workflow and companion skill state that Pi starts at the
-   repository root and uses the supplied fixed paths. They do not infer an effort, inspect Git
-   topology, or validate unsupported checkout layouts.
+   optional Remote Pi translation. The target-neutral effort workflow continues to direct runtimes
+   without native association context into the exact managed worktree, while permitting a runtime
+   that supplies explicit effort paths to remain at the repository root and target that worktree
+   by path. It names no Pi-only tool. The Pi companion states that Pi starts at the repository root
+   and uses the supplied fixed paths. Neither layer infers an effort, inspects Git topology, or
+   validates unsupported checkout layouts.
 
 9. `decision: compatibility-and-verification` Keep on-disk v1 compatibility one-way and bounded:
    new attach recovers by replacing a safe v1 file, while older binaries need not understand a v2
@@ -136,7 +141,13 @@ not rewritten.
    attachment, owner/race/safe-file behavior, direct non-terminating Pi state machine, cancellation,
    fixed relative transient context with optional worktree presence, restart and heartbeat
    behavior, absence of queued/CWD/TUI machinery, retained Remote Pi metadata/name replay, target
-   render/prune behavior, strict TypeScript coverage, and the complete repository gate.
+   render/prune behavior, strict TypeScript coverage, and the complete repository gate. Render
+   tests exercise every changed template with empty optional values and require coherent generic
+   output with no `<no value>` or other unresolved-value token. The direct Implemented transaction
+   updates every behavior-stating authoring artifact, `AGENTS.md`, all declared claims with
+   preserved provenance, adopter-facing changelog text, and generated outputs in the same commit;
+   `./x render` regenerates `docs/decisions/INDEX.md` and the lock before that transaction is
+   staged.
 
 ## State changes
 
@@ -146,6 +157,8 @@ not rewritten.
 - update `rendering/pi-runtime:pi-minimum-runtime`
 - update `rendering/pi-workflows:pi-effort-session-association`
 - update `rendering/pi-workflows:using-effort-skill`
+- update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`
+- update `rendering/workflow-skill-templates:effort-workflow`
 
 ## Consequences
 
@@ -175,8 +188,9 @@ binaries may reject v2 activity; downgrade compatibility was already outside the
 contract, while a new binary can recover directly from v1 without a repository migration.
 
 The implementation is cross-cutting despite deleting complexity. A forward ADR is necessary
-because six implemented current-state claims change, and a reviewed plan is necessary to sequence
-the protocol, generated runtime, claims, documentation, rendering, and coverage transactions.
+because eight implemented current-state claims change, and a reviewed plan is necessary to sequence
+the protocol, generated runtime, claims, documentation, rendering, and coverage work within the
+single application transaction.
 
 ## Alternatives Considered
 
