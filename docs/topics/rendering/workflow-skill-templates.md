@@ -34,14 +34,14 @@ Backing: test
 
 The rendered brainstorming skill carries mandatory first-creation confirmation before detailed design: it presents labeled `Outcome:` and `Effort title:` fields, asks the user to confirm creation, ends the turn without mutation, and permits first creation only after a clear response in a later turn. Brainstorming also closes with final grounded-design approval, and ADR review closes with settled-ADR approval; each final approval persists memory, presents the completed summary, explicitly requests approval, and stops. Continuation and handoff begin only after the applicable later response is persisted when an effort exists. No other chain skill renders a final approval stop, and no checkpoint creates missing ownership.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-require-confirmed-outcomes-before-effort-creation
+Revised-by: ADR-0160, ADR-0167, ADR-0222
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
 Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix, merely because a boundary was reached, or because work was classified non-minimal. For non-minimal work it validates exactly one already-confirmed immutable slug and `.awf/efforts/<slug>/memory.md`; missing ownership routes back to mandatory first-creation confirmation. It confirms canonical YAML `effort: <slug>` or deprecated legacy `Effort: <slug>` identity (legacy remains only until active efforts finish), carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, and runs exactly one structured `awf effort memory update` as the sole writer of phase, next action, and time while separately appending unrecorded settled decisions and observations. It appends a handoff-log entry only after a fresh-session boundary actually exists. Routine implementation checkpoints remain after the phase-closing commit and settled report-only review, never after heading-identified tasks or helper returns; an executable `awf read plan` projection does not create a checkpoint or handoff boundary; an additional checkpoint is permitted at any safe point whose next action is independently resumable, and every checkpoint points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-require-confirmed-outcomes-before-effort-creation
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`

@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -22,9 +21,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
-
-// currentStateTransitionRule names the range transition check in audit output.
-const currentStateTransitionRule = "current-state-transition"
 
 // CurrentStateReport is the routed outcome of a current-state check over one
 // snapshot: the static ADR-to-claim handshake findings (all blocking), staged
@@ -482,73 +478,6 @@ func (r configSnapshotReader) Paths(prefix string) []string {
 		}
 	}
 	return out
-}
-
-// auditTransitions runs the snapshot-diff transition check over every commit in
-// the range (ADR-0135), pairing each commit's tree with its first-parent tree so
-// a root commit uses the empty before universe and a merge follows its first
-// parent, integrating a branch's net change at the merge. It is advisory like
-// the rest of the audit: a pair whose universes cannot load is a warning rather
-// than a hard stop, and a genuine transition violation is an error. Each side
-// derives format boundaries from its own committed lock.
-func (p *Project) auditTransitions(ctx context.Context, base, head string) ([]audit.Finding, error) {
-	repo, err := p.gitRepo()
-	if err != nil {
-		return nil, err
-	}
-	commits, err := repo.RangeCommits(ctx, base, head)
-	if err != nil {
-		return nil, err
-	}
-	var out []audit.Finding
-	for _, c := range commits {
-		before, after, err := p.rangePairUniverses(ctx, c.Hash)
-		if err != nil {
-			out = append(out, audit.Finding{Severity: severity.Warn, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject,
-				Detail: "could not load the current-state universes for this commit: " + err.Error()})
-			continue
-		}
-		mode := currentstate.AuthoredCommit
-		if c.IsMerge {
-			mode = currentstate.MergeAggregate
-		}
-		for _, f := range currentstate.CheckPair(before, after, mode) {
-			out = append(out, audit.Finding{Severity: severity.Error, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject, Detail: f.Message})
-		}
-	}
-	return out, nil
-}
-
-// rangePairUniverses loads the before (first-parent) and after (commit)
-// current-state universes for the transition into rev. A tree carrying no awf
-// config yields the empty universe, so a pre-adoption or root pair produces no
-// findings rather than an error.
-func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, after currentstate.Universe, err error) {
-	repo, err := p.gitRepo()
-	if err != nil { // coverage-ignore: the audit range walk that reached here already required the same handle
-		return currentstate.Universe{}, currentstate.Universe{}, err
-	}
-	beforeTree, afterTree, err := snapshot.RangePair(ctx, repo, rev)
-	if err != nil {
-		return currentstate.Universe{}, currentstate.Universe{}, err
-	}
-	beforeLock, _, err := optionalLockFromTree(beforeTree)
-	if err != nil {
-		return currentstate.Universe{}, currentstate.Universe{}, err
-	}
-	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock)
-	if err != nil {
-		return currentstate.Universe{}, currentstate.Universe{}, err
-	}
-	afterLock, _, err := optionalLockFromTree(afterTree)
-	if err != nil {
-		return currentstate.Universe{}, currentstate.Universe{}, err
-	}
-	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock)
-	if err != nil {
-		return currentstate.Universe{}, currentstate.Universe{}, err
-	}
-	return beforeLoaded.Universe(), afterLoaded.Universe(), nil
 }
 
 // coveragePolicy reads only the fan-out budget from a currentState config block.

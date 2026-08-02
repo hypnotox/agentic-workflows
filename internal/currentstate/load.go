@@ -1,6 +1,7 @@
 package currentstate
 
 import (
+	"path"
 	"slices"
 	"strings"
 
@@ -34,11 +35,7 @@ type Loaded struct {
 // single-universe load. It does not run Check or EvaluateCoverage; the command
 // layer applies eligibility filters and routes findings.
 func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
-	records, sources, err := adrsFromTree(tree, cfg.DocsDir)
-	if err != nil {
-		return Loaded{}, err
-	}
-	corpus, err := adr.NewCorpus(records)
+	records, sources, corpus, err := authorityFromTree(tree, cfg)
 	if err != nil {
 		return Loaded{}, err
 	}
@@ -49,16 +46,50 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config) (Loaded, error) {
 	return Loaded{ADRs: records, Sources: sources, Corpus: corpus, Topics: topics}, nil
 }
 
-// adrsFromTree parses every top-level ADR decision file in the snapshot with the
-// intrinsic router. adr.NewCorpus subsequently enforces corpus-level identity
-// uniqueness that a per-file parse cannot see. Per-file legacy and governed
-// routing is enforced by adr.ParseRecord, which also rejects a non-reserved file
-// that is neither form.
-func adrsFromTree(tree *snapshot.Tree, docsDir string) ([]adr.ADR, map[string][]byte, error) {
-	prefix := docsDir + "/decisions/"
+// LoadUniverseFromSelection assembles historical policy authority from a sparse
+// selection. It does not materialize that selection as a Tree.
+func LoadUniverseFromSelection(selection *snapshot.Selection, cfg *config.Config) (Universe, error) {
+	return loadUniverseFromFiles(selection.List(), cfg)
+}
+
+func loadUniverseFromFiles(files []snapshot.File, cfg *config.Config) (Universe, error) {
+	records, sources, corpus, err := authorityFromFiles(files, cfg)
+	if err != nil {
+		return Universe{}, err
+	}
+	topics, err := topic.LoadAuthorityCorpusFromFiles(files, cfg, corpus)
+	if err != nil {
+		return Universe{}, err
+	}
+	return Universe{ADRs: records, Sources: sources, Topics: topics.All()}, nil
+}
+
+func authorityFromTree(tree *snapshot.Tree, cfg *config.Config) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
+	return authorityFromFiles(tree.List(), cfg)
+}
+
+func authorityFromFiles(files []snapshot.File, cfg *config.Config) ([]adr.ADR, map[string][]byte, adr.Corpus, error) {
+	records, sources, err := adrsFromFiles(files, cfg.DocsDir)
+	if err != nil {
+		return nil, nil, adr.Corpus{}, err
+	}
+	corpus, err := adr.NewCorpus(records)
+	if err != nil {
+		return nil, nil, adr.Corpus{}, err
+	}
+	return records, sources, corpus, nil
+}
+
+// adrsFromFiles parses every top-level ADR decision file in the supplied files
+// with the intrinsic router. adr.NewCorpus subsequently enforces corpus-level
+// identity uniqueness that a per-file parse cannot see. Per-file legacy and
+// governed routing is enforced by adr.ParseRecord, which also rejects a
+// non-reserved file that is neither form.
+func adrsFromFiles(files []snapshot.File, docsDir string) ([]adr.ADR, map[string][]byte, error) {
+	prefix := path.Join(docsDir, "decisions") + "/"
 	var records []adr.ADR
 	sources := map[string][]byte{}
-	for _, f := range tree.List() {
+	for _, f := range files {
 		if !f.Scannable() {
 			continue
 		}

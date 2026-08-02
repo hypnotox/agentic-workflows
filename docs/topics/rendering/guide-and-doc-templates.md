@@ -88,7 +88,7 @@ Backing: test
 
 Working-memory guidance has one canonical workflow-doc home. Discovery creates no effort; before first creation for a concrete non-minimal outcome, the agent presents a labeled outcome and proposed effort title, stops without mutation, and waits for a clear later user response. A minimal simple fix uses no effort. An existing effort resumes under its fixed identity and existing validation rules without title reconfirmation only for work inside its confirmed outcome; a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active effort. A confirmed outcome creates exactly one immutable slugged effort that always owns `.awf/efforts/<slug>/memory.md`. Guides carry confirmation routing, slug/path, repository-authority, one-user-managed-writer, the worktree-default execution location, conditional worktree integration/removal, retrospective, and finish routing without duplicating the detailed skeleton; standalone memory and concrete durable-record citations are forbidden, and children never become a second memory writer. Resume verification is procedurally homed in the orienting skill's resume-revalidation section; the workflow doc keeps the memory and confirmation contract and routes to it.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-require-confirmed-outcomes-before-effort-creation
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222
 Backing: test
 
 ### `invariant: maintainable-code-design-guide`

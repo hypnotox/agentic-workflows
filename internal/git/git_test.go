@@ -15,6 +15,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	indexformat "github.com/go-git/go-git/v5/plumbing/format/index"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -29,14 +30,20 @@ func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(testsupport.Context(t))
 	cancel()
 	for name, call := range map[string]func() error{
-		"changed":  func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
-		"head":     func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
-		"hash":     func() error { _, err := gitRepo(t, dir).HeadHash(ctx); return err },
-		"branches": func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
-		"working":  func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
-		"index":    func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
-		"commit":   func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
-		"range":    func() error { _, _, err := gitRepo(t, dir).RangeBlobs(ctx, "HEAD"); return err },
+		"changed":        func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
+		"head":           func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
+		"hash":           func() error { _, err := gitRepo(t, dir).HeadHash(ctx); return err },
+		"branches":       func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
+		"working":        func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
+		"index":          func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
+		"commit":         func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
+		"commit entries": func() error { _, err := gitRepo(t, dir).CommitEntries(ctx, "HEAD"); return err },
+		"commit selected blobs": func() error {
+			_, err := gitRepo(t, dir).CommitBlobsAt(ctx, "HEAD", []string{"tracked.txt"})
+			return err
+		},
+		"range":        func() error { _, _, err := gitRepo(t, dir).RangeBlobs(ctx, "HEAD"); return err },
+		"first-parent": func() error { _, err := gitRepo(t, dir).FirstParentChangedPaths(ctx, "HEAD"); return err },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := call(); !errors.Is(err, context.Canceled) {
@@ -62,7 +69,7 @@ func (c *cancelOnErrCall) Err() error {
 func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 	fixture := gitfixture.InitRepo(t)
 	dir := fixture.Root()
-	gitfixture.Commit(t, fixture, "base", map[string]string{"tracked.txt": "base"})
+	gitfixture.Commit(t, fixture, "base", map[string]string{"also.txt": "also", "tracked.txt": "base"})
 	gitfixture.Commit(t, fixture, "changed", map[string]string{"tracked.txt": "changed"})
 	gitfixture.Stage(t, fixture, map[string]string{"staged.txt": "staged"})
 	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("untracked"), 0o644); err != nil {
@@ -93,7 +100,7 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 		_, err := repo.WorkingPaths(ctx)
 		return err
 	})
-	assertCanceled("working status", 3, func(ctx context.Context) error {
+	assertCanceled("working status", 4, func(ctx context.Context) error {
 		_, err := repo.WorkingPaths(ctx)
 		return err
 	})
@@ -103,6 +110,40 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 	})
 	assertCanceled("commit blobs", 2, func(ctx context.Context) error {
 		_, err := repo.CommitBlobs(ctx, "HEAD")
+		return err
+	})
+	assertCanceled("first-parent paths", 2, func(ctx context.Context) error {
+		_, err := repo.FirstParentChangedPaths(ctx, "HEAD")
+		return err
+	})
+	assertCanceled("first-parent diff paths", 6, func(ctx context.Context) error {
+		_, err := repo.FirstParentChangedPaths(ctx, "HEAD")
+		return err
+	})
+	assertCanceled("commit entries", 2, func(ctx context.Context) error {
+		_, err := repo.CommitEntries(ctx, "HEAD")
+		return err
+	})
+	assertCanceled("selected commit blobs", 5, func(ctx context.Context) error {
+		_, err := repo.CommitBlobsAt(ctx, "HEAD", []string{"also.txt", "tracked.txt"})
+		return err
+	})
+	assertCanceled("selected commit blob validation", 2, func(ctx context.Context) error {
+		_, err := repo.CommitBlobsAt(ctx, "HEAD", []string{"tracked.txt"})
+		return err
+	})
+
+	nestedFixture := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, nestedFixture, "base", map[string]string{"nested/inside.txt": "inside", "root.txt": "root"})
+	gitfixture.Commit(t, nestedFixture, "head", map[string]string{"root.txt": "changed"})
+	nestedRepo := gitRepo(t, nestedFixture.Root())
+	assertCanceled("first-parent recursive paths", 3, func(ctx context.Context) error {
+		_, err := nestedRepo.FirstParentChangedPaths(ctx, "HEAD")
+		return err
+	})
+	nestedHandle := gitRepo(t, filepath.Join(nestedFixture.Root(), "nested"))
+	assertCanceled("commit entries nested prefix", 2, func(ctx context.Context) error {
+		_, err := nestedHandle.CommitEntries(ctx, "HEAD")
 		return err
 	})
 }
@@ -780,6 +821,37 @@ func TestObjectReadContracts(t *testing.T) {
 	if base == head {
 		t.Fatal("fixture transition did not create a new commit")
 	}
+	rootBefore, rootAfter, err := handle.RangeBlobs(testsupport.Context(t), base)
+	if err != nil || len(rootBefore) != 0 || len(rootAfter) != 2 {
+		t.Fatalf("root range blobs = before %#v after %#v, err=%v", rootBefore, rootAfter, err)
+	}
+	if _, _, err := handle.RangeBlobs(testsupport.Context(t), "missing"); err == nil {
+		t.Fatal("missing range revision succeeded")
+	}
+	backend, err := gogit.PlainOpen(repo.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseCommit, err := backend.CommitObject(plumbing.NewHash(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseTree, err := baseCommit.Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := baseTree.File("old.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := handle.RangeBlobs(testsupport.Context(t), blob.Hash.String()); err == nil {
+		t.Fatal("resolvable blob accepted as a range revision")
+	}
+	merge := gitfixture.Graft(t, repo, "merge", base, head, base)
+	mergeBefore, mergeAfter, err := handle.RangeBlobs(testsupport.Context(t), merge)
+	if err != nil || len(mergeBefore) != 1 || mergeBefore[0].Path != "renamed.txt" || len(mergeAfter) != 2 || mergeAfter[0].Path != "gone.txt" {
+		t.Fatalf("merge range blobs = before %#v after %#v, err=%v", mergeBefore, mergeAfter, err)
+	}
 }
 
 func TestCommitEvidenceReads(t *testing.T) {
@@ -833,6 +905,291 @@ func TestCommitEvidenceReads(t *testing.T) {
 	}
 	if _, err := handle.CommitMessage(canceled, head); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled CommitMessage = %v", err)
+	}
+}
+
+// invariant: tooling/audit-and-snapshots:sparse-snapshot-explicit-selection (TestCommitEntriesAndBlobsAtContracts)
+func TestCommitEntriesAndBlobsAtContracts(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.StageFile(t, repo, "nested/regular.txt", "regular bytes\n", 0o644)
+	gitfixture.StageFile(t, repo, "nested/executable.sh", "executable bytes\n", 0o755)
+	if err := os.Symlink("regular.txt", filepath.Join(dir, "nested", "link")); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Add(t, repo, "nested/link")
+	gitfixture.StageGitlink(t, repo, "nested/submodule")
+	head := gitfixture.Commit(t, repo, "entries", nil)
+	handle := gitRepo(t, dir)
+
+	entries, err := handle.CommitEntries(testsupport.Context(t), head)
+	if err != nil {
+		t.Fatalf("CommitEntries: %v", err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("CommitEntries = %#v, want three non-gitlink entries", entries)
+	}
+	for i, want := range []struct {
+		path string
+		mode awfgit.BlobMode
+	}{
+		{"nested/executable.sh", awfgit.BlobExecutable},
+		{"nested/link", awfgit.BlobSymlink},
+		{"nested/regular.txt", awfgit.BlobRegular},
+	} {
+		if entries[i].Path != want.path || entries[i].Mode != want.mode {
+			t.Fatalf("entry[%d] = %#v, want %q mode %v", i, entries[i], want.path, want.mode)
+		}
+	}
+
+	blobs, err := handle.CommitBlobsAt(testsupport.Context(t), head, []string{"nested/regular.txt", "nested/link", "nested/executable.sh"})
+	if err != nil {
+		t.Fatalf("CommitBlobsAt: %v", err)
+	}
+	for i, want := range []struct {
+		path, bytes string
+		mode        awfgit.BlobMode
+	}{
+		{"nested/executable.sh", "executable bytes\n", awfgit.BlobExecutable},
+		{"nested/link", "regular.txt", awfgit.BlobSymlink},
+		{"nested/regular.txt", "regular bytes\n", awfgit.BlobRegular},
+	} {
+		if blobs[i].Path != want.path || string(blobs[i].Bytes) != want.bytes || blobs[i].Mode != want.mode {
+			t.Fatalf("blob[%d] = %#v, want %q %q mode %v", i, blobs[i], want.path, want.bytes, want.mode)
+		}
+	}
+	blobs[0].Bytes[0] = 'X'
+	if reread, err := handle.CommitBlobsAt(testsupport.Context(t), head, []string{"nested/executable.sh"}); err != nil || string(reread[0].Bytes) != "executable bytes\n" {
+		t.Fatalf("selected bytes were not owned: %#v, %v", reread, err)
+	}
+	nested := gitRepo(t, filepath.Join(dir, "nested"))
+	if rerooted, err := nested.CommitEntries(testsupport.Context(t), head); err != nil || len(rerooted) != 3 || rerooted[0].Path != "executable.sh" || rerooted[2].Path != "regular.txt" {
+		t.Fatalf("nested entries = %#v, %v", rerooted, err)
+	}
+	if rerooted, err := nested.CommitBlobsAt(testsupport.Context(t), head, []string{"regular.txt"}); err != nil || len(rerooted) != 1 || string(rerooted[0].Bytes) != "regular bytes\n" {
+		t.Fatalf("nested selected blob = %#v, %v", rerooted, err)
+	}
+	if empty, err := handle.CommitBlobsAt(testsupport.Context(t), head, nil); err != nil || len(empty) != 0 {
+		t.Fatalf("empty selection = %#v, %v", empty, err)
+	}
+
+	for name, paths := range map[string][]string{
+		"missing":               {"missing.txt"},
+		"duplicate":             {"nested/regular.txt", "nested/regular.txt"},
+		"unsafe parent":         {"../outside.txt"},
+		"unsafe noncanonical":   {"nested/../nested/regular.txt"},
+		"gitlink":               {"nested/submodule"},
+		"directory":             {"nested"},
+		"outside nested handle": {"outside.txt"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			rooted := handle
+			if name == "outside nested handle" {
+				rooted = gitRepo(t, filepath.Join(dir, "nested"))
+			}
+			if _, err := rooted.CommitBlobsAt(testsupport.Context(t), head, paths); err == nil {
+				t.Fatalf("CommitBlobsAt(%q) accepted %q", head, paths)
+			}
+		})
+	}
+
+	backend, err := gogit.PlainOpen(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	commit, err := backend.CommitObject(plumbing.NewHash(head))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, err := commit.Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := tree.File("nested/regular.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unsupportedTree := &object.Tree{Entries: []object.TreeEntry{{Name: "legacy.txt", Mode: filemode.Empty, Hash: file.Hash}}}
+	encodedTree := backend.Storer.NewEncodedObject()
+	if err := unsupportedTree.Encode(encodedTree); err != nil {
+		t.Fatal(err)
+	}
+	unsupportedTreeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unsupportedCommit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "unsupported mode\n", TreeHash: unsupportedTreeHash}
+	encodedCommit := backend.Storer.NewEncodedObject()
+	if err := unsupportedCommit.Encode(encodedCommit); err != nil {
+		t.Fatal(err)
+	}
+	unsupportedCommitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entries, err := handle.CommitEntries(testsupport.Context(t), unsupportedCommitHash.String()); err != nil || len(entries) != 0 {
+		t.Fatalf("unsupported entries = %#v, %v", entries, err)
+	}
+	if _, err := handle.CommitBlobsAt(testsupport.Context(t), unsupportedCommitHash.String(), []string{"legacy.txt"}); err == nil {
+		t.Fatal("unsupported entry accepted")
+	}
+
+	// A nonexistent adopted-project subdirectory has no committed entries yet.
+	if entries, err := gitRepo(t, filepath.Join(dir, "missing-project")).CommitEntries(testsupport.Context(t), head); err != nil || len(entries) != 0 {
+		t.Fatalf("missing project entries = %#v, %v", entries, err)
+	}
+
+	// Tree metadata can name a missing descendant tree in a damaged object
+	// store. The walker must surface both the descendant read failure and its
+	// propagation through the parent walk.
+	storeTree := func(tree *object.Tree) plumbing.Hash {
+		t.Helper()
+		encoded := backend.Storer.NewEncodedObject()
+		if err := tree.Encode(encoded); err != nil {
+			t.Fatal(err)
+		}
+		hash, err := backend.Storer.SetEncodedObject(encoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return hash
+	}
+	// Write raw tree bytes because object.Tree.Encode correctly refuses the
+	// malformed name. The committed object must still fail closed at the
+	// treeEntries project-path boundary.
+	malformedEncoded := backend.Storer.NewEncodedObject()
+	malformedEncoded.SetType(plumbing.TreeObject)
+	writer, err := malformedEncoded.Writer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write(append([]byte("100644 ..\x00"), file.Hash[:]...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	malformedTreeHash, err := backend.Storer.SetEncodedObject(malformedEncoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	malformedCommit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "malformed tree\n", TreeHash: malformedTreeHash}
+	malformedCommitEncoded := backend.Storer.NewEncodedObject()
+	if err := malformedCommit.Encode(malformedCommitEncoded); err != nil {
+		t.Fatal(err)
+	}
+	malformedCommitHash, err := backend.Storer.SetEncodedObject(malformedCommitEncoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handle.CommitEntries(testsupport.Context(t), malformedCommitHash.String()); err == nil {
+		t.Fatal("unsafe encoded tree path accepted")
+	}
+
+	missingTree := plumbing.NewHash(strings.Repeat("f", 40))
+	missingPrefixTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "missing-project", Mode: filemode.Dir, Hash: missingTree}}})
+	missingPrefixCommit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "missing project tree\n", TreeHash: missingPrefixTree}
+	missingPrefixEncoded := backend.Storer.NewEncodedObject()
+	if err := missingPrefixCommit.Encode(missingPrefixEncoded); err != nil {
+		t.Fatal(err)
+	}
+	missingPrefixHash, err := backend.Storer.SetEncodedObject(missingPrefixEncoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitRepo(t, filepath.Join(dir, "missing-project")).CommitEntries(testsupport.Context(t), missingPrefixHash.String()); err == nil {
+		t.Fatal("missing project tree object accepted")
+	}
+
+	childTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "missing", Mode: filemode.Dir, Hash: missingTree}}})
+	outerTree := storeTree(&object.Tree{Entries: []object.TreeEntry{{Name: "child", Mode: filemode.Dir, Hash: childTree}}})
+	brokenCommit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "broken tree\n", TreeHash: outerTree}
+	brokenEncoded := backend.Storer.NewEncodedObject()
+	if err := brokenCommit.Encode(brokenEncoded); err != nil {
+		t.Fatal(err)
+	}
+	brokenHash, err := backend.Storer.SetEncodedObject(brokenEncoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handle.CommitEntries(testsupport.Context(t), brokenHash.String()); err == nil {
+		t.Fatal("missing descendant tree accepted")
+	}
+
+	for name, call := range map[string]func(string) error{
+		"entries": func(rev string) error {
+			_, err := handle.CommitEntries(testsupport.Context(t), rev)
+			return err
+		},
+		"selected blobs": func(rev string) error {
+			_, err := handle.CommitBlobsAt(testsupport.Context(t), rev, []string{"nested/regular.txt"})
+			return err
+		},
+	} {
+		t.Run(name+" missing revision", func(t *testing.T) {
+			if err := call("missing"); err == nil {
+				t.Fatal("missing revision accepted")
+			}
+		})
+	}
+
+	// The sparse-read contract remains observable with loose objects: tree
+	// metadata is readable after removing an unrelated blob, but selecting that
+	// blob later fails.
+	sparseRepo := gitfixture.InitRepo(t)
+	sparseDir := sparseRepo.Root()
+	sparseHead := gitfixture.Commit(t, sparseRepo, "two blobs", map[string]string{"selected.txt": "selected", "unselected.txt": "unselected"})
+	sparseBackend, err := gogit.PlainOpen(sparseDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sparseCommit, err := sparseBackend.CommitObject(plumbing.NewHash(sparseHead))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sparseTree, err := sparseCommit.Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	unselected, err := sparseTree.File("unselected.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	objectPath := filepath.Join(sparseDir, ".git", "objects", unselected.Hash.String()[:2], unselected.Hash.String()[2:])
+	if err := os.Remove(objectPath); err != nil {
+		t.Fatal(err)
+	}
+
+	sparseHandle := gitRepo(t, sparseDir)
+	if entries, err := sparseHandle.CommitEntries(testsupport.Context(t), sparseHead); err != nil || len(entries) != 2 {
+		t.Fatalf("entries after removing unselected object = %#v, %v", entries, err)
+	}
+	if blobs, err := sparseHandle.CommitBlobsAt(testsupport.Context(t), sparseHead, []string{"selected.txt"}); err != nil || len(blobs) != 1 || string(blobs[0].Bytes) != "selected" {
+		t.Fatalf("selected blob after removing unselected object = %#v, %v", blobs, err)
+	}
+	if _, err := sparseHandle.CommitBlobsAt(testsupport.Context(t), sparseHead, []string{"unselected.txt"}); err == nil {
+		t.Fatal("removed selected blob accepted")
+	}
+
+	sparseTreeHash := gitfixture.TreeHash(t, sparseRepo, sparseHead)
+	if err := os.Remove(filepath.Join(sparseDir, ".git", "objects", sparseTreeHash[:2], sparseTreeHash[2:])); err != nil {
+		t.Fatal(err)
+	}
+	for name, call := range map[string]func() error{
+		"entries": func() error {
+			_, err := sparseHandle.CommitEntries(testsupport.Context(t), sparseHead)
+			return err
+		},
+		"selected blobs": func() error {
+			_, err := sparseHandle.CommitBlobsAt(testsupport.Context(t), sparseHead, []string{"selected.txt"})
+			return err
+		},
+	} {
+		t.Run(name+" corrupt revision", func(t *testing.T) {
+			if err := call(); err == nil {
+				t.Fatal("corrupt revision accepted")
+			}
+		})
 	}
 }
 

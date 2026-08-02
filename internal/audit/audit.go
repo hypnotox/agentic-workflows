@@ -8,7 +8,6 @@ package audit
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -18,15 +17,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
-	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
 // Finding is one reported conformance issue.
@@ -89,180 +82,26 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 	if err != nil {
 		return nil, 0, fmt.Errorf("open repo: %w", err)
 	}
-	commits, err := repo.RangeCommits(ctx, base, head)
+	op, err := newHistoryOperation(ctx, base, head, in,
+		repo.RangeCommits,
+		func(ctx context.Context, revision string) (*revisionState, error) {
+			return loadSelectedRevision(ctx, repoRoot, revision, repo.CommitEntries, repo.CommitBlobsAt)
+		},
+		repo.FirstParentChangedPaths,
+		func(ctx context.Context) ([]Finding, error) {
+			return ruleUncommittedChanges(ctx, repo, in)
+		})
 	if err != nil {
 		return nil, 0, err
 	}
-	findings := evaluate(commits, in)
-	staleMergeFindings, err := replayStaleMergeAuthorizations(ctx, repoRoot, repo, commits)
+	findings, err := op.run(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	findings = append(findings, staleMergeFindings...)
-	// The clean-working-tree rule reads live state, so it runs here rather than
-	// in the commit-only evaluate.
-	liveFindings, err := ruleUncommittedChanges(ctx, repo, in)
-	if err != nil {
-		return nil, 0, err
-	}
-	findings = append(findings, liveFindings...)
-	return findings, len(commits), nil
+	return findings, len(op.commits), nil
 }
 
 var ccRe = regexp.MustCompile(`^([a-zA-Z]+)(\(([^)]+)\))?(!)?: .+`)
-
-// replayStaleMergeAuthorizations applies the live stale-merge evidence policy
-// to historical merge commits once their result lock reaches schema generation 31.
-func replayStaleMergeAuthorizations(ctx context.Context, repoRoot string, repo *awfgit.Repo, commits []awfgit.Commit) ([]Finding, error) {
-	var findings []Finding
-	for _, commit := range commits {
-		if !commit.IsMerge {
-			continue
-		}
-		resultTree, err := snapshot.CommitTree(ctx, repo, commit.Revision)
-		if err != nil {
-			return nil, fmt.Errorf("load merge result %s: %w", commit.Hash, err)
-		}
-		lock, found, err := auditLockFromTree(resultTree)
-		if err != nil {
-			return nil, fmt.Errorf("load merge result lock %s: %w", commit.Hash, err)
-		}
-		if !found || lock.SchemaVersion < 31 {
-			continue
-		}
-		current, _ := adr.FormatAtGeneration(lock.SchemaVersion)
-		if len(commit.Parents) < 2 {
-			return nil, fmt.Errorf("merge %s has fewer than two parents", commit.Hash)
-		}
-		parentTrees, err := snapshot.CommitTrees(ctx, repo, commit.Parents)
-		if err != nil {
-			return nil, fmt.Errorf("load merge parents %s: %w", commit.Hash, err)
-		}
-		result, err := auditUniverse(repoRoot, resultTree)
-		if err != nil {
-			return nil, fmt.Errorf("load merge result current state %s: %w", commit.Hash, err)
-		}
-		first, err := auditUniverse(repoRoot, parentTrees[0])
-		if err != nil {
-			return nil, fmt.Errorf("load merge first parent current state %s: %w", commit.Hash, err)
-		}
-		incoming := make([]currentstate.Universe, len(parentTrees)-1)
-		for i, tree := range parentTrees[1:] {
-			incoming[i], err = auditUniverse(repoRoot, tree)
-			if err != nil {
-				return nil, fmt.Errorf("load merge incoming parent current state %s: %w", commit.Hash, err)
-			}
-		}
-		authorizations, err := commitmsg.ParseAuthorizations(commitmsg.Clean([]byte(commit.Message)), func(value string) bool {
-			return value == "legacy" || adr.KnownFormatMarker(value)
-		})
-		if err != nil {
-			syntax, syntaxErr := staleAuthorizationSyntax(err)
-			if syntaxErr != nil { // coverage-ignore: ParseAuthorizations returns only *SyntaxError; the checked fallback protects future implementations
-				return nil, syntaxErr
-			}
-			findings = append(findings, finding(severity.Error, "stale-merge-authorization", commit,
-				fmt.Sprintf("malformed reserved trailer at cleaned line %d: %s", syntax.Line, syntax.Reason)))
-			continue
-		}
-		allowed := map[string]bool{}
-		for _, authorization := range authorizations {
-			allowed[authorization.Version] = true
-		}
-		for _, qualification := range currentstate.QualifyIncoming(first, result, incoming, current) {
-			identity := "ADR-" + qualification.Introduction.Identity
-			if !qualification.Qualified {
-				findings = append(findings, finding(severity.Error, "stale-merge-authorization", commit,
-					"unqualified incoming-parent record "+identity))
-				continue
-			}
-			version := adr.FormatMarker(qualification.Introduction.Format)
-			if version == "" {
-				version = "legacy"
-			}
-			if !allowed[version] {
-				findings = append(findings, finding(severity.Error, "stale-merge-authorization", commit,
-					"missing authorization version "+version+" for "+identity))
-			}
-		}
-	}
-	return findings, nil
-}
-
-func staleAuthorizationSyntax(err error) (*commitmsg.SyntaxError, error) {
-	var syntax *commitmsg.SyntaxError
-	if !errors.As(err, &syntax) {
-		return nil, fmt.Errorf("parse stale merge authorizations: %w", err)
-	}
-	return syntax, nil
-}
-
-func auditLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
-	file, ok := tree.Lookup(config.DirName + "/awf.lock")
-	if !ok {
-		return nil, false, nil
-	}
-	if !file.Scannable() {
-		return nil, true, fmt.Errorf("%s/awf.lock is not a scannable file", config.DirName)
-	}
-	lock, err := manifest.Parse(file.Bytes)
-	return lock, true, err
-}
-
-func auditUniverse(root string, tree *snapshot.Tree) (currentstate.Universe, error) {
-	file, ok := tree.Lookup(config.DirName + "/config.yaml")
-	if !ok {
-		return currentstate.Universe{}, nil
-	}
-	if !file.Scannable() {
-		return currentstate.Universe{}, fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)
-	}
-	lock, _, err := auditLockFromTree(tree)
-	if err != nil {
-		return currentstate.Universe{}, err
-	}
-	schema := migrate.Current()
-	if lock != nil {
-		schema = lock.SchemaVersion
-	}
-	data, err := migrate.ConfigForCurrentSchema(file.Bytes, schema)
-	if err != nil {
-		return currentstate.Universe{}, err
-	}
-	cfg, err := config.ParseTree(config.RootDir(root), data, auditSnapshotReader{tree})
-	if err != nil {
-		return currentstate.Universe{}, err
-	}
-	if err := cfg.Validate(); err != nil {
-		return currentstate.Universe{}, err
-	}
-	loaded, err := currentstate.LoadFromTree(tree, cfg)
-	if err != nil {
-		return currentstate.Universe{}, err
-	}
-	return loaded.Universe(), nil
-}
-
-type auditSnapshotReader struct{ tree *snapshot.Tree }
-
-func (r auditSnapshotReader) ReadFile(path string) ([]byte, bool) {
-	file, ok := r.tree.Lookup(config.DirName + "/" + filepath.ToSlash(path))
-	if !ok || !file.Scannable() {
-		return nil, false
-	}
-	return slices.Clone(file.Bytes), true
-}
-
-func (r auditSnapshotReader) Paths(prefix string) []string {
-	full := config.DirName + "/" + filepath.ToSlash(prefix)
-	var paths []string
-	for _, file := range r.tree.List() {
-		if file.Scannable() && strings.HasPrefix(file.Path, full) {
-			paths = append(paths, strings.TrimPrefix(file.Path, config.DirName+"/"))
-		}
-	}
-	return paths
-}
 
 // evaluate applies every rule to the range and returns all findings.
 func evaluate(commits []awfgit.Commit, in Inputs) []Finding {

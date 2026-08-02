@@ -4,7 +4,7 @@ slug: require-confirmed-outcomes-before-effort-creation
 status: Implementing
 date: 2026-08-02
 ---
-# ADR-require-confirmed-outcomes-before-effort-creation: Require confirmed outcomes before effort creation
+# ADR-0222: Require confirmed outcomes before effort creation
 
 ## Context
 
