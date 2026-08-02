@@ -7,7 +7,7 @@ The Pi target descriptor is the sole declaration of the five Pi TypeScript outpu
 ### `invariant: bridge-render-identity`
 
 Every target-declared bridge renders through the neutral `target-bridge` identity while its descriptor remains the sole owner of bridge path and template. Input observation does not derive a target-specific sidecar or template from that neutral identity, so a future bridge target cannot inherit Claude-specific inputs accidentally.
-Origin: ADR-retain-only-claude-code-and-pi-runtime-targets
+Origin: ADR-0214
 Backing: test
 
 ### `invariant: catalog-trim-applied`

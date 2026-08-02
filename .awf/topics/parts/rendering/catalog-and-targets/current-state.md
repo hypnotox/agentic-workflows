@@ -11,7 +11,7 @@ Backing: test
 ### `invariant: built-in-runtime-targets`
 
 The built-in runtime target registry contains exactly `claude` and `pi` in deterministic `KnownTargets` order. Configured names outside that set fail through unknown-target validation, and descriptor-driven rendering and enablement remain generic rather than branching on the two names.
-Origin: ADR-retain-only-claude-code-and-pi-runtime-targets
+Origin: ADR-0214
 Backing: test
 
 ### `invariant: catalog-defaults-generic-denylist`
@@ -75,14 +75,14 @@ Backing: test
 
 Agent rendering consumes structured metadata - a literal name, a separately rendered description, and a rendered instruction body - before a target encoder emits its artifact. The Markdown encoder never parses another rendered agent artifact, and arbitrary target-owned outputs retain their separately declared encoding.
 Origin: ADR-0122
-Revised-by: ADR-retain-only-claude-code-and-pi-runtime-targets
+Revised-by: ADR-0214
 Backing: test
 
 ### `invariant: target-dialect-render`
 
 Each enabled target renders every skill and agent exactly once at that descriptor's declared path and encoding, and the emitted artifact parses under the runtime's native format. The built-in Claude Code and Pi targets emit Markdown agents while retaining independent descriptor-owned paths, suffixes, capabilities, bridges, wording, and additional outputs.
 Origin: ADR-0122
-Revised-by: ADR-retain-only-claude-code-and-pi-runtime-targets
+Revised-by: ADR-0214
 Backing: test
 
 ### `invariant: unified-doc-model`

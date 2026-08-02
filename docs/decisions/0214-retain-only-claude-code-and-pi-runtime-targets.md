@@ -4,7 +4,7 @@ slug: retain-only-claude-code-and-pi-runtime-targets
 status: Implementing
 date: 2026-08-02
 ---
-# ADR-retain-only-claude-code-and-pi-runtime-targets: Retain Only Claude Code and Pi Runtime Targets
+# ADR-0214: Retain Only Claude Code and Pi Runtime Targets
 
 ## Context
 
