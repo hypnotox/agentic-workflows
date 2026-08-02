@@ -42,11 +42,11 @@ func (h *Handle) Walk(subtree string, visit func(path string, info fs.FileInfo) 
 		return nil
 	}
 	err = fs.WalkDir(h.root.FS(), subtree, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil { // coverage-ignore: LinkInfo just resolved the walk root; an underlying WalkDir error requires a concurrent filesystem race
+		if walkErr != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change
 			return fmt.Errorf("filesystem: walk %q: %w", path, walkErr)
 		}
 		info, err := entry.Info()
-		if err != nil { // coverage-ignore: DirEntry.Info after WalkDir delivered the entry can fail only through a concurrent filesystem race
+		if err != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change
 			return fmt.Errorf("filesystem: walk-info %q: %w", path, err)
 		}
 		descend, err := visit(path, info)

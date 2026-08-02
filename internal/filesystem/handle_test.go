@@ -107,6 +107,25 @@ func TestHandleConfinesPaths(t *testing.T) {
 	if _, err := h.Read("escape/outside"); err == nil {
 		t.Fatal("escaping symlink read succeeded")
 	}
+	rootLink := filepath.Join(t.TempDir(), "root-link")
+	if err := os.Symlink(root, rootLink); err != nil {
+		t.Skipf("root symlink unsupported: %v", err)
+	}
+	linkedHandle, err := Open(rootLink)
+	if err != nil {
+		t.Fatalf("open symlink root: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := linkedHandle.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := linkedHandle.Read("dir/file"); err != nil {
+		t.Fatalf("symlink-root descendant: %v", err)
+	}
+	if _, err := linkedHandle.Read("escape/outside"); err == nil {
+		t.Fatal("symlink-root escaping descendant succeeded")
+	}
 	if err := h.Walk(".", func(string, fs.FileInfo) (bool, error) { return false, sentinel }); !errors.Is(err, sentinel) {
 		t.Fatalf("callback identity: %v", err)
 	}
@@ -192,8 +211,11 @@ func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 		{"canonical handle", "internal/filesystem/handle.go", "package filesystem\nimport \"os\"\ntype Handle struct { root *os.Root }\nfunc Open(x string) { os.OpenRoot(x) }", ""},
 		{"outside root constructor", "internal/other/other.go", "package other\nimport root \"os\"\nfunc Open(x string) { root.OpenRoot(x) }", "outside filesystem concrete root use"},
 		{"outside root storage", "internal/other/other.go", "package other\nimport root \"os\"\ntype x struct { r *root.Root }", "outside filesystem concrete root use"},
+		{"aliased root constructor", "internal/other/other.go", "package other\nimport \"os\"\nvar openRoot = os.OpenRoot\nfunc Open(x string) { openRoot(x) }", "outside filesystem concrete root use"},
+		{"aliased root storage", "internal/other/other.go", "package other\nimport \"os\"\ntype rootAlias = os.Root\ntype x struct { r *rootAlias }", "outside filesystem concrete root use"},
 		{"second handle", "internal/filesystem/handle.go", "package filesystem\ntype Other struct{}\ntype Handle struct{}", "exported concrete Other"},
-		{"provider interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype Filesystem interface{ Read(string) }", "exported interface Filesystem"},
+		{"provider interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype Filesystem interface{ Read(string) }", "interface Filesystem"},
+		{"unexported interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype filesystem interface{ Read(string) }", "interface filesystem"},
 		{"compile-only reference", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Open", "filesystem import without constructor/capability flow"},
 		{"arbitrary selector", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Handle", "filesystem import without constructor/capability flow"},
 	} {
@@ -214,7 +236,7 @@ func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 		want string
 	}{
 		{"cross-file extra concrete", map[string]string{"internal/filesystem/handle.go": "package filesystem\ntype Handle struct{}", "internal/filesystem/extra.go": "package filesystem\ntype Extra struct{}"}, "exported concrete Extra"},
-		{"cross-file interface", map[string]string{"internal/filesystem/handle.go": "package filesystem\ntype Handle struct{}", "internal/filesystem/contract.go": "package filesystem\ntype Contract interface{}"}, "exported interface Contract"},
+		{"cross-file interface", map[string]string{"internal/filesystem/handle.go": "package filesystem\ntype Handle struct{}", "internal/filesystem/contract.go": "package filesystem\ntype Contract interface{}"}, "interface Contract"},
 	} {
 		if got := filesystemPackageFinding(tc.src); !strings.Contains(got, tc.want) {
 			t.Fatalf("%s finding = %q, want category %q", tc.name, got, tc.want)
@@ -227,25 +249,17 @@ func rootSourceFinding(rel, src string) string {
 	if err != nil {
 		return rel + ": parse: " + err.Error()
 	}
-	osNames := map[string]bool{}
-	for _, im := range f.Imports {
-		if strings.Trim(im.Path.Value, `"`) == "os" {
-			name := "os"
-			if im.Name != nil {
-				name = im.Name.Name
-			}
-			osNames[name] = true
-		}
-	}
-	rootUses := false
+	osNames := osImportNames(f)
+	openRootAliases, rootAliases := rootAliases(f, osNames)
+	rootUses := len(openRootAliases) != 0 || len(rootAliases) != 0
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch n := n.(type) {
 		case *ast.CallExpr:
-			if s, ok := n.Fun.(*ast.SelectorExpr); ok && s.Sel.Name == "OpenRoot" && importedOS(s.X, osNames) {
+			if isOpenRoot(n.Fun, osNames, openRootAliases) {
 				rootUses = true
 			}
 		case *ast.StarExpr:
-			if s, ok := n.X.(*ast.SelectorExpr); ok && s.Sel.Name == "Root" && importedOS(s.X, osNames) {
+			if isRootType(n.X, osNames, rootAliases) {
 				rootUses = true
 			}
 		}
@@ -258,6 +272,66 @@ func rootSourceFinding(rel, src string) string {
 		return rel + ": outside filesystem concrete root use"
 	}
 	return ""
+}
+
+func osImportNames(f *ast.File) map[string]bool {
+	names := map[string]bool{}
+	for _, im := range f.Imports {
+		if strings.Trim(im.Path.Value, `"`) != "os" {
+			continue
+		}
+		name := "os"
+		if im.Name != nil {
+			name = im.Name.Name
+		}
+		names[name] = true
+	}
+	return names
+}
+
+func rootAliases(f *ast.File, osNames map[string]bool) (map[string]bool, map[string]bool) {
+	openRootAliases, rootAliases := map[string]bool{}, map[string]bool{}
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.ValueSpec:
+			for i, value := range n.Values {
+				if i < len(n.Names) && isOpenRoot(value, osNames, openRootAliases) {
+					openRootAliases[n.Names[i].Name] = true
+				}
+			}
+		case *ast.AssignStmt:
+			for i, value := range n.Rhs {
+				if i >= len(n.Lhs) || !isOpenRoot(value, osNames, openRootAliases) {
+					continue
+				}
+				if name, ok := n.Lhs[i].(*ast.Ident); ok {
+					openRootAliases[name.Name] = true
+				}
+			}
+		case *ast.TypeSpec:
+			if n.Assign.IsValid() && isRootType(n.Type, osNames, rootAliases) {
+				rootAliases[n.Name.Name] = true
+			}
+		}
+		return true
+	})
+	return openRootAliases, rootAliases
+}
+
+func isOpenRoot(expr ast.Expr, osNames, aliases map[string]bool) bool {
+	if id, ok := expr.(*ast.Ident); ok && aliases[id.Name] {
+		return true
+	}
+	s, ok := expr.(*ast.SelectorExpr)
+	return ok && s.Sel.Name == "OpenRoot" && importedOS(s.X, osNames)
+}
+
+func isRootType(expr ast.Expr, osNames, aliases map[string]bool) bool {
+	if id, ok := expr.(*ast.Ident); ok && aliases[id.Name] {
+		return true
+	}
+	s, ok := expr.(*ast.SelectorExpr)
+	return ok && s.Sel.Name == "Root" && importedOS(s.X, osNames)
 }
 
 func filesystemConsumerFinding(rel, src string) string {
@@ -351,11 +425,14 @@ func filesystemPackageFinding(sources map[string]string) string {
 			}
 			for _, spec := range gen.Specs {
 				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok || !typeSpec.Name.IsExported() {
+				if !ok {
 					continue
 				}
 				if _, ok := typeSpec.Type.(*ast.InterfaceType); ok {
-					return rel + ": exported interface " + typeSpec.Name.Name
+					return rel + ": interface " + typeSpec.Name.Name
+				}
+				if !typeSpec.Name.IsExported() {
+					continue
 				}
 				if typeSpec.Name.Name != "Handle" {
 					return rel + ": exported concrete " + typeSpec.Name.Name

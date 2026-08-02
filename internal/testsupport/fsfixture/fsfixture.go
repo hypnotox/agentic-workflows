@@ -95,7 +95,7 @@ func (h *Handle) Walk(subtree string, visit func(string, fs.FileInfo) (bool, err
 		return nil
 	}
 	return fs.WalkDir(h.root.FS(), subtree, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil { // coverage-ignore: LinkInfo just resolved the walk root; an underlying WalkDir error requires a concurrent filesystem race
+		if walkErr != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change
 			return h.wrap(OperationWalk, path, walkErr)
 		}
 		if err := h.fault(OperationWalk, path); err != nil {
@@ -105,7 +105,7 @@ func (h *Handle) Walk(subtree string, visit func(string, fs.FileInfo) (bool, err
 			return h.wrap(OperationWalkInfo, path, err)
 		}
 		info, err := entry.Info()
-		if err != nil { // coverage-ignore: DirEntry.Info after WalkDir delivered the entry can fail only through a concurrent filesystem race
+		if err != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change
 			return h.wrap(OperationWalkInfo, path, err)
 		}
 		descend, err := visit(path, info)

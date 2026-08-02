@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Root-confined upgrade attestation traversal now preserves established digest and error behavior.
+
 - `awf check` now reports a non-failing advisory for glossary meanings longer than the terseness guideline, naming the term and its length. It evaluates the merged set, so shipped and project-authored vocabulary follow the same rule.
 
 - The glossary now renders one sorted table from two layers: awf's shipped standard vocabulary and project-authored `data.terms`. A project record overrides a shipped term with the same case-insensitive name, including to reword or retire it locally.

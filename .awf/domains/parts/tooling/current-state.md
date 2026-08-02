@@ -2,6 +2,8 @@ The tooling domain owns the command-line binary and local effort and worktree au
 
 `internal/commitmsg` owns Git cleaning and the reserved stale-ADR authorization trailer grammar. `internal/git` and `internal/snapshot` expose exact merge-head, parent, message, index, and committed-tree evidence. `internal/project` orchestrates the non-mutating live `commit-msg` decision and owns its actionable operation rendering, while `internal/audit` replays the same parser and incoming-parent qualification against committed schema-31-and-later merge snapshots. A live refusal preserves the assembled merge for correction and retry.
 
-The final bridge upgrade verifies its frozen version-1 attestation before its journal commits the replacement lock. Its historical routing payload is consumed as compatibility input and is not promoted.
+The final bridge upgrade verifies its frozen version-1 attestation before its journal commits the replacement lock. Its root-confined traversal preserves the established digest and error behavior. Its historical routing payload is consumed as compatibility input and is not promoted.
+
+`internal/filesystem` exclusively owns production root-confined filesystem handles, including the sole concrete handle and no interfaces, while `internal/testsupport/fsfixture` owns the standard-library-only controlled fault source for tests.
 
 The gated `check` family is organized by subject universe. `check repo` aggregates drift, state, prose, and memory checks; `check staged` aggregates HEAD-to-index state and rendered-output drift, while its commit-message child remains direct-only because it requires a message file. Bare `check` runs both aggregates, and disabled prose or memory children disclose their enablement knobs without failing.
