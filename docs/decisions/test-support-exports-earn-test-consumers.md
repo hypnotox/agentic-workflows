@@ -40,20 +40,24 @@ needs this correction before it can place one fault-injectable implementation in
    transaction. The test consumer must use the exported capability for its actual fixture,
    controlled-dependency, or assertion setup; a compile-only reference does not earn the export.
 
-3. Keep test support one-way. Production Go files outside `internal/testsupport/**` must not import a
-   test-support package. The existing test-support leaf boundary continues to govern what shared
-   test support itself may import; this decision creates no production dependency on test code and
-   no exception to that boundary.
+3. Keep test support one-way through a separate
+   `tooling/test-infrastructure:production-never-imports-test-support` claim. Production Go files
+   outside `internal/testsupport/**` must not import a test-support package. The existing
+   test-support leaf boundary continues to govern what shared test support itself may import; this
+   decision creates no production dependency on test code and no exception to that boundary.
 
-4. Apply the claim update as one checked current-state transaction. Its verification inspects each
-   new or deliberately converted export according to the declaring package: find an
-   outside-package production consumer for a production package, or an outside-package test
-   consumer for a dedicated shared test-support package, and reject any production import of test
-   support.
+4. Back the new one-way claim with a repository import scan that fails when a non-test Go file
+   outside `internal/testsupport/**` imports the root test-support package or any of its subpackages.
+   Apply that claim addition and the export-eligibility update as one checked current-state
+   transaction. Verification of the updated export claim inspects each new or deliberately
+   converted export according to the declaring package: find an outside-package production
+   consumer for a production package, or an outside-package test consumer for a dedicated shared
+   test-support package.
 
 ## State changes
 
 - update `code-design/package-composition:export-earns-consumer`
+- add `tooling/test-infrastructure:production-never-imports-test-support`
 
 ## Consequences
 
@@ -68,8 +72,8 @@ consumer check. The distinction is determined by the package that owns the expor
 "tests may consume exports" exemption.
 
 Review must classify the declaring package correctly. `internal/testsupport/**` is a deliberate
-boundary, so an arbitrary package used mostly by tests does not qualify. Existing dependency checks
-continue to prevent production code from turning the shared fixture home into a runtime dependency.
+boundary, so an arbitrary package used mostly by tests does not qualify. The new repository import
+scan prevents production code from turning the shared fixture home into a runtime dependency.
 
 ## Alternatives Considered
 
@@ -77,7 +81,7 @@ continue to prevent production code from turning the shared fixture home into a 
 |---|---|
 | Require a production consumer for every exported symbol without exception | Makes a shared test-support package unable to add any usable API, contradicting its sole purpose. |
 | Let any outside-package test justify any export | Allows tests to enlarge production APIs and removes the production-consumer discipline the claim was created to enforce. |
-| Keep every fixture local to its consuming package | Duplicates shared test concerns and conflicts with the single-home rule once more than one package needs the fixture. |
+| Keep this fault fixture local to upgrade tests | Hides the kernel-backed fault-source contract inside its first consumer instead of placing the real outside-package test consumer against the repository's designated shared test-support home. |
 | Put configurable test fakes in production packages | Ships test-only capability in the runtime surface and still lacks a production consumer for that capability. |
 
 ## Status history
