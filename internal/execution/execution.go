@@ -152,7 +152,7 @@ func Prepare(ctx context.Context, system System, requested []StepID) (*Prepared,
 		return nil, &definitionError{kind: definitionInvalidBinding}
 	}
 	selectedIDs := stepIDs(selected)
-	actions, bindErr := system.Bind(selectedIDs)
+	actions, bindErr := system.Bind(append([]StepID(nil), selectedIDs...))
 	if bindErr != nil {
 		return nil, fmt.Errorf("bind selected actions %v: %w", selectedIDs, bindErr)
 	}

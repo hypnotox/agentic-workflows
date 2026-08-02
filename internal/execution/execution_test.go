@@ -83,6 +83,8 @@ func TestClosedStepSelection(t *testing.T) {
 	if want := []string{"prepare", "bind"}; !reflect.DeepEqual(bindingEvents, want) {
 		t.Fatalf("binding events = %v, want %v", bindingEvents, want)
 	}
+
+	assertBindingValidation(t)
 }
 
 // invariant: code-design/execution-planning:requirements-prepared-once (TestRequirementsPreparedOnce)
@@ -144,7 +146,8 @@ func TestRequirementsPreparedOnce(t *testing.T) {
 	}
 }
 
-func TestBindingValidation(t *testing.T) {
+func assertBindingValidation(t *testing.T) {
+	t.Helper()
 	_, err := Prepare(context.Background(), System{Steps: []Step{{ID: "one"}}}, []StepID{"one"})
 	assertDefinitionKind(t, err, definitionInvalidBinding)
 
@@ -167,6 +170,16 @@ func TestBindingValidation(t *testing.T) {
 			assertDefinitionKind(t, err, definitionInvalidBinding)
 		})
 	}
+
+	t.Run("binder mutates selected identities", func(t *testing.T) {
+		system := base
+		system.Bind = func(selected []StepID) ([]BoundAction, error) {
+			selected[0] = "two"
+			return []BoundAction{{Step: "two", Run: noAction}, {Step: "two", Run: noAction}}, nil
+		}
+		_, err := Prepare(context.Background(), system, []StepID{"one", "two"})
+		assertDefinitionKind(t, err, definitionInvalidBinding)
+	})
 
 	bindErr := errors.New("binder failed")
 	_, err = Prepare(context.Background(), System{

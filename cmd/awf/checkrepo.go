@@ -234,7 +234,7 @@ func runCheckState(ctx context.Context, root string, stdout io.Writer) error {
 	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepState}, execution.StopOnFailure, false, productionRepoCheckDependencies())
 }
 
-func printDrift(stdout io.Writer, drift []manifest.Drift) error { // placeholder
+func printDrift(stdout io.Writer, drift []manifest.Drift) error {
 	for _, d := range drift {
 		fmt.Fprintf(stdout, "  %-14s %s: %s\n", d.Kind, d.Path, d.Detail)
 	}
