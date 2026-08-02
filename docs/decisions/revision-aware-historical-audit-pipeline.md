@@ -92,8 +92,10 @@ complete selected file set.
 
 7. `internal/git` supplies the minimum backend-neutral committed-tree evidence
    needed to enumerate paths without eager blob reads, select committed bytes,
-   and obtain first-parent merge changes. `internal/snapshot` represents sparse
-   committed content with an explicit selection boundary that cannot be passed
+   and obtain first-parent merge changes. Every new exported entrypoint receives
+   a backend-neutral contract suite and registration in the mechanically checked
+   Git entrypoint registry. `internal/snapshot` represents sparse committed
+   content with an explicit selection boundary that cannot be passed
    accidentally as a complete `snapshot.Tree`. Existing complete snapshot
    entrypoints and their isolation guarantees remain unchanged.
 
@@ -111,13 +113,24 @@ complete selected file set.
    deadline expiry are operation failures and propagate immediately rather
    than being converted into findings. Cached load errors are not retried.
 
-10. Deterministic tests enforce work counts rather than elapsed time: one range
-    collection, at most one state derivation per required revision, state reuse
-    across irrelevant commits, and sharing between historical rules. Synthetic
-    benchmarks cover code-only, authority-heavy, and merge-heavy ranges of at
-    least 50 commits. Real-repository before-and-after measurements guide any
-    follow-up. Structural sharing or incremental corpus parsing is added only
-    if profiling the reduced pipeline shows that it is still material.
+10. All four state changes declared below are backed by tests. Historical audit
+    operation tests prove one range collection, at most one state derivation per
+    required revision, state reuse across irrelevant commits, and sharing
+    between historical rules. Current-state and audit regressions prove the
+    reduced projection and cancellation behavior. Snapshot tests and the Git
+    contract suites prove explicit sparse selection. Each proving test carries
+    the exact invariant marker required by the current-state claim.
+
+11. Synthetic benchmarks cover code-only, authority-heavy, and merge-heavy
+    ranges of at least 50 commits. Real-repository before-and-after measurements
+    guide any follow-up. Structural sharing or incremental corpus parsing is
+    added only if profiling the reduced pipeline shows that it is still
+    material.
+
+12. The implementation updates the authored architecture description and the
+    tooling domain current-state source in the same implementation transaction
+    as the ownership and data-flow changes, then regenerates their rendered
+    outputs.
 
 ## State changes
 
@@ -161,6 +174,7 @@ evidence. Wall-clock benchmarks remain diagnostic rather than a flaky gate.
 | Add a second-walk cache and skip obvious commits without changing ownership | This reduces some duplicate work but retains the full-tree snapshot and broad-loader model that dominates runtime. |
 | Make default audit run only range-aggregate and live rules, with full replay behind a flag | This is faster but loses default detection of bypassed hooks, outdated hooks, and imported historical violations before the exact replay pipeline has been streamlined. |
 | Preserve historical marker, coverage, and domain-sidecar validation incrementally | Those inputs are not consumed by the historical policies. Maintaining their complete state across every revision adds substantial complexity for incidental behavior already owned by repository and staged checks. |
+| Audit only the first-parent chain | This avoids merged-history fan-out by dropping the individual commits integrated from side branches, losing the per-commit attribution and validation that historical audit exists to provide. |
 | Keep complete snapshots but memoize them by revision | Adjacent commits normally have distinct trees, so memoization only removes duplicate parent loads and still reads and copies the whole repository once per commit. |
 | Store a persistent cross-invocation audit cache | Persistence creates invalidation, object-lifetime, and corruption concerns that are unnecessary for eliminating duplicate work inside one invocation. |
 
