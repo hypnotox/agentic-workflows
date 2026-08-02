@@ -5,6 +5,7 @@
 - [Audit commands](audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
 - [CLI](cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](changelog-and-release.md): The changelog pipeline and release-notes contracts.
+- [Commit policy](commit-policy.md): Current project contracts for this topic.
 - [Context and topic](context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Effort management](effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
