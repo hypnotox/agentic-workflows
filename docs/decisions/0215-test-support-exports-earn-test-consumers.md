@@ -4,7 +4,7 @@ slug: test-support-exports-earn-test-consumers
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-test-support-exports-earn-test-consumers: Test-support exports earn test consumers
+# ADR-0215: Test-support exports earn test consumers
 
 ## Context
 

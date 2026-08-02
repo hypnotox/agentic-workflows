@@ -11,5 +11,5 @@ Backing: test
 ### `invariant: production-never-imports-test-support`
 
 Non-test Go files outside `internal/testsupport/**` never import the root test-support package or any of its subpackages; shared test fixtures remain a test-only dependency in the direction from outside-package tests into test support.
-Origin: ADR-test-support-exports-earn-test-consumers
+Origin: ADR-0215
 Backing: test

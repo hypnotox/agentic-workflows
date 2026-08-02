@@ -219,5 +219,5 @@ _No decisions are in flight._
 - [ADR-0212: Corrective re-application of an applied state operation](0212-corrective-re-application-of-an-applied-state-operation.md) (Implemented)
 - [ADR-0213: Parsed plan artifacts and executable projections](0213-parsed-plan-artifacts-and-executable-projections.md) (Implemented)
 - [ADR-0214: Retain Only Claude Code and Pi Runtime Targets](0214-retain-only-claude-code-and-pi-runtime-targets.md) (Implemented)
-- [ADR-consumer-local-contracts-over-single-home-filesystem-access: Consumer-local contracts over single-home filesystem access](consumer-local-contracts-over-single-home-filesystem-access.md) (Implemented)
-- [ADR-test-support-exports-earn-test-consumers: Test-support exports earn test consumers](test-support-exports-earn-test-consumers.md) (Implemented)
+- [ADR-0215: Test-support exports earn test consumers](0215-test-support-exports-earn-test-consumers.md) (Implemented)
+- [ADR-0216: Consumer-local contracts over single-home filesystem access](0216-consumer-local-contracts-over-single-home-filesystem-access.md) (Implemented)

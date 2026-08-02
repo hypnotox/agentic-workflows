@@ -4,7 +4,7 @@ slug: consumer-local-contracts-over-single-home-filesystem-access
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-consumer-local-contracts-over-single-home-filesystem-access: Consumer-local contracts over single-home filesystem access
+# ADR-0216: Consumer-local contracts over single-home filesystem access
 
 ## Context
 

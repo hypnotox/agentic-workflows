@@ -20,7 +20,7 @@ Verify: For each changed constructor and executable wiring site, trace productio
 
 When substitution is needed around a shared concrete implementation, the consumer declares the smallest cohesive structural interface locally and names its dependency for the semantic operation it needs. The provider exports the concrete implementation and neutral values its mechanism yields, never a universal consumer interface. Consumer-local helpers and values may translate the imported capability into readable business policy but never reimplement the shared concern; a direct concrete dependency remains legal when substitution is unnecessary.
 Origin: ADR-0178
-Revised-by: ADR-consumer-local-contracts-over-single-home-filesystem-access
+Revised-by: ADR-0216
 Backing: unbacked
 Verify: For each changed dependency boundary, inspect the provider's exported surface, the consumer-local interface and helpers, and production wiring; confirm the interface is the consumer's narrow cohesive view, policy remains local, no provider-owned universal interface or function-field renaming layer appears, and a direct concrete dependency is used when no substitution boundary is needed.
 
@@ -42,14 +42,14 @@ Verify: Inspect changed constructor parameters and nil handling, and reject an i
 
 Every new production composition capability lands in the same green transaction as exactly one named concrete production first consumer. A composition capability exported by a dedicated shared test-support package under `internal/testsupport/**` instead lands with exactly one named outside-package test first consumer. In either case the consumer uses the whole introduced capability, and no adapter, constructor field, interface method, option, helper, fault operation, or other composition surface is added only for anticipated reuse.
 Origin: ADR-0178
-Revised-by: ADR-test-support-exports-earn-test-consumers
+Revised-by: ADR-0215
 Backing: unbacked
 Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
 
 ### `invariant: upgrade-attestation-filesystem-wiring`
 
 Public upgrade attestation `Verify` opens and closes the production root-confined filesystem handle at its outer boundary, passes that handle through the private consumer-owned structural contract, and no digest or collection helper constructs, discovers, or defaults the dependency.
-Origin: ADR-consumer-local-contracts-over-single-home-filesystem-access
+Origin: ADR-0216
 Backing: test
 
 ### `invariant: dependency-composition-commit-classification`
