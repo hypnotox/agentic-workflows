@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -56,6 +57,17 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Fatalf("plans-template not rendered: %v", err)
 	}
 	assertPlanTemplateTaxonomy(t, string(plansTemplate))
+	parseDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(parseDir, "template.md"), plansTemplate, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plan.NewFile(parseDir, "Scaffold"); err != nil {
+		t.Fatalf("scaffold from rendered template: %v", err)
+	}
+	parsed, err := plan.ParseDir(parseDir)
+	if err != nil || len(parsed) != 1 || strings.TrimSpace(parsed[0].Goal) == "" || strings.TrimSpace(parsed[0].ArchitectureSummary) == "" || !strings.Contains(parsed[0].DefinitionOfDone, "- ") {
+		t.Fatalf("rendered plan-v1 scaffold is not substantively parseable: plans=%#v err=%v", parsed, err)
+	}
 	for _, bad := range []string{"awf:section", "awf:end", "{{", "}}"} {
 		if strings.Contains(string(plansTemplate), bad) {
 			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
@@ -103,6 +115,15 @@ func planTemplateTaxonomyProblems(text string) []string {
 	if !strings.Contains(text, vocabulary) {
 		problems = append(problems, "missing exact task field vocabulary")
 	}
+	for name, substance := range map[string]string{
+		"Goal":                 "State the outcome and, in one line, its non-goals.",
+		"Architecture summary": "State the execution structure and dependency direction without repeating ADR rationale.",
+		"Definition of done":   "- State at least one concrete observable whole-plan end condition.",
+	} {
+		if !strings.Contains(text, substance) {
+			problems = append(problems, "missing nonempty "+name+" substance")
+		}
+	}
 	return problems
 }
 
@@ -127,6 +148,9 @@ func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
 		{"commit fence", "```commit", "```text"},
 		{"definition", "## Definition of done", "## Verification"},
 		{"field vocabulary", "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"goal substance", "State the outcome and, in one line, its non-goals.", ""},
+		{"architecture substance", "State the execution structure and dependency direction without repeating ADR rationale.", ""},
+		{"definition bullet", "- State at least one concrete observable whole-plan end condition.", ""},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			if !strings.Contains(text, mutation.from) {

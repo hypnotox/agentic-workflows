@@ -300,7 +300,24 @@ func hasPlainBullet(lines []string) bool {
 func hasCheckbox(lines []string) bool {
 	for _, line := range lines {
 		text := strings.ToLower(strings.TrimSpace(lineText(line)))
-		if strings.HasPrefix(text, "- [ ]") || strings.HasPrefix(text, "- [x]") {
+		if len(text) >= 5 && strings.ContainsRune("-*+", rune(text[0])) && (strings.HasPrefix(text[1:], " [ ]") || strings.HasPrefix(text[1:], " [x]")) {
+			return true
+		}
+	}
+	return false
+}
+
+func forbiddenTaskTitle(title string) bool {
+	for _, prefix := range []string{"optional ", "optional:", "optional-", "conditional ", "conditional:", "conditional-"} {
+		if strings.HasPrefix(title, prefix) {
+			return true
+		}
+	}
+	for _, suffix := range []string{
+		" (optional)", " (conditional)", " [optional]", " [conditional]",
+		" if needed", " if applicable", " when needed", " when applicable",
+	} {
+		if strings.HasSuffix(title, suffix) {
 			return true
 		}
 	}
@@ -365,8 +382,12 @@ func parsePhase(path string, lines []string, start, want int) (Phase, int, error
 		}
 	}
 	ph.Close = strings.Join(lines[i:end], "")
-	if countCompleteCommitFences(ph.Close) != 1 {
-		return ph, start, structuralError(path, "phase-close", fmt.Sprintf("phase %d Phase close requires exactly one non-ignored commit fence", n))
+	phaseContent := strings.Join(lines[start:end], "")
+	if countExecutionModeDeclarations(phaseContent) != 1 {
+		return ph, start, structuralError(path, "structure", fmt.Sprintf("phase %d requires exactly one execution-mode declaration", n))
+	}
+	if countCompleteCommitFences(ph.Close) != 1 || countCompleteCommitFences(phaseContent) != 1 {
+		return ph, start, structuralError(path, "phase-close", fmt.Sprintf("phase %d requires exactly one non-ignored commit fence in Phase close", n))
 	}
 	if len(ph.Tasks) == 1 && ph.Tasks[0].Fields.Kind == TaskSpike {
 		return ph, start, structuralError(path, "relationship", "spike cannot constitute a phase alone")
@@ -432,9 +453,7 @@ func parseTask(path string, lines []string, start, phase, want int) (Task, int, 
 		return task, start, structuralError(path, "structure", "task checkboxes are not plan-v1 declarations")
 	}
 	lowerTitle := strings.ToLower(strings.TrimSpace(task.Title))
-	if strings.HasPrefix(lowerTitle, "optional:") || strings.HasPrefix(lowerTitle, "conditional:") ||
-		strings.HasSuffix(lowerTitle, " (optional)") || strings.HasSuffix(lowerTitle, " (conditional)") ||
-		strings.HasSuffix(lowerTitle, " [optional]") || strings.HasSuffix(lowerTitle, " [conditional]") {
+	if forbiddenTaskTitle(lowerTitle) {
 		return task, start, structuralError(path, "structure", "conditional and optional task declarations are forbidden")
 	}
 	if err := validateTask(path, task, strings.Join(lines[i:end], "")); err != nil {
@@ -669,6 +688,22 @@ func recognizedPathspecMagic(word string) bool {
 	default:
 		return strings.HasPrefix(word, "attr:") && strings.TrimSpace(strings.TrimPrefix(word, "attr:")) != ""
 	}
+}
+
+func countExecutionModeDeclarations(content string) int {
+	inFence := false
+	count := 0
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") {
+			inFence = !inFence
+			continue
+		}
+		if !inFence && strings.HasPrefix(trimmed, "**Execution mode:") {
+			count++
+		}
+	}
+	return count
 }
 
 func countCompleteCommitFences(content string) int {

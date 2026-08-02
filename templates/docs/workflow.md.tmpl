@@ -16,7 +16,7 @@ brainstorming → ADR (if warranted) → plan (if warranted) → resync (when bo
 ```
 
 A plan phase is one independently green coherent implementation transaction and declares `inline`
-or `subagent-driven` ownership independently of every other phase. Checkbox tasks are ordered steps,
+or `subagent-driven` ownership independently of every other phase. Heading-identified tasks are ordered steps,
 not commit, dispatch, review, or checkpoint boundaries. One commit-capable owner takes a complete
 subagent-driven phase from a known clean green baseline through staged check, gate, and closing
 commit; the parent owns inline integration and all report-only review settlement. Sequential

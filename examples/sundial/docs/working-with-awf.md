@@ -208,7 +208,7 @@ from base rates alongside context and output limits and capability markers, enfo
 project-local gitignore rule at save time, persists atomically, and leaves the file unchanged on
 cancellation. Long implementations select ownership independently per phase so one plan may mix modes. A
 subagent-driven phase has one commit-capable owner from a clean green baseline through staged check,
-gate, and its closing commit, while inline phases remain parent-owned. Checkbox tasks are ordered
+gate, and its closing commit, while inline phases remain parent-owned. Heading-identified tasks are ordered
 steps, not transaction or checkpoint boundaries. Explicit batch helpers stay sequential and
 commit-disabled, receive path-disjoint subsets, never own shared files, and return to the parent for
 integration. The parent owns report-only review settlement and checkpoints only after findings

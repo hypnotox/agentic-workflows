@@ -131,6 +131,12 @@ func TestPlanExecutableProjection(t *testing.T) {
 	if beforeHash != afterHash || !bytes.Equal(parsed.Source, beforeBytes) {
 		t.Fatal("projection mutated source bytes")
 	}
+	t.Run("parse failure", TestPlanResolutionPropagatesParseFailure)
+	t.Run("exact names", TestPlanResolutionUsesExactNamesAndSortedAvailability)
+	t.Run("symlink confinement", TestPlanResolutionConfinesSymlinkTargets)
+	t.Run("ambiguous name", TestPlanResolutionReportsAmbiguousStemFilenameCollision)
+	t.Run("selectors", TestPlanProjectionSelectorsAreTypedAndCanonical)
+	t.Run("legacy boundary", TestLegacyPlanHasNoExecutableProjection)
 }
 
 func TestPlanResolutionPropagatesParseFailure(t *testing.T) {
@@ -164,6 +170,34 @@ func TestPlanResolutionUsesExactNamesAndSortedAvailability(t *testing.T) {
 		if !errors.As(err, &notFound) || notFound.Kind != "name" || notFound.Value != name || !reflect.DeepEqual(notFound.Available, wantAvailable) {
 			t.Errorf("Resolve(%q) error = %#v", name, err)
 		}
+	}
+}
+
+func TestPlanResolutionConfinesSymlinkTargets(t *testing.T) {
+	dir := t.TempDir()
+	insideTarget := filepath.Join(dir, "fixture.md")
+	if err := os.WriteFile(insideTarget, []byte(v1Plan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("fixture.md", filepath.Join(dir, "2026-08-02-inside.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plan.Resolve(dir, "2026-08-02-inside"); err != nil {
+		t.Fatalf("inside symlink Resolve: %v", err)
+	}
+
+	outsideDir := t.TempDir()
+	outsideTarget := filepath.Join(outsideDir, "outside.md")
+	if err := os.WriteFile(outsideTarget, []byte(v1Plan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideTarget, filepath.Join(dir, "2026-08-03-outside.md")); err != nil {
+		t.Fatal(err)
+	}
+	_, err := plan.Resolve(dir, "2026-08-03-outside")
+	var diagnostics *plan.DiagnosticsError
+	if !errors.As(err, &diagnostics) || len(diagnostics.Diagnostics) != 1 || diagnostics.Diagnostics[0].Category != "path" || diagnostics.Diagnostics[0].Path != "2026-08-03-outside.md" {
+		t.Fatalf("outside symlink error = %#v", err)
 	}
 }
 

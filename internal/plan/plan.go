@@ -119,6 +119,13 @@ type planFrontmatter struct {
 // ParseDir scans dir for plan files (YYYY-MM-DD-*.md) and parses each. Files
 // without frontmatter parse to a Plan with HasFrontmatter false.
 func ParseDir(dir string) ([]Plan, error) {
+	resolvedDir, err := filepath.EvalSymlinks(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("resolve plans directory %s: %w", dir, err)
+	}
 	matches, err := filepath.Glob(filepath.Join(dir, "*.md"))
 	if err != nil {
 		return nil, fmt.Errorf("glob %s: %w", dir, err)
@@ -129,6 +136,15 @@ func ParseDir(dir string) ([]Plan, error) {
 		base := filepath.Base(path)
 		if !FilenameRe.MatchString(base) {
 			continue // skip template.md, README.md, and any non-plan file
+		}
+		resolvedPath, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s: %w", base, err)
+		}
+		rel, err := filepath.Rel(resolvedDir, resolvedPath)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+			diagnostics = append(diagnostics, &Diagnostic{Category: "path", Path: base, Detail: "plan path escapes plans directory"})
+			continue
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {

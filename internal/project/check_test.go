@@ -2,6 +2,7 @@ package project
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -433,6 +434,67 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	if _, ok := got["plan-frontmatter@2026-07-12-bad-status.md"]; !ok {
 		t.Errorf("expected plan-frontmatter drift for bad status, got %#v", drift)
 	}
+
+	structured := `---
+format: plan-v1
+date: 2026-07-12
+adrs: []
+status: Proposed
+---
+# Plan: Structured
+
+## Goal
+
+Validate frontmatter.
+
+## Architecture summary
+
+Keep parsing in internal/plan.
+
+## Phase 1: Check
+
+**Execution mode: inline.**
+
+### Task 1.1: Check marker
+
+Parse the marker.
+
+### Phase close
+
+Run the gate.
+
+` + "```commit\ntest(plans): validate frontmatter\n```" + `
+
+## Definition of done
+
+- Frontmatter is validated.
+`
+	for _, status := range []string{"Proposed", "Implemented"} {
+		t.Run("plan-v1 "+status, func(t *testing.T) {
+			dir := t.TempDir()
+			testsupport.WriteFile(t, filepath.Join(dir, "2026-07-12-structured.md"), strings.Replace(structured, "status: Proposed", "status: "+status, 1))
+			plans, err := plan.ParseDir(dir)
+			if err != nil || len(plans) != 1 || plans[0].Format != "plan-v1" || plans[0].Status != status {
+				t.Fatalf("ParseDir plans=%#v err=%v", plans, err)
+			}
+		})
+	}
+	for _, tc := range []struct{ name, body, detail string }{
+		{"empty format", strings.Replace(structured, "format: plan-v1", `format: ""`, 1), "format must be a nonempty string"},
+		{"unknown format", strings.Replace(structured, "format: plan-v1", "format: plan-v2", 1), "format must be exactly plan-v1"},
+		{"duplicate format", strings.Replace(structured, "format: plan-v1", "format: plan-v1\nformat: plan-v1", 1), "duplicate format"},
+		{"malformed format", strings.Replace(structured, "format: plan-v1", "format: [plan-v1]", 1), "format must be a nonempty string"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			testsupport.WriteFile(t, filepath.Join(dir, "2026-07-12-structured.md"), tc.body)
+			_, err := plan.ParseDir(dir)
+			var diagnostic *plan.Diagnostic
+			if !errors.As(err, &diagnostic) || diagnostic.Category != "frontmatter" || diagnostic.Detail != tc.detail {
+				t.Fatalf("diagnostic=%#v err=%v", diagnostic, err)
+			}
+		})
+	}
 }
 
 // pendingADRFixture is a valid Proposed pending current-state-v3 record: slug
@@ -579,6 +641,29 @@ func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
 	}
 	if drift := p.checkPendingADRs(testContext(t), mustDeriveCorpus(t, p)); len(drift) != 0 {
 		t.Fatalf("a numbered corpus must not be blocked, got %#v", drift)
+	}
+}
+
+func TestCheckReportParsesPlansOnce(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), "internal/project/check.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(source)
+	checkStart := strings.Index(text, "func (p *Project) CheckReport")
+	checkEnd := strings.Index(text, "\n// Check is the compatibility projection")
+	privateStart := strings.Index(text, "func (p *Project) checkWithState")
+	if checkStart < 0 || checkEnd <= checkStart || privateStart < 0 {
+		t.Fatal("check.go source boundaries changed")
+	}
+	if got := strings.Count(text[checkStart:checkEnd], "plan.ParseDir("); got != 1 {
+		t.Fatalf("CheckReport has %d plan.ParseDir calls, want exactly one", got)
+	}
+	if strings.Contains(text[privateStart:], "plan.ParseDir(") {
+		t.Fatal("a private check or advisory consumer reparses plans")
+	}
+	if got := strings.Count(text, "plan.ParseDir("); got != 2 {
+		t.Fatalf("check.go has %d plan.ParseDir calls, want CheckReport plus compatibility AdvisoryNotes", got)
 	}
 }
 

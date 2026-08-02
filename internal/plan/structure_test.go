@@ -105,6 +105,10 @@ func TestPlanV1StructureValidated(t *testing.T) {
 	if !strings.Contains(got.Goal, "## Goal detail") {
 		t.Fatalf("opaque Goal lost nested heading: %q", got.Goal)
 	}
+	t.Run("diagnostics", TestPlanV1Diagnostics)
+	t.Run("path grammar", TestPlanV1PathGrammar)
+	t.Run("legacy boundary", TestPlanV1AbsentFormatRemainsLegacy)
+	t.Run("fenced headings", TestPlanV1RetiredHeadingInsideFenceIsOpaque)
 }
 
 func TestPlanDiagnosticRendering(t *testing.T) {
@@ -149,6 +153,7 @@ func TestPlanV1Diagnostics(t *testing.T) {
 		{"nonsequential phase", replaceOnceForTest(v1Plan, "## Phase 1: Parse", "## Phase 2: Parse"), "numbering", "phase number 2, want 1"},
 		{"missing execution mode", truncateAfter(v1Plan, "## Phase 1: Parse\n"), "structure", "phase 1 requires an execution mode"},
 		{"malformed execution mode", replaceOnceForTest(v1Plan, "**Execution mode: inline.**", "**Execution mode: delegated.**"), "structure", "phase 1 requires exact execution mode"},
+		{"duplicate execution mode", replaceOnceForTest(v1Plan, "Implement the parser.", "Implement the parser.\n\n**Execution mode: inline.**"), "structure", "phase 1 requires exactly one execution-mode declaration"},
 		{"no tasks", replaceOnceForTest(v1Plan, "### Task 1.1: Build it", "Prose before tasks"), "structure", "phase 1 requires one or more tasks"},
 		{"malformed task heading", replaceOnceForTest(v1Plan, "### Task 1.1: Build it", "### Task broken"), "structure", "malformed task heading"},
 		{"nonsequential task", replaceOnceForTest(v1Plan, "### Task 1.1: Build it", "### Task 1.2: Build it"), "numbering", "task number 1.2, want 1.1"},
@@ -176,8 +181,13 @@ func TestPlanV1Diagnostics(t *testing.T) {
 		{"unexpected section after phase close", replaceOnceForTest(v1Plan, "```commit\nfeat(plans): parse plans\n```\n\n## Phase 2", "```commit\nfeat(plans): parse plans\n```\n\n## Notes\n\nUnexpected.\n\n## Phase 2"), "structure", "unexpected top-level section after Phase close"},
 		{"unexpected section inside task", replaceOnceForTest(v1Plan, "Expose the parsed projection.\n\n### Phase close", "Expose the parsed projection.\n\n## Notes\n\nUnexpected.\n\n### Phase close"), "structure", "unexpected top-level section inside task"},
 		{"checkbox in task body", replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n- [ ] Nested work"), "structure", "task checkboxes are not plan-v1 declarations"},
-		{"missing commit fence", replaceOnceForTest(v1Plan, "```commit\nfeat(plans): parse plans\n```", "No commit fence."), "phase-close", "phase 1 Phase close requires exactly one non-ignored commit fence"},
-		{"unclosed commit fence", replaceOnceForTest(v1Plan, "```commit\nfeat(plans): parse plans\n```", "```commit\nfeat(plans): parse plans"), "phase-close", "phase 1 Phase close requires exactly one non-ignored commit fence"},
+		{"star checkbox in task body", replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n* [ ] Nested work"), "structure", "task checkboxes are not plan-v1 declarations"},
+		{"plus checkbox in task body", replaceOnceForTest(v1Plan, "Expose the parsed projection.", "Expose the parsed projection.\n\n+ [x] Nested work"), "structure", "task checkboxes are not plan-v1 declarations"},
+		{"optional prefix task", replaceOnceForTest(v1Plan, "### Task 2.1: Add the reader", "### Task 2.1: Optional add the reader"), "structure", "conditional and optional task declarations are forbidden"},
+		{"conditional suffix task", replaceOnceForTest(v1Plan, "### Task 2.1: Add the reader", "### Task 2.1: Add the reader if needed"), "structure", "conditional and optional task declarations are forbidden"},
+		{"missing commit fence", replaceOnceForTest(v1Plan, "```commit\nfeat(plans): parse plans\n```", "No commit fence."), "phase-close", "phase 1 requires exactly one non-ignored commit fence in Phase close"},
+		{"unclosed commit fence", replaceOnceForTest(v1Plan, "```commit\nfeat(plans): parse plans\n```", "```commit\nfeat(plans): parse plans"), "phase-close", "phase 1 requires exactly one non-ignored commit fence in Phase close"},
+		{"task commit fence", replaceOnceForTest(v1Plan, "Implement the parser.", "Implement the parser.\n\n```commit\nfix(plans): wrong fence\n```"), "phase-close", "phase 1 requires exactly one non-ignored commit fence in Phase close"},
 		{"missing definition section", truncateBefore(v1Plan, "## Definition of done"), "structure", "expected ## Definition of done after final phase"},
 		{"unexpected section before notes", replaceOnceForTest(v1Plan, "## Notes\n\nThe spike", "## Goal\n\nUnexpected.\n\n## Notes\n\nThe spike"), "structure", "unexpected top-level section before Notes"},
 		{"no definition bullet", replaceOnceForTest(v1Plan, "- A valid plan parses and projects.", "A valid plan parses and projects."), "structure", "Definition of done requires a nonempty plain bullet"},

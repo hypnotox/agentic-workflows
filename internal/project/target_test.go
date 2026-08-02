@@ -257,6 +257,9 @@ func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 	}
 	for name, settledPhrase := range settled {
 		body := renderSkillGolden(t, name, data)
+		if !strings.Contains(body, "awf read plan <plan>") || !strings.Contains(body, "projection changes neither") {
+			t.Errorf("%s lacks fresh-owner projection guidance", name)
+		}
 		settledAt := strings.Index(body, settledPhrase)
 		checkpointAt := strings.Index(body, "**Routine checkpoint.**")
 		handoffAt := strings.Index(body, "handoff_session")
@@ -268,7 +271,8 @@ func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 		}
 		for _, banned := range []string{
 			"checkbox task", "after every heading-identified task", "after each heading-identified task",
-			"heading-identified task triggers", "after every batch-helper return", "after each batch-helper return",
+			"heading-identified task triggers", "projection triggers handoff", "handoff after projection",
+			"after every batch-helper return", "after each batch-helper return",
 			"batch-helper return triggers", "handoff after a helper return",
 		} {
 			if strings.Contains(strings.ToLower(body), banned) {

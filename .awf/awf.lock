@@ -804,13 +804,13 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:29a690459f2bf97220000066140312d886cf8236f8aba02dd571cdb8b320a812",
+      "templateHash": "sha256:8c3c816b3c6e9be7a5fd11091c5c11b3d2e3955a38f3026c2d51345497722de2",
       "configHash": "sha256:c6c4a6dfdec63a5c70bbb049fa804b460aaef059eb4c57db064ddf53ec8f41e4",
       "outputHash": "sha256:7829e279f414e1851f4eb571ae09ff14e49a405385a8de283c9b2e2ef65bcc14"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:3723afc6d59bdf88c5546220d0f34c4abe60a52d53cea5390dc47f4b56605d3f",
+      "templateHash": "sha256:8c0955a0fee2dd4bb98b21231da6c6502d95851caf79734f328a1d1a9ef66267",
       "configHash": "sha256:38af59b21e8f786f978d84deaae2af03b1699d71d377c1fc7d799781031e8548",
       "outputHash": "sha256:f6927cff74bebec2b6e83d81431a71c4f3ee3beb5456226aac69f2c56e307ec6"
     }

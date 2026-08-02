@@ -179,6 +179,25 @@ func TestParseDirExtractsCommitSubjects(t *testing.T) {
 	}
 }
 
+func TestParseDirResolveErrors(t *testing.T) {
+	parent := t.TempDir()
+	loop := filepath.Join(parent, "loop")
+	if err := os.Symlink("loop", loop); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plan.ParseDir(loop); err == nil || !strings.Contains(err.Error(), "resolve plans directory") {
+		t.Fatalf("directory resolve error = %v", err)
+	}
+
+	dir := t.TempDir()
+	if err := os.Symlink("missing.md", filepath.Join(dir, "2026-08-02-broken.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plan.ParseDir(dir); err == nil || !strings.Contains(err.Error(), "resolve 2026-08-02-broken.md") {
+		t.Fatalf("plan resolve error = %v", err)
+	}
+}
+
 // TestParseDirGlobError exercises the glob-pattern failure path: a directory
 // whose name contains an unterminated "[" yields an ErrBadPattern from Glob.
 func TestParseDirGlobError(t *testing.T) {

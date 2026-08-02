@@ -77,6 +77,14 @@ func TestReadPlanCommand(t *testing.T) {
 	if strings.Contains(got, "### Task 1.2") || stderr.Len() != 0 {
 		t.Fatalf("stdout = %q, stderr = %q", got, stderr.String())
 	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"awf", "read", "plan", "2026-08-02-read-command.md", "1"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("filename phase read exit = %d, stderr = %q", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "### Task 1.1") || !strings.Contains(stdout.String(), "### Task 1.2") || stderr.Len() != 0 {
+		t.Fatalf("phase stdout = %q, stderr = %q", stdout.String(), stderr.String())
+	}
 	after, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -84,6 +92,9 @@ func TestReadPlanCommand(t *testing.T) {
 	if !bytes.Equal(before, after) {
 		t.Fatal("read command mutated source")
 	}
+	t.Run("direct failures", TestRunReadPlanRejectsArityAndUnadoptedRoot)
+	t.Run("typed failures", TestReadPlanCommandFailuresKeepStdoutEmpty)
+	t.Run("version gate", TestReadPlanCommandIsVersionGated)
 }
 
 func TestRunReadPlanRejectsArityAndUnadoptedRoot(t *testing.T) {
@@ -111,6 +122,9 @@ func TestReadPlanCommandFailuresKeepStdoutEmpty(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		if code := run(args, &stdout, &stderr); code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
 			t.Errorf("run(%v) exit=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
+		}
+		if len(args) == 6 && (!strings.Contains(stderr.String(), "available:") || !strings.Contains(stderr.String(), "2026-08-02-read-command")) {
+			t.Errorf("run(%v) did not list exact available values: %q", args, stderr.String())
 		}
 	}
 }
