@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Repository checks now use capability-planned execution: direct and aggregate checks share prepared config, project reports, and enabled scanner index inputs while preserving successful output order. Any readiness failure occurs before step output.
+
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.

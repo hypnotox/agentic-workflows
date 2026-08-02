@@ -8,26 +8,20 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/execution"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
-// runMemoryGate scans the staged decision records for a citation of a specific
-// working-memory file (ADR-0158). It reports the disabled child and returns nil
-// without scanning when the knob is off. The scanned prefixes derive from the
-// configured docs directory, so an adopter with a custom docsDir gets their own
-// decisions and plans directories.
+// runMemoryGate selects the memory step from the shared repository-check plan.
 func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
-	cfg, err := config.Load(config.RootDir(root))
-	if err != nil {
-		return err
-	}
+	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepMemory}, execution.StopOnFailure, false, productionRepoCheckDependencies())
+}
+
+func runMemoryAction(stdout io.Writer, cfg *config.Config, tree *snapshot.Tree) error {
 	if cfg.MemoryCite == nil || !cfg.MemoryCite.Enabled {
 		fmt.Fprintln(stdout, "note: memory: disabled (memoryCite.enabled)")
 		return nil
-	}
-	tree, err := stagedTree(ctx, root)
-	if err != nil {
-		return fmt.Errorf("check repo memory: cannot read staged files: %w", err)
 	}
 	exemptions := make([]memorycite.Exemption, 0, len(cfg.MemoryCite.Exemptions))
 	for _, e := range cfg.MemoryCite.Exemptions {
@@ -37,7 +31,6 @@ func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 	prefixes := []string{d + "/decisions/", d + "/plans/"}
 	var files []memorycite.File
 	for _, blob := range tree.List() {
-		// A staged symlink's bytes are a target path, not document text.
 		if !blob.Scannable() {
 			continue
 		}
@@ -49,8 +42,8 @@ func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 		}
 	}
 	findings := memorycite.Scan(files, exemptions)
-	for _, f := range findings {
-		fmt.Fprintln(stdout, memorycite.Format(f))
+	for _, finding := range findings {
+		fmt.Fprintln(stdout, memorycite.Format(finding))
 	}
 	if len(findings) > 0 {
 		return errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")

@@ -3,7 +3,7 @@
 
 One implementation per shared concern, and the coverage-gate posture that protects it.
 
-**Applicability:** Global topic within owning domain selectors none. Run `awf topic code-design/single-home --coverage` for current matched paths and marker sites.
+**Applicability:** Global topic within owning domain selectors `internal/execution/**`. Run `awf topic code-design/single-home --coverage` for current matched paths and marker sites.
 
 This topic governs concerns introduced by new work and forks deliberately converted under its authority. Existing parallel implementations remain bounded future candidates until a conversion brings them into scope; this authority does not require a wholesale sweep.
 

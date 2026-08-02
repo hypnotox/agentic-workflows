@@ -2,7 +2,7 @@
 # code-design
 
 <!-- awf:edit current-state: from .awf/domains/parts/code-design/current-state.md -->
-The code-design domain owns cross-package structure guidance that does not belong to one product area. It is pathless: its topics may supply explicit global authority, but the domain claims no file territory and creates no path-coverage obligation. Read the owning topic before changing a governed structure rather than copying its claims into local guidance.
+The code-design domain owns cross-package structure guidance and `internal/execution/**` as its scoped capability-planning implementation surface. Its pre-existing topics remain explicit global guidance and do not gain path ownership. Read the owning topic before changing a governed structure rather than copying its claims into local guidance.
 
 
 ## Topics

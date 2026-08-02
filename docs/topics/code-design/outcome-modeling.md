@@ -3,7 +3,7 @@
 
 How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
 
-**Applicability:** Global topic within owning domain selectors none. Run `awf topic code-design/outcome-modeling --coverage` for current matched paths and marker sites.
+**Applicability:** Global topic within owning domain selectors `internal/execution/**`. Run `awf topic code-design/outcome-modeling --coverage` for current matched paths and marker sites.
 
 This topic governs outcomes introduced by new work and sites deliberately converted under
 its authority, failure and success alike. Existing message-text identities, shallow

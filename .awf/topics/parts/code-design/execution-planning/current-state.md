@@ -1,3 +1,21 @@
-Capability-planned execution is the scoped implementation surface for closed multi-step operations. Claims become active when the pending execution-planning decision applies them.
+Capability-planned execution is the scoped implementation surface for closed multi-step operations. Consumers retain domain values and policy while the shared package owns only closed selection, operation-scoped requirement preparation, binding, ordering, and attempted-step outcomes.
 
 ## Claims
+
+### `invariant: closed-step-selection`
+
+internal/execution validates a caller-supplied closed set of step and requirement definitions before preparation, selects requested steps in declaration order, rejects a conditionally resolved unknown requirement at a second barrier, and binds exactly the selected step identities only after their complete requirement closure is prepared. It has no runtime registry, reflection, or universal consumer-value container.
+Origin: ADR-capability-planned-execution-for-multi-step-systems
+Backing: test
+
+### `invariant: requirements-prepared-once`
+
+One prepared execution completes the foundation dependency closure before selected steps resolve their conditional requirements, then prepares the union of the selected requirement closures in declaration-stable dependency order with each requirement prepared at most once. A validation, preparation, resolution, or binding failure executes zero actions.
+Origin: ADR-capability-planned-execution-for-multi-step-systems
+Backing: test
+
+### `invariant: explicit-step-failure-policy`
+
+A prepared execution runs selected actions in declaration order under an explicit stop-on-failure or continue-on-failure policy and returns an ordered identity-and-error outcome for every attempted step. Cancellation remains a separate execution-level error: no outcome is invented for an unattempted step, and an attempted action's outcome is retained when cancellation is also observed.
+Origin: ADR-capability-planned-execution-for-multi-step-systems
+Backing: test

@@ -9,14 +9,7 @@
   and patch-producing parallel workers remain out of scope for the current workflow contract.
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
-- Redesign the check architecture around explicit snapshot capabilities. ADR-0210 forked checks by
-  repository-state and staged-transition universe, removed duplicate payload invocations, made
-  disabled scans git-independent, and made every universe child applicable by construction. Its
-  staged drift remains intentionally narrower than repository drift: a snapshot tree has neither
-  directory entries nor untracked files, so the config-tree hygiene sweep and dead-reference probe
-  need explicit semantics before they can join the blocking staged gate. Use that decision to
-  separate rendered-byte comparison from filesystem-only hygiene instead of extending the current
-  check orchestration with more special cases.
+- Decide whether staged drift can acquire semantics for directory entries, untracked files, config-tree hygiene, and dead-reference probing. A snapshot tree has neither directory entries nor untracked files, so these filesystem-only checks need explicit semantics before joining the blocking staged gate; do not broaden staged drift by implication.
 - Let a global topic carry path selectors, so it can own specific paths as well as supply
   global authority. Today `applies: global` is skipped outright by both `coveredByDomain`
   and `matchingScopedTopics` in `internal/topic/coverage.go`, so a global topic can never

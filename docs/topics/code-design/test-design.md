@@ -3,7 +3,7 @@
 
 How Go tests assert (error identity aside) and how they obtain controlled dependencies without new global seams.
 
-**Applicability:** Global topic within owning domain selectors none. Run `awf topic code-design/test-design --coverage` for current matched paths and marker sites.
+**Applicability:** Global topic within owning domain selectors `internal/execution/**`. Run `awf topic code-design/test-design --coverage` for current matched paths and marker sites.
 
 This topic governs Go tests introduced by new work and sites deliberately converted under
 its authority; the TypeScript lane sits outside `currentState.testGlobs` and outside these
