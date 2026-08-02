@@ -70,6 +70,7 @@ var registry = []Migration{
 	{To: integrationBranchGeneration, Name: "integration-branch-explicit", Apply: treeOnly(applyIntegrationBranch)},
 	{To: intrinsicADRFormatGeneration, Name: "intrinsic-adr-format", Apply: applyIntrinsicADRFormat, OwnsSchemaStamp: true},
 	{To: retargetCheckCommandsGeneration, Name: "retarget-check-commands", Apply: treeOnly(applyRetargetCheckCommands)},
+	{To: 33, Name: "decision-item-slugs", Apply: applyDecisionItemSlugs},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the

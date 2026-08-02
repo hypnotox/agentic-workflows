@@ -222,3 +222,4 @@
 - [ADR-0214: Retain Only Claude Code and Pi Runtime Targets](0214-retain-only-claude-code-and-pi-runtime-targets.md) (Implemented)
 - [ADR-0215: Test-support exports earn test consumers](0215-test-support-exports-earn-test-consumers.md) (Implemented)
 - [ADR-0216: Consumer-local contracts over single-home filesystem access](0216-consumer-local-contracts-over-single-home-filesystem-access.md) (Implemented)
+- [ADR-0217: Task-scoped plan decision context and phase outcomes](0217-task-scoped-plan-decision-context-and-phase-outcomes.md) (Implemented)

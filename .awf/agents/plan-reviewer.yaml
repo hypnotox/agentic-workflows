@@ -34,11 +34,12 @@ data:
               brace guard)
         - name: section-taxonomy
           description: >-
-              the plan follows plan-v1: `format: plan-v1` plus `date`/`adrs`/`status` frontmatter,
-              a `# Plan:` H1, nonempty Goal and Architecture summary, sequential phase and task
-              headings, exact execution modes, one final Phase close and commit fence per phase,
-              required Definition of done plain bullets, and optional Notes; File structure,
-              Verification, and task checkboxes are not plan-v1 declarations
+              the current scaffold follows plan-v2: `format: plan-v2` plus `date`/`adrs`/`status`
+              frontmatter, a `# Plan:` H1, nonempty Goal and Architecture summary, sequential phase
+              and task headings, exact execution modes, optional nonempty Applying/Context task arrays,
+              slugged `dod:` Definition-of-done bullets, phase Advances/Completes ownership, one final
+              Phase close and commit fence per phase, and optional Notes; `plan-v1` remains compatibility,
+              while File structure, Verification, and task checkboxes are not plan-v2 declarations
         - name: lifecycle-freeze
           description: >-
               the plan's two-state `status:` lifecycle is honoured; mutable while `Proposed`, flipped

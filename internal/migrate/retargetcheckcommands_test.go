@@ -58,8 +58,8 @@ func TestRewriteCheckCommand(t *testing.T) {
 }
 
 func TestRetargetCheckCommandsRegisteredAndForwardPorted(t *testing.T) {
-	if Current() != retargetCheckCommandsGeneration {
-		t.Fatalf("Current() = %d, want retarget generation %d", Current(), retargetCheckCommandsGeneration)
+	if Current() < retargetCheckCommandsGeneration {
+		t.Fatalf("Current() = %d, want generation at least retarget generation %d", Current(), retargetCheckCommandsGeneration)
 	}
 	src := []byte("prefix: example\nvars:\n  proseGateCmd: arbitrary\n  helper: ./awf check prose\n")
 	got, err := ConfigForCurrentSchema(src, retargetCheckCommandsGeneration-1)

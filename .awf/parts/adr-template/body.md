@@ -1,0 +1,56 @@
+## Context
+
+What situation prompted this decision? What constraints, forces, or prior art shaped the
+problem space? Include any measurements or observations that are verifiable.
+
+## Decision
+
+The chosen approach, as column-zero numbered items sequential from 1, each a discrete,
+actionable commitment. Be precise enough that a reader can implement it correctly without
+further consultation.
+
+1. `decision: first-commitment` Describe the first commitment.
+2. `decision: second-commitment` Describe the second commitment.
+
+## State changes
+
+The current-state claims this decision creates, changes, or retires, as the authoritative
+link between this ADR and the topics it governs. Either the single word `None.` when the
+decision touches no claim, or a list whose entries each name one claim by its qualified
+`<domain>/<topic>:<slug>` id in an inline code span:
+
+- add `<domain>/<topic>:<slug>`
+- update `<domain>/<topic>:<slug>`
+- remove `<domain>/<topic>:<slug>`
+
+`None.` and a list are mutually exclusive, and one id appears at most once. A rename is a
+remove plus an add; a split is one remove plus several adds; a merge is several removes plus
+one add. A removed id is never reused.
+
+## Consequences
+
+What becomes easier, what becomes harder, what is explicitly ruled out by this choice.
+Include known risks and how they are mitigated.
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Option A | ... |
+| Option B | ... |
+
+Append-only Status history starts with Proposed. Later status events carry the latest content stamp,
+and an Amended event records each post-Accepted amendment with its new digest. Incremental
+implementation first appends an Implementing status event, then appends Applied events in
+declaration order, one checked batch per commit. Amend an unapplied operation directly. If an
+already-applied add or update needs correction while another operation remains, append one
+Reapplied event and its material claim correction; otherwise use a follow-up ADR or remove plus
+add. For example:
+
+- YYYY-MM-DD: Implementing; content-sha256: `<64 lowercase hex characters>`
+- YYYY-MM-DD: Applied; operations: update `<domain>/<topic>:<slug>`
+- YYYY-MM-DD: Reapplied; operations: update `<domain>/<topic>:<slug>`
+
+## Status history
+
+- YYYY-MM-DD: Proposed

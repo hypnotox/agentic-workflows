@@ -8,7 +8,7 @@ import (
 
 // invariant: config/migrations-and-locks:workflow-telemetry-config-migration (TestDropWorkflowTelemetryRegistered)
 func TestDropWorkflowTelemetryRegistered(t *testing.T) {
-	if Current() != retargetCheckCommandsGeneration {
+	if Current() < retargetCheckCommandsGeneration {
 		t.Fatal(Current())
 	}
 }

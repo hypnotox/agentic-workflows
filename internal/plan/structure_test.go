@@ -139,7 +139,7 @@ func TestPlanV1Diagnostics(t *testing.T) {
 		category string
 		detail   string
 	}{
-		{"unknown format", replaceOnceForTest(v1Plan, "format: plan-v1", "format: plan-v2"), "frontmatter", "format must be exactly plan-v1"},
+		{"unknown format", replaceOnceForTest(v1Plan, "format: plan-v1", "format: plan-v3"), "frontmatter", "format must be exactly plan-v1 or plan-v2"},
 		{"empty format", replaceOnceForTest(v1Plan, "format: plan-v1", "format: \"\""), "frontmatter", "format must be a nonempty string"},
 		{"duplicate format", replaceOnceForTest(v1Plan, "format: plan-v1", "format: plan-v1\nformat: plan-v1"), "frontmatter", "duplicate format"},
 		{"nonmapping frontmatter", replaceOnceForTest(v1Plan, "format: plan-v1\ndate: 2026-08-02\nadrs: []\nstatus: Proposed", "- format: plan-v1"), "frontmatter", "frontmatter must be a mapping"},
@@ -377,6 +377,168 @@ func withoutBatchOnlyFields(body string) string {
 	return body
 }
 
+// invariant: adr-system/plan-artifacts:plan-v2-decision-references (TestPlanV2DecisionReferences)
+func TestPlanV2DecisionReferences(t *testing.T) {
+	body := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
+	body = strings.Replace(body, "### Task 1.1: Build it\n", "### Task 1.1: Build it\nApplying: [\"task-scoped-plan-decision-context-and-phase-outcomes:plan-v2\"]\nContext: [\"0001:#1\"]\n", 1)
+	body = strings.Replace(body, "- A valid plan parses and projects.", "- `dod: complete` A valid plan parses and projects.", 1)
+	body = strings.Replace(body, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nCompletes: [\"complete\"]", 1)
+	dir := t.TempDir()
+	writePlan(t, dir, "2026-08-02-v2.md", body)
+	plans, err := plan.ParseDir(dir)
+	if err != nil || len(plans) != 1 || len(plans[0].Phases[0].Tasks[0].Fields.Applying) != 1 || plans[0].Phases[0].Tasks[0].Fields.Applying[0].Selector != "plan-v2" {
+		t.Fatalf("ParseDir = %#v, %v", plans, err)
+	}
+	leadingDigitSlug := strings.Replace(body, "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2", "3d-context:2fa-rule", 1)
+	dir = t.TempDir()
+	writePlan(t, dir, "2026-08-02-leading-digit.md", leadingDigitSlug)
+	if parsed, err := plan.ParseDir(dir); err != nil || parsed[0].Phases[0].Tasks[0].Fields.Applying[0].ADR != "3d-context" || parsed[0].Phases[0].Tasks[0].Fields.Applying[0].Selector != "2fa-rule" {
+		t.Fatalf("lowercase-kebab references with leading digits = %#v, %v", parsed, err)
+	}
+	for name, reference := range map[string]string{
+		"numeric identity is four digits": "12:plan-v2",
+		"repeated selector hyphen":        "task-scoped-plan-decision-context-and-phase-outcomes:plan--v2",
+		"trailing selector hyphen":        "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2-",
+		"noncanonical ordinal":            "0001:#01",
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := strings.Replace(body, "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2", reference, 1)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-bad.md", bad)
+			if _, err := plan.ParseDir(dir); err == nil {
+				t.Fatalf("invalid reference %q accepted", reference)
+			}
+		})
+	}
+	for name, tc := range map[string]struct{ field, replacement string }{
+		"whitespace before colon":           {"Applying", "Applying : ["},
+		"missing space after colon":         {"Applying", "Applying:["},
+		"tab after colon":                   {"Applying", "Applying:\t["},
+		"context whitespace before colon":   {"Context", "Context : ["},
+		"context missing space after colon": {"Context", "Context:["},
+		"context tab after colon":           {"Context", "Context:\t["},
+	} {
+		t.Run(name, func(t *testing.T) {
+			malformed := strings.Replace(body, tc.field+": [", tc.replacement, 1)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-malformed.md", malformed)
+			if _, err := plan.ParseDir(dir); err == nil {
+				t.Fatalf("malformed field %q accepted", tc.replacement)
+			}
+		})
+	}
+	prose := strings.Replace(body, "\n\nImplement the parser.", "\n\nApplying lessons: keep task prose legal.\nContext remains prose without a field separator.\n\nImplement the parser.", 1)
+	dir = t.TempDir()
+	writePlan(t, dir, "2026-08-02-prose.md", prose)
+	if _, err := plan.ParseDir(dir); err != nil {
+		t.Fatalf("ordinary prose beginning with reserved words: %v", err)
+	}
+}
+
+// invariant: adr-system/plan-artifacts:plan-v2-phase-outcomes (TestPlanV2PhaseOutcomes)
+func TestPlanV2PhaseOutcomes(t *testing.T) {
+	body := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
+	body = strings.Replace(body, "- A valid plan parses and projects.", "- `dod: complete` A valid plan parses and projects.", 1)
+	body = strings.Replace(body, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nAdvances: [\"complete\"]", 1)
+	dir := t.TempDir()
+	writePlan(t, dir, "2026-08-02-v2.md", body)
+	plans, err := plan.ParseDir(dir)
+	if err != nil || len(plans) != 1 || len(plans[0].DoD) != 1 || plans[0].Phases[0].Advances[0] != "complete" {
+		t.Fatalf("ParseDir = %#v, %v", plans, err)
+	}
+	t.Run("DoD source ranges and grammar", func(t *testing.T) {
+		multiline := strings.Replace(body, "- `dod: complete` A valid plan parses and projects.", "- `dod: one` One.\n\n  Continuation.\n  - nested plain bullet\n\n  ```text\n  - fenced plain bullet\n  ```\n- `dod: two` Two.\n", 1)
+		multiline = strings.Replace(multiline, "Advances: [\"complete\"]", "Advances: [\"one\"]", 1)
+		dir := t.TempDir()
+		writePlan(t, dir, "2026-08-02-ranges.md", multiline)
+		parsed, err := plan.ParseDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := "- `dod: one` One.\n\n  Continuation.\n  - nested plain bullet\n\n  ```text\n  - fenced plain bullet\n  ```\n"
+		if got := parsed[0].DoD[0].Content; got != want {
+			t.Fatalf("DoD source range = %q, want %q", got, want)
+		}
+		noBullets := strings.Replace(multiline, "- `dod: one` One.\n\n  Continuation.\n  - nested plain bullet\n\n  ```text\n  - fenced plain bullet\n  ```\n- `dod: two` Two.\n", "No outcome bullet.\n", 1)
+		dir = t.TempDir()
+		writePlan(t, dir, "2026-08-02-empty.md", noBullets)
+		if _, err := plan.ParseDir(dir); err == nil {
+			t.Fatal("missing DoD bullets accepted")
+		}
+		for _, replacement := range []string{"- Unmarked.\n", "- `dod: Bad` malformed.\n", "- `dod: one` duplicate.\n"} {
+			bad := strings.Replace(multiline, "- `dod: two` Two.\n", replacement, 1)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-bad.md", bad)
+			if _, err := plan.ParseDir(dir); err == nil {
+				t.Fatalf("invalid DoD bullet %q accepted", replacement)
+			}
+		}
+	})
+}
+
+func TestPlanV2RejectsPhaseFieldAndCrossPhaseOutcomeErrors(t *testing.T) {
+	base := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
+	base = strings.Replace(base, "- A valid plan parses and projects.", "- `dod: one` One.", 1)
+	parse := func(t *testing.T, body string) error {
+		t.Helper()
+		dir := t.TempDir()
+		writePlan(t, dir, "2026-08-02-v2.md", body)
+		_, err := plan.ParseDir(dir)
+		return err
+	}
+	phaseOne := "**Execution mode: inline.**"
+	for name, replacement := range map[string]string{
+		"unknown field":            phaseOne + "\n\nUnknown: [\"one\"]",
+		"empty field":              phaseOne + "\n\nAdvances:",
+		"invalid JSON":             phaseOne + "\n\nAdvances: not-json",
+		"duplicate Advances":       phaseOne + "\n\nAdvances: [\"one\"]\nAdvances: [\"one\"]",
+		"Advances after Completes": phaseOne + "\n\nCompletes: [\"one\"]\nAdvances: [\"one\"]",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := parse(t, strings.Replace(base, phaseOne, replacement, 1)); err == nil {
+				t.Fatal("invalid phase field was accepted")
+			}
+		})
+	}
+	bothComplete := strings.Replace(base, phaseOne, phaseOne+"\n\nCompletes: [\"one\"]", 1)
+	bothComplete = strings.Replace(bothComplete, "**Execution mode: subagent-driven.**", "**Execution mode: subagent-driven.**\n\nCompletes: [\"one\"]", 1)
+	if err := parse(t, bothComplete); err == nil || !strings.Contains(err.Error(), "duplicate Completes owner") {
+		t.Fatalf("duplicate phase outcome error = %v", err)
+	}
+}
+
+func TestPlanV2RejectsFieldAndOutcomeRelationships(t *testing.T) {
+	base := strings.Replace(v1Plan, "format: plan-v1", "format: plan-v2", 1)
+	base = strings.Replace(base, "- A valid plan parses and projects.", "- `dod: one` One.\n- `dod: two` Two.", 1)
+	base = strings.Replace(base, "**Execution mode: inline.**", "**Execution mode: inline.**\n\nCompletes: [\"one\"]", 1)
+	valid := func(t *testing.T, body string) error {
+		t.Helper()
+		dir := t.TempDir()
+		writePlan(t, dir, "2026-08-02-v2.md", body)
+		_, err := plan.ParseDir(dir)
+		return err
+	}
+	for name, body := range map[string]string{
+		"empty applying":      strings.Replace(base, "### Task 1.1: Build it\n", "### Task 1.1: Build it\nApplying: []\n", 1),
+		"duplicate applying":  strings.Replace(base, "### Task 1.1: Build it\n", "### Task 1.1: Build it\nApplying: [\"x:one\", \"x:one\"]\n", 1),
+		"malformed reference": strings.Replace(base, "### Task 1.1: Build it\n", "### Task 1.1: Build it\nContext: [\"bad\"]\n", 1),
+		"misplaced field":     strings.Replace(base, "Implement the parser.", "Implement the parser.\nApplying: [\"x:one\"]", 1),
+		"duplicate outcomes":  strings.Replace(base, "Completes: [\"one\"]", "Completes: [\"one\"]\nCompletes: [\"two\"]", 1),
+		"overlap outcomes":    strings.Replace(base, "Completes: [\"one\"]", "Advances: [\"one\"]\nCompletes: [\"one\"]", 1),
+		"unknown dod":         strings.Replace(base, "Completes: [\"one\"]", "Completes: [\"missing\"]", 1),
+		"duplicate dod":       strings.Replace(base, "- `dod: two` Two.", "- `dod: one` Two.", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := valid(t, body); err == nil {
+				t.Fatal("invalid plan was accepted")
+			}
+		})
+	}
+	if err := valid(t, base); err != nil {
+		t.Fatalf("valid v2 rejected: %v", err)
+	}
+}
+
 func spikeOnlyPlan(body string) string {
 	start := strings.Index(body, "### Task 1.1: Build it")
 	spike := strings.Index(body, "### Task 1.2: Investigate")
@@ -401,6 +563,28 @@ func truncateAfter(body, marker string) string {
 		panic("test fixture missing " + marker)
 	}
 	return body[:at+len(marker)]
+}
+
+func TestPlanTaskHeadingAndFieldPlacementDiagnostics(t *testing.T) {
+	cases := []struct{ name, old, replacement, detail string }{
+		{"malformed heading", "### Task 1.1: Build it", "### Task invalid", "malformed task heading"},
+		{"wrong task number", "### Task 1.1: Build it", "### Task 1.2: Build it", "task number 1.2, want 1.1"},
+		{"malformed field", "Kind: batch", "Kind:batch", "malformed field Kind"},
+		{"unknown field", "Kind: batch", "Unknown: value", "unknown field Unknown"},
+		{"duplicate field", "Kind: batch", "Kind: batch\nKind: batch", "duplicates field Kind"},
+		{"empty field", "Kind: batch", "Kind:", "field Kind must be nonempty"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-bad.md", replaceOnceForTest(v1Plan, tc.old, tc.replacement))
+			_, err := plan.ParseDir(dir)
+			var diagnostics *plan.DiagnosticsError
+			if !errors.As(err, &diagnostics) || len(diagnostics.Diagnostics) != 1 || !strings.Contains(diagnostics.Diagnostics[0].Detail, tc.detail) {
+				t.Fatalf("ParseDir error = %v (%#v)", err, err)
+			}
+		})
+	}
 }
 
 func replaceOnceForTest(body, old, replacement string) string {

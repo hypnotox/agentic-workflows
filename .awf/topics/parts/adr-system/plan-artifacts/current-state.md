@@ -41,9 +41,9 @@ Backing: test
 
 ### `invariant: plan-frontmatter-validated`
 
-awf check fails on present-but-malformed plan frontmatter. Exact `format: plan-v1` selects structured parsing; marker absence selects legacy parsing; and an empty, unknown, duplicate, or malformed format is a frontmatter error rather than a legacy plan. Both paths retain the Proposed and Implemented status enum.
+awf check fails on present-but-malformed plan frontmatter. Exact `format: plan-v1` or `format: plan-v2` selects its structured parser; marker absence selects legacy parsing; and an empty, unknown, duplicate, or malformed format is a frontmatter error rather than a legacy plan. Both paths retain the Proposed and Implemented status enum.
 Origin: ADR-0098
-Revised-by: ADR-0213
+Revised-by: ADR-0213, ADR-0217
 Backing: test
 
 ### `invariant: plan-new-unnumbered`
@@ -54,9 +54,9 @@ Backing: test
 
 ### `invariant: plans-template-taxonomy`
 
-The rendered plans template emits `format: plan-v1`, date, adrs, and status frontmatter; `# Plan:`; nonempty Goal and Architecture summary; sequential heading-identified phases and tasks with one execution mode and one final Phase close per phase; required Definition of done plain bullets; and optional Notes. File structure, Verification, and task checkboxes are not plan-v1 sections or task declarations. Marker-absent historical plans remain on the legacy taxonomy.
+The rendered plans template emits `format: plan-v2`, date, adrs, and status frontmatter; `# Plan:`; nonempty Goal and Architecture summary; sequential heading-identified phases and tasks with one execution mode, optional ordered Advances then Completes arrays, and one final Phase close per phase; required unique slugged Definition-of-done bullets; and optional Notes. File structure, Verification, and task checkboxes are not plan-v2 sections or task declarations. Plan-v1 and marker-absent historical plans retain their compatibility taxonomies.
 Origin: ADR-0098
-Revised-by: ADR-0211, ADR-0213
+Revised-by: ADR-0211, ADR-0213, ADR-0217
 Backing: test
 
 ### `invariant: plan-v1-structure-validated`
@@ -65,8 +65,27 @@ A `plan-v1` document has nonempty Goal and Architecture summary sections, one or
 Origin: ADR-0213
 Backing: test
 
+### `invariant: plan-v2-decision-references`
+
+Plan-v2 parses nonempty unique Applying and Context JSON references with a four-digit-or-retained-slug ADR identity, lowercase-kebab V4 selector, or canonical positive frozen pre-V4 `#N` selector; malformed Applying or Context field lookalikes, including a nonexact colon separator, block before task prose. The project resolves every plan-level ADR link through the corpus identity map, compares Applying membership by resolved record identity, permits Applying to amendable V4 ADRs, requires Context to be frozen, and retains frozen pre-V4 `#N` compatibility.
+Origin: ADR-0217
+Backing: test
+
+### `invariant: plan-v2-phase-outcomes`
+
+Plan-v2 uses a fence-aware source-range parser: every top-level plain Definition-of-done bullet has a unique lowercase-kebab `dod:` marker, and each retained item preserves its complete authored multiline, nested, or fenced block byte-for-byte through the next item or section boundary. Optional nonempty Advances then Completes arrays are ordered. Unknown outcomes, duplicate Completes owners, and same-phase advance plus complete fail.
+Origin: ADR-0217
+Backing: test
+
+### `invariant: plan-v2-assignment-advisories`
+
+Proposed plan-v2 records emit sorted non-failing assignment notes from their selected working or staged universe; Applying assignment is scoped independently per plan, so one plan cannot silence another plan's missing-Decision note. Implemented records emit none.
+Origin: ADR-0217
+Backing: test
+
 ### `invariant: plan-executable-projection`
 
-internal/plan owns exact filename-or-stem resolution, canonical positive `P` and `P.T` selectors, and projection rendering from the typed plan model. A phase projection contains every task in that phase; a task projection contains only that task; and both contain frontmatter, title, Goal, Architecture summary, owning phase and execution mode, Phase close, Definition of done, and Notes when present in source order. Errors list available exact names or selectors as appropriate. Projection includes no other phase, reparses no Markdown outside the model owner, and never mutates source bytes.
+internal/plan owns exact filename-or-stem resolution, canonical positive `P` and `P.T` selectors, and projection rendering from typed plan-owned inputs; plan-v2 validates its selector before the project loads the ADR corpus, preserving its typed error and exact available selectors. Plan-v2 orders frontmatter/title, Goal, Architecture summary, Applying then Context Decisions, owning phase/execution mode, selected work, Phase close, its phase-owner-context advanced then completed outcomes, and Notes; it excludes whole-plan Definition of done, deduplicates resolved keys in first-authored order, and promotes Context to Applying. Plan-v1 bytes, including Definition of done, remain unchanged. Errors retain exact selector identities and available values. Projection includes no other phase, reparses no Markdown outside the model owner, and never mutates source bytes.
 Origin: ADR-0213
+Revised-by: ADR-0217
 Backing: test

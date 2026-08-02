@@ -33,8 +33,8 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 	data, err := os.ReadFile(want)
 	if err != nil {
 		t.Errorf("created file not found: %v", err)
-	} else if !strings.Contains(string(data), "format: current-state-v3\nslug: my-new-title\n") {
-		t.Errorf("activated scaffold is not V3 with its frozen slug:\n%s", data)
+	} else if !strings.Contains(string(data), "format: current-state-v4\nslug: my-new-title\n") {
+		t.Errorf("activated scaffold is not V4 with its frozen slug:\n%s", data)
 	}
 }
 
@@ -463,15 +463,15 @@ func TestRunNewScaffoldsPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("created file not found: %v", err)
 	}
-	if !strings.Contains(string(body), "format: plan-v1\n") || !strings.Contains(string(body), "# Plan: Some Plan Title") || !strings.Contains(string(body), "status: Proposed") {
-		t.Errorf("plan not scaffolded from plan-v1 template:\n%s", body)
+	if !strings.Contains(string(body), "format: plan-v2\n") || !strings.Contains(string(body), "# Plan: Some Plan Title") || !strings.Contains(string(body), "status: Proposed") {
+		t.Errorf("plan not scaffolded from plan-v2 template:\n%s", body)
 	}
 	plans, err := plan.ParseDir(filepath.Dir(got))
 	if err != nil {
 		t.Fatalf("scaffolded plan does not parse cleanly: %v", err)
 	}
-	if len(plans) != 1 || plans[0].Filename != filepath.Base(got) || plans[0].Format != "plan-v1" {
-		t.Fatalf("parsed scaffold = %#v, want created plan-v1", plans)
+	if len(plans) != 1 || plans[0].Filename != filepath.Base(got) || plans[0].Format != "plan-v2" {
+		t.Fatalf("parsed scaffold = %#v, want created plan-v2", plans)
 	}
 }
 
