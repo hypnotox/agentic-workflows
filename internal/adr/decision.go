@@ -1,6 +1,7 @@
 package adr
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -22,6 +23,31 @@ type decisionItem struct {
 	slug    string
 	source  string
 }
+
+// ErrDecisionSelectorIncompatible reports a selector that cannot address the
+// target ADR format.
+var ErrDecisionSelectorIncompatible = errors.New("incompatible Decision selector")
+
+// ErrDecisionSelectorAmendable reports an ordinal selector against amendable
+// pre-V4 Decision content.
+var ErrDecisionSelectorAmendable = errors.New("amendable Decision content")
+
+// ErrDecisionSelectorUnknown reports a compatible selector absent from a record.
+var ErrDecisionSelectorUnknown = errors.New("unknown Decision selector")
+
+// DecisionSelectorError describes a typed Decision lookup failure. Available is
+// sorted and contains every selector currently supported by the ADR.
+type DecisionSelectorError struct {
+	Selector  string
+	Available []string
+	cause     error
+}
+
+func (e *DecisionSelectorError) Error() string {
+	return fmt.Sprintf("%v; available: %s", e.cause, strings.Join(e.Available, ", "))
+}
+
+func (e *DecisionSelectorError) Unwrap() error { return e.cause }
 
 var decisionItemRe = regexp.MustCompile(`(?m)^([0-9]+)\. `)
 var v4DecisionLeadRe = regexp.MustCompile(`^([0-9]+)\. ` + "`decision: ([a-z0-9]+(?:-[a-z0-9]+)*)`" + `(?:[ \t]+)(\S.*)$`)
@@ -89,17 +115,20 @@ func validateV4Decisions(a *ADR) error {
 }
 func (a ADR) decisionBySelector(selector string) (decisionItem, error) {
 	if a.IsV4() {
+		if ordinalSelectorRe.MatchString(selector) {
+			return decisionItem{}, fmt.Errorf("%w %q for V4 slug navigation", ErrDecisionSelectorIncompatible, selector)
+		}
 		i, ok := a.decisionBySlug[selector]
 		if !ok {
-			return decisionItem{}, fmt.Errorf("unknown V4 Decision selector %q", selector)
+			return decisionItem{}, fmt.Errorf("unknown V4 Decision selector %q: %w", selector, ErrDecisionSelectorUnknown)
 		}
 		return a.decisions[i], nil
 	}
 	if !ordinalSelectorRe.MatchString(selector) {
-		return decisionItem{}, fmt.Errorf("decision selector %q is incompatible with pre-V4 ordinal navigation", selector)
+		return decisionItem{}, fmt.Errorf("%w %q for pre-V4 ordinal navigation", ErrDecisionSelectorIncompatible, selector)
 	}
 	if a.IsContentAmendable() {
-		return decisionItem{}, fmt.Errorf("decision selector %q targets amendable pre-V4 content", selector)
+		return decisionItem{}, fmt.Errorf("%w for selector %q", ErrDecisionSelectorAmendable, selector)
 	}
 	ordinal, _ := strconv.Atoi(strings.TrimPrefix(selector, "#"))
 	for _, item := range a.decisions {
@@ -107,7 +136,7 @@ func (a ADR) decisionBySelector(selector string) (decisionItem, error) {
 			return item, nil
 		}
 	}
-	return decisionItem{}, fmt.Errorf("unknown pre-V4 Decision selector %q", selector)
+	return decisionItem{}, fmt.Errorf("unknown pre-V4 Decision selector %q: %w", selector, ErrDecisionSelectorUnknown)
 }
 
 // DecisionSelectors returns the stable selectors supported by this ADR in sorted order.
@@ -147,7 +176,7 @@ func (a ADR) Decisions() []Decision {
 func (a ADR) LookupDecision(selector string) (Decision, error) {
 	item, err := a.decisionBySelector(selector)
 	if err != nil {
-		return Decision{}, fmt.Errorf("%w; available: %s", err, strings.Join(a.DecisionSelectors(), ", "))
+		return Decision{}, &DecisionSelectorError{Selector: selector, Available: a.DecisionSelectors(), cause: err}
 	}
 	key := a.Identity() + ":" + selector
 	return Decision{Key: key, ADRIdentity: a.Identity(), Title: a.Title, Status: a.Status, Markdown: item.source}, nil

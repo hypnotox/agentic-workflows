@@ -3,7 +3,6 @@ package project
 import (
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -13,14 +12,21 @@ import (
 // planArtifactReport validates plan-v2 references from one already parsed plan set.
 func planArtifactReport(plans []plan.Plan, corpus adr.Corpus) ([]manifest.Drift, []string) {
 	var drift []manifest.Drift
-	assigned := map[string]bool{}
 	for _, p := range plans {
 		if p.Format != "plan-v2" {
 			continue
 		}
+		// Assignment and membership belong to one plan, never the corpus-wide
+		// traversal. Resolve every declared link even if no task references it.
+		assigned := map[string]bool{}
 		allowed := map[string]bool{}
 		for _, l := range p.ADRs {
-			allowed[l.Identity()] = true
+			record, ok := corpus.ByIdentity(l.Identity())
+			if !ok {
+				drift = append(drift, manifest.Drift{Path: p.Path, Kind: "plan-reference", Detail: fmt.Sprintf("%s adrs %q: ADR not found", p.Filename, l.Identity())})
+				continue
+			}
+			allowed[record.Identity()] = true
 		}
 		for _, ph := range p.Phases {
 			for _, task := range ph.Tasks {
@@ -131,15 +137,5 @@ func resolvePlanDecisions(p plan.Plan, corpus adr.Corpus, refs []plan.DecisionRe
 }
 
 func selectedRefs(p plan.Plan, selector string) (plan.Phase, plan.Task, error) {
-	for _, phase := range p.Phases {
-		if strconv.Itoa(phase.Number) == selector {
-			return phase, plan.Task{}, nil
-		}
-		for _, task := range phase.Tasks {
-			if fmt.Sprintf("%d.%d", phase.Number, task.Number) == selector {
-				return phase, task, nil
-			}
-		}
-	}
-	return plan.Phase{}, plan.Task{}, fmt.Errorf("plan selector %q not found", selector)
+	return plan.Select(p, selector)
 }

@@ -950,6 +950,38 @@ func TestPlanV2AssignmentAdvisories(t *testing.T) {
 	if len(drift) != 0 || len(notes) != 1 || !strings.Contains(notes[0], "no outcome assignment") {
 		t.Fatalf("planArtifactReport = drift %#v, notes %#v", drift, notes)
 	}
+	// A Decision assignment in one Proposed plan cannot cover another plan.
+	source := "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-02\nslug: fixture\n---\n# ADR-fixture: Fixture\n\n## Context\n\nContext.\n\n## Decision\n\n1. `decision: first` First.\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: Proposed\n"
+	record, err := adr.ParseV4("fixture.md", []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := adr.NewCorpus([]adr.ADR{record})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assigned := plan.Plan{
+		Filename: "assigned.md", Path: "docs/plans/assigned.md", Format: "plan-v2", Status: "Proposed",
+		ADRs: []plan.ADRLink{{Slug: "fixture"}},
+		Phases: []plan.Phase{{
+			Number: 1,
+			Tasks: []plan.Task{{
+				Number: 1,
+				Fields: plan.TaskFields{Applying: []plan.DecisionRef{{
+					Authored: "fixture:first", ADR: "fixture", Selector: "first", Kind: "Applying",
+				}}},
+			}},
+		}},
+	}
+	missing := assigned
+	missing.Filename, missing.Path = "missing.md", "docs/plans/missing.md"
+	missing.Phases = append([]plan.Phase(nil), assigned.Phases...)
+	missing.Phases[0].Tasks = append([]plan.Task(nil), assigned.Phases[0].Tasks...)
+	missing.Phases[0].Tasks[0].Fields.Applying = nil
+	drift, notes = planArtifactReport([]plan.Plan{assigned, missing}, corpus)
+	if len(drift) != 0 || !slices.Contains(notes, "missing.md Decision fixture:first has no Applying assignment") {
+		t.Fatalf("independent assignments = drift %#v, notes %#v", drift, notes)
+	}
 }
 
 func TestPlanArtifactReportFindsReferencesAndSortsNotes(t *testing.T) {
@@ -962,7 +994,7 @@ func TestPlanArtifactReportFindsReferencesAndSortsNotes(t *testing.T) {
 		},
 	}
 	drift, notes := planArtifactReport([]plan.Plan{p}, adr.Corpus{})
-	if len(drift) != 1 || !strings.Contains(drift[0].Detail, "ADR not found") {
+	if len(drift) != 2 || !strings.Contains(drift[0].Detail, "ADR not found") || !strings.Contains(drift[1].Detail, "ADR not found") {
 		t.Fatalf("hard findings = %#v", drift)
 	}
 	if !slices.IsSorted(notes) || len(notes) != 2 || !strings.Contains(strings.Join(notes, "\n"), "advanced but has no Completes") || !strings.Contains(strings.Join(notes, "\n"), "no outcome assignment") {
@@ -975,7 +1007,11 @@ func TestPlanContextHelpersRejectMissingReferencesAndSelectors(t *testing.T) {
 	if _, _, err := selectedRefs(p, "9"); err == nil {
 		t.Fatal("missing selector accepted")
 	}
-	phase, task, err := selectedRefs(p, "1.1")
+	phase, task, err := selectedRefs(p, "1")
+	if err != nil || phase.Number != 1 || task.Number != 0 {
+		t.Fatalf("phase selected refs = %#v %#v %v", phase, task, err)
+	}
+	phase, task, err = selectedRefs(p, "1.1")
 	if err != nil || phase.Number != 1 || task.Number != 1 {
 		t.Fatalf("selected refs = %#v %#v %v", phase, task, err)
 	}
@@ -1002,7 +1038,7 @@ func TestPlanArtifactReportEnforcesDecisionReferenceContracts(t *testing.T) {
 		}}}}},
 	}
 	drift, _ := planArtifactReport([]plan.Plan{p}, corpus)
-	if len(drift) != 1 || !strings.Contains(drift[0].Detail, "Applying ADR is absent from adrs") {
+	if len(drift) != 2 || !strings.Contains(drift[0].Detail, "ADR not found") || !strings.Contains(drift[1].Detail, "Applying ADR is absent from adrs") {
 		t.Fatalf("Applying membership drift = %#v", drift)
 	}
 	p.ADRs = []plan.ADRLink{{Slug: "fixture"}}

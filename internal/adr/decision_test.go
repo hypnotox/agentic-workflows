@@ -1,6 +1,7 @@
 package adr
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -123,6 +124,14 @@ func TestDecisionLookupPublicContract(t *testing.T) {
 	}
 	if _, err := v4.LookupDecision("#1"); err == nil || !strings.Contains(err.Error(), "available: first, second") {
 		t.Fatalf("V4 incompatible lookup = %v", err)
+	} else {
+		var selector *DecisionSelectorError
+		if !errors.Is(err, ErrDecisionSelectorIncompatible) || !errors.As(err, &selector) || strings.Join(selector.Available, ",") != "first,second" {
+			t.Fatalf("typed V4 selector error = %#v", err)
+		}
+	}
+	if _, err := v4.LookupDecision("missing"); err == nil || !errors.Is(err, ErrDecisionSelectorUnknown) {
+		t.Fatalf("unknown selector error = %v", err)
 	}
 
 	legacy, err := ParseV1("0001-legacy.md", []byte(decisionFixture(V1FormatMarker, "0001-legacy.md", "", "1. Legacy.\n")))

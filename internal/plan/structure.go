@@ -476,6 +476,9 @@ func parsePhase(path string, lines []string, start, want int, v2 bool) (Phase, i
 				return ph, start, structuralError(path, "field", err.Error())
 			}
 			if name == "Advances" {
+				if ph.Completes != nil {
+					return ph, start, structuralError(path, "field", "Advances must precede Completes")
+				}
 				if ph.Advances != nil {
 					return ph, start, structuralError(path, "field", "duplicate Advances")
 				}
@@ -558,7 +561,11 @@ func parseTask(path string, lines []string, start, phase, want int, v2 bool) (Ta
 	i := start + 1
 	seen := map[string]bool{}
 	for i < len(lines) {
-		name, value, field, malformed := parseField(lineText(lines[i]))
+		line := lineText(lines[i])
+		name, value, field, malformed := parseField(line)
+		if v2 && (strings.HasPrefix(line, "Applying:") || strings.HasPrefix(line, "Context:")) && !field {
+			malformed = true
+		}
 		if malformed {
 			return task, start, structuralError(path, "field", fmt.Sprintf("task %d.%d has malformed field %s", phase, num, name))
 		}
@@ -725,8 +732,10 @@ func validateTask(path string, task Task, body string) error {
 	return nil
 }
 
-var decisionRefRe = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*|[1-9][0-9]*):([a-z0-9][a-z0-9-]*|#[1-9][0-9]*)$`)
+var decisionRefRe = regexp.MustCompile(`^([a-z0-9]+(?:-[a-z0-9]+)*):([a-z0-9]+(?:-[a-z0-9]+)*|#[1-9][0-9]*)$`)
+var allDigitDecisionIdentityRe = regexp.MustCompile(`^[0-9]+$`)
 var dodLeadRe = regexp.MustCompile("^[-*+] `dod: ([a-z0-9]+(?:-[a-z0-9]+)*)` .+")
+var plainBulletRe = regexp.MustCompile(`^[-*+] `)
 
 func parseStringArray(raw string) ([]string, error) {
 	var values []string
@@ -751,7 +760,7 @@ func parseDecisionRefs(raw, kind string) ([]DecisionRef, error) {
 	refs := make([]DecisionRef, 0, len(values))
 	for _, value := range values {
 		m := decisionRefRe.FindStringSubmatch(value)
-		if m == nil {
+		if m == nil || (allDigitDecisionIdentityRe.MatchString(m[1]) && len(m[1]) != 4) {
 			return nil, fmt.Errorf("invalid Decision reference %q", value)
 		}
 		refs = append(refs, DecisionRef{Authored: value, ADR: m[1], Selector: m[2], Kind: kind})
@@ -760,21 +769,41 @@ func parseDecisionRefs(raw, kind string) ([]DecisionRef, error) {
 }
 
 func parseDoD(path string, lines []string) ([]DoDItem, error) {
-	var items []DoDItem
+	// DoD blocks are source ranges, not reconstructed Markdown: a nested list,
+	// continuation paragraph, or fence belongs to the preceding top-level item.
+	var starts []int
+	var slugs []string
 	seen := map[string]bool{}
-	for _, line := range lines {
-		m := dodLeadRe.FindStringSubmatch(lineText(line))
-		if m == nil {
+	var fence markdownFence
+	for i, line := range lines {
+		text := lineText(line)
+		if fence.consume(text) {
 			continue
+		}
+		if !plainBulletRe.MatchString(text) {
+			continue
+		}
+		m := dodLeadRe.FindStringSubmatch(text)
+		if m == nil {
+			return nil, structuralError(path, "structure", "Definition of done plain bullets require a `dod: lowercase-kebab-slug` marker")
 		}
 		if seen[m[1]] {
 			return nil, structuralError(path, "relationship", fmt.Sprintf("duplicate DoD slug %q", m[1]))
 		}
 		seen[m[1]] = true
-		items = append(items, DoDItem{Slug: m[1], Content: line})
+		starts = append(starts, i)
+		slugs = append(slugs, m[1])
 	}
-	if len(items) == 0 {
+	if len(starts) == 0 {
 		return nil, structuralError(path, "structure", "Definition of done requires slugged dod bullets")
+	}
+	items := make([]DoDItem, 0, len(starts))
+	for i, start := range starts {
+		end := len(lines)
+		if i+1 < len(starts) {
+			end = starts[i+1]
+		}
+		items = append(items, DoDItem{Slug: slugs[i], Content: strings.Join(lines[start:end], "")})
 	}
 	return items, nil
 }

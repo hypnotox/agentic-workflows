@@ -389,6 +389,33 @@ func TestPlanV2DecisionReferences(t *testing.T) {
 	if err != nil || len(plans) != 1 || len(plans[0].Phases[0].Tasks[0].Fields.Applying) != 1 || plans[0].Phases[0].Tasks[0].Fields.Applying[0].Selector != "plan-v2" {
 		t.Fatalf("ParseDir = %#v, %v", plans, err)
 	}
+	leadingDigitSlug := strings.Replace(body, "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2", "3d-context:2fa-rule", 1)
+	dir = t.TempDir()
+	writePlan(t, dir, "2026-08-02-leading-digit.md", leadingDigitSlug)
+	if parsed, err := plan.ParseDir(dir); err != nil || parsed[0].Phases[0].Tasks[0].Fields.Applying[0].ADR != "3d-context" || parsed[0].Phases[0].Tasks[0].Fields.Applying[0].Selector != "2fa-rule" {
+		t.Fatalf("lowercase-kebab references with leading digits = %#v, %v", parsed, err)
+	}
+	for name, reference := range map[string]string{
+		"numeric identity is four digits": "12:plan-v2",
+		"repeated selector hyphen":        "task-scoped-plan-decision-context-and-phase-outcomes:plan--v2",
+		"trailing selector hyphen":        "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2-",
+		"noncanonical ordinal":            "0001:#01",
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := strings.Replace(body, "task-scoped-plan-decision-context-and-phase-outcomes:plan-v2", reference, 1)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-bad.md", bad)
+			if _, err := plan.ParseDir(dir); err == nil {
+				t.Fatalf("invalid reference %q accepted", reference)
+			}
+		})
+	}
+	malformed := strings.Replace(body, "Applying: [", "Applying:[", 1)
+	dir = t.TempDir()
+	writePlan(t, dir, "2026-08-02-malformed.md", malformed)
+	if _, err := plan.ParseDir(dir); err == nil {
+		t.Fatal("malformed Applying field accepted")
+	}
 }
 
 // invariant: adr-system/plan-artifacts:plan-v2-phase-outcomes (TestPlanV2PhaseOutcomes)
@@ -402,6 +429,34 @@ func TestPlanV2PhaseOutcomes(t *testing.T) {
 	if err != nil || len(plans) != 1 || len(plans[0].DoD) != 1 || plans[0].Phases[0].Advances[0] != "complete" {
 		t.Fatalf("ParseDir = %#v, %v", plans, err)
 	}
+	t.Run("DoD source ranges and grammar", func(t *testing.T) {
+		multiline := strings.Replace(body, "- `dod: complete` A valid plan parses and projects.", "- `dod: one` One.\n\n  Continuation.\n  - nested plain bullet\n\n  ```text\n  - fenced plain bullet\n  ```\n- `dod: two` Two.\n", 1)
+		multiline = strings.Replace(multiline, "Advances: [\"complete\"]", "Advances: [\"one\"]", 1)
+		dir := t.TempDir()
+		writePlan(t, dir, "2026-08-02-ranges.md", multiline)
+		parsed, err := plan.ParseDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := "- `dod: one` One.\n\n  Continuation.\n  - nested plain bullet\n\n  ```text\n  - fenced plain bullet\n  ```\n"
+		if got := parsed[0].DoD[0].Content; got != want {
+			t.Fatalf("DoD source range = %q, want %q", got, want)
+		}
+		noBullets := strings.Replace(multiline, "- `dod: one` One.\n\n  Continuation.\n  - nested plain bullet\n\n  ```text\n  - fenced plain bullet\n  ```\n- `dod: two` Two.\n", "No outcome bullet.\n", 1)
+		dir = t.TempDir()
+		writePlan(t, dir, "2026-08-02-empty.md", noBullets)
+		if _, err := plan.ParseDir(dir); err == nil {
+			t.Fatal("missing DoD bullets accepted")
+		}
+		for _, replacement := range []string{"- Unmarked.\n", "- `dod: Bad` malformed.\n", "- `dod: one` duplicate.\n"} {
+			bad := strings.Replace(multiline, "- `dod: two` Two.\n", replacement, 1)
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-08-02-bad.md", bad)
+			if _, err := plan.ParseDir(dir); err == nil {
+				t.Fatalf("invalid DoD bullet %q accepted", replacement)
+			}
+		}
+	})
 }
 
 func TestPlanV2RejectsPhaseFieldAndCrossPhaseOutcomeErrors(t *testing.T) {
@@ -416,10 +471,11 @@ func TestPlanV2RejectsPhaseFieldAndCrossPhaseOutcomeErrors(t *testing.T) {
 	}
 	phaseOne := "**Execution mode: inline.**"
 	for name, replacement := range map[string]string{
-		"unknown field":      phaseOne + "\n\nUnknown: [\"one\"]",
-		"empty field":        phaseOne + "\n\nAdvances:",
-		"invalid JSON":       phaseOne + "\n\nAdvances: not-json",
-		"duplicate Advances": phaseOne + "\n\nAdvances: [\"one\"]\nAdvances: [\"one\"]",
+		"unknown field":            phaseOne + "\n\nUnknown: [\"one\"]",
+		"empty field":              phaseOne + "\n\nAdvances:",
+		"invalid JSON":             phaseOne + "\n\nAdvances: not-json",
+		"duplicate Advances":       phaseOne + "\n\nAdvances: [\"one\"]\nAdvances: [\"one\"]",
+		"Advances after Completes": phaseOne + "\n\nCompletes: [\"one\"]\nAdvances: [\"one\"]",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := parse(t, strings.Replace(base, phaseOne, replacement, 1)); err == nil {

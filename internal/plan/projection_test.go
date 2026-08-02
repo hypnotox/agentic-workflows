@@ -107,6 +107,19 @@ func TestPlanExecutableProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	selectedPhase, selectedTask, err := plan.Select(parsed, "1")
+	if err != nil || selectedPhase.Number != 1 || selectedTask.Number != 0 {
+		t.Fatalf("Select phase = %#v %#v %v", selectedPhase, selectedTask, err)
+	}
+	if _, _, err := plan.Select(parsed, "9"); err == nil {
+		t.Fatal("Select accepted missing phase")
+	}
+	if _, _, err := plan.Select(parsed, "1.99"); err == nil {
+		t.Fatal("Select accepted missing task")
+	}
+	if _, _, err := plan.Select(parsed, "01"); err == nil {
+		t.Fatal("Select accepted noncanonical selector")
+	}
 	phase, err := plan.RenderProjection(parsed, "1")
 	if err != nil {
 		t.Fatal(err)

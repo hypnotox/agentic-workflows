@@ -97,6 +97,31 @@ type ProjectionInput struct {
 	Applying, Context []ResolvedDecision
 }
 
+// Select resolves a canonical phase or task selector using the plan's typed
+// selector errors and available values.
+func Select(p Plan, selector string) (Phase, Task, error) {
+	available := availableSelectors(p)
+	phaseNumber, taskNumber, err := parseSelector(selector, available)
+	if err != nil {
+		return Phase{}, Task{}, err
+	}
+	for _, phase := range p.Phases {
+		if phase.Number != phaseNumber {
+			continue
+		}
+		if taskNumber == 0 {
+			return phase, Task{}, nil
+		}
+		for _, task := range phase.Tasks {
+			if task.Number == taskNumber {
+				return phase, task, nil
+			}
+		}
+		break
+	}
+	return Phase{}, Task{}, &NotFoundError{Kind: "selector", Value: selector, Available: available}
+}
+
 // RenderProjection renders an executable closure selected by canonical P or P.T.
 func RenderProjection(p Plan, selector string) ([]byte, error) {
 	return RenderProjectionInput(ProjectionInput{Plan: p, Selector: selector})
@@ -140,6 +165,8 @@ func RenderProjectionInput(input ProjectionInput) ([]byte, error) {
 
 	var b strings.Builder
 	b.WriteString(p.Preamble)
+	b.WriteString(p.Goal)
+	b.WriteString(p.ArchitectureSummary)
 	if p.Format == "plan-v2" {
 		writeDecisions := func(heading string, values []ResolvedDecision) {
 			if len(values) == 0 {
@@ -147,7 +174,8 @@ func RenderProjectionInput(input ProjectionInput) ([]byte, error) {
 			}
 			b.WriteString("## " + heading + "\n\n")
 			for _, v := range values {
-				b.WriteString("### ADR-" + v.ADRIdentity + ": " + v.Title + " (" + v.Status + ")\n\n")
+				title := strings.TrimPrefix(v.Title, "ADR-"+v.ADRIdentity+": ")
+				b.WriteString("### ADR-" + v.ADRIdentity + ": " + title + " (" + v.Status + ")\n\n")
 				b.WriteString(v.Markdown)
 				if !strings.HasSuffix(v.Markdown, "\n") {
 					b.WriteByte('\n')
@@ -169,8 +197,6 @@ func RenderProjectionInput(input ProjectionInput) ([]byte, error) {
 		writeDecisions("Applying decisions", applying)
 		writeDecisions("Context decisions", context)
 	}
-	b.WriteString(p.Goal)
-	b.WriteString(p.ArchitectureSummary)
 	b.WriteString(phase.Prefix)
 	if taskNumber != 0 && p.Format == "plan-v2" {
 		b.WriteString("\n> Scope notice: only this task is in scope. Phase close and phase outcomes remain phase-owner context; transaction ownership does not transfer, and unselected tasks must not be performed merely to clear an outcome.\n\n")
@@ -180,10 +206,11 @@ func RenderProjectionInput(input ProjectionInput) ([]byte, error) {
 	}
 	b.WriteString(phase.Close)
 	if p.Format == "plan-v2" {
-		writeOutcomes(&b, "Advanced outcomes", phase.Advances, p.DoD)
-		writeOutcomes(&b, "Completed outcomes", phase.Completes, p.DoD)
+		writeOutcomes(&b, "Advanced outcomes (phase-owner context)", phase.Advances, p.DoD)
+		writeOutcomes(&b, "Completed outcomes (phase-owner context)", phase.Completes, p.DoD)
+	} else {
+		b.WriteString(p.DefinitionOfDone)
 	}
-	b.WriteString(p.DefinitionOfDone)
 	b.WriteString(p.Notes)
 	return []byte(b.String()), nil
 }

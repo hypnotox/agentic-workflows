@@ -383,8 +383,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:baa5499b1ceeafb1e1d4e11aa3627762eafe8f9e4eb1fdc3a5317152b0d67f4b",
-      "outputHash": "sha256:5be1204b2acc7d6b3e9c7e81a0b43d4cc04df11888bc83abac295e0534a0997e"
+      "configHash": "sha256:4b51200768433ed98eed60408ad732f9dd643304509ec61f9d456c4ddbd17b8d",
+      "outputHash": "sha256:86396d2f0d8624a48cf614ff904144ab2f940f09f372af04b6ed52817c57541e"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -486,9 +486,9 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:3b750eb25e70631b4a9abd53fb7b1f3628784471d14a613aa0e2b4a6dcc7cf4b",
+      "templateHash": "sha256:e49d5796c4a2932bb455d3fe2258d7608480dd625a27dc9c7b7da1d6064b9df0",
       "configHash": "sha256:33f22ebf6e3ea2d21a20556ee4c1a018dc97a0d3676a78a4cdef60e2148b054d",
-      "outputHash": "sha256:524a8f9f62d9fd40a5dc414a517eaf00f13baf599ce17e2d5c171aec27f92449"
+      "outputHash": "sha256:ff252be001cf04d5caa40bfc41b99f2059f9b45713b158cb9b6a0ac00dbda23d"
     },
     "docs/plans/template.md": {
       "templateId": "plans-template/template.md.tmpl",
@@ -535,8 +535,8 @@
     "docs/topics/adr-system/plan-artifacts.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:05590b1225e1a9260910b7840d222ab5d7e6ec46da77d78cf9a8a5ab67c8a35f",
-      "outputHash": "sha256:f184b4d8af5715818cda61d15a7c356a499a3d6907ac805da7ac7209529b4965"
+      "configHash": "sha256:6e2eb75c8dd2fe2daed94077c90aa6a374f76a303d47acf4797f4fd29eb6af46",
+      "outputHash": "sha256:b07332bdc994cc3e535cbf73aa2a6acdc86c79e0ec08470395c510e3687c0d75"
     },
     "docs/topics/code-design/dependency-composition.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -751,8 +751,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:1d631439ca4ed6e5a4b60689c7f474f6fa0efcee2eb6e5940c4dffcbd1fa63e8",
-      "outputHash": "sha256:cc44caa9bc3aa8773a97f6094e0c6514d4b9939c0ab395317d1ad3f098aec628"
+      "configHash": "sha256:040e3def8f830702b451a919f265fb61d59f26ffaedda067438f7dad96b047b7",
+      "outputHash": "sha256:9d889e52678df95fcdce2cedde365c252e90e37579e398e06048026df33c4f8c"
     },
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",

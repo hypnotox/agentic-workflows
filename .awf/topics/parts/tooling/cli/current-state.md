@@ -76,7 +76,7 @@ Backing: test
 
 ### `invariant: plan-read-command`
 
-The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures list available exact values. Plan-v2 success writes the internal/plan-rendered Applying then Context Decision and phase-outcome closure unchanged, with first-authored deduplication, Applying precedence, task scope safety, and preserved source; plan-v1 bytes remain unchanged. It neither includes other phases nor mutates source.
+The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures retain plan-owned selector identities and available exact values. Plan-v2 success writes the internal/plan-rendered ordered Applying then Context Decision and phase-owner outcome closure unchanged, with first-authored resolved-key deduplication, Applying precedence, task scope safety, whole-plan Definition-of-done exclusion, and preserved source; plan-v1 bytes remain unchanged. Blocking references fail while assignment notes remain non-blocking. It neither includes other phases nor mutates source.
 Origin: ADR-0213
 Revised-by: ADR-task-scoped-plan-decision-context-and-phase-outcomes
 Backing: test

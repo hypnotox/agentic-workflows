@@ -2,13 +2,77 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+const readCommandV2Plan = `---
+format: plan-v2
+date: 2026-08-03
+adrs: [fixture, context, third]
+status: Proposed
+---
+# Plan: Read command V2
+
+## Goal
+
+Project the exact selected work without leaking unselected decisions.
+
+## Architecture summary
+
+Keep plan parsing and decision resolution at their existing boundaries.
+
+## Phase 1: Project
+
+**Execution mode: inline.**
+
+Advances: ["advanced"]
+Completes: ["completed"]
+
+### Task 1.1: Read selected
+Applying: ["fixture:first"]
+Context: ["context:second"]
+
+Keep this exact task body.
+
+### Task 1.2: Keep unselected
+Applying: ["context:second"]
+Context: ["third:third"]
+
+Do not leak this task or its decision into task 1.1.
+
+### Phase close
+
+Run the exact gate.
+
+` + "```commit\nfeat(plans): project task context\n```" + `
+
+## Definition of done
+
+- ` + "`dod: advanced`" + ` Advance the exact projection.
+- ` + "`dod: completed`" + ` Complete the exact projection.
+
+## Notes
+
+Keep the exact note.
+`
+
+func readCommandV4ADRFor(t *testing.T, slug, title, decision string) string {
+	t.Helper()
+	proposed := "---\nformat: current-state-v4\nstatus: Proposed\ndate: 2026-08-03\nslug: " + slug + "\n---\n# ADR-" + slug + ": " + title + "\n\n## Context\n\nFrozen context.\n\n## Decision\n\n1. " + decision + "\n\n## State changes\n\nNone.\n\n## Consequences\n\nNone.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-08-02: Proposed\n"
+	record, err := adr.ParseV4(slug+".md", []byte(proposed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	implemented := strings.Replace(proposed, "status: Proposed", "status: Implemented", 1)
+	return strings.Replace(implemented, "- 2026-08-02: Proposed\n", "- 2026-08-02: Proposed\n- 2026-08-03: Implemented; content-sha256: "+adr.ContentDigest(record.Sections)+"\n", 1)
+}
 
 const readCommandPlan = `---
 format: plan-v1
@@ -92,6 +156,106 @@ func TestReadPlanCommand(t *testing.T) {
 	if !bytes.Equal(before, after) {
 		t.Fatal("read command mutated source")
 	}
+
+	v2Path := filepath.Join(root, "docs/plans/2026-08-03-read-command-v2.md")
+	adrPath := filepath.Join(root, "docs/decisions/fixture.md")
+	contextADRPath := filepath.Join(root, "docs/decisions/context.md")
+	thirdADRPath := filepath.Join(root, "docs/decisions/third.md")
+	fixtureADR := readCommandV4ADRFor(t, "fixture", "Fixture decisions", "`decision: first` First exact Decision block.")
+	contextADR := readCommandV4ADRFor(t, "context", "Context decisions", "`decision: second` Second exact Decision block.")
+	thirdADR := readCommandV4ADRFor(t, "third", "Third decisions", "`decision: third` Third unselected Decision block.")
+	testsupport.WriteFile(t, v2Path, readCommandV2Plan)
+	testsupport.WriteFile(t, adrPath, fixtureADR)
+	testsupport.WriteFile(t, contextADRPath, contextADR)
+	testsupport.WriteFile(t, thirdADRPath, thirdADR)
+	v2Before, err := os.ReadFile(v2Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adrBefore, err := os.ReadFile(adrPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contextADRBefore, err := os.ReadFile(contextADRPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	thirdADRBefore, err := os.ReadFile(thirdADRPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v2Hash, adrHash := sha256.Sum256(v2Before), sha256.Sum256(adrBefore)
+	contextADRHash, thirdADRHash := sha256.Sum256(contextADRBefore), sha256.Sum256(thirdADRBefore)
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-read-command-v2", "1.1"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("v2 task read exit = %d, stderr = %q", code, stderr.String())
+	}
+	v2Task := stdout.String()
+	for _, want := range []string{
+		"## Goal", "## Architecture summary", "## Applying decisions", "### ADR-fixture: Fixture decisions (Implemented)",
+		"First exact Decision block.", "## Context decisions", "### ADR-context: Context decisions (Implemented)", "Second exact Decision block.", "## Phase 1: Project",
+		"Scope notice: only this task is in scope", "### Task 1.1: Read selected", "### Phase close",
+		"### Advanced outcomes (phase-owner context)", "- `dod: advanced` Advance the exact projection.",
+		"### Completed outcomes (phase-owner context)", "- `dod: completed` Complete the exact projection.", "## Notes",
+	} {
+		if !strings.Contains(v2Task, want) {
+			t.Errorf("v2 task projection lacks %q:\n%s", want, v2Task)
+		}
+	}
+	ordered := []string{"## Goal", "## Architecture summary", "## Applying decisions", "## Context decisions", "## Phase 1: Project", "### Task 1.1: Read selected", "### Phase close", "### Advanced outcomes (phase-owner context)", "### Completed outcomes (phase-owner context)", "## Notes"}
+	for i := 1; i < len(ordered); i++ {
+		if strings.Index(v2Task, ordered[i-1]) >= strings.Index(v2Task, ordered[i]) {
+			t.Errorf("v2 task projection order %q before %q:\n%s", ordered[i-1], ordered[i], v2Task)
+		}
+	}
+	if strings.Count(v2Task, "### ADR-fixture: Fixture decisions (Implemented)") != 1 ||
+		strings.Count(v2Task, "### ADR-context: Context decisions (Implemented)") != 1 ||
+		strings.Contains(v2Task, "### Task 1.2") || strings.Contains(v2Task, "Third unselected Decision block.") ||
+		strings.Contains(v2Task, "## Definition of done") || stderr.Len() != 0 {
+		t.Fatalf("v2 task projection leaked or duplicated scope; stdout=%q stderr=%q", v2Task, stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-read-command-v2", "1"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("v2 phase read exit = %d, stderr = %q", code, stderr.String())
+	}
+	v2Phase := stdout.String()
+	if strings.Count(v2Phase, "### ADR-fixture: Fixture decisions (Implemented)") != 1 ||
+		strings.Count(v2Phase, "### ADR-context: Context decisions (Implemented)") != 1 ||
+		strings.Count(v2Phase, "### ADR-third: Third decisions (Implemented)") != 1 ||
+		strings.Index(v2Phase, "First exact Decision block.") > strings.Index(v2Phase, "Second exact Decision block.") ||
+		strings.Index(v2Phase, "Second exact Decision block.") > strings.Index(v2Phase, "Third unselected Decision block.") ||
+		!strings.Contains(v2Phase, "## Context decisions") || stderr.Len() != 0 {
+		t.Fatalf("v2 phase projection did not first-author dedupe and promote Applying decisions; stdout=%q stderr=%q", v2Phase, stderr.String())
+	}
+
+	for _, source := range []struct {
+		path string
+		want []byte
+		hash [sha256.Size]byte
+	}{{v2Path, v2Before, v2Hash}, {adrPath, adrBefore, adrHash}, {contextADRPath, contextADRBefore, contextADRHash}, {thirdADRPath, thirdADRBefore, thirdADRHash}} {
+		got, readErr := os.ReadFile(source.path)
+		if readErr != nil || !bytes.Equal(got, source.want) || sha256.Sum256(got) != source.hash {
+			t.Fatalf("read command mutated %s: err=%v bytes-equal=%v hash-equal=%v", source.path, readErr, bytes.Equal(got, source.want), sha256.Sum256(got) == source.hash)
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-read-command-v2", "01"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "awf: plan selector \"01\" must be canonical positive P or P.T; available: 1, 1.1, 1.2\n" {
+		t.Fatalf("v2 typed selector failure: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	brokenPath := filepath.Join(root, "docs/plans/2026-08-03-broken-reference.md")
+	testsupport.WriteFile(t, brokenPath, strings.Replace(readCommandV2Plan, "fixture:first", "missing:first", 1))
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-broken-reference", "1.1"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "ADR not found") {
+		t.Fatalf("broken v2 reference did not block read: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+
 	t.Run("direct failures", TestRunReadPlanRejectsArityAndUnadoptedRoot)
 	t.Run("typed failures", TestReadPlanCommandFailuresKeepStdoutEmpty)
 	t.Run("version gate", TestReadPlanCommandIsVersionGated)

@@ -58,6 +58,58 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if strings.Contains(clean.String(), "check staged commit") {
 		t.Errorf("bare check must not aggregate staged commit:\n%s", clean.String())
 	}
+
+	planPath := "docs/plans/2026-08-03-check-v2.md"
+	validPlan := readCommandV2Plan
+	artifactRoot := syncedGitProjectFiles(t, checkYAML, map[string]string{
+		planPath:                    validPlan,
+		"docs/decisions/fixture.md": readCommandV4ADRFor(t, "fixture", "Fixture decisions", "`decision: first` First exact Decision block."),
+		"docs/decisions/context.md": readCommandV4ADRFor(t, "context", "Context decisions", "`decision: second` Second exact Decision block."),
+		"docs/decisions/third.md":   readCommandV4ADRFor(t, "third", "Third decisions", "`decision: third` Third unselected Decision block."),
+	})
+	var proposedFirst, proposedSecond bytes.Buffer
+	if err := runCheck(ctx, artifactRoot, &proposedFirst); err != nil {
+		t.Fatalf("Proposed plan advisories must stay green: %v\n%s", err, proposedFirst.String())
+	}
+	if err := runCheck(ctx, artifactRoot, &proposedSecond); err != nil {
+		t.Fatalf("repeat Proposed plan check: %v\n%s", err, proposedSecond.String())
+	}
+	proposedNote := "note: 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
+	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 1 {
+		t.Fatalf("Proposed plan assignment advisories must deterministically join the repo universe without failing; first=%q second=%q", proposedFirst.String(), proposedSecond.String())
+	}
+
+	brokenPlan := strings.Replace(validPlan, "fixture:first", "missing:first", 1)
+	testsupport.WriteFile(t, filepath.Join(artifactRoot, planPath), brokenPlan)
+	var workingBroken bytes.Buffer
+	if err := runCheck(ctx, artifactRoot, &workingBroken); err == nil || !strings.Contains(workingBroken.String(), planPath) || !strings.Contains(workingBroken.String(), "ADR not found") {
+		t.Fatalf("broken working plan reference must block the repo aggregate: err=%v output=%q", err, workingBroken.String())
+	}
+
+	repo := gitfixture.At(artifactRoot)
+	gitfixture.Stage(t, repo, map[string]string{planPath: brokenPlan})
+	// Deliberately restore only the working tree. The staged aggregate must use
+	// the index rather than borrowing this unstaged repair.
+	testsupport.WriteFile(t, filepath.Join(artifactRoot, planPath), validPlan)
+	var stagedBroken bytes.Buffer
+	if err := runCheck(ctx, artifactRoot, &stagedBroken); err == nil || !strings.Contains(stagedBroken.String(), planPath) || !strings.Contains(stagedBroken.String(), "ADR not found") {
+		t.Fatalf("staged broken plan reference must block aggregate despite working repair: err=%v output=%q", err, stagedBroken.String())
+	}
+
+	implementedRoot := syncedGitProjectFiles(t, checkYAML, map[string]string{
+		planPath:                    strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1),
+		"docs/decisions/fixture.md": readCommandV4ADRFor(t, "fixture", "Fixture decisions", "`decision: first` First exact Decision block."),
+		"docs/decisions/context.md": readCommandV4ADRFor(t, "context", "Context decisions", "`decision: second` Second exact Decision block."),
+		"docs/decisions/third.md":   readCommandV4ADRFor(t, "third", "Third decisions", "`decision: third` Third unselected Decision block."),
+	})
+	var implemented bytes.Buffer
+	if err := runCheck(ctx, implementedRoot, &implemented); err != nil {
+		t.Fatalf("Implemented plan check: %v\n%s", err, implemented.String())
+	}
+	if strings.Contains(implemented.String(), "2026-08-03-check-v2.md Decision") || strings.Contains(implemented.String(), "no outcome assignment") {
+		t.Fatalf("Implemented plan must be silent in plan assignment advisories: %q", implemented.String())
+	}
+
 	// Hand-edit the rendered skill.
 	skill := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
 	if err := os.WriteFile(skill, []byte("tampered\n"), 0o644); err != nil {
