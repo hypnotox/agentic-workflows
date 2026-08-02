@@ -14,7 +14,7 @@ import {
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
-import { registerContextUsage } from "../../../.pi/extensions/awf-context-usage/index.ts";
+import { contextUsageLine, registerContextUsage } from "../../../.pi/extensions/awf-context-usage/index.ts";
 import { registerSubagentTools, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
 import { PREFERENCE_FIELDS } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
@@ -47,10 +47,20 @@ function terminalMessage(): AssistantMessage {
   };
 }
 
-async function runPinnedSession(activeTools: string[]): Promise<{ requests: Context[]; messages: unknown[]; entries: unknown[] }> {
+async function runPinnedSession(activeTools: string[]): Promise<{
+  requests: Context[];
+  requestUsages: any[];
+  messages: unknown[];
+  entries: unknown[];
+  registrations: unknown[];
+}> {
   const requests: Context[] = [];
+  const requestUsages: any[] = [];
+  let activeSession: any;
   const stream = (_model: Model<any>, context: Context) => {
     requests.push(context);
+    const usage = activeSession.getContextUsage();
+    requestUsages.push(usage == null ? usage : { ...usage });
     const events = createAssistantMessageEventStream();
     const message = terminalMessage();
     const partial = { ...message, content: [] };
@@ -107,6 +117,14 @@ async function runPinnedSession(activeTools: string[]): Promise<{ requests: Cont
     ],
   });
   await loader.reload();
+  const extensionResult = loader.getExtensions();
+  assert.deepEqual(extensionResult.errors, []);
+  const registrations = extensionResult.extensions.map((extension: any) => ({
+    tools: [...extension.tools.keys()],
+    commands: [...extension.commands.keys()],
+    flags: [...extension.flags.keys()],
+    handlers: [...extension.handlers.keys()],
+  }));
   const sessionManager = SessionManager.inMemory(cwd);
   const { session } = await createAgentSession({
     cwd,
@@ -119,13 +137,14 @@ async function runPinnedSession(activeTools: string[]): Promise<{ requests: Cont
     sessionManager,
     settingsManager,
   });
+  activeSession = session;
   try {
     await session.prompt("hello");
     const firstKeptEntryId = sessionManager.getLeafId();
     assert.ok(firstKeptEntryId);
     sessionManager.appendCompaction("runtime smoke compaction", firstKeptEntryId, 2);
     await session.prompt("after compaction");
-    return { requests, messages: [...session.messages], entries: sessionManager.getEntries() };
+    return { requests, requestUsages, messages: [...session.messages], entries: sessionManager.getEntries(), registrations };
   } finally {
     session.dispose();
   }
@@ -142,6 +161,23 @@ function contextLine(message: any): string {
   return message.content.find((content: any) => content.type === "text").text;
 }
 
+function expectedContextLine(usage: any, compactions: number): string {
+  return contextUsageLine({
+    getContextUsage: () => usage,
+    sessionManager: { getBranch: () => Array.from({ length: compactions }, () => ({ type: "compaction" })) },
+  });
+}
+
+const expectedRegistrations = [
+  {
+    tools: ["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"],
+    commands: ["awf-subagent-models"],
+    flags: [],
+    handlers: ["session_start", "before_agent_start", "tool_call", "tool_result"],
+  },
+  { tools: [], commands: [], flags: [], handlers: ["context"] },
+];
+
 test("pinned runtime refreshes transient context facts in actual requests", async () => {
   const active = await runPinnedSession(["subagent_grounding"]);
   assert.equal(active.requests.length, 2);
@@ -153,9 +189,14 @@ test("pinned runtime refreshes transient context facts in actual requests", asyn
   const secondContext = contextLines(active.requests[1]);
   assert.equal(firstContext.length, 1);
   assert.equal(secondContext.length, 1);
-  assert.match(contextLine(firstContext[0]), /^\[session context\] .+\/4\.1k \(.+%\); compactions=0$/);
-  assert.match(contextLine(secondContext[0]), /^\[session context\] (?:.+\/4\.1k \(.+%\)|unknown\/4\.1k); compactions=1$/);
-  assert.notEqual(contextLine(secondContext[0]), contextLine(firstContext[0]));
+  const firstLine = contextLine(firstContext[0]);
+  const secondLine = contextLine(secondContext[0]);
+  assert.equal(firstLine, expectedContextLine(active.requestUsages[0], 0));
+  assert.equal(secondLine, expectedContextLine(active.requestUsages[1], 1));
+  assert.match(firstLine, /^\[session context\] \d+(?:\.\d)?[km]?\/4\.1k \(\d+%\); compactions=0$/);
+  assert.match(secondLine, /^\[session context\] unknown\/4\.1k; compactions=1$/);
+  assert.notEqual(firstLine.replace(/; compactions=\d+$/, ""), secondLine.replace(/; compactions=\d+$/, ""));
+  assert.deepEqual(active.registrations, expectedRegistrations);
 
   assert.deepEqual(active.messages.map((message: any) => message.role), ["user", "assistant", "user", "assistant"]);
   assert.equal(active.messages.some((message: any) => message.customType === "awf-context-usage"), false);
@@ -169,7 +210,9 @@ test("pinned runtime refreshes transient context facts in actual requests", asyn
 
   const inactive = await runPinnedSession([]);
   assert.equal(inactive.requests.length, 2);
-  assert.equal((inactive.requests[0].systemPrompt ?? "").includes("[awf subagent routing]"), false);
-  assert.equal(contextLines(inactive.requests[0]).length, 1);
-  assert.equal(contextLines(inactive.requests[1]).length, 1);
+  for (const request of inactive.requests) {
+    assert.equal((request.systemPrompt ?? "").includes("[awf subagent routing]"), false);
+    assert.equal(contextLines(request).length, 1);
+  }
+  assert.deepEqual(inactive.registrations, expectedRegistrations);
 });
