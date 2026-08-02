@@ -144,6 +144,17 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			position += next + len(want)
 		}
 	}
+	assertBoundaryDoesNotCreate := func(label, body, boundary string) {
+		t.Helper()
+		start := strings.Index(body, boundary)
+		if start < 0 {
+			t.Errorf("%s lost boundary %q", label, boundary)
+			return
+		}
+		if strings.Contains(body[start:], "awf effort new") {
+			t.Errorf("%s creates missing ownership after %q", label, boundary)
+		}
+	}
 	for _, target := range []string{".pi", ".claude"} {
 		brainstorming := readExample(filepath.Join(target, "skills", "sundial-brainstorming", "SKILL.md"))
 		assertOrdered(target+" brainstorming", brainstorming,
@@ -156,12 +167,11 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			"awf effort new \"<confirmed title>\"",
 			"Present the design in sections",
 		)
-		approvalStart := strings.Index(brainstorming, "**Mandatory approval check-in.**")
-		if approvalStart < 0 {
-			t.Errorf("%s brainstorming lost final approval checkpoint", target)
-		} else if strings.Contains(brainstorming[approvalStart:], "awf effort new") {
-			t.Errorf("%s final approval checkpoint creates missing ownership", target)
-		}
+		assertBoundaryDoesNotCreate(target+" brainstorming final approval", brainstorming, "**Mandatory approval check-in.**")
+		reviewingADR := readExample(filepath.Join(target, "skills", "sundial-reviewing-adr", "SKILL.md"))
+		assertBoundaryDoesNotCreate(target+" ADR final approval", reviewingADR, "**Mandatory approval check-in.**")
+		writingPlans := readExample(filepath.Join(target, "skills", "sundial-writing-plans", "SKILL.md"))
+		assertBoundaryDoesNotCreate(target+" routine checkpoint", writingPlans, "**Routine checkpoint.**")
 	}
 	workflow := readExample("docs/workflow.md")
 	for _, want := range []string{"Discovery creates no effort", "existing effort resumes under its fixed identity", "newly discovered outcome cannot silently reuse"} {

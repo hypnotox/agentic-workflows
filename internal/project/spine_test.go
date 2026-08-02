@@ -1644,7 +1644,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
 		}
 	}
-	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse"} {
+	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm the pair again before retrying creation"} {
 		if !strings.Contains(workflow, want) {
 			t.Errorf("workflow confirmation contract missing %q", want)
 		}

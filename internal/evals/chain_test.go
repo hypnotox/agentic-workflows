@@ -488,12 +488,15 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"end the turn without creating an effort",
 		"Only a clear response in a later turn confirms the pair",
 		"`awf effort new \"<confirmed title>\"`",
-		"requested change stays in discovery",
-		"an ambiguous response receives",
+		"requested change stays in discovery and receives a revised pair",
+		"an ambiguous response receives a",
+		"focused clarification",
 		"creation fails while the pair and its later confirming response remain available",
+		"report the concrete failure and recovery action",
 		"retry without another confirmation",
 		"context loss or session replacement makes that evidence unavailable",
 		"present and confirm the pair",
+		"before retrying creation",
 	}
 	for _, targetBody := range []struct {
 		label string
@@ -502,10 +505,13 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		{"pi/brainstorming", read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-brainstorming", "SKILL.md"))},
 		{"claude/brainstorming", read(t, skillPath(nonPiRoot, "brainstorming"))},
 	} {
-		assertOrderedBody(t, targetBody.label+" first creation", targetBody.body, confirmationOrdered)
-		if confirm, design := strings.Index(targetBody.body, "**Mandatory first-creation confirmation.**"), strings.Index(targetBody.body, "Present the design in sections"); confirm < 0 || design < 0 || confirm > design {
+		confirm := strings.Index(targetBody.body, "**Mandatory first-creation confirmation.**")
+		design := strings.Index(targetBody.body, "Present the design in sections")
+		if confirm < 0 || design < 0 || confirm > design {
 			t.Errorf("%s does not place first-creation confirmation before detailed design", targetBody.label)
+			continue
 		}
+		assertOrderedBody(t, targetBody.label+" first creation", targetBody.body[confirm:design], confirmationOrdered)
 	}
 
 	ordered := []string{
