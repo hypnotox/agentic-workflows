@@ -22,7 +22,8 @@ is not unambiguous.
 <!-- awf:edit phases: default; create .awf/parts/plans-template/phases.md to override -->
 ## Phase 1: <name>
 
-**Execution mode: inline.** This phase is one independently green coherent implementation transaction.
+**Execution mode: inline.** Each phase independently declares exactly one execution mode: `inline` or
+`subagent-driven`. This phase is one independently green coherent implementation transaction.
 Checkbox tasks are ordered steps, not transaction boundaries. If this mode is changed to
 `subagent-driven`, declare the exact commands and expected terminal states that establish the clean
 and green starting baseline.
@@ -44,9 +45,9 @@ and green starting baseline.
   including an ambiguous non-batch task; every batch is necessarily ambiguous. `Post-check:` is
   required for every batch and whenever `Paths:` contains a `glob:` or `pathspec:` entry. Conditional
   and optional tasks are forbidden: use a spike and sequence dependent work into a later phase instead.
-  An optional exhaustive partition assigns every affected site to the parent or exactly one helper;
-  helpers are sequential and commit-disabled, helper subsets are path-disjoint, shared files remain
-  parent-owned, and each helper's focused mutating commands stay confined to its assigned subset.
+  Any helper partition exhaustively assigns every affected site to the parent or exactly one helper,
+  keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the
+  assigned subset. Helpers are sequential and commit-disabled.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
   phase-closing commit; it requires `awf check --staged` and `./x gate` to pass,
   enforced by a wired pre-commit hook or run manually first in a clone without one (checkable with `git config core.hooksPath`):

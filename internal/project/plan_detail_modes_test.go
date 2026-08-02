@@ -38,7 +38,7 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	for _, surface := range []planPolicySurface{
 		{"default writing skill", defaultWriter, "- **Phases and tasks:**", "- **Self-contained"},
 		{"default plan reviewer", defaultReviewer, "1. **executability**", "1. **doc-currency"},
-		{"default plans README", defaultReadme, "- Phases each", "- Each phase declares"},
+		{"default plans README", defaultReadme, "- Each phase independently", "- Each phase declares"},
 		{"default plan template", defaultPlanTemplate, "**Execution mode", "- [ ] **Phase-close"},
 	} {
 		assertPlanTaskDetailContract(t, surface)
@@ -48,7 +48,7 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	for _, surface := range []planPolicySurface{
 		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Phases and tasks:**", end: "- **Self-contained"},
 		{name: ".pi/agents/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
-		{name: "docs/plans/README.md", start: "- Phases each", end: "- Each phase declares"},
+		{name: "docs/plans/README.md", start: "- Each phase independently", end: "- Each phase declares"},
 		{name: "docs/plans/template.md", start: "**Execution mode", end: "- [ ] **Phase-close"},
 	} {
 		body, err := os.ReadFile(filepath.Join(root, surface.name))
@@ -71,19 +71,12 @@ var planTaskDetailContractClauses = []string{
 	"`paths:` is required whenever affected scope is ambiguous, including an ambiguous non-batch task; every batch is necessarily ambiguous",
 	"`post-check:` is required for every batch and whenever `paths:` contains a `glob:` or `pathspec:` entry",
 	"conditional and optional tasks are forbidden",
-	"`tbd`",
-	"`implement later`",
-	"outcome-only summaries",
-	"hidden design choices",
-	"placeholders, never pseudocode",
+	"`tbd`, `implement later`, outcome-only summaries, and hidden design choices are placeholders, never pseudocode",
 	"no prior conversation context",
-	"execution mode",
-	"ordered steps",
+	"each phase independently declares exactly one execution mode: `inline` or `subagent-driven`",
+	"checkbox tasks are ordered steps",
 	"one independently green coherent implementation transaction",
-	"parent or exactly one helper",
-	"path-disjoint",
-	"shared files",
-	"confined",
+	"any helper partition exhaustively assigns every affected site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the assigned subset",
 }
 
 func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
@@ -137,6 +130,9 @@ func TestPlanTaskDetailContractRejectsInversions(t *testing.T) {
 		{"spike answer optional", "records its answer in Notes", "may omit its answer from Notes"},
 		{"post-check optional", "`Post-check:` is required for every batch", "`Post-check:` is optional for every batch"},
 		{"conditional tasks allowed", "Conditional and optional tasks are forbidden", "Conditional and optional tasks are permitted"},
+		{"placeholders allowed", "are placeholders, never pseudocode", "are acceptable placeholders"},
+		{"ownership widened", "exactly one execution mode: `inline` or `subagent-driven`", "any execution mode"},
+		{"helper partition partial", "exhaustively assigns every affected site", "may assign some affected sites"},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			if !strings.Contains(policy, mutation.from) {

@@ -849,7 +849,7 @@ func TestWritingPlansTemplate(t *testing.T) {
 
 	// Assert load-bearing phrases unique to writing-plans
 	loadBearing := []string{
-		"Execution mode",
+		"exactly one execution mode: `inline` or `subagent-driven`",
 		"one independently green coherent implementation transaction",
 		"ordered steps",
 		"exact file paths",

@@ -29,7 +29,7 @@ where the date is the day the plan is written (ISO-8601). Example:
 - A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the two canonical
   header sections: Goal and Architecture summary. File structure is not a plan-level section;
   affected paths belong to tasks.
-- Phases each declare **Execution mode: `inline`** or **`subagent-driven`** independently. A
+- Each phase independently declares exactly one execution mode: `inline` or `subagent-driven`. A
   subagent-driven phase also declares the exact commands and expected terminal states that establish
   its clean and green starting baseline. A phase is one independently green coherent implementation
   transaction; its `- [ ]` checkbox tasks are ordered steps, not default dispatch, review, checkpoint,
@@ -50,9 +50,9 @@ where the date is the day the plan is written (ISO-8601). Example:
   forbidden: use a spike and sequence dependent work into a later phase instead. `TBD`, `implement
   later`, outcome-only summaries, and hidden design choices are placeholders, never pseudocode. Every
   task remains executable with no prior conversation context.
-- Optional helpers are sequential and commit-disabled: an exhaustive partition assigns each site to
-  the parent or exactly one helper, helper subsets are path-disjoint, shared files remain parent-owned,
-  and focused mutating commands stay confined to the assigned subset.
+- Any helper partition exhaustively assigns every affected site to the parent or exactly one helper,
+  keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the
+  assigned subset. Helpers are sequential and commit-disabled.
 - Each phase declares one phase-closing commit and stages the complete transaction; the commit requires
   `awf check --staged` and the gate to pass, enforced by a wired pre-commit hook or run manually first
   in a clone without one (checkable with `git config core.hooksPath`). Definitions land with

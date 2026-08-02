@@ -60,10 +60,10 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			}
 		}
 		assertAll("writer",
-			"Execution mode", "inline", "subagent-driven", "independently", "ordered steps",
+			"exactly one execution mode: `inline` or `subagent-driven`", "independently", "ordered steps",
 			"clean and green starting baseline", "exact commands and expected terminal states",
-			"one independently green coherent implementation transaction", "exhaustively assign every site to the parent or exactly one helper",
-			"path-disjoint", "shared files remain parent-owned", "command-confined", "dead-code escape")
+			"one independently green coherent implementation transaction", "exhaustively assigns every affected site to the parent or exactly one helper",
+			"path-disjoint", "shared files parent-owned", "mutating commands confined", "dead-code escape")
 		assertAll("reviewer",
 			"independent `inline` or `subagent-driven` ownership", "task-level transaction boundaries",
 			"incomplete/overlapping partitions", "helper-owned shared files", "unconfined commands",
@@ -84,14 +84,14 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"redispatch the complete revised phase", "stop for user input", "dirty-state inventory",
 			"recovery verification", "blind successor instruction")
 		assertAll("readme",
-			"Execution mode", "one independently green coherent implementation transaction", "ordered steps",
+			"exactly one execution mode: `inline` or `subagent-driven`", "one independently green coherent implementation transaction", "ordered steps",
 			"clean and green starting baseline", "exact commands and expected terminal states",
-			"parent or exactly one helper", "path-disjoint", "shared files remain parent-owned",
-			"focused mutating commands stay confined")
+			"parent or exactly one helper", "path-disjoint", "shared files parent-owned",
+			"mutating commands confined to the assigned subset")
 		assertAll("template",
-			"**Execution mode: inline.**", "clean and green starting baseline",
+			"**Execution mode: inline.**", "exactly one execution mode: `inline` or `subagent-driven`", "clean and green starting baseline",
 			"exact commands and expected terminal states", "parent or exactly one", "path-disjoint",
-			"shared files remain parent-owned", "mutating commands stay confined", "Phase-close",
+			"shared files parent-owned", "mutating commands confined to the assigned subset", "Phase-close",
 			"awf check --staged", "phase-closing commit")
 
 		for _, name := range []string{"inline", "subagent"} {
