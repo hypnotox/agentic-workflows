@@ -251,6 +251,8 @@ Downgrade compatibility is not a goal.
 - update `rendering/pi-runtime:pi-extension-target-render`
 - update `rendering/pi-runtime:pi-minimum-runtime`
 - update `rendering/pi-runtime:pi-real-runtime-smoke`
+- update `rendering/pi-workflows:pi-session-handoff-lifecycle`
+- update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - add `rendering/pi-workflows:pi-effort-session-association`
 
 ## Consequences
