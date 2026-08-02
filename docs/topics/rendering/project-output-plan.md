@@ -56,6 +56,12 @@ Origin: ADR-0124
 Revised-by: ADR-0164, ADR-0167, ADR-0175
 Backing: test
 
+### `invariant: check-report-single-plan`
+
+Project.CheckReport constructs one operation-owned OutputPlan after deriving its current state and parsed plans, threads that same plan to both drift and advisory projections, and never regenerates domain documents or the config reference inside either projection. Standalone Check, AdvisoryNotes, OutputPlan, and other direct project operations continue to derive their own operation-scoped inputs without a persistent cache.
+Origin: ADR-capability-planned-execution-for-multi-step-systems
+Backing: test
+
 ### `invariant: output-policy-explicit`
 
 Post-processing of each output, frontmatter validation, link scanning, and skill-reference scanning, is selected by that output's declared policy rather than its file suffix. A non-Markdown path with a Markdown policy is still validated and scanned, a Markdown-looking path with a plain policy is not, and the zero-value policy scans nothing.

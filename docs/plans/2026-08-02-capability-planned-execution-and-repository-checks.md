@@ -3,7 +3,7 @@ format: plan-v1
 date: 2026-08-02
 adrs:
   - capability-planned-execution-for-multi-step-systems
-status: Proposed
+status: Implemented
 ---
 # Plan: Capability-planned execution and repository checks
 

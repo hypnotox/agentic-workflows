@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: capability-planned-execution-for-multi-step-systems
-status: Implementing
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-capability-planned-execution-for-multi-step-systems: Capability-planned execution for multi-step systems
@@ -92,3 +92,5 @@ A written implementation plan is required: package authority, generic mechanism,
 - 2026-08-02: Proposed
 - 2026-08-02: Implementing; content-sha256: 75db132e95ef644eb85a871bbdec56fc13a0e586db5fa65a409d4adfebb409f8
 - 2026-08-02: Applied; operations: add `code-design/execution-planning:closed-step-selection`, add `code-design/execution-planning:requirements-prepared-once`, add `code-design/execution-planning:explicit-step-failure-policy`, add `tooling/cli:repo-check-capability-plan`
+- 2026-08-03: Applied; operations: add `rendering/project-output-plan:check-report-single-plan`
+- 2026-08-03: Implemented; content-sha256: 75db132e95ef644eb85a871bbdec56fc13a0e586db5fa65a409d4adfebb409f8

@@ -724,6 +724,7 @@ func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
 	return found
 }
 
+// invariant: rendering/project-output-plan:check-report-single-plan (TestCheckReportBuildsOneOutputPlan)
 func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	file := parseCheckSource(t)
 	report := checkFunc(t, file, "CheckReport")
