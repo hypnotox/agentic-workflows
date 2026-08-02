@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
@@ -112,6 +113,11 @@ func (t Target) validate() error {
 	for _, out := range t.Outputs {
 		if (out.Path == "") == (out.SkillName == "") || out.TemplateID == "" || (out.Path != "" && !filepath.IsLocal(filepath.FromSlash(out.Path))) {
 			return fmt.Errorf("target %q has unsafe output %q", t.Name, out.Path)
+		}
+		if out.SkillName != "" {
+			if err := config.ValidateArtifactName("skill", out.SkillName); err != nil {
+				return fmt.Errorf("target %q has unsafe skill output %q: %w", t.Name, out.SkillName, err)
+			}
 		}
 		if out.Producer != TargetOutputTemplate {
 			return fmt.Errorf("target %q output %q has unknown producer %q", t.Name, out.Path, out.Producer)

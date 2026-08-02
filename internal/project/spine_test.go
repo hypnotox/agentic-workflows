@@ -2002,12 +2002,12 @@ func TestEffortWorkflowTemplate(t *testing.T) { TestEffortWorkflowSkillContract(
 // invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
 func TestEffortWorkflowSkillContract(t *testing.T) {
 	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "native persistent checkout or context tooling", "parallel harness-owned worktree", "memory update", "integration, managed-worktree removal, retrospective, then finish"} {
+	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "native persistent checkout or context tooling", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("effort-workflow missing %q", phrase)
 		}
 	}
-	for _, forbidden := range []string{"using_effort", "Pi"} {
+	for _, forbidden := range []string{"using_effort", "Pi", "`example effort"} {
 		if strings.Contains(out, forbidden) {
 			t.Errorf("target-neutral effort workflow leaks %q", forbidden)
 		}
@@ -2026,6 +2026,35 @@ func TestEffortWorkflowSkillContract(t *testing.T) {
 	}
 	if strings.Contains(string(trim), "effort-workflow") {
 		t.Error("explicit skill trim does not replace the core selection")
+	}
+
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	before, err := os.ReadFile(configPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(configPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("existing config selection changed during sync:\n%s", after)
+	}
+	for _, rel := range []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
+		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
+			t.Errorf("existing config without explicit enablement rendered %s: %v", rel, err)
+		}
+	}
+	plan := p.ResolveEnable("skill", "effort-workflow")
+	if len(plan) != 1 || plan[0].Node.Name != "effort-workflow" {
+		t.Fatalf("explicit effort-workflow enablement plan = %#v", plan)
 	}
 }
 

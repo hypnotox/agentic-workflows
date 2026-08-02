@@ -252,6 +252,25 @@ test("receiving attach, same-effort checkout, and different-effort switch use re
   assert.equal(h.calls[6]?.[3], "other");
 });
 
+test("different-effort same-CWD attach refusal clears the detached source association", async () => {
+  for (const [reply, notice] of [
+    [envelope("not-owner", { slug: "other" }), /prior effort detached: not-owner; changedCwd=false changedActivity=true changedMemory=false/],
+    [envelope("attached", { slug: "other", owner: PRIOR }), /prior effort detached: attached;.*Retry from the current checkout/],
+  ] as const) {
+    const h = makeHarness();
+    await attachSameCwd(h);
+    h.overrides.set("attach", [reply]);
+    await request(h, { effort: "other", destination: "managed" });
+    await continueRequest(h);
+    assert.deepEqual(h.calls.map((argv) => argv[2]), ["resolve", "attach", "resolve", "detach", "attach", "detach"]);
+    assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value, null);
+    assert.match(h.notices.join(" "), notice);
+    const calls = h.calls.length;
+    await h.hooks.get("turn_end")({}, h.ctx);
+    assert.equal(h.calls.length, calls);
+  }
+});
+
 test("changed CWD transfers through the destination instance and matching cwd shutdown skips source detach", async () => {
   const shared: EffortTransferCoordinator = {};
   const source = makeHarness({ shared, cwd: "/source" });

@@ -71,7 +71,11 @@ export type EffortExtensionDependencies = Readonly<{
 }>;
 
 class TransferFailure extends Error {
-  constructor(readonly reply: ActivityReply, readonly cwdChanged: boolean) {
+  constructor(
+    readonly reply: ActivityReply,
+    readonly sourceInvalidated: boolean,
+    readonly sourceActivityChanged: boolean,
+  ) {
     super(`effort association refused: ${reply.condition}`);
     this.name = "TransferFailure";
   }
@@ -101,8 +105,8 @@ function advisory(ctx: CommandContext, message: string): void {
   ctx.ui?.setStatus?.("awf-effort", boundedMessage);
   ctx.ui?.notify?.(boundedMessage, "warning");
 }
-function axes(reply: ActivityReply, cwdChanged = false): string {
-  return `changedCwd=${cwdChanged || reply.outcome?.changedCwd === true} changedActivity=${reply.outcome?.changedActivity === true} changedMemory=${reply.outcome?.changedMemory === true}`;
+function axes(reply: ActivityReply, cwdChanged = false, activityChanged = false): string {
+  return `changedCwd=${cwdChanged || reply.outcome?.changedCwd === true} changedActivity=${activityChanged || reply.outcome?.changedActivity === true} changedMemory=${reply.outcome?.changedMemory === true}`;
 }
 function snapshot(reply: ActivityReply, expectedOwner: string): Association | undefined {
   if (!reply.effort || !reply.memory || !reply.activity || reply.activity.owner !== expectedOwner) return undefined;
@@ -201,9 +205,13 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
     commit: async (ctx, pending, signal) => {
       const destination = pending.destination;
       if (!destination || ctx.cwd !== destination.cwd) throw new Error("replacement context does not match the resolved effort checkout");
+      let sourceInvalidated = false;
+      let sourceActivityChanged = false;
       if (pending.sourceAssociation && pending.sourceAssociation.slug !== pending.target.effort) {
         const detached = await invoke(ctx, ["detach", pending.sourceAssociation.slug, "--owner", pending.sourceAssociation.owner], signal);
-        if (detached.condition !== "detached" && detached.condition !== "missing" && detached.condition !== "not-owner") throw new TransferFailure(detached, true);
+        if (detached.condition !== "detached" && detached.condition !== "missing" && detached.condition !== "not-owner") throw new TransferFailure(detached, false, false);
+        sourceInvalidated = true;
+        sourceActivityChanged = detached.condition === "detached";
       }
       const committed = pending.sourceAssociation?.slug === pending.target.effort
         ? await invoke(ctx, ["checkout", pending.target.effort, "--owner", pending.owner, "--cwd", destination.cwd, "--role", destination.role], signal)
@@ -212,7 +220,7 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
         ? committed.condition === "checkout-updated"
         : committed.condition === "attached" || committed.condition === "taken-over";
       const next = accepted ? snapshot(committed, pending.owner) : undefined;
-      if (!next) throw new TransferFailure(committed, true);
+      if (!next) throw new TransferFailure(committed, sourceInvalidated, sourceActivityChanged);
       if (committed.condition === "taken-over" && committed.priorClaim) advisory(ctx, takeoverMessage(committed.priorClaim, now()));
       return next;
     },
@@ -257,7 +265,7 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
           await destinationReceiver.recover(fresh, prepared.target.effort, prepared.owner);
           const reply = error instanceof TransferFailure ? error.reply : undefined;
           advisory(fresh, reply
-            ? `Effort checkout changed, but association was refused: ${reply.condition}; ${axes(reply, true)}. ${reply.outcome ? reply.outcome.nextActions.join(" ") : "Retry from the current checkout."}`
+            ? `Effort checkout changed, but association was refused: ${reply.condition}; ${axes(reply, true, error instanceof TransferFailure && error.sourceActivityChanged)}. ${reply.outcome ? reply.outcome.nextActions.join(" ") : "Retry from the current checkout."}`
             : `Effort checkout changed, but association failed: ${error instanceof Error ? error.message : String(error)}; changedCwd=true. Activity recovery was attempted.`);
         }
       },
@@ -265,8 +273,14 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
     if (!result.changed) {
       const sameReceiver = shared.receiver;
       if (!sameReceiver || sameReceiver.instance !== prepared.sourceInstance) throw new Error("current using_effort receiver changed before same-checkout commit");
-      const next = await sameReceiver.commit(ctx, prepared, new AbortController().signal);
-      sameReceiver.deliver(ctx, next);
+      try {
+        const next = await sameReceiver.commit(ctx, prepared, new AbortController().signal);
+        sameReceiver.deliver(ctx, next);
+      } catch (error) {
+        if (!(error instanceof TransferFailure) || !error.sourceInvalidated) throw error;
+        await sameReceiver.recover(ctx, prepared.target.effort, prepared.owner);
+        advisory(ctx, `Effort association was refused after the prior effort detached: ${error.reply.condition}; ${axes(error.reply, false, error.sourceActivityChanged)}. ${error.reply.outcome ? error.reply.outcome.nextActions.join(" ") : "Retry from the current checkout."}`);
+      }
     } else if (!callbackRan) {
       throw new Error("Pi changed CWD without running the replacement-session callback");
     }

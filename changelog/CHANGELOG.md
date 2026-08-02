@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Features
 
-- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata, and protocol-1 advisory activity commands resolve, attach, heartbeat, update checkout, or detach Pi session activity without locking effort work. Pi handoffs carry dual-format effort identity during migration; activity remains advisory and non-locking.
+- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata, and protocol-1 advisory activity commands resolve, attach, heartbeat, update checkout, or detach Pi session activity without locking effort work. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the capability-gated `using_effort` skill and extension. Pi handoffs carry dual-format effort identity during migration; activity remains advisory and non-locking.
 
 - `awf check` now reports a non-failing advisory for glossary meanings longer than the terseness guideline, naming the term and its length. It evaluates the merged set, so shipped and project-authored vocabulary follow the same rule.
 

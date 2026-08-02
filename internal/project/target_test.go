@@ -386,9 +386,21 @@ func TestPiEffortSessionAssociationContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"capability-degrades", "same-effort checkout", "restart begins detached", "fresh and stale takeover", "metadata-only fallback", "validates explicit inputs", "serializes heartbeat races"} {
+	for _, want := range []string{"capability-degrades", "same-effort checkout", "different-effort same-CWD attach refusal", "restart begins detached", "fresh and stale takeover", "metadata-only fallback", "validates explicit inputs", "serializes heartbeat races"} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("TypeScript association suite misses %q", want)
+		}
+	}
+	index := renderPiExtensionFile(t, "awf-effort/index.ts")
+	client := renderPiExtensionFile(t, "awf-effort/client.ts")
+	for _, forbidden := range []string{"node:fs", "readFile", "state.json", "activity.json", "error.message.includes", "error.message.match"} {
+		if strings.Contains(index, forbidden) || strings.Contains(client, forbidden) {
+			t.Errorf("effort extension violates binary-owned, typed-boundary contract with %q", forbidden)
+		}
+	}
+	for _, proof := range []string{"assert.equal(h.calls.length, 0)", "assert.equal(h.calls.length, calls)", "assert.equal(emitted(h, \"remote-pi:metadata:set\").at(-1).value, null)", "changedCwd=false changedActivity=false changedMemory=false", "Presence is advisory, not a lock"} {
+		if !strings.Contains(string(body), proof) && !strings.Contains(index, proof) {
+			t.Errorf("association proof misses substantive clause %q", proof)
 		}
 	}
 }
