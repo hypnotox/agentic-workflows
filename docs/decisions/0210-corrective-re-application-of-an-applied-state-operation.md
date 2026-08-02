@@ -7,15 +7,16 @@ date: 2026-08-01
 
 ## Context
 
-A current-state-v2 ADR rolls its declared operations out in batches, each batch one checked
-commit recorded by an Applied history event. Review of an in-flight ADR routinely arrives
-in rounds, so a second round can find a further defect in a claim whose operation an
-earlier batch already applied. Today that ADR has no way to fix it.
+A governed digest-format ADR, current-state-v2 or current-state-v3, rolls its declared
+operations out in batches, each batch one checked commit recorded by an Applied history
+event. Review of an in-flight ADR routinely arrives in rounds, so a later round can find a
+further defect in a claim whose operation an earlier batch already applied. Today that ADR
+has no way to fix it.
 
-The wall is narrow and precise. ADR-0188 already makes a v2 ADR's content amendable through
-Implementing, so an ADR may amend in a new operation on a different claim, and may freely
-revise an operation it has not yet applied. Only one case is closed: correcting a claim
-whose own operation this ADR already applied. Two separate rules close it. ADR-0135 item 3
+The wall is narrow and precise. ADR-0188 already makes a V2 or V3 ADR's content amendable
+through Implementing, so an ADR may amend in a new operation on a different claim, and may
+freely revise an operation it has not yet applied. Only one case is closed: correcting a
+claim whose own operation this ADR already applied. Two separate rules close it. ADR-0135 item 3
 forbids declaring a second operation on one claim, a rule about the declaration. ADR-0182
 item 6 separately forbids a claim being updated more than once by the same ADR within one
 aggregate, a rule about the execution chain. ADR-0188 item 5 completes the enclosure by
@@ -38,44 +39,45 @@ Revised-by lists deciding ADRs, is duplicate-free (`provenance-ordered-by-adr-nu
 pairs one entry with one operation (`implemented-impact-bidirectional`), so two operations
 against one entry cannot be represented.
 
-The update path's machinery already permits the narrower change.
-`revisedByExtension` (`internal/currentstate/transition.go:405-431`) requires the after-list
-to equal the duplicate-free union of the prior list and the updating ADRs, which already
-holds when the ADR is present from the earlier batch. `checkUpdate` (`transition.go:363-381`)
-additionally requires Origin preservation and a material change, both of which a genuine
-correction satisfies.
+The update path's machinery already permits the narrower change. `revisedByExtension` in
+`internal/currentstate/transition.go` requires the after-list to equal the duplicate-free
+union of the prior list and the updating ADRs, which already holds when the ADR is present
+from an earlier batch. `checkUpdate` additionally requires Origin preservation and a
+material change, both of which a genuine correction satisfies.
 
-The add path has no such machinery. `checkMutations`' add branch (`transition.go:148-151`)
-rejects any add whose claim is present on the before side, which is exactly the shape of a
-corrective re-application of an add, and materiality is never evaluated for the add verb at
-all. A corrective add therefore needs a validation case that does not exist today.
+The add path has no such machinery. `checkMutations`' add branch rejects any add whose claim
+is present on the before side, which is exactly the shape of a corrective re-application of
+an add, and materiality is never evaluated for the add verb at all. A corrective add
+therefore needs a validation case that does not exist today.
 
-Five sites block the change. `OperationProgress` (`internal/adr/application.go:83-85`)
-treats a second appearance of an applied operation as an error, and `validateV2History`
-(`internal/adr/format.go:358-363`) rejects the same shape independently through its
-applied-cardinality map. `HistoryTransitionValid`'s event-shape switch
-(`format.go:145-176`) does not admit a new kind. `foldChain` (`transition.go:297-336`)
-rejects a twice-updated claim in the merge-aggregate path. And the add branch above rejects
-a corrective add outright. `ApplicationBatches` (`application.go:31-57`) is the single
-projection feeding both `OperationProgress` and `currentstate.pairOps`
-(`transition.go:198-247`), so what a Reapplied event contributes to that projection decides
-several of these outcomes at once and must be stated rather than assumed.
+Five sites block the change. `OperationProgress` in `internal/adr/application.go` treats a
+second appearance of an applied operation as an error, and the governed history validator
+in `internal/adr/format.go` rejects the same shape independently through its
+applied-cardinality map. `HistoryTransitionValid`'s event-shape switch does not admit a new
+kind. `foldChain` in `internal/currentstate/transition.go` rejects a repeatedly updated
+claim in the merge-aggregate path. And the add branch above rejects a corrective add
+outright. `ApplicationBatches` is the single projection feeding both `OperationProgress`
+and `currentstate.pairOps`, but it currently retains neither the contributing event kind
+nor occurrence identity. Reconciliation must preserve each corrective batch while progress
+continues to count the declaration once.
 
 ## Decision
 
-1. A current-state-v2 ADR with status `Implementing` may correct the effect of an operation
-   it has already applied, by appending a `Reapplied` Status-history event. The event
-   grammar mirrors the Applied event exactly, qualified ids in inline code spans and a
-   comma-separated list permitted:
-   `- YYYY-MM-DD: Reapplied; operations: <verb> `<qualified-id>`[, ...]`. Declaration order
-   and within-event uniqueness apply as they do for Applied. Every operation it names must
-   already appear in an earlier Applied event of the same ADR, and the event is legal only
-   while the status is `Implementing`. A `Reapplied` event carries its own commit, exactly
-   as an Applied batch does.
+1. A current-state-v2 or current-state-v3 ADR with status `Implementing` may correct the
+   effect of an operation it has already applied by appending a `Reapplied` Status-history
+   event. The event grammar mirrors the Applied event exactly, qualified ids in inline code
+   spans and a comma-separated list permitted:
+   ``- YYYY-MM-DD: Reapplied; operations: <verb> `<qualified-id>`[, ...]``. Declaration
+   order and within-event uniqueness apply as they do for Applied. Every operation it names
+   must already appear in an earlier Applied event of the same ADR, and the event is legal
+   only while the status is `Implementing`. The same operation may appear in any number of
+   later `Reapplied` events during that window; each event carries its own commit and must
+   reconcile a further material correction.
 
-2. The recognized current-state-v2 history-event kinds gain `Reapplied`, alongside status,
-   Applied, and Amended. This follows the ADR-0188 item 3 precedent, which updated the same
-   claim when it introduced the Amended kind.
+2. The recognized current-state-v2 and current-state-v3 history-event kinds gain
+   `Reapplied`, alongside status, Applied, and Amended. This follows the ADR-0188 item 3
+   precedent, which updated the same shared-semantics claim when it introduced the Amended
+   kind.
 
 3. Re-application does not change the declaration. `## State changes` still names each
    claim at most once, the operation set is unchanged, and ADR-0135 item 3 stands. A
@@ -87,15 +89,16 @@ several of these outcomes at once and must be stated rather than assumed.
    nothing left to correct; an ADR that removed the wrong claim has made a decision error,
    which a later decision owns.
 
-5. A `Reapplied` event's operations enter the batch projection that mutation reconciliation
-   consumes, so the corrective commit has a matching operation and is not rejected as an
-   unmatched mutation. In `OperationProgress`'s applied partition and in the V2 history
-   validator's applied-cardinality map, the deduplication key is the operation identity
-   together with the kind of event that contributed it: a second occurrence sourced from an
-   Applied event remains an error exactly as today, because that is a genuine
-   duplicate-application bug, while an occurrence sourced from a `Reapplied` event is
-   absorbed without error and without double-counting. Operation value identity alone
-   cannot separate those two cases, so the event kind is part of the key. This split is the
+5. Every `Reapplied` event enters the batch projection that mutation reconciliation
+   consumes, so each corrective commit has a matching operation and is not rejected as an
+   unmatched mutation. The projection retains the contributing event kind and an occurrence
+   identity such as the history or batch index: two corrective events for the same operation
+   remain two ordered reconciliation batches rather than collapsing by operation value or
+   event kind. `OperationProgress` and the governed history validator apply different
+   cardinality semantics over that projection. An operation must still appear in exactly one
+   Applied event, so a second Applied occurrence remains an error. Each Reapplied occurrence
+   instead requires that earlier Applied occurrence, contributes no new declaration to the
+   applied partition, and may repeat without double-counting progress. This split is the
    mechanism the rest of these items assume.
 
 6. A re-applied `update` is validated by the existing update path unchanged: the claim is
@@ -128,21 +131,22 @@ several of these outcomes at once and must be stated rather than assumed.
    final batch or in the flip commit is a terminal-status case with no re-application route.
 
 10. A `Reapplied` event may not sit between the final Applied event and an explicit
-    Implemented status event, preserving the immediate-adjacency rule the V2 history
+    Implemented status event, preserving the immediate-adjacency rule the governed history
     validator enforces. This mirrors the constraint ADR-0188 item 2 placed on the Amended
     kind for the same reason.
 
-11. Merge validation admits the re-application into the chain, for both re-applicable
-    verbs. ADR-0182 item 6 carries two separate prohibitions and this decision narrows
-    both. Where a claim's chain within one aggregate carries a second update entry from the
-    same ADR and that entry is a re-application, the fold contributes that ADR to the
-    updaters list once, consistent with the presence-based once rule item 8 writes into
-    `update-requires-substance`. Where the chain carries a second add entry from the same
-    ADR and that entry is a re-application, the two entries collapse to one net add
-    attributed to the chain's first step, so the requirement that an add be the chain's
-    first operation is satisfied by that fold rather than violated by the correction. Both
-    prohibitions are about the execution chain, which is why this decision must change them
-    rather than leave them standing.
+11. Merge validation admits every re-application into the chain, for both re-applicable
+    verbs. ADR-0182 item 6 carries two separate prohibitions and this decision narrows both.
+    Where a claim's chain within one aggregate carries later update entries from the same
+    ADR and those entries are re-applications, the fold preserves every material mutation
+    while contributing that ADR to the updaters list once, consistent with the
+    presence-based once rule item 8 writes into `update-requires-substance`. Where the chain
+    carries later add entries from the same ADR and those entries are re-applications, the
+    entries fold into one net add attributed to the chain's first step while every
+    intermediate correction is reconciled in order. The requirement that an add be the
+    chain's first operation is therefore satisfied by that fold rather than violated by a
+    correction. Both prohibitions are about the execution chain, which is why this decision
+    must change them rather than leave them standing.
 
 12. A refusal names the route. When an author declares a second operation on a claim the
     ADR has already applied, the error states that the operation is already applied and
@@ -179,18 +183,20 @@ final batch lands. The corrections this buys are those found while work remains,
 where review rounds actually find them, but a defect surfacing in the flip commit is not
 covered.
 
-The audit trail gets longer and more truthful at once. A corrected rollout shows its
-correction as an event rather than hiding it in a workaround elsewhere, so reading an ADR's
-history reveals that a batch needed fixing. That visibility is the point; the cost is only
-that the need was previously invisible.
+The audit trail gets longer and more truthful at once. A corrected rollout shows every
+correction as its own event rather than hiding it in a workaround elsewhere, so reading an
+ADR's history reveals both that a batch needed fixing and whether it needed fixing again.
+That visibility is the point; the cost is only that the need was previously invisible.
 
-A new history event kind is a schema change to a governed format, so several consumers have
-to learn it: the event parser, the transition validator, the application-batch projection
-and the operation-progress partition it feeds, the V2 history validator's
-applied-cardinality and Implemented-adjacency rules, and the merge aggregate path. The
-decision index is deliberately not among them, because it renders number, title, and status
-only. The change is additive, since no existing ADR carries a `Reapplied` event and
-existing records stay valid unchanged.
+A new history event kind is a schema change to both governed digest formats, so several
+consumers have to learn it: the event parser, the transition validator, the
+application-batch projection and the operation-progress partition it feeds, the shared V2
+and V3 history validator's applied-cardinality and Implemented-adjacency rules, and the
+merge aggregate path. The decision index is deliberately not among them, because it renders
+identity, title, and status only. The change is additive, since no existing ADR carries a
+`Reapplied` event and existing records stay valid unchanged. A pending V3 record uses the
+same event semantics under its slug identity, and later numbering leaves every event byte
+unchanged.
 
 The add branch gains a validation case it has never had. Today `checkMutations` treats any
 add of an already-present claim as an error, and evaluates materiality for the update verb
@@ -210,8 +216,9 @@ event at all.
 
 `update-requires-substance` is `Backing: unbacked` and carries a `Verify:` line, so its
 amendment revises that line rather than a proof marker. The new claim covers the event
-grammar, the window boundaries, the verb restriction, the batch-projection split, and the
-provenance rule, and needs its own proof.
+grammar across V2 and V3, the window boundaries, repeatability, the verb restriction, the
+batch-projection split, and the provenance rule, and needs its own proof whose fixtures
+include two ordered Reapplied events for one operation.
 
 ## Alternatives Considered
 
