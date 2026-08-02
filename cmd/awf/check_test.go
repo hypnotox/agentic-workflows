@@ -287,6 +287,17 @@ func TestRunCheckAheadNotice(t *testing.T) {
 	if strings.Contains(out2.String(), "is ahead") {
 		t.Errorf("did not expect ahead notice for equal version, got %q", out2.String())
 	}
+
+	root3 := syncedGitProject(t)
+	repinLockVersion(t, root3, "0.3.0")
+	testsupport.WriteFile(t, filepath.Join(root3, ".awf", "config.yaml"), "prefix: [invalid\n")
+	var failed bytes.Buffer
+	if err := runCheckRepo(ctx, root3, &failed); err == nil {
+		t.Fatal("ahead repository check with invalid config succeeded")
+	}
+	if failed.Len() != 0 {
+		t.Fatalf("preparation failure emitted ahead notice before readiness: %q", failed.String())
+	}
 }
 
 // coverageYAML owns internal/** with the fan-out budget the warn fixtures need.

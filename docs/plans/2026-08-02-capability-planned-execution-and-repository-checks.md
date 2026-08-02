@@ -219,6 +219,8 @@ refactor(code-design): plan repository check capabilities
 
 ## Notes
 
+Integration deviation: current `main` introduced typed plan-v2 assignment notes in both working and staged check reports after this plan was approved. The merged implementation keeps those values in `CheckReport.PlanNotes` and `CurrentStateReport.PlanNotes`; direct repository and staged aggregates each emit their selected universe, while bare `awf check` shares one command-local sink that coalesces only identical cross-universe plan notes. General project advisories retain their established multiplicity, and distinct working and staged plan notes remain distinct.
+
 The fifth operation is deliberately not part of either implementation phase. After Phase 2 and independent implementation review settle, the main-thread terminal transaction must first record any implementation deviations or follow-ups here while the plan is still Proposed. It must then add `// invariant: rendering/project-output-plan:check-report-single-plan (TestCheckReportBuildsOneOutputPlan)` above the substantive Phase 1 regression test and add the following exact claim to `.awf/topics/parts/rendering/project-output-plan/current-state.md`:
 
 ```markdown

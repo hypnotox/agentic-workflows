@@ -298,10 +298,10 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 	}
 
 	aggregate := formattedFunctionBody(t, "checkrepo.go", "runCheckRepoWithPlanNotes")
-	versionOutput := strings.Index(aggregate, "fmt.Fprintf")
+	versionOutput := strings.Index(aggregate, "fmt.Sprintf")
 	executionCall := strings.Index(aggregate, "runRepoCheckSelectionWithPlanNotes")
 	if versionOutput < 0 || executionCall < 0 || versionOutput >= executionCall {
-		t.Fatalf("aggregate version output must precede execution:\n%s", aggregate)
+		t.Fatalf("aggregate version note preparation must precede execution:\n%s", aggregate)
 	}
 }
 

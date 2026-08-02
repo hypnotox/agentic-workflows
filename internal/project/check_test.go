@@ -684,6 +684,22 @@ func calledMethodCount(fn *ast.FuncDecl, name string) int {
 	return count
 }
 
+func calledMethodPosition(fn *ast.FuncDecl, name string) token.Pos {
+	var position token.Pos
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if ok && sel.Sel.Name == name && position == token.NoPos {
+			position = call.Pos()
+		}
+		return true
+	})
+	return position
+}
+
 func hasOutputPlanParameter(fn *ast.FuncDecl) bool {
 	for _, field := range fn.Type.Params.List {
 		ptr, ok := field.Type.(*ast.StarExpr)
@@ -737,6 +753,13 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 			t.Errorf("%s constructs %d output plans, want exactly one", fn.Name.Name, got)
 		}
 	}
+	outputPlanPosition := calledMethodPosition(report, "outputPlan")
+	for _, producer := range []string{"deriveOperationState", "ParseDir"} {
+		producerPosition := calledMethodPosition(report, producer)
+		if producerPosition == token.NoPos || outputPlanPosition == token.NoPos || outputPlanPosition <= producerPosition {
+			t.Errorf("CheckReport outputPlan position %d must follow %s position %d", outputPlanPosition, producer, producerPosition)
+		}
+	}
 	if !callsMethodWithIdent(directAdvisory, "advisoryNotesWithState", "op") {
 		t.Error("AdvisoryNotes does not pass op to advisoryNotesWithState")
 	}
@@ -751,9 +774,11 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 			t.Errorf("CheckReport does not pass op to %s", fn.Name.Name)
 		}
 	}
-	for _, producer := range []string{"generateDomainDocs", "generateConfigReference"} {
-		if got := calledMethodCount(advisory, producer); got != 0 {
-			t.Errorf("advisoryNotesWithState calls %s %d times, want plan write nodes", producer, got)
+	for _, fn := range []*ast.FuncDecl{check, advisory} {
+		for _, producer := range []string{"generateDomainDocs", "generateConfigReference"} {
+			if got := calledMethodCount(fn, producer); got != 0 {
+				t.Errorf("%s calls %s %d times, want plan write nodes", fn.Name.Name, producer, got)
+			}
 		}
 	}
 

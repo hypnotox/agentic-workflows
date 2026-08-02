@@ -91,7 +91,7 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 
 // repoCheckSystem defines one operation-local capability graph. It freezes typed
 // prepared inputs into output actions only after all selected requirements work.
-func repoCheckSystem(root string, stdout io.Writer, aggregate bool, planNotes planNoteSink, inputs *repoCheckInputs, deps repoCheckDependencies) execution.System {
+func repoCheckSystem(root string, stdout io.Writer, aggregate bool, leadingNotes []string, planNotes planNoteSink, inputs *repoCheckInputs, deps repoCheckDependencies) execution.System {
 	return execution.System{
 		Requirements: []execution.Requirement{
 			{ID: repoRequirementConfig, Prepare: func(context.Context) error {
@@ -149,6 +149,9 @@ func repoCheckSystem(root string, stdout io.Writer, aggregate bool, planNotes pl
 					report := inputs.checkReport
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
 						if aggregate {
+							for _, n := range leadingNotes {
+								fmt.Fprintf(stdout, "note: %s\n", n)
+							}
 							for _, n := range report.Notes {
 								fmt.Fprintf(stdout, "note: %s\n", n)
 							}
@@ -173,12 +176,12 @@ func repoCheckSystem(root string, stdout io.Writer, aggregate bool, planNotes pl
 }
 
 func runRepoCheckSelection(ctx context.Context, root string, stdout io.Writer, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, deps repoCheckDependencies) error {
-	return runRepoCheckSelectionWithPlanNotes(ctx, root, stdout, selected, policy, aggregate, planNoteSink{}, deps)
+	return runRepoCheckSelectionWithPlanNotes(ctx, root, stdout, selected, policy, aggregate, nil, planNoteSink{}, deps)
 }
 
-func runRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, stdout io.Writer, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, planNotes planNoteSink, deps repoCheckDependencies) error {
+func runRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, stdout io.Writer, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, leadingNotes []string, planNotes planNoteSink, deps repoCheckDependencies) error {
 	inputs := &repoCheckInputs{}
-	prepared, err := execution.Prepare(ctx, repoCheckSystem(root, stdout, aggregate, planNotes, inputs, deps), selected)
+	prepared, err := execution.Prepare(ctx, repoCheckSystem(root, stdout, aggregate, leadingNotes, planNotes, inputs, deps), selected)
 	if err != nil {
 		var indexErr *repoIndexPreparationError
 		if errors.As(err, &indexErr) {
@@ -223,10 +226,11 @@ func runCheckRepoWithPlanNotes(ctx context.Context, root string, stdout io.Write
 	if err != nil {
 		return err
 	}
+	var leadingNotes []string
 	if ok && semver.Compare(binV, lockV) > 0 {
-		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf render to re-pin\n", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
+		leadingNotes = append(leadingNotes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
 	}
-	return runRepoCheckSelectionWithPlanNotes(ctx, root, stdout, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, planNotes, productionRepoCheckDependencies())
+	return runRepoCheckSelectionWithPlanNotes(ctx, root, stdout, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, leadingNotes, planNotes, productionRepoCheckDependencies())
 }
 func runCheckDrift(ctx context.Context, root string, stdout io.Writer) error {
 	deps := productionRepoCheckDependencies()
