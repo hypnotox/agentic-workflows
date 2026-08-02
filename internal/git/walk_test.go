@@ -454,6 +454,20 @@ func TestFirstParentChangedPathsContracts(t *testing.T) {
 	}
 }
 
+func TestFirstParentChangedPathsPropagatesCancellationDuringDiff(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "base", map[string]string{"a.txt": "base\n"})
+	head := gitfixture.Commit(t, repo, "head", map[string]string{"a.txt": "head\n"})
+	parent, cancel := context.WithCancel(testContext(t))
+	ctx := &cancelAtDiffContext{Context: parent, remaining: 3, cancel: cancel}
+	if _, err := walkRepo(t, repo.Root()).FirstParentChangedPaths(ctx, head); !errors.Is(err, context.Canceled) {
+		t.Fatalf("first-parent diff cancellation = %v, want context.Canceled; base=%s", err, base)
+	}
+	if !ctx.diffObserved {
+		t.Fatal("first-parent diff did not observe the caller context")
+	}
+}
+
 func TestFirstParentChangedPathsReportsCorruptTreeEvidence(t *testing.T) {
 	for _, target := range []string{"current tree", "parent tree", "parent subtree", "changed subtree"} {
 		t.Run(target, func(t *testing.T) {
@@ -537,6 +551,27 @@ func TestSplitWalkMessage(t *testing.T) {
 	if subject, body := splitMessage("subject"); subject != "subject" || body != "" {
 		t.Fatalf("single line = %q / %q", subject, body)
 	}
+}
+
+type cancelAtDiffContext struct {
+	context.Context
+	remaining    int
+	cancel       context.CancelFunc
+	diffObserved bool
+}
+
+func (c *cancelAtDiffContext) Done() <-chan struct{} {
+	c.diffObserved = true
+	return c.Context.Done()
+}
+
+func (c *cancelAtDiffContext) Err() error {
+	c.remaining--
+	if c.remaining == 0 {
+		c.cancel()
+		return nil
+	}
+	return c.Context.Err()
 }
 
 type cancelAfterContext struct {

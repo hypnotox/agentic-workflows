@@ -24,6 +24,10 @@ const (
 // callers that need the complete repository projection.
 func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
 	files := scannableTreeFiles(tree)
+	metadata, parts, err := authorityEntriesFromTreeFiles(files)
+	if err != nil {
+		return Corpus{}, err
+	}
 	domainPaths := map[string][]string{}
 	for _, d := range cfg.Domains {
 		paths, err := domainPathsFromTree(tree, d)
@@ -32,7 +36,7 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 		}
 		domainPaths[d] = paths
 	}
-	c, err := authorityCorpusFromTreeFiles(files, cfg, adrs, domainPaths)
+	c, err := assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
 	if err != nil {
 		return Corpus{}, err
 	}
@@ -48,7 +52,11 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 // snapshot. It validates metadata, parts, configured domains, claims, and ADR
 // provenance, but deliberately omits domain ownership and marker validation.
 func LoadAuthorityCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
-	return authorityCorpusFromTreeFiles(scannableTreeFiles(tree), cfg, adrs, nil)
+	metadata, parts, err := authorityEntriesFromTreeFiles(scannableTreeFiles(tree))
+	if err != nil {
+		return Corpus{}, err
+	}
+	return assembleCorpus(metadata, parts, cfg.Domains, nil, adrs)
 }
 
 func scannableTreeFiles(tree *snapshot.Tree) []snapshot.File {
@@ -62,7 +70,7 @@ func scannableTreeFiles(tree *snapshot.Tree) []snapshot.File {
 	return files
 }
 
-func authorityCorpusFromTreeFiles(files []snapshot.File, cfg *config.Config, adrs adr.Corpus, domainPaths map[string][]string) (Corpus, error) {
+func authorityEntriesFromTreeFiles(files []snapshot.File) (map[string]metaEntry, map[string]partEntry, error) {
 	metadata := map[string]metaEntry{}
 	parts := map[string]partEntry{}
 	for _, f := range files {
@@ -70,20 +78,20 @@ func authorityCorpusFromTreeFiles(files []snapshot.File, cfg *config.Config, adr
 		case strings.HasPrefix(f.Path, treeMetadataPrefix) && strings.HasSuffix(f.Path, ".yaml"):
 			id, m, err := ParseMetadata(treeMetadataRoot, f.Path, f.Bytes)
 			if err != nil {
-				return Corpus{}, err
+				return nil, nil, err
 			}
 			if err := recordMeta(metadata, id, metaEntry{meta: m, path: f.Path}); err != nil { // coverage-ignore: distinct snapshot paths yield distinct topic IDs; recordMeta duplicate is unit-tested directly
-				return Corpus{}, err
+				return nil, nil, err
 			}
 		case strings.HasPrefix(f.Path, treePartsPrefix) && strings.HasSuffix(f.Path, treePartSuffix):
 			seg := strings.Split(strings.TrimPrefix(f.Path, treePartsPrefix), "/")
 			if len(seg) != 3 || !kebabRE.MatchString(seg[0]) || !kebabRE.MatchString(seg[1]) {
-				return Corpus{}, fmt.Errorf("invalid topic part path %q", f.Path)
+				return nil, nil, fmt.Errorf("invalid topic part path %q", f.Path)
 			}
 			parts[(TopicID{seg[0], seg[1]}).String()] = partEntry{data: f.Bytes, path: f.Path}
 		}
 	}
-	return assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
+	return metadata, parts, nil
 }
 
 // domainPathsFromTree reads one domain sidecar's ownership globs from the

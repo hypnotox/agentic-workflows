@@ -148,9 +148,12 @@ func (r *Repo) FirstParentChangedPaths(ctx context.Context, rev string) ([]strin
 			return nil, opaqueError(err)
 		}
 	}
-	changes, err := object.DiffTree(parent, current)
-	if err != nil { // coverage-ignore: both trees were recursively enumerated immediately above, so their tree objects are complete
-		return nil, opaqueError(err)
+	changes, err := object.DiffTreeContext(ctx, parent, current)
+	if err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return nil, contextErr
+		}
+		return nil, opaqueError(err) // coverage-ignore: complete recursively validated trees and a live context leave no other DiffTreeContext error
 	}
 	paths := map[string]bool{}
 	for _, change := range changes {

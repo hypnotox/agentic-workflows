@@ -346,6 +346,41 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 			t.Fatalf("marker/domain-only historical bytes produced transition warnings: %#v", findings)
 		}
 	})
+	t.Run("merge relevance stays outside ordinary rules", func(t *testing.T) {
+		repo := gitfixture.InitRepo(t)
+		base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
+			".awf/config.yaml": "prefix: test\nintegrationBranch: master\n",
+		})
+		main := gitfixture.Merge(t, repo, "feat(awf): main")
+		gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+		feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{
+			".awf/config.yaml": "prefix: [\n",
+			"go.mod":           "module example.com/merge\n",
+			"docs/merge.md":    "historical" + string(rune(0x2014)) + "punctuation\n",
+			"large.go":         "package large\n" + strings.Repeat("var Value = 1\n", 5),
+		})
+		merge := gitfixture.Merge(t, repo, "Merge feature", main, feature)
+		findings, _, err := Run(ctx, repo.Root(), feature, merge, Inputs{
+			Settings: Settings{
+				AllowedTypes:        []string{"feat"},
+				DependencyManifests: []string{"go.mod"},
+				DiffThreshold:       1,
+				PlainPunctuation:    true,
+			},
+			ADRDir: "docs/decisions", DocsDir: "docs", PlansDir: "docs/plans",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if countRule(findings, currentStateTransitionRule, severity.Warn) != 1 {
+			t.Fatalf("merge authority change did not force a historical reload: %#v", findings)
+		}
+		for _, rule := range []string{"dependency-adr", "plan-for-large-change", "plain-punctuation"} {
+			if countRule(findings, rule, severity.Warn) != 0 {
+				t.Fatalf("merge relevance leaked into ordinary rule %s: %#v", rule, findings)
+			}
+		}
+	})
 	outside := awfgit.Commit{Revision: "outside"}
 	commits := []awfgit.Commit{
 		{Revision: "code", Parents: []string{outside.Revision}, Changes: []awfgit.FileChange{{Path: "internal/code.go", Action: awfgit.Modified}}},

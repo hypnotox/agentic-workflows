@@ -278,6 +278,15 @@ func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 		!strings.Contains(err.Error(), "parse domain sidecar alpha") {
 		t.Fatalf("full corpus accepted malformed domain sidecar: %v", err)
 	}
+	bothMalformed := treeFrom(t, map[string]string{
+		".awf/topics/metadata/alpha/one.yaml":          "title: [\n",
+		".awf/topics/parts/alpha/one/current-state.md": files[".awf/topics/parts/alpha/one/current-state.md"],
+		".awf/domains/alpha.yaml":                      files[".awf/domains/alpha.yaml"],
+	})
+	if _, err := LoadCorpusFromTree(bothMalformed, cfg, oneImplementedADR()); err == nil ||
+		strings.Contains(err.Error(), "domain sidecar") {
+		t.Fatalf("full corpus changed metadata-before-sidecar error precedence: %v", err)
+	}
 	markerOnly := treeFrom(t, map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          files[".awf/topics/metadata/alpha/one.yaml"],
 		".awf/topics/parts/alpha/one/current-state.md": files[".awf/topics/parts/alpha/one/current-state.md"],
