@@ -42,26 +42,39 @@ docs(adr): accept test-support export consumers
 
 **Execution mode: inline.** This phase starts from Phase 1 committed with `git status --short` empty, `./x check` clean, and `./x gate` passing. It applies all three prerequisite operations in declaration order through one direct Accepted-to-Implemented transaction.
 
-- [ ] **Task 2.1: Add a repository production-import proof.** In `internal/testsupport/deps_test.go`, retain `dependencyViolations` and `TestZeroInternalDeps` unchanged in purpose, then add a helper that parses imports from non-test `.go` files under repository `cmd/**` and `internal/**`, excluding the entire `internal/testsupport/**` subtree, and returns a violation whenever the unquoted import equals `github.com/hypnotox/agentic-workflows/internal/testsupport` or starts with that string plus `/`. Use `testsupport.RepoRoot(t)` from the external `testsupport_test` package to anchor the walk; skip `_test.go`, `testdata`, hidden VCS/resident directories, and non-Go files. Parsing failures are test failures, not ignored files.
+- [ ] **Task 2.1: Add a repository production-import proof.** In `internal/testsupport/deps_test.go`, retain `dependencyViolations` and `TestZeroInternalDeps` unchanged in purpose. Add a `productionTestsupportImportViolations(path string, source any) ([]string, error)` parser helper and a live walker anchored with `testsupport.RepoRoot(t)` from the external `testsupport_test` package. The walker covers every production `.go` source in this repository, including the root package, `cmd/**`, `internal/**`, `changelog/**`, `templates/**`, `tools/**`, and the separate `examples/sundial` module. It excludes `_test.go`, every directory named `testdata`, `vendor`, or `node_modules`, `.git/**`, and resident `.awf/efforts/**` and `.awf/worktrees/**` trees because none is production source. Do not exclude a nested module merely because it has its own `go.mod`. Parsing failures are test failures, not ignored files.
 
-  Add `TestProductionNeverImportsTestSupport` with the proof marker:
+  A violation occurs whenever an unquoted import equals `github.com/hypnotox/agentic-workflows/internal/testsupport` or starts with that string plus `/`. Add `TestProductionNeverImportsTestSupport` with the proof marker:
 
   ```go
   // invariant: tooling/test-infrastructure:production-never-imports-test-support (TestProductionNeverImportsTestSupport)
   ```
 
-  The test walks the live repository and reports every path/import pair. Add focused table cases proving that a production source importing the root testsupport package and one importing `internal/testsupport/fsfixture` are rejected, while a standard-library import, another repository import, and a `_test.go` consumer are not production-import violations. The live scan must find zero violations. Forbidden: invoking `go list`, Git, or another repository package from production testsupport code; the proof itself may import the root testsupport package because it is an external test file.
+  The test reports every path/import pair and the live scan reaches zero findings. Table cases pass synthetic path/source pairs and prove rejection for the root testsupport package, `internal/testsupport/fsfixture`, and an example-adopter production file; allowance for a standard-library import, another repository import, `_test.go`, and a `testdata` fixture; and parse-error propagation. Forbidden: invoking `go list`, Git, or another repository package from production testsupport code; the proof itself may import the root testsupport package because it is an external test file.
 
-- [ ] **Task 2.2: Update export eligibility exactly.** Replace the body of `code-design/package-composition:export-earns-consumer` in `.awf/topics/parts/code-design/package-composition/current-state.md` with authority that distinguishes the declaring package:
+- [ ] **Task 2.2: Update export eligibility exactly.** Replace the complete `export-earns-consumer` block in `.awf/topics/parts/code-design/package-composition/current-state.md` with this literal Markdown:
 
-  - a new or deliberately converted export in a production package requires an outside-package production consumer in the same green transaction;
-  - `export_test.go` remains legal and a black-box test does not earn a production export;
-  - an export in a dedicated shared package under `internal/testsupport/**` instead requires an outside-package test consumer in the same green transaction, and a compile-only reference does not count;
-  - composition capabilities and error identities remain governed by their named sibling claims.
+  ```markdown
+  ### `invariant: export-earns-consumer`
 
-  Preserve `Origin: ADR-0200`, append `ADR-test-support-exports-earn-test-consumers` to `Revised-by`, retain `Backing: unbacked`, and replace Verify prose with a declaring-package classification followed by the corresponding production or outside-package test consumer trace.
+  A new or deliberately converted exported symbol declared by a production package ships with an outside-package production consumer in the same green transaction; an `export_test.go` seam stays legal and a black-box `_test` package does not earn that production export. An exported symbol declared by a dedicated shared test-support package under `internal/testsupport/**` instead ships with an outside-package test consumer in the same green transaction, and a compile-only reference does not count. Composition capabilities remain governed by `code-design/dependency-composition:concrete-first-consumer`, and exported error identities remain governed by `code-design/outcome-modeling:consumed-identity` including its documented-consumer escape hatch.
+  Origin: ADR-0200
+  Revised-by: ADR-test-support-exports-earn-test-consumers
+  Backing: unbacked
+  Verify: For each new or deliberately converted export, classify its declaring package; trace an outside-package production consumer for a production-package export or a real outside-package test consumer for a dedicated `internal/testsupport/**` export in the same commit, then apply the named composition-capability or error-identity specialization where relevant.
+  ```
 
-- [ ] **Task 2.3: Update concrete-first symmetry exactly.** Replace `code-design/dependency-composition:concrete-first-consumer` in `.awf/topics/parts/code-design/dependency-composition/current-state.md` so a production composition capability requires one named concrete production first consumer, while a capability exported from dedicated `internal/testsupport/**` requires one named outside-package test first consumer. Both capability and consumer land in the same green transaction, the consumer uses the whole introduced capability, and anticipated reuse adds no adapter, constructor field, interface method, option, helper, or fault operation. Preserve `Origin: ADR-0178`, append `ADR-test-support-exports-earn-test-consumers` to `Revised-by`, retain `Backing: unbacked`, and make Verify inspect the declaring package, corresponding caller kind, whole-capability use, and same-transaction diff.
+- [ ] **Task 2.3: Update concrete-first symmetry exactly.** Replace the complete `concrete-first-consumer` block in `.awf/topics/parts/code-design/dependency-composition/current-state.md` with this literal Markdown:
+
+  ```markdown
+  ### `invariant: concrete-first-consumer`
+
+  Every new production composition capability lands in the same green transaction as exactly one named concrete production first consumer. A composition capability exported by a dedicated shared test-support package under `internal/testsupport/**` instead lands with exactly one named outside-package test first consumer. In either case the consumer uses the whole introduced capability, and no adapter, constructor field, interface method, option, helper, fault operation, or other composition surface is added only for anticipated reuse.
+  Origin: ADR-0178
+  Revised-by: ADR-test-support-exports-earn-test-consumers
+  Backing: unbacked
+  Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
+  ```
 
 - [ ] **Task 2.4: Add the one-way test-infrastructure claim.** Append this claim to `.awf/topics/parts/tooling/test-infrastructure/current-state.md` and replace the topic preamble only as needed to mention both directions of the boundary:
 
@@ -75,7 +88,7 @@ docs(adr): accept test-support export consumers
 
   Place the named proof marker from Task 2.1 on the test. Do not add `Verify:` to the backed claim.
 
-- [ ] **Task 2.5: Implement the prerequisite ADR atomically.** In `docs/decisions/test-support-exports-earn-test-consumers.md`, change frontmatter to `status: Implemented`. Append one Applied event listing, in exact declaration order, update `code-design/package-composition:export-earns-consumer`, update `code-design/dependency-composition:concrete-first-consumer`, and add `tooling/test-infrastructure:production-never-imports-test-support`, with every qualified id in an inline code span. Append the terminal `Implemented` event after Applied, repeating the Accepted content stamp because the ADR body did not change. Run `./x render` and stage the ADR, all three authored claim parts, `internal/testsupport/deps_test.go`, generated topic/domain/index outputs, and `.awf/awf.lock`.
+- [ ] **Task 2.5: Implement the prerequisite ADR atomically.** In `docs/decisions/test-support-exports-earn-test-consumers.md`, change frontmatter to `status: Implemented` and append only the terminal `Implemented` event, repeating the Accepted content stamp because the ADR body did not change. This direct Accepted-to-Implemented transition implicitly applies all three State changes in declaration order; do not append an explicit Applied event. Land all three claim mutations and the proof marker in this same checked transaction. Run `./x render` and stage the ADR, all three authored claim parts, `internal/testsupport/deps_test.go`, generated topic/domain/index outputs, and `.awf/awf.lock`.
 
 - [ ] **Task 2.6: Verify authority and proof behavior.** Run `go test ./internal/testsupport`, which exits zero. In a scratch edit, add `github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture` to a non-test Go file under `internal/` and confirm `go test ./internal/testsupport` fails naming that file and import; restore with `git restore` and rerun until clean. Run `./awf topic code-design/package-composition`, `./awf topic code-design/dependency-composition`, and `./awf topic tooling/test-infrastructure`; each renders the updated or added claim with correct provenance and backing. `./x check` and `./x gate` both exit zero.
 
@@ -99,21 +112,56 @@ docs(adr): accept root-confined filesystem access
 
 ## Phase 4: Land the root-confined handle, shared fault source, and upgrade consumer
 
-**Execution mode: subagent-driven.** Baseline: start from a clean managed worktree with Phases 1-3 committed; `git status --short` returns empty; both ADR files report the prerequisite `Implemented` and filesystem ADR `Accepted`; `./x check` is clean; and `./x gate` exits zero. This phase is one indivisible concrete-first transaction. The phase owner may order tasks internally but must not commit a provider, fixture export, fault operation, or consumer separately.
+**Execution mode: subagent-driven.** Baseline: start from a clean managed worktree with Phases 1-3 committed; `git status --short` returns empty; both ADR files report the prerequisite `Implemented` and filesystem ADR `Accepted`; `./x check` is clean; and `./x gate` exits zero. This phase is one indivisible concrete-first transaction. Execute Tasks 4.1-4.6 in their declared order, but do not commit a provider, fixture export, fault operation, or consumer separately.
 
 - [ ] **Task 4.1: Implement the production handle and its contract tests.** Create `internal/filesystem/handle.go` with a one-sentence package comment and concrete `Handle` owning an `*os.Root`. Export and document `Open(root string) (*Handle, error)`, `Close() error`, `Walk(subtree string, visit func(path string, info fs.FileInfo) (bool, error)) error`, `Read(path string) ([]byte, error)`, `Info(path string) (fs.FileInfo, error)`, and `LinkInfo(path string) (fs.FileInfo, error)`. `Open` calls `os.OpenRoot`. Every operation accepts only `.` or `fs.ValidPath(name)`, rejects empty/absolute/parent paths before delegation, uses slash-relative names, and wraps operation plus path with `%w`. `Walk` uses the root's `fs.FS`, resolves `DirEntry.Info` before the consumer callback, supplies metadata for the entry itself without following a final symlink, treats callback `true` as descend and `false` as skip only for directories, ignores the boolean for nondirectories, and propagates callback identity. It never returns absolute paths or exposes `filepath.SkipDir`. It does not follow directory symlinks. Keep any genuinely race-only adapter branch behind a specific `coverage-ignore`; do not copy digest exclusions.
 
-  Create `internal/filesystem/handle_test.go`. `TestHandleConfinesPaths` covers `.`, valid nested reads, empty, absolute, `..`, an internal symlink, and a symlink whose target escapes the root, using platform skips only when symlink creation itself is unsupported. `TestRootConfinedFilesystemSingleHome` AST-scans non-test repository Go files for `os.OpenRoot`: production use is allowed only under `internal/filesystem/**`, with the separately decided `internal/testsupport/fsfixture/**` test source allowed by explicit path; a new production home fails. Additional tests cover Open failure, Read/Info/LinkInfo distinction, slash-relative Walk paths, false directory descent, ignored file booleans, callback error identity, and use-after-close behavior. Do not add invariant proof-marker comments yet; the deferred claim transaction owns them.
+  Create `internal/filesystem/handle_test.go`. `TestHandleConfinesPaths` proves every future `root-confined-paths` clause in one named unit: `.`, valid nested reads, empty, absolute, `..`, repeated-separator invalidity, an internal symlink, and a symlink whose target escapes the root; slash-relative Walk output and descent; and `errors.Is` preservation for callback and root-operation failures. Use platform skips only when symlink creation itself is unsupported. Add separate focused tests for Open failure, Read/Info/LinkInfo distinction, ignored nondirectory booleans, and use-after-close behavior.
 
-- [ ] **Task 4.2: Implement the one kernel-backed fault source.** Create `internal/testsupport/fsfixture/fsfixture.go` as a standard-library-only package. Export and document a concrete root-backed handle plus only the capability used this phase. Define an `Operation` type with exact operations for walk traversal, walk entry-info, read, info, and link-info; define `Fault{Operation, Path, Err}`; and construct the fixture from an OS root plus zero or more faults. Export `Close() error`, and require every outside-package fixture use to register it with `t.Cleanup`. Reject nil errors, invalid paths, and duplicate operation/path keys. A matching operation/path returns the caller error through operation/path `%w` wrapping; every other call delegates to the real `os.Root`. Its `Walk`, `Read`, `Info`, and `LinkInfo` signatures structurally match the upgrade consumer interface and the production handle. Package and implementation comments cite ADR-consumer-local-contracts-over-single-home-filesystem-access and explain that the standard-library-only leaf forces this distinct kernel-backed controlled-fault source rather than a second production adapter.
+  Build an AST scanner over every repository non-test Go source. `TestRootConfinedFilesystemSingleHome` proves every future `single-production-handle` clause: calls to `os.OpenRoot` and stored `*os.Root` production values occur only under `internal/filesystem/**`; the explicitly distinct `internal/testsupport/fsfixture/**` path is classified as test source rather than production; `internal/filesystem` exports concrete `Handle` and contains no interface declaration; and every outside-package production use imports the concrete package. Synthetic refuting sources must prove detection of an extra `os.OpenRoot` call, a stored `*os.Root`, and a provider-owned exported interface. Do not add invariant proof-marker comments yet; the deferred claim transaction owns them.
 
-  Create `internal/testsupport/fsfixture/fsfixture_test.go`. Cover validation, delegation, every introduced fault operation, exact path selection, nonmatching delegation, callback polarity/error behavior, and `errors.Is` preservation. Add `TestFilesystemFaultSourceSingleHome` as a structural scan proving this package is the only non-test `internal/testsupport/**` source that both opens `os.Root` and defines filesystem fault operations. Do not add its invariant marker until the deferred claim transaction.
+- [ ] **Task 4.2: Implement the one kernel-backed fault source.** Create `internal/testsupport/fsfixture/fsfixture.go` with the package comment `Package fsfixture provides the repository's kernel-backed controlled filesystem fault source.` and these exact exported declarations, each with a doc comment:
+
+  ```go
+  type Operation string
+
+  const (
+      OperationWalk     Operation = "walk"
+      OperationWalkInfo Operation = "walk-info"
+      OperationRead     Operation = "read"
+      OperationInfo     Operation = "info"
+      OperationLinkInfo Operation = "link-info"
+  )
+
+  type Fault struct {
+      Operation Operation
+      Path      string
+      Err       error
+  }
+
+  type Handle struct { /* unexported os.Root and fault map fields */ }
+
+  func Open(root string, faults ...Fault) (*Handle, error)
+  func (h *Handle) Close() error
+  func (h *Handle) Walk(subtree string, visit func(string, fs.FileInfo) (bool, error)) error
+  func (h *Handle) Read(path string) ([]byte, error)
+  func (h *Handle) Info(path string) (fs.FileInfo, error)
+  func (h *Handle) LinkInfo(path string) (fs.FileInfo, error)
+  ```
+
+  `Open` validates faults in slice order before opening the root: reject an unknown operation as `fsfixture: fault <index>: unknown operation %q`; a nil error as `fsfixture: fault <index>: nil error`; a path other than `.` or `fs.ValidPath(path)` as `fsfixture: fault <index>: invalid path %q`; and a duplicate operation/path key as `fsfixture: fault <index>: duplicate <operation> fault for %q`. Then call `os.OpenRoot`; wrap failure as `fsfixture: open root %q: %w`. Every method applies the same path validation before fault lookup. Method failures wrap as `fsfixture: <operation> %q: %w`, preserving `errors.Is`. `OperationWalk` matches a visited path before entry metadata is resolved; `OperationWalkInfo` matches immediately before `DirEntry.Info`; both abort traversal. Walk metadata describes the entry without following its final symlink, callback true/false and error behavior exactly match `filesystem.Handle`, and directory symlinks are not followed. Nonmatching calls delegate to the real root. `Close` delegates to `os.Root.Close`; each outside-package test registers a cleanup that reports a close error through `t.Error`.
+
+  Add the required ADR-slug comment beside the implementation: `ADR-consumer-local-contracts-over-single-home-filesystem-access permits this distinct test source because the standard-library-only testsupport leaf cannot import the production handle.`
+
+  Create `internal/testsupport/fsfixture/fsfixture_test.go`. Cover every validation branch in its declared precedence, root-open failure, Close, successful delegation, every operation constant, exact-path matching, nonmatching delegation, walk metadata and descent, callback error, and `errors.Is` preservation. Implement reusable AST scanner helpers plus refuting synthetic-source cases. `TestFilesystemFaultSourceSingleHome` independently proves: no non-test file under `internal/testsupport/**` outside `fsfixture/**` calls `os.OpenRoot` or stores `*os.Root`; no other testsupport package declares a filesystem `Operation`/`Fault` source; the live fixture source contains the required ADR slug; and a caller sentinel injected through every operation remains `errors.Is`-matchable. A partial duplicate that opens a root without fault declarations and one that declares fault operations without opening a root must each fail the scanner. Do not add its invariant marker until the deferred claim transaction.
 
 - [ ] **Task 4.3: Convert digest policy to a consumer-local structural contract.** In `internal/upgrade/digest.go`, delete `var lstat`, remove direct `os` and `filepath` mechanism calls that the new handle owns, and declare a private `attestationTree` interface with exactly `Walk`, `Read`, `Info`, and `LinkInfo` signatures. Keep `treeDigest(root string, tree attestationTree)`, `collectUnder(tree, ...)`, `collectADRs(tree, ...)`, and `collectMarkerSources(tree, ...)` as readable consumer-local policy helpers. Read `.awf/config.yaml` through `tree.Read`, map `fs.ErrNotExist` to the existing `not an awf project (run `awf init`)` context, map other read failures to `read config`, preserve each cause with `%w`, then call `config.Parse(config.RootDir(root), bytes)`. Use slash-path operations for config-derived paths. Keep universe selection, ADR identity, pathglob matching, nested `.git` `LinkInfo`, nested `.awf` `Info`, optional subtree behavior, selected-file initial-missing behavior, mode recording, sorting, and digest encoding in upgrade.
 
   In `internal/upgrade/upgrade.go`, make public `Verify` open `filesystem.Handle`, defer its close, and call an unexported `verifyWithFilesystem(ctx, root, att, tree)` that retains version, Git head, digest comparison, and restoration guidance policy. The read-only deferred close result is deliberately ignored per the ADR. `FinalUpgrade` continues to call public `Verify` unchanged.
 
-- [ ] **Task 4.4: Convert and expand upgrade tests with the real first consumer.** Update every `treeDigest`, `collectMarkerSources`, and related helper call in `internal/upgrade/upgrade_test.go` to pass a production handle or shared fault fixture; delete `TestCollectMarkerSourcesPropagatesGitBoundaryStatError`'s `testsupport.SwapVar` use and remove now-unused imports. Create `internal/upgrade/digest_test.go` with `TestVerifyUsesInjectedFilesystem` and table-driven cases that instantiate `fsfixture`, thereby providing the required outside-package test consumer of every exported fixture capability and every fault operation.
+- [ ] **Task 4.4: Convert and expand upgrade tests with the real first consumer.** In `internal/upgrade/upgrade_test.go`, update the complete current call-site set: `sealedRepo`; `TestTreeDigestIsStableAndSensitive`'s stable and moved calls; all three `TestTreeDigestBranches` calls; both `TestCollectMarkerSourcesPrunesNestedGitRoots` subtests; and the old global-seam failure test. Each opens either `filesystem.Handle` or `fsfixture.Handle`, registers Close cleanup, and passes the tree to the new signature. Delete `TestCollectMarkerSourcesPropagatesGitBoundaryStatError` and replace its behavior in the new fault table; remove `testsupport.SwapVar` and now-unused `io/fs` imports. `upgrade.go`'s sole production `treeDigest` call moves into `verifyWithFilesystem`. `collectUnder` and `collectADRs` currently have no direct external call sites; new fault tests may call them only through `treeDigest`. After conversion, run `rg -n 'treeDigest\(|collectUnder\(|collectADRs\(|collectMarkerSources\(' internal/upgrade`; every nondefinition result must be one of the named converted sites or a new `digest_test.go` case, and `go test ./internal/upgrade` must reject any old-arity survivor.
+
+  Create `internal/upgrade/digest_test.go` with `TestVerifyUsesInjectedFilesystem` and table-driven cases that instantiate `fsfixture`, thereby providing the required outside-package test consumer of `Open`, `Close`, `Fault`, every operation constant, and every handle method. The named wiring test has two halves. Its behavioral half injects a digest read failure after constructing a repository whose HEAD matches the attestation and proves `verifyWithFilesystem` returns the caller identity. Its structural half parses `upgrade.go` and `digest.go` and asserts that public `Verify` calls `filesystem.Open`, defers the returned concrete handle's `Close`, passes that same value to `verifyWithFilesystem`, and that only public `Verify` constructs the production handle; `verifyWithFilesystem`, `treeDigest`, `collectUnder`, `collectADRs`, and `collectMarkerSources` each receive the dependency and contain no constructor, mutable default, or `filesystem.Open` call. Include synthetic refuting snippets for an inner constructor and a missing deferred Close.
 
   Exhaustively cover: absent `.awf/config.yaml` with `not an awf project` and `errors.Is(fs.ErrNotExist)`; non-missing config read fault with `read config` and caller identity; optional missing domains/topics; walk failure under authored sidecars; decisions walk failure; root marker walk failure; walk entry-info failure; nonregular authored entry skipped; selected-file initial `fs.ErrNotExist` skipped; selected-file custom read error propagated; post-read `Info` error propagated; nested `.git` `LinkInfo` error; nested `.awf` `Info` error; successful nested Git and awf pruning; and injected digest failure propagated through `verifyWithFilesystem` after a matching Git head. Assert `errors.Is` for every caller-supplied sentinel. Preserve existing successful digest stability, mode sensitivity, content sensitivity, and seal acceptance/rejection tests.
 
@@ -135,16 +183,64 @@ Before terminal review, verify the four phase commits are present in order, the 
 
 After implementation review settles, the deferred transaction owned by `awf-reviewing-impl` does all of the following atomically:
 
-1. Add the four named invariant proof-marker comments to the already-existing tests: `TestVerifyUsesInjectedFilesystem`, `TestRootConfinedFilesystemSingleHome`, `TestHandleConfinesPaths`, and `TestFilesystemFaultSourceSingleHome`.
-2. Update `.awf/topics/parts/code-design/dependency-composition/current-state.md`'s `consumer-owned-contracts` claim to say that a substituting consumer owns the smallest cohesive local structural interface over a shared concrete implementation; provider-neutral values may cross; consumer-local helpers may express business policy but never reimplement the shared concern; and direct concrete dependencies remain legal when substitution is unnecessary. Preserve `Origin: ADR-0178`, append the filesystem ADR to `Revised-by`, retain `Backing: unbacked`, and make Verify inspect provider surface, local interface, helper policy, and absence of renamed function-field indirection.
-3. Add `code-design/dependency-composition:upgrade-attestation-filesystem-wiring` with `Origin` set to the filesystem ADR and `Backing: test`: public `Verify` opens and closes the production root-confined handle, passes it to the private structural consumer, and no digest helper discovers or defaults the dependency. Point its marker at `TestVerifyUsesInjectedFilesystem`.
-4. Replace `.awf/topics/parts/tooling/filesystem-access/current-state.md`'s shell prose with the ownership summary and add, in State changes declaration order:
-   - `single-production-handle`, backed by `TestRootConfinedFilesystemSingleHome`: `internal/filesystem` is the only production home for deliberately composed root-confined filesystem access; it exports a concrete handle and no provider-owned interface, while historical direct effects remain bounded candidates until converted.
-   - `root-confined-paths`, backed by `TestHandleConfinesPaths`: the handle accepts only valid slash-relative paths beneath its `os.Root`, refuses lexical and symlink escape, returns slash-relative walks, and preserves wrapped error identity.
-   - `single-fault-source`, backed by `TestFilesystemFaultSourceSingleHome`: `internal/testsupport/fsfixture` is the one standard-library-only kernel-backed controlled fault source, production never imports it, caller errors preserve identity, and the distinct-source reasoning is referenced at the site.
-5. In the filesystem ADR, append one Applied event containing all five State changes in exact declaration order, then append `Implemented` with the Accepted content stamp and change frontmatter to `status: Implemented`. This is a direct Accepted-to-Implemented transition; never append `Implementing`.
+1. Add these exact proof-marker comments immediately above the named tests, while leaving each test declaration on its own non-marker line so named-proof validation succeeds:
+
+   ```go
+   // invariant: code-design/dependency-composition:upgrade-attestation-filesystem-wiring (TestVerifyUsesInjectedFilesystem)
+   // invariant: tooling/filesystem-access:single-production-handle (TestRootConfinedFilesystemSingleHome)
+   // invariant: tooling/filesystem-access:root-confined-paths (TestHandleConfinesPaths)
+   // invariant: tooling/filesystem-access:single-fault-source (TestFilesystemFaultSourceSingleHome)
+   ```
+
+   Place each marker only in the file containing its named test; the four lines are shown together solely to pin literal spelling.
+
+2. Replace the complete `consumer-owned-contracts` block in `.awf/topics/parts/code-design/dependency-composition/current-state.md` with:
+
+   ```markdown
+   ### `invariant: consumer-owned-contracts`
+
+   When substitution is needed around a shared concrete implementation, the consumer declares the smallest cohesive structural interface locally and names its dependency for the semantic operation it needs. The provider exports the concrete implementation and neutral values its mechanism yields, never a universal consumer interface. Consumer-local helpers and values may translate the imported capability into readable business policy but never reimplement the shared concern; a direct concrete dependency remains legal when substitution is unnecessary.
+   Origin: ADR-0178
+   Revised-by: ADR-consumer-local-contracts-over-single-home-filesystem-access
+   Backing: unbacked
+   Verify: For each changed dependency boundary, inspect the provider's exported surface, the consumer-local interface and helpers, and production wiring; confirm the interface is the consumer's narrow cohesive view, policy remains local, no provider-owned universal interface or function-field renaming layer appears, and a direct concrete dependency is used when no substitution boundary is needed.
+   ```
+
+3. Append this literal block to the same dependency-composition topic:
+
+   ```markdown
+   ### `invariant: upgrade-attestation-filesystem-wiring`
+
+   Public upgrade attestation `Verify` opens and closes the production root-confined filesystem handle at its outer boundary, passes that handle through the private consumer-owned structural contract, and no digest or collection helper constructs, discovers, or defaults the dependency.
+   Origin: ADR-consumer-local-contracts-over-single-home-filesystem-access
+   Backing: test
+   ```
+
+4. Replace `.awf/topics/parts/tooling/filesystem-access/current-state.md`'s shell prose with `The filesystem package owns production root-confined access, while the dedicated testsupport fixture owns the distinct kernel-backed controlled fault source.` followed by `## Claims` and these literal blocks in declaration order:
+
+   ```markdown
+   ### `invariant: single-production-handle`
+
+   `internal/filesystem` is the only production home for deliberately composed root-confined filesystem access; it exports one concrete handle and no provider-owned interface, while historical direct filesystem effects remain bounded candidates until a concrete conversion adopts the handle.
+   Origin: ADR-consumer-local-contracts-over-single-home-filesystem-access
+   Backing: test
+
+   ### `invariant: root-confined-paths`
+
+   The production handle accepts only valid slash-relative paths beneath its selected `os.Root`, refuses absolute, parent, and escaping-symlink access, returns slash-relative walk paths without following directory symlinks, and preserves wrapped error identity.
+   Origin: ADR-consumer-local-contracts-over-single-home-filesystem-access
+   Backing: test
+
+   ### `invariant: single-fault-source`
+
+   `internal/testsupport/fsfixture` is the only standard-library-only kernel-backed controlled filesystem fault source; it delegates unselected operations to its real root, preserves caller-supplied error identity, and cites the durable distinct-source decision at its implementation site. Production import exclusion remains governed by `tooling/test-infrastructure:production-never-imports-test-support`.
+   Origin: ADR-consumer-local-contracts-over-single-home-filesystem-access
+   Backing: test
+   ```
+5. In the filesystem ADR, change frontmatter to `status: Implemented` and append only the terminal `Implemented` event with the Accepted content stamp. This direct Accepted-to-Implemented transition implicitly applies all five declaration-ordered State changes in the same claim-and-marker transaction; append neither an Applied event nor `Implementing`.
 6. Change this plan's frontmatter to `status: Implemented` and record any actual exclusion survivors or implementation deviations in Notes before freezing it.
 7. Run `./x render`; stage all authored claims, markers, ADR, plan, `docs/decisions/INDEX.md`, generated topic/domain/architecture outputs, and `.awf/awf.lock`. `./awf check staged` and `./x gate` must both pass before the deferred commit.
+8. Commit the deferred transaction exactly with `git commit -m "docs(code-design): apply filesystem access authority"`. The subject is the one closing subject for claim application, ADR terminal state, and plan freeze.
 
 Before integration, merge the integration branch into the managed branch and run:
 
@@ -152,7 +248,10 @@ Before integration, merge the integration branch into the managed branch and run
 ./awf adr number test-support-exports-earn-test-consumers consumer-local-contracts-over-single-home-filesystem-access
 ./x render
 git status --short
-# Inspect the numbering-only path set, then stage each reported path explicitly; do not use git add -A.
+# Stop unless every reported path is a numbering substitution or its rendered output.
+git add -u
+git add -- docs/decisions/[0-9][0-9][0-9][0-9]-test-support-exports-earn-test-consumers.md
+git add -- docs/decisions/[0-9][0-9][0-9][0-9]-consumer-local-contracts-over-single-home-filesystem-access.md
 ./awf check staged
 ./x gate
 git commit -m "docs(adr): number filesystem access decisions"
