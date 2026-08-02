@@ -727,11 +727,17 @@ func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
 func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	file := parseCheckSource(t)
 	report := checkFunc(t, file, "CheckReport")
+	directAdvisory := checkFunc(t, file, "AdvisoryNotes")
 	check := checkFunc(t, file, "checkWithState")
 	advisory := checkFunc(t, file, "advisoryNotesWithState")
 
-	if got := calledMethodCount(report, "outputPlan"); got != 1 {
-		t.Errorf("CheckReport constructs %d output plans, want exactly one", got)
+	for _, fn := range []*ast.FuncDecl{report, directAdvisory} {
+		if got := calledMethodCount(fn, "outputPlan"); got != 1 {
+			t.Errorf("%s constructs %d output plans, want exactly one", fn.Name.Name, got)
+		}
+	}
+	if !callsMethodWithIdent(directAdvisory, "advisoryNotesWithState", "op") {
+		t.Error("AdvisoryNotes does not pass op to advisoryNotesWithState")
 	}
 	for _, fn := range []*ast.FuncDecl{check, advisory} {
 		if !hasOutputPlanParameter(fn) {
@@ -766,18 +772,24 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined := strings.Join(reportValue.Notes, "\n")
-	for _, want := range []string{
-		"docs/domains/config.md has unauthored stub content",
-		"docs/config-reference.md has unauthored stub content: stub-marked parts: intro",
-	} {
-		if got := strings.Count(joined, want); got != 2 {
-			t.Errorf("CheckReport notes contain planned write node %q %d times, want compatibility multiplicity 2:\n%s", want, got, joined)
-		}
+	directNotes, err := p.AdvisoryNotes(testContext(t))
+	if err != nil {
+		t.Fatal(err)
 	}
-	marker := "part .awf/parts/config-reference/intro.md contains a marker-shaped line"
-	if got := strings.Count(joined, marker); got != 1 {
-		t.Errorf("CheckReport marker note multiplicity = %d, want deduplicated 1:\n%s", got, joined)
+	for name, notes := range map[string][]string{"CheckReport": reportValue.Notes, "AdvisoryNotes": directNotes} {
+		joined := strings.Join(notes, "\n")
+		for _, want := range []string{
+			"docs/domains/config.md has unauthored stub content",
+			"docs/config-reference.md has unauthored stub content: stub-marked parts: intro",
+		} {
+			if got := strings.Count(joined, want); got != 2 {
+				t.Errorf("%s notes contain planned write node %q %d times, want compatibility multiplicity 2:\n%s", name, want, got, joined)
+			}
+		}
+		marker := "part .awf/parts/config-reference/intro.md contains a marker-shaped line"
+		if got := strings.Count(joined, marker); got != 1 {
+			t.Errorf("%s marker note multiplicity = %d, want deduplicated 1:\n%s", name, got, joined)
+		}
 	}
 }
 

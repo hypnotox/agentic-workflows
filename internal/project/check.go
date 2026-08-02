@@ -466,7 +466,7 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 		return CheckReport{}, err
 	}
 	notes, err := p.advisoryNotesWithState(corpus, plans, op)
-	if err != nil { // coverage-ignore: outputPlan and checkWithState already consumed every fallible advisory input over these identical operation-owned values
+	if err != nil { // coverage-ignore: outputPlan preempts render faults and checkWithState preempts the same tag, pitfall, and glossary faults over these identical inputs; direct AdvisoryNotes covers propagation without that blocking pass
 		return CheckReport{}, err
 	}
 	return CheckReport{Drift: append(drift, planDrift...), Notes: notes}, nil
