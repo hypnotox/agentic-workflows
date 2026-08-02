@@ -4,7 +4,7 @@ slug: revision-aware-historical-audit-pipeline
 status: Implementing
 date: 2026-08-02
 ---
-# ADR-revision-aware-historical-audit-pipeline: Revision-aware historical audit pipeline
+# ADR-0221: Revision-aware historical audit pipeline
 
 ## Context
 
