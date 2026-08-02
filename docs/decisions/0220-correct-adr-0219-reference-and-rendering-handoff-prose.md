@@ -4,7 +4,7 @@ slug: correct-adr-0219-reference-and-rendering-handoff-prose
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-correct-adr-0219-reference-and-rendering-handoff-prose: Correct ADR-0219 reference and rendering handoff prose
+# ADR-0220: Correct ADR-0219 reference and rendering handoff prose
 
 ## Context
 
