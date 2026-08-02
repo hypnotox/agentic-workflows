@@ -75,8 +75,9 @@ clear activation guidance, and actionable failures rather than silently repairin
    operational-refusal outcomes, and evaluates facts supplied through a consumer-local interface.
    The existing `internal/git` boundary owns object resolution, revision walking, and `verify-commit`
    mechanics. `internal/project` composes one operation-scoped verifier from project configuration;
-   `cmd/awf` renders typed outcomes for humans and owns no policy. Hooks and tests consume the same
-   project operation rather than parsing CLI prose or duplicating evaluation.
+   `internal/commitpolicy` renders its typed outcomes for humans, while `cmd/awf` selects the
+   renderer, emits output, and maps exit status. Hooks and tests consume the same project operation
+   rather than parsing CLI prose or duplicating evaluation.
 
 7. One public `awf check commit-policy <revision-or-range>...` command resolves explicit targets
    through the shared Git boundary, expands each target to commits reachable after
@@ -149,6 +150,10 @@ clear activation guidance, and actionable failures rather than silently repairin
     Their proof units are respectively `TestCommitPolicyValidation`,
     `TestExactCommitEnforcement`, the existing `TestHookPayloadsRendered`, and
     `TestCommitPolicyHookPayloads`; each matching test file carries the required invariant marker.
+
+17. Every affected template remains publication-safe when the new variables and records are absent:
+    `missingkey=zero` renders coherent generic output, no unresolved or no-value token is emitted,
+    and coverage exercises empty-policy rendering for every generated hook and documentation surface.
 
 ## State changes
 

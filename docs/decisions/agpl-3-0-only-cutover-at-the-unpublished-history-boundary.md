@@ -99,7 +99,7 @@ third-party work survive a project-license change.
    recovery bundle is retained until the user deliberately retires it.
 
 10. The implementation transaction that activates this decision authors
-    `tooling/changelog-and-release:project-license-agpl` as a `Backing: test` invariant together with
+    `tooling/project-license:project-license-agpl` as a `Backing: test` invariant together with
     `TestProjectLicenseAGPL` and its proof marker. The test pins the exact `LICENSE` hash and newline,
     README badge and footer, release-package license inclusion, and absence of obsolete project MIT
     references while excluding dependency metadata. The same transaction carries every
@@ -109,7 +109,7 @@ third-party work survive a project-license change.
 
 ## State changes
 
-- add `tooling/changelog-and-release:project-license-agpl`
+- add `tooling/project-license:project-license-agpl`
 
 ## Consequences
 
