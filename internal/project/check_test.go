@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -101,6 +103,71 @@ func TestCheckPitfallsStructuralError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := p.checkPitfalls(mustDeriveCorpus(t, p)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected structural error, got %v", err)
+	}
+}
+
+const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: [rendering]\n"
+
+// A disabled glossary doc is never read, so it can yield no drift.
+func TestCheckGlossaryDisabled(t *testing.T) {
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkGlossary()
+	if err != nil || drift != nil {
+		t.Errorf("disabled glossary must yield no drift, got %v / %v", drift, err)
+	}
+}
+
+// A record naming an unconfigured domain yields glossary-domain drift; records
+// resolving their domains, and records carrying none, yield nothing.
+// invariant: rendering/doc-outputs:glossary-domains-resolved (TestCheckGlossaryValidatesDomains)
+func TestCheckGlossaryValidatesDomains(t *testing.T) {
+	p, err := Open(testContext(t), scaffoldFiles(t, glossaryCheckCfg, map[string]string{
+		"docs/glossary.yaml": "data:\n  terms:\n" +
+			"    - term: clean\n      meaning: resolves\n      domains: [rendering]\n" +
+			"    - term: untagged\n      meaning: no domains at all\n" +
+			"    - term: bad\n      meaning: names a domain the project does not configure\n      domains: [bogus]\n",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkGlossary()
+	if err != nil {
+		t.Fatalf("checkGlossary: %v", err)
+	}
+	if len(drift) != 1 || drift[0].Kind != "glossary-domain" ||
+		!strings.Contains(drift[0].Detail, "bogus") || !strings.Contains(drift[0].Detail, "bad") ||
+		drift[0].Path != glossarySidecarPath {
+		t.Fatalf("want one glossary-domain drift naming term bad and domain bogus, got %#v", drift)
+	}
+	// Drive the public surface too: the helper finding it is worth nothing if
+	// Check drops the slice on the floor. Check reads the lock, so sync first.
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	full, err := p.Check(testContext(t))
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if !slices.ContainsFunc(full, func(d manifest.Drift) bool {
+		return d.Kind == "glossary-domain" && strings.Contains(d.Detail, "bogus")
+	}) {
+		t.Fatalf("glossary-domain drift did not reach Check's result: %#v", full)
+	}
+}
+
+// Valid YAML with a bad data.terms shape surfaces the structural error.
+func TestCheckGlossaryStructuralError(t *testing.T) {
+	p, err := Open(testContext(t), scaffoldFiles(t, glossaryCheckCfg, map[string]string{
+		"docs/glossary.yaml": "data:\n  terms: just a string\n",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.checkGlossary(); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("expected structural error, got %v", err)
 	}
 }
@@ -676,6 +743,30 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 		if d.Kind == "tag-domain-collision" {
 			t.Errorf("no collision expected with no domains; got %+v", drift2)
 		}
+	}
+}
+
+// The glossary sibling of TestCheckPropagatesLocalPitfallsError: a local: true
+// glossary sidecar is skipped by the render pass before its data.terms transform
+// runs, so a structurally invalid record list reaches Check's checkGlossary
+// wiring branch rather than failing earlier in the render.
+func TestCheckPropagatesLocalGlossaryError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: []\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/glossary.yaml"), "local: true\ndata:\n  terms: just a string\n")
+	reopened, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reopened.Check(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected Check to propagate the local glossary structural error, got %v", err)
 	}
 }
 

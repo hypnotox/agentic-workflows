@@ -8,6 +8,8 @@ The render engine overlays authored convention parts onto embedded templates wit
 
 The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
 
-Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff remains lifecycle-independent: workflow templates own effort checkpoint, approval, safe-point, reorientation, and handoff-log policy; bounded kickoff carries instructions while replacement mechanics own no memory policy.
+The glossary renders from two layers: a standard vocabulary the catalog ships into every adopter tree, overlaid by the project's authored `data.terms` records, merged into one case-insensitively sorted table. A project term overrides a shipped term of the same name, which is the only way to reword or retire one; an over-long meaning in either layer raises a non-failing advisory.
+
+Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff remains lifecycle-independent: workflow templates own effort checkpoint, approval, safe-point, reorientation, and handoff-log policy; bounded kickoff carries instructions while replacement mechanics own no memory policy. After queueing replacement it emits Remote Pi's optional continuation disposition, and an absent or failing listener cannot block handoff.
 
 Pi rendering governs five TypeScript outputs. Context usage is observational and transient: its unavailable form is publication-safe, model-window terminology is neutral, active-branch compactions are counted, and it has no warning or pressure action.

@@ -10,6 +10,10 @@ query a single version or a range.
 
 ### Features
 
+- `awf check` now reports a non-failing advisory for glossary meanings longer than the terseness guideline, naming the term and its length. It evaluates the merged set, so shipped and project-authored vocabulary follow the same rule.
+
+- The glossary now renders one sorted table from two layers: awf's shipped standard vocabulary and project-authored `data.terms`. A project record overrides a shipped term with the same case-insensitive name, including to reword or retire it locally.
+
 - Pi now renders a standalone context-usage extension that injects neutral transient session context facts before every model call, without persistence, warnings, telemetry, or automatic pressure action.
 
 - Mandatory workflow checkpoints now persist durable effort memory independently of discretionary Pi session replacement. Eligible Pi boundaries may continue in-session or replace the session, while only a replacement session records the actual handoff boundary.
@@ -33,6 +37,8 @@ query a single version or a range.
   on upgrade.
 
 ### Breaking changes
+
+- `data.terms` in `.awf/docs/glossary.yaml` is now an ordered list of `{term, meaning, domains}` records rather than a `term: meaning` map. No migration converts it. Convert each pair by hand; an unconverted tree fails render with `data.terms: must be a list of {term, meaning} records`.
 
 - Pi `handoff_session` removes `memoryPath` and now exposes the exact closed `{kickoff}` schema for bounded replacement prose.
 
@@ -391,6 +397,8 @@ query a single version or a range.
   awf-verb vars already carry.
 
 ### Bug fixes
+
+- Pi `handoff_session` now emits Remote Pi's optional continuation disposition after it successfully queues the replacement command. Compatible push integrations no longer report the intermediate parent run as a terminal completion, while listener failures remain isolated from handoff execution.
 
 - `awf check` no longer refuses an integration whose effort branch was forked before schema
   generation 29. Merging an integration branch that has already sealed the ADR v3 cutoff crosses

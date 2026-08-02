@@ -12,6 +12,7 @@ function make(options: any = {}) {
   const commands = new Map<string, any>();
   const hooks = new Map<string, any>();
   const queued: any[] = [];
+  const emitted: any[] = [];
   const notice: any[] = [];
   const editor: string[] = [];
   const sessions: any[] = [];
@@ -43,7 +44,12 @@ function make(options: any = {}) {
       if (queueFails) throw Error("queue");
       queued.push([name, id]);
     },
-    events: { emit() {} },
+    events: {
+      emit: (...event: any[]) => {
+        if (options.emitFail) throw Error("emit");
+        emitted.push(event);
+      },
+    },
   };
   const deps: any = {
     packageVersion: "0.81.1",
@@ -90,6 +96,7 @@ function make(options: any = {}) {
     ui,
     sessionManager: {
       getSessionFile: () => sessionFile,
+      getSessionId: () => "parent-session",
       getLeafEntry: () => leaf,
     },
     newSession: async (request: any) => {
@@ -117,6 +124,7 @@ function make(options: any = {}) {
     commands,
     hooks,
     queued,
+    emitted,
     notice,
     editor,
     sessions,
@@ -181,6 +189,29 @@ test("handoff schema exposes only required bounded kickoff prose", async () => {
   }
   await execute(make(), { kickoff: "😀".repeat(500) });
   await assert.rejects(execute(make(), { kickoff: "😀".repeat(501) }), /1000/);
+  assert.deepEqual(h.emitted, []);
+});
+
+test("handoff marks a successfully queued continuation as non-terminal", async () => {
+  const h = make();
+  await execute(h);
+  assert.deepEqual(h.emitted, [[
+    "remote-pi:notification-disposition.v1",
+    {
+      version: 1,
+      sessionId: "parent-session",
+      disposition: "suppress_next_agent_end_push",
+      id: "id",
+    },
+  ]]);
+
+  const failed = make({ queueFail: true });
+  await assert.rejects(execute(failed), /queue/);
+  assert.deepEqual(failed.emitted, []);
+
+  const isolated = make({ emitFail: true });
+  assert.equal((await execute(isolated)).terminate, true);
+  assert.equal(isolated.queued.length, 1);
 });
 
 test("handoff preserves exact kickoff through submission and editor fallback", async () => {

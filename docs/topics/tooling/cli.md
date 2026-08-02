@@ -89,6 +89,12 @@ Unreplaced stub sections and stub-marked convention parts never by themselves ca
 Origin: ADR-0070
 Backing: test
 
+### `invariant: terseness-advisory-nonfailing`
+
+The glossary terseness notes that `awf check` prints for over-long term meanings are informational only and never change the command's exit code.
+Origin: ADR-0207
+Backing: test
+
 ### `invariant: target-cli`
 
 The add, remove, and list target commands mutate and read the config targets array against the known-adapter set without routing through the kind/catalog/parts/orphan machinery, and enabling a target renders its output tree.

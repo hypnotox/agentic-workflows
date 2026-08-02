@@ -2,9 +2,11 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -491,5 +493,145 @@ func TestAdvisoryNotesSurfacesTagHealthError(t *testing.T) {
 	}
 	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the tag-health ADR parse error")
+	}
+}
+
+// The terseness advisory notes one merged term per over-length meaning, naming
+// the term and its length, and stays silent for a meaning at or under the
+// threshold. It evaluates the merged set, so a shipped standard term is bound
+// by the same guideline as an authored one.
+// invariant: rendering/doc-outputs:glossary-terseness-advisory (TestGlossaryTersenessNotes)
+func TestGlossaryTersenessNotes(t *testing.T) {
+	long := strings.Repeat("x", glossaryMeaningMax+1)
+	atLimit := strings.Repeat("y", glossaryMeaningMax)
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n" +
+			"    - term: bloated\n      meaning: \"" + long + "\"\n" +
+			"    - term: exactly-at-limit\n      meaning: \"" + atLimit + "\"\n" +
+			"    - term: terse\n      meaning: short and clear\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.glossaryTersenessNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 1 {
+		t.Fatalf("want exactly one note (only the over-length term), got %v", notes)
+	}
+	if !strings.Contains(notes[0], `"bloated"`) ||
+		!strings.Contains(notes[0], fmt.Sprintf("%d characters", glossaryMeaningMax+1)) ||
+		!strings.Contains(notes[0], glossarySidecarPath) {
+		t.Errorf("note must name the sidecar, the term, and its length, got %q", notes[0])
+	}
+}
+
+// The threshold counts runes, not bytes, so a meaning of accented letters that
+// reads short is not reported merely for encoding wider. Accented letters stay
+// legal under the plain-punctuation rule, which bans only seven punctuation
+// codepoints, so an adopter can genuinely hit this.
+func TestGlossaryTersenessNotesCountsRunesNotBytes(t *testing.T) {
+	// 200 runes, 400 bytes: under the threshold read, over it counted as bytes.
+	wide := strings.Repeat("é", 200)
+	if len(wide) <= glossaryMeaningMax || utf8.RuneCountInString(wide) > glossaryMeaningMax {
+		t.Fatalf("fixture must be over the threshold in bytes (%d) and under it in runes (%d)", len(wide), utf8.RuneCountInString(wide))
+	}
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: accented\n      meaning: \"" + wide + "\"\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.glossaryTersenessNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("a meaning under the threshold in runes must not be reported, got %v", notes)
+	}
+}
+
+// The producer is inert when the glossary doc is disabled, mirroring the other
+// doc-scoped families, so a project that renders no glossary is never nagged.
+func TestGlossaryTersenessNotesDisabled(t *testing.T) {
+	p, err := Open(testContext(t), scaffold(t, "prefix: awf\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.glossaryTersenessNotes()
+	if err != nil || notes != nil {
+		t.Errorf("disabled glossary must yield no notes, got %v / %v", notes, err)
+	}
+}
+
+// The shipped layer is inside the threshold's reach: the producer wraps the
+// sidecar in the catalog default before merging, so the standard vocabulary is
+// bound by the same guideline as an authored term. The on-disk sidecar never
+// carries standardTerms, so dropping that wrap would silently exempt the whole
+// shipped layer.
+func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
+	cfg := "prefix: awf\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n"
+
+	t.Run("the real shipped vocabulary is under the threshold", func(t *testing.T) {
+		p, err := Open(testContext(t), scaffold(t, cfg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		notes, err := p.glossaryTersenessNotes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(notes) != 0 {
+			t.Fatalf("the shipped vocabulary must itself be under the threshold, got %v", notes)
+		}
+	})
+
+	t.Run("an over-length shipped term is reported", func(t *testing.T) {
+		p, err := Open(testContext(t), scaffold(t, cfg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// p.Cat's Docs map is this project's own clone, but the rest of this
+		// Project reads it, so swap in a local copy rather than mutating the
+		// project's catalog mid-test.
+		e := p.Cat.Docs["glossary"]
+		e.Data = map[string]any{"standardTerms": []any{
+			map[string]any{"term": "shipped-bloat", "meaning": strings.Repeat("x", glossaryMeaningMax+1)},
+		}}
+		cp := *p.Cat
+		cp.Docs = maps.Clone(p.Cat.Docs)
+		cp.Docs["glossary"] = e
+		p.Cat = &cp
+		notes, err := p.glossaryTersenessNotes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(notes) != 1 || !strings.Contains(notes[0], "shipped-bloat") {
+			t.Fatalf("the shipped layer must be inside the threshold's reach, got %v", notes)
+		}
+	})
+}
+
+// A local: true glossary sidecar is skipped by the render pass, so a malformed
+// data.terms reaches the advisory's own ingestion instead of failing earlier -
+// the same hole TestCheckPropagatesLocalGlossaryError exploits for checkGlossary.
+func TestAdvisoryNotesSurfacesLocalGlossaryError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/glossary.yaml"), "local: true\ndata:\n  terms: just a string\n")
+	reopened, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reopened.AdvisoryNotes(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected AdvisoryNotes to surface the local glossary structural error, got %v", err)
 	}
 }

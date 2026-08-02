@@ -218,8 +218,30 @@ var Standard = &Catalog{
 		"releasing":    {Title: "Releasing", Desc: "how to cut a release: versioning, artifacts, and the publish process", Sections: []string{"content"}, TID: "docs/releasing.md.tmpl"},
 		// The glossary's table is computed from sidecar data.terms, always
 		// sorted (ADR-0089); prepend/append are empty-default framing slots.
-		"glossary": {Title: "Glossary", Desc: "project jargon and term ownership", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl"},
-		"roadmap":  {Title: "Roadmap", Desc: "uncommitted ideas and future phases", Sections: []string{"ideas", "deferred"}, TID: "docs/roadmap.md.tmpl"},
+		// standardTerms is the vocabulary awf ships into every adopter tree
+		// (ADR-0207): the transform merges it under data.terms and deletes it,
+		// so it is never adopter-settable and carries no configspec descriptor.
+		// A project term of the same case-insensitive name overrides one.
+		"glossary": {Title: "Glossary", Desc: "project jargon and the awf vocabulary it ships", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl", Data: map[string]any{
+			"standardTerms": []any{
+				map[string]any{"term": "effort", "meaning": "One active slugged unit of coordination, owning a working-memory file for the duration of a concrete non-minimal outcome. A minimal fix uses none."},
+				map[string]any{"term": "managed effort worktree", "meaning": "The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes."},
+				map[string]any{"term": "working memory", "meaning": "The file an effort owns for in-flight context: its brief, settled decisions, observations, and handoff log. One writer, and deleted at finish, so nothing others must honour lives there alone."},
+				map[string]any{"term": "current-state topic", "meaning": "A domain-owned document of prose plus a closing claims section. Its claims, not the decision-record corpus, are what tooling reads for the rules in force now."},
+				map[string]any{"term": "claim", "meaning": "One statement of what holds today, declared in a current-state topic and carrying its provenance. An invariant claim is additionally backed, by a test or by stated reasoning."},
+				map[string]any{"term": "invariant backing", "meaning": "What makes an invariant claim checkable: either a proof marker on a test, or a written verification procedure where no test can bear it. The two forms are enforced symmetrically."},
+				map[string]any{"term": "drift", "meaning": "Divergence between a generated file and what the config would produce now, or between a declaration and reality. The check command is the oracle, and drift fails it."},
+				map[string]any{"term": "resident root", "meaning": "A directory inside the config tree holding local machine-owned state rather than rendered output, so the closed-tree sweep leaves it alone instead of reporting it as a stray."},
+				map[string]any{"term": "stub", "meaning": "A rendered section still carrying only its placeholder text. Stubs raise a non-failing advisory so unwritten content stays visible instead of passing as authored."},
+				map[string]any{"term": "check-in", "meaning": "A deliberate stop for user attention: it names the issue, the options, a recommendation, and the blocked next action, then waits."},
+				map[string]any{"term": "mandatory approval check-in", "meaning": "A check-in that always stops, however clear the path looks. Work continues only once approval is explicitly granted and recorded."},
+				map[string]any{"term": "routine checkpoint", "meaning": "The boundary protocol between phases: update working memory, decide whether user attention is required, then either raise a check-in or state a continuity notice and continue."},
+				map[string]any{"term": "continuity notice", "meaning": "The routine checkpoint's one-line summary on the clear branch, naming the completed phase and the immediate next action. Informational, never a stop."},
+				map[string]any{"term": "retrospective", "meaning": "The terminal step of an effort: capture durable lessons, confirm no managed topology remains, and finish the effort last."},
+				map[string]any{"term": "promotion ladder", "meaning": "The path a recurring finding takes from prose guidance toward a deterministic check, so a lesson stops depending on anyone remembering it."},
+			},
+		}},
+		"roadmap": {Title: "Roadmap", Desc: "uncommitted ideas and future phases", Sections: []string{"ideas", "deferred"}, TID: "docs/roadmap.md.tmpl"},
 		// Always-on singletons (Mandatory true). agents-doc renders to root AGENTS.md
 		// (empty Path/TemplateKey, AgentsDoc true); the four DocumentMap docs are cited
 		// in AGENTS.md's document map via .layout.*.

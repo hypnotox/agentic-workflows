@@ -211,3 +211,5 @@
 - [ADR-0204: Pair a slugless record across a renumber by content digest](0204-pair-a-slugless-record-across-a-renumber-by-content-digest.md) (Implemented)
 - [ADR-0205: Proof markers name the unit that proves them](0205-proof-markers-name-the-unit-that-proves-them.md) (Implemented)
 - [ADR-0206: Make ADR format intrinsic and authorize stale-format merges at commit-msg](0206-sanction-the-seal-crossing-integration-transition.md) (Implemented)
+- [ADR-0207: Two-layer glossary with record-model terms](0207-two-layer-glossary-with-record-model-terms.md) (Implemented)
+- [ADR-0208: Narrow the glossary-terms-validated claim to the implementation](0208-narrow-the-glossary-terms-validated-claim-to-the-implementation.md) (Implemented)

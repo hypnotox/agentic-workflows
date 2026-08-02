@@ -186,12 +186,25 @@ func expandedTemplate(t *testing.T, tid string) string {
 // invariant: config/configspec-and-reference:configspec-data-parity (TestConfigspecDataParity)
 func TestConfigspecDataParity(t *testing.T) {
 	type ak struct{ kind, artifact, key string }
+	// Catalog default-data keys that are deliberately not adopter-settable, so
+	// publishing a configspec description for them would advertise a key an
+	// adopter must not write. Same ground as the two structural exemptions
+	// below (the domain template is never iterated; generated docs are skipped).
+	exemptDataKeys := map[ak]bool{
+		// The transform consumes standardTerms into terms and deletes it, so an
+		// authored standardTerms would be unused-data drift; a project removes an
+		// unwanted shipped term by defining that term in terms instead.
+		{kind: "docs", artifact: "glossary", key: "standardTerms"}: true,
+	}
 	want := map[ak]bool{}
 	collect := func(kind, artifact, tid string, defaults map[string]any) {
 		for _, k := range render.ReferencedDataKeys(expandedTemplate(t, tid)) {
 			want[ak{kind, artifact, k}] = true
 		}
 		for k := range defaults {
+			if exemptDataKeys[ak{kind, artifact, k}] {
+				continue
+			}
 			want[ak{kind, artifact, k}] = true
 		}
 	}
