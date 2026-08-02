@@ -73,7 +73,7 @@ docs(adr): accept effort-associated Pi sessions
 
   Define protocol-1 `Activity` with exactly `schemaVersion:1`, `owner`, `attachedAt`, `heartbeatAt`, `cwd`, `receivingCheckout`, and `role`; role is `managed` or `receiving`, owner is lowercase UUIDv4, timestamps are nonzero UTC, and both paths are clean absolute paths. Reads are bounded, no-follow, current-owner, regular-file, strict JSON with unknown fields and trailing values rejected. Writes use sibling temp/write/fsync/atomic replace/directory-fsync. Attach creates or replaces and returns the prior claim; heartbeat updates only `heartbeatAt`; checkout updates `cwd`, `role`, and `heartbeatAt`; detach removes and fsyncs. Heartbeat/checkout/detach compare the resident owner at the mutation boundary and return `not-owner` without mutation if it differs; missing effort returns `missing`; missing activity on detach is `detached` with no changed axis. Concurrent takeover tests prove an old owner cannot update or delete its successor.
 
-- [ ] **Task 2.4: Test and implement destination and actionable-outcome policy.** Add `ResolveCheckout func(context.Context,string) (CheckoutFacts,error)` to `effort.Dependencies`, panic on nil in `Open`, and define the effort-owned value `CheckoutFacts{InvokingRoot string, PrimaryRoot string}` containing only clean absolute canonical paths. Define `type CheckoutResolutionKind string` with exactly `CheckoutUnsafe` and `CheckoutRepositoryMismatch`, plus `type CheckoutResolutionError struct { Kind CheckoutResolutionKind; Cause error }` implementing `Error` and `Unwrap`; dependency implementations must return only `CheckoutFacts` or `*CheckoutResolutionError`. `openEffortComposition` supplies the adapter: it calls `awfgit.ResolveControlRoots(ctx,path)`, uses `errors.As` on `*awfgit.HardSafetyError`, maps `symlink`, `foreign-owner`, `file-type`, and `resident-permissions` to `CheckoutUnsafe`, maps `repository-identity`, `bare-repository`, `missing-primary`, `ambiguous-primary`, and `unconfined` to `CheckoutRepositoryMismatch`, and wraps every other Git/mechanism failure as `CheckoutRepositoryMismatch` with the original error as Cause. No `awfgit.ControlRoots` or Git error type crosses the adapter. `ResolveActivity` is the first consumer; it uses `errors.As` on `*CheckoutResolutionError`, maps the two kinds to stable `unsafe-resident` and `repository-mismatch` outcomes respectively, rejects an unknown kind as a repository-mismatch mechanism failure, and places only `Cause.Error()` in the outcome cause. Tests name every adapter mapping, unknown-kind defense, and nil dependency. It then loads immutable effort/title, fully validates memory metadata, lists native worktree registrations, and returns a destination only when `CheckoutFacts.PrimaryRoot` equals the service primary root.
+- [ ] **Task 2.4: Test and implement destination and actionable-outcome policy.** Add `ResolveCheckout func(context.Context,string) (CheckoutFacts,error)` to `effort.Dependencies`, panic on nil in `Open`, and define the effort-owned value `CheckoutFacts{InvokingRoot string, PrimaryRoot string}` containing only clean absolute canonical paths. Define `type CheckoutResolutionKind string` with exactly `CheckoutUnsafe` and `CheckoutRepositoryMismatch`, plus `type CheckoutResolutionError struct { Kind CheckoutResolutionKind; Cause error }`. Its `Error()` returns `checkout resolution <kind>: <cause>`; its `Unwrap()` returns the nonnil Cause; construction rejects an empty kind or nil Cause. Dependency implementations return only `CheckoutFacts` or `*CheckoutResolutionError`. `openEffortComposition` supplies the adapter: it calls `awfgit.ResolveControlRoots(ctx,path)`, uses `errors.As` on `*awfgit.HardSafetyError` only inside the adapter, maps `symlink`, `foreign-owner`, `file-type`, and `resident-permissions` to `CheckoutUnsafe`, and maps `repository-identity`, `bare-repository`, `missing-primary`, `ambiguous-primary`, and `unconfined` to `CheckoutRepositoryMismatch`. Before constructing `CheckoutResolutionError`, it normalizes every Git/mechanism failure, including a `HardSafetyError` with nil `Err`, to the effort-owned standard-library cause `errors.New(err.Error())`; every other Git/mechanism failure is likewise normalized and classified `CheckoutRepositoryMismatch`. No `awfgit.ControlRoots`, `awfgit.HardSafetyError`, wrapped Git error, or other Git error type crosses the adapter. Tests assert exact Error text, `errors.Is` through the standard-library Cause, every category mapping, nil-HardSafety cause normalization, and `errors.As(returned,&awfgit.HardSafetyError)==false`. `ResolveActivity` is the first consumer; it uses `errors.As` on `*CheckoutResolutionError`, maps the two kinds to stable `unsafe-resident` and `repository-mismatch` outcomes respectively, rejects an unknown kind as a repository-mismatch mechanism failure, and places only `Cause.Error()` in the outcome cause. Tests name every adapter mapping, unknown-kind defense, and nil dependency. It then loads immutable effort/title, fully validates memory metadata, lists native worktree registrations, and returns a destination only when `CheckoutFacts.PrimaryRoot` equals the service primary root.
 
   Managed resolution requires the exact registered `.awf/worktrees/<slug>` path and `refs/heads/awf/<slug>` branch. Receiving resolution uses, in order, the existing claim's `receivingCheckout`, an explicit absolute `--receiving-checkout`, or the invoking root only when the invoking root is not the managed checkout. First attachment from the managed checkout without either recorded or explicit receiving path refuses and never guesses the primary checkout. Attach and checkout revalidate `--cwd`, role, receiving checkout, registration, repository identity, ownership, no-follow confinement, and the invoking checkout immediately before mutation so a resolve/rebind race is visible.
 
@@ -163,7 +163,8 @@ feat(rendering): add capability-gated using_effort
 
 - [ ] **Task 4.1: Establish published owner provenance without guessing versions.** Run this preflight before editing any repository file; every command is under `set -euo pipefail`, and any nonzero status leaves Phase 3 untouched:
 
-  ```sh
+  ```bash
+  set -euo pipefail
   verify=/tmp/awf-owner-release-check
   rm -rf "$verify"
   mkdir -p "$verify/downloads/pi" "$verify/downloads/remote-pi"
@@ -177,7 +178,9 @@ feat(rendering): add capability-gated using_effort
   while IFS= read -r tag; do
     git -C "$verify/pi" merge-base --is-ancestor f9447485497b12c100c2064c295c2c1beead0c29 "$tag" || continue
     release_json="$(gh release view "$tag" --repo hypnotox/pi --json assets,tagName 2>/dev/null)" || continue
-    candidate="$(printf '%s' "$release_json" | jq -ce '[.assets[] | select(.name | test("^pi-coding-agent-.*\\.tgz$"))] | if length == 1 then .[0] else error("expected exactly one Pi package asset") end')"
+    if ! candidate="$(printf '%s' "$release_json" | jq -ce '[.assets[] | select(.name | test("^pi-coding-agent-.*\\.tgz$"))] | if length == 1 then .[0] else error("expected exactly one Pi package asset") end')"; then
+      continue
+    fi
     pi_tag="$tag"
     pi_asset_json="$candidate"
     break
@@ -186,8 +189,15 @@ feat(rendering): add capability-gated using_effort
   pi_asset_name="$(printf '%s' "$pi_asset_json" | jq -er '.name')"
   pi_asset_url="$(printf '%s' "$pi_asset_json" | jq -er '.url')"
   gh release download "$pi_tag" --repo hypnotox/pi --pattern "$pi_asset_name" --dir "$verify/downloads/pi"
-  test "$(find "$verify/downloads/pi" -maxdepth 1 -type f -name '*.tgz' | wc -l)" -eq 1
-  pi_file="$(find "$verify/downloads/pi" -maxdepth 1 -type f -name '*.tgz' -print)"
+  pi_file=
+  while IFS= read -r found; do
+    if test -n "$pi_file"; then
+      printf 'multiple Pi package assets downloaded\n' >&2
+      exit 1
+    fi
+    pi_file="$found"
+  done < <(find "$verify/downloads/pi" -maxdepth 1 -type f -name '*.tgz' -print)
+  test -n "$pi_file"
   pi_release="$(tar -xOf "$pi_file" package/package.json | jq -er '.version | select(type == "string" and length > 0)')"
   pi_sha256="$(sha256sum "$pi_file" | awk '{print $1}')"
   pi_integrity="sha512-$(openssl dgst -sha512 -binary "$pi_file" | openssl base64 -A)"
