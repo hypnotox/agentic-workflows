@@ -3,7 +3,7 @@ format: plan-v1
 date: 2026-08-02
 adrs:
   - retain-only-claude-code-and-pi-runtime-targets
-status: Proposed
+status: Implemented
 ---
 # Plan: Retain Only Claude Code and Pi Runtime Targets
 

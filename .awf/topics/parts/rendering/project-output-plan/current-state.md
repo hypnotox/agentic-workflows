@@ -37,8 +37,9 @@ Backing: test
 
 ### `invariant: multi-target-render`
 
-With multiple targets enabled, each adapter artifact (skill, agent) renders once per target to that target's descriptor-derived paths (for example .claude/skills/<prefix>-<name>/SKILL.md and .cursor/skills/<prefix>-<name>/SKILL.md), while neutral artifacts such as AGENTS.md render exactly once regardless of target count.
+With multiple targets enabled, each adapter artifact renders once per target at that descriptor's declared paths - including Claude Code and Pi skills and agents - while neutral artifacts such as `AGENTS.md` render exactly once regardless of target count. Descriptor-specific wording, bridges, capabilities, encodings, and additional outputs remain independently customizable.
 Origin: ADR-0037
+Revised-by: ADR-0214
 Backing: test
 
 ### `invariant: output-plan-complete`
