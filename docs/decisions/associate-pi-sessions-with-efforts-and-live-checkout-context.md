@@ -25,12 +25,15 @@ claim and its age, then proceed. The association must survive the ordinary workf
 through integration, review, retrospective, and the attempt to finish rather than silently
 following topology or detaching at a phase boundary.
 
-Effort memory already carries the useful checkpoint fields `Phase:`, `Next:`, and
-`Updated:`, but production code intentionally does not parse its headings. Remote peer
-metadata needs those fields in a bounded canonical form. Existing untouched memories can
-also contain the legacy `Updated: Not yet updated.` sentinel. The new parser therefore
-needs a deliberately narrow header contract without turning all memory reads or all effort
-commands into validation gates.
+Effort memory already carries the useful checkpoint fields `Effort:`, `Phase:`, `Next:`,
+and `Updated:` in a custom four-line header, but production code intentionally does not
+parse its headings beyond handoff's first-line identity check. Remote peer metadata needs
+those fields in a bounded canonical form. Since awf will now parse and mutate them, retaining
+a bespoke frontmatter-like encoding would add another document grammar without benefit.
+Existing untouched memories can also contain the legacy `Updated: Not yet updated.`
+sentinel. The new parser therefore needs a deliberately narrow YAML frontmatter contract,
+a compatibility path for the legacy header, and no new validation gate for unrelated
+memory reads or effort commands.
 
 The runtime behavior crosses three ownership boundaries:
 
@@ -138,22 +141,29 @@ Downgrade compatibility is not a goal.
    Pi base name, and never infers association from a resident left by an earlier process;
    an explicit later attachment performs the visible takeover.
 
-7. Add `awf effort memory update <slug> [--phase <text>] [--next <text>]`. `--phase` and
-   `--next` are independently optional and at least one is required. The operation preserves
-   immutable `Effort: <slug>`, rewrites only the selected canonical single-line header
-   fields, and always writes the current UTC instant to `Updated:`. It accepts the legacy
-   `Updated: Not yet updated.` sentinel and normalizes it on update. New effort skeletons
-   start with their real UTC creation timestamp. Values are nonblank, bounded, valid UTF-8
-   single lines, and the header contains exactly one canonical occurrence of each required
-   field before `## Brief`.
+7. Replace the custom memory header with closed YAML frontmatter containing exactly the
+   keys `effort`, `phase`, `next`, and `updated`. `effort` is the immutable slug identity;
+   `phase` and `next` are nonblank bounded single-line strings; and `updated` is a UTC
+   timestamp. New effort skeletons start with this frontmatter and their real creation
+   timestamp. The Markdown body and its canonical sections remain unchanged.
 
-8. Restrict the new memory-header gate to `using_effort`. Attachment reads the effort title
-   from immutable state and validates the canonical `Effort:`, `Phase:`, `Next:`, and
-   `Updated:` header, failing that tool call with the exact `awf effort memory update`
-   repair. A valid legacy Updated sentinel is accepted. Subsequent metadata refresh may
-   report memory metadata unavailable if the header was manually damaged, while preserving
-   the activity association. No show, list, worktree, integrate, remove, finish, render,
-   check, handoff, or other effort operation acquires this validation precondition.
+   Add `awf effort memory update <slug> [--phase <text>] [--next <text>]`. `--phase` and
+   `--next` are independently optional and at least one is required. The operation preserves
+   immutable effort identity, rewrites only the selected values, and always writes the
+   current UTC instant to `updated`. On the first update of a legacy memory, it accepts the
+   exact four-line `Effort:`, `Phase:`, `Next:`, and `Updated:` header, including the
+   `Updated: Not yet updated.` sentinel, and atomically migrates it to canonical frontmatter.
+   Serialization quotes values as needed rather than restricting otherwise valid punctuation.
+
+8. Restrict the new memory-metadata gate to `using_effort`. Attachment reads the effort
+   title from immutable state and validates either canonical closed frontmatter or the exact
+   legacy four-line header, failing that tool call with the exact `awf effort memory update`
+   repair when invalid. Subsequent metadata refresh may report memory metadata unavailable
+   if the metadata was manually damaged, while preserving the activity association. No show,
+   list, worktree, integrate, remove, finish, render, check, or other effort operation
+   acquires this validation precondition. Handoff's bounded identity validation accepts both
+   the legacy first-line `Effort: <slug>` and canonical frontmatter `effort: <slug>` during
+   migration; it does not validate phase, next, or updated metadata.
 
 9. Publish one advisory Remote Pi `awf` metadata snapshot containing the effort slug and
    title, validated memory Phase/Next/Updated, activity heartbeat, committed live CWD, and
@@ -182,7 +192,8 @@ Downgrade compatibility is not a goal.
 10. Keep dependency direction explicit. The generated TypeScript extension orchestrates Pi
     and Remote Pi runtime APIs but does not write effort residents directly. It invokes the
     awf binary's activity and memory contracts and translates their structured outcomes at
-    the runtime boundary. The effort package owns memory-header and activity policy; Git
+    the runtime boundary. The effort package owns memory-frontmatter compatibility, mutation,
+    and activity policy; the shared frontmatter package owns document splitting; Git
     topology remains behind awf's existing Git boundary; command code owns argument parsing
     and human rendering. Architecture and user documentation describe the optional resident,
     same-session CWD behavior, advisory Remote Pi contract, downgrade boundary, and recovery
@@ -221,8 +232,9 @@ Downgrade compatibility is not a goal.
     and documented `awf enable skill using-effort`; upgrade does not silently mutate their
     enabled-skill selection. Add the new generated extension to the containerized TypeScript
     strict-check and 100 percent line/function/branch coverage lane, and extend pinned
-    real-runtime smoke to prove same-session CWD persistence, memory metadata publication,
-    capability replay, transient-name restoration, and advisory failure behavior. Render
+    real-runtime smoke to prove same-session CWD persistence, legacy-memory compatibility and
+    migration, frontmatter metadata publication, capability replay, transient-name
+    restoration, and advisory failure behavior. Render
     coverage also exercises every new template with empty optional values, proving coherent
     missingkey-zero output with no `<no value>` token.
 
@@ -247,7 +259,9 @@ A user can deliberately keep one conversation while moving its live Pi runtime i
 checkout appropriate to the current effort step. Peers gain enough current context to
 coordinate receiving-checkout mutations with the right session, and the memory update
 command makes the published checkpoint fields reliable without making working memory a
-global machine-owned document.
+global machine-owned document. Memory metadata becomes ordinary closed frontmatter rather
+than an awf-specific pseudo-header, while dual-format reads and first-update migration keep
+existing efforts usable.
 
 The design adds a mutable effort resident, binary mutation protocol, generated extension,
 skill, external capability negotiation, and heartbeat lifecycle. Crash leftovers and
@@ -276,6 +290,8 @@ APIs.
 | Treat activity as a lock or refuse fresh takeovers | Presence is fallible telemetry; making it authority would strand work after crashes and create an unrelated gate. |
 | Store activity outside the effort directory for downgrade compatibility | It splits one concern across resident roots and makes cleanup and ownership less cohesive; downgrade support is not promised. |
 | Let the TypeScript extension write `activity.json` and parse memory directly | It duplicates awf policy, bypasses resident safety, and lets runtime representation own effort state. |
+| Keep the custom four-line memory header as the permanent structured format | Once awf parses and mutates the fields, the bespoke frontmatter-like grammar has no advantage over the repository's existing closed YAML frontmatter machinery. |
+| Require immediate repository-wide migration to memory frontmatter | It would break live efforts and turn a supportive metadata feature into an unrelated compatibility gate; dual reads and first-update migration are sufficient. |
 | Persist workflow Phase/Next in `activity.json` | It creates competing mutable copies of checkpoint truth; memory remains their single source. |
 | Guess the primary checkout when attaching from a managed worktree | The primary control root is not necessarily the intended receiving checkout. |
 | Add an `active` boolean | File existence already expresses the attachment claim, and the boolean would have no useful false state. |
