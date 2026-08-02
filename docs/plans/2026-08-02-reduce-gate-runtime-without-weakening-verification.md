@@ -2,7 +2,7 @@
 format: plan-v1
 date: 2026-08-02
 adrs: []
-status: Proposed
+status: Implemented
 ---
 # Plan: Reduce gate runtime without weakening verification
 
