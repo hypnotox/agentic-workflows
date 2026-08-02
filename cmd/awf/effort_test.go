@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -130,24 +131,69 @@ func TestEffortNestedGrammarDispatch(t *testing.T) {
 
 // invariant: tooling/cli:effort-command-contract (TestEffortMemoryAndActivityCLIContract)
 func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"awf", "help", "effort", "memory"}, "Usage: awf effort memory update <slug> [--phase <text>] [--next <text>]\n\nUpdate one or both mutable memory metadata fields. At least one of --phase and\n--next is required.\n"},
+		{[]string{"awf", "help", "effort", "memory", "update"}, "Usage: awf effort memory update <slug> [--phase <text>] [--next <text>]\n\nUpdate one or both mutable memory metadata fields. At least one of --phase and\n--next is required.\n"},
+		{[]string{"awf", "help", "effort", "activity"}, "Usage: awf effort activity resolve <slug> --destination <managed|receiving> [--receiving-checkout <absolute-path>] --json\n       awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json\n       awf effort activity heartbeat <slug> --owner <uuid> --json\n       awf effort activity checkout <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --json\n       awf effort activity detach <slug> --owner <uuid> --json\n\nActivity replies are protocol-1 JSON only. Each action accepts only the flags\nshown in its usage form.\n"},
+		{[]string{"awf", "help", "effort", "activity", "resolve"}, "Usage: awf effort activity resolve <slug> --destination <managed|receiving> [--receiving-checkout <absolute-path>] --json\n"},
+		{[]string{"awf", "help", "effort", "activity", "attach"}, "Usage: awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json\n"},
+		{[]string{"awf", "help", "effort", "activity", "heartbeat"}, "Usage: awf effort activity heartbeat <slug> --owner <uuid> --json\n"},
+		{[]string{"awf", "help", "effort", "activity", "checkout"}, "Usage: awf effort activity checkout <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --json\n"},
+		{[]string{"awf", "help", "effort", "activity", "detach"}, "Usage: awf effort activity detach <slug> --owner <uuid> --json\n"},
+	} {
+		var stdout, stderr bytes.Buffer
+		if code := run(test.args, &stdout, &stderr); code != 0 || stdout.String() != test.want || stderr.Len() != 0 {
+			t.Fatalf("help %q: code=%d stdout=%q stderr=%q", test.args[3:], code, stdout.String(), stderr.String())
+		}
+	}
+
 	primary := filepath.Join(t.TempDir(), "primary")
 	fixture := gitfixture.InitNativeAt(t, primary)
 	if err := os.WriteFile(filepath.Join(primary, "tracked.txt"), []byte("base\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	gitfixture.NativeAdd(t, fixture, "tracked.txt")
+	for _, resident := range []string{"efforts", "worktrees"} {
+		ignore := filepath.Join(primary, ".awf", resident, ".gitignore")
+		if err := os.MkdirAll(filepath.Dir(ignore), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(ignore, []byte("*\n!.gitignore\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitfixture.NativeAdd(t, fixture, ".awf/"+resident+"/.gitignore")
+	}
 	gitfixture.NativeCommit(t, fixture, "base")
 	linked := filepath.Join(filepath.Dir(primary), "linked")
 	gitfixture.NativeWorktreeAddDetached(t, fixture, linked, "HEAD")
 
 	runEffortCommand(t, primary, "new", []string{"Activity contract"}, map[string]bool{"--no-worktree": true})
+	slug := "activity-contract"
+	memoryPath := filepath.Join(primary, ".awf", "efforts", slug, "memory.md")
+	body := "## Brief\r\n\r\nbody bytes stay exact\r\n"
+	legacy := "Effort: activity-contract\nPhase: old\nNext: old next\nUpdated: Not yet updated.\n\n" + body
+	if err := os.WriteFile(memoryPath, []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	phase, next := "Implementing", "Exercise the attached checkout."
-	owner := "018f47a0-7b3d-4c52-8f1a-123456789abc"
 	var memoryOut bytes.Buffer
-	if err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: "memory update", inv: invocation{positionals: []string{"activity-contract"}, bools: map[string]bool{}, values: map[string]string{"--phase": phase, "--next": next}}, stdout: &memoryOut}, openEffortComposition); err != nil || memoryOut.Len() != 0 {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: "memory update", inv: invocation{positionals: []string{slug}, bools: map[string]bool{}, values: map[string]string{"--phase": phase, "--next": next}}, stdout: &memoryOut}, openEffortComposition); err != nil || memoryOut.Len() != 0 {
 		t.Fatalf("memory update error=%v stdout=%q", err, memoryOut.String())
 	}
+	migrated, err := os.ReadFile(memoryPath)
+	if err != nil || !strings.HasPrefix(string(migrated), "---\neffort: activity-contract\n") || !strings.Contains(string(migrated), "phase: Implementing\n") || !strings.Contains(string(migrated), "next: Exercise the attached checkout.\n") || !strings.Contains(string(migrated), "updated: \"") || !strings.Contains(string(migrated), "Z\"\n---\n") || !strings.HasSuffix(string(migrated), body) {
+		t.Fatalf("legacy memory migration err=%v memory=%q", err, migrated)
+	}
+	updatedLine := strings.Split(string(migrated), "\n")[4]
+	updatedText := strings.Trim(strings.TrimPrefix(updatedLine, "updated: "), "\"")
+	if updated, err := time.Parse(time.RFC3339Nano, updatedText); err != nil || updated.Location() != time.UTC {
+		t.Fatalf("memory updated timestamp=%q parsed=%v err=%v", updatedLine, updated, err)
+	}
 
+	owner := "018f47a0-7b3d-4c52-8f1a-123456789abc"
 	reply := runActivityCommand(t, linked, "activity resolve", map[string]string{"--destination": "receiving"})
 	assertActivityFields(t, reply, effort.ActivityReady, "effort", "memory", "destination")
 	reply = runActivityCommand(t, linked, "activity attach", map[string]string{"--owner": owner, "--cwd": linked, "--role": "receiving", "--receiving-checkout": linked})
@@ -161,20 +207,68 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 
 	for _, test := range []struct {
 		sub    string
+		slug   string
 		values map[string]string
+		want   string
 	}{
-		{"memory update", nil},
-		{"activity resolve", nil},
-		{"activity attach", map[string]string{"--owner": owner}},
-		{"activity heartbeat", nil},
-		{"activity checkout", map[string]string{"--owner": owner}},
-		{"activity detach", nil},
+		{"memory update", slug, nil, "usage: awf effort memory update"},
+		{"memory update", "missing-effort", map[string]string{"--phase": phase}, "next action"},
+		{"activity resolve", slug, nil, "requires --json"},
+		{"activity attach", slug, map[string]string{"--owner": owner}, "requires --json"},
+		{"activity heartbeat", slug, nil, "requires --json"},
+		{"activity checkout", slug, map[string]string{"--owner": owner}, "requires --json"},
+		{"activity detach", slug, nil, "requires --json"},
 	} {
 		var stdout bytes.Buffer
-		err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: test.sub, inv: invocation{positionals: []string{"activity-contract"}, bools: map[string]bool{}, values: test.values}, stdout: &stdout}, openEffortComposition)
-		if err == nil || stdout.Len() != 0 {
-			t.Errorf("%s malformed invocation error=%v stdout=%q", test.sub, err, stdout.String())
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: primary, sub: test.sub, inv: invocation{positionals: []string{test.slug}, bools: map[string]bool{}, values: test.values}, stdout: &stdout}, openEffortComposition)
+		if err == nil || stdout.Len() != 0 || !strings.Contains(err.Error(), test.want) {
+			t.Errorf("%s failure error=%v stdout=%q", test.sub, err, stdout.String())
 		}
+	}
+
+	if err := os.WriteFile(memoryPath, []byte("---\neffort: activity-contract\nphase: \"\"\nnext: valid\nupdated: 2026-08-02T12:00:00Z\n---\n"+body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reply = runActivityCommand(t, linked, "activity resolve", map[string]string{"--destination": "receiving"})
+	assertActivityRefusal(t, reply, effort.ActivityInvalidMemory, false, "./awf effort memory update activity-contract --phase <replacement-phase>", false)
+	if err := os.WriteFile(memoryPath, []byte("broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reply = runActivityCommand(t, linked, "activity resolve", map[string]string{"--destination": "receiving"})
+	assertActivityRefusal(t, reply, effort.ActivityInvalidMemory, false, "repair .awf/efforts/activity-contract/memory.md manually: preserve its body and restore a matching effort identity with a recognized canonical or legacy metadata boundary", false)
+	if err := os.Remove(memoryPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(memoryPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	reply = runActivityCommand(t, linked, "activity resolve", map[string]string{"--destination": "receiving"})
+	assertActivityRefusal(t, reply, effort.ActivityInvalidMemory, false, "repair .awf/efforts/activity-contract/memory.md manually: preserve its body and restore a matching effort identity with a recognized canonical or legacy metadata boundary", true)
+	if err := os.Remove(memoryPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(memoryPath, migrated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, test := range []struct {
+		sub string
+		pos []string
+	}{
+		{"show", []string{slug}}, {"list", nil}, {"worktree", []string{"add", slug}}, {"integrate", []string{slug}}, {"worktree", []string{"remove", slug}}, {"finish", []string{slug}},
+	} {
+		if output := runEffortCommand(t, primary, test.sub, test.pos, nil); output == "" {
+			t.Fatalf("unrelated %s command produced no availability result", test.sub)
+		}
+	}
+}
+
+func assertActivityRefusal(t *testing.T, reply map[string]json.RawMessage, condition effort.ActivityCondition, changedCWD bool, nextAction string, cause bool) {
+	t.Helper()
+	assertActivityFields(t, reply, condition, "effort", "outcome")
+	var outcome effort.ActionableOutcome
+	if err := json.Unmarshal(reply["outcome"], &outcome); err != nil || outcome.ChangedActivity || outcome.ChangedMemory || outcome.ChangedCWD != changedCWD || len(outcome.NextActions) != 1 || outcome.NextActions[0] != nextAction || (outcome.Cause != "") != cause {
+		t.Fatalf("refusal outcome=%#v err=%v", outcome, err)
 	}
 }
 
