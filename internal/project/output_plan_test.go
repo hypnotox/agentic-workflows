@@ -113,7 +113,6 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestTargetDescriptorValidation)
 // invariant: rendering/pi-workflows:pi-subagent-progress-bounds (TestTargetDescriptorValidation)
 // invariant: config/migrations-and-locks:close-enabled-set-migration (TestTargetDescriptorValidation)
-// invariant: rendering/workflow-skill-templates:plan-task-detail-modes (TestTargetDescriptorValidation)
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
 		{Name: "bad", BridgeFile: "X"},

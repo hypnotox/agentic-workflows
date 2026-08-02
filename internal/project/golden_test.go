@@ -55,16 +55,8 @@ func TestEndToEndGolden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plans-template not rendered: %v", err)
 	}
-	for _, want := range []string{
-		"date:", "adrs:", "status:",
-		"# Plan:", "## Goal", "## Architecture summary",
-		"## Phase", "## Verification", "## Notes",
-	} {
-		if !strings.Contains(string(plansTemplate), want) {
-			t.Errorf("plans-template missing taxonomy element %q:\n%s", want, plansTemplate)
-		}
-	}
-	for _, bad := range []string{"## File structure", "awf:section", "awf:end", "{{", "}}"} {
+	assertPlanTemplateTaxonomy(t, string(plansTemplate))
+	for _, bad := range []string{"awf:section", "awf:end", "{{", "}}"} {
 		if strings.Contains(string(plansTemplate), bad) {
 			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
 		}
@@ -82,6 +74,72 @@ func TestEndToEndGolden(t *testing.T) {
 	drift, err := p.Check(testContext(t))
 	if err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
+	}
+}
+
+func assertPlanTemplateTaxonomy(t *testing.T, text string) {
+	t.Helper()
+	for _, problem := range planTemplateTaxonomyProblems(text) {
+		t.Errorf("plans-template taxonomy: %s:\n%s", problem, text)
+	}
+}
+
+func planTemplateTaxonomyProblems(text string) []string {
+	var problems []string
+	previous := -1
+	for _, token := range []string{
+		"date:", "adrs:", "status:", "# Plan:", "## Goal", "## Architecture summary",
+		"## Phase", "## Verification", "## Notes",
+	} {
+		at := strings.Index(text, token)
+		if at < 0 {
+			problems = append(problems, "missing "+token)
+			continue
+		}
+		if at <= previous {
+			problems = append(problems, "out-of-order "+token)
+		}
+		previous = at
+	}
+	if strings.Contains(text, "## File structure") {
+		problems = append(problems, "File structure remains a plan-level section")
+	}
+	if !strings.Contains(text, "File structure is not a plan-level section; declare affected paths on tasks where scope") {
+		problems = append(problems, "missing task-level affected-path ownership")
+	}
+	if !strings.Contains(text, "## Notes (required when any task is a spike; optional otherwise)") {
+		problems = append(problems, "missing spike-conditioned Notes contract")
+	}
+	return problems
+}
+
+func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
+	text := renderGolden(t, "plans-template/template.md.tmpl", map[string]any{
+		"vars": map[string]any{}, "layout": testLayout(),
+	})
+	for _, mutation := range []struct {
+		name, from, to string
+	}{
+		{"frontmatter date", "date:", "written:"},
+		{"frontmatter adrs", "adrs:", "decisions:"},
+		{"frontmatter status", "status:", "state:"},
+		{"title", "# Plan:", "# Procedure:"},
+		{"goal", "## Goal", "## Outcome"},
+		{"architecture", "## Architecture summary", "## Design"},
+		{"phase", "## Phase", "## Batch"},
+		{"verification", "## Verification", "## Checks"},
+		{"notes requiredness", "## Notes (required when any task is a spike; optional otherwise)", "## Notes (optional)"},
+		{"file ownership", "File structure is not a plan-level section; declare affected paths on tasks where scope", "## File structure"},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			if !strings.Contains(text, mutation.from) {
+				t.Fatalf("mutation source %q is absent", mutation.from)
+			}
+			mutated := strings.Replace(text, mutation.from, mutation.to, 1)
+			if problems := planTemplateTaxonomyProblems(mutated); len(problems) == 0 {
+				t.Fatalf("taxonomy accepted semantic inversion %q", mutation.to)
+			}
+		})
 	}
 }
 

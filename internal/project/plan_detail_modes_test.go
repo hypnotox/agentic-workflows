@@ -60,7 +60,44 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	}
 }
 
+var planTaskDetailContractClauses = []string{
+	"qualifying implementation-ready instructions are the default",
+	"require `latitude: exact` for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and batch representative and edge transformations",
+	"permit it voluntarily elsewhere",
+	"directly beneath the task declaration and before prose",
+	"the vocabulary is `kind: spike`, `kind: batch`, `latitude: exact`, `question:`, `paths:`, `representative:`, `edge:`, and `post-check:`",
+	"a `kind: spike` task is question-only, carries `question:`, has no implementation body, records its answer in notes, cannot own a phase, and sequences dependent work into a later phase",
+	"a `kind: batch` task carries `paths:`, `representative:`, `edge:`, and `post-check:`",
+	"`paths:` is required whenever affected scope is ambiguous, including an ambiguous non-batch task; every batch is necessarily ambiguous",
+	"`post-check:` is required for every batch and whenever `paths:` contains a `glob:` or `pathspec:` entry",
+	"conditional and optional tasks are forbidden",
+	"`tbd`",
+	"`implement later`",
+	"outcome-only summaries",
+	"hidden design choices",
+	"placeholders, never pseudocode",
+	"no prior conversation context",
+	"execution mode",
+	"ordered steps",
+	"one independently green coherent implementation transaction",
+	"parent or exactly one helper",
+	"path-disjoint",
+	"shared files",
+	"confined",
+}
+
 func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
+	t.Helper()
+	policy := planPolicySection(t, surface)
+	for _, clause := range missingPlanTaskDetailClauses(policy) {
+		t.Errorf("%s plan-policy section missing contractual phrase %q:\n%s", surface.name, clause, policy)
+	}
+	if strings.Contains(policy, "<no value>") {
+		t.Errorf("%s plan-policy section leaked missingkey output:\n%s", surface.name, policy)
+	}
+}
+
+func planPolicySection(t *testing.T, surface planPolicySurface) string {
 	t.Helper()
 	start := strings.Index(surface.output, surface.start)
 	if start < 0 {
@@ -70,57 +107,46 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 	if endOffset < 0 {
 		t.Fatalf("%s missing plan-policy end %q", surface.name, surface.end)
 	}
-	policy := surface.output[start : start+len(surface.start)+endOffset]
-	policy = strings.Join(strings.Fields(policy), " ")
+	return strings.Join(strings.Fields(surface.output[start:start+len(surface.start)+endOffset]), " ")
+}
 
-	for _, clause := range []string{
-		"qualifying implementation-ready",
-		"default",
-		"`Latitude: exact`",
-		"machine-consumed",
-		"configuration",
-		"manifests",
-		"contract-bearing",
-		"fixtures",
-		"golden output",
-		"commands",
-		"mechanical replacements",
-		"required literal prose",
-		"representative and edge",
-		"directly beneath",
-		"`Kind: spike`",
-		"`Question:`",
-		"Notes",
-		"later phase",
-		"`Kind: batch`",
-		"`Paths:`",
-		"ambiguous",
-		"every batch",
-		"`Post-check:`",
-		"glob",
-		"pathspec",
-		"conditional",
-		"optional tasks",
-		"`TBD`",
-		"`implement later`",
-		"outcome-only summaries",
-		"hidden design choices",
-		"placeholders, never pseudocode",
-		"no prior conversation context",
-		"Execution mode",
-		"ordered steps",
-		"one independently green coherent implementation transaction",
-		"parent or exactly one helper",
-		"path-disjoint",
-		"shared files",
-		"confined",
-	} {
-		if !strings.Contains(strings.ToLower(policy), strings.ToLower(clause)) {
-			t.Errorf("%s plan-policy section missing clause %q:\n%s", surface.name, clause, policy)
+func missingPlanTaskDetailClauses(policy string) []string {
+	policy = strings.ToLower(strings.Join(strings.Fields(policy), " "))
+	var missing []string
+	for _, clause := range planTaskDetailContractClauses {
+		if !strings.Contains(policy, clause) {
+			missing = append(missing, clause)
 		}
 	}
-	if strings.Contains(policy, "<no value>") {
-		t.Errorf("%s plan-policy section leaked missingkey output:\n%s", surface.name, policy)
+	return missing
+}
+
+func TestPlanTaskDetailContractRejectsInversions(t *testing.T) {
+	output := renderGolden(t, "plans-template/template.md.tmpl", map[string]any{
+		"vars": map[string]any{}, "layout": testLayout(),
+	})
+	policy := planPolicySection(t, planPolicySurface{
+		name: "default plan template", output: output,
+		start: "**Execution mode", end: "- [ ] **Phase-close",
+	})
+	for _, mutation := range []struct {
+		name, from, to string
+	}{
+		{"default inverted", "Qualifying implementation-ready instructions are the default", "Exact instructions are the default"},
+		{"exactness optional", "Require `Latitude: exact` for machine-consumed", "Permit `Latitude: exact` for machine-consumed"},
+		{"spike answer optional", "records its answer in Notes", "may omit its answer from Notes"},
+		{"post-check optional", "`Post-check:` is required for every batch", "`Post-check:` is optional for every batch"},
+		{"conditional tasks allowed", "Conditional and optional tasks are forbidden", "Conditional and optional tasks are permitted"},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			if !strings.Contains(policy, mutation.from) {
+				t.Fatalf("mutation source %q is absent", mutation.from)
+			}
+			mutated := strings.Replace(policy, mutation.from, mutation.to, 1)
+			if missing := missingPlanTaskDetailClauses(mutated); len(missing) == 0 {
+				t.Fatalf("contract accepted semantic inversion %q", mutation.to)
+			}
+		})
 	}
 }
 

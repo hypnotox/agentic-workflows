@@ -29,18 +29,18 @@ and green starting baseline.
 - [ ] **Task 1.1: <what>.** Qualifying implementation-ready instructions are the default: name exact
   file paths, relevant symbols, exact commands with expected terminal states, and cover behavior,
   branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and
-  deterministic verification without dictating non-contractual prose. Use `Latitude: exact` for
+  deterministic verification without dictating non-contractual prose. Require `Latitude: exact` for
   machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden
-  output, commands, mechanical replacements, required literal prose, and batch-task representative
-  and edge transformations; it may be used voluntarily elsewhere. Write applicable fields directly
-  beneath the task declaration and before prose. The vocabulary is `Kind: spike`, `Kind: batch`,
+  output, commands, mechanical replacements, required literal prose, and batch representative and
+  edge transformations; permit it voluntarily elsewhere. Write applicable fields directly beneath
+  the task declaration and before prose. The vocabulary is `Kind: spike`, `Kind: batch`,
   `Latitude: exact`, `Question:`, `Paths:`, `Representative:`, `Edge:`, and `Post-check:`. `TBD`,
   `implement later`, outcome-only summaries, and hidden design choices are placeholders, never
   pseudocode. The task remains executable with no prior conversation context.
 - [ ] **Task 1.2: <what>.** A `Kind: spike` task is question-only, carries `Question:`, has no
-  implementation body, records its answer in Notes, never owns a phase by itself, and puts dependent
-  work in a later phase. A `Kind: batch` task carries `Paths:`, exact `Representative:` and `Edge:`
-  transformations, and `Post-check:`. `Paths:` is required whenever affected scope is ambiguous,
+  implementation body, records its answer in Notes, cannot own a phase, and sequences dependent work
+  into a later phase. A `Kind: batch` task carries `Paths:`, `Representative:`, `Edge:`, and
+  `Post-check:`. `Paths:` is required whenever affected scope is ambiguous,
   including an ambiguous non-batch task; every batch is necessarily ambiguous. `Post-check:` is
   required for every batch and whenever `Paths:` contains a `glob:` or `pathspec:` entry. Conditional
   and optional tasks are forbidden: use a spike and sequence dependent work into a later phase instead.

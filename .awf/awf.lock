@@ -70,9 +70,9 @@
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:1b02ec896936c4d6271083cf055ed1d36c457b9a6632893859692cb896bb2f8e",
+      "templateHash": "sha256:a3641a5e34edbeba2827c624586664495865bd4335978b7b1dbcf2d547bc4e86",
       "configHash": "sha256:425600a75bd72557c833e449af8c34be05cd3fa7bd6d62c25bec634ec3e87624",
-      "outputHash": "sha256:1e17e630cf4c8d5f5304bf41b688088d058d3c3737bbf5650d29aeb10993670a"
+      "outputHash": "sha256:8d72e78aeab99718a453ff6db4667be97ff1dfc2bb9c4c7a8f2bb956ce5b76fa"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -178,9 +178,9 @@
     },
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:32b4e4ee09efb7d535c179ffb5c7b0b744a0a2d27955403a2bbd7278dc1d1572",
+      "templateHash": "sha256:bc92f516a9cdafa2be30bc0090ec02fba95263dea037ac2a6a5d9a996f6b6a66",
       "configHash": "sha256:e80b892535df7bd394d3768eae915ae1786ff6c418925b04dd4699494c7fede0",
-      "outputHash": "sha256:8aa94da2736f46c4400ae7ba5e17dde15b7cdc4f22bde609d46b67087437b75f"
+      "outputHash": "sha256:179879961db4bff1f2586fa974392a8975f83317d900df2f139b0abcd235bb75"
     },
     ".pi/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -214,9 +214,9 @@
     },
     ".pi/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:1b02ec896936c4d6271083cf055ed1d36c457b9a6632893859692cb896bb2f8e",
+      "templateHash": "sha256:a3641a5e34edbeba2827c624586664495865bd4335978b7b1dbcf2d547bc4e86",
       "configHash": "sha256:6bb67fd4f57e1746f6570ce626894ef46edcafcbbe8354c67eb4f7404b956941",
-      "outputHash": "sha256:1e17e630cf4c8d5f5304bf41b688088d058d3c3737bbf5650d29aeb10993670a"
+      "outputHash": "sha256:8d72e78aeab99718a453ff6db4667be97ff1dfc2bb9c4c7a8f2bb956ce5b76fa"
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
@@ -346,9 +346,9 @@
     },
     ".pi/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:32b4e4ee09efb7d535c179ffb5c7b0b744a0a2d27955403a2bbd7278dc1d1572",
+      "templateHash": "sha256:bc92f516a9cdafa2be30bc0090ec02fba95263dea037ac2a6a5d9a996f6b6a66",
       "configHash": "sha256:818a4738f6136b72162a091b6669c06bd55cfca8fefd998cec95ea18e147f103",
-      "outputHash": "sha256:586c71fb75e4018ec7688d4b42bc8847e0739ce36650e21fe8c879e57ab82bdb"
+      "outputHash": "sha256:6fa33941532d3c294e9154e4364fe95f35d5b5f72c65d07c9f6c684896b50516"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
@@ -480,15 +480,15 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:2b2cad95859357129c817468f8f22b6a42005bbf31439b69574fbf065caef9cc",
+      "templateHash": "sha256:fb442ff962f7c7461989853b719907302d4c2d3f249b4b21f60792bc49b7d968",
       "configHash": "sha256:33f22ebf6e3ea2d21a20556ee4c1a018dc97a0d3676a78a4cdef60e2148b054d",
-      "outputHash": "sha256:f3002bfe8d4ecc344029179dccdf8909542a3ea4b7709f9758e7a2f0f6966a15"
+      "outputHash": "sha256:2b09d893d64d320727d64039c39ab29fefa45d9be39054866a91f569c5b90ac2"
     },
     "docs/plans/template.md": {
       "templateId": "plans-template/template.md.tmpl",
-      "templateHash": "sha256:a51a5b6c000dd9253bec4230e508047fff1931279d4063f505cb56b4e25ad9f8",
+      "templateHash": "sha256:446e193ff62d1b7983ac840f7e7761d3ea1671f42ffeeee99d19ec35497b0bff",
       "configHash": "sha256:17391ab1e25e4398dce677492cc2a953a464c151122135bce9c509a18bcff583",
-      "outputHash": "sha256:24e6d9b8eed3e353b0523aa7490eb84d3821d50f4ad9f520354beabd14dded95"
+      "outputHash": "sha256:28ada270099ed3fcaf649e53bb0fc561eb91e2335b15b7cad9bc4ad4d500b10d"
     },
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
