@@ -3,6 +3,7 @@
 
 - [ADR-0209: Sanction authoring latitude in plans](0209-sanction-authoring-latitude-in-plans.md) (Proposed)
 - [ADR-0210: Corrective re-application of an applied state operation](0210-corrective-re-application-of-an-applied-state-operation.md) (Proposed)
+- [ADR-parsed-plan-artifacts-and-executable-projections: Parsed plan artifacts and executable projections](parsed-plan-artifacts-and-executable-projections.md) (Proposed)
 
 ## History
 
