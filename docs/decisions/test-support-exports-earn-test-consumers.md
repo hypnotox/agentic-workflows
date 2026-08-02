@@ -28,6 +28,13 @@ dedicated test-support packages earn exports through test consumers. The pending
 needs this correction before it can place one fault-injectable implementation in a shared
 `internal/testsupport` home rather than duplicating local test fakes.
 
+The same overbreadth appears in
+`code-design/dependency-composition:concrete-first-consumer`: its verification requires production
+callers for every shared composition symbol. A controlled dependency exported by dedicated test
+support has no legitimate production caller, but it still needs the claim's same-transaction,
+non-speculative first-consumer discipline. Export eligibility and composition capability therefore
+need the same production-versus-test symmetry.
+
 ## Decision
 
 1. Update `code-design/package-composition:export-earns-consumer` so its outside-package
@@ -40,31 +47,37 @@ needs this correction before it can place one fault-injectable implementation in
    transaction. The test consumer must use the exported capability for its actual fixture,
    controlled-dependency, or assertion setup; a compile-only reference does not earn the export.
 
-3. Keep test support one-way through a separate
+3. Update `code-design/dependency-composition:concrete-first-consumer` with the same symmetry. A
+   production composition capability requires one named concrete production first consumer, while
+   a composition capability exported by dedicated `internal/testsupport/**` requires one named
+   outside-package test first consumer. In both cases the capability and consumer land in the same
+   green transaction, the consumer uses the whole introduced capability, and anticipated reuse
+   earns no API.
+
+4. Keep test support one-way through a separate
    `tooling/test-infrastructure:production-never-imports-test-support` claim. Production Go files
    outside `internal/testsupport/**` must not import a test-support package. The existing
    test-support leaf boundary continues to govern what shared test support itself may import; this
    decision creates no production dependency on test code and no exception to that boundary.
 
-4. Back the new one-way claim with a repository import scan that fails when a non-test Go file
+5. Back the new one-way claim with a repository import scan that fails when a non-test Go file
    outside `internal/testsupport/**` imports the root test-support package or any of its subpackages.
-   Apply that claim addition and the export-eligibility update as one checked current-state
-   transaction. Verification of the updated export claim inspects each new or deliberately
-   converted export according to the declaring package: find an outside-package production
-   consumer for a production package, or an outside-package test consumer for a dedicated shared
-   test-support package.
+   Apply the claim addition and both production-versus-test updates as one checked current-state
+   transaction. Verification classifies each declaring package and caller before applying the
+   corresponding production or dedicated-test-support requirement.
 
 ## State changes
 
 - update `code-design/package-composition:export-earns-consumer`
+- update `code-design/dependency-composition:concrete-first-consumer`
 - add `tooling/test-infrastructure:production-never-imports-test-support`
 
 ## Consequences
 
 Shared test infrastructure can expose the minimum API its real test consumers need without inventing
-a production caller or copying the fixture into each consumer package. The same concrete-first
-pressure remains: the outside-package test consumer lands with the export, so test-support APIs are
-not added for anticipated reuse.
+a production caller or copying the fixture into each consumer package. Concrete-first pressure
+remains explicit and symmetric: the outside-package test consumer lands with the export, uses the
+whole capability, and prevents test-support APIs from being added for anticipated reuse.
 
 Production API discipline does not weaken. A production package still cannot export a symbol merely
 because an external test wants it, and a black-box test remains irrelevant to the production
