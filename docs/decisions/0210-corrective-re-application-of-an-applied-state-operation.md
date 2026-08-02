@@ -137,16 +137,18 @@ continues to count the declaration once.
 
 11. Merge validation admits every re-application into the chain, for both re-applicable
     verbs. ADR-0182 item 6 carries two separate prohibitions and this decision narrows both.
-    Where a claim's chain within one aggregate carries later update entries from the same
-    ADR and those entries are re-applications, the fold preserves every material mutation
-    while contributing that ADR to the updaters list once, consistent with the
-    presence-based once rule item 8 writes into `update-requires-substance`. Where the chain
-    carries later add entries from the same ADR and those entries are re-applications, the
-    entries fold into one net add attributed to the chain's first step while every
-    intermediate correction is reconciled in order. The requirement that an add be the
-    chain's first operation is therefore satisfied by that fold rather than violated by a
-    correction. Both prohibitions are about the execution chain, which is why this decision
-    must change them rather than leave them standing.
+    An authored Reapplied commit is the per-occurrence boundary that proves the correction's
+    materiality against its immediate parent. Aggregate merge validation sees only the
+    first-parent and result universes and therefore validates the ordered event chain and
+    its net effect rather than attempting to reconstruct intermediate claim bytes. For
+    later update entries from the same ADR, the fold contributes that ADR to the updaters
+    list once and requires a material net update. For later add entries, the fold produces
+    one net add attributed to the chain's first step and requires a material net difference
+    from that add's initial claim. An aggregate whose corrections cancel completely has no
+    material net mutation and is refused. The requirement that an add be the chain's first
+    operation is satisfied by that fold rather than violated by a correction. Both
+    prohibitions are about the execution chain, which is why this decision must change them
+    rather than leave them standing.
 
 12. A refusal names the route. When an author declares a second operation on a claim the
     ADR has already applied, the error states that the operation is already applied and
@@ -162,13 +164,16 @@ continues to count the declaration once.
     ADR lifecycle skill, which gain the re-application step and its window boundaries; the
     working-with-awf guide, which gains the route selection between amendment,
     re-application, and follow-up ADR; and a pitfalls entry naming the failure this
-    replaces, an already applied operation discovered to be wrong.
+    replaces, an already applied operation discovered to be wrong. Every changed template
+    retains publication-safe missingkey=zero behavior: empty project variables render
+    coherent generic prose and no no-value token, with parity coverage for that case.
 
 ## State changes
 
 - add `adr-system/adr-lifecycle:corrective-reapplication`
 - update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`
 - update `invariants/current-state-authority:update-requires-substance`
+- update `invariants/current-state-authority:merge-transition-ordered-aggregate`
 
 ## Consequences
 

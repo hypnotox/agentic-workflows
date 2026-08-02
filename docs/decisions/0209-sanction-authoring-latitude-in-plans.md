@@ -66,7 +66,9 @@ commit `fb1f392d`, so the claim has contradicted its proof since migration.
    `TBD`, `implement later`, outcome-only summaries, and hidden design choices remain
    forbidden. The same four surfaces carry the task field vocabulary this decision
    introduces, so the `plan-task-detail-modes` contract covers both what content form a
-   task supplies and how a task declares that form.
+   task supplies and how a task declares that form. Every changed template retains
+   publication-safe missingkey=zero behavior: empty project variables render coherent
+   generic prose and no no-value token, pinned by the same surface parity coverage.
 
 2. A task claims the exception with an explicit `Latitude: exact` field. Where item 1's
    categories apply the field is required, so a contract-bearing task states its own

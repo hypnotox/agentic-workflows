@@ -53,9 +53,11 @@ mapping. No second Markdown parser belongs in the command or project packages.
 2. `internal/plan` owns one typed plan model and one parse of each plan. The model retains
    frontmatter, title, Goal, Architecture summary, ordered phases, ordered tasks, phase
    closes, Definition of done, optional Notes, ADR links, and commit fences. Structural
-   validation and focused projection consume that model. `internal/project` does not
-   reparse headings or fields; it converts typed validation results into stable `awf check`
-   findings.
+   validation and focused projection consume that model. During one `awf check` operation,
+   the plan directory is parsed once and the resulting typed set is threaded to both
+   blocking plan findings and advisory commit-scope notes, with no long-lived cache.
+   `internal/project` does not reparse headings or fields; it converts typed validation
+   results into stable findings.
 
 3. A `plan-v1` document has this top-level order: frontmatter; `# Plan: <title>`; `## Goal`;
    `## Architecture summary`; one or more phases; `## Definition of done`; and optional
@@ -84,8 +86,9 @@ mapping. No second Markdown parser belongs in the command or project packages.
    `Latitude: exact`.
 
 6. The parser enforces the field relationships it can determine mechanically. A spike
-   requires `Question`, forbids implementation prose and the batch-only fields, and makes
-   Notes required. A batch requires `Paths`, `Representative`, `Edge`, and `Post-check`.
+   requires `Question`, has no prose body after its fields, forbids the batch-only fields,
+   and makes Notes required; its Question is its complete task content. A batch requires
+   `Paths`, `Representative`, `Edge`, and `Post-check`.
    `Paths` is also required whenever scope is ambiguous, but ambiguity and whether content
    belongs to ADR-0209's closed exactness categories remain reviewer judgments. A `Paths`
    value carrying wildcard or pathspec syntax requires `Post-check`. The parser validates
@@ -113,11 +116,11 @@ mapping. No second Markdown parser belongs in the command or project packages.
    values as appropriate.
 
 10. A read result is an executable closure, not the selected source lines. Every result is
-    rendered in source order and includes frontmatter, the plan title, Goal and non-goals,
-    Architecture summary, Definition of done, the owning phase heading and execution mode,
-    the selected content, that phase's phase close, and Notes when present. A `P` selection
-    includes every task in the phase. A `P.T` selection includes only that task before the
-    phase close. The output does not include other phases or mutate the source plan.
+    rendered in source order: frontmatter, the plan title, Goal and non-goals, Architecture
+    summary, the owning phase heading and execution mode, the selected content, that phase's
+    phase close, Definition of done, and Notes when present. A `P` selection includes every
+    task in the phase. A `P.T` selection includes only that task before the phase close. The
+    output does not include other phases or mutate the source plan.
 
 11. `internal/plan` renders the projection from its typed model. The command layer parses
     the two arguments, asks the project service to resolve the plans directory and selected
@@ -128,8 +131,11 @@ mapping. No second Markdown parser belongs in the command or project packages.
 12. The plan-authoring and review surfaces move together: the plan template, plans README,
     writing-plans skill, and plan reviewer use the `plan-v1` marker, heading tasks, heading
     phase close, field vocabulary, and required Definition of done. Generated target
-    renders and the sundial example follow from those sources. The documentation also
-    explains the legacy boundary and the read command's executable-closure semantics.
+    renders and the sundial example follow from those sources. The authored `.awf/` sources
+    behind the repository README command table and the working-with-awf guide document
+    `awf read plan`, the legacy boundary, and executable-closure semantics in the same
+    implementation. Every changed template remains publication-safe under missingkey=zero:
+    empty project variables render coherent generic prose and no no-value token.
 
 13. The new contracts are mechanically backed. Parser tests cover legacy absence, every
     valid structural form, order and numbering failures, field relationships, phase-close
@@ -137,7 +143,8 @@ mapping. No second Markdown parser belongs in the command or project packages.
     become stable findings without changing legacy results. Command and plan-package tests
     prove exact plan resolution, selector errors, phase projection, task projection, and
     every member of the executable closure. Template parity tests pin the native authoring
-    surfaces to the same grammar.
+    surfaces to the same grammar and exercise empty variables to prove missingkey=zero
+    produces coherent prose with no no-value token.
 
 ## State changes
 
@@ -146,6 +153,9 @@ mapping. No second Markdown parser belongs in the command or project packages.
 - add `adr-system/plan-artifacts:plan-v1-structure-validated`
 - add `adr-system/plan-artifacts:plan-executable-projection`
 - add `tooling/cli:plan-read-command`
+- update `rendering/workflow-skill-templates:phase-transaction-ownership`
+- update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
+- update `rendering/pi-workflows:pi-session-handoff-workflow`
 
 ## Consequences
 
