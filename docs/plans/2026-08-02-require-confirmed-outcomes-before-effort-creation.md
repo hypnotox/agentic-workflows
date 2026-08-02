@@ -2,7 +2,7 @@
 format: plan-v1
 date: 2026-08-02
 adrs: [require-confirmed-outcomes-before-effort-creation]
-status: Proposed
+status: Implemented
 ---
 # Plan: Require confirmed outcomes before effort creation
 

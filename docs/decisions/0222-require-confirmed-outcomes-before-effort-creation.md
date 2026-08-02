@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: require-confirmed-outcomes-before-effort-creation
-status: Implementing
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-0222: Require confirmed outcomes before effort creation
@@ -157,3 +157,5 @@ replacement prose; the shipped adopter note makes re-derivation their explicit u
 - 2026-08-02: Proposed
 - 2026-08-02: Implementing; content-sha256: edc3ddbd31ebc3fb8c7790365b8710e9064f2da2ad3960374a41993f5b968b9b
 - 2026-08-02: Applied; operations: update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
+- 2026-08-03: Applied; operations: update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`
+- 2026-08-03: Implemented; content-sha256: edc3ddbd31ebc3fb8c7790365b8710e9064f2da2ad3960374a41993f5b968b9b
