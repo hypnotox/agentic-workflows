@@ -143,10 +143,22 @@ func retargetCheckCommandBytes(src []byte) ([]byte, []string, error) {
 		if err != nil { // coverage-ignore: out was parsed as a mapping above
 			return nil, nil, err
 		}
-		if !bytes.Equal(edited, out) {
-			changes = append(changes, "retargeted vars."+key)
-			out = edited
+		if bytes.Equal(edited, out) {
+			withoutAlias, err := config.RemoveMappingKey(out, "vars", key)
+			if err != nil { // coverage-ignore: out was parsed as a vars mapping above
+				return nil, nil, err
+			}
+			seeded, err := config.SeedVarKey(withoutAlias, key)
+			if err != nil { // coverage-ignore: RemoveMappingKey returned validated YAML
+				return nil, nil, err
+			}
+			edited, err = config.SetMappingString(seeded, "vars", key, next)
+			if err != nil { // coverage-ignore: SeedVarKey created a plain string scalar
+				return nil, nil, err
+			}
 		}
+		changes = append(changes, "retargeted vars."+key)
+		out = edited
 	}
 	return out, changes, nil
 }

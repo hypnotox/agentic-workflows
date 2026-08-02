@@ -176,6 +176,33 @@ vars:
 	}
 }
 
+func TestRetargetCheckCommandsMaterializesAliasedCommands(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	testsupport.WriteFile(t, cfg, `anchors:
+  prose: &prose ./awf check prose
+  memory: &memory awf check memory --strict
+  commit: &commit /opt/awf check commit "$1"
+vars:
+  proseHelper: *prose
+  memoryHelper: *memory
+  commitHelper: *commit
+`)
+	if err := applyRetargetCheckCommands(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	got := readMigratedVars(t, cfg)
+	for key, want := range map[string]string{
+		"proseHelper":  "./awf check repo prose",
+		"memoryHelper": "awf check repo memory --strict",
+		"commitHelper": "/opt/awf check staged commit \"$1\"",
+	} {
+		if got[key] != want {
+			t.Errorf("vars.%s = %#v, want %q", key, got[key], want)
+		}
+	}
+}
+
 func TestRetargetCheckCommandsForeignShapes(t *testing.T) {
 	for _, tc := range []struct {
 		name, src string
@@ -183,7 +210,6 @@ func TestRetargetCheckCommandsForeignShapes(t *testing.T) {
 		{"malformed", "vars: [bad\n"},
 		{"no vars", "prefix: example\n"},
 		{"non-string", "vars:\n  helper: [awf, check, prose]\n"},
-		{"aliased retarget", "anchors:\n  command: &cmd ./awf check prose\nvars:\n  helper: *cmd\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
