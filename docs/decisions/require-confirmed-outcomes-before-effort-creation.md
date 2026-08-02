@@ -48,8 +48,9 @@ The project does not introduce a golden or interactive agent evaluation for this
 2. Introduce a mandatory outcome-confirmation boundary before first effort creation. The agent
    presents the proposed transition with clearly identified `Outcome:` and `Effort title:` fields,
    explicitly asks whether to create that effort, and ends the turn without mutation. Only a clear
-   user response in a later turn confirms the pair and permits `awf effort new "<confirmed title>"`
-   or resumption of the matching resident effort. No exact confirmation phrase is required.
+   user response in a later turn confirms the pair and permits `awf effort new "<confirmed title>"`.
+   No exact confirmation phrase is required. Existing efforts have already crossed this boundary and
+   resume under their fixed identity and existing validation rules without title reconfirmation.
 
 3. Keep the interaction in discovery when the user requests a change to either field or gives an
    ambiguous response. The agent presents a revised pair after a requested change and asks a focused
@@ -66,7 +67,8 @@ The project does not introduce a golden or interactive agent evaluation for this
 5. Make first-creation ownership explicit across the workflow. Brainstorming performs the new
    boundary after narrowing and approach selection and before detailed design. Debugging and roadmap
    selection perform it when investigation yields a proposed non-minimal change. Orienting and
-   exploration remain report-only and never create an effort. ADR proposal, plan writing, TDD, and
+   exploration never create an effort; exploration remains report-only, while orienting retains its
+   existing writer-owned checkpoint-correction contract. ADR proposal, plan writing, TDD, and
    downstream implementation or review paths require already-confirmed effort ownership for
    non-minimal work and never create a missing effort opportunistically.
 
@@ -82,10 +84,12 @@ The project does not introduce a golden or interactive agent evaluation for this
    authorizes only effort allocation and continued design; it does not replace final design approval.
    All later routine autonomy and issue-triggered check-in semantics remain unchanged.
 
-8. Keep `awf effort new` and the resident effort model unchanged. If creation fails after a confirmed
-   pair, report the concrete failure and recovery action without treating the outcome as unconfirmed.
-   No confirmation flag, conversational state, title reservation, mutable slug, or automatic
-   inference is added to the binary.
+8. Keep `awf effort new` and the resident effort model unchanged. If creation fails while the
+   confirmed pair and later confirming response remain available in conversational context, report
+   the concrete failure and recovery action without requiring another confirmation. If context loss
+   or session replacement makes that evidence unavailable, present and confirm the pair again before
+   retrying creation. No confirmation flag, conversational state, title reservation, mutable slug,
+   or automatic inference is added to the binary.
 
 9. Pin the policy with deterministic rendering and projection tests. Tests classify every applicable
    discovery and downstream skill, require the discovery prohibition and minimal/existing-effort
@@ -96,9 +100,13 @@ The project does not introduce a golden or interactive agent evaluation for this
    interactive agent evaluation.
 
 10. Update workflow documentation, the agent guide, project convention parts, rendered skills,
-    current-state claims, and generated outputs in the same implementation. Run focused tests,
-    render and drift checks, staged checks, and the full project gate before each implementation
-    transaction commits.
+    current-state claims, generated outputs, and the changelog or upgrade guidance in the same
+    implementation. The adopter note identifies full-replacement workflow, guide, checkpoint, and
+    skill parts that must re-derive the new boundary because default-template tests cannot inspect
+    replacement prose. Run focused tests, render and drift checks, staged checks, and the full project
+    gate before each implementation transaction commits. Every lifecycle transition to Accepted or
+    Implemented runs `./x render` and stages the regenerated `docs/decisions/INDEX.md` in the same
+    commit.
 
 ## State changes
 
@@ -123,11 +131,15 @@ identity boundary.
 Natural-language confirmation remains a judgment exercised by the agent. The labeled pair,
 required later response, ambiguity rule, and deterministic rendered-order tests narrow the risk but
 cannot eliminate model noncompliance. Adding binary conversational state would create false
-certainty because the CLI cannot observe the conversation that gives confirmation meaning.
+certainty because the CLI cannot observe the conversation that gives confirmation meaning. A failed
+creation can also require a repeated confirmation after context loss because no durable state retains
+that conversational evidence.
 
 Existing efforts are not renamed or migrated. The change governs first creation after the rendered
 contract ships. CLI behavior, effort schema, managed-worktree mechanics, and cleanup remain
-unchanged.
+unchanged. Adopters that fully replace affected workflow, guide, checkpoint, or skill parts can retain
+the old opportunistic-creation wording because default-template projection tests do not inspect that
+replacement prose; the shipped adopter note makes re-derivation their explicit upgrade obligation.
 
 ## Alternatives Considered
 
