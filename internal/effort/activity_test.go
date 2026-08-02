@@ -128,7 +128,7 @@ func TestActivityFaultAndRefusalMatrix(t *testing.T) {
 	}
 	slug := "activity-matrix"
 	for _, condition := range []ActivityCondition{ActivityNotOwner, ActivityMissing, ActivityInvalidMemory, ActivityUnsafeResident, ActivityRepositoryMismatch} {
-		r := refusal(condition, errors.New("cause"))
+		r := refusalFor(activityResolve, condition, errors.New("cause"), nil)
 		if r.Outcome == nil || r.Outcome.Condition != string(condition) || r.Outcome.Cause != "cause" || r.Effort != nil || r.Memory != nil || r.Activity != nil {
 			t.Fatalf("refusal %s = %#v", condition, r)
 		}
@@ -223,15 +223,110 @@ func TestActivityResolutionDefensesAndResidentCodec(t *testing.T) {
 	if _, err := service.destination(testContext(t), slug, CheckoutReceiving, "", nil, CheckoutFacts{InvokingRoot: service.paths.managedWorktree(slug), PrimaryRoot: root}); err == nil {
 		t.Fatal("managed first receiving guessed")
 	}
-	if got := checkoutRefusal(errors.New("mechanism")); got.Condition != ActivityRepositoryMismatch {
+	if got := checkoutRefusalFor(activityResolve, errors.New("mechanism")); got.Condition != ActivityRepositoryMismatch {
 		t.Fatalf("mechanism = %#v", got)
 	}
-	if got := checkoutRefusal(NewCheckoutResolutionError(CheckoutUnsafe, errors.New("unsafe"))); got.Condition != ActivityUnsafeResident {
+	if got := checkoutRefusalFor(activityResolve, NewCheckoutResolutionError(CheckoutUnsafe, errors.New("unsafe"))); got.Condition != ActivityUnsafeResident {
 		t.Fatalf("unsafe = %#v", got)
 	}
 	service.checkoutResolver = nil
 	if got := service.ResolveActivity(testContext(t), slug, CheckoutReceiving, ""); got.Condition != ActivityRepositoryMismatch {
 		t.Fatalf("nil resolver = %#v", got)
+	}
+}
+
+func TestActivityReviewFixReceivingResolutionNeverUsesDotAndValidatesRequestedCheckout(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, nil)
+	if _, err := service.New(testContext(t), "Receiving review fix"); err != nil {
+		t.Fatal(err)
+	}
+	slug := "receiving-review-fix"
+	managed := service.paths.managedWorktree(slug)
+	var resolved []string
+	service.checkoutResolver = func(_ context.Context, path string) (CheckoutFacts, error) {
+		resolved = append(resolved, path)
+		if path == "." {
+			t.Fatal("empty receiving checkout was resolved as dot")
+		}
+		return CheckoutFacts{InvokingRoot: path, PrimaryRoot: root}, nil
+	}
+	managedFacts := CheckoutFacts{InvokingRoot: managed, PrimaryRoot: root}
+	if _, err := service.destination(testContext(t), slug, CheckoutReceiving, "", nil, managedFacts); err == nil {
+		t.Fatal("managed-first receiving resolution succeeded without a recorded or explicit checkout")
+	}
+	if len(resolved) != 0 {
+		t.Fatalf("managed-first receiving resolved unexpected paths: %q", resolved)
+	}
+	prior := &Activity{ReceivingCheckout: filepath.Join(root, "recorded")}
+	if got, err := service.destination(testContext(t), slug, CheckoutReceiving, filepath.Join(root, "explicit"), prior, managedFacts); err != nil || got.CWD != prior.ReceivingCheckout {
+		t.Fatalf("recorded receiving checkout did not win: destination=%#v err=%v", got, err)
+	}
+	if got, err := service.destination(testContext(t), slug, CheckoutReceiving, filepath.Join(root, "explicit"), nil, managedFacts); err != nil || got.CWD != filepath.Join(root, "explicit") {
+		t.Fatalf("explicit receiving checkout was not resolved: destination=%#v err=%v", got, err)
+	}
+
+	other := filepath.Join(root, "same-repository-different-checkout")
+	service.checkoutResolver = func(_ context.Context, path string) (CheckoutFacts, error) {
+		if path == other {
+			return CheckoutFacts{InvokingRoot: root, PrimaryRoot: root}, nil
+		}
+		return CheckoutFacts{InvokingRoot: path, PrimaryRoot: root}, nil
+	}
+	claim := activityFor(other, testIDA)
+	claim.ReceivingCheckout = other
+	if err := service.verifyActivityDestination(testContext(t), slug, claim); err == nil {
+		t.Fatal("checkout validation accepted a same-repository different checkout")
+	}
+	claim = activityFor(root, testIDA)
+	claim.ReceivingCheckout = other
+	if err := service.verifyActivityDestination(testContext(t), slug, claim); err == nil {
+		t.Fatal("receiving activity accepted a same-repository different checkout")
+	}
+	service.checkoutResolver = func(_ context.Context, path string) (CheckoutFacts, error) {
+		return CheckoutFacts{InvokingRoot: path, PrimaryRoot: root}, nil
+	}
+	if err := service.verifyActivityDestination(testContext(t), slug, claim); err == nil {
+		t.Fatal("receiving activity accepted different requested checkout paths")
+	}
+}
+
+func TestActivityReviewFixRefusalsReportOperationAxesAndMemoryRemedies(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
+	if _, err := service.New(testContext(t), "Outcome review fix"); err != nil {
+		t.Fatal(err)
+	}
+	slug := "outcome-review-fix"
+	if err := os.WriteFile(service.paths.memoryFile(slug), []byte("---\neffort: outcome-review-fix\nphase: \"\"\nnext: continue\nupdated: 2026-08-02T12:00:00Z\n---\nbody\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	resolve := service.ResolveActivity(testContext(t), slug, CheckoutReceiving, root)
+	attach := service.AttachActivity(testContext(t), slug, activityFor(root, testIDA))
+	for name, reply := range map[string]ActivityReply{"resolve": resolve, "attach": attach} {
+		if reply.Condition != ActivityInvalidMemory || reply.Outcome == nil || reply.Outcome.ChangedActivity || reply.Outcome.ChangedMemory || reply.Outcome.ChangedCWD != (name == "attach") || len(reply.Outcome.NextActions) != 1 || reply.Outcome.Cause != "" {
+			t.Fatalf("%s invalid-memory outcome = %#v", name, reply)
+		}
+		if name == "attach" && reply.Outcome.NextActions[0] != "./awf effort memory update outcome-review-fix --phase <replacement-phase>" {
+			t.Fatalf("attach repair action = %q", reply.Outcome.NextActions[0])
+		}
+	}
+	if got := service.HeartbeatActivity(slug, testIDA); got.Outcome == nil || got.Outcome.ChangedActivity || got.Outcome.ChangedMemory || got.Outcome.ChangedCWD {
+		t.Fatalf("heartbeat refusal axes = %#v", got)
+	}
+	for operation, changedCWD := range map[activityOperation]bool{
+		activityResolve: false, activityAttach: true, activityHeartbeat: false, activityCheckout: true, activityDetach: false,
+	} {
+		if got := refusalFor(operation, ActivityMissing, nil, nil).Outcome; got.ChangedActivity || got.ChangedMemory || got.ChangedCWD != changedCWD {
+			t.Fatalf("%s refusal axes = %#v", operation, got)
+		}
+	}
+	if err := os.WriteFile(service.paths.memoryFile(slug), []byte("broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manual := service.ResolveActivity(testContext(t), slug, CheckoutReceiving, root)
+	if manual.Outcome == nil || manual.Outcome.Cause != "" || manual.Outcome.NextActions[0] != "repair .awf/efforts/outcome-review-fix/memory.md manually: preserve its body and restore a matching effort identity with a recognized canonical or legacy metadata boundary" {
+		t.Fatalf("manual memory remedy = %#v", manual)
 	}
 }
 
@@ -251,7 +346,7 @@ func TestActivityDestinationAndPersistenceFaultBoundaries(t *testing.T) {
 	service.worktrees = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
 		return []awfgit.WorktreeRegistration{{Path: managed, Branch: "refs/heads/awf/" + slug}}, nil
 	}
-	if got, err := service.destination(testContext(t), slug, CheckoutManaged, "/receiving", nil, facts); err != nil || got.CWD != managed || got.ReceivingCheckout != "/receiving" {
+	if got, err := service.destination(testContext(t), slug, CheckoutManaged, root, nil, facts); err != nil || got.CWD != managed || got.ReceivingCheckout != root {
 		t.Fatalf("managed = %#v %v", got, err)
 	}
 	prior := &Activity{ReceivingCheckout: root}
@@ -474,12 +569,6 @@ func TestActivityUncoveredPolicyBranches(t *testing.T) {
 	if _, err := service.destination(testContext(t), slug, CheckoutManaged, "", nil, CheckoutFacts{InvokingRoot: root, PrimaryRoot: root}); err == nil {
 		t.Fatal("unregistered managed destination accepted")
 	}
-	if got := chooseReceiving(&Activity{ReceivingCheckout: root}, ""); got != root {
-		t.Fatalf("prior receiver = %q", got)
-	}
-	if got := chooseReceiving(nil, ""); got != "" {
-		t.Fatalf("empty receiver = %q", got)
-	}
 	managed := activityFor(service.paths.managedWorktree(slug), testIDA)
 	managed.Role, managed.ReceivingCheckout = CheckoutManaged, root
 	if err := service.verifyActivityDestination(testContext(t), slug, Activity{Role: "bad"}); err == nil {
@@ -538,7 +627,7 @@ func TestActivityUncoveredPolicyBranches(t *testing.T) {
 	if got := service.AttachActivity(testContext(t), slug, activityFor(root, testIDB)); got.Condition != ActivityTakenOver || got.PriorClaim == nil {
 		t.Fatalf("takeover = %#v", got)
 	}
-	if got := service.mutateActivity(slug, testIDB, ActivityHeartbeat, func(a *Activity) { a.Role = "bad" }); got.Condition != ActivityRepositoryMismatch {
+	if got := service.mutateActivity(slug, testIDB, activityHeartbeat, ActivityHeartbeat, func(a *Activity) { a.Role = "bad" }); got.Condition != ActivityRepositoryMismatch {
 		t.Fatalf("invalid mutation = %#v", got)
 	}
 	service.store.fault = func(stage string) error {
@@ -547,7 +636,7 @@ func TestActivityUncoveredPolicyBranches(t *testing.T) {
 		}
 		return nil
 	}
-	if got := service.mutateActivity(slug, testIDB, ActivityHeartbeat, func(*Activity) {}); got.Condition != ActivityUnsafeResident {
+	if got := service.mutateActivity(slug, testIDB, activityHeartbeat, ActivityHeartbeat, func(*Activity) {}); got.Condition != ActivityUnsafeResident {
 		t.Fatalf("persist fault = %#v", got)
 	}
 	service.store.fault = func(stage string) error {

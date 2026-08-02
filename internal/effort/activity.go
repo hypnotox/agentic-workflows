@@ -125,7 +125,22 @@ type ActionableOutcome struct {
 func activityReply(condition ActivityCondition) ActivityReply {
 	return ActivityReply{SchemaVersion: activitySchemaVersion, Condition: condition}
 }
-func refusal(condition ActivityCondition, cause error) ActivityReply {
+
+type activityOperation string
+
+const (
+	activityResolve   activityOperation = "resolve"
+	activityAttach    activityOperation = "attach"
+	activityHeartbeat activityOperation = "heartbeat"
+	activityCheckout  activityOperation = "checkout"
+	activityDetach    activityOperation = "detach"
+)
+
+// refusalFor records only mutations that have already occurred at this protocol
+// boundary. Attach and checkout are committed after Pi rebinds its live CWD;
+// Phase 3 therefore consumes their ChangedCWD contract without asking Go to
+// infer a runtime result.
+func refusalFor(operation activityOperation, condition ActivityCondition, cause error, nextActions []string) ActivityReply {
 	r := activityReply(condition)
 	category := "operation"
 	if condition == ActivityUnsafeResident {
@@ -134,7 +149,10 @@ func refusal(condition ActivityCondition, cause error) ActivityReply {
 	if condition == ActivityRepositoryMismatch {
 		category = "topology"
 	}
-	r.Outcome = &ActionableOutcome{Category: category, Condition: string(condition), NextActions: []string{"inspect the effort resident and retry"}}
+	if len(nextActions) == 0 {
+		nextActions = []string{"inspect the effort resident and retry"}
+	}
+	r.Outcome = &ActionableOutcome{Category: category, Condition: string(condition), ChangedCWD: operation == activityAttach || operation == activityCheckout, NextActions: nextActions}
 	if cause != nil {
 		r.Outcome.Cause = cause.Error()
 	}
@@ -240,51 +258,66 @@ func (s store) replaceResident(path string, raw []byte, label string) (returnErr
 	return syncDirectory(dir)
 }
 
-func (s *Service) activityEffort(slug string) (*ActivityEffort, *MemoryMetadata, *ActivityReply) {
+func (s *Service) activityEffort(slug string, operation activityOperation) (*ActivityEffort, *MemoryMetadata, *ActivityReply) {
 	r, err := s.store.loadDirectory(s.paths.effort(slug), slug, false)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			x := refusal(ActivityMissing, nil)
+			x := refusalFor(operation, ActivityMissing, nil, nil)
 			return nil, nil, &x
 		}
-		x := refusal(ActivityUnsafeResident, err)
+		x := refusalFor(operation, ActivityUnsafeResident, err, nil)
 		return nil, nil, &x
 	}
 	raw, err := readRegularNoFollowBounded(s.paths.memoryFile(slug), maxMemoryBytes)
 	if err != nil {
-		x := refusal(ActivityInvalidMemory, err)
-		x.Effort = &ActivityEffort{slug, r.Title}
+		x := invalidMemoryRefusal(operation, slug, r.Title, nil, err, true)
 		return nil, nil, &x
 	}
 	m, _, err := readMemoryMetadata(raw, slug)
 	if err != nil {
-		x := refusal(ActivityInvalidMemory, err)
-		x.Effort = &ActivityEffort{slug, r.Title}
+		x := invalidMemoryRefusal(operation, slug, r.Title, raw, err, false)
 		return nil, nil, &x
 	}
 	return &ActivityEffort{slug, r.Title}, &m, nil
+}
+
+func invalidMemoryRefusal(operation activityOperation, slug, title string, raw []byte, err error, readFailure bool) ActivityReply {
+	action := "repair .awf/efforts/" + slug + "/memory.md manually: preserve its body and restore a matching effort identity with a recognized canonical or legacy metadata boundary"
+	if !readFailure {
+		doc := inspectMemory(raw, slug)
+		if doc.boundary && doc.identity == slug && (doc.invalid["phase"] || doc.invalid["next"]) {
+			action = memoryUpdateCommand(slug, doc.invalid)
+		}
+	}
+	var cause error
+	if readFailure {
+		cause = err
+	}
+	r := refusalFor(operation, ActivityInvalidMemory, cause, []string{action})
+	r.Effort = &ActivityEffort{slug, title}
+	return r
 }
 
 // ResolveActivity validates the named destination but does not mutate an activity claim.
 func (s *Service) ResolveActivity(ctx context.Context, slug string, role CheckoutRole, receiving string) ActivityReply {
 	facts, err := s.resolveCheckout(ctx, s.paths.roots.InvokingRoot)
 	if err != nil {
-		return checkoutRefusal(err)
+		return checkoutRefusalFor(activityResolve, err)
 	}
-	eff, m, bad := s.activityEffort(slug)
+	eff, m, bad := s.activityEffort(slug, activityResolve)
 	if bad != nil {
 		return *bad
 	}
 	if facts.PrimaryRoot != s.paths.roots.PrimaryRoot {
-		return refusal(ActivityRepositoryMismatch, errors.New("invoking checkout belongs to another repository"))
+		return refusalFor(activityResolve, ActivityRepositoryMismatch, errors.New("invoking checkout belongs to another repository"), nil)
 	}
 	prior, err := s.activityCurrent(slug)
 	if err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(activityResolve, ActivityUnsafeResident, err, nil)
 	}
 	dest, err := s.destination(ctx, slug, role, receiving, prior, facts)
 	if err != nil {
-		return checkoutRefusal(err)
+		return checkoutRefusalFor(activityResolve, err)
 	}
 	r := activityReply(ActivityReady)
 	r.Effort = eff
@@ -293,38 +326,20 @@ func (s *Service) ResolveActivity(ctx context.Context, slug string, role Checkou
 	r.PriorClaim = prior
 	return r
 }
-func (s *Service) destination(ctx context.Context, slug string, role CheckoutRole, receiving string, prior *Activity, facts CheckoutFacts) (ActivityDestination, error) {
+func (s *Service) destination(ctx context.Context, slug string, role CheckoutRole, explicitReceiving string, prior *Activity, facts CheckoutFacts) (ActivityDestination, error) {
 	if role != CheckoutManaged && role != CheckoutReceiving {
 		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("invalid checkout role"))
 	}
 	managed := filepath.Clean(s.paths.managedWorktree(slug))
-	receiving = filepath.Clean(receiving)
-	if role == CheckoutManaged {
-		regs, err := s.worktrees(ctx)
-		if err != nil {
-			return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, err)
-		}
-		found := false
-		for _, r := range regs {
-			if filepath.Clean(r.Path) == managed && r.Branch == "refs/heads/awf/"+slug {
-				found = true
-			}
-		}
-		if !found {
-			return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("managed checkout is not registered"))
-		}
-		return ActivityDestination{CWD: managed, Role: role, ReceivingCheckout: chooseReceiving(prior, receiving)}, nil
-	}
-	if receiving == "." {
-		receiving = ""
-	}
-	if receiving == "" && prior != nil {
+	var receiving string
+	switch {
+	case prior != nil && prior.ReceivingCheckout != "":
 		receiving = prior.ReceivingCheckout
-	}
-	if receiving == "" && filepath.Clean(facts.InvokingRoot) != managed {
+	case explicitReceiving != "":
+		receiving = explicitReceiving
+	case facts.InvokingRoot != managed:
 		receiving = facts.InvokingRoot
-	}
-	if receiving == "" {
+	default:
 		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("supply an explicit receiving checkout"))
 	}
 	rf, err := s.resolveCheckout(ctx, receiving)
@@ -334,16 +349,19 @@ func (s *Service) destination(ctx context.Context, slug string, role CheckoutRol
 	if rf.PrimaryRoot != s.paths.roots.PrimaryRoot {
 		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("receiving checkout belongs to another repository"))
 	}
-	return ActivityDestination{CWD: rf.InvokingRoot, Role: role, ReceivingCheckout: rf.InvokingRoot}, nil
-}
-func chooseReceiving(prior *Activity, supplied string) string {
-	if supplied != "" {
-		return supplied
+	if role == CheckoutReceiving {
+		return ActivityDestination{CWD: rf.InvokingRoot, Role: role, ReceivingCheckout: rf.InvokingRoot}, nil
 	}
-	if prior != nil {
-		return prior.ReceivingCheckout
+	regs, err := s.worktrees(ctx)
+	if err != nil {
+		return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, err)
 	}
-	return ""
+	for _, r := range regs {
+		if filepath.Clean(r.Path) == managed && r.Branch == "refs/heads/awf/"+slug {
+			return ActivityDestination{CWD: managed, Role: role, ReceivingCheckout: rf.InvokingRoot}, nil
+		}
+	}
+	return ActivityDestination{}, NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("managed checkout is not registered"))
 }
 func (s *Service) resolveCheckout(ctx context.Context, path string) (CheckoutFacts, error) {
 	if s.checkoutResolver == nil {
@@ -358,15 +376,15 @@ func (s *Service) resolveCheckout(ctx context.Context, path string) (CheckoutFac
 	}
 	return facts, nil
 }
-func checkoutRefusal(err error) ActivityReply {
+func checkoutRefusalFor(operation activityOperation, err error) ActivityReply {
 	var ce *CheckoutResolutionError
 	if errors.As(err, &ce) {
 		if ce.Kind() == CheckoutUnsafe {
-			return refusal(ActivityUnsafeResident, ce.Unwrap())
+			return refusalFor(operation, ActivityUnsafeResident, ce.Unwrap(), nil)
 		}
-		return refusal(ActivityRepositoryMismatch, ce.Unwrap())
+		return refusalFor(operation, ActivityRepositoryMismatch, ce.Unwrap(), nil)
 	}
-	return refusal(ActivityRepositoryMismatch, err)
+	return refusalFor(operation, ActivityRepositoryMismatch, err, nil)
 }
 func (s *Service) activityCurrent(slug string) (*Activity, error) {
 	a, err := s.store.readActivity(s.paths.activityFile(slug))
@@ -379,7 +397,7 @@ func (s *Service) activityCurrent(slug string) (*Activity, error) {
 func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) ActivityReply {
 	unlock := lockActivity(s.paths.activityFile(slug))
 	defer unlock()
-	eff, m, bad := s.activityEffort(slug)
+	eff, m, bad := s.activityEffort(slug, activityAttach)
 	if bad != nil {
 		return *bad
 	}
@@ -389,17 +407,17 @@ func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) A
 	now := s.now().UTC()
 	a.AttachedAt, a.HeartbeatAt = now, now
 	if err := validActivity(a); err != nil {
-		return refusal(ActivityRepositoryMismatch, err)
+		return refusalFor(activityAttach, ActivityRepositoryMismatch, err, nil)
 	}
 	if err := s.verifyActivityDestination(ctx, slug, a); err != nil {
-		return checkoutRefusal(err)
+		return checkoutRefusalFor(activityAttach, err)
 	}
 	prior, err := s.activityCurrent(slug)
 	if err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(activityAttach, ActivityUnsafeResident, err, nil)
 	}
 	if err := s.store.replaceActivity(s.paths.activityFile(slug), a); err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(activityAttach, ActivityUnsafeResident, err, nil)
 	}
 	r := activityReply(ActivityAttached)
 	if prior != nil {
@@ -412,23 +430,23 @@ func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) A
 	return r
 }
 func (s *Service) HeartbeatActivity(slug, owner string) ActivityReply {
-	return s.mutateActivity(slug, owner, ActivityHeartbeat, func(a *Activity) { a.HeartbeatAt = s.now().UTC() })
+	return s.mutateActivity(slug, owner, activityHeartbeat, ActivityHeartbeat, func(a *Activity) { a.HeartbeatAt = s.now().UTC() })
 }
 func (s *Service) CheckoutActivity(ctx context.Context, slug, owner, cwd string, role CheckoutRole) ActivityReply {
 	// Revalidate the current claim before deciding the only legal destination.
 	prior, err := s.activityCurrent(slug)
 	if err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(activityCheckout, ActivityUnsafeResident, err, nil)
 	}
 	if prior == nil {
-		return refusal(ActivityMissing, nil)
+		return refusalFor(activityCheckout, ActivityMissing, nil, nil)
 	}
 	candidate := *prior
 	candidate.CWD, candidate.Role = cwd, role
 	if err := s.verifyActivityDestination(ctx, slug, candidate); err != nil {
-		return checkoutRefusal(err)
+		return checkoutRefusalFor(activityCheckout, err)
 	}
-	return s.mutateActivity(slug, owner, ActivityCheckoutUpdated, func(a *Activity) { a.CWD = cwd; a.Role = role; a.HeartbeatAt = s.now().UTC() })
+	return s.mutateActivity(slug, owner, activityCheckout, ActivityCheckoutUpdated, func(a *Activity) { a.CWD = cwd; a.Role = role; a.HeartbeatAt = s.now().UTC() })
 }
 
 // verifyActivityDestination is the last policy check before an activity write.
@@ -442,13 +460,21 @@ func (s *Service) verifyActivityDestination(ctx context.Context, slug string, a 
 	if err != nil {
 		return err
 	}
-	cwd, err := s.resolveCheckout(ctx, a.CWD)
+	requestedCWD := filepath.Clean(a.CWD)
+	cwd, err := s.resolveCheckout(ctx, requestedCWD)
 	if err != nil {
 		return err
 	}
-	receiving, err := s.resolveCheckout(ctx, a.ReceivingCheckout)
+	if cwd.InvokingRoot != requestedCWD {
+		return NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("resolved checkout does not match requested cwd"))
+	}
+	requestedReceiving := filepath.Clean(a.ReceivingCheckout)
+	receiving, err := s.resolveCheckout(ctx, requestedReceiving)
 	if err != nil {
 		return err
+	}
+	if receiving.InvokingRoot != requestedReceiving {
+		return NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("resolved checkout does not match requested receiving checkout"))
 	}
 	if invoking.PrimaryRoot != s.paths.roots.PrimaryRoot || cwd.PrimaryRoot != s.paths.roots.PrimaryRoot || receiving.PrimaryRoot != s.paths.roots.PrimaryRoot {
 		return NewCheckoutResolutionError(CheckoutRepositoryMismatch, errors.New("checkout belongs to another repository"))
@@ -479,13 +505,13 @@ func (s *Service) DetachActivity(slug, owner string) ActivityReply {
 	r, err := s.store.loadDirectory(s.paths.effort(slug), slug, false)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return refusal(ActivityMissing, nil)
+			return refusalFor(activityDetach, ActivityMissing, nil, nil)
 		}
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
 	}
 	a, err := s.activityCurrent(slug)
 	if err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
 	}
 	if a == nil {
 		out := activityReply(ActivityDetached)
@@ -493,45 +519,45 @@ func (s *Service) DetachActivity(slug, owner string) ActivityReply {
 		return out
 	}
 	if a.Owner != owner {
-		out := refusal(ActivityNotOwner, nil)
+		out := refusalFor(activityDetach, ActivityNotOwner, nil, nil)
 		out.Effort = &ActivityEffort{slug, r.Title}
 		out.Activity = a
 		return out
 	}
 	if err := s.store.removeActivity(s.paths.activityFile(slug)); err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
 	}
 	out := activityReply(ActivityDetached)
 	out.Effort = &ActivityEffort{slug, r.Title}
 	return out
 }
-func (s *Service) mutateActivity(slug, owner string, condition ActivityCondition, change func(*Activity)) ActivityReply {
+func (s *Service) mutateActivity(slug, owner string, operation activityOperation, condition ActivityCondition, change func(*Activity)) ActivityReply {
 	unlock := lockActivity(s.paths.activityFile(slug))
 	defer unlock()
 	r := activityReply(condition)
-	eff, m, bad := s.activityEffort(slug)
+	eff, m, bad := s.activityEffort(slug, operation)
 	if bad != nil {
 		return *bad
 	}
 	a, err := s.activityCurrent(slug)
 	if err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(operation, ActivityUnsafeResident, err, nil)
 	}
 	if a == nil {
-		return refusal(ActivityMissing, nil)
+		return refusalFor(operation, ActivityMissing, nil, nil)
 	}
 	if a.Owner != owner {
-		out := refusal(ActivityNotOwner, nil)
+		out := refusalFor(operation, ActivityNotOwner, nil, nil)
 		out.Effort = eff
 		out.Activity = a
 		return out
 	}
 	change(a)
 	if err := validActivity(*a); err != nil {
-		return refusal(ActivityRepositoryMismatch, err)
+		return refusalFor(operation, ActivityRepositoryMismatch, err, nil)
 	}
 	if err := s.store.replaceActivity(s.paths.activityFile(slug), *a); err != nil {
-		return refusal(ActivityUnsafeResident, err)
+		return refusalFor(operation, ActivityUnsafeResident, err, nil)
 	}
 	r.Effort = eff
 	r.Memory = m
