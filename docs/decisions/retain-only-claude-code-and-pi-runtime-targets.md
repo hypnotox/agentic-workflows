@@ -132,3 +132,4 @@ Codex runtime target and remain supported.
 - 2026-08-02: Proposed
 - 2026-08-02: Implementing; content-sha256: 80168b260b1c709601e7ee14c98870b027bb9dddcfbea4b6c48d6f69ed05f412
 - 2026-08-02: Applied; operations: add `rendering/catalog-and-targets:built-in-runtime-targets`, update `rendering/catalog-and-targets:structured-agent-encoding`, update `rendering/catalog-and-targets:target-dialect-render`, remove `rendering/project-output-plan:cursor-no-bridge`
+- 2026-08-02: Applied; operations: add `rendering/project-output-plan:bridge-render-identity`

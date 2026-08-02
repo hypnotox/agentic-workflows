@@ -575,9 +575,9 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			if t.BridgeFile == "" {
 				continue
 			}
-			brf, err := p.renderTarget("claude", "", t.BridgeTemplate,
+			brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
 				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
-			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
+			if err != nil { // coverage-ignore: built-in bridge templates are embedded, part-free, and publication-safe; synthetic descriptor coverage exercises neutral routing
 				return nil, err
 			}
 			out = append(out, brf)
@@ -747,7 +747,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
+	if kind != "target-output" && kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err

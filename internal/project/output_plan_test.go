@@ -153,6 +153,86 @@ func TestTargetDescriptorValidation(t *testing.T) {
 	}
 }
 
+// invariant: rendering/project-output-plan:bridge-render-identity (TestBridgeRenderIdentity)
+func TestBridgeRenderIdentity(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{
+		"target-bridge/.yaml": "data: {}\n",
+		"claude/.yaml":        "data: {}\n",
+	})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	custom := Target{
+		Name:           "custom",
+		SkillDir:       ".custom/workflows",
+		AgentDir:       ".custom/reviewers",
+		AgentSuffix:    ".agent.md",
+		AgentDialect:   MarkdownAgentDialect,
+		BridgeFile:     "CUSTOM.md",
+		BridgeTemplate: runnerTID,
+		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
+		Outputs: []TargetOutput{{
+			Path: ".custom/extension.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl",
+			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
+			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
+		}},
+	}
+	p.Targets = []Target{claudeTarget, custom, piTarget}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]OutputNode{}
+	for _, node := range plan.Nodes {
+		byPath[node.Path] = node
+	}
+	for path, templateID := range map[string]string{"CLAUDE.md": bridgeTID, "CUSTOM.md": runnerTID} {
+		node, ok := byPath[path]
+		if !ok || node.file == nil {
+			t.Fatalf("missing rendered bridge node %s", path)
+		}
+		if node.file.kind != "target-bridge" {
+			t.Errorf("%s render kind = %q, want target-bridge", path, node.file.kind)
+		}
+		if node.Recipe.TemplateID != templateID || node.ObservedTemplateID != templateID {
+			t.Errorf("%s template identity = recipe %q observed %q, want %q", path, node.Recipe.TemplateID, node.ObservedTemplateID, templateID)
+		}
+		for _, sidecar := range []string{".awf/target-bridge/.yaml", ".awf/claude/.yaml"} {
+			if slices.Contains(node.ConsumedInputs, OutputInput{Path: sidecar, Role: ArtifactAuthoredData}) {
+				t.Errorf("%s inherited fictitious sidecar input %s", path, sidecar)
+			}
+		}
+		if strings.Contains(node.file.Content, "<no value>") {
+			t.Errorf("%s rendered an unset template value: %s", path, node.file.Content)
+		}
+	}
+	if got := byPath["CUSTOM.md"].file.Content; !strings.Contains(got, `exec awf "$@"`) {
+		t.Errorf("custom bridge did not use its descriptor template with empty vars:\n%s", got)
+	}
+	for _, path := range []string{
+		".custom/workflows/example-tdd/SKILL.md",
+		".custom/reviewers/code-reviewer.agent.md",
+		".custom/extension.ts",
+	} {
+		if _, ok := byPath[path]; !ok {
+			t.Errorf("custom descriptor output %s is absent", path)
+		}
+	}
+	if !custom.targetTemplateData()["targetSubagentTools"].(bool) || !custom.targetTemplateData()["targetSessionHandoff"].(bool) {
+		t.Error("custom descriptor capabilities were not projected")
+	}
+	for _, output := range piTarget.Outputs {
+		node, ok := byPath[output.Path]
+		if !ok || node.Recipe.TemplateID != output.TemplateID || node.Recipe.Encoder != output.Encoder {
+			t.Errorf("Pi target output %s changed: %#v", output.Path, node)
+		}
+	}
+	if _, ok := byPath["PI.md"]; ok {
+		t.Error("Pi emitted a bridge despite its empty declaration")
+	}
+}
+
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)

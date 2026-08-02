@@ -4,6 +4,12 @@ The Pi target descriptor is the sole declaration of the five Pi TypeScript outpu
 
 ## Claims
 
+### `invariant: bridge-render-identity`
+
+Every target-declared bridge renders through the neutral `target-bridge` identity while its descriptor remains the sole owner of bridge path and template. Input observation does not derive a target-specific sidecar or template from that neutral identity, so a future bridge target cannot inherit Claude-specific inputs accidentally.
+Origin: ADR-retain-only-claude-code-and-pi-runtime-targets
+Backing: test
+
 ### `invariant: catalog-trim-applied`
 
 A non-nil catalog-trim selection passed to ScaffoldConfig replaces the curated-core skills and docs enable arrays verbatim before closure completion, while a nil selection keeps exactly the curated core.
