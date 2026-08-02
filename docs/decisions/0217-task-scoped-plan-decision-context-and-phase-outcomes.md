@@ -4,7 +4,7 @@ slug: task-scoped-plan-decision-context-and-phase-outcomes
 status: Implementing
 date: 2026-08-02
 ---
-# ADR-task-scoped-plan-decision-context-and-phase-outcomes: Task-scoped plan decision context and phase outcomes
+# ADR-0217: Task-scoped plan decision context and phase outcomes
 
 ## Context
 

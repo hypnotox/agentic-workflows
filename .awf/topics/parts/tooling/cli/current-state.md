@@ -65,7 +65,7 @@ Backing: test
 
 The check command groups checks by subject: repo aggregates drift, state, prose, and memory, while staged aggregates its HEAD-to-index state check, plan-artifact findings and non-failing assignment notes, and excludes the directly-invoked commit-message check. Bare awf check runs both aggregates, repo state and staged state dispatch to distinct handlers, and outside a git repository the bare form runs only repo and reports staged unavailable.
 Origin: ADR-0210
-Revised-by: ADR-task-scoped-plan-decision-context-and-phase-outcomes
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: check-disabled-child-disclosure`
@@ -78,7 +78,7 @@ Backing: test
 
 The gated `awf read plan <plan> <P[.T]>` command resolves only an exact plan filename or stem under the configured plans directory and only canonical positive numeric phase or task selectors. Failures retain plan-owned selector identities and available exact values. Plan-v2 success writes the internal/plan-rendered ordered Applying then Context Decision and phase-owner outcome closure unchanged, with first-authored resolved-key deduplication, Applying precedence, task scope safety, whole-plan Definition-of-done exclusion, and preserved source; plan-v1 bytes remain unchanged. Blocking references fail while assignment notes remain non-blocking. It neither includes other phases nor mutates source.
 Origin: ADR-0213
-Revised-by: ADR-task-scoped-plan-decision-context-and-phase-outcomes
+Revised-by: ADR-0217
 Backing: test
 
 ### `invariant: single-os-exit`
