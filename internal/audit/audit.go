@@ -20,7 +20,6 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
 // Finding is one reported conformance issue.
@@ -88,11 +87,7 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 			return repo.RangeCommits(ctx, base, head)
 		},
 		func(ctx context.Context, revision string) (*revisionState, error) {
-			tree, err := snapshot.CommitTree(ctx, repo, revision)
-			if err != nil { // coverage-ignore: RangeCommits already resolved every selected revision and ancestor; only concurrent object-store damage can fail this read
-				return nil, err
-			}
-			return revisionStateFromTree(repoRoot, tree), nil
+			return loadCompleteRevision(ctx, repoRoot, repo, revision)
 		},
 		func(ctx context.Context) ([]Finding, error) {
 			return ruleUncommittedChanges(ctx, repo, in)

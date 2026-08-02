@@ -115,6 +115,14 @@ func (s *revisionState) currentState() (currentstate.Universe, error) {
 	return s.universe, s.universeErr
 }
 
+func loadCompleteRevision(ctx context.Context, root string, repo *awfgit.Repo, revision string) (*revisionState, error) {
+	tree, err := snapshot.CommitTree(ctx, repo, revision)
+	if err != nil {
+		return nil, err
+	}
+	return revisionStateFromTree(root, tree), nil
+}
+
 func revisionStateFromTree(root string, tree *snapshot.Tree) *revisionState {
 	state := &revisionState{}
 	state.loadLock = func() (*manifest.Lock, bool, error) {

@@ -26,12 +26,18 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 	}
 	loadErr := errors.New("load failed")
 	loads := map[string]int{}
+	var requested []string
 	load := func(_ context.Context, revision string) (*revisionState, error) {
 		loads[revision]++
-		if revision == "broken-revision" {
+		requested = append(requested, revision)
+		switch revision {
+		case "broken-revision":
 			return nil, loadErr
+		case "child-revision", "outside-revision":
+			return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+		default:
+			return nil, errors.New("unexpected ancestry traversal to " + revision)
 		}
-		return fixedRevisionState(nil, false, currentstate.Universe{}), nil
 	}
 	liveCalls := 0
 	live := func(context.Context) ([]Finding, error) {
@@ -43,7 +49,12 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	op.transitionFindings(ctx)
+	if findings := op.transitionFindings(ctx); len(findings) != 0 {
+		t.Fatalf("boundary transition findings = %#v", findings)
+	}
+	if got := strings.Join(requested, ","); got != "child-revision,outside-revision" {
+		t.Fatalf("boundary requests = %s, want direct child and first parent only", got)
+	}
 	if _, err := op.state(ctx, "broken-revision"); !errors.Is(err, loadErr) {
 		t.Fatalf("first cached error = %v", err)
 	}
@@ -58,10 +69,6 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 			t.Fatalf("loads[%s] = %d, want %d", revision, got, want)
 		}
 	}
-	if loads["outside-parent-of-outside"] != 0 {
-		t.Fatal("operation recursively traversed ancestry outside the selected range")
-	}
-
 	second, err := newHistoryOperation(ctx, "base", "head", Inputs{}, collect, load, live)
 	if err != nil {
 		t.Fatal(err)
@@ -71,6 +78,51 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 	}
 	if collects != 2 || loads["child-revision"] != 2 {
 		t.Fatalf("separate invocation reused state: collections=%d child loads=%d", collects, loads["child-revision"])
+	}
+}
+
+func TestHistoryOperationRootTransitionUsesEmptyUniverse(t *testing.T) {
+	claim := topic.Claim{ID: "alpha/one:new", Slug: "new", Type: topic.Invariant, Prose: "New.", Origin: "0001", Backing: topic.ExplicitNoBacking}
+	after := currentstate.Universe{Topics: []topic.Topic{{ID: topic.TopicID{Domain: "alpha", Slug: "one"}, Claims: []topic.Claim{claim}}}}
+	loads := 0
+	op, err := newHistoryOperation(testContext(t), "base", "head", Inputs{},
+		func(context.Context, string, string) ([]awfgit.Commit, error) {
+			return []awfgit.Commit{{Hash: "root", Revision: "root", Subject: "feat(awf): root"}}, nil
+		},
+		func(_ context.Context, revision string) (*revisionState, error) {
+			loads++
+			if revision != "root" {
+				return nil, errors.New("root transition requested a parent")
+			}
+			return fixedRevisionState(nil, false, after), nil
+		},
+		func(context.Context) ([]Finding, error) { return nil, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := op.transitionFindings(testContext(t))
+	if loads != 1 {
+		t.Fatalf("root revision loads = %d, want 1", loads)
+	}
+	var observed bool
+	for _, finding := range findings {
+		observed = observed || strings.Contains(finding.Detail, "was added with no ADR add operation")
+	}
+	if !observed {
+		t.Fatalf("root transition did not compare against the empty universe: %#v", findings)
+	}
+}
+
+func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
+	repo, _ := staleAuditRepo(t, 31)
+	handle, _, err := awfgit.OpenContaining(repo.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := loadCompleteRevision(ctx, repo.Root(), handle, "HEAD"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled complete revision load = %v", err)
 	}
 }
 
