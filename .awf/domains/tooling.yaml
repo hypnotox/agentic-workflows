@@ -12,6 +12,7 @@ paths:
   - internal/contextspill/**
   - internal/initspec/**
   - internal/git/**
+  - internal/filesystem/**
   - internal/effort/**
   - internal/worktree/**
   - internal/testsupport/**

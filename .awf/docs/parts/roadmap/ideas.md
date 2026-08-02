@@ -5,6 +5,14 @@
   and patch-producing parallel workers remain out of scope for the current workflow contract.
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
+- Redesign the check architecture around explicit snapshot capabilities. ADR-0210 forked checks by
+  repository-state and staged-transition universe, removed duplicate payload invocations, made
+  disabled scans git-independent, and made every universe child applicable by construction. Its
+  staged drift remains intentionally narrower than repository drift: a snapshot tree has neither
+  directory entries nor untracked files, so the config-tree hygiene sweep and dead-reference probe
+  need explicit semantics before they can join the blocking staged gate. Use that decision to
+  separate rendered-byte comparison from filesystem-only hygiene instead of extending the current
+  check orchestration with more special cases.
 - Let a global topic carry path selectors, so it can own specific paths as well as supply
   global authority. Today `applies: global` is skipped outright by both `coveredByDomain`
   and `matchingScopedTopics` in `internal/topic/coverage.go`, so a global topic can never
@@ -35,7 +43,7 @@
   config-domain ADR.
 - Design a structured context result only when a demonstrated consumer can define its contract;
   ADR-0165 deliberately removed speculative JSON rather than preserving a hidden path census.
-- Enforce the plan freeze mechanically: `awf check --staged` could refuse a diff that edits a
+- Enforce the plan freeze mechanically: `awf check staged` could refuse a diff that edits a
   `docs/plans/` file whose HEAD `status:` is `Implemented`. The recorded "record implementation
   deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151
   session from appending Notes to a frozen plan at review's direction; a prose rule that failed
@@ -110,7 +118,7 @@
 
 - Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
   arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
-  merge the target in the managed worktree, run `awf check --staged`, run the gate, commit,
+  merge the target in the managed worktree, run `awf check staged`, run the gate, commit,
   renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
   path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
   and a renewed terminal review, blocking every other finishing effort for that whole window,

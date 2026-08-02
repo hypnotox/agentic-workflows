@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -38,6 +40,7 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 
 // invariant: rendering/project-output-plan:output-plan-complete (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanContainsWritesGeneratedNodesAndReservations)
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(testContext(t), root)
@@ -72,7 +75,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
 		}
@@ -81,6 +84,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 		path     string
 		template string
 	}{
+		{path: ".pi/extensions/awf-context-usage/index.ts", template: "templates/pi/awf-context-usage/index.ts.tmpl"},
 		{path: ".pi/extensions/awf-handoff/index.ts", template: "templates/pi/awf-handoff/index.ts.tmpl"},
 		{path: ".pi/extensions/awf-subagents/model-routing.ts", template: "templates/pi/awf-subagents/model-routing.ts.tmpl"},
 	} {
@@ -109,11 +113,9 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 
 // invariant: rendering/project-output-plan:target-capabilities-closed (TestTargetDescriptorValidation)
 // invariant: rendering/pi-workflows:pi-subagent-progress-rendering (TestTargetDescriptorValidation)
-// invariant: rendering/project-output-plan:cursor-no-bridge (TestTargetDescriptorValidation)
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestTargetDescriptorValidation)
 // invariant: rendering/pi-workflows:pi-subagent-progress-bounds (TestTargetDescriptorValidation)
 // invariant: config/migrations-and-locks:close-enabled-set-migration (TestTargetDescriptorValidation)
-// invariant: rendering/workflow-skill-templates:plan-task-detail-modes (TestTargetDescriptorValidation)
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
 		{Name: "bad", BridgeFile: "X"},
@@ -157,8 +159,98 @@ func TestTargetDescriptorValidation(t *testing.T) {
 	}
 }
 
+// invariant: rendering/project-output-plan:bridge-render-identity (TestBridgeRenderIdentity)
+func TestBridgeRenderIdentity(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: [tdd]\nagents: [code-reviewer]\n", map[string]string{
+		"target-bridge/.yaml": "data: {}\n",
+		"claude/.yaml":        "data: {}\n",
+	})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	custom := Target{
+		Name:           "custom",
+		SkillDir:       ".custom/workflows",
+		AgentDir:       ".custom/reviewers",
+		AgentSuffix:    ".agent.md",
+		AgentDialect:   MarkdownAgentDialect,
+		BridgeFile:     "CUSTOM.md",
+		BridgeTemplate: runnerTID,
+		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
+		Outputs: []TargetOutput{{
+			Path: ".custom/extension.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl",
+			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
+			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
+		}},
+	}
+	p.Targets = []Target{claudeTarget, custom, piTarget}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]OutputNode{}
+	for _, node := range plan.Nodes {
+		byPath[node.Path] = node
+	}
+	for path, templateID := range map[string]string{"CLAUDE.md": bridgeTID, "CUSTOM.md": runnerTID} {
+		node, ok := byPath[path]
+		if !ok || node.file == nil {
+			t.Fatalf("missing rendered bridge node %s", path)
+		}
+		if node.file.kind != "target-bridge" {
+			t.Errorf("%s render kind = %q, want target-bridge", path, node.file.kind)
+		}
+		if node.Recipe.TemplateID != templateID || node.ObservedTemplateID != templateID {
+			t.Errorf("%s template identity = recipe %q observed %q, want %q", path, node.Recipe.TemplateID, node.ObservedTemplateID, templateID)
+		}
+		for _, sidecar := range []string{".awf/target-bridge/.yaml", ".awf/claude/.yaml"} {
+			if slices.Contains(node.ConsumedInputs, OutputInput{Path: sidecar, Role: ArtifactAuthoredData}) {
+				t.Errorf("%s inherited fictitious sidecar input %s", path, sidecar)
+			}
+		}
+		if strings.Contains(node.file.Content, "<no value>") {
+			t.Errorf("%s rendered an unset template value: %s", path, node.file.Content)
+		}
+	}
+	if got := byPath["CUSTOM.md"].file.Content; !strings.Contains(got, `exec awf "$@"`) {
+		t.Errorf("custom bridge did not use its descriptor template with empty vars:\n%s", got)
+	}
+	for _, path := range []string{
+		".custom/workflows/example-tdd/SKILL.md",
+		".custom/reviewers/code-reviewer.agent.md",
+		".custom/extension.ts",
+	} {
+		if _, ok := byPath[path]; !ok {
+			t.Errorf("custom descriptor output %s is absent", path)
+		}
+	}
+	if !custom.targetTemplateData()["targetSubagentTools"].(bool) || !custom.targetTemplateData()["targetSessionHandoff"].(bool) {
+		t.Error("custom descriptor capabilities were not projected")
+	}
+	for _, output := range piTarget.Outputs {
+		if output.RequiresSkill != "" {
+			continue
+		}
+		node, ok := byPath[output.Path]
+		if !ok || node.Recipe.TemplateID != output.TemplateID || node.Recipe.Encoder != output.Encoder {
+			t.Errorf("Pi target output %s changed: %#v", output.Path, node)
+		}
+	}
+	if _, ok := byPath["PI.md"]; ok {
+		t.Error("Pi emitted a bridge despite its empty declaration")
+	}
+
+	custom.BridgeTemplate = "missing/custom-bridge.tmpl"
+	p.Targets = []Target{custom}
+	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
+		t.Fatalf("missing custom bridge template error = %v", err)
+	}
+}
+
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -221,15 +313,11 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // invariant: rendering/catalog-and-targets:claude-md-bridge (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/sync-and-drift:uninstall-removes-lock-entries (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/catalog-and-targets:target-dialect-render (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestCurrentStateOutputPlanMatchesTree)
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestCurrentStateOutputPlanMatchesTree)
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
@@ -310,4 +398,26 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 		}
 	}
 	t.Fatal("literal topic output was absent from the plan")
+}
+
+func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
+	bad := piTarget
+	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
+	p := &Project{Cfg: &config.Config{Prefix: "example", Skills: []string{"effort-workflow"}}, Cat: catalog.Standard, Targets: []Target{bad}}
+	_, err := p.targetOutputDeclarations(nil)
+	t.Logf("target output declaration error = %v", err)
+	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
+		t.Fatalf("unreadable target output template error = %v", err)
+	}
+}
+
+func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
+	bad := piTarget
+	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs[0].RequiresSkill = "missing"
+	p := &Project{Cfg: &config.Config{Prefix: "example"}, Cat: catalog.Standard, Targets: []Target{bad}}
+	if _, err := p.targetOutputDeclarations(nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+		t.Fatalf("unknown target output requirement error = %v", err)
+	}
 }

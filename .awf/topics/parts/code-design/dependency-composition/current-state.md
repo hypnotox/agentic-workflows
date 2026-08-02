@@ -8,43 +8,45 @@ A new or deliberately converted volatile dependency is selected explicitly at th
 Origin: ADR-0178
 Backing: unbacked
 Verify: For each changed constructor and executable wiring site, trace production selection to the outermost knowledgeable layer and confirm no prohibited discovery mechanism supplies the dependency.
-
 ### `invariant: consumer-owned-contracts`
 
-Each new or deliberately converted seam is the narrowest contract owned by its consumer and is named for the semantic operation rather than a filesystem, process, Git-command, or other mechanism representation.
+When substitution is needed around a shared concrete implementation, the consumer declares the smallest cohesive structural interface locally and names its dependency for the semantic operation it needs. The provider exports the concrete implementation and neutral values its mechanism yields, never a universal consumer interface. Consumer-local helpers and values may translate the imported capability into readable business policy but never reimplement the shared concern; a direct concrete dependency remains legal when substitution is unnecessary.
 Origin: ADR-0178
+Revised-by: ADR-0216
 Backing: unbacked
-Verify: For each changed seam, identify its consumer, required operations, and mechanism boundary; confirm the contract contains no operation or representation the consumer does not need.
-
+Verify: For each changed dependency boundary, inspect the provider's exported surface, the consumer-local interface and helpers, and production wiring; confirm the interface is the consumer's narrow cohesive view, policy remains local, no provider-owned universal interface or function-field renaming layer appears, and a direct concrete dependency is used when no substitution boundary is needed.
 ### `invariant: mechanism-adapters`
 
 A mechanism adapter remains outside the policy package it serves, translates mechanism-specific values and errors at that boundary, and does not absorb policy owned by the consumer.
 Origin: ADR-0178
 Backing: unbacked
 Verify: Inspect every changed adapter's package direction, returned values, errors, and decisions; confirm mechanism representation stops at the boundary and policy stays with the consumer.
-
 ### `invariant: direct-injection-first`
 
 A one-operation dependency is injected as a function and an immutable input as a value; an interface is introduced only for a cohesive multi-operation behavioral contract with domain meaning, and a required dependency never silently defaults.
 Origin: ADR-0178
 Backing: unbacked
 Verify: Inspect changed constructor parameters and nil handling, and reject an interface, hidden production default, or test-only production indirection that is not required by the consumer contract.
-
 ### `invariant: concrete-first-consumer`
 
-Every new composition capability lands in the same green transaction as exactly one named concrete first consumer; no adapter, constructor field, interface method, option, or helper is added only for anticipated reuse.
+Every new production composition capability lands in the same green transaction as exactly one named concrete production first consumer. A composition capability exported by a dedicated shared test-support package under `internal/testsupport/**` instead lands with exactly one named outside-package test first consumer. In either case the consumer uses the whole introduced capability, and no adapter, constructor field, interface method, option, helper, fault operation, or other composition surface is added only for anticipated reuse.
 Origin: ADR-0178
+Revised-by: ADR-0215
 Backing: unbacked
-Verify: For each newly exported or shared composition symbol, trace its production callers in the same commit and confirm one concrete first consumer uses the whole introduced capability.
+Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
+### `invariant: upgrade-attestation-filesystem-wiring`
+
+Public upgrade attestation `Verify` opens and closes the production root-confined filesystem handle at its outer boundary, passes that handle through the private consumer-owned structural contract, and no digest or collection helper constructs, discovers, or defaults the dependency.
+Origin: ADR-0216
+Backing: test
 
 ### `invariant: dependency-composition-commit-classification`
 
 Code-design authority and cross-package code-structure work uses the `code-design` scope, and a structural change uses the existing `refactor` type rather than a `refactor` scope.
 Origin: ADR-0178
-Revised-by: ADR-0180
+Revised-by: ADR-0180, ADR-0210
 Backing: unbacked
-Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check commit` against the planned code-design subjects.
-
+Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check staged commit` against the planned code-design subjects.
 ### `invariant: sync-project-loader-wiring`
 
 Top-level render, initialized render, and every existing post-mutation render reach project opening through the one Loader composed by the `runSync` family; `project.Open` remains a transitional compatibility wrapper with no new caller.

@@ -79,7 +79,7 @@ In phase-owner mode only, and only once your scope is complete and green:
 
 1. Stage the complete transaction explicitly, by path. Never stage indiscriminately.
 2. Create exactly one commit, using the closing subject your task declares. The commit requires
-   `awf check --staged` and `./x gate`
+   `awf check staged` and `./x gate`
    to pass: a wired pre-commit hook enforces both at commit time, and you run them manually first
    only in a clone without wired hooks (checkable with `git config core.hooksPath`; when in doubt, run both manually).
 3. Confirm the working tree is clean afterwards.

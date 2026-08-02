@@ -35,7 +35,6 @@ Origin: ADR-0042
 Revised-by: ADR-0202
 Backing: unbacked
 Verify: Read scaffoldRecord in internal/adr/adr.go, which both NewFile and NewPendingFile delegate to, and confirm it stats the computed target path and returns an already-exists error before performing any write.
-
 ### `invariant: adr-new-sequential-numbering`
 
 awf new adr allocates its identity from the branch: on the configured integrationBranch it takes the highest existing ADR number in the decisions directory plus one and never reuses a number already present there, and on any other outcome - a different branch, a detached HEAD, or a repository it cannot read - it writes a slug-identified pending record carrying no number at all.
@@ -80,11 +79,17 @@ A current-state-v3 record carries a mandatory `slug:` frontmatter key equal to t
 Origin: ADR-0202
 Backing: test
 
+### `invariant: corrective-reapplication`
+
+A current-state-v2 or current-state-v3 ADR in Implementing may append any number of `Reapplied; operations:` events for an add or update operation already named by an earlier Applied event. Each event is declaration-ordered, unique within the event, retained as its own ordered application occurrence, and reconciles one further material authored correction while operation progress continues to count the declaration once. A re-applied update preserves Origin and its existing canonical Revised-by entry; a re-applied add preserves its Origin naming the ADR and leaves Revised-by byte-identical. Remove operations, events before the first Applied occurrence, events outside Implementing, and events between the final Applied event and Implemented are refused.
+Origin: ADR-0212
+Backing: test
+
 ### `invariant: adr-status-enum-and-matrix`
 
-Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, and application-cardinality transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
+Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. A numberless record is valid only when it declares the running binary's current authoring format and satisfies that format's pending-identity rules.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206
+Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0212
 Backing: test
 
 ### `invariant: applied-history-events-append-only`
@@ -140,7 +145,6 @@ The generated decision index separates in-flight work from compact history and n
 Origin: ADR-0135
 Backing: unbacked
 Verify: Fixtures rendered in every legal status produce the exact INDEX.md sections with no anchor annotations.
-
 ### `invariant: decision-items-enumerable`
 
 Parsing an ADR fails when its Decision section has no column-0 numbered items or when its item numbers are not sequential from 1 (a gap, duplicate, or restart).

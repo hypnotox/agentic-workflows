@@ -294,7 +294,7 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:target-prune-ancestors (TestSyncPrunesRemovedTargetTree)
 func TestSyncPrunesRemovedTargetTree(t *testing.T) {
-	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
+	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - pi\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -302,10 +302,10 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".cursor/skills/example-tdd/SKILL.md")); err != nil {
-		t.Fatalf("expected cursor skill rendered on first sync: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".pi/skills/example-tdd/SKILL.md")); err != nil {
+		t.Fatalf("expected Pi skill rendered on first sync: %v", err)
 	}
-	// Drop the cursor target (sampleYAML has no targets: key → defaults to claude).
+	// Drop the Pi target (sampleYAML has no targets key and defaults to claude).
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(sampleYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -316,14 +316,15 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := p2.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// The whole .cursor/ tree is gone - every empty ancestor, not just the leaf parent.
-	for _, dir := range []string{".cursor/skills/example-tdd", ".cursor/skills", ".cursor/agents", ".cursor"} {
+	// The whole .pi/ tree is gone - every empty ancestor, not just the leaf parent.
+	for _, dir := range []string{".pi/skills/example-tdd", ".pi/skills", ".pi/agents", ".pi/extensions", ".pi"} {
 		if _, err := os.Stat(filepath.Join(root, dir)); !os.IsNotExist(err) {
 			t.Errorf("expected %s removed, stat err = %v", dir, err)
 		}
 	}
 }
 
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent)
 func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -333,7 +334,7 @@ func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) 
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	for _, rel := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+	for _, rel := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
 		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
 			t.Fatalf("missing %s: %v", rel, err)
 		}
@@ -352,7 +353,7 @@ func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) 
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	for _, rel := range []string{".pi/extensions/awf-handoff", ".pi/extensions/awf-subagents", ".pi/extensions"} {
+	for _, rel := range []string{".pi/extensions/awf-context-usage", ".pi/extensions/awf-handoff", ".pi/extensions/awf-subagents", ".pi/extensions"} {
 		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
 			t.Errorf("expected %s removed: %v", rel, err)
 		}
@@ -377,6 +378,7 @@ func TestCheckCleanAfterSync(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestCheckDetectsHandEdit)
 func TestCheckDetectsHandEdit(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)

@@ -101,15 +101,21 @@ func TestHelpListsGroupChildren(t *testing.T) {
 			}
 		}
 		block := got[from:to]
-		for _, child := range parent.Children {
-			line := "\n    " + child.Name + " "
-			if !strings.Contains(block, line) {
-				t.Errorf("globalHelp omits %s child %q beneath its parent:\n%s", parent.Name, child.Name, block)
-			}
-			if !strings.Contains(block, child.Summary) {
-				t.Errorf("globalHelp omits the summary of %s %q", parent.Name, child.Name)
+		var checkDescendants func(clispec.Command, string, int)
+		checkDescendants = func(node clispec.Command, path string, depth int) {
+			for _, child := range node.Children {
+				childPath := strings.TrimSpace(path + " " + child.Name)
+				line := "\n" + strings.Repeat("  ", depth+1) + child.Name + " "
+				if !strings.Contains(block, line) {
+					t.Errorf("globalHelp omits %s at depth %d beneath its parent:\n%s", childPath, depth, block)
+				}
+				if !strings.Contains(block, child.Summary) {
+					t.Errorf("globalHelp omits the summary of %s", childPath)
+				}
+				checkDescendants(child, childPath, depth+1)
 			}
 		}
+		checkDescendants(parent, parent.Name, 1)
 	}
 }
 

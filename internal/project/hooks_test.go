@@ -70,10 +70,10 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
 			wantCmds := map[string][]string{
-				"pre-commit":       {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " check prose\n", tc.awf + " check memory\n"},
-				"commit-msg":       {tc.awf + ` check commit "$1"` + "\n"},
+				"pre-commit":       {tc.awf + " check\n"},
+				"commit-msg":       {tc.awf + ` check staged commit "$1"` + "\n"},
 				"pre-push":         {tc.awf + " check\n"},
-				"pre-merge-commit": {tc.awf + " check --staged\n"},
+				"pre-merge-commit": {tc.awf + " check staged\n"},
 			}
 			for name, f := range got {
 				lines := strings.Split(f.Content, "\n")
@@ -109,16 +109,14 @@ vars:
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   commitGateCmd: ./x commit-gate
-  proseGateCmd: ./x prose-gate
-  memoryGateCmd: ./x memory-gate
 hooks:
   enabled: true
 `)
 	want := map[string][]string{
-		"pre-commit":       {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n./x memory-gate\n"},
+		"pre-commit":       {"./x check\n./x gate\n"},
 		"commit-msg":       {"./x commit-gate \"$1\"\n"},
 		"pre-push":         {"./x gate full\n"},
-		"pre-merge-commit": {"./x check --staged\n"},
+		"pre-merge-commit": {"./x check staged\n"},
 	}
 	for name, f := range got {
 		for _, w := range want[name] {

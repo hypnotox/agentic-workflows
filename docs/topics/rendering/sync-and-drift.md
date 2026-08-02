@@ -89,6 +89,12 @@ Changing the skills enable array changes the lock config hash of every artifact 
 Origin: ADR-0148
 Backing: test
 
+### `invariant: staged-drift-rendered-output`
+
+`awf check staged drift` renders from the staged config and reports exactly stale and hand-edited comparisons against the staged rendered-output tree; every other drift kind is out of scope.
+Origin: ADR-0210
+Backing: test
+
 ### `invariant: sync-always-writes-active-md`
 
 awf render writes the ADR status index at docs/decisions/INDEX.md for every decisions directory, recording it in the lock when the directory holds ADRs and rendering a placeholder index when it holds none.

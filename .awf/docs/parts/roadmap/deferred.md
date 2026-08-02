@@ -56,12 +56,6 @@ read correctly and silently accepted four transitions the rule had refused, incl
 laundering a genuine deletion plus an unrelated pending addition into a rename, which is
 the fail-closed promise ADR-0204 item 4 makes explicitly.
 
-## Pi and shared Agent Skills discovery
-
-Resolve Pi's collision between its `.pi/skills/` output and the shared
-`.agents/skills/` workflow skills that Pi also discovers when Codex is enabled.
-Keep Pi's top-level reviewer skills available without duplicate workflow skill
-names. ADR-0122's Pi and Codex target layouts may need a successor decision.
 ## Mechanically detecting a nominal invariant proof
 
 `invariant-proof-exercises-its-claim` has now failed to prevent three sessions
@@ -129,36 +123,6 @@ Deferred rather than built because the cost is a new rule plus tests at the
 worth considering at the same time is the inverse direction: a file in the diff
 that no part of the message accounts for, which is what catches a `git add -A`
 sweeping another effort's work.
-
-## Bare `awf check` should run every enabled check and report what ran
-
-ADR-0159 was deliberately the first of two decisions: it renamed and regrouped
-the verification commands without changing what bare `awf check` does. The
-follow-on makes bare `awf check` run drift, state, invariants, and, when their
-config knobs are on, the prose and working-memory-citation scans, then report
-every check with a ran or skipped verdict and a reason for each skip. The
-requirement as the user framed it during the ADR-0159 brainstorm: it should
-clearly state what ran and what did not.
-
-Four contracts belong to that decision, all named in ADR-0159 and left
-untouched there. The prose and memory scans call `snapshot.IndexTree` before
-consulting their own knob, so today a disabled gate hard-errors outside a git
-repository instead of reporting itself skipped; the knob check has to move
-ahead of the index read, and what bare check does outside git while a knob is
-ON still needs deciding. The pre-commit payload and `./x gate` between them
-invoke each scan three times, which the report makes visible and which should
-be pruned in the same decision. The exit-code contract when every check is
-skipped is unsettled. And `--staged` could widen from the bare form to the
-children once a report exists to disclose a skip honestly, which ADR-0159
-Decision 3 records as the reason it stayed bare-form-only.
-
-One open design question has no home in ADR-0159 and would otherwise be lost.
-`examples/sundial` is the deliberately smell-free showcase adopter, and it
-enables neither opt-in scan, so a faithful ran/skipped report prints two skip
-lines in the one rendered tree held up as the clean example. Either those lines
-are acceptable output for a healthy project, or the report suppresses a check
-whose knob is off, which weakens the very disclosure the decision exists to
-provide. Settle that before writing the report format, not after.
 
 ## A direct first-stamp ADR flip can smuggle unreviewed section content
 
@@ -266,14 +230,3 @@ does not select them, so any broader cleanup policy needs a separate safety deci
 A future release-policy change should remove Windows from `.goreleaser.yaml` and the
 cross-compile gate. Test-temp management retains Windows compile compatibility now, but owns
 real behavior only on Linux and macOS; it must not approximate Windows ACL safety.
-
-## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
-
-Neither subcommand is invoked by any hook payload, runner step, or CI job in this
-repository - every enforcement path calls bare `awf check`, which runs both halves
-together. Surveyed 2026-07-31 during the workflow-friction effort and deliberately
-kept: they are cheap, tested, and harmless single-half conveniences for focused
-debugging, and removing shipped CLI surface is more churn than a dormant tested
-branch. Tripwire, mirroring the removed `--json` precedent: if either subcommand
-starts misleading users about what bare `awf check` covers, cut it then. Do not
-keep re-asking why they are uninvoked.

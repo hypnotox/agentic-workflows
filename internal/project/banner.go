@@ -33,7 +33,7 @@ func injectBanner(content, tid string, styles ...render.CommentStyle) string {
 		switch styles[0] {
 		case render.HTMLComment:
 			// Keep the default HTML banner.
-		case render.TOMLComment, render.HashComment:
+		case render.HashComment:
 			line = "# " + bannerText + "\n"
 		case render.SlashComment:
 			line = "// " + bannerText + "\n"

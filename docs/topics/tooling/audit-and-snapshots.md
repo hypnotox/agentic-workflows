@@ -3,7 +3,7 @@
 
 Workflow-conformance auditing and the immutable git snapshot layer.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/severity/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/severity/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
 
 These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. From schema generation 31, audit replays the shared cleaned-message authorization parser and exact incoming-parent qualification for committed merges, while pre-epoch merges and non-merges remain outside that replay. The claims below capture the current audit and snapshot contracts.
 
@@ -72,9 +72,9 @@ Backing: test
 
 ### `invariant: commit-gate-shared-rule`
 
-The Conventional Commits subject check is defined once as a single shared function. Both the audit range loop and the check commit command call that function, so neither re-implements the subject regex, the allowed type and scope lists, or the subject-length limit, and a subject the audit rejects is rejected identically by the commit gate.
+The Conventional Commits subject check is defined once as a single shared function. Both the audit range loop and the check staged commit command call that function, so neither re-implements the subject regex, the allowed type and scope lists, or the subject-length limit, and a subject the audit rejects is rejected identically by the commit gate.
 Origin: ADR-0036
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0210
 Backing: test
 
 ### `invariant: repo-audit-error-exit`

@@ -5,4 +5,4 @@
 # into a hook setup you own, e.g. a .git/hooks/commit-msg stub containing:
 #   exec bash .awf/hooks/commit-msg.sh "$@"
 set -euo pipefail
-./awf check commit "$1"
+./awf check staged commit "$1"

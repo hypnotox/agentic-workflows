@@ -19,6 +19,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 - `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or a nameless singleton (`bootstrap`, `hooks`, `runner`, given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
+- `awf read plan <plan> <P[.T]>`: resolve an exact filename or stem under the configured plans directory and print internal/plan's executable phase or task closure: frontmatter, title, Goal, Architecture summary, owning phase and execution mode, selected content, Phase close, Definition of done, and Notes. Marker-absent historical plans retain legacy checking but have no executable projection.
 - `awf context <path>...`: report request-oriented impact. Bare directories provide tier-0 census, compact groups, classification, compact provenance, domains, topics, per-topic authority counts, and bounded pending summaries. Bare exact files and sorted staged/range-selected files add tier-1 direct `State`, `Touches`, and `Proofs` relationships from actual markers. Repeat `--show` with `relationships`, `invariants`, `all-rules`, `evidence`, `selectors`, `references`, `pending`, or `artifacts`; only `artifacts` may refine groups, evidence and references only enrich visible claims, and `--full` is their eight-facet union without restoring a census. `--json` is removed. Human output through 8,192 bytes writes unchanged; larger normal, static, or uncovered reports securely spill exact bytes outside the repository and return a two-line notice whose file the successful caller must delete.
 - `awf topic <domain>/<topic>[:<claim>]`: query one current-state topic or claim, active by default. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR operations with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. A removed claim identity resolves only with `--history` as historical-only operation detail without active prose, references, coverage, or a tombstone. `--json` changes only presentation.
 - `awf new adr "<title>"`: scaffold the next ADR in the activation registry's current authoring format.
@@ -29,12 +30,16 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf effort new <outcome-title> [--json] [--no-worktree] [--base <ref>]`: derive an immutable slug, publish schema-2 state with owned `.awf/efforts/<slug>/memory.md`, and create the managed `.awf/worktrees/<slug>/` checkout on `awf/<slug>` by default, reporting the path to continue in; `--no-worktree` keeps the invoking checkout, and `integrate`, `worktree remove`, and final `finish` stay separate operations.
-- `awf check drift`: report only the stale or hand-edited rendered output, including the config-tree hygiene sweep, without the current-state evaluation bare `awf check` runs with it.
-- `awf check state`: report only the current-state authority findings over the working tree. The staged transition stays `awf check --staged`, which applies to the bare form alone.
-- `awf check invariants`: report the current-state topic invariant claims and their backing state.
-- `awf check commit [FILE]`: validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers (used by a commit-msg hook).
-- `awf check prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
-- `awf check memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off; used by a pre-commit hook).
+- `awf check`: run both verification universes; outside Git, run the repo universe and report the staged universe unavailable.
+- `awf check repo`: run the repository-property aggregate. Its `drift` and `state` children inspect the working tree, while `prose` and `memory` scan the tracked index corpus.
+- `awf check repo drift`: report stale or hand-edited rendered output, including the config-tree hygiene sweep.
+- `awf check repo state`: report current-state authority findings over the working tree.
+- `awf check repo prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off).
+- `awf check repo memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off).
+- `awf check staged`: run the HEAD-to-index current-state transition and rendered-output drift checks.
+- `awf check staged state`: report current-state authority findings over the HEAD-to-index transition.
+- `awf check staged drift`: render from the staged config and report only stale or hand-edited staged rendered output; other repository drift kinds are out of scope.
+- `awf check staged commit [FILE]`: directly validate Conventional Commits and definitively authorize any exact incoming-parent older-format ADR using the cleaned final merge-message trailers; it is not part of the staged aggregate and is used by a commit-msg hook.
 - `awf changelog`: query the changelog by version or range.
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place while optional effort and worktree residents remain local.
 - `awf version`: print the binary's version.
@@ -63,7 +68,7 @@ field, and per-artifact data key is described in the generated
 [configuration reference](config-reference.md), including this project's live state: which
 vars are set, what consumes them, and what enabling would activate.
 
-**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter
+**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target pi`); adapter
 artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under
@@ -208,7 +213,7 @@ from base rates alongside context and output limits and capability markers, enfo
 project-local gitignore rule at save time, persists atomically, and leaves the file unchanged on
 cancellation. Long implementations select ownership independently per phase so one plan may mix modes. A
 subagent-driven phase has one commit-capable owner from a clean green baseline through staged check,
-gate, and its closing commit, while inline phases remain parent-owned. Checkbox tasks are ordered
+gate, and its closing commit, while inline phases remain parent-owned. Heading-identified tasks are ordered
 steps, not transaction or checkpoint boundaries. Explicit batch helpers stay sequential and
 commit-disabled, receive path-disjoint subsets, never own shared files, and return to the parent for
 integration. The parent owns report-only review settlement and checkpoints only after findings
@@ -241,6 +246,7 @@ Brainstorming uses grounding, while brainstorming, debugging, and coupling audit
 extension files are `awf check` drift; run `awf render` to repair them.
 
 Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime lacks the readonly persisted-session query. Workflow guidance calls it alone with exact `{memoryPath, kickoff}` arguments after persistence and a continuity notice or explicit approval. When supplied, memoryPath must normalize exactly to `.awf/efforts/<slug>/memory.md`; validation pins slug grammar, lexical and no-follow confinement, current ownership, one hard link, a 1 MiB valid-UTF-8 bound, stable file identity, either exact legacy `Effort: <slug>` or canonical frontmatter `effort: <slug>` identity, and repository identity. Handoff validates identity only: it never validates mutable Phase/Next/Updated metadata, parses `state.json` or `activity.json`, selects or assigns an effort, invokes an effort command, or mutates memory. A five-second Esc/Ctrl+C window precedes revalidation and parent-linked replacement. The old history and memory remain preserved. Kickoff failure leaves the exact wrapper in the editor; post-queue failure leaves recovery text, never retries automatically, and never starts a model turn.
+Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime lacks the readonly persisted-session query. Workflow guidance calls it alone with exact `{kickoff}` prose after a required checkpoint and any needed reorientation instruction. The runtime preserves that bounded prose unchanged while it performs a five-second Esc/Ctrl+C countdown and parent-linked replacement. It revalidates only the pending request and persisted session, preserves old history, leaves failed automatic kickoff in the editor, exposes recovery text after a failure, never retries automatically, and owns no checkpoint, effort, repository, or filesystem policy.
 
 ### Path globs and domain territories
 
@@ -337,3 +343,5 @@ parts, and newly rendered surfaces worth wiring up (fresh hook payloads, for exa
 changelog --since <previous version>` lists every adopter-facing change in between. Then run the
 drift check and commit the config and rendered files together.
 <!-- awf:end -->
+
+{{if .targetSessionHandoff}}Pi renders five governed TypeScript outputs: context usage, handoff, and subagent index, routing, and runner. Context usage is a standalone transient observation with a deterministic unavailable form; it neither persists facts nor triggers a pressure action.{{end}}

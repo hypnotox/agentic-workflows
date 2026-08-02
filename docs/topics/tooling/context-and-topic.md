@@ -3,7 +3,7 @@
 
 The read-only orientation surfaces: context, topic, describe, uncovered.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/context-and-topic --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/context-and-topic --coverage` for current matched paths and marker sites.
 
 The read-only orientation surfaces: awf context, awf topic, describe, and uncovered reporting.
 
@@ -30,7 +30,6 @@ Origin: ADR-0148
 Revised-by: ADR-0165, ADR-0174
 Backing: unbacked
 Verify: On a fixture with indirect claims, mixed directory and file requests, references, pending operations, and history, compare bare output and each of `relationships`, `invariants`, `all-rules`, `evidence`, `selectors`, `references`, `pending`, and `artifacts` independently; each projection contains only its declared tier or enrichment.
-
 ### `invariant: context-concise-projection`
 
 Context renders each topic summary and active invariant/rule count once. Direct claim summaries deduplicate globally with sorted request-index and marker-kind sources; non-direct invariant and rule summaries require their respective facets. Every visible claim has a deterministic bounded summary and occupies only its closest category: direct, invariant, additional rule, referenced context, then pending.

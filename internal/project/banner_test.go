@@ -42,7 +42,6 @@ func TestInjectBannerExplicitCommentStyles(t *testing.T) {
 		want  string
 	}{
 		{render.HashComment, "# " + bannerText + "\n"},
-		{render.TOMLComment, "# " + bannerText + "\n"},
 		{render.SlashComment, "// " + bannerText + "\n"},
 	} {
 		if got := injectBanner("body\n", "", tc.style); got != tc.want+"body\n" {

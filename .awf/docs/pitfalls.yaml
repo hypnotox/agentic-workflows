@@ -19,7 +19,7 @@ data:
       tags: [adr-lifecycle]
       body: |
         Every line of a claim's canonical block is claim content, the `Verify:` line included:
-        `awf check --staged` rejects any edit to an applied claim that does not travel with a
+        `awf check staged` rejects any edit to an applied claim that does not travel with a
         matching `update` operation, and one ADR cannot declare both `add` and `update` for the
         same id, so an ADR cannot patch its own already-applied claim. Two Verify-line
         tightenings suggested by a terminal review had to be reverted and deferred to a future
@@ -32,7 +32,7 @@ data:
       body: |
         When main has taken a number a branch's ADR also declares, rebasing or merging first and
         renumbering after does not work: every intermediate commit AND the resulting HEAD declare the
-        number twice, and `awf check --staged` refuses to evaluate any transition from a
+        number twice, and `awf check staged` refuses to evaluate any transition from a
         duplicate-number HEAD, which blocks every commit including the renumber itself. The rename
         has to land inside the transition that first combines the two histories - during a rebase,
         fold it into the first replayed commit's conflict resolution (git rename detection carries
@@ -109,7 +109,7 @@ data:
         `migrate.ConfigForCurrentSchema` forward-ports a historical committed config so the current
         strict parser can read it, and it does that through one explicit per-migration branch, not
         by replaying the registry. A migration that removes a config key must add its own branch
-        there as well as its `apply` function. Miss it and `awf check --staged` fails to parse HEAD
+        there as well as its `apply` function. Miss it and `awf check staged` fails to parse HEAD
         the moment the key leaves the config model, because HEAD still carries it: the before side
         of the transition handshake loads the committed config, not the index one.
 
@@ -245,7 +245,7 @@ data:
       body: |
         Two ADR-0153 proposal-phase commits staged a regenerated docs/decisions/INDEX.md without
         the .awf/awf.lock outputHash update that the same `./x render` had written to the working
-        tree, and `awf check --staged` passed both times: the generated index is
+        tree, and `awf check staged` passed both times: the generated index is
         regeneration-checked, not hash-checked, so the staged INDEX/lock mismatch is invisible to
         the staged view while the fresh lock sits dirty on disk. The stranded lock change then
         pollutes the next unrelated commit or surfaces as confusing drift. After any `./x render`,
@@ -330,7 +330,7 @@ data:
         other effort's legitimate references versus your leftovers.
 
         Resolving inside the merge stops working once your ADR has an Applied batch. On
-        2026-07-31 the 0192 integration tried it and `awf check --staged` refused with "ADR-0190
+        2026-07-31 the 0192 integration tried it and `awf check staged` refused with "ADR-0190
         violates the history-prefix rule", plus both claim updates reading as provenance-only
         mutations with no operation behind them: the number is occupied by the other side's ADR
         with different applied history, so renaming yours inside the merge rewrites committed
@@ -538,7 +538,7 @@ data:
       tags: [doc-standard, cli-dispatch]
       body: |
         `README.md` is hand-owned, not rendered, so `awf check` never flags it. Its command table and
-        feature claims drift silently when the CLI grows (`awf new` and `awf check commit` shipped without
+        feature claims drift silently when the CLI grows (`awf new` and `awf check staged commit` shipped without
         README rows). Adding or changing a CLI command means updating the README table in the same
         change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
     - title: "`//go:embed` silently skips `_`- and `.`-prefixed paths"
@@ -959,7 +959,7 @@ data:
       body: |
         A `Backing: test` invariant claim must stay backed by its proof marker until the ADR's
         `remove` (or backing-changing `update`) operation applies, and that happens only in the
-        transaction that flips the ADR to `Implemented` (`awf check --staged` verifies the claim
+        transaction that flips the ADR to `Implemented` (`awf check staged` verifies the claim
         mutation and the ADR flip together). So a commit that removes or renames the proof marker
         cannot land while its ADR is still Proposed, and the green-gate-per-commit rule then forces
         the marker edit and the ADR's `Implemented` flip into one commit. The ADR-0085 implementation
@@ -1208,7 +1208,7 @@ data:
         and the example adopter's own outputs; and because the change is adopter-facing, it also owes an
         `[Unreleased]` entry in `changelog/CHANGELOG.md`. In the ADR-0095 session all three slipped: the
         plan's `git add` named `awf-writing-plans` under sundial (which renders `sundial-writing-plans`,
-        prefix `sundial`), omitted the `.cursor/` output and the example lock, and scheduled no changelog
+        prefix `sundial`), omitted one target output and the example lock, and scheduled no changelog
         task; caught downstream by plan review, by reading `git status`, and by `./x audit-local`
         respectively, not up front. Two lessons: when a plan edits a catalog artifact, enumerate the fan-out
         explicitly (all targets × {root, example} × {rendered, lock}, plus a changelog task), and at
@@ -1498,7 +1498,7 @@ data:
       body: |
         A file whose subject is the banned typographic substitutes (the scanner's rune map, a test
         fixture that plants an em-dash to prove the gate fires, an ADR example) is itself a tracked
-        text file the `awf check prose` scan reads, so a literal glyph in it is a finding against the
+        text file the `awf check repo prose` scan reads, so a literal glyph in it is a finding against the
         file that defines or tests the rule. Write the glyph as its Go escape (a backslash-u rune
         or string literal, which compiles to the real rune while the source stays ASCII), exactly as
         `internal/project/residue_scan_test.go`'s `bannedRunes` map and `internal/prosegate`'s
@@ -1585,7 +1585,7 @@ data:
       tags: [plan-artifact, adr-lifecycle, verification-discipline]
       body: |
         The frozen content digest is computed over the ADR body and named exactly by
-        `awf check --staged` on mismatch. A plan writes the event shape and the instruction
+        `awf check staged` on mismatch. A plan writes the event shape and the instruction
         "use exactly the value the staged check names", never a digest, the same way it already
         avoids hard-coded counts.
     - title: "A pinned template contract string is usually pinned in more than one test"
@@ -1631,7 +1631,7 @@ data:
       body: |
         When a concurrent effort merges an ADR that takes your number, a later standalone
         renumber commit does not make the replay safe: the ADR's introducing commit is replayed
-        first and collides with the number already on the new base. `awf check --staged` also loads
+        first and collides with the number already on the new base. `awf check staged` also loads
         the HEAD snapshot, so every intermediate rebased commit must avoid the duplicate identity.
         The working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
         into the conflict resolution of the ADR's introducing commit during the replay; rename
@@ -1721,7 +1721,7 @@ data:
         Then mutate the production order and watch the new test go red. A proof for a timing or
         ordering clause is not finished until you have seen it fail; this one was proposed during
         review, built as proposed, and only mutation revealed it was inert.
-    - title: "handoff_session memory paths are one effort-owned spelling"
+    - title: "handoff_session carries only bounded kickoff prose"
       domains: [rendering]
       related: [145, 175]
       tags: [chain-handoffs, local-artifacts]
@@ -1736,6 +1736,9 @@ data:
         effort's memory is rejected rather than silently accepted. Before invoking the tool, pass no repository-root prefix,
         backslashes, empty components, `.` or `..` components, or symlink components; the leaf
         must be a bounded singly-linked regular file of valid UTF-8 (ADR-0145, ADR-0175).
+        `handoff_session` accepts only exact bounded `{kickoff}` prose. Checkpoint persistence and
+        reorientation belong to workflow guidance, so callers must not supply memory paths or add
+        filesystem, ownership, encoding, or effort validation to replacement mechanics.
     - title: "A pathspec commit takes the worktree copy of a shared generated file"
       domains: [rendering, tooling]
       tags: [lock-manifest, worktree-isolation]
@@ -1747,7 +1750,7 @@ data:
         session had staged an ADR status flip plus its regenerated `docs/decisions/INDEX.md` plus the
         lock's new `INDEX.md` outputHash, so committing the lock by pathspec without their
         `INDEX.md` would have landed a lock whose recorded hash no file in that commit matched.
-        The pre-commit hook does NOT catch this: `awf check --staged` validates the staged UNION,
+        The pre-commit hook does NOT catch this: `awf check staged` validates the staged UNION,
         which is internally consistent, so the broken commit passes the gate and only the next
         person's `awf check` fails. Neither including their `INDEX.md` (splitting their transaction)
         nor including their ADR (committing their work under your message) is acceptable either.
@@ -1921,35 +1924,26 @@ data:
         syntax refuses rather than becoming inert prose. A proactive agent may use
         `git merge --no-commit --no-ff`, while a true fast-forward has no merge commit and needs
         no authorization.
-    - title: "Amending an ADR revises its prose but never re-authorizes a spent claim operation"
+    - title: "An applied claim operation is corrected by Reapplied, not a second declaration"
       domains: [adr-system]
-      related: [134, 188, 191]
+      related: [134, 188, 191, 212]
       tags: [adr-lifecycle, invariant-retirement]
       body: |
-        ADR-0188 makes a V2 body amendable until it goes terminal, and that rule reads as though it
-        covers correcting a claim the ADR established. It does not, and nothing states the limit.
-        Claim mutations are authorized only by an Applied batch newly appended in the same
-        transition: `pairOps` derives its operation set from newly appended batches alone, so an
-        `Amended` event authorizes nothing about claims however genuine it is. An ADR also declares
-        any given operation at most once, enforced twice over, at parse time (`state changes names
-        <id> more than once`) and again in `OperationProgress` (`applies operation ... more than
-        once`). So once an ADR's single `update` for a claim is spent by an earlier batch, that ADR
-        can never touch that claim's body again, and a later edit fails the staged check with
-        `claim <id> was changed with no ADR update operation in this transition`.
-        Three near-misses make this expensive to discover. A vacuous amendment is rejected
-        separately (`amended event must record a digest different from the preceding stamp`), so an
-        attempt that edits only the claim looks like a digest problem rather than an authorization
-        one. Declaring the operation a second time fails at parse, before any claim check runs, so
-        the two failures mask each other. And bare `awf check` stays clean throughout, because only
-        `--staged` evaluates transitions: the tree looks healthy right up until the commit is
-        refused.
-        Practical consequence when wording a claim: the `update` an ADR spends on a claim is its
-        one and only shot, so word the body no broader than the implementation and re-read it
-        against the actual error strings before the batch lands. Once it is spent, the only way to
-        change that claim is a successor ADR declaring its own `update`, which is the same
-        mechanism invariant retirement already uses. Deferring the correction into an already
-        planned decision is legitimate, but it leaves a claim that is read as current authority
-        wrong in the meantime.
+        An Amended event changes a non-terminal ADR's decision content but authorizes no claim
+        mutation. If an operation has not been Applied, amend that declaration directly. If an add
+        or update has already been Applied and the ADR remains Implementing with another operation
+        still pending, append a `Reapplied; operations:` event in the same commit as one further
+        material correction. The declaration remains unique, progress still counts it once, and
+        provenance stays exactly as its first application wrote it: an update preserves the
+        existing canonical Revised-by entry, while an add preserves its Origin and byte-identical
+        Revised-by list. The same operation may be Reapplied again while the window remains open.
+        Do not declare the operation twice or encode the correction as a second Applied event; both
+        forms are refused and hide whether the repeat is intentional. Reapplied also refuses remove
+        operations, an operation with no earlier Applied occurrence, and events after the final
+        Applied batch or a terminal status. Those cases require a follow-up ADR or, when the claim
+        identity itself must change, remove plus add. Remember that bare `awf check` examines the
+        current tree, while `awf check staged` proves the Reapplied event and its immediate claim
+        mutation are one authored transaction.
     - title: "A stale merge first parent must parse under the result checker's marker grammar"
       domains: [invariants, adr-system, tooling]
       related: [205, 206]

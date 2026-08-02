@@ -3,9 +3,9 @@
 
 Shared internal test-support infrastructure and its dependency boundary.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/testsupport/**`. Both domain and topic selectors must match. Run `awf topic tooling/test-infrastructure --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/testsupport/**`. Both domain and topic selectors must match. Run `awf topic tooling/test-infrastructure --coverage` for current matched paths and marker sites.
 
-This topic records the current ownership contract for shared internal test-support infrastructure.
+This topic records the current ownership contract and both directions of the dependency boundary for shared internal test-support infrastructure.
 
 ## Claims
 
@@ -13,4 +13,10 @@ This topic records the current ownership contract for shared internal test-suppo
 
 Non-test Go files under `internal/testsupport/**` may import the standard library and their own subpackages, with go-git additionally permitted only within `gitfixture`, but may not import another repository internal package.
 Origin: ADR-0144
+Backing: test
+
+### `invariant: production-never-imports-test-support`
+
+Non-test Go files outside `internal/testsupport/**` never import the root test-support package or any of its subpackages; shared test fixtures remain a test-only dependency in the direction from outside-package tests into test support.
+Origin: ADR-0215
 Backing: test

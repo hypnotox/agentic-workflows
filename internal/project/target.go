@@ -17,7 +17,6 @@ type AgentDialect string
 
 const (
 	MarkdownAgentDialect AgentDialect = "markdown"
-	TOMLAgentDialect     AgentDialect = "toml"
 	PlainAgentDialect    AgentDialect = "plain"
 )
 
@@ -107,7 +106,7 @@ func (t Target) validate() error {
 	if (t.BridgeFile == "") != (t.BridgeTemplate == "") {
 		return fmt.Errorf("target %q bridge path and template must be both present or absent", t.Name)
 	}
-	if t.AgentDialect != MarkdownAgentDialect && t.AgentDialect != TOMLAgentDialect {
+	if t.AgentDialect != MarkdownAgentDialect {
 		return fmt.Errorf("target %q has unknown agent encoder %q", t.Name, t.AgentDialect)
 	}
 	for _, out := range t.Outputs {
@@ -125,7 +124,7 @@ func (t Target) validate() error {
 		if len(out.Inputs) != 0 {
 			return fmt.Errorf("target %q template output %q declares producer inputs", t.Name, out.Path)
 		}
-		if out.Encoder != MarkdownAgentDialect && out.Encoder != TOMLAgentDialect && out.Encoder != PlainAgentDialect {
+		if out.Encoder != MarkdownAgentDialect && out.Encoder != PlainAgentDialect {
 			return fmt.Errorf("target %q output %q has unknown encoder %q", t.Name, out.Path, out.Encoder)
 		}
 		if !out.PolicyDeclared {
@@ -143,7 +142,6 @@ func (t Target) validate() error {
 // the path and template spelling, but not of an encoder that cannot support it.
 func validateOutputCompatibility(out TargetOutput) error {
 	validProvenance := (out.Encoder == MarkdownAgentDialect && out.Provenance == render.HTMLComment) ||
-		(out.Encoder == TOMLAgentDialect && out.Provenance == render.TOMLComment) ||
 		(out.Encoder == PlainAgentDialect && out.Provenance == render.SlashComment)
 	if !validProvenance {
 		return fmt.Errorf("encoder %q is incompatible with provenance", out.Encoder)
@@ -185,9 +183,6 @@ func (t Target) AgentPath(name string) string {
 }
 
 func (t Target) agentCommentStyle() render.CommentStyle {
-	if t.AgentDialect == TOMLAgentDialect {
-		return render.TOMLComment
-	}
 	return render.HTMLComment
 }
 
@@ -204,25 +199,6 @@ var claudeTarget = Target{
 	BridgeTemplate: bridgeTID,
 }
 
-// cursorTarget renders to Cursor's SKILL.md/subagent layout. Cursor reads
-// AGENTS.md natively, so it emits no bridge file (ADR-0037).
-var cursorTarget = Target{
-	Name:         "cursor",
-	SkillDir:     ".cursor/skills",
-	AgentDir:     ".cursor/agents",
-	AgentSuffix:  ".md",
-	AgentDialect: MarkdownAgentDialect,
-	BridgeFile:   "",
-}
-
-var codexTarget = Target{
-	Name:         "codex",
-	SkillDir:     ".agents/skills",
-	AgentDir:     ".codex/agents",
-	AgentSuffix:  ".toml",
-	AgentDialect: TOMLAgentDialect,
-}
-
 var piTarget = Target{
 	Name:         "pi",
 	SkillDir:     ".pi/skills",
@@ -231,6 +207,7 @@ var piTarget = Target{
 	AgentDialect: MarkdownAgentDialect,
 	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff, CapabilityEffortSessions},
 	Outputs: []TargetOutput{
+		{Path: ".pi/extensions/awf-context-usage/index.ts", TemplateID: "pi/awf-context-usage/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-handoff/index.ts", TemplateID: "pi/awf-handoff/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
@@ -241,33 +218,11 @@ var piTarget = Target{
 	},
 }
 
-var geminiTarget = Target{
-	Name:           "gemini",
-	SkillDir:       ".gemini/skills",
-	AgentDir:       ".gemini/agents",
-	AgentSuffix:    ".md",
-	AgentDialect:   MarkdownAgentDialect,
-	BridgeFile:     "GEMINI.md",
-	BridgeTemplate: "gemini/GEMINI.md.tmpl",
-}
-
-var copilotTarget = Target{
-	Name:         "copilot",
-	SkillDir:     ".github/skills",
-	AgentDir:     ".github/agents",
-	AgentSuffix:  ".agent.md",
-	AgentDialect: MarkdownAgentDialect,
-}
-
 // targetRegistry maps an adapter name to its Target. It is the sole enumeration
 // of known adapters; resolveTargets rejects any name absent from it.
 var targetRegistry = map[string]Target{
-	"claude":  claudeTarget,
-	"codex":   codexTarget,
-	"copilot": copilotTarget,
-	"cursor":  cursorTarget,
-	"gemini":  geminiTarget,
-	"pi":      piTarget,
+	"claude": claudeTarget,
+	"pi":     piTarget,
 }
 
 // KnownTargets returns the known adapter names in sorted order. The bespoke

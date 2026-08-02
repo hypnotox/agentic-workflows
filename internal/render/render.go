@@ -55,7 +55,6 @@ type CommentStyle int
 const (
 	HTMLComment  CommentStyle = iota // <!-- <text> -->
 	HashComment                      // # <text>
-	TOMLComment                      // # <text>
 	SlashComment                     // // <text>
 )
 
@@ -72,7 +71,7 @@ func CommentStyleForSource(src string) CommentStyle {
 
 // wrap renders inner as a one-line comment in this style, trailing newline included.
 func (style CommentStyle) wrap(inner string) string {
-	if style == HashComment || style == TOMLComment {
+	if style == HashComment {
 		return "# " + inner + "\n"
 	}
 	if style == SlashComment {
@@ -83,7 +82,7 @@ func (style CommentStyle) wrap(inner string) string {
 
 // open is the comment opener this style prefixes a pointer line with.
 func (style CommentStyle) open() string {
-	if style == HashComment || style == TOMLComment {
+	if style == HashComment {
 		return "# "
 	}
 	if style == SlashComment {

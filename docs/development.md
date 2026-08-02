@@ -51,9 +51,6 @@ Runtime dependencies are deliberately few (see `go.mod`):
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: anchored path-glob matching behind
   `internal/pathglob` (ADR-0077).
-- **`github.com/BurntSushi/toml`**: encodes the Codex adapter's TOML agent profiles
-  (`internal/project/agent.go`).
-
 
 When introducing or deliberately converting a volatile mechanism, compose it at the outer boundary that owns production knowledge and inject a consumer-owned semantic function or immutable value before considering an interface. Consult `code-design/dependency-composition` for the complete authority.
 

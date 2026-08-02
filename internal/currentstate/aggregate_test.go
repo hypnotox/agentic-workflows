@@ -172,23 +172,107 @@ func TestMergeAggregateRequiresRevisedByToGrowByEveryUpdater(t *testing.T) {
 	}
 }
 
-// TestMergeAggregateRejectsRepeatedUpdateByOneADR covers the one clause the fold
-// adds beyond ordering: update-requires-substance says an update appends its ADR
-// once, so one ADR may not update a claim twice within one aggregate.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateRejectsRepeatedUpdateByOneADR)
-func TestMergeAggregateRejectsRepeatedUpdateByOneADR(t *testing.T) {
-	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))
-	update := op(adr.OpUpdate, "d/t:x")
-	twice := v2rec("0141", "Implemented", []adr.Operation{update},
-		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2batch(update), v2status("Implemented"))
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestAggregateCorrectiveReapplication)
+func TestAggregateCorrectiveReapplication(t *testing.T) {
+	pending := op(adr.OpAdd, "d/t:pending")
 
-	got := messages(currentstate.CheckPair(
-		uni([]adr.ADR{base}, prosed(claim("d/t:x", "0137"), "old")),
-		uni([]adr.ADR{base, twice}, prosed(claim("d/t:x", "0137", "0141"), "new")),
-		currentstate.MergeAggregate))
-	if !strings.Contains(got, "updates it more than once") {
-		t.Fatalf("one ADR updating a claim twice must be rejected:\n%s", got)
-	}
+	t.Run("repeated updates contribute one updater and a material endpoint", func(t *testing.T) {
+		base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))
+		update := op(adr.OpUpdate, "d/t:x")
+		proposed := v2rec("0141", "Proposed", []adr.Operation{update, pending}, v2status("Proposed"))
+		corrected := v2rec("0141", "Implementing", []adr.Operation{update, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(update), v2reapplied(update), v2reapplied(update))
+		before := uni([]adr.ADR{base, proposed}, prosed(claim("d/t:x", "0137"), "old"))
+		after := uni([]adr.ADR{base, corrected}, prosed(claim("d/t:x", "0137", "0141"), "corrected twice"))
+		if f := currentstate.CheckPair(before, after, currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("aggregate corrective updates rejected:\n%s", messages(f))
+		}
+		if got := messages(currentstate.CheckPair(before, after, currentstate.AuthoredCommit)); !strings.Contains(got, "at most one new batch") {
+			t.Fatalf("one authored commit accepted several application occurrences:\n%s", got)
+		}
+		canceling := uni([]adr.ADR{base, corrected}, prosed(claim("d/t:x", "0137", "0141"), "old"))
+		if got := messages(currentstate.CheckPair(before, canceling, currentstate.MergeAggregate)); !strings.Contains(got, "no canonical field changed") {
+			t.Fatalf("canceling corrective update endpoint not rejected:\n%s", got)
+		}
+	})
+
+	t.Run("second Applied update remains illegal", func(t *testing.T) {
+		base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))
+		update := op(adr.OpUpdate, "d/t:x")
+		ordinaryTwice := v2rec("0141", "Implementing", []adr.Operation{update, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(update), v2batch(update))
+		got := messages(currentstate.CheckPair(
+			uni([]adr.ADR{base}, prosed(claim("d/t:x", "0137"), "old")),
+			uni([]adr.ADR{base, ordinaryTwice}, prosed(claim("d/t:x", "0137", "0141"), "new")),
+			currentstate.MergeAggregate))
+		if !strings.Contains(got, "updates it more than once without a corrective Reapplied event") {
+			t.Fatalf("second Applied update not rejected:\n%s", got)
+		}
+	})
+
+	t.Run("repeated adds fold to one endpoint add", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		proposed := v2rec("0141", "Proposed", []adr.Operation{add, pending}, v2status("Proposed"))
+		corrected := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add), v2reapplied(add), v2reapplied(add))
+		afterClaim := prosed(claim("d/t:new", "0141"), "corrected twice")
+		if f := currentstate.CheckPair(uni([]adr.ADR{proposed}), uni([]adr.ADR{corrected}, afterClaim), currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("aggregate corrective adds rejected:\n%s", messages(f))
+		}
+	})
+
+	t.Run("correction-only repeated adds require a material endpoint", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		originBefore := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add))
+		originAfter := originBefore
+		originAfter.History = append(append([]adr.HistoryEvent(nil), originBefore.History...), v2reapplied(add), v2reapplied(add))
+		beforeClaim := prosed(claim("d/t:new", "0141"), "original")
+		afterClaim := prosed(claim("d/t:new", "0141"), "corrected twice")
+		if f := currentstate.CheckPair(
+			uni([]adr.ADR{originBefore}, beforeClaim),
+			uni([]adr.ADR{originAfter}, afterClaim),
+			currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("correction-only repeated adds rejected:\n%s", messages(f))
+		}
+	})
+
+	t.Run("correction-only add composes with a later update", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		update := op(adr.OpUpdate, "d/t:new")
+		originBefore := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add))
+		originAfter := originBefore
+		originAfter.History = append(append([]adr.HistoryEvent(nil), originBefore.History...), v2reapplied(add))
+		updater := v2rec("0142", "Implemented", []adr.Operation{update},
+			v2status("Proposed"), v2status("Implemented"))
+		updater.History = []adr.HistoryEvent{v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented")}
+		beforeClaim := prosed(claim("d/t:new", "0141"), "original")
+		afterClaim := prosed(claim("d/t:new", "0141", "0142"), "corrected then revised")
+		if f := currentstate.CheckPair(
+			uni([]adr.ADR{originBefore}, beforeClaim),
+			uni([]adr.ADR{originAfter, updater}, afterClaim),
+			currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("correction-only add plus update rejected:\n%s", messages(f))
+		}
+	})
+
+	t.Run("correction-only add composes with a later remove", func(t *testing.T) {
+		add := op(adr.OpAdd, "d/t:new")
+		remove := op(adr.OpRemove, "d/t:new")
+		originBefore := v2rec("0141", "Implementing", []adr.Operation{add, pending},
+			v2status("Proposed"), v2status("Implementing"), v2batch(add))
+		originAfter := originBefore
+		originAfter.History = append(append([]adr.HistoryEvent(nil), originBefore.History...), v2reapplied(add))
+		remover := v2rec("0142", "Implemented", []adr.Operation{remove},
+			v2status("Proposed"), v2status("Implementing"), v2batch(remove), v2status("Implemented"))
+		if f := currentstate.CheckPair(
+			uni([]adr.ADR{originBefore}, prosed(claim("d/t:new", "0141"), "original")),
+			uni([]adr.ADR{originAfter, remover}),
+			currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("correction-only add plus remove rejected:\n%s", messages(f))
+		}
+	})
 }
 
 // TestMergeAggregateAcceptsMultiStepStatusHistory covers the third relaxed rule.

@@ -1,10 +1,11 @@
-// Package snapshot captures immutable file trees from a Git repository. A Tree
-// owns a private copy of every file's bytes, so a consumer can read the
-// captured content and mode without being able to mutate the snapshot or the
-// caller's original data. It captures four universes: the working tree, the
-// stage-0 index, an arbitrary commit, and a first-parent before/after range
-// pair. Each is the complete selected file set; consumers apply their own
-// eligibility filters.
+// Package snapshot captures immutable file trees from Git or an ordinary
+// filesystem directory. A Tree owns a private copy of every file's bytes, so a
+// consumer can read the captured content and mode without mutating the snapshot
+// or the caller's original data. Git-backed snapshots cover the working tree,
+// stage-0 index, an arbitrary commit, and a first-parent before/after range;
+// the filesystem form supports repo-state checks before Git is available. Each
+// is the complete selected file set; consumers apply their own eligibility
+// filters.
 package snapshot
 
 import (

@@ -15,11 +15,18 @@ Origin: ADR-0148
 Revised-by: ADR-0151
 Backing: test
 
+### `invariant: pi-context-usage-injection`
+
+Before every Pi model call, including tool-follow-up calls, the standalone context-usage extension appends exactly one non-persisted model-facing line reporting current tokens against the active model window and the compaction count from the active session branch. It formats finite values below 1,000 as rounded integers, values from 1,000 in trimmed one-decimal base-1,000 `k` units, and values from 1,000,000 in trimmed one-decimal base-1,000,000 `m` units; computes percentage by rounding `tokens / contextWindow * 100`; and emits the deterministic unknown-token or unavailable-window form. The extension never persists a message or entry, writes a file or telemetry record, changes UI, triggers a model turn, compaction, warning, or handoff, or recommends a pressure threshold.
+Origin: ADR-0209
+Backing: test
+
 ### `invariant: pi-extension-target-render`
 
 Enabling Pi renders the handoff entrypoint and the subagent index, bounded model-routing module, and runner with provenance and normal render/prune semantics; selecting `effort-workflow` additionally renders the Pi-target-owned `using-effort` skill and `awf-effort` index/client pair through the same output predicate. The effort client alone invokes and decodes the awf activity protocol; its index owns the explicit `using_effort` tool, queued live-CWD orchestration, process-local transfer, heartbeat/shutdown lifecycle, and Remote Pi translation. The subagent model-routing module retains pure preference/routing construction while its entrypoint retains subagent runtime integration. No telemetry or workflow-router output renders.
+Enabling Pi renders the standalone context-usage and handoff entrypoints plus the subagent index, bounded model-routing module, and runner with provenance. Context usage owns transient per-model-call fact injection, handoff owns parent-linked main-session replacement, model routing owns pure preference policy, and the subagent entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and every file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics; a target set without Pi renders none of them.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -31,14 +38,15 @@ Backing: test
 ### `invariant: pi-minimum-runtime`
 
 Generated Pi extension entrypoints require the minimum Pi runtime APIs used by retained subagent and handoff contracts, report one actionable incompatibility notice, and fail before registering functional hooks when required APIs are absent. The `using_effort` companion has no foreign package-version floor: it structurally detects command-context `changeCwd` immediately before a queued switch, visibly refuses with CWD, activity, and memory unchanged when absent, and treats the optional Remote Pi event interface as advisory; without it, local association, switching, heartbeat, and detach remain available.
+Every generated Pi extension entrypoint requires the minimum Pi runtime APIs used by its retained contract, reports the shared single actionable incompatibility notice, and fails before registering functional hooks when required APIs are absent. Supported context-usage, handoff, and subagent operation emits no compatibility, pressure, or handoff warning.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, effort-independent handoff, and before-agent-start routing-card delivery into the model request without a persisted session message, and verifies telemetry, router, and selection surfaces are absent.
+Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, prose-only effort-independent handoff, before-agent-start routing-card delivery, and transient context-usage delivery into actual model requests with refresh after an active-branch compaction. Routing and context facts do not persist as session messages, and telemetry, workflow-router, selection, context-usage UI, and automatic pressure-action surfaces remain absent.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209
 Backing: unbacked
-Verify: Run `./x pi-test run` to exercise native Pi skill discovery, effort-independent handoff, and routing-card delivery into a real pinned Pi model request without session-message persistence, with no telemetry, router, or selection.
+Verify: Run `./x pi-test run` to exercise native Pi skill discovery, prose-only effort-independent handoff, routing-card delivery, and per-request context-usage refresh after compaction in the pinned Pi runtime without persisted routing or context messages, telemetry, workflow routing, selection, context-usage UI, or automatic pressure actions.

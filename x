@@ -67,7 +67,7 @@ case "$cmd" in
     go test ./... "$@"
     ;;
   clean-test-tmp)
-    go run ./cmd/testtmpclean "$@"
+    go run ./internal/testsupport/cmd/testtmpclean "$@"
     ;;
   render)
     # The rendered ./awf wrapper runs awf from source (awfInvokeCmd) so the
@@ -85,12 +85,12 @@ case "$cmd" in
     if ! go run ./cmd/contextspilllog --check-log --root "$PWD"; then
       echo "check: warning: context spill advisory inspection failed; resolve or promote the issue before removing the log" >&2
     fi
-    # ADR-0090: the example adopter must be drift-free, invariant-clean, free of
+    # ADR-0090: the example adopter must be drift-free, authority-clean, free of
     # advisory notes (the model adopter has zero smells), and its scenery green.
     bindir="$(mktemp -d)"
     cleanup_paths+=("$bindir")
     go build -o "$bindir/awf" ./cmd/awf
-    if ! out="$(cd examples/sundial && "$bindir/awf" check)"; then
+    if ! out="$(cd examples/sundial && "$bindir/awf" check repo)"; then
       printf '%s\n' "$out"
       exit 1
     fi
@@ -99,7 +99,6 @@ case "$cmd" in
       echo "check: the example adopter has advisory notes - author the missing content or clear the smell (ADR-0090)" >&2
       exit 1
     fi
-    (cd examples/sundial && "$bindir/awf" check invariants)
     (cd examples/sundial && go test ./...)
     ;;
   context)

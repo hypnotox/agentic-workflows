@@ -8,6 +8,12 @@ Each ADR-system singleton's catalog section list equals the awf:section markers 
 Origin: ADR-0021
 Backing: test
 
+### `invariant: built-in-runtime-targets`
+
+The built-in runtime target registry contains exactly `claude` and `pi` in deterministic `KnownTargets` order. Configured names outside that set fail through unknown-target validation, and descriptor-driven rendering and enablement remain generic rather than branching on the two names.
+Origin: ADR-0214
+Backing: test
+
 ### `invariant: catalog-defaults-generic-denylist`
 
 No default-data value carried by any catalog spec contains an awf-repo-specific token: neither the `./x` command prefix nor the `hypnotox/agentic-workflows` module path appears anywhere in the recursively walked default data.
@@ -67,15 +73,17 @@ Backing: test
 
 ### `invariant: structured-agent-encoding`
 
-Target encoders consume structured agent metadata, a literal name plus a rendered description and a rendered instruction body, and the Codex TOML encoder never parses a rendered Markdown agent artifact to produce its output.
+Agent rendering consumes structured metadata - a literal name, a separately rendered description, and a rendered instruction body - before a target encoder emits its artifact. The Markdown encoder never parses another rendered agent artifact, and arbitrary target-owned outputs retain their separately declared encoding.
 Origin: ADR-0122
+Revised-by: ADR-0214
 Backing: test
 
 ### `invariant: target-dialect-render`
 
 Each enabled target renders every selected catalog skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A closed target descriptor may additionally declare a target-owned skill with a catalog-selection predicate; it uses the same target path, prefix, dialect, provenance, and policy machinery, is absent from every other target, and is planned and rendered by one resolved declaration path.
+Each enabled target renders every skill and agent exactly once at that descriptor's declared path and encoding, and the emitted artifact parses under the runtime's native format. The built-in Claude Code and Pi targets emit Markdown agents while retaining independent descriptor-owned paths, suffixes, capabilities, bridges, wording, and additional outputs.
 Origin: ADR-0122
-Revised-by: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0214, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: unified-doc-model`
@@ -92,7 +100,7 @@ Backing: test
 
 ### `invariant: var-descriptor-set-pinned`
 
-The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, proseGateCmd, memoryGateCmd, testCmd, commitScopes, activeMdRegenCmd, awfInvokeCmd, invariantTestPath), and the only multiselect descriptors are the two catalog trims docs and skills.
+The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, testCmd, commitScopes, activeMdRegenCmd, awfInvokeCmd, invariantTestPath), and the only multiselect descriptors are the two catalog trims docs and skills.
 Origin: ADR-0084
-Revised-by: ADR-0156, ADR-0158
+Revised-by: ADR-0156, ADR-0158, ADR-0210
 Backing: test

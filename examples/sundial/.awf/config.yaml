@@ -41,10 +41,6 @@ docs:
   - testing
 targets:
   - claude
-  - codex
-  - copilot
-  - cursor
-  - gemini
   - pi
 audit:
   allowedScopes:
@@ -57,6 +53,10 @@ bootstrap:
 hooks:
   enabled: true
 runner:
+  enabled: true
+proseGate:
+  enabled: true
+memoryCite:
   enabled: true
 domains:
   - almanac

@@ -28,8 +28,12 @@ func gitProjectFiles(t *testing.T, configYAML string, files map[string]string) s
 
 // syncedGitProject creates a git-backed project and runs sync so the tree is
 // drift-clean, the common fixture for runCheck's clean path.
-func syncedGitProject(t *testing.T, configYAML string) string {
-	return syncedGitProjectFiles(t, configYAML, nil)
+func syncedGitProject(t *testing.T, configYAML ...string) string {
+	cfg := checkYAML
+	if len(configYAML) > 0 {
+		cfg = configYAML[0]
+	}
+	return syncedGitProjectFiles(t, cfg, nil)
 }
 
 // syncedGitProjectFiles writes the given files, then syncs, so the tree is
@@ -40,5 +44,10 @@ func syncedGitProjectFiles(t *testing.T, configYAML string, files map[string]str
 	if err := initializeProject(testContext(t), dir, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
+	// Bare check includes the staged universe, so its fixture must give that
+	// universe an index snapshot of the rendered project as well.
+	f := gitfixture.At(dir)
+	gitfixture.AddAll(t, f)
+	gitfixture.Commit(t, f, "rendered", nil)
 	return dir
 }

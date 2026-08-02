@@ -1,13 +1,10 @@
 package project
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/BurntSushi/toml"
 )
 
 // agent is the output-format-neutral rendering result for an agent artifact.
@@ -16,13 +13,6 @@ type agent struct {
 	Name        string
 	Description string
 	Body        string
-}
-
-// codexAgentProfile is the complete supported Codex agent-profile schema.
-type codexAgentProfile struct {
-	Name                  string `toml:"name"`
-	Description           string `toml:"description"`
-	DeveloperInstructions string `toml:"developer_instructions"`
 }
 
 func validateAgent(a agent) error {
@@ -74,38 +64,4 @@ func yamlPlainSafe(s string) bool {
 		return false
 	}
 	return !strings.ContainsAny(s, "\"'[]{}#&*!|>@`") && !strings.Contains(s, ": ")
-}
-
-// encodeTOMLAgent produces and then decodes the complete typed Codex profile.
-// The encoder consumes structured agent data directly, never Markdown output.
-func validateTOMLAgent(content []byte) error {
-	var profile codexAgentProfile
-	meta, err := toml.Decode(string(content), &profile)
-	if err != nil {
-		return fmt.Errorf("parse TOML agent profile: %w", err)
-	}
-	if undecoded := meta.Undecoded(); len(undecoded) != 0 {
-		return fmt.Errorf("unknown TOML agent profile keys %v", undecoded)
-	}
-	return validateAgent(agent{Name: profile.Name, Description: profile.Description, Body: profile.DeveloperInstructions})
-}
-
-func encodeTOMLAgent(a agent) (string, error) {
-	if err := validateAgent(a); err != nil {
-		return "", err
-	}
-	want := codexAgentProfile{
-		Name:                  a.Name,
-		Description:           a.Description,
-		DeveloperInstructions: a.Body,
-	}
-	var b bytes.Buffer
-	if err := toml.NewEncoder(&b).Encode(want); err != nil { // coverage-ignore: bytes.Buffer writes cannot fail
-		return "", fmt.Errorf("encode Codex agent profile: %w", err)
-	}
-	out := b.String()
-	if err := validateTOMLAgent([]byte(out)); err != nil { // coverage-ignore: encoding this typed profile always produces a valid profile
-		return "", fmt.Errorf("validate Codex agent profile: %w", err)
-	}
-	return out, nil
 }

@@ -39,9 +39,6 @@ func TestGateStagedLoadErrors(t *testing.T) {
 	if err := gateStaged(ctx, nonRepo); err == nil {
 		t.Fatal("gateStaged accepted a non-repository")
 	}
-	if _, _, _, err := checkLockVsBinary(testContext(t), nonRepo, true); err == nil {
-		t.Fatal("staged ahead-note loader accepted a non-repository")
-	}
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	if _, err := stagedLock(ctx, dir); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
@@ -219,51 +216,68 @@ func TestInitAndUpgradeGateBehindVersion(t *testing.T) {
 // clispec below rather than trusted, so this table cannot silently fall behind
 // the spec.
 var gatedProbes = map[string][]string{
-	"render":           {"awf", "render"},
-	"check":            {"awf", "check"},
-	"check drift":      {"awf", "check", "drift"},
-	"check state":      {"awf", "check", "state"},
-	"check invariants": {"awf", "check", "invariants"},
-	"audit":            {"awf", "audit"},
-	"effort":           {"awf", "effort", "list"},
-	"effort new":       {"awf", "effort", "new", "gate probe outcome"},
-	"effort list":      {"awf", "effort", "list"},
-	"effort show":      {"awf", "effort", "show", "gate-probe"},
-	"effort finish":    {"awf", "effort", "finish", "gate-probe"},
-	"effort worktree":  {"awf", "effort", "worktree", "add", "gate-probe"},
-	"effort integrate": {"awf", "effort", "integrate", "gate-probe"},
-	"effort memory":    {"awf", "effort", "memory"},
-	"effort activity":  {"awf", "effort", "activity"},
-	"adr":              {"awf", "adr", "number"},
-	"adr number":       {"awf", "adr", "number"},
-	"list":             {"awf", "list"},
-	"config":           {"awf", "config"},
-	"context":          {"awf", "context", "README.md"},
-	"topic":            {"awf", "topic", "rendering/doc-outputs"},
-	"new":              {"awf", "new", "plan", "Gate probe"},
-	"new adr":          {"awf", "new", "adr", "Gate probe"},
-	"new plan":         {"awf", "new", "plan", "Gate probe"},
-	"new topic":        {"awf", "new", "topic", "rendering", "gate-probe"},
-	"new skill":        {"awf", "new", "skill", "gate-probe", "desc"},
-	"new agent":        {"awf", "new", "agent", "gate-probe", "desc"},
-	"new doc":          {"awf", "new", "doc", "gate-probe", "desc"},
-	"enable":           {"awf", "enable", "skill", "tdd"},
-	"disable":          {"awf", "disable", "skill", "tdd"},
+	"render":                    {"awf", "render"},
+	"check":                     {"awf", "check"},
+	"check repo":                {"awf", "check", "repo"},
+	"check staged":              {"awf", "check", "staged"},
+	"check staged state":        {"awf", "check", "staged", "state"},
+	"check staged drift":        {"awf", "check", "staged", "drift"},
+	"check repo drift":          {"awf", "check", "repo", "drift"},
+	"check repo state":          {"awf", "check", "repo", "state"},
+	"check repo prose":          {"awf", "check", "repo", "prose"},
+	"check repo memory":         {"awf", "check", "repo", "memory"},
+	"check staged commit":       {"awf", "check", "staged", "commit"},
+	"read":                      {"awf", "read"},
+	"read plan":                 {"awf", "read", "plan", "2026-08-02-plan", "1"},
+	"audit":                     {"awf", "audit"},
+	"effort":                    {"awf", "effort", "list"},
+	"effort new":                {"awf", "effort", "new", "gate probe outcome"},
+	"effort list":               {"awf", "effort", "list"},
+	"effort show":               {"awf", "effort", "show", "gate-probe"},
+	"effort finish":             {"awf", "effort", "finish", "gate-probe"},
+	"effort worktree":           {"awf", "effort", "worktree", "add", "gate-probe"},
+	"effort integrate":          {"awf", "effort", "integrate", "gate-probe"},
+	"effort memory":             {"awf", "effort", "memory", "update", "gate-probe", "--phase", "phase"},
+	"effort memory update":      {"awf", "effort", "memory", "update", "gate-probe", "--phase", "phase"},
+	"effort activity":           {"awf", "effort", "activity", "resolve", "gate-probe", "--destination", "managed", "--json"},
+	"effort activity resolve":   {"awf", "effort", "activity", "resolve", "gate-probe", "--destination", "managed", "--json"},
+	"effort activity attach":    {"awf", "effort", "activity", "attach", "gate-probe", "--owner", "session", "--cwd", "/checkout", "--role", "receiving", "--receiving-checkout", "/checkout", "--json"},
+	"effort activity heartbeat": {"awf", "effort", "activity", "heartbeat", "gate-probe", "--owner", "session", "--json"},
+	"effort activity checkout":  {"awf", "effort", "activity", "checkout", "gate-probe", "--owner", "session", "--cwd", "/checkout", "--role", "receiving", "--json"},
+	"effort activity detach":    {"awf", "effort", "activity", "detach", "gate-probe", "--owner", "session", "--json"},
+	"adr":                       {"awf", "adr", "number"},
+	"adr number":                {"awf", "adr", "number"},
+	"list":                      {"awf", "list"},
+	"config":                    {"awf", "config"},
+	"context":                   {"awf", "context", "README.md"},
+	"topic":                     {"awf", "topic", "rendering/doc-outputs"},
+	"new":                       {"awf", "new", "plan", "Gate probe"},
+	"new adr":                   {"awf", "new", "adr", "Gate probe"},
+	"new plan":                  {"awf", "new", "plan", "Gate probe"},
+	"new topic":                 {"awf", "new", "topic", "rendering", "gate-probe"},
+	"new skill":                 {"awf", "new", "skill", "gate-probe", "desc"},
+	"new agent":                 {"awf", "new", "agent", "gate-probe", "desc"},
+	"new doc":                   {"awf", "new", "doc", "gate-probe", "desc"},
+	"enable":                    {"awf", "enable", "skill", "tdd"},
+	"disable":                   {"awf", "disable", "skill", "tdd"},
 }
 
 // gatedCommandKeys derives, from clispec alone, the key of every command whose
-// resolved gating is not Ungated.
+// top-level family is not Ungated.
 func gatedCommandKeys() []string {
 	var keys []string
-	for _, c := range clispec.Commands {
-		if c.Gating != clispec.Ungated {
-			keys = append(keys, c.Name)
+	var add func(clispec.Command, string, bool)
+	add = func(c clispec.Command, path string, gated bool) {
+		gated = gated && c.Gating != clispec.Ungated
+		if gated {
+			keys = append(keys, path)
 		}
 		for _, child := range c.Children {
-			if clispec.ResolvedGating(c, child) != clispec.Ungated {
-				keys = append(keys, c.Name+" "+child.Name)
-			}
+			add(child, path+" "+child.Name, gated)
 		}
+	}
+	for _, c := range clispec.Commands {
+		add(c, c.Name, c.Gating != clispec.Ungated)
 	}
 	return keys
 }
@@ -299,6 +313,9 @@ func TestDriverGatesGatedCommands(t *testing.T) {
 	for _, key := range keys {
 		t.Run(key, func(t *testing.T) {
 			root := aheadSchemaProject(t)
+			if strings.HasPrefix(key, "check staged") {
+				gitfixture.Add(t, gitfixture.At(root), ".awf/awf.lock")
+			}
 			var out, errb bytes.Buffer
 			code := runAt(t, root, gatedProbes[key], &out, &errb)
 			all := out.String() + errb.String()

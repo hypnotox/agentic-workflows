@@ -20,7 +20,7 @@ The test-first discipline as a project-owned support skill.
 A minimal simple fix may remain effort-free. For any concrete non-minimal feature or fix, create or resume exactly one immutable slugged effort before the failing test; it always owns `.awf/efforts/<slug>/memory.md`. Confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, keep one user-managed writer, and carry slug/path to the implementation owner. Repository and current-state authority outrank checkpoint prose, helpers never edit memory, and standalone memory is forbidden.
 
 1. Run `awf context <the implementation and test paths>`, then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
-Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
+Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 2. Run it and confirm it fails for the right reason: `./x test`.
 3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround. Escalate materially larger work by asking the user whether to

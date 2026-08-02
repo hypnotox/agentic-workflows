@@ -9,9 +9,44 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 const testsupportImport = "github.com/hypnotox/agentic-workflows/internal/testsupport"
+
+func productionTestsupportImportViolations(path string, source any) ([]string, error) {
+	slashPath := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
+	parts := strings.Split(slashPath, "/")
+	for _, part := range parts[:len(parts)-1] {
+		if part == ".git" || part == "testdata" || part == "vendor" || part == "node_modules" {
+			return nil, nil
+		}
+	}
+	if strings.HasSuffix(slashPath, "_test.go") ||
+		slashPath == "internal/testsupport" || strings.HasPrefix(slashPath, "internal/testsupport/") ||
+		slashPath == ".awf/efforts" || strings.HasPrefix(slashPath, ".awf/efforts/") ||
+		slashPath == ".awf/worktrees" || strings.HasPrefix(slashPath, ".awf/worktrees/") {
+		return nil, nil
+	}
+
+	fset := token.NewFileSet()
+	astFile, err := parser.ParseFile(fset, path, source, parser.ImportsOnly)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	violations := []string{}
+	for _, imp := range astFile.Imports {
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unquote import %s: %w", path, imp.Path.Value, err)
+		}
+		if p == testsupportImport || strings.HasPrefix(p, testsupportImport+"/") {
+			violations = append(violations, fmt.Sprintf("%s imports test support %q", slashPath, p))
+		}
+	}
+	return violations, nil
+}
 
 func dependencyViolations(path string, source any) ([]string, error) {
 	fset := token.NewFileSet()
@@ -72,6 +107,48 @@ func TestZeroInternalDeps(t *testing.T) {
 	if seen < 2 {
 		t.Fatalf("inspected only %d non-test source file(s); expected at least testsupport.go and gitfixture/gitfixture.go - did they move?", seen)
 	}
+}
+
+// invariant: tooling/test-infrastructure:production-never-imports-test-support (TestProductionNeverImportsTestSupport)
+func TestProductionNeverImportsTestSupport(t *testing.T) {
+	tests := []struct {
+		name       string
+		path       string
+		source     string
+		violations int
+		wantErr    bool
+	}{
+		{name: "root testsupport", path: "cmd/tool/main.go", source: "package main\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\"", violations: 1},
+		{name: "testsupport subpackage", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture\"", violations: 1},
+		{name: "example adopter", path: "examples/sundial/internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\"", violations: 1},
+		{name: "standard library", path: "internal/tool/tool.go", source: "package tool\nimport \"strings\""},
+		{name: "other repository package", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/config\""},
+		{name: "test file", path: "internal/tool/tool_test.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\""},
+		{name: "testdata fixture", path: "internal/tool/testdata/fixture.go", source: "package fixture\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\""},
+		{name: "parse error", path: "internal/tool/tool.go", source: "not go", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := productionTestsupportImportViolations(tt.path, tt.source)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if len(got) != tt.violations {
+				t.Fatalf("violations = %v, want %d", got, tt.violations)
+			}
+		})
+	}
+
+	root := testsupport.RepoRoot(t)
+	testsupport.WalkRepoSources(t, root, func(path string, source []byte) {
+		violations, err := productionTestsupportImportViolations(path, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, violation := range violations {
+			t.Error(violation)
+		}
+	})
 }
 
 func TestDependencyProofRejectsThirdPartyImportFixture(t *testing.T) {

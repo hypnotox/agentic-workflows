@@ -2,146 +2,24 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/project"
-	"golang.org/x/mod/semver"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
-func runCheck(ctx context.Context, root string, staged bool, stdout io.Writer) error {
-	lockV, binV, ok, err := checkLockVsBinary(ctx, root, staged)
-	if err != nil { // coverage-ignore: the driver pre-gates check (Gated) so a corrupt lock hard-errors before runCheck (ADR-0076), and no direct caller passes one; the branch stays so the ahead-note never silently swallows a lock error
-		return err
+// runCheck runs both check universes. Outside a Git repository the repo universe
+// still applies, while the staged universe is unavailable.
+func runCheck(ctx context.Context, root string, stdout io.Writer) error {
+	repoCheckErr := runCheckRepo(ctx, root, stdout)
+	_, _, repoErr := awfgit.OpenContaining(root)
+	if errors.Is(repoErr, awfgit.ErrNotARepository) {
+		fmt.Fprintln(stdout, "note: staged check universe unavailable outside a git repository")
+		return repoCheckErr
 	}
-	if ok && semver.Compare(binV, lockV) > 0 {
-		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf render to re-pin\n",
-			strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
+	if repoErr != nil {
+		return errors.Join(repoCheckErr, repoErr)
 	}
-	if staged {
-		return runCheckStaged(ctx, root, stdout)
-	}
-	p, err := project.Open(ctx, root)
-	if err != nil {
-		return err
-	}
-	notes, err := p.AdvisoryNotes(ctx)
-	if err != nil {
-		return err
-	}
-	// Advisories are printed before drift and never feed the failure count -
-	// unauthored stub content cannot fail a gated command (ADR-0070).
-	for _, n := range notes {
-		fmt.Fprintf(stdout, "note: %s\n", n)
-	}
-	drift, err := p.Check(ctx)
-	if err != nil {
-		return err
-	}
-	report, err := p.CheckCurrentState(ctx)
-	if err != nil {
-		return err
-	}
-	// Coverage/fan-out warnings ride the same non-failing note: channel; only
-	// error-severity coverage and the static handshake findings fail (ADR-0134).
-	for _, n := range report.Notes() {
-		fmt.Fprintf(stdout, "note: %s\n", n)
-	}
-	for _, d := range drift {
-		fmt.Fprintf(stdout, "  %-14s %s: %s\n", d.Kind, d.Path, d.Detail)
-	}
-	current := report.Findings()
-	for _, f := range current {
-		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)
-	}
-	if len(drift) == 0 && len(current) == 0 {
-		fmt.Fprintln(stdout, "awf check: clean")
-		return nil
-	}
-	return fmt.Errorf("awf check: %d drift(s), %d current-state issue(s)", len(drift), len(current))
-}
-
-// runCheckDrift is the `awf check drift` entry point: the drift half of bare
-// check, including the config-tree hygiene sweep that p.Check(ctx) performs. It
-// prints neither the advisory notes nor the version-ahead note; ADR-0159
-// Decision 2 keeps both on the bare form, which is the only one that owns
-// project-level context.
-func runCheckDrift(ctx context.Context, root string, stdout io.Writer) error {
-	p, err := project.Open(ctx, root)
-	if err != nil {
-		return err
-	}
-	drift, err := p.Check(ctx)
-	if err != nil {
-		return err
-	}
-	for _, d := range drift {
-		fmt.Fprintf(stdout, "  %-14s %s: %s\n", d.Kind, d.Path, d.Detail)
-	}
-	if len(drift) == 0 {
-		fmt.Fprintln(stdout, "awf check drift: clean")
-		return nil
-	}
-	return fmt.Errorf("awf check drift: %d drift(s)", len(drift))
-}
-
-// runCheckState is the `awf check state` entry point: the current-state half of
-// bare check. Coverage and fan-out warnings ride the non-failing note: channel
-// exactly as they do there; only findings fail.
-func runCheckState(ctx context.Context, root string, stdout io.Writer) error {
-	p, err := project.Open(ctx, root)
-	if err != nil {
-		return err
-	}
-	report, err := p.CheckCurrentState(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range report.Notes() {
-		fmt.Fprintf(stdout, "note: %s\n", n)
-	}
-	current := report.Findings()
-	for _, f := range current {
-		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)
-	}
-	if len(current) == 0 {
-		fmt.Fprintln(stdout, "awf check state: clean")
-		return nil
-	}
-	return fmt.Errorf("awf check state: %d current-state issue(s)", len(current))
-}
-
-func checkLockVsBinary(ctx context.Context, root string, staged bool) (lockV, binV string, ok bool, err error) {
-	if !staged {
-		return lockVsBinary(root)
-	}
-	lock, err := stagedLock(ctx, root)
-	if err != nil {
-		return "", "", false, err
-	}
-	lockV, binV, ok = lockVsBinaryLock(lock)
-	return lockV, binV, ok, nil
-}
-
-// runCheckStaged validates the staged HEAD-to-index current-state transition and
-// the index coverage (ADR-0135). It skips the working-tree drift oracle: a
-// pre-commit hook validates the exact slice about to land, not the working tree.
-func runCheckStaged(ctx context.Context, root string, stdout io.Writer) error {
-	report, err := project.CheckStagedRoot(ctx, root)
-	if err != nil {
-		return err
-	}
-	for _, n := range report.Notes() {
-		fmt.Fprintf(stdout, "note: %s\n", n)
-	}
-	current := report.Findings()
-	for _, f := range current {
-		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)
-	}
-	if len(current) == 0 {
-		fmt.Fprintln(stdout, "awf check --staged: clean")
-		return nil
-	}
-	return fmt.Errorf("awf check --staged: %d current-state issue(s)", len(current))
+	return errors.Join(repoCheckErr, runCheckStaged(ctx, root, stdout))
 }

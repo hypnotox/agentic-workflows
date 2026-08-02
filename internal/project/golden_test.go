@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -46,41 +47,120 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 
-	// The plans-template singleton renders the ADR-0097 taxonomy, narrowed to the
-	// three-field header by ADR-0108: frontmatter spine + canonical headings,
-	// section-assembly markers stripped, no unresolved template value.
+	// The plans-template singleton renders plan-v1: its intrinsic marker,
+	// narrative spine, heading-identified phase and task, Phase close commit
+	// fence, Definition of done, optional Notes, no retired sections or task
+	// checkboxes, stripped section-assembly markers, and no unresolved value.
 	// invariant: adr-system/plan-artifacts:plans-template-taxonomy (TestEndToEndGolden)
 	plansTemplate, err := os.ReadFile(filepath.Join(root, "docs/plans/template.md"))
 	if err != nil {
 		t.Fatalf("plans-template not rendered: %v", err)
 	}
-	for _, want := range []string{
-		"date:", "adrs:", "status:",
-		"# Plan:", "## Goal", "## Architecture summary",
-		"## File structure", "## Phase", "## Verification", "## Notes",
-	} {
-		if !strings.Contains(string(plansTemplate), want) {
-			t.Errorf("plans-template missing taxonomy element %q:\n%s", want, plansTemplate)
-		}
+	assertPlanTemplateTaxonomy(t, string(plansTemplate))
+	parseDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(parseDir, "template.md"), plansTemplate, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plan.NewFile(parseDir, "Scaffold"); err != nil {
+		t.Fatalf("scaffold from rendered template: %v", err)
+	}
+	parsed, err := plan.ParseDir(parseDir)
+	if err != nil || len(parsed) != 1 || strings.TrimSpace(parsed[0].Goal) == "" || strings.TrimSpace(parsed[0].ArchitectureSummary) == "" || !strings.Contains(parsed[0].DefinitionOfDone, "- ") {
+		t.Fatalf("rendered plan-v1 scaffold is not substantively parseable: plans=%#v err=%v", parsed, err)
 	}
 	for _, bad := range []string{"awf:section", "awf:end", "{{", "}}"} {
 		if strings.Contains(string(plansTemplate), bad) {
 			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
 		}
 	}
-	// ADR-0108: the gate reference interpolates the configured gateCmd (the
-	// fixture sets `make gate`), never a hard-coded "the gate" literal.
-	if !strings.Contains(string(plansTemplate), "make gate") {
-		t.Errorf("plans-template did not interpolate gateCmd:\n%s", plansTemplate)
-	}
-	if strings.Contains(string(plansTemplate), "the gate") {
-		t.Errorf("plans-template leaked hard-coded gate literal:\n%s", plansTemplate)
-	}
 
 	// A fresh check on the synced tree is clean.
 	drift, err := p.Check(testContext(t))
 	if err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
+	}
+}
+
+func assertPlanTemplateTaxonomy(t *testing.T, text string) {
+	t.Helper()
+	for _, problem := range planTemplateTaxonomyProblems(text) {
+		t.Errorf("plans-template taxonomy: %s:\n%s", problem, text)
+	}
+}
+
+func planTemplateTaxonomyProblems(text string) []string {
+	var problems []string
+	previous := -1
+	for _, token := range []string{
+		"format: plan-v1", "date:", "adrs:", "status:", "# Plan:", "## Goal",
+		"## Architecture summary", "## Phase 1:", "**Execution mode: inline.**",
+		"### Task 1.1:", "### Phase close", "```commit", "## Definition of done", "## Notes",
+	} {
+		at := strings.Index(text, token)
+		if at < 0 {
+			problems = append(problems, "missing "+token)
+			continue
+		}
+		if at <= previous {
+			problems = append(problems, "out-of-order "+token)
+		}
+		previous = at
+	}
+	for _, retired := range []string{"## File structure", "## Verification", "- [ ] **Task"} {
+		if strings.Contains(text, retired) {
+			problems = append(problems, "retired plan-v1 declaration remains: "+retired)
+		}
+	}
+	const vocabulary = "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`"
+	if !strings.Contains(text, vocabulary) {
+		problems = append(problems, "missing exact task field vocabulary")
+	}
+	for name, substance := range map[string]string{
+		"Goal":                 "State the outcome and, in one line, its non-goals.",
+		"Architecture summary": "State the execution structure and dependency direction without repeating ADR rationale.",
+		"Definition of done":   "- State at least one concrete observable whole-plan end condition.",
+	} {
+		if !strings.Contains(text, substance) {
+			problems = append(problems, "missing nonempty "+name+" substance")
+		}
+	}
+	return problems
+}
+
+func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
+	text := renderGolden(t, "plans-template/template.md.tmpl", map[string]any{
+		"vars": map[string]any{}, "layout": testLayout(),
+	})
+	for _, mutation := range []struct {
+		name, from, to string
+	}{
+		{"frontmatter format", "format: plan-v1", "format: legacy"},
+		{"frontmatter date", "date:", "written:"},
+		{"frontmatter adrs", "adrs:", "decisions:"},
+		{"frontmatter status", "status:", "state:"},
+		{"title", "# Plan:", "# Procedure:"},
+		{"goal", "## Goal", "## Outcome"},
+		{"architecture", "## Architecture summary", "## Design"},
+		{"phase", "## Phase 1:", "## Batch 1:"},
+		{"execution mode", "**Execution mode: inline.**", "**Owner: inline.**"},
+		{"task", "### Task 1.1:", "### Step 1.1:"},
+		{"phase close", "### Phase close", "### Finish"},
+		{"commit fence", "```commit", "```text"},
+		{"definition", "## Definition of done", "## Verification"},
+		{"field vocabulary", "recognized fields are `Kind`, `Latitude`, `Question`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"goal substance", "State the outcome and, in one line, its non-goals.", ""},
+		{"architecture substance", "State the execution structure and dependency direction without repeating ADR rationale.", ""},
+		{"definition bullet", "- State at least one concrete observable whole-plan end condition.", ""},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			if !strings.Contains(text, mutation.from) {
+				t.Fatalf("mutation source %q is absent", mutation.from)
+			}
+			mutated := strings.Replace(text, mutation.from, mutation.to, 1)
+			if problems := planTemplateTaxonomyProblems(mutated); len(problems) == 0 {
+				t.Fatalf("taxonomy accepted semantic inversion %q", mutation.to)
+			}
+		})
 	}
 }
 

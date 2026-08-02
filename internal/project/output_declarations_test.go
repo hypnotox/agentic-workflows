@@ -22,16 +22,16 @@ func TestProjectTreeReaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := snapshotTreeReader{tree: tree}
-	b, ok := r.ReadFile("a.txt")
-	if !ok || string(b) != "a" {
+	b, ok, err := r.ReadFile("a.txt")
+	if err != nil || !ok || string(b) != "a" {
 		t.Fatal("snapshot read")
 	}
 	b[0] = 'X'
-	again, _ := r.ReadFile("a.txt")
+	again, _, _ := r.ReadFile("a.txt")
 	if string(again) != "a" {
 		t.Fatal("snapshot alias")
 	}
-	if _, ok := r.ReadFile("link"); ok {
+	if _, ok, err := r.ReadFile("link"); err != nil || ok {
 		t.Fatal("scanned symlink")
 	}
 	if got, err := r.Paths(""); err != nil || !reflect.DeepEqual(got, []string{"a.txt"}) {
@@ -42,10 +42,10 @@ func TestProjectTreeReaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	fr := filesystemProjectReader{root: root}
-	if b, ok := fr.ReadFile("a.txt"); !ok || string(b) != "a" {
+	if b, ok, err := fr.ReadFile("a.txt"); err != nil || !ok || string(b) != "a" {
 		t.Fatal("filesystem read")
 	}
-	if _, ok := fr.ReadFile("missing"); ok {
+	if _, ok, err := fr.ReadFile("missing"); err != nil || ok {
 		t.Fatal("missing read")
 	}
 	if got, err := fr.Paths(""); err != nil || !reflect.DeepEqual(got, []string{"a.txt"}) {
@@ -63,6 +63,9 @@ func TestProjectTreeReaders(t *testing.T) {
 	}
 	if err := os.WriteFile(filepath.Join(denied, "b.txt"), []byte("b"), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	if _, ok, err := fr.ReadFile("denied"); err == nil || ok {
+		t.Fatalf("directory read = ok %t, error %v; want a propagated non-file error", ok, err)
 	}
 	if err := os.Chmod(denied, 0o000); err != nil {
 		t.Fatal(err)
@@ -103,6 +106,18 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 				t.Fatalf("site %d: error = %v, want the enumeration fault", site, err)
 			}
 		})
+	}
+}
+
+func TestBuildOutputDeclarationsPropagatesReadFaults(t *testing.T) {
+	read := failingReadReader{memoryProjectReader: memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x")}}
+	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: []\nagents: []\ndomains: [d]\n"), configReaderAdapter(read))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
+	if _, err := BuildOutputDeclarations(cfg, cat, nil, read, mustCorpus(nil)); err == nil || !strings.Contains(err.Error(), "read fault") {
+		t.Fatalf("error = %v, want the project-tree read fault", err)
 	}
 }
 
@@ -294,9 +309,9 @@ func TestNormalizeOutputInputsOrdersRolesAtOnePath(t *testing.T) {
 
 type memoryProjectReader map[string][]byte
 
-func (r memoryProjectReader) ReadFile(p string) ([]byte, bool) {
+func (r memoryProjectReader) ReadFile(p string) ([]byte, bool, error) {
 	b, ok := r[p]
-	return append([]byte(nil), b...), ok
+	return append([]byte(nil), b...), ok, nil
 }
 func (r memoryProjectReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
@@ -307,6 +322,12 @@ func (r memoryProjectReader) Paths(prefix string) ([]string, error) {
 	}
 	slices.Sort(out)
 	return out, nil
+}
+
+type failingReadReader struct{ memoryProjectReader }
+
+func (r failingReadReader) ReadFile(string) ([]byte, bool, error) {
+	return nil, false, errors.New("project-tree read fault")
 }
 
 // failingPathsReader faults the failAt'th Paths call so each propagation site
@@ -328,7 +349,8 @@ func (r failingPathsReader) Paths(prefix string) ([]string, error) {
 type configReaderAdapter struct{ memoryProjectReader }
 
 func (r configReaderAdapter) ReadFile(p string) ([]byte, bool) {
-	return r.memoryProjectReader.ReadFile(".awf/" + p)
+	b, ok, _ := r.memoryProjectReader.ReadFile(".awf/" + p)
+	return b, ok
 }
 func (r configReaderAdapter) Paths(prefix string) []string { return nil }
 

@@ -10,7 +10,7 @@
 #   exec bash .awf/hooks/pre-merge-commit.sh "$@"
 set -euo pipefail
 {{- with .vars.checkCmd }}
-{{ . }} --staged
+{{ . }} staged
 {{- else }}
-{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check --staged
+{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check staged
 {{- end }}

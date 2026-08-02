@@ -599,6 +599,61 @@ func TestApplicationProjectionContracts(t *testing.T) {
 	}
 }
 
+// invariant: adr-system/adr-lifecycle:corrective-reapplication (TestOperationProgressReapplied)
+func TestOperationProgressReapplied(t *testing.T) {
+	add := adr.Operation{Verb: adr.OpAdd, ID: "alpha/state:one", Slug: "one"}
+	update := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/state:two", Slug: "two"}
+	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
+	batch := func(kind adr.HistoryEventKind, operations ...adr.Operation) adr.HistoryEvent {
+		return adr.HistoryEvent{Kind: kind, Operations: operations}
+	}
+	record := adr.ADR{
+		Number: "0002", Format: adr.CurrentStateV2, Status: "Implementing",
+		Operations: []adr.Operation{add, update},
+		History: []adr.HistoryEvent{
+			status("Proposed"), status("Implementing"),
+			batch(adr.HistoryApplied, add),
+			batch(adr.HistoryReapplied, add),
+			batch(adr.HistoryReapplied, add),
+		},
+	}
+	batches, err := record.ApplicationBatches()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batches) != 3 || batches[0].Kind != adr.HistoryApplied || batches[1].Kind != adr.HistoryReapplied || batches[2].Kind != adr.HistoryReapplied {
+		t.Fatalf("application batches = %#v", batches)
+	}
+	if batches[0].HistoryIndex == batches[1].HistoryIndex || batches[1].HistoryIndex == batches[2].HistoryIndex {
+		t.Fatalf("corrective occurrences lost identity: %#v", batches)
+	}
+	progress, err := record.OperationProgress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(progress.Applied) != 1 || progress.Applied[0].Operation != add || len(progress.Remaining) != 1 || progress.Remaining[0] != update {
+		t.Fatalf("progress = %#v", progress)
+	}
+
+	duplicateApplied := record
+	duplicateApplied.History = append(slices.Clone(record.History), batch(adr.HistoryApplied, add))
+	if _, err := duplicateApplied.OperationProgress(); err == nil || !strings.Contains(err.Error(), "more than once") {
+		t.Fatalf("second Applied error = %v", err)
+	}
+	beforeApplied := record
+	beforeApplied.History = []adr.HistoryEvent{status("Proposed"), status("Implementing"), batch(adr.HistoryReapplied, add)}
+	if _, err := beforeApplied.OperationProgress(); err == nil || !strings.Contains(err.Error(), "without an earlier Applied") {
+		t.Fatalf("Reapplied-before-Applied error = %v", err)
+	}
+	remove := adr.Operation{Verb: adr.OpRemove, ID: "alpha/state:gone", Slug: "gone"}
+	reappliedRemove := record
+	reappliedRemove.Operations = []adr.Operation{remove, update}
+	reappliedRemove.History = []adr.HistoryEvent{status("Proposed"), status("Implementing"), batch(adr.HistoryApplied, remove), batch(adr.HistoryReapplied, remove)}
+	if _, err := reappliedRemove.OperationProgress(); err == nil || !strings.Contains(err.Error(), "only add or update") {
+		t.Fatalf("Reapplied-remove error = %v", err)
+	}
+}
+
 func TestLoadCorpusHydratesGovernedRecords(t *testing.T) {
 	dir := t.TempDir()
 	stateChanges := "- add `alpha/state:one`"

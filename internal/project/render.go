@@ -1,11 +1,9 @@
 package project
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -141,7 +139,7 @@ func (p *Project) skillRows() string {
 
 // commitScopesDisplay returns the display-formatted allowed commit-scope list
 // (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes - the same
-// audit.Resolve path awf check commit reads, so prose and gate agree by
+// audit.Resolve path awf check staged commit reads, so prose and gate agree by
 // construction - or "" when scopes are accept-any (ADR-0051).
 func (p *Project) commitScopesDisplay() string {
 	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes
@@ -206,9 +204,12 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 	outputRead := false
 	readOutput := func() (string, error) {
 		if !outputRead {
-			b, rerr := os.ReadFile(filepath.Join(p.Root, outPath))
-			if rerr != nil && !errors.Is(rerr, os.ErrNotExist) { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses; absence is folded into an empty read
-				return "", rerr
+			b, ok, err := p.projectTreeReader().ReadFile(outPath)
+			if err != nil {
+				return "", err
+			}
+			if !ok {
+				b = nil
 			}
 			output, outputRead = string(b), true // "" when absent (first render)
 		}
@@ -229,9 +230,9 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			} else if exists {
 				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
 			}
-			out, rerr := readOutput()
-			if rerr != nil { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses (NotExist is folded into an empty read above)
-				return nil, fmt.Errorf("read output %s: %w", outPath, rerr)
+			out, readErr := readOutput()
+			if readErr != nil {
+				return nil, fmt.Errorf("read output %s: %w", outPath, readErr)
 			}
 			sp.InPlace = true
 			// A located region (its pointer present) is used verbatim even when
@@ -566,18 +567,17 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 		out = append(out, rf)
-		// Bridge: each adapter that wants one imports AGENTS.md verbatim (ADR-0037).
-		// Gated on the agents-doc render above - a local (hand-maintained) AGENTS.md
-		// must not get a bridge pointing at an un-rendered file. cursor has an empty
-		// BridgeFile and emits nothing (inv: cursor-no-bridge).
-		// touches-state: rendering/project-output-plan:cursor-no-bridge - bridge suppression for an empty BridgeFile; proof in target_test.go
+		// Each descriptor-owned bridge is gated on the agents-doc render above: a
+		// local (hand-maintained) AGENTS.md emits no managed bridge. A target with an
+		// empty BridgeFile emits no bridge, so neutral instructions never point at
+		// an unrendered target-owned file.
 		for _, t := range p.Targets {
 			if t.BridgeFile == "" {
 				continue
 			}
-			brf, err := p.renderTarget("claude", "", t.BridgeTemplate,
+			brf, err := p.renderTarget(targetBridgeKind, "", t.BridgeTemplate,
 				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
-			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
+			if err != nil {
 				return nil, err
 			}
 			out = append(out, brf)
@@ -747,7 +747,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
+	if kind != "target-output" && kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && !resident.IsResidentKind(kind) {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err
@@ -769,7 +769,9 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 		inPlaceRead = inPlaceRead || sp.InPlace
 	}
 	if inPlaceRead {
-		if _, ok := (filesystemProjectReader{root: p.Root}).ReadFile(outPath); ok {
+		if _, ok, err := p.projectTreeReader().ReadFile(outPath); err != nil {
+			return nil, err
+		} else if ok {
 			inputs = append(inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
 		}
 	}
@@ -784,14 +786,10 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 		return "", err
 	}
 	a := agent{Name: p.Cat.Agents[name].Name, Description: description, Body: body}
-	switch t.AgentDialect {
-	case MarkdownAgentDialect:
-		return encodeMarkdownAgent(a)
-	case TOMLAgentDialect:
-		return encodeTOMLAgent(a)
-	default:
+	if t.AgentDialect != MarkdownAgentDialect {
 		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
 	}
+	return encodeMarkdownAgent(a)
 }
 
 // generateIndexMD renders the ADR INDEX for the project's decisions directory

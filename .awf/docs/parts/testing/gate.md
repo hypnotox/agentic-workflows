@@ -8,11 +8,12 @@ coverage across all seven generated Pi TypeScript files, including the selection
 a cross-compile of `./...` for every released non-host platform,
 `golangci-lint`, a whole-program dead-code check (ADR-0063), and
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079). The plain-punctuation scan
-(`awf check prose`, ADR-0119, opt-in for adopters and enabled in this repo) and the effort-owned-memory
-citation scan (`awf check memory`, ADR-0158 updated by ADR-0175, opt-in for adopters and enabled in this repo)
+(`awf check repo prose`, ADR-0119, opt-in for adopters and enabled in this repo) and the effort-owned-memory
+citation scan (`awf check repo memory`, ADR-0158 updated by ADR-0175, opt-in for adopters and enabled in this repo)
 are not gate steps: the pre-commit hook payload runs them locally and CI backstops them (ADR-0196). A red gate blocks the commit: fix the cause or revert.
 
 The example adopter is required to produce no notes. Repository regression tests keep bare `awf context internal/project cmd/awf` and bare `awf context cmd/awf/context.go` within direct delivery, while explicitly requested detail remains complete and spill-capable. Catalog and render tests require native skill discovery, advisory workflow relationships, pruning of disabled outputs, and non-Pi parity. Container tests cover handoff runtime guards; exact effort-owned path, slug, ownership, hard-link, bounded UTF-8, stable identity, and repository confinement; cancellation; editor fallback; and Pi-only explicit effort association, same-conversation replacement transfer, owner-checked activity recovery, advisory heartbeat, and Remote Pi metadata/name degradation. Non-Pi output-plan tests prove those artifacts remain absent. Go suites cover schema-2 resident ordering and crash states, one-winner slug reservation, finish tombstones, real-Git add/integrate/remove topology, protocol output, and generated lifecycle coverage. The TypeScript floor is 100% in statements, branches, functions, and lines; reachable paths are tested through injected dependencies, and exclusions remain only for reasoned unreachable runtime guards.
+The example adopter is required to produce no notes. Repository regression tests keep bare `awf context internal/project cmd/awf` and bare `awf context cmd/awf/context.go` within direct delivery, while explicitly requested detail remains complete and spill-capable. Catalog and render tests require native skill discovery, advisory workflow relationships, pruning of disabled outputs, and non-Pi parity. Container tests cover handoff runtime guards, the bounded kickoff schema, UTF-16 length, exact prose propagation, queue and pending-request behavior, the best-effort continuation disposition after successful queueing, the five-second countdown, cancellation, persisted-session revalidation, lineage, cleanup, recovery notices, no-silent-retry behavior, and editor fallback. Go suites cover schema-2 resident ordering and crash states, one-winner slug reservation, finish tombstones, real-Git add/integrate/remove topology, protocol output, and generated lifecycle coverage. The TypeScript floor is 100% in statements, branches, functions, and lines; reachable paths are tested through injected dependencies, and exclusions remain only for reasoned unreachable runtime guards.
 
 ### Coverage: statement gate vs line reporting
 
@@ -50,3 +51,5 @@ untrustworthy (it can hide a real survivor), so the command itself exits non-zer
 mutant times out. Raise the timeout coefficient and rerun; you never need to eyeball the
 `Timed out:` count. It stays advisory (never part of the gate) and every survivor still
 needs you to judge whether it is a real gap or an unkillable equivalent mutant.
+
+The strict container lane includes the standalone context-usage output and covers its local formatting, unavailable model-window form, active-branch compactions, per-call refresh, and silent supported operation.

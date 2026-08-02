@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"io"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -21,13 +22,14 @@ func TestCheckChildrenCleanLines(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	for _, tc := range []struct{ sub, want string }{
-		{"drift", "awf check drift: clean"},
-		{"state", "awf check state: clean"},
+		{"repo drift", "awf check repo drift: clean"},
+		{"repo state", "awf check repo state: clean"},
 	} {
 		t.Run(tc.sub, func(t *testing.T) {
 			root := scaffoldProject(t)
 			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check", tc.sub}, &out, &errb); code != 0 {
+			args := append([]string{"awf", "check"}, strings.Fields(tc.sub)...)
+			if code := runAt(t, root, args, &out, &errb); code != 0 {
 				t.Fatalf("exit = %d, stderr=%q", code, errb.String())
 			}
 			if !strings.Contains(out.String(), tc.want) {
@@ -41,90 +43,121 @@ func TestCheckChildrenCleanLines(t *testing.T) {
 	}
 }
 
-// --staged is bare-check only. Every child declares the flag in clispec purely so
-// this handler-owned diagnostic is reachable; an undeclared flag would die in
-// parseArgs with a generic unknown-flag error instead.
-func TestCheckChildrenRejectStaged(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	spec, ok := clispec.Lookup("check")
-	if !ok {
-		t.Fatal("Lookup(check) missing")
+// invariant: invariants/current-state-authority:invariants-zero-slugs-clean (TestCheckRepoStateNoInvariantClaims)
+func TestCheckRepoStateNoInvariantClaims(t *testing.T) {
+	root := scaffoldProject(t)
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "check", "repo", "state"}, &out, &errb); code != 0 {
+		t.Fatalf("check repo state with no invariant claims exited %d: %s", code, errb.String())
 	}
-	for _, child := range spec.Children {
-		t.Run(child.Name, func(t *testing.T) {
-			root := scaffoldProject(t)
+	if got := out.String(); got != "awf check repo state: clean\n" || strings.Contains(got, "backing") {
+		t.Fatalf("check repo state with no invariant claims = %q, want one clean line", got)
+	}
+}
+
+// invariant: tooling/cli:check-universe-groups (TestCheckStatePathsDispatchDistinctly)
+func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"awf", "check", "repo", "state"}, "awf check repo state: clean"},
+		{[]string{"awf", "check", "staged", "state"}, "awf check staged state: clean"},
+	} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, tc.args, &out, &errb); code != 0 {
+			t.Fatalf("%v exited %d: %s", tc.args, code, errb.String())
+		}
+		if !strings.Contains(out.String(), tc.want) {
+			t.Errorf("%v output = %q, want %q", tc.args, out.String(), tc.want)
+		}
+	}
+}
+
+// invariant: tooling/cli:check-disabled-child-disclosure (TestCheckDisabledChildDisclosure)
+func TestCheckDisabledChildDisclosure(t *testing.T) {
+	const proseNote = "note: prose: disabled (proseGate.enabled)\n"
+	const memoryNote = "note: memory: disabled (memoryCite.enabled)\n"
+
+	t.Run("aggregate discloses disabled children", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML)
+		var out bytes.Buffer
+		if err := runCheckRepo(testContext(t), root, &out); err != nil {
+			t.Fatalf("check repo: %v", err)
+		}
+		for _, want := range []string{proseNote, memoryNote} {
+			if got := strings.Count(out.String(), want); got != 1 {
+				t.Errorf("check repo output contains %q %d times, want once:\n%s", strings.TrimSpace(want), got, out.String())
+			}
+		}
+	})
+
+	t.Run("aggregate omits notes for enabled children", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
+		var out bytes.Buffer
+		if err := runCheckRepo(testContext(t), root, &out); err != nil {
+			t.Fatalf("check repo: %v", err)
+		}
+		for _, unwanted := range []string{proseNote, memoryNote} {
+			if strings.Contains(out.String(), unwanted) {
+				t.Errorf("check repo output contains %q:\n%s", strings.TrimSpace(unwanted), out.String())
+			}
+		}
+	})
+
+	t.Run("direct child uses the same disclosure", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML)
+		for _, tc := range []struct {
+			child string
+			want  string
+		}{
+			{child: "prose", want: proseNote},
+			{child: "memory", want: memoryNote},
+		} {
 			var out, errb bytes.Buffer
-			code := runAt(t, root, []string{"awf", "check", child.Name, "--staged"}, &out, &errb)
-			if code == 0 {
-				t.Fatalf("check %s --staged exited 0", child.Name)
+			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
+				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
 			}
-			if !strings.Contains(errb.String(), "--staged applies to the bare form only") {
-				t.Errorf("diagnostic = %q, want the bare-form-only message", errb.String())
+			if got := out.String(); got != tc.want {
+				t.Errorf("check repo %s output = %q, want %q", tc.child, got, tc.want)
 			}
-		})
-	}
-}
+		}
+	})
 
-// guardProjectState's staged predicate carries the same `sub == ""` narrowing as
-// the driver's gate switch, and this is what pins it. Without the narrowing a
-// child invoked with --staged sends the guard down its staged path, which reads
-// the git index: in a non-git adopted tree that fails with a snapshot error at
-// exit 1 before the handler can produce the bare-form-only diagnostic. A git-backed
-// fixture cannot tell the two apart, which is why this one deliberately is not.
-func TestCheckChildStagedRejectionPrecedesStateGuard(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	var out, errb bytes.Buffer
-	code := runAt(t, root, []string{"awf", "check", "drift", "--staged"}, &out, &errb)
-	if code != 2 {
-		t.Fatalf("exit = %d, want 2 (CLI misuse); stderr=%q", code, errb.String())
-	}
-	if !strings.Contains(errb.String(), "--staged applies to the bare form only") {
-		t.Errorf("diagnostic = %q, want the bare-form-only message, not a git failure", errb.String())
-	}
-}
-
-// `awf check --staged drift` puts the subcommand after the flag, so resolve never
-// sees it as a child and it arrives as a positional. That earns the ordering
-// message, not the unknown-subcommand one.
-func TestCheckSubcommandAfterFlag(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	// The staged gate runs before the handler, so the fixture needs a committed
-	// lock that satisfies it for the handler's diagnostic to be the one reached.
-	lock := &manifest.Lock{
-		AWFVersion: project.Version, SchemaVersion: migrate.Current(),
-		Files: map[string]manifest.Entry{},
-	}
-	b, err := lock.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	root := stagedCheckProject(t, map[string]string{
-		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nskills: [tdd]\nagents: []\n",
-		".awf/awf.lock":    string(b),
-	}, nil)
-	var out, errb bytes.Buffer
-	code := runAt(t, root, []string{"awf", "check", "--staged", "drift"}, &out, &errb)
-	if code == 0 {
-		t.Fatal("check --staged drift exited 0")
-	}
-	if !strings.Contains(errb.String(), "the subcommand must come first") {
-		t.Errorf("diagnostic = %q, want the ordering message", errb.String())
-	}
-	if strings.Contains(errb.String(), "unknown subcommand") {
-		t.Errorf("a valid child must not be reported as unknown: %q", errb.String())
-	}
+	t.Run("direct enabled child omits the disclosure", func(t *testing.T) {
+		root := syncedGitProject(t, checkYAML+"proseGate:\n  enabled: true\nmemoryCite:\n  enabled: true\n")
+		for _, tc := range []struct {
+			child    string
+			unwanted string
+		}{
+			{child: "prose", unwanted: proseNote},
+			{child: "memory", unwanted: memoryNote},
+		} {
+			var out, errb bytes.Buffer
+			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
+				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
+			}
+			if strings.Contains(out.String(), tc.unwanted) {
+				t.Errorf("check repo %s output contains %q:\n%s", tc.child, strings.TrimSpace(tc.unwanted), out.String())
+			}
+		}
+	})
 }
 
 // An unrecognized positional lists the valid subcommands. MaxPos is -1 so the
 // handler owns this message rather than a generic arity error.
+func TestCheckUniverseUnknownSubcommand(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	for _, universe := range []string{"repo", "staged"} {
+		var out, errb bytes.Buffer
+		code := runAt(t, root, []string{"awf", "check", universe, "bogus"}, &out, &errb)
+		if code != 2 || !strings.Contains(errb.String(), `unknown subcommand "bogus"`) {
+			t.Errorf("check %s bogus = code %d, stderr %q", universe, code, errb.String())
+		}
+	}
+}
+
 func TestCheckUnknownSubcommand(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -137,7 +170,7 @@ func TestCheckUnknownSubcommand(t *testing.T) {
 	if !strings.Contains(errb.String(), `unknown subcommand "bogus"`) {
 		t.Errorf("diagnostic = %q, want the unknown-subcommand message", errb.String())
 	}
-	for _, want := range []string{"drift", "state", "invariants", "prose", "memory", "commit"} {
+	for _, want := range []string{"repo", "staged"} {
 		if !strings.Contains(errb.String(), want) {
 			t.Errorf("diagnostic omits the valid subcommand %q: %s", want, errb.String())
 		}
@@ -165,29 +198,19 @@ func aheadSchemaGitProject(t *testing.T) string {
 	return root
 }
 
-// The per-child gating property: `check prose` and `check memory` resolve to
-// Ungated under a Gated parent, so they run against a project whose lock is
-// behind this binary where bare `check` refuses. This is the half of the claim
-// the driver owns; the clispec resolver's half is proved in that package.
-// invariant: tooling/cli:group-child-gating-honored (TestCheckUngatedChildrenRunOnSchemaAheadProject)
-func TestCheckUngatedChildrenRunOnSchemaAheadProject(t *testing.T) {
+// The whole check family inherits its gate from the top-level command, so a
+// direct prose invocation refuses before scanning when the project schema is
+// ahead of the binary.
+func TestCheckProseRefusesOnSchemaAheadProject(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	for _, sub := range []string{"prose", "memory"} {
-		t.Run(sub, func(t *testing.T) {
-			root := aheadSchemaGitProject(t)
-			var out, errb bytes.Buffer
-			if code := runAt(t, root, []string{"awf", "check", sub}, &out, &errb); code != 0 {
-				t.Fatalf("check %s exit = %d on an ahead-schema project, stderr=%q", sub, code, errb.String())
-			}
-			// Bare check refuses the same tree, which is what makes the child's
-			// exemption meaningful rather than vacuous.
-			out.Reset()
-			errb.Reset()
-			if code := runAt(t, root, []string{"awf", "check"}, &out, &errb); code != 1 {
-				t.Fatalf("bare check exit = %d, want the version-gate refusal", code)
-			}
-		})
+	root := aheadSchemaGitProject(t)
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "check", "repo", "prose"}, &out, &errb); code != 1 {
+		t.Fatalf("check repo prose exit = %d on an ahead-schema project, stderr=%q", code, errb.String())
+	}
+	if all := out.String() + errb.String(); !strings.Contains(all, "update your pinned awf") {
+		t.Fatalf("check repo prose refused without the version-gate message: %s", all)
 	}
 }
 
@@ -249,14 +272,12 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 			if !strings.Contains(errb.String(), state.refusal) {
 				t.Fatalf("bare check diagnostic = %q, want %q", errb.String(), state.refusal)
 			}
-			// The three exempt children run anyway.
-			for _, sub := range []string{"prose", "memory", "commit"} {
-				args := []string{"awf", "check", sub}
-				if sub == "commit" {
-					msg := filepath.Join(t.TempDir(), "MSG")
-					testsupport.WriteFile(t, msg, "feat(awf): a conventional subject\n")
-					args = append(args, msg)
-				}
+			// Only staged commit remains exempt so a commit-msg hook works mid-upgrade.
+			for _, sub := range []string{"commit"} {
+				args := []string{"awf", "check", "staged", sub}
+				msg := filepath.Join(t.TempDir(), "MSG")
+				testsupport.WriteFile(t, msg, "feat(awf): a conventional subject\n")
+				args = append(args, msg)
 				out.Reset()
 				errb.Reset()
 				if code := runAt(t, guarded(t, state.journaled), args, &out, &errb); code != 0 {
@@ -292,11 +313,11 @@ func TestCheckChildrenReportFindings(t *testing.T) {
 		}
 		testsupport.WriteFile(t, filepath.Join(root, target), "hand-edited\n")
 		var out, errb bytes.Buffer
-		code := runAt(t, root, []string{"awf", "check", "drift"}, &out, &errb)
+		code := runAt(t, root, []string{"awf", "check", "repo", "drift"}, &out, &errb)
 		if code != 1 {
 			t.Fatalf("exit = %d, want 1; stdout=%q", code, out.String())
 		}
-		if !strings.Contains(errb.String(), "awf check drift:") || !strings.Contains(errb.String(), "drift(s)") {
+		if !strings.Contains(errb.String(), "awf check repo drift:") || !strings.Contains(errb.String(), "drift(s)") {
 			t.Errorf("diagnostic = %q, want a drift count", errb.String())
 		}
 	})
@@ -305,11 +326,11 @@ func TestCheckChildrenReportFindings(t *testing.T) {
 		// An owned path with no scoped topic is an error-severity coverage finding.
 		root := syncedGitProjectFiles(t, coverageYAML(), coverageFiles())
 		var out, errb bytes.Buffer
-		code := runAt(t, root, []string{"awf", "check", "state"}, &out, &errb)
+		code := runAt(t, root, []string{"awf", "check", "repo", "state"}, &out, &errb)
 		if code != 1 {
 			t.Fatalf("exit = %d, want 1; stdout=%q", code, out.String())
 		}
-		if !strings.Contains(errb.String(), "awf check state:") || !strings.Contains(errb.String(), "current-state issue(s)") {
+		if !strings.Contains(errb.String(), "awf check repo state:") || !strings.Contains(errb.String(), "current-state issue(s)") {
 			t.Errorf("diagnostic = %q, want a current-state count", errb.String())
 		}
 	})
@@ -322,12 +343,19 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	t.Run("open error", func(t *testing.T) {
-		// No .awf/ at all, so project.Open fails in both entry points.
-		if err := runCheckDrift(ctx, t.TempDir(), io.Discard); err == nil {
-			t.Error("expected an Open error from check drift")
+		// No .awf/ or repository, so every direct child fails before checking.
+		root := t.TempDir()
+		if err := runCheckStagedState(ctx, root, io.Discard); err == nil {
+			t.Error("expected an Open error from check staged state")
+		}
+		if err := runCheckStagedDrift(ctx, root, io.Discard); err == nil {
+			t.Error("expected an Open error from check staged drift")
+		}
+		if err := runCheckDrift(ctx, root, io.Discard); err == nil {
+			t.Error("expected an Open error from check repo drift")
 		}
 		if err := runCheckState(ctx, t.TempDir(), io.Discard); err == nil {
-			t.Error("expected an Open error from check state")
+			t.Error("expected an Open error from check repo state")
 		}
 	})
 
@@ -339,20 +367,23 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 			"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
 		if err := runCheckDrift(ctx, root, io.Discard); err == nil {
-			t.Fatal("expected check drift to surface the render error from p.Check()")
+			t.Fatal("expected check repo drift to surface the render error from p.Check()")
 		}
 	})
 
-	t.Run("state working-tree error", func(t *testing.T) {
-		// A drift-clean but non-git project fails the working-tree read inside
-		// CheckCurrentState.
+	t.Run("state filesystem fallback", func(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteAwfConfig(t, root, checkYAML)
 		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		if err := runCheckState(ctx, root, io.Discard); err == nil {
-			t.Fatal("expected a working-tree error from CheckCurrentState outside a git repository")
+		if err := runCheckState(ctx, root, io.Discard); err != nil {
+			t.Fatalf("filesystem current-state fallback: %v", err)
+		}
+		canceled, cancel := context.WithCancel(context.Background())
+		cancel()
+		if err := runCheckState(canceled, root, io.Discard); !errors.Is(err, context.Canceled) {
+			t.Fatalf("canceled filesystem current-state fallback = %v", err)
 		}
 	})
 
@@ -362,7 +393,7 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 		var out bytes.Buffer
 		if err := runCheckState(ctx, root, &out); err != nil {
-			t.Fatalf("a warn-ranked finding must not fail check state: %v", err)
+			t.Fatalf("a warn-ranked finding must not fail check repo state: %v", err)
 		}
 		if !strings.Contains(out.String(), "note: ") {
 			t.Errorf("expected a warn note on stdout:\n%s", out.String())
@@ -370,15 +401,36 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 	})
 }
 
-// awf help lists the check group's six children, extending the group-child
-// assertion to the newly grouped command.
+func TestCheckSubcommandEnumerationPaths(t *testing.T) {
+	if got := checkSubcommands("repo"); got != "drift, state, prose, memory" {
+		t.Fatalf("repo children = %q", got)
+	}
+	if got := checkSubcommands("repo unknown"); got != "drift, state, prose, memory" {
+		t.Fatalf("unknown nested path should retain the addressed group, got %q", got)
+	}
+}
+
+func TestRunCheckGroupDirectEdges(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	c := &cmdCtx{ctx: testContext(t), root: root, sub: "repo", inv: invocation{}, stdout: io.Discard}
+	if err := runCheckGroup(c); err != nil {
+		t.Fatalf("repo aggregate: %v", err)
+	}
+	c.sub = "unreachable"
+	if err := runCheckGroup(c); err == nil || !strings.Contains(err.Error(), "unknown subcommand") {
+		t.Fatalf("direct unknown path = %v", err)
+	}
+}
+
+// awf help lists both check-universe children, extending the group-child
+// assertion to the nested command structure.
 func TestHelpListsCheckChildren(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	var out, errb bytes.Buffer
 	run([]string{"awf", "help"}, &out, &errb)
 	got := out.String()
-	for _, sub := range []string{"drift", "state", "invariants", "prose", "memory", "commit"} {
+	for _, sub := range []string{"repo", "staged"} {
 		if !strings.Contains(got, "\n    "+sub+" ") {
 			t.Errorf("awf help omits the check child %q:\n%s", sub, got)
 		}

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -462,8 +463,15 @@ func TestRunNewScaffoldsPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("created file not found: %v", err)
 	}
-	if !strings.Contains(string(body), "# Plan: Some Plan Title") || !strings.Contains(string(body), "status: Proposed") {
-		t.Errorf("plan not scaffolded from template:\n%s", body)
+	if !strings.Contains(string(body), "format: plan-v1\n") || !strings.Contains(string(body), "# Plan: Some Plan Title") || !strings.Contains(string(body), "status: Proposed") {
+		t.Errorf("plan not scaffolded from plan-v1 template:\n%s", body)
+	}
+	plans, err := plan.ParseDir(filepath.Dir(got))
+	if err != nil {
+		t.Fatalf("scaffolded plan does not parse cleanly: %v", err)
+	}
+	if len(plans) != 1 || plans[0].Filename != filepath.Base(got) || plans[0].Format != "plan-v1" {
+		t.Fatalf("parsed scaffold = %#v, want created plan-v1", plans)
 	}
 }
 
@@ -688,8 +696,8 @@ func TestRunNewScaffoldsSkill(t *testing.T) {
 	if !strings.Contains(string(rendered), "<!-- awf:stub -->") {
 		t.Errorf("stub-marked part must render verbatim, marker included:\n%s", rendered)
 	}
-	if err := runCheck(ctx, root, false, io.Discard); err != nil {
-		t.Errorf("post-scaffold check not clean: %v", err)
+	if err := runCheckRepo(ctx, root, io.Discard); err != nil {
+		t.Errorf("post-scaffold repo check not clean: %v", err)
 	}
 }
 

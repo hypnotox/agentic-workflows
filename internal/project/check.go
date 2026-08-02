@@ -22,17 +22,26 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// AdvisoryNotes returns the non-failing render advisories in print order - the
-// ADR-0045 unset-var notes, the ADR-0070 stub notes, then the ADR-0083 part-
-// marker notes - computed from one output-plan render plus the domain-doc
-// generation, which renders outside it.
+// AdvisoryNotes returns the compatibility projection of the non-failing notes
+// produced by one operation-scoped plan parse.
 func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, err
 	}
+	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	if err != nil {
+		return nil, err
+	}
+	return p.advisoryNotesWithState(ctx, corpus, topics, eff, plans)
+}
+
+// advisoryNotesWithState returns the non-failing render advisories in print
+// order from operation-owned state and its already parsed plans.
+func (p *Project) advisoryNotesWithState(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan) ([]string, error) {
 	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
 		return nil, err
@@ -57,10 +66,7 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	notes = append(notes, th...)
-	pcs, err := p.planCommitScopeNotes()
-	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
-		return nil, err
-	}
+	pcs := p.planCommitScopeNotes(plans)
 	notes = append(notes, pcs...)
 	gt, err := p.glossaryTersenessNotes()
 	if err != nil {
@@ -410,17 +416,55 @@ func (p *Project) declaredSections(kind, name string) []string {
 	return nil
 }
 
-func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
-	// Refuse an unresolvable hook-command wiring before checking anything
-	// (ADR-0156 Decision 5); the staged index check stays exempt - the
-	// working-tree check in the same gate run covers the config.
+// CheckReport is the ordinary check operation's blocking drift and advisory
+// notes, derived from one operation-owned plan parse.
+type CheckReport struct {
+	Drift []manifest.Drift
+	Notes []string
+}
+
+// CheckReport performs one ordinary project check. Plans are parsed once and
+// the typed set is threaded to both blocking and advisory consumers.
+func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err := validateCommandWiring(p.Cfg); err != nil {
-		return nil, err
+		return CheckReport{}, err
 	}
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
-		return nil, err
+		return CheckReport{}, err
 	}
+	plans, parseErr := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	var planDrift []manifest.Drift
+	if parseErr != nil {
+		var diagnostics *plan.DiagnosticsError
+		if !errors.As(parseErr, &diagnostics) {
+			return CheckReport{}, parseErr
+		}
+		rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+		for _, diagnostic := range diagnostics.Diagnostics {
+			planDrift = append(planDrift, manifest.Drift{
+				Path: rel + "/" + diagnostic.Path, Kind: "plan-" + diagnostic.Category, Detail: diagnostic.Detail,
+			})
+		}
+	}
+	drift, err := p.checkWithState(ctx, corpus, topics, eff, plans)
+	if err != nil {
+		return CheckReport{}, err
+	}
+	notes, err := p.advisoryNotesWithState(ctx, corpus, topics, eff, plans)
+	if err != nil { // coverage-ignore: checkWithState already ran the same output producers over identical operation-owned inputs
+		return CheckReport{}, err
+	}
+	return CheckReport{Drift: append(drift, planDrift...), Notes: notes}, nil
+}
+
+// Check is the compatibility projection of CheckReport's blocking drift.
+func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
+	report, err := p.CheckReport(ctx)
+	return report.Drift, err
+}
+
+func (p *Project) checkWithState(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool, plans []plan.Plan) ([]manifest.Drift, error) {
 	lock, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return nil, err
@@ -462,11 +506,7 @@ func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 	drift = append(drift, p.checkDeadRefs(files)...)
 	drift = append(drift, p.checkDeadSkillRefs(files, eff)...)
 
-	planDrift, err := p.checkPlans(corpus)
-	if err != nil {
-		return nil, err
-	}
-	drift = append(drift, planDrift...)
+	drift = append(drift, p.checkPlans(corpus, plans)...)
 	pitfallDrift, err := p.checkPitfalls(corpus)
 	if err != nil {
 		return nil, err
@@ -653,12 +693,7 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
 // An adrs: entry resolves by identity, so a number and a pending record's slug
 // resolve through one lookup and a link survives numbering (ADR-0202 item 14).
-func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
-	plansDir := filepath.Join(p.Root, p.Cfg.DocsDir, "plans")
-	plans, err := plan.ParseDir(plansDir)
-	if err != nil {
-		return nil, err
-	}
+func (p *Project) checkPlans(corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
 	aset := audit.Resolve(p.Cfg.Audit)
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
 	var drift []manifest.Drift
@@ -684,7 +719,7 @@ func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
 			}
 		}
 	}
-	return drift, nil
+	return drift
 }
 
 // planCommitScopeNotes returns advisory (non-failing) notes for a plan's ```commit
@@ -692,11 +727,7 @@ func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
 // mistyped subject (hard drift in checkPlans), an unknown scope is advisory: a plan
 // may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
 // frontmatter-less plan is skipped.
-func (p *Project) planCommitScopeNotes() ([]string, error) {
-	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
-	if err != nil {
-		return nil, err
-	}
+func (p *Project) planCommitScopeNotes(plans []plan.Plan) []string {
 	aset := audit.Resolve(p.Cfg.Audit)
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
 	var notes []string
@@ -712,7 +743,7 @@ func (p *Project) planCommitScopeNotes() ([]string, error) {
 			}
 		}
 	}
-	return notes, nil
+	return notes
 }
 
 // checkPitfalls validates the pitfalls sidecar when the doc is enabled: each entry's

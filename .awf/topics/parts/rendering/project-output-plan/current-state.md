@@ -1,6 +1,14 @@
 The project package assembles the full render set, computes the output plan and config hash, checks drift, and prunes stale outputs. The claims below capture the current output-plan and render-orchestration contracts.
 
+The Pi target descriptor is the sole declaration of the five Pi TypeScript outputs: context usage, handoff, and subagent index, model-routing, and runner; non-Pi target sets render and prune none of them.
+
 ## Claims
+
+### `invariant: bridge-render-identity`
+
+Every target-declared bridge renders through the neutral `target-bridge` identity while its descriptor remains the sole owner of bridge path and template. Input observation does not derive a target-specific sidecar or template from that neutral identity, so a future bridge target cannot inherit Claude-specific inputs accidentally.
+Origin: ADR-0214
+Backing: test
 
 ### `invariant: catalog-trim-applied`
 
@@ -12,12 +20,6 @@ Backing: test
 
 A default curated awf init render passes awf check with zero dead-skill-reference findings.
 Origin: ADR-0046
-Backing: test
-
-### `invariant: cursor-no-bridge`
-
-The cursor target has an empty bridge-file path and emits no bridge file; its rendered skill and agent files are byte-identical in body and frontmatter to the claude target's files at their respective paths.
-Origin: ADR-0037
 Backing: test
 
 ### `invariant: inert-sidecar-field-rejected`
@@ -36,8 +38,9 @@ Backing: test
 ### `invariant: multi-target-render`
 
 With multiple targets enabled, every enabled catalog skill and agent renders once per target to that target's descriptor-derived path, while neutral artifacts such as AGENTS.md render exactly once regardless of target count. A target-owned skill or other output renders only for its declaring target when its closed catalog-selection predicate is satisfied; configured-prefix path derivation, declaration, rendering, coalescing, hashing, pruning, provenance, and policy all use the same resolved descriptor.
+With multiple targets enabled, each adapter artifact renders once per target at that descriptor's declared paths - including Claude Code and Pi skills and agents - while neutral artifacts such as `AGENTS.md` render exactly once regardless of target count. Descriptor-specific wording, bridges, capabilities, encodings, and additional outputs remain independently customizable.
 Origin: ADR-0037
-Revised-by: ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
+Revised-by: ADR-0214, ADR-associate-pi-sessions-with-efforts-and-live-checkout-context
 Backing: test
 
 ### `invariant: output-plan-complete`

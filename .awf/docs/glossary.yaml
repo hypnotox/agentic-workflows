@@ -24,6 +24,15 @@ data:
     - term: trigger table
       meaning: "The guide's workflow section: a catalog-derived row per enabled skill, pairing its prefixed name with its one-line trigger. Rendered from a data key so a new skill cannot be dropped by a forgotten template edit."
       domains: [rendering]
+    - term: handoff kickoff
+      meaning: "The exact bounded `{kickoff}` prose passed to Pi session replacement. Workflow guidance supplies checkpoint reorientation; the runtime carries the text unchanged and owns replacement mechanics only."
+      domains: [rendering]
+    - term: safe resumable point
+      meaning: "A durable checkpoint whose immediate successor can start independently."
+      domains: [rendering]
+    - term: session context facts
+      meaning: "The transient model-facing line reporting current tokens against the active model window and the active-branch compaction count."
+      domains: [rendering]
     - term: mandatory approval check-in
       meaning: "The chain's two hard stops: the end of brainstorming, and the settled ADR review. The agent persists memory, presents the summary, requests approval, and ends the turn; a rejection loops revise-and-re-present."
     - term: anchored glob
@@ -135,7 +144,8 @@ data:
       meaning: "The rendered `.awf/upgrade.sh`, the deliberately nondeterministic layer over the deterministic `.awf/bootstrap.sh`: it resolves a target version, fetches through the bootstrap, and execs `awf upgrade` as its final statement."
       domains: [tooling]
     - term: working memory
-      meaning: "The always-owned `.awf/efforts/<slug>/memory.md` inside one active effort: phase, next action, brief, decision log, observations, and handoff log. Repository and current-state authority outrank it; one user-managed writer updates it."
+      meaning: "One active effort's always-owned `.awf/efforts/<slug>/memory.md`, carrying phase, next action, brief, decisions, observations, and handoff log. Repository authority outranks it; one writer updates it, and a replacement session logs its actual boundary first."
+      domains: [rendering]
     - term: sidecar-derived doc
       meaning: "The computed-doc model: a render transform computes content from the artifact's own sidecar data upstream of both render and config hash, keeping the doc in the ordinary drift model. Contrast regeneration, which derives from repo state outside the sidecar."
       domains: [rendering]
@@ -167,7 +177,7 @@ data:
       meaning: "A new or deliberately converted exported symbol ships with an outside-package production consumer in the same transaction. Narrow documented exceptions cover test exports, composition boundaries, and error identities."
       domains: [code-design]
     - term: routine checkpoint
-      meaning: "The autonomous boundary that validates effort ownership, updates its memory, classifies whether user attention is required, then raises a check-in or continues with a continuity notice."
+      meaning: "The autonomous boundary that validates effort ownership, updates its memory, and classifies whether user attention is required. A clear boundary continues with a continuity notice and may choose eligible Pi session replacement without making persistence discretionary."
       domains: [rendering]
     - term: check-in
       meaning: "A deliberate stop that names the issue, options, recommendation, and blocked next action, then waits for the user. Distinct from a continuity notice and from mandatory design approval."

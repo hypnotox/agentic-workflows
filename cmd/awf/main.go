@@ -47,12 +47,14 @@ func globalHelp() string {
 	b.WriteString("awf: render agentic-workflow tooling into a project from a committed .awf/ config tree\n\n")
 	b.WriteString("Usage: awf <command> [flags]\n\n")
 	b.WriteString("Commands:\n")
-	for _, c := range clispec.Commands {
-		fmt.Fprintf(&b, "  %-12s %s\n", c.Name, c.Summary)
-		for _, child := range c.Children {
-			fmt.Fprintf(&b, "    %-10s %s\n", child.Name, child.Summary)
+	var render func([]clispec.Command, int)
+	render = func(commands []clispec.Command, depth int) {
+		for _, c := range commands {
+			fmt.Fprintf(&b, "%s%-12s %s\n", strings.Repeat("  ", depth+1), c.Name, c.Summary)
+			render(c.Children, depth+1)
 		}
 	}
+	render(clispec.Commands, 0)
 	b.WriteString("\nRun `awf <command> --help` for details on a command.\n")
 	return b.String()
 }
@@ -69,12 +71,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
 		if a == "help" && len(args) >= 3 {
 			if spec, ok := clispec.Lookup(args[2]); ok {
-				// Walk declared nesting so help follows the same leaf grammar as
-				// parsing. An absent or unknown descendant falls back to the last
-				// recognized group's own help.
 				for _, name := range args[3:] {
-					child, childOK := spec.Child(name)
-					if !childOK {
+					child, found := spec.Child(name)
+					if !found {
 						break
 					}
 					spec = child
@@ -114,15 +113,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	cancel()
 	// The driver gates every Gated command before its handler; config/context/topic/new
 	// self-gate in-handler after their static-fallback / name-validation checks.
-	// Gating resolves from the child, falling back to the parent: a child that
-	// declares nothing inherits, while one that declares Ungated under a Gated
-	// parent lowers it deliberately, which is how `check prose|memory|commit`
-	// stay cheap enough for a hook to invoke unconditionally (ADR-0159).
-	if clispec.ResolvedGating(top, cmd) == clispec.Gated {
+	// Group children inherit the top-level command's classification.
+	if top.Gating == clispec.Gated {
 		gateFn := gate
-		// --staged is bare-check only, so the staged gate can never be selected
-		// by a child; the handler rejects the flag on one outright.
-		if top.Name == "check" && sub == "" && inv.bools["--staged"] {
+		if top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged ")) {
 			gateFn = gateStaged
 		}
 		gateCtx, cancel := newGitCommandContext()
@@ -152,9 +146,9 @@ func newGitCommandContext() (context.Context, context.CancelFunc) {
 
 // guardProjectState enforces the current-state upgrade command-state matrix.
 // Exemption is the resolved command's StateExempt property, not a name list, so
-// a group child carries it independently of its parent: `check prose`, `check
-// memory`, and `check commit` are exempt while bare `check` is not, which is
-// what keeps a commit-msg hook working during a committed journal or an
+// a group child carries it independently of its parent. Only `check staged
+// commit` remains exempt while bare `check` and both repo scan children are not,
+// which keeps the commit-msg hook working during a committed journal or an
 // attested lock (ADR-0159 Decision 5). The read-only init descriptor query
 // bypasses it too; outside an adopted tree it is
 // a no-op so config/context/topic keep their static fallback. Inside a tree:
@@ -174,7 +168,7 @@ func guardProjectState(ctx context.Context, root string, cmd clispec.Command, to
 	if top.Name == "init" && inv.bools["--describe"] {
 		return nil
 	}
-	staged := top.Name == "check" && sub == "" && inv.bools["--staged"]
+	staged := top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged "))
 	present, journal, journalFound, lock, found, loadErr, err := projectGuardState(ctx, root, staged)
 	if err != nil {
 		return err

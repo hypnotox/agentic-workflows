@@ -8,7 +8,6 @@ A policy or mechanism consumed from more than one package has exactly one implem
 Origin: ADR-0181
 Backing: unbacked
 Verify: For each concern the change touches in more than one package, locate every implementation and confirm exactly one exists in the owning package. Where two remain, confirm a durable decision records materially different contracts from distinct sources and that the site references it; treat undocumented similarity as a fork.
-
 ### `invariant: no-coverage-fork`
 
 A shared implementation is never forked, narrowed, or degraded to avoid an uncovered branch or to reduce a coverage-escape count. A branch a narrow consumer cannot exercise takes a reasoned `// coverage-ignore` or is exercised through the owning package's tests. Escape count is an outcome of design, never a design input.

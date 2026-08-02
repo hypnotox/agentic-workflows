@@ -48,10 +48,10 @@ instead of rotting.
   its own work, and are report-only. The `explorer` and `grounding-checker` agents are
   report-only too. The `implementer` agent carries the contract for
   dispatched implementation work, as either a commit-capable phase owner or a
-  commit-disabled path-confined helper. Agents are format-neutral: each runtime gets
-  them in its own dialect (frontmatter Markdown for most, a TOML profile for Codex).
-- **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` or `GEMINI.md` bridge where the
-  runtime expects one), workflow and documentation standards, plus opt-in project docs:
+  commit-disabled path-confined helper. Agents are format-neutral before each target
+  emits them in its declared native representation; both built-in targets use Markdown.
+- **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` bridge for Claude Code),
+  workflow and documentation standards, plus opt-in project docs:
   architecture, testing, development, debugging, pitfalls, releasing, glossary, roadmap.
 - **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
   declare (`awf enable domain rendering`): your hand-authored current-state narrative
@@ -72,11 +72,10 @@ instead of rotting.
   exact awf version the repo was rendered with, for hooks and CI.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-1 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
 
-awf renders for six runtimes: Pi, [Claude Code](https://www.anthropic.com/claude-code),
-Codex, GitHub Copilot, Cursor, and Gemini. Each gets skills and agents in its own native
-paths and dialect: Codex agents are TOML profiles, while Claude Code and Gemini receive a
-bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your team
-uses.
+awf renders for Pi and [Claude Code](https://www.anthropic.com/claude-code). Each gets
+skills and agents at descriptor-owned paths; Claude Code also receives its `CLAUDE.md`
+bridge, while Pi owns its runtime extensions. `targets` defaults to `[claude]`; select
+one or both built-in runtimes for the project.
 
 A compatible Pi 0.81.1+ build exposing the required queued-command and persisted-session APIs receives trusted project-extension factories for subagents and handoff. The subagent extension registers `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
@@ -158,7 +157,7 @@ flowchart LR
     TOPIC --> INV[invariant claims]
     RULE --> AUTH[["awf context:<br/>live authority"]]
     INV --> AUTH
-    INV -.->|Backing marker| CHECK[["awf check /<br/>check invariants"]]
+    INV -.->|Backing marker| CHECK[["awf check"]]
 ```
 
 A topic pairs strict metadata (`.awf/topics/metadata/<domain>/<topic>.yaml`) with a constrained
@@ -185,16 +184,15 @@ while the log is nonempty, and the operator resolves or promotes the recurring i
 `Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug> (<name>)`)
 on a real test, where `<name>` names the unit that proves it and must occur in that same file, so a
 marker outlives neither its test nor a rename. `Backing: unbacked` is a reasoned contract that must
-carry a `Verify:` line and no marker. `awf check` and its `invariants` subcommand enforce this symmetrically, so an invariant with no
-backing in source fails loudly instead of rotting. Rules carry no backing.
+carry a `Verify:` line and no marker. `awf check` enforces this symmetrically, so an invariant with no backing in source fails loudly instead of rotting. Rules carry no backing.
 
 Adopting this release from an older awf is a one-time sealed cutover handled by plain `awf
 upgrade` (with `awf upgrade --recover` for an interrupted one); the mechanics live in
 [`AGENTS.md`](AGENTS.md).
 
-The rendered paths above show the default `claude` target; each enabled runtime gets its
-own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into
-`.codex/`, Pi keeps both under `.pi/skills/`). `awf list target` shows the roster.
+The rendered paths above show the default `claude` target; each enabled runtime keeps
+its descriptor-owned layout, and Pi places its artifacts and extensions under `.pi/`.
+`awf list target` shows the roster.
 
 You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
@@ -268,23 +266,25 @@ disk.
 |---|---|
 | `awf init` | Scaffold `.awf/`, seal first-adoption version, and render. ADR format is authored by each record rather than selected by lock cutoffs. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
 | `awf render` | Re-render after a config or template change. |
-| `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. Subcommands narrow it to one check: `drift`, `state`, `invariants`, `prose`, `memory`, `commit`. |
+| `awf check` | Run both verification universes. `check repo` aggregates working-tree `drift` and `state` with tracked-corpus `prose` and `memory`; `check staged` runs the HEAD-to-index state transition and rendered-output drift, while `check staged commit` is direct-only. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
 | `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
-| `awf new plan "<title>"` | Scaffold a dated plan under `docs/plans/`. |
+| `awf new plan "<title>"` | Scaffold a dated `plan-v1` plan under `docs/plans/`. |
+| `awf read plan <plan> <P[.T]>` | Resolve an exact plan filename/stem and print one phase or task executable closure; marker-absent historical plans remain legacy and are not projected. |
 | `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
 | `awf effort new "<outcome>" [--json]` | Derive an immutable slug and publish schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; `list` and `show` expose the same protocol. |
 | `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. Pi's derived `using_effort` support remains capability-gated and advisory. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. It also replays stale-ADR authorization for schema-31-and-later merge commits. Not part of any gate, but exits non-zero on error-severity findings. |
-| `awf check invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report tier-0 directory orientation and tier-1 exact/staged/range file relationships (`State`, `Touches`, `Proofs`), with per-topic counts and eight named `--show` facets. Only `artifacts` refines groups; `--full` is the facet union. Human output is capped at 8 KiB with secure caller-owned spill delivery above it; `--uncovered` shares the cap. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
-| `awf check prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
-| `awf check memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
-| `awf check commit [FILE]` | Validate Conventional Commits and definitively qualify and authorize older-format ADRs imported by a real merge; built for a `commit-msg` hook. |
+| `awf check repo prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
+| `awf check repo memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
+| `awf check staged state` | Validate current-state authority over the HEAD-to-index transition. |
+| `awf check staged drift` | Render from the staged config and report only stale or hand-edited staged rendered output; other repository drift kinds are out of scope. |
+| `awf check staged commit [FILE]` | Validate Conventional Commits and definitively qualify and authorize older-format ADRs imported by a real merge; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
 | `awf uninstall` | Remove awf's generated files while keeping authored configuration and optional local residents. |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
@@ -304,9 +304,9 @@ removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
 yours. With the `hooks` artifact enabled (default on init), four inert payload scripts
-land under `.awf/hooks/`: `pre-commit.sh` (ordinary drift check, staged authority check,
-project gate, then enabled prose gate), `commit-msg.sh` (`awf check commit`), `pre-push.sh`,
-and `pre-merge-commit.sh` (the staged evidence available before the final message and parents).
+land under `.awf/hooks/`: `pre-commit.sh` (the configured bare aggregate check followed by
+the project gate), `commit-msg.sh` (`awf check staged commit`), `pre-push.sh`, and
+`pre-merge-commit.sh` (the staged evidence available before the final message and parents).
 Invoke them from wiring you own,
 e.g. an executable `.git/hooks/pre-commit` containing
 `exec bash .awf/hooks/pre-commit.sh "$@"`, or a tracked `core.hooksPath` directory. If

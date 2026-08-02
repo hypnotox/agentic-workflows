@@ -15,12 +15,15 @@ import (
 // (target.go) these are the only production spellings of a template id
 // (inv: template-id-single-derivation).
 const (
-	bridgeTID     = "claude/CLAUDE.md.tmpl"
-	bootstrapTID  = "bootstrap/awf-bootstrap.sh.tmpl"
-	upgradeTID    = "bootstrap/awf-upgrade.sh.tmpl"
-	runnerTID     = "runner/awf.tmpl"
-	topicTID      = "topics/topic.md.tmpl"
-	topicIndexTID = "topics/index.md.tmpl"
+	// targetBridgeKind is the neutral render identity for every descriptor-owned
+	// bridge. It is not a target name and therefore has no sidecar namespace.
+	targetBridgeKind = "target-bridge"
+	bridgeTID        = "claude/CLAUDE.md.tmpl"
+	bootstrapTID     = "bootstrap/awf-bootstrap.sh.tmpl"
+	upgradeTID       = "bootstrap/awf-upgrade.sh.tmpl"
+	runnerTID        = "runner/awf.tmpl"
+	topicTID         = "topics/topic.md.tmpl"
+	topicIndexTID    = "topics/index.md.tmpl"
 
 	// coOwnedRunnerTID is the legacy co-owned command-runner template id
 	// (ADR-0101 shape). The prune backup matches it on the OUTGOING lock entry,
