@@ -38,11 +38,19 @@ memory reads or effort commands.
 The runtime behavior crosses three ownership boundaries:
 
 - awf owns effort residents, memory validation and mutation, activity transitions, checkout
-  discovery, and the generated `using_effort` extension and support skill;
+  discovery, the cross-target `effort-workflow` skill, and the generated Pi-only
+  `using_effort` extension and skill;
 - Pi owns changing the current directory of a live persisted session without creating a
   new conversation; and
 - Remote Pi owns peer identity, capability negotiation, replay, and publication of the
   atomically replaced `awf` metadata namespace.
+
+Effort guidance has two layers. Every enabled target can use target-neutral workflow
+instructions to enter the exact existing awf-managed worktree with its native persistent
+checkout or context tooling. Only Pi has the runtime API and transient session semantics
+needed to associate a session, publish activity, and rebind the same conversation. A
+non-Pi target must not receive Pi tooling, learn a `using_effort` tool, or create a parallel
+harness-owned worktree beside awf's managed topology.
 
 Pi's accepted but not-yet-released prerequisite design provides command-context-only
 `ExtensionCommandContext.changeCwd(targetCwd, options)`. It replaces the same session
@@ -61,8 +69,9 @@ Downgrade compatibility is not a goal.
 
 ## Decision
 
-1. Render a Pi extension that exposes one explicit `using_effort` tool and its private
-   queued command. A call names an effort and explicitly chooses its managed-worktree or
+1. When the selected effort workflow is rendered for an enabled Pi target, also render a
+   Pi extension that exposes one explicit `using_effort` tool and its private queued
+   command. A call names an effort and explicitly chooses its managed-worktree or
    receiving-checkout destination; it never discovers an effort from presence, follows a
    checkout automatically, or creates a new conversation. The queued command uses Pi's
    command-only `changeCwd` API to rebind the same persisted session, then commits the new
@@ -200,10 +209,15 @@ Downgrade compatibility is not a goal.
    receiving-checkout mutation and contact the named peer, but that behavior remains
    voluntary.
 
-10. Keep dependency direction explicit. The generated TypeScript extension orchestrates Pi
-    and Remote Pi runtime APIs but does not write effort residents directly. It invokes the
-    awf binary's activity and memory contracts and translates their structured outcomes at
-    the runtime boundary. The effort package owns memory-frontmatter compatibility, mutation,
+10. Keep dependency direction explicit. The workflow document and shared checkpoint
+    partials remain the single policy home for effort identity, memory, managed-worktree,
+    review, integration, removal, retrospective, and finish semantics. The cross-target
+    `effort-workflow` skill is the operational entry guide that composes and points to that
+    shared policy while adding no competing lifecycle rules or runtime-specific association
+    behavior. The generated Pi-only TypeScript extension orchestrates Pi and Remote Pi runtime APIs but
+    does not write effort residents directly. It invokes the awf binary's activity and
+    memory contracts and translates their structured outcomes at the runtime boundary. The
+    effort package owns memory-frontmatter compatibility, mutation,
     and activity policy; the shared frontmatter package owns document splitting; Git
     topology remains behind awf's existing Git boundary; command code owns argument parsing
     and human rendering. Architecture and user documentation describe the optional resident,
@@ -238,21 +252,33 @@ Downgrade compatibility is not a goal.
     create a private compatibility shim for either owner contract. The two prerequisite
     repositories may land in either order.
 
-12. Catalog a `using-effort` support skill for new adopters and explicitly enable it in this
-    repository. Existing adopters receive the capability through normal catalog availability
-    and documented `awf enable skill using-effort`; upgrade does not silently mutate their
-    enabled-skill selection. Add the new generated extension to the containerized TypeScript
-    strict-check and 100 percent line/function/branch coverage lane, and extend pinned
-    real-runtime smoke to prove same-session CWD persistence, legacy-memory compatibility and
-    migration, frontmatter metadata publication, capability replay, transient-name
-    restoration, and advisory failure behavior. Render
-    coverage also exercises every new template with empty optional values, proving coherent
-    missingkey-zero output with no `<no value>` token.
+12. Catalog a core cross-target `effort-workflow` support skill as the single user-facing
+    selection knob. New project scaffolds enable it by default; existing adopters retain
+    their current selection and opt in once with `awf enable skill effort-workflow`. Every
+    enabled target renders that general skill. It directs non-Pi runtimes to use native
+    persistent checkout or context tooling only to enter the exact awf-managed worktree,
+    never to create a parallel harness-owned worktree, claim activity, or invoke a Pi effort
+    tool.
 
-13. Add `rendering/pi-workflows:pi-effort-session-association` as `Backing: test`. The
-    implementation transaction places its exact proof marker in a Go catalog/render spine
-    test named `TestPiEffortSessionAssociationContract`, which verifies the public tool,
-    support skill, binary orchestration boundary, advisory semantics, and generated output.
+    When and only when `effort-workflow` is selected and Pi is enabled, derive two Pi
+    target-owned outputs from the same selection: the `using-effort` skill and the
+    `awf-effort` extension. `using-effort` is not a second catalog selection and never renders
+    for a non-Pi target. The target output declaration, render, prune, and drift paths use the
+    same predicate so partial output cannot persist. Add the extension to the containerized
+    TypeScript strict-check and 100 percent line/function/branch coverage lane, and extend
+    pinned real-runtime smoke to prove same-session CWD persistence, legacy-memory
+    compatibility and migration, frontmatter metadata publication, capability replay,
+    transient-name restoration, and advisory failure behavior. Render coverage also
+    exercises every new template with empty optional values, proving coherent missingkey-zero
+    output with no `<no value>` token.
+
+13. Add `rendering/pi-workflows:pi-effort-session-association`,
+    `rendering/workflow-skill-templates:effort-workflow`, and
+    `rendering/pi-workflows:using-effort-skill` as `Backing: test`. The implementation
+    transaction places their exact proof markers in Go catalog/render tests. The proofs
+    verify the public Pi tool and skill, binary orchestration boundary, advisory semantics,
+    the single selection knob, scaffold-only default adoption, cross-target native use of
+    the existing awf-managed worktree, Pi-only derived output, and non-Pi absence.
 
 ## State changes
 
@@ -266,6 +292,12 @@ Downgrade compatibility is not a goal.
 - update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
 - add `rendering/pi-workflows:pi-effort-session-association`
+- update `rendering/project-output-plan:multi-target-render`
+- update `rendering/catalog-and-targets:target-dialect-render`
+- update `rendering/pi-workflows:pi-native-workflow-skills`
+- update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`
+- add `rendering/workflow-skill-templates:effort-workflow`
+- add `rendering/pi-workflows:using-effort-skill`
 
 ## Consequences
 
@@ -278,7 +310,12 @@ than an awf-specific pseudo-header, while dual-format reads and first-update mig
 existing efforts usable.
 
 The design adds a mutable effort resident, binary mutation protocol, generated extension,
-skill, external capability negotiation, and heartbeat lifecycle. Crash leftovers and
+two-layer skill model, target-owned output predicate, external capability negotiation, and
+heartbeat lifecycle. New project scaffolds receive the core `effort-workflow` skill by
+default, while existing adopters opt in without upgrade changing their selections. One
+selection renders target-neutral existing-worktree guidance everywhere and derives the Pi
+skill and extension only for Pi; non-Pi targets remain native-tool-oriented and never gain
+Pi association semantics or parallel harness-owned topology. Crash leftovers and
 concurrent takeovers are unavoidable; visible prior-claim diagnostics, owner-checked writes,
 atomic replacement, restart-detached behavior, and nonblocking semantics bound their harm.
 The peer name can collide with another peer and Remote Pi may disambiguate its displayed
@@ -291,7 +328,7 @@ filesystem or Git failures remain visible to the agent.
 
 Older awf binaries may reject an effort containing `activity.json`. Users must upgrade
 rather than downgrade or manually relocate the resident. Existing adopters must explicitly
-enable the support skill. awf implementation and release are sequenced behind two external
+enable `effort-workflow` once. awf implementation and release are sequenced behind two external
 owner releases, which delays the feature but avoids coupling shipped behavior to provisional
 APIs.
 
@@ -312,6 +349,10 @@ APIs.
 | Make all effort commands validate the memory header | A narrow metadata feature would become a repository-wide operational gate contrary to the supportive design. |
 | Persist the effort slug as the configured Remote Pi name | The override is session-scoped coordination context, not user configuration, and must disappear on detach or restart. |
 | Implement private Pi or Remote Pi compatibility shims in awf | The owning projects have settled prerequisite shapes; duplicating provisional runtime behavior would create competing contracts. |
+| Catalog or render `using-effort` for every target | It leaks Pi-only runtime semantics and an unavailable tool into non-Pi guidance. |
+| Let each harness create a parallel worktree for the effort | The existing awf-managed worktree is the one workflow topology; competing topology would obscure authority and cleanup. |
+| Expose separate selection knobs for `effort-workflow`, `using-effort`, and the Pi extension | Independent toggles permit incoherent partial output; one workflow selection can derive its Pi-owned companion outputs. |
+| Auto-enable the new core skill while upgrading existing adopters | Core defines the default for new scaffolds, not permission to mutate committed adopter selections. |
 
 ## Status history
 
@@ -320,3 +361,4 @@ APIs.
 - 2026-08-02: Amended; content-sha256: 13c681481627dbe1c084409ad708ea8c0b803374cf143dea285b1ce47b50f4b0
 - 2026-08-02: Implementing; content-sha256: 13c681481627dbe1c084409ad708ea8c0b803374cf143dea285b1ce47b50f4b0
 - 2026-08-02: Applied; operations: update `tooling/cli:effort-command-contract`, update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:memory-skeleton-purpose-partition`, update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
+- 2026-08-02: Amended; content-sha256: ea7654729e8ad4a3ff4a825a8634a65bfaa956fd43ab7577dc0d30a7ffcd4ac2
