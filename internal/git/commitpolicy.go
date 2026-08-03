@@ -172,8 +172,14 @@ func (r *Repo) CommitsAfter(ctx context.Context, baseline string, targets []stri
 	}
 	seen := map[string]bool{}
 	for _, target := range targets {
-		args := []string{"rev-list", target, "^" + base}
-		if !isRangeTarget(target) {
+		var args []string
+		if strings.Contains(target, "..") {
+			from, to, parseErr := ParseRange(target, false)
+			if parseErr != nil {
+				return nil, policyGitError(CommitPolicyRevisionError, target, parseErr)
+			}
+			args = []string{"rev-list", to, "^" + from, "^" + base}
+		} else {
 			peeled, terminal, peelErr := r.PeelCommit(ctx, target)
 			if peelErr != nil {
 				var policyErr *CommitPolicyError
@@ -209,10 +215,6 @@ func (r *Repo) CommitsAfter(ctx context.Context, baseline string, targets []stri
 		commits = append(commits, fact)
 	}
 	return commits, nil
-}
-
-func isRangeTarget(target string) bool {
-	return strings.Contains(target, "..")
 }
 
 func policyGitError(kind CommitPolicyErrorKind, target string, err error) error {

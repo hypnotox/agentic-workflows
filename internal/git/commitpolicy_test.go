@@ -83,6 +83,10 @@ func TestCommitPolicyGitReads(t *testing.T) {
 	assertPolicyError(t, err, CommitPolicyBaselineError)
 	_, err = repo.CommitsAfter(ctx, base, []string{"does-not-exist..HEAD"})
 	assertPolicyError(t, err, CommitPolicyRevisionError)
+	for _, malformedRange := range []string{"HEAD...HEAD", "HEAD..", "..HEAD", "HEAD..HEAD..HEAD"} {
+		_, err = repo.CommitsAfter(ctx, base, []string{malformedRange})
+		assertPolicyError(t, err, CommitPolicyRevisionError)
+	}
 	danglingTag := gitfixture.NativeHashObject(t, fixture, "tag", []byte("object "+strings.Repeat("f", len(base))+"\ntype commit\ntag dangling\ntagger T <t@example.com> 1 +0000\n\ndangling\n"))
 	gitfixture.NativeUpdateRef(t, fixture, "refs/tags/dangling", danglingTag)
 	_, err = repo.CommitsAfter(ctx, base, []string{"dangling"})
