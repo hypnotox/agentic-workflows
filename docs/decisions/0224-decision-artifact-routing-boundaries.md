@@ -4,7 +4,7 @@ slug: decision-artifact-routing-boundaries
 status: Proposed
 date: 2026-08-03
 ---
-# ADR-decision-artifact-routing-boundaries: Decision Artifact Routing Boundaries
+# ADR-0224: Decision Artifact Routing Boundaries
 
 
 ## Context
