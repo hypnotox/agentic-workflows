@@ -27,12 +27,13 @@ the final unified-workflow operation and both artifact freezes to the establishe
 
 **Execution mode: inline.**
 
-Completes: ["explicit-creation-contract", "resident-compatibility", "active-signature-sync"]
+Advances: ["resident-compatibility"]
+Completes: ["explicit-creation-contract", "active-signature-sync"]
 
 ### Task 1.1: Specify the creation and compatibility contract in tests
 Kind: batch
 Latitude: exact
-Applying: ["require-explicit-short-effort-slugs:require-explicit-slug", "require-explicit-short-effort-slugs:separate-creation-input", "require-explicit-short-effort-slugs:bound-new-slugs", "require-explicit-short-effort-slugs:preserve-resident-compatibility", "require-explicit-short-effort-slugs:retain-record-and-topology"]
+Applying: ["require-explicit-short-effort-slugs:require-explicit-slug", "require-explicit-short-effort-slugs:separate-creation-input", "require-explicit-short-effort-slugs:bound-new-slugs", "require-explicit-short-effort-slugs:preserve-resident-compatibility", "require-explicit-short-effort-slugs:retain-record-and-topology", "require-explicit-short-effort-slugs:prove-boundaries"]
 Paths: ["internal/effort/types_test.go", "internal/effort/service_test.go", "internal/effort/store_test.go", "internal/effort/branches_test.go", "internal/effort/activity_test.go", "internal/effort/memory_metadata_test.go", "internal/effort/memory_test.go", "internal/effort/safety_test.go", "internal/worktree/manager_test.go", "cmd/awf/effort_test.go", "cmd/awf/effort_worktree_test.go", "cmd/awf/main_test.go", "cmd/awf/gate_test.go", "internal/clispec/clispec_test.go"]
 Representative: "Replace title-only creation calls with named `effort.NewInput{Slug: ..., Title: ...}` values and assert that the supplied slug, not a title transformation, becomes record identity, resident path, worktree path, and branch suffix."
 Edge: "Prove 1- and 32-byte new slugs succeed, a 33-byte new slug fails without mutation, a persisted canonical 63-byte resident still loads and finishes, Unicode-only titles succeed with an explicit ASCII slug, and malformed grammar, invalid Git refs, collisions, allocator failures, and rollback retain actionable identity-specific errors."
@@ -67,7 +68,7 @@ covered in Task 2.2. Do not weaken resident validation or create a migration pat
 
 ### Task 1.2: Introduce the named input and split slug policy
 Latitude: exact
-Applying: ["require-explicit-short-effort-slugs:separate-creation-input", "require-explicit-short-effort-slugs:bound-new-slugs", "require-explicit-short-effort-slugs:preserve-resident-compatibility"]
+Applying: ["require-explicit-short-effort-slugs:separate-creation-input", "require-explicit-short-effort-slugs:bound-new-slugs", "require-explicit-short-effort-slugs:preserve-resident-compatibility", "require-explicit-short-effort-slugs:synchronize-active-signatures"]
 Paths: ["internal/effort/types.go", "internal/effort/service.go", "internal/effort/store.go"]
 
 Add a documented exported `NewInput` in `internal/effort/types.go` with `Slug` and `Title` fields.
@@ -100,7 +101,7 @@ to make the intermediate task green.
 
 ### Task 1.3: Carry explicit identity through worktree orchestration and CLI grammar
 Latitude: exact
-Applying: ["require-explicit-short-effort-slugs:require-explicit-slug", "require-explicit-short-effort-slugs:separate-creation-input", "require-explicit-short-effort-slugs:retain-record-and-topology"]
+Applying: ["require-explicit-short-effort-slugs:require-explicit-slug", "require-explicit-short-effort-slugs:separate-creation-input", "require-explicit-short-effort-slugs:retain-record-and-topology", "require-explicit-short-effort-slugs:synchronize-active-signatures"]
 Paths: ["internal/worktree/manager.go", "cmd/awf/effort.go", "cmd/awf/dispatch.go", "internal/clispec/clispec.go", "internal/migrate/unified_effort_residents.go"]
 
 Change `Manager.NewEffort` to accept `effort.NewInput` plus the existing base. Pass the input to
@@ -266,7 +267,7 @@ feat(awf): require explicit short effort slugs
 
 **Execution mode: inline.**
 
-Completes: ["deterministic-drift-coverage"]
+Completes: ["resident-compatibility", "deterministic-drift-coverage"]
 
 ### Task 2.1: Gate stale signatures over the closed active path policy
 Latitude: exact
@@ -356,10 +357,13 @@ test(rendering): gate explicit effort slug signatures
   operations 1 through 5 in declaration order with their matching claim mutations. Phase 2 adds the
   exhaustive coverage and remaining implementation but applies no claim operation. After terminal
   implementation review settles, the established deferred flip transaction updates
-  `rendering/workflow-skill-templates:unified-effort-workflow-coverage` and provenance, appends its
-  final Applied event followed by the Implemented content stamp, flips this plan to Implemented,
-  runs `./x render`, stages INDEX and lock output, and passes `awf check staged` plus `./x gate` before
-  commit.
+  `rendering/workflow-skill-templates:unified-effort-workflow-coverage` and provenance. Its claim body
+  must require every discovery owner to present `Outcome:`, `Effort title:`, and `Effort slug:`, then
+  invoke the explicit `--slug` creation signature only after later confirmation, while preserving
+  the existing closed role map, minimal-fix exception, fixed-effort resume, ownership, checkpoint,
+  and terminal-flow guarantees. The same transaction appends the final Applied event followed by the
+  Implemented content stamp, flips this plan to Implemented, runs `./x render`, stages INDEX and lock
+  output, and passes `awf check staged` plus `./x gate` before commit.
 - If implementation changes any settled ADR commitment or the six-operation partition, stop for ADR
   amendment and renewed ADR review rather than adapting the plan silently.
 - No schema migration, package boundary, new dependency, parser rewrite, slug semantic-similarity
