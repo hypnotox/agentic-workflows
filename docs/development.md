@@ -9,8 +9,8 @@ A working checkout needs Go 1.26+ (see `go.mod`), native Git, and Docker. No hos
 repo and run `./x test` to confirm the Go toolchain; `./x gate` creates the Pi-extension test
 container on first use. Developer tools (`golangci-lint`, `deadcode`, `gremlins`) are pinned in
 `go.mod`'s `tool` block and run through `go tool`, so they resolve on first use; nothing
-is installed by hand. To activate the repo's git hooks, wire them once per clone with
-`git config core.hooksPath .githooks`.
+is installed by hand. Activate the repo's worktree-aware git-hook stubs once per clone with
+`git config core.hooksPath .githooks`. The effective identity must be `Josua Müller <hypnotox@pm.me>` from global configuration, with `commit.gpgSign=true`, `gpg.format=ssh`, and the approved `user.signingKey`; do not add repository- or worktree-local identity overrides. Preview any intended ref history with `./awf check commit-policy <revision-or-range>...` before moving it.
 
 
 <!-- awf:edit command-runner: from .awf/docs/parts/development/command-runner.md -->
@@ -32,6 +32,7 @@ the tree, never a stale installed binary.
 | `awf` commands via `./awf` | The rendered pure wrapper `./awf` forwards every awf CLI verb verbatim, running awf from source through `awfInvokeCmd: go run ./cmd/awf`. Repository-special `./x render` additionally re-renders `examples/sundial`, and `./x check` additionally gates its drift, invariants, advisory notes, and tests. |
 | `./x mutants [pkg]` | Advisory mutation triage (ADR-0066): the production diff vs `main` by default, or one package with a path argument. Never part of the gate. |
 | `./x audit-local <range>` | Repo-local conformance audit (ADR-0073) via `cmd/repoaudit`: over a required `<base>..<head>`, judged from the range's merge base (a moved base neither blames upstream files nor masks a missing entry), it flags an adopter-facing change with no CHANGELOG `[Unreleased]` entry (Error) and each added-or-touched `coverage-ignore` directive in a production Go file (Warning: re-evaluate the reachability claim). Repo-specific, not rules in the shipped `awf audit`; never gated. |
+| `./awf check commit-policy <revision-or-range>...` | Preview exact author, committer, and SSH-signature provenance after the repository's published baseline. The reference-transaction and pre-push payloads call the same verifier; violations list the allowed owner identity and signer plus reconciliation settings. |
 | `./x build` / `./x install` | `go build -o bin/awf ./cmd/awf` / `go install ./cmd/awf`. |
 
 

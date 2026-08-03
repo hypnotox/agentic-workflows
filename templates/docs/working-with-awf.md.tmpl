@@ -73,8 +73,9 @@ vars are set, what consumes them, and what enabling would activate.
 **Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target pi`); adapter
 artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
-CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under
-`.awf/hooks/`, inert scripts you wire into hook setups you own; awf never touches git config.
+CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles five rendered git-hook payloads under
+`.awf/hooks/`: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. They are inert scripts you wire into hook setups you own; awf never touches Git configuration. The reference-transaction and pre-push payloads apply optional commit-policy provenance checks only when you configure that policy. Preview intended history first with `awf check commit-policy <revision-or-range>...`; an absent policy remains successful and does not need invented values. For tracked wiring, have each stub resolve `git rev-parse --show-toplevel` and delegate to that worktree's `.awf/hooks/<payload>.sh`, rather than reading a primary checkout. That is safe with either absolute or relative `core.hooksPath` and gives linked worktrees their own policy. These local checks are preflight only; the remote's receiving and protected-branch policy is the final enforcement boundary.
+
 The `commit-msg` payload is the definitive stale-format ADR merge boundary. An older-format import must match an incoming parent except for sanctioned numbering substitutions and carry adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers. Malformed reserved trailers refuse. The refusal preserves the index and `MERGE_HEAD`, so correct the message and run `git commit` instead of repeating the merge; `git merge --no-commit --no-ff` is an optional proactive flow. A true fast-forward needs no stamp, and neither ADR retrofit nor allowance state is permitted.
 
 `runner` toggles the rendered pure awf wrapper `awf` at the repo root, a fully awf-owned forwarder

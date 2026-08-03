@@ -22,6 +22,7 @@ func TestShebangRenderedExecutable(t *testing.T) {
 	shebang := filepath.Join(root, ".awf/hooks/pre-commit.sh") // "#!/usr/bin/env bash..."
 	markdown := filepath.Join(root, "AGENTS.md")               // "<!-- GENERATED... -->..."
 	assertPerm(t, shebang, 0o755)
+	assertPerm(t, filepath.Join(root, ".awf/hooks/reference-transaction.sh"), 0o755)
 	assertPerm(t, markdown, 0o644)
 
 	// A pre-existing file with the wrong mode is corrected on the next sync.

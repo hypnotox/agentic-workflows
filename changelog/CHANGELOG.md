@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Features
 
-- `awf check commit-policy <revision-or-range>...` previews configured exact author, committer, and optional SSH-signature provenance for explicit commits after a full baseline. Disabled policy succeeds with one note; complete violations and operational refusals are actionable, and hook activation remains a later opt-in step.
+- `awf check commit-policy <revision-or-range>...` previews configured exact author, committer, and optional SSH-signature provenance for explicit commits after a full baseline. Disabled policy succeeds with one note; complete violations and operational refusals are actionable. The hooks singleton now renders a fifth inert payload, `reference-transaction.sh`, which rejects nonconforming introduced branch commits before refs move; pre-push expands branch and recursively peeled tag targets through the same verifier before its gate. Adopter-owned stubs resolve the invoking worktree, and awf never activates hooks or replaces remote branch policy.
 
 - New efforts now require a caller-selected canonical slug through 32 bytes via `awf effort new --slug <slug> "<outcome>"`; workflow guidance confirms outcome, title, and slug before creation, while schema-2 state, managed topology, and existing resident support through 63 bytes remain unchanged.
 

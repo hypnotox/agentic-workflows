@@ -10,7 +10,7 @@ a cross-compile of `./...` for every released non-host platform,
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079). The plain-punctuation scan
 (`awf check repo prose`, ADR-0119, opt-in for adopters and enabled in this repo) and the effort-owned-memory
 citation scan (`awf check repo memory`, ADR-0158 updated by ADR-0175, opt-in for adopters and enabled in this repo)
-are not gate steps: the pre-commit hook payload runs them locally and CI backstops them (ADR-0196). A red gate blocks the commit: fix the cause or revert.
+are not gate steps: the pre-commit hook payload runs them locally and CI backstops them (ADR-0196). Commit-provenance tests use native Git, real SSH-signed commits, disposable refs and remotes, both absolute and relative `core.hooksPath`, and distinct linked-worktree configuration. They prove allowed commits move refs, unsigned or disallowed identities do not, and pre-push catches a deliberate local reference-hook bypass before the gate. A red gate blocks the commit: fix the cause or revert.
 
 The ordinary profiled Go suite skips the Docker-backed Pi runtime smoke. The gate then enables and runs that named Go proving unit exactly once with test caching disabled, so its test-backed runtime claims remain valid without duplicating the container lane. `./x test` prints the omission and names both `./x pi-test run` for the lane alone and `./x gate` for the complete transaction. Direct non-verbose `go test` remains silent because the Go driver suppresses successful skip output; `go test -v` shows the same guidance. `./x gate timings` runs the identical sequential gate and reports each attempted stage's elapsed wall time without imposing a machine-dependent duration threshold.
 

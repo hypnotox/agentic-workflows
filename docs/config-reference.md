@@ -8,6 +8,10 @@ generated per-project by `awf render`: edit `.awf/` and re-render; never edit th
 For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, run
 `awf config [<key-or-var>]`.
 
+This checkout currently authors the optional `commitPolicy` block. Its values are
+structurally validated, but configuration alone does not activate or wire runtime
+enforcement.
+
 ## config.yaml keys
 
 | Key | Type | Default | Current | Description | Availability |

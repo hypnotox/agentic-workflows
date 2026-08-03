@@ -2,4 +2,5 @@
 # Illustrative wiring: in a real adoption, activate with
 #   git config core.hooksPath .githooks
 # This example directory is not a git repository, so this stub never fires here.
-exec bash .awf/hooks/pre-push.sh "$@"
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+exec bash "$repo_root/.awf/hooks/pre-push.sh" "$@"

@@ -61,8 +61,10 @@ instead of rotting.
 - **ADR and plan scaffolding** (`docs/decisions/`, `docs/plans/`): a README and a
   template for each, always rendered, so `awf new adr` and `awf new plan` produce the
   shape the review skills and the generated decision index expect.
-- **Git-hook payloads** (`.awf/hooks/`): inert pre-commit / commit-msg / pre-push
-  scripts. You wire them up; awf never touches your git config.
+- **Git-hook payloads** (`.awf/hooks/`): five inert pre-commit, commit-msg,
+  pre-merge-commit, reference-transaction, and pre-push scripts. You wire them up;
+  awf never touches your Git configuration. Optional commit policy lets the last two
+  reject disallowed identities or SSH signatures before local ref movement or push.
 - **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
   script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
   is marked edit-in-place, so the verbs you add there survive every `awf render` while awf
@@ -304,16 +306,19 @@ basename; change it via `prefix` in `.awf/config.yaml`. You can back out anytime
 removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
-yours. With the `hooks` artifact enabled (default on init), four inert payload scripts
-land under `.awf/hooks/`: `pre-commit.sh` (the configured bare aggregate check followed by
-the project gate), `commit-msg.sh` (`awf check staged commit`), `pre-push.sh`, and
-`pre-merge-commit.sh` (the staged evidence available before the final message and parents).
-Invoke them from wiring you own,
-e.g. an executable `.git/hooks/pre-commit` containing
-`exec bash .awf/hooks/pre-commit.sh "$@"`, or a tracked `core.hooksPath` directory. If
-you adopted an earlier awf that ran `awf setup`, your repo's `core.hooksPath` may still
-point at the no-longer-rendered `.githooks/`; run `git config --unset core.hooksPath`
-after upgrading.
+yours. With the `hooks` artifact enabled (default on init), five inert payload scripts
+land under `.awf/hooks/`: `pre-commit.sh` (the configured aggregate check followed by
+the project gate), `commit-msg.sh` (`awf check staged commit`), `pre-merge-commit.sh`
+(the staged evidence available before the final message and parents),
+`reference-transaction.sh` (optional commit-policy enforcement before branch refs move),
+and `pre-push.sh` (commit policy before the configured push gate). Preview intended
+history with `awf check commit-policy <revision-or-range>...` before enabling a policy.
+Invoke payloads from wiring you own. A tracked stub should resolve
+`git rev-parse --show-toplevel` and delegate to that worktree's payload so linked
+worktrees remain correct with absolute or relative `core.hooksPath`. If you adopted an
+earlier awf that ran `awf setup`, your repo's `core.hooksPath` may still point at the
+no-longer-rendered `.githooks/`; run `git config --unset core.hooksPath` after upgrading.
+Local hooks are bypassable preflight; remote receiving and branch policy remain final.
 
 The `commit-msg` check is definitive for stale-format ADR imports, and `awf audit` replays the same parser and incoming-parent qualification for committed schema-31-and-later merges. A real merge must carry the exact incoming-parent record, apart from sanctioned numbering substitutions, plus adjacent `AWF-Allow-Version: <marker-or-legacy>` and `AWF-Allow-Reason: <nonempty reason>` trailers. Malformed reserved syntax refuses. The index and `MERGE_HEAD` remain intact, so correct the message and run `git commit`; optionally start with `git merge --no-commit --no-ff`. True fast-forwards need no authorization, and an ADR must never be retrofitted or backed by allowance state.
 

@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-exec bash .awf/hooks/pre-push.sh "$@"
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+exec bash "$repo_root/.awf/hooks/pre-push.sh" "$@"

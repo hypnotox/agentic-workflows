@@ -1,8 +1,13 @@
 package project
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // hookFiles renders a project with the given config and returns the
@@ -27,14 +32,14 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 	return found
 }
 
-// With the singleton enabled, exactly the four payloads render under
+// With the singleton enabled, exactly the five payloads render under
 // .awf/hooks/; absent or disabled, none do. The expected set is spelled out
 // rather than derived from hookNames, which would make the assertion agree with
 // whatever that list happens to say: the claim names these paths, so the test
 // has to name them too for a wrong set to be able to fail.
 // invariant: rendering/singletons-and-payloads:hook-payloads-rendered (TestHookPayloadsRendered)
 func TestHookPayloadsRendered(t *testing.T) {
-	want := []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit"}
+	want := []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "reference-transaction"}
 	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nhooks:\n  enabled: true\n")
 	for _, name := range want {
 		if _, ok := got[name]; !ok {
@@ -70,10 +75,11 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
 			wantCmds := map[string][]string{
-				"pre-commit":       {tc.awf + " check\n"},
-				"commit-msg":       {tc.awf + ` check staged commit "$1"` + "\n"},
-				"pre-push":         {tc.awf + " check\n"},
-				"pre-merge-commit": {tc.awf + " check staged\n"},
+				"pre-commit":            {tc.awf + " check\n"},
+				"commit-msg":            {tc.awf + ` check staged commit "$1"` + "\n"},
+				"pre-push":              {tc.awf + " check\n"},
+				"pre-merge-commit":      {tc.awf + " check staged\n"},
+				"reference-transaction": {"  " + tc.awf + ` check commit-policy "${targets[@]}"`},
 			}
 			for name, f := range got {
 				lines := strings.Split(f.Content, "\n")
@@ -113,10 +119,11 @@ hooks:
   enabled: true
 `)
 	want := map[string][]string{
-		"pre-commit":       {"./x check\n./x gate\n"},
-		"commit-msg":       {"./x commit-gate \"$1\"\n"},
-		"pre-push":         {"./x gate full\n"},
-		"pre-merge-commit": {"./x check staged\n"},
+		"pre-commit":            {"./x check\n./x gate\n"},
+		"commit-msg":            {"./x commit-gate \"$1\"\n"},
+		"pre-push":              {"./x gate full\n"},
+		"pre-merge-commit":      {"./x check staged\n"},
+		"reference-transaction": {"  awf check commit-policy \"${targets[@]}\""},
 	}
 	for name, f := range got {
 		for _, w := range want[name] {
@@ -133,6 +140,374 @@ hooks:
 	if f := chain["pre-push"]; !strings.Contains(f.Content, "./x gate\n") {
 		t.Errorf("pre-push: want gateCmd fallback, got:\n%s", f.Content)
 	}
+}
+
+// The policy payloads buffer complete hook input before invoking the common
+// verifier, evaluate only commit-bearing branch or tag targets, and run the
+// configured pre-push gate only after policy success.
+// invariant: rendering/singletons-and-payloads:commit-policy-hook-payloads (TestCommitPolicyHookPayloads)
+func TestCommitPolicyHookPayloads(t *testing.T) {
+	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmdFull: ./x gate full\nhooks:\n  enabled: true\n")
+	transaction := got["reference-transaction"].Content
+	for _, want := range []string{
+		`[[ "${1:-}" == "prepared" ]] || exit 0`,
+		"mapfile -t updates",
+		`refs/heads/*`,
+		`"$old_oid..$new_oid"`,
+		`check commit-policy "${targets[@]}"`,
+		`refs changed: false`,
+		`policy verifier changed index: false`,
+		`index/worktree may already have changed before this hook`,
+	} {
+		if !strings.Contains(transaction, want) {
+			t.Errorf("reference-transaction missing %q:\n%s", want, transaction)
+		}
+	}
+	push := got["pre-push"].Content
+	for _, want := range []string{
+		"mapfile -t updates",
+		`git cat-file -t "$object"`,
+		`git rev-parse --verify "$object^{}"`,
+		`resolves to non-commit`,
+		`check commit-policy "${targets[@]}"`,
+		"./x gate full",
+	} {
+		if !strings.Contains(push, want) {
+			t.Errorf("pre-push missing %q:\n%s", want, push)
+		}
+	}
+	if policy, gate := strings.Index(push, `check commit-policy "${targets[@]}"`), strings.Index(push, "./x gate full"); policy < 0 || gate < policy {
+		t.Errorf("pre-push must run policy before gate:\n%s", push)
+	}
+
+	root := t.TempDir()
+	runHookGit(t, root, "init")
+	runHookGit(t, root, "config", "user.name", "Hook Test")
+	runHookGit(t, root, "config", "user.email", "hook@example.test")
+	runHookGit(t, root, "commit", "--allow-empty", "-m", "base")
+	base := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD"))
+	runHookGit(t, root, "commit", "--allow-empty", "-m", "update")
+	head := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD"))
+	runHookGit(t, root, "tag", "-a", "pushed", "-m", "pushed")
+	tag := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/pushed"))
+
+	bin := filepath.Join(root, "bin")
+	if err := os.Mkdir(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	log := filepath.Join(root, "hook.log")
+	for name, body := range map[string]string{
+		"awf":  "#!/usr/bin/env bash\nprintf 'policy:%s\\n' \"$*\" >>\"$HOOK_LOG\"\n[[ ! -e \"$HOOK_FAIL\" ]]\n",
+		"gate": "#!/usr/bin/env bash\nprintf 'gate\\n' >>\"$HOOK_LOG\"\n",
+	} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeHook := func(name, content string) string {
+		t.Helper()
+		path := filepath.Join(root, name)
+		if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	transactionPath := writeHook("reference-transaction", transaction)
+	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmdFull: gate\nhooks:\n  enabled: true\n")["pre-push"].Content)
+	run := func(path, input string, args ...string) (string, error) {
+		t.Helper()
+		cmd := exec.Command("bash", append([]string{path}, args...)...)
+		cmd.Dir, cmd.Stdin = root, strings.NewReader(input)
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "HOOK_LOG="+log, "HOOK_FAIL="+filepath.Join(root, "fail-policy"))
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	readLog := func() string {
+		t.Helper()
+		b, err := os.ReadFile(log)
+		if os.IsNotExist(err) {
+			return ""
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	clearLog := func() {
+		t.Helper()
+		if err := os.Remove(log); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	}
+
+	if _, err := run(transactionPath, "bad record\n", "committed"); err != nil || readLog() != "" {
+		t.Fatalf("non-prepared transaction evaluated policy: err=%v log=%q", err, readLog())
+	}
+	before := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/heads/master"))
+	if output, err := run(transactionPath, "bad record\n", "prepared"); err == nil || !strings.Contains(output, "refs changed: false") {
+		t.Fatalf("malformed prepared transaction: err=%v output=%q", err, output)
+	}
+	if after := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/heads/master")); after != before {
+		t.Fatalf("rejected transaction moved ref: before=%s after=%s", before, after)
+	}
+	clearLog()
+	if output, err := run(transactionPath, base+" "+head+" refs/heads/master\n"+base+" "+head+" refs/heads/duplicate\n", "prepared"); err != nil {
+		t.Fatalf("prepared update: %v: %s", err, output)
+	}
+	if got := readLog(); !strings.Contains(got, "policy:check commit-policy "+base+".."+head) || strings.Count(got, base+".."+head) != 1 {
+		t.Fatalf("prepared update policy target = %q", got)
+	}
+	clearLog()
+	if output, err := run(transactionPath, head+" "+base+" refs/heads/master\n", "prepared"); err != nil || readLog() != "" {
+		t.Fatalf("backward update evaluated policy: err=%v output=%q log=%q", err, output, readLog())
+	}
+	zeroOID := strings.Repeat("0", len(head))
+	clearLog()
+	if output, err := run(transactionPath, head+" "+zeroOID+" refs/heads/deleted\n", "prepared"); err != nil || readLog() != "" {
+		t.Fatalf("deletion evaluated policy: err=%v output=%q log=%q", err, output, readLog())
+	}
+	clearLog()
+	if output, err := run(transactionPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+head+"\n" {
+		t.Fatalf("new branch target: err=%v output=%q log=%q", err, output, readLog())
+	}
+	tree := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD^{tree}"))
+	side := strings.TrimSpace(runHookGit(t, root, "commit-tree", tree, "-p", base, "-m", "side"))
+	clearLog()
+	if output, err := run(transactionPath, head+" "+side+" refs/heads/diverged\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+head+".."+side+"\n" {
+		t.Fatalf("divergent branch target: err=%v output=%q log=%q", err, output, readLog())
+	}
+
+	runHookGit(t, root, "tag", "-a", "outer-pushed", "-m", "outer", "pushed")
+	outerTag := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/outer-pushed"))
+	clearLog()
+	if output, err := run(pushPath, "refs/tags/outer-pushed "+outerTag+" refs/tags/outer-pushed "+base+"\nrefs/tags/pushed "+tag+" refs/tags/duplicate "+base+"\n"); err != nil {
+		t.Fatalf("tag push: %v: %s", err, output)
+	}
+	if got := readLog(); !strings.Contains(got, "policy:check commit-policy "+head+"\ngate\n") || strings.Count(got, head) != 1 {
+		t.Fatalf("tag push did not peel and order policy before gate: %q", got)
+	}
+	clearLog()
+	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil || readLog() != "gate\n" {
+		t.Fatalf("push deletion: err=%v output=%q log=%q", err, output, readLog())
+	}
+	clearLog()
+	blob := strings.TrimSpace(runHookGit(t, root, "hash-object", "-w", "--stdin"))
+	runHookGit(t, root, "tag", "-a", "annotated-blob", "-m", "blob", blob)
+	annotatedBlob := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/annotated-blob"))
+	if output, err := run(pushPath, "refs/tags/annotated-blob "+annotatedBlob+" refs/tags/annotated-blob "+base+"\n"); err != nil || !strings.Contains(output, "resolves to non-commit blob") || readLog() != "gate\n" {
+		t.Fatalf("non-commit tag: err=%v output=%q log=%q", err, output, readLog())
+	}
+	clearLog()
+	if err := os.WriteFile(filepath.Join(root, "fail-policy"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := run(pushPath, "refs/heads/master "+head+" refs/heads/master "+base+"\n"); err == nil || strings.Contains(readLog(), "gate") {
+		t.Fatalf("failed policy ran gate: err=%v log=%q", err, readLog())
+	}
+	if err := os.Remove(filepath.Join(root, "fail-policy")); err != nil {
+		t.Fatal(err)
+	}
+	clearLog()
+	if _, err := run(pushPath, "malformed\n"); err == nil || readLog() != "" {
+		t.Fatalf("malformed push ran policy or gate: err=%v log=%q", err, readLog())
+	}
+
+	t.Run("native-git-enforcement", func(t *testing.T) {
+		testCommitPolicyHooksNative(t)
+	})
+}
+
+func testCommitPolicyHooksNative(t *testing.T) {
+	repoRoot, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	binDir := t.TempDir()
+	binary := filepath.Join(binDir, "awf")
+	build := exec.Command("go", "build", "-o", binary, "./cmd/awf")
+	build.Dir = repoRoot
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build awf: %v: %s", err, output)
+	}
+
+	for _, hooksPath := range []string{".githooks", filepath.Join(t.TempDir(), "shared-hooks")} {
+		hooksPath := hooksPath
+		t.Run(map[bool]string{true: "relative", false: "absolute"}[!filepath.IsAbs(hooksPath)], func(t *testing.T) {
+			root := t.TempDir()
+			t.Setenv("PATH", binDir+":"+os.Getenv("PATH"))
+			fixture := gitfixture.InitNativeAt(t, root)
+			run := func(wantOK bool, args ...string) string {
+				t.Helper()
+				output, err := gitfixture.NativeRun(fixture, args...)
+				if (err == nil) != wantOK {
+					t.Fatalf("git %v: wantOK=%v err=%v\n%s", args, wantOK, err, output)
+				}
+				return output
+			}
+			run(true, "config", "user.name", "Allowed")
+			run(true, "config", "user.email", "allowed@example.test")
+			if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: hook-test\nintegrationBranch: master\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("{\"awfVersion\":\"0.30.0\",\"schemaVersion\":34,\"files\":{}}\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			run(true, "add", ".awf/config.yaml", ".awf/awf.lock")
+			run(true, "commit", "--no-gpg-sign", "-m", "baseline")
+			base := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
+			privateKey, publicKey := nativeHookSSHKey(t)
+
+			gateLog := filepath.Join(root, "gate.log")
+			gate := filepath.Join(root, "gate")
+			if err := os.WriteFile(gate, []byte("#!/usr/bin/env bash\nprintf 'gate\\n' >>"+shellQuote(gateLog)+"\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			config := "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmdFull: " + gate + "\nhooks:\n  enabled: true\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Allowed\n      email: allowed@example.test\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: allowed@example.test\n      key: " + publicKey + "\n"
+			if err := os.MkdirAll(filepath.Join(root, ".awf", "hooks"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(config), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			files := hookFiles(t, "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmdFull: "+gate+"\nhooks:\n  enabled: true\n")
+			for _, name := range []string{"reference-transaction", "pre-push"} {
+				if err := os.WriteFile(filepath.Join(root, ".awf", "hooks", name+".sh"), []byte(files[name].Content), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			stubRoot := hooksPath
+			if !filepath.IsAbs(stubRoot) {
+				stubRoot = filepath.Join(root, stubRoot)
+			}
+			if err := os.MkdirAll(stubRoot, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"reference-transaction", "pre-push"} {
+				stub := "#!/usr/bin/env bash\nrepo_root=$(git rev-parse --show-toplevel) || exit 1\npayload=\"$repo_root/.awf/hooks/" + name + ".sh\"\n"
+				if name == "reference-transaction" {
+					stub += "if [[ ! -f \"$payload\" ]]; then\n  primary_root=$(git worktree list --porcelain | sed -n '1s/^worktree //p') || exit 1\n  payload=\"$primary_root/.awf/hooks/reference-transaction.sh\"\nfi\n"
+				}
+				stub += "exec bash \"$payload\" \"$@\"\n"
+				if err := os.WriteFile(filepath.Join(stubRoot, name), []byte(stub), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			run(true, "config", "core.hooksPath", hooksPath)
+			run(true, "config", "gpg.format", "ssh")
+			run(true, "config", "user.signingKey", privateKey)
+			run(true, "config", "commit.gpgSign", "true")
+
+			run(true, "commit", "--allow-empty", "-S", "-m", "allowed")
+			allowed := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
+
+			linked := filepath.Join(t.TempDir(), "linked")
+			run(true, "worktree", "add", "-b", "linked-policy", linked, allowed)
+			linkedConfig := strings.Replace(config, "    - name: Allowed\n      email: allowed@example.test", "    - name: Linked\n      email: linked@example.test", 1)
+			linkedConfig = strings.Replace(linkedConfig, "    - principal: allowed@example.test", "    - principal: linked@example.test", 1)
+			if err := os.WriteFile(filepath.Join(linked, ".awf", "config.yaml"), []byte(linkedConfig), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(linked, ".awf", "hooks"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"reference-transaction", "pre-push"} {
+				if err := os.WriteFile(filepath.Join(linked, ".awf", "hooks", name+".sh"), []byte(files[name].Content), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if !filepath.IsAbs(hooksPath) {
+				linkedStubs := filepath.Join(linked, hooksPath)
+				if err := os.MkdirAll(linkedStubs, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				for _, name := range []string{"reference-transaction", "pre-push"} {
+					body, err := os.ReadFile(filepath.Join(stubRoot, name))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(linkedStubs, name), body, 0o755); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			linkedFixture := gitfixture.At(linked)
+			linkedRun := func(wantOK bool, args ...string) string {
+				t.Helper()
+				output, err := gitfixture.NativeRun(linkedFixture, args...)
+				if (err == nil) != wantOK {
+					t.Fatalf("linked git %v: wantOK=%v err=%v\n%s", args, wantOK, err, output)
+				}
+				return output
+			}
+			if output := linkedRun(false, "-c", "user.name=Allowed", "-c", "user.email=allowed@example.test", "-c", "gpg.format=ssh", "-c", "user.signingKey="+privateKey, "commit", "--allow-empty", "-S", "-m", "wrong worktree policy"); !strings.Contains(output, "identity Allowed <allowed@example.test> is not allowed") {
+				t.Fatalf("linked worktree used wrong policy: %q", output)
+			}
+			linkedRun(true, "-c", "user.name=Linked", "-c", "user.email=linked@example.test", "-c", "gpg.format=ssh", "-c", "user.signingKey="+privateKey, "commit", "--allow-empty", "-S", "-m", "linked allowed")
+
+			if output := run(false, "commit", "--allow-empty", "--no-gpg-sign", "-m", "unsigned"); !strings.Contains(output, "commits must be signed") {
+				t.Fatalf("unsigned refusal = %q", output)
+			}
+			if got := strings.TrimSpace(run(true, "rev-parse", "HEAD")); got != allowed {
+				t.Fatalf("unsigned commit moved ref: %s -> %s", allowed, got)
+			}
+			if output := run(false, "-c", "user.name=Wrong", "-c", "user.email=wrong@example.test", "commit", "--allow-empty", "-S", "-m", "wrong identity"); !strings.Contains(output, "identity Wrong <wrong@example.test> is not allowed") {
+				t.Fatalf("identity refusal = %q", output)
+			}
+			if got := strings.TrimSpace(run(true, "rev-parse", "HEAD")); got != allowed {
+				t.Fatalf("identity refusal moved ref: %s -> %s", allowed, got)
+			}
+
+			run(true, "-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "--no-gpg-sign", "-m", "bypass")
+			bypass := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
+			remote := filepath.Join(t.TempDir(), "remote.git")
+			gitfixture.NativeInitBare(t, remote)
+			run(true, "remote", "add", "origin", remote)
+			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "commits must be signed") {
+				t.Fatalf("pre-push refusal = %q", output)
+			}
+			if _, err := os.Stat(gateLog); !os.IsNotExist(err) {
+				t.Fatalf("policy refusal ran gate: %v", err)
+			}
+			run(true, "reset", "--hard", allowed)
+			if got := strings.TrimSpace(run(true, "rev-parse", "HEAD")); got != allowed || bypass == allowed {
+				t.Fatalf("cleanup failed: head=%s allowed=%s bypass=%s", got, allowed, bypass)
+			}
+			if output := run(true, "ls-remote", "--heads", "origin"); strings.TrimSpace(output) != "" {
+				t.Fatalf("refused push created remote ref: %q", output)
+			}
+		})
+	}
+}
+
+func nativeHookSSHKey(t *testing.T) (string, string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "key")
+	cmd := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", path)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("ssh-keygen: %v: %s", err, output)
+	}
+	body, err := os.ReadFile(path + ".pub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields := strings.Fields(string(body))
+	return path, strings.Join(fields[:2], " ")
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+}
+
+func runHookGit(t *testing.T, root string, args ...string) string {
+	t.Helper()
+	out, err := gitfixture.NativeRun(gitfixture.At(root), args...)
+	if err != nil {
+		t.Fatalf("git %v: %v: %s", args, err, out)
+	}
+	return out
 }
 
 // Hook payload template ids label as their script name in advisories.

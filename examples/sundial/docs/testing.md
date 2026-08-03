@@ -4,7 +4,7 @@
 <!-- awf:edit gate: default; create .awf/docs/parts/testing/gate.md to override -->
 ## The gate
 
-A single gate command runs the project's checks (tests, vet/lint, rendered-file drift, and any generated executable-extension lanes) and must be green before every commit. A red gate blocks the commit: fix the cause or revert. When Pi is enabled, keep strict TypeScript, protocol-parity, coverage, and minimum-runtime smoke tests in the same deterministic gate.
+A single gate command runs the project's checks (tests, vet/lint, rendered-file drift, and any generated executable-extension lanes) and must be green before every commit. A red gate blocks the commit: fix the cause or revert. When Pi is enabled, keep strict TypeScript, protocol-parity, coverage, and minimum-runtime smoke tests in the same deterministic gate. If the project configures commit provenance, first preview intended history with `awf check commit-policy <revision-or-range>...`, then test the reference-transaction and pre-push payloads against disposable refs before adopting their stubs. Exercise stubs from linked worktrees with both absolute and relative `core.hooksPath`; local hooks are preflight, while remote policy remains the final boundary.
 
 <!-- awf:edit tiers: default; create .awf/docs/parts/testing/tiers.md to override -->
 ## Tiers
@@ -17,5 +17,5 @@ The gate has tiers. A fast tier runs on every commit and covers the common path 
 Tests live beside their package (`internal/almanac`, `internal/schedule`): model
 tests pin clamping and the polar collapse; schedule tests pin table shape.
 `./x gate` runs them all with `go vet`; `awf check repo` validates the
-invariant-backing comments under `./internal/...` as part of current-state authority. When enabled, commit-policy previews are tested through actual Git commit facts and retain disabled-policy success without claiming hook enforcement.
+invariant-backing comments under `./internal/...` as part of current-state authority. If an adopter enables commit policy, test previews through actual Git commit facts before wiring the inert reference-transaction and pre-push payloads from the invoking worktree, with absolute and relative `core.hooksPath` coverage. Sundial leaves policy absent; remote policy, not a local hook, is the final boundary.
 

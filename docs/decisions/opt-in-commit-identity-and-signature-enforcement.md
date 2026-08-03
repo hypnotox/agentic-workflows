@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: opt-in-commit-identity-and-signature-enforcement
-status: Implementing
+status: Implemented
 date: 2026-08-02
 ---
 # ADR-opt-in-commit-identity-and-signature-enforcement: Opt-in commit identity and signature enforcement
@@ -211,3 +211,5 @@ hooks automatically.
 - 2026-08-03: Applied; operations: add `tooling/commit-policy:exact-commit-enforcement`
 - 2026-08-03: Reapplied; operations: add `tooling/commit-policy:exact-commit-enforcement`
 - 2026-08-03: Reapplied; operations: add `tooling/commit-policy:exact-commit-enforcement`
+- 2026-08-03: Applied; operations: update `rendering/singletons-and-payloads:hook-payloads-rendered`, add `rendering/singletons-and-payloads:commit-policy-hook-payloads`
+- 2026-08-03: Implemented; content-sha256: bbd924bd577ba8878c4c2be3319f4d6fad5dd1ae1e2901256d32c59884097aa0

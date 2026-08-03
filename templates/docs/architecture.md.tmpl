@@ -22,9 +22,6 @@ _How a request, build, or command moves through the system end to end: the path 
 ## Key dependencies
 
 _The external dependencies that shape the architecture and the role each plays. Note anything load-bearing enough that replacing it would be a significant change._
-<!-- awf:end -->{{ with .commitPolicy }}
+<!-- awf:end -->
 
-This checkout includes optional commit-policy configuration. The block is
-structurally validated and available to generated artifacts, but its presence
-alone does not activate runtime enforcement.
-{{ end }}
+{{ with .commitPolicy }}This checkout includes optional `commitPolicy` configuration. It is structurally validated and consumed by the generated reference-transaction and pre-push payloads. Configuration alone neither activates hooks nor protects a remote: preview intended history with `awf check commit-policy <revision-or-range>...`, then let adopter-owned, worktree-aware wiring invoke the inert payloads. The remote's receiving and branch policy remains the final boundary.{{ else }}Optional commit-policy support remains inert when its configuration is absent. Adopters that opt in preview intended history before wiring worktree-aware reference-transaction and pre-push payloads; remote receiving and branch policy remains the final boundary.{{ end }}

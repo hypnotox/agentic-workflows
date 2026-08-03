@@ -1,4 +1,4 @@
-Rendered companion script contracts: the bootstrap and upgrade scripts, the command runner, and hook payload fallback behaviour.
+Rendered companion script contracts: the bootstrap and upgrade scripts, the command runner, and hook payload fallback behaviour. When hooks are enabled, awf renders five inert payloads: pre-commit, commit-msg, pre-merge-commit, reference-transaction, and pre-push. An adopter may preview commit provenance with `awf check commit-policy <revision-or-range>...` before configuring policy and wiring its own stubs; the payloads do not activate themselves. Worktree-aware stubs must resolve the invoking worktree before delegating, and local hooks remain a preflight rather than a substitute for the remote's final branch policy.
 
 ## Claims
 

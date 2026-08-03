@@ -17,7 +17,7 @@ persistence, no network, no configuration files.
   date)` returns clamped, polar-safe sunrise/sunset pairs.
 - **`internal/schedule/`:** formats seven `almanac.Day` values as the plain-text
   sun table.
-- **Workflow configuration:** the optional `commitPolicy` mapping is parsed and structurally validated by awf; `awf check commit-policy <revision-or-range>...` previews exact provenance through awf's shared verifier, while absence preserves existing behavior and does not activate a hook or runtime policy.
+- **Workflow configuration:** the optional `commitPolicy` mapping is parsed and structurally validated by awf; `awf check commit-policy <revision-or-range>...` previews exact provenance through awf's shared verifier before an adopter wires the inert reference-transaction and pre-push payloads. Sundial leaves that mapping absent, so it has no provenance policy or hook activation.
 - **Workflow context:** `awf context` provides tier-0 directory orientation and
   tier-1 marker relationships for exact or Git-selected files; named facets
   expand topic authority without changing the application dependency graph.
@@ -31,7 +31,7 @@ table on stdout. Errors exist only at the argument boundary; the model itself is
 total: polar day and night collapse to full- or zero-length days (ADR-0001).
 Development context separately classifies requested paths, groups directories by
 visible tier-0 fields, and expands direct relationships or broader authority only
-through the file tier and explicit facets. Optional commitPolicy bytes pass through awf parsing, structural validation, render projection, and consumer-only manifest hashing; explicit policy previews expand target commits after the baseline and return model-owned diagnostics, while absent policy produces no activation or invented values.
+through the file tier and explicit facets. Optional commitPolicy bytes pass through awf parsing, structural validation, render projection, and consumer-only manifest hashing; explicit policy previews expand target commits after the baseline and return model-owned diagnostics. If adopted, worktree-aware stubs delegate to the invoking worktree's reference-transaction or pre-push payload; Sundial keeps the policy absent, and remote policy remains the final boundary.
 
 
 <!-- awf:edit dependencies: from .awf/docs/parts/architecture/dependencies.md -->
@@ -41,3 +41,5 @@ Standard library only (`math`, `time`, `strings`, `fmt`). Keeping the model
 dependency-free is the point of ADR-0001; adding an ephemeris library would be a
 new decision.
 
+
+Optional commit-policy support remains inert when its configuration is absent. Adopters that opt in preview intended history before wiring worktree-aware reference-transaction and pre-push payloads; remote receiving and branch policy remains the final boundary.
