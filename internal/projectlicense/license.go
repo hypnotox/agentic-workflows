@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"slices"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -14,7 +17,7 @@ const (
 	goreleaserPath = ".goreleaser.yaml"
 	licenseSHA256  = "d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee"
 	licenseBytes   = 34020
-	licenseBadge   = "[![License: AGPL-3.0-only]"
+	licenseBadge   = "[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)"
 	licenseFooter  = "[GNU Affero General Public License v3.0 only](LICENSE)"
 )
 
@@ -51,8 +54,8 @@ func Verify(root fs.FS) error {
 	goreleaser, err := fs.ReadFile(root, goreleaserPath)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("read %s: %w", goreleaserPath, err))
-	} else if !strings.Contains(string(goreleaser), "files:\n      - LICENSE") {
-		errs = append(errs, fmt.Errorf("%s archives must include %s", goreleaserPath, licensePath))
+	} else {
+		errs = append(errs, verifyArchiveLicenses(goreleaser)...)
 	}
 
 	// Only root-owned project license artifacts are policy inputs. Dependency metadata
@@ -69,4 +72,26 @@ func Verify(root fs.FS) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func verifyArchiveLicenses(raw []byte) []error {
+	var config struct {
+		Archives []struct {
+			Files []string `yaml:"files"`
+		} `yaml:"archives"`
+	}
+	if err := yaml.Unmarshal(raw, &config); err != nil {
+		return []error{fmt.Errorf("parse %s archives: %w", goreleaserPath, err)}
+	}
+	if len(config.Archives) == 0 {
+		return []error{fmt.Errorf("%s defines no archives", goreleaserPath)}
+	}
+
+	var errs []error
+	for i, archive := range config.Archives {
+		if !slices.Contains(archive.Files, licensePath) {
+			errs = append(errs, fmt.Errorf("%s archive %d must include %s", goreleaserPath, i+1, licensePath))
+		}
+	}
+	return errs
 }
