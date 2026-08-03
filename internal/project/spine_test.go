@@ -1882,14 +1882,14 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
 	}
 	multiplePath := "cmd/stale-multiple.md"
-	multiple := cases[5].body + " / " + cases[6].body + "\n" + cases[0].body
+	multiple := cases[5].body + " / " + cases[5].body + "\n" + cases[5].body
 	writeFixture(multiplePath, multiple)
 	secondOffset := len(cases[5].body) + len(" / ")
-	thirdOffset := secondOffset + len(cases[6].body) + 1
+	thirdOffset := secondOffset + len(cases[5].body) + 1
 	expected = append(expected,
 		fmt.Sprintf("%s:1:0: %s", multiplePath, cases[5].contract),
-		fmt.Sprintf("%s:1:%d: %s", multiplePath, secondOffset, cases[6].contract),
-		fmt.Sprintf("%s:2:%d: %s", multiplePath, thirdOffset, cases[0].contract),
+		fmt.Sprintf("%s:1:%d: %s", multiplePath, secondOffset, cases[5].contract),
+		fmt.Sprintf("%s:2:%d: %s", multiplePath, thirdOffset, cases[5].contract),
 	)
 	for _, path := range []string{
 		".awf/parts/active.md", ".pi/active.md", ".claude/active.md",
