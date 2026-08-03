@@ -43,6 +43,12 @@ func TestCommitPolicyGitReads(t *testing.T) {
 	if fact.ID != head || fact.Author.Name != "T" || fact.Committer.Email != "t@example.com" {
 		t.Fatalf("facts = %#v", fact)
 	}
+	emptyTree := gitfixture.NativeRevParse(t, fixture, "HEAD^{tree}")
+	emptyIdentity := gitfixture.NativeHashObject(t, fixture, "commit", []byte("tree "+emptyTree+"\nauthor  <> 1 +0000\ncommitter  <> 1 +0000\n\nempty identity\n"))
+	emptyFact, err := repo.CommitFacts(ctx, emptyIdentity)
+	if err != nil || emptyFact.Author != (commitpolicy.Person{}) || emptyFact.Committer != (commitpolicy.Person{}) {
+		t.Fatalf("empty identity facts = %#v, %v", emptyFact, err)
+	}
 	commits, err := repo.CommitsAfter(ctx, base, []string{"HEAD", "light", "outer", base + "..HEAD"})
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +79,10 @@ func TestCommitPolicyGitReads(t *testing.T) {
 	assertPolicyError(t, err, CommitPolicyBaselineError)
 	_, err = repo.CommitsAfter(ctx, base, []string{"does-not-exist..HEAD"})
 	assertPolicyError(t, err, CommitPolicyRevisionError)
+	danglingTag := gitfixture.NativeHashObject(t, fixture, "tag", []byte("object "+strings.Repeat("f", len(base))+"\ntype commit\ntag dangling\ntagger T <t@example.com> 1 +0000\n\ndangling\n"))
+	gitfixture.NativeUpdateRef(t, fixture, "refs/tags/dangling", danglingTag)
+	_, err = repo.CommitsAfter(ctx, base, []string{"dangling"})
+	assertPolicyError(t, err, CommitPolicyTagPeelError)
 	if _, err := repo.CommitFacts(ctx, strings.Repeat("f", len(base))); err == nil {
 		t.Fatal("missing commit facts succeeded")
 	}
@@ -120,6 +130,11 @@ func TestVerifySSHUsesRealGitAndCleansTrustFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var trustRoots []string
+	repo.createTemp = func(dir, pattern string) (trustFile, error) {
+		trustRoots = append(trustRoots, dir)
+		return os.CreateTemp(dir, pattern)
+	}
 	for _, tc := range []struct {
 		name    string
 		id      string
@@ -143,6 +158,39 @@ func TestVerifySSHUsesRealGitAndCleansTrustFile(t *testing.T) {
 	if err != nil || len(matches) != 0 {
 		t.Fatalf("temporary allowed-signers files = %v, %v", matches, err)
 	}
+	if len(trustRoots) != 3 {
+		t.Fatalf("trust-file creations = %v, want valid and two rejected signer checks", trustRoots)
+	}
+	for _, root := range trustRoots {
+		if root != fixture.Root() {
+			t.Fatalf("trust file rooted at %q, want invoking root %q", root, fixture.Root())
+		}
+	}
+}
+
+type stagedTrustFile struct {
+	name string
+	fail string
+}
+
+func (f *stagedTrustFile) Name() string { return f.name }
+func (f *stagedTrustFile) Chmod(os.FileMode) error {
+	if f.fail == "chmod" {
+		return errors.New("chmod fault")
+	}
+	return nil
+}
+func (f *stagedTrustFile) Write(p []byte) (int, error) {
+	if f.fail == "write" {
+		return 0, errors.New("write fault")
+	}
+	return len(p), nil
+}
+func (f *stagedTrustFile) Close() error {
+	if f.fail == "close" {
+		return errors.New("close fault")
+	}
+	return nil
 }
 
 func TestVerifySSHReportsTrustAndProcessFailures(t *testing.T) {
@@ -154,11 +202,38 @@ func TestVerifySSHReportsTrustAndProcessFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo.createTemp = func(string, string) (*os.File, error) { return nil, errors.New("no temporary file") }
+	repo.createTemp = func(string, string) (trustFile, error) { return nil, errors.New("no temporary file") }
 	_, err = repo.VerifySSH(ctx, signed, []commitpolicy.Signer{{Principal: "t@example.com", Key: publicKey}})
 	assertPolicyError(t, err, CommitPolicyTrustError)
 
+	for _, stage := range []string{"chmod", "write", "close"} {
+		path := filepath.Join(fixture.Root(), "fault-"+stage)
+		if err := os.WriteFile(path, []byte("trust"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		repo.createTemp = func(string, string) (trustFile, error) { return &stagedTrustFile{name: path, fail: stage}, nil }
+		_, err = repo.VerifySSH(ctx, signed, []commitpolicy.Signer{{Principal: "t@example.com", Key: publicKey}})
+		assertPolicyError(t, err, CommitPolicyTrustError)
+		if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+			t.Fatalf("%s fault left trust file: %v", stage, statErr)
+		}
+	}
+
 	repo.createTemp = nil
+	repo.removeFile = func(string) error { return errors.New("remove fault") }
+	verdict, err := repo.VerifySSH(ctx, signed, []commitpolicy.Signer{{Principal: "t@example.com", Key: publicKey}})
+	if verdict != commitpolicy.SignatureMissing {
+		t.Fatalf("cleanup failure escaped with verdict %v", verdict)
+	}
+	assertPolicyError(t, err, CommitPolicyTrustError)
+	leftovers, globErr := filepath.Glob(filepath.Join(fixture.Root(), ".awf-allowed-signers-*"))
+	if globErr != nil || len(leftovers) != 1 {
+		t.Fatalf("cleanup-failure fixture = %v, %v", leftovers, globErr)
+	}
+	if err := os.Remove(leftovers[0]); err != nil {
+		t.Fatal(err)
+	}
+	repo.removeFile = nil
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
 	_, err = repo.VerifySSH(cancelled, signed, []commitpolicy.Signer{{Principal: "t@example.com", Key: publicKey}})
@@ -184,7 +259,7 @@ func TestCommitPolicyRejectsMalformedNativeResponses(t *testing.T) {
 
 	repo := fakeCommitPolicyRepo(t)
 	ctx := commitPolicyContext(t)
-	for _, mode := range []string{"format-fail", "bad-format", "bad-oid"} {
+	for _, mode := range []string{"format-fail", "bad-format", "bad-oid", "cat-type-fail"} {
 		t.Setenv("AWF_FAKE_GIT_MODE", mode)
 		if _, _, err := repo.FullOID(ctx, "HEAD"); err == nil {
 			t.Fatalf("FullOID accepted fake mode %s", mode)
@@ -200,9 +275,23 @@ func TestCommitPolicyRejectsMalformedNativeResponses(t *testing.T) {
 			t.Fatalf("CommitFacts accepted %q", raw)
 		}
 	}
+	for _, mode := range []string{"fact-fail", "peel-fail", "peel-nontag-fail", "peeled-type-fail"} {
+		t.Setenv("AWF_FAKE_GIT_MODE", mode)
+		if mode == "fact-fail" {
+			_, err = repo.CommitsAfter(ctx, strings.Repeat("a", 40), []string{"HEAD"})
+		} else {
+			_, _, err = repo.PeelCommit(ctx, "HEAD")
+		}
+		if err == nil {
+			t.Fatalf("fake transition %s succeeded", mode)
+		}
+	}
 	t.Setenv("AWF_FAKE_GIT_MODE", "verify-process")
 	_, err = repo.VerifySSH(ctx, strings.Repeat("a", 40), nil)
 	assertPolicyError(t, err, CommitPolicyVerifyError)
+	repo.removeFile = func(string) error { return errors.New("combined cleanup fault") }
+	_, err = repo.VerifySSH(ctx, strings.Repeat("a", 40), nil)
+	assertPolicyError(t, err, CommitPolicyTrustError)
 }
 
 func fakeCommitPolicyRepo(t *testing.T) *Repo {
@@ -214,6 +303,16 @@ case "$AWF_FAKE_GIT_MODE:$*" in
   bad-format:*--show-object-format*) printf 'sha512\n' ;;
   bad-oid:*--show-object-format*) printf 'sha1\n' ;;
   bad-oid:*rev-parse*) printf 'bad\n' ;;
+  cat-type-fail:*cat-file\ -t*) exit 2 ;;
+  fact-fail:*rev-list*) printf 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n' ;;
+  fact-fail:*cat-file\ commit*) exit 2 ;;
+  peel-fail:*rev-parse*^{}*) exit 2 ;;
+  peel-fail:*cat-file\ -t*) printf 'tag\n' ;;
+  peel-nontag-fail:*rev-parse*^{}*) exit 2 ;;
+  peel-nontag-fail:*cat-file\ -t*) printf 'commit\n' ;;
+  peeled-type-fail:*rev-parse*^{}*) printf 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n' ;;
+  peeled-type-fail:*cat-file\ -t\ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb*) exit 2 ;;
+  peeled-type-fail:*cat-file\ -t*) printf 'tag\n' ;;
   commit-body:*cat-file\ commit*) printf '%s' "$AWF_FAKE_COMMIT_BODY" ;;
   verify-process:*cat-file\ commit*) printf 'tree a\ngpgsig -----BEGIN SSH SIGNATURE-----\n YWJj\n -----END SSH SIGNATURE-----\n\nmessage\n' ;;
   verify-process:*verify-commit*) exit 2 ;;

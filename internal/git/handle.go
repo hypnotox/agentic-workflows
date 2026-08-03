@@ -36,7 +36,8 @@ type Repo struct {
 	prefix     string
 	repo       *gogit.Repository
 	runner     runner
-	createTemp func(string, string) (*os.File, error)
+	createTemp func(string, string) (trustFile, error)
+	removeFile func(string) error
 }
 
 // Open opens the repository at root exactly, tolerating the layouts awf must

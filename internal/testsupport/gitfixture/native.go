@@ -129,6 +129,12 @@ func NativeLightweightTag(t *testing.T, f Fixture, name, target string) {
 	mustNative(t, f, "tag", name, target)
 }
 
+// NativeUpdateRef points one exact reference at an existing object ID.
+func NativeUpdateRef(t *testing.T, f Fixture, ref, target string) {
+	t.Helper()
+	mustNative(t, f, "update-ref", ref, target)
+}
+
 // NativeRevParse resolves a revision to its hex object id.
 func NativeRevParse(t *testing.T, f Fixture, rev string) string {
 	t.Helper()

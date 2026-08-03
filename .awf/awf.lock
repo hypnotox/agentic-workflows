@@ -757,8 +757,8 @@
     "docs/topics/tooling/commit-policy.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:1d39daee4a73647210f383147445c6c728095231a858b60115d2805e61214faa",
-      "outputHash": "sha256:2a19917396949458de3591284dec8cfa905a01c063c4e7088f8327ee3c6a48ae"
+      "configHash": "sha256:1cc00f2b340f0d8f40edbf333487ad31f4e8be32c415225352332cb2e4798160",
+      "outputHash": "sha256:93d6be1c5e5cf70b0661cba2b6430f2e92168c0622af5c623908f330edab1c40"
     },
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",

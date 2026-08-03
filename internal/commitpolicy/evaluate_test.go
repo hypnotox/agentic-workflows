@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-// invariant: tooling/commit-policy:exact-commit-enforcement (TestExactCommitEnforcement)
-func TestExactCommitEnforcement(t *testing.T) {
+func TestEvaluateExactCommitPolicy(t *testing.T) {
 	policy := Policy{AllowedIdentities: []Identity{{Name: "Ada", Email: "ada@example.test"}}, RequireSigned: true}
 	commits := []Commit{
 		{ID: "b", Author: Person{"Bad", "bad@example.test"}, Committer: Person{"Ada", "ada@example.test"}, Signature: SignatureMissing},

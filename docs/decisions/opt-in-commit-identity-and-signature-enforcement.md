@@ -210,3 +210,4 @@ hooks automatically.
 - 2026-08-03: Applied; operations: add `config/validation:commit-policy`
 - 2026-08-03: Applied; operations: add `tooling/commit-policy:exact-commit-enforcement`
 - 2026-08-03: Reapplied; operations: add `tooling/commit-policy:exact-commit-enforcement`
+- 2026-08-03: Reapplied; operations: add `tooling/commit-policy:exact-commit-enforcement`
