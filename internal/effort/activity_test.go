@@ -418,10 +418,14 @@ func TestActivityV2RefusalActionsAndMemoryCausesArePrecise(t *testing.T) {
 	if semantic.Outcome == nil || semantic.Outcome.Condition != "the effort memory metadata is invalid" || semantic.Outcome.Cause != "" {
 		t.Fatalf("invalid memory = %#v", semantic)
 	}
-	for _, err := range []error{errors.New("invalid JSON"), safety("symlink", "activity.json", nil)} {
+	for _, err := range []error{
+		errors.New("invalid JSON"),
+		safety("symlink", "activity.json", nil),
+		&CorruptError{Path: "state.json", Err: &residentReadError{safety("symlink", "state.json", nil)}},
+	} {
 		got := refusalFor(activityHeartbeat, ActivityUnsafeResident, err)
-		if got.Outcome == nil || got.Outcome.Cause != "" {
-			t.Fatalf("semantic/safety read cause = %#v", got)
+		if got.Outcome == nil || got.Outcome.Cause != "" || activityReadMechanismFailure(err) {
+			t.Fatalf("semantic/safety read cause = %#v for %T", got, err)
 		}
 	}
 	identity := &activityPublicationRefusal{Operation: activityAttach, Err: errors.New("changed")}

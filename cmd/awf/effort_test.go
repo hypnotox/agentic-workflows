@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -57,37 +58,48 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 		}
 		return reply
 	}
-	assertRefusal := func(condition string, cause bool, args ...string) {
+	assertRefusal := func(condition, observed string, actions []string, cause bool, args ...string) {
 		t.Helper()
 		reply := decode(args...)
-		if got := string(reply["condition"]); got != `"`+condition+`"` || len(reply) != 3 {
+		if got := string(reply["schemaVersion"]); got != "2" || string(reply["condition"]) != `"`+condition+`"` || len(reply) != 3 {
 			t.Fatalf("%s envelope = %#v", condition, reply)
 		}
-		var outcome map[string]json.RawMessage
+		var outcome struct {
+			Category        string   `json:"category"`
+			Condition       string   `json:"condition"`
+			ChangedActivity bool     `json:"changedActivity"`
+			NextActions     []string `json:"nextActions"`
+			Cause           string   `json:"cause"`
+		}
 		if err := json.Unmarshal(reply["outcome"], &outcome); err != nil {
 			t.Fatal(err)
 		}
-		if len(outcome) != map[bool]int{true: 5, false: 4}[cause] || outcome["changedActivity"] == nil || (outcome["cause"] != nil) != cause {
-			t.Fatalf("%s outcome = %#v", condition, outcome)
+		var rawOutcome map[string]json.RawMessage
+		if err := json.Unmarshal(reply["outcome"], &rawOutcome); err != nil {
+			t.Fatal(err)
+		}
+		if len(rawOutcome) != map[bool]int{true: 5, false: 4}[cause] || outcome.Category != "operation" || outcome.Condition != observed || outcome.ChangedActivity || !slices.Equal(outcome.NextActions, actions) || (outcome.Cause != "") != cause {
+			t.Fatalf("%s outcome = %#v raw=%#v", condition, outcome, rawOutcome)
 		}
 	}
 	other := "00000000-0000-4000-8000-000000000002"
 	decode("effort", "activity", "attach", "demo", "--owner", owner, "--json")
-	assertRefusal("not-owner", false, "effort", "activity", "heartbeat", "demo", "--owner", other, "--json")
+	assertRefusal("not-owner", "the resident owner differs from this invocation", []string{"confirm the active session owner", "attach this session owner to take over"}, false, "effort", "activity", "heartbeat", "demo", "--owner", other, "--json")
 	decode("effort", "activity", "detach", "demo", "--owner", owner, "--json")
-	assertRefusal("missing", false, "effort", "activity", "heartbeat", "demo", "--owner", owner, "--json")
+	assertRefusal("missing", "the requested activity is absent", []string{"inspect the requested activity resident", "attach a new activity"}, false, "effort", "activity", "heartbeat", "demo", "--owner", owner, "--json")
 	if err := os.WriteFile(filepath.Join(root, ".awf", "efforts", "demo", "memory.md"), []byte("broken"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	assertRefusal("invalid-memory", false, "effort", "activity", "attach", "demo", "--owner", owner, "--json")
+	memoryActions := []string{"inspect .awf/efforts/demo/memory.md", "repair .awf/efforts/demo/memory.md manually"}
+	assertRefusal("invalid-memory", "the effort memory metadata is invalid", memoryActions, false, "effort", "activity", "attach", "demo", "--owner", owner, "--json")
 	if err := os.Remove(filepath.Join(root, ".awf", "efforts", "demo", "memory.md")); err != nil {
 		t.Fatal(err)
 	}
-	assertRefusal("invalid-memory", true, "effort", "activity", "attach", "demo", "--owner", owner, "--json")
+	assertRefusal("invalid-memory", "the effort memory cannot be read", memoryActions, true, "effort", "activity", "attach", "demo", "--owner", owner, "--json")
 	if err := os.WriteFile(filepath.Join(root, ".awf", "efforts", "demo", "activity.json"), []byte("{"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	assertRefusal("unsafe-resident", false, "effort", "activity", "detach", "demo", "--owner", owner, "--json")
+	assertRefusal("unsafe-resident", "the activity resident cannot be safely used", []string{"inspect the unsafe resident", "repair the unsafe resident"}, false, "effort", "activity", "detach", "demo", "--owner", owner, "--json")
 
 	for _, args := range [][]string{
 		{"effort", "activity", "attach", "Bad", "--owner", owner, "--json"},

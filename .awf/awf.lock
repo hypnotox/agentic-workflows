@@ -376,9 +376,9 @@
     },
     ".pi/skills/awf-using-effort/SKILL.md": {
       "templateId": "skills/using-effort/SKILL.md.tmpl",
-      "templateHash": "sha256:3bd3c3d6e73bbc7d69a1d3f8552549532b086447f9d98ec9e612df98f4a328f6",
+      "templateHash": "sha256:6adb937d6e11e7127de3509000c70d08ed776ce9812b9b5ec3fe72676890490f",
       "configHash": "sha256:26ea31afa82c13dc1ff6597242ba7efa29d6a721e35d108c52fc73743f68ab26",
-      "outputHash": "sha256:442ca6dfe3d1c634409a91bf00161e2912ceea3f63ba2d14d5027ae2542766de"
+      "outputHash": "sha256:c4db5ec514683a49798819a0b97177cce2f96db68885f507d642cf4fb675fcaf"
     },
     ".pi/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",

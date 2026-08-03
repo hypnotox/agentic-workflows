@@ -38,6 +38,8 @@ type CorruptError struct {
 // without confusing malformed or unsafe content for a mechanism failure.
 type residentReadError struct{ error }
 
+func (e *residentReadError) Unwrap() error { return e.error }
+
 func (e *CorruptError) Error() string {
 	return fmt.Sprintf("unusable effort resident at %s: %v; changed bytes: no; next action: preserve the resident and inspect it for manual cleanup", e.Path, e.Err)
 }

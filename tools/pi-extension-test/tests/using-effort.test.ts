@@ -126,8 +126,8 @@ test("using_effort serializes overlapping invocations in invocation order", asyn
   let firstStarted!: () => void;
   const firstSettled = new Promise<void>(resolve => { releaseFirst = resolve; });
   const firstInvoked = new Promise<void>(resolve => { firstStarted = resolve; });
-  const tools = new Map<string, any>(); const calls: string[][] = [];
-  const pi: any = { registerTool: (tool: any) => tools.set(tool.name, tool), exec: async (_: string, args: string[]) => {
+  const tools = new Map<string, any>(); const hooks = new Map<string, any>(); const calls: string[][] = [];
+  const pi: any = { registerTool: (tool: any) => tools.set(tool.name, tool), on: (name: string, hook: any) => hooks.set(name, hook), exec: async (_: string, args: string[]) => {
     calls.push(args); if (calls.length === 1) { firstStarted(); await firstSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
     if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
     return { code: 0, stdout: line(success("attached", OWNER, "second")), stderr: "" };
@@ -142,6 +142,7 @@ test("using_effort serializes overlapping invocations in invocation order", asyn
   assert.equal(lastText(await first), "Attached to first.");
   assert.equal(lastText(await second), "Attached to second.");
   assert.deepEqual(calls.map(args => args[2]), ["attach", "detach", "attach"]);
+  assert.match(hooks.get("context")({ messages: [] }, { cwd: "/repo" }).messages[0].content, /active=second/, "successful switch did not retain the second association");
 
   let releaseFailure!: () => void;
   let failureStarted!: () => void;

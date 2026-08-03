@@ -120,10 +120,13 @@ func refusalForObserved(operation activityOperation, condition ActivityCondition
 // activityReadMechanismFailure separates OS read failures from semantic and
 // safety observations without inspecting error prose.
 func activityReadMechanismFailure(err error) bool {
+	var unsafe *awfgit.HardSafetyError
+	if errors.As(err, &unsafe) {
+		return false
+	}
 	var resident *residentReadError
 	var path *os.PathError
-	var unsafe *awfgit.HardSafetyError
-	return errors.As(err, &resident) || (!errors.As(err, &unsafe) && (errors.As(err, &path) || errors.Is(err, os.ErrNotExist) || errors.Is(err, os.ErrPermission)))
+	return errors.As(err, &resident) || errors.As(err, &path) || errors.Is(err, os.ErrNotExist) || errors.Is(err, os.ErrPermission)
 }
 
 func activityObservedCondition(condition ActivityCondition) string {

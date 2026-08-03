@@ -156,7 +156,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			usingEffort = file.Content
 		}
 	}
-	for _, want := range []string{"{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "supplied relative memory and managed-worktree paths", "Restart begins detached", "temporary peer-name information are advisory only", "activity is neither authority nor a lock"} {
+	for _, want := range []string{"{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "`.awf/efforts/<slug>/memory.md`", "`.awf/worktrees/<slug>`", "Restart begins detached", "temporary peer-name information are advisory only", "activity is neither authority nor a lock"} {
 		if !strings.Contains(usingEffort, want) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}
