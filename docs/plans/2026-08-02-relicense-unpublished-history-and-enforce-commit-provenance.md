@@ -4,7 +4,7 @@ date: 2026-08-02
 adrs:
   - agpl-3-0-only-cutover-at-the-unpublished-history-boundary
   - opt-in-commit-identity-and-signature-enforcement
-status: Proposed
+status: Implemented
 ---
 # Plan: Relicense unpublished history and enforce commit provenance
 
@@ -366,6 +366,10 @@ docs(plans): complete licensed provenance migration
 - `dod: terminal-records-frozen` Independent terminal implementation review settled the mapped and post-cutover history, both ADRs are Implemented with every operation Applied, and this plan is frozen as Implemented in a green signed transaction.
 
 ## Notes
+
+### Phase 8 terminal review result
+
+PASS. Independent terminal review covered the mapped provenance implementation, protected 1,124-commit rewrite evidence, post-cutover activation and license commits, accepted cleanup, and retained recovery state. It found one mechanical range-grammar defect: malformed three-dot or empty-sided commit-policy targets could reach Git as ranges and return a false clean result. Signed corrective commit `795fa2f8` routes range-shaped targets through the shared `internal/git.ParseRange` authority, constructs `rev-list` from explicit endpoints, adds four failing-then-green malformed-range regressions, and updates the Unreleased changelog. The 100% gate passed. The required renewed terminal review verified the correction and complete terminal scope with zero findings. Process audit over the mapped implementation range plus correction returned one advisory domain-staleness warning and zero errors; repo-local audit returned imported-history coverage-ignore advisories and zero errors. Both linked ADRs are Implemented with every operation applied. No remote operation or recovery-artifact retirement occurred.
 
 ### Phase 7 acceptance and cleanup result
 
