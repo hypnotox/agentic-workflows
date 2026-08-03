@@ -113,7 +113,13 @@ func NativeSSHKey(t *testing.T) (string, string) {
 // NativeSignedCommit creates one genuinely SSH-signed commit with the fixture identity.
 func NativeSignedCommit(t *testing.T, f Fixture, msg, privateKey string) string {
 	t.Helper()
-	mustNative(t, f, "-c", "user.name="+authorName, "-c", "user.email="+authorEmail, "-c", "gpg.format=ssh", "-c", "user.signingKey="+privateKey, "commit", "--allow-empty", "-S", "-m", msg)
+	return NativeSignedCommitAs(t, f, msg, privateKey, authorName, authorEmail)
+}
+
+// NativeSignedCommitAs creates one genuinely SSH-signed commit with an exact identity.
+func NativeSignedCommitAs(t *testing.T, f Fixture, msg, privateKey, name, email string) string {
+	t.Helper()
+	mustNative(t, f, "-c", "user.name="+name, "-c", "user.email="+email, "-c", "gpg.format=ssh", "-c", "user.signingKey="+privateKey, "commit", "--allow-empty", "-S", "-m", msg)
 	return NativeRevParse(t, f, "HEAD")
 }
 

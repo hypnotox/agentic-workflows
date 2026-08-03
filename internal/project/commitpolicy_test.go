@@ -120,22 +120,37 @@ func TestExactCommitEnforcement(t *testing.T) {
 	linkedRoot := filepath.Join(t.TempDir(), "linked")
 	gitfixture.NativeWorktreeAdd(t, primary, linkedRoot, "linked-policy")
 	linked := gitfixture.At(linkedRoot)
-	privateKey, publicKey := gitfixture.NativeSSHKey(t)
-	tagCommit := gitfixture.NativeSignedCommit(t, linked, "tag-only", privateKey)
+	tagPrivate, tagPublic := gitfixture.NativeSSHKey(t)
+	directPrivate, directPublic := gitfixture.NativeSSHKey(t)
+	rangePrivate, rangePublic := gitfixture.NativeSSHKey(t)
+	tagCommit := gitfixture.NativeSignedCommitAs(t, linked, "tag-only", tagPrivate, "Tag", "tag@example.com")
 	gitfixture.NativeAnnotatedTag(t, linked, "policy-inner", tagCommit)
 	gitfixture.NativeAnnotatedTag(t, linked, "policy-outer", "policy-inner")
 	gitfixture.NativeCheckoutNewBranch(t, linked, "direct-only", base)
-	directCommit := gitfixture.NativeSignedCommit(t, linked, "direct-only", privateKey)
+	directCommit := gitfixture.NativeSignedCommitAs(t, linked, "direct-only", directPrivate, "Direct", "direct@example.com")
 	gitfixture.NativeCheckoutNewBranch(t, linked, "range-only", base)
-	rangeCommitOne := gitfixture.NativeSignedCommit(t, linked, "range-one", privateKey)
-	rangeCommitTwo := gitfixture.NativeSignedCommit(t, linked, "range-two", privateKey)
+	rangeCommitOne := gitfixture.NativeSignedCommitAs(t, linked, "range-one", rangePrivate, "Range", "range@example.com")
+	rangeCommitTwo := gitfixture.NativeSignedCommitAs(t, linked, "range-two", rangePrivate, "Range", "range@example.com")
 	primaryHead := gitfixture.NativeCommitAllowEmpty(t, primary, "primary unsigned")
 	primaryConfig := "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Wrong\n      email: wrong@example.com\n"
-	linkedPolicy := func(key string) string {
-		return "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: t@example.com\n      key: " + key + "\n"
+	type allowedProvenance struct{ name, email, key string }
+	tagPolicy := allowedProvenance{"Tag", "tag@example.com", tagPublic}
+	directPolicy := allowedProvenance{"Direct", "direct@example.com", directPublic}
+	rangePolicy := allowedProvenance{"Range", "range@example.com", rangePublic}
+	linkedPolicy := func(values ...allowedProvenance) string {
+		var body strings.Builder
+		body.WriteString("prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n")
+		for _, value := range values {
+			body.WriteString("    - name: " + value.name + "\n      email: " + value.email + "\n")
+		}
+		body.WriteString("  requireSignedCommits: true\n  allowedSigners:\n")
+		for _, value := range values {
+			body.WriteString("    - principal: " + value.email + "\n      key: " + value.key + "\n")
+		}
+		return body.String()
 	}
 	testsupport.WriteAwfConfig(t, primary.Root(), primaryConfig)
-	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(publicKey))
+	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(tagPolicy, directPolicy, rangePolicy))
 	assertUnchanged := func(targets []string) (string, commitpolicy.Outcome) {
 		t.Helper()
 		beforeHead := gitfixture.NativeRevParse(t, linked, "HEAD")
@@ -164,15 +179,20 @@ func TestExactCommitEnforcement(t *testing.T) {
 	}
 	for _, hooksPath := range []string{".githooks", filepath.Join(t.TempDir(), "hooks")} {
 		gitfixture.NativeConfig(t, linked, "core.hooksPath", hooksPath)
-		for name, targets := range map[string][]string{
-			"recursive-tag": {"policy-outer"},
-			"direct":        {directCommit},
-			"range":         {base + ".." + rangeCommitTwo},
-			"combined":      {"policy-outer", directCommit, base + ".." + rangeCommitTwo},
+		for _, check := range []struct {
+			name    string
+			policy  string
+			targets []string
+		}{
+			{"recursive-tag", linkedPolicy(tagPolicy), []string{"policy-outer"}},
+			{"direct", linkedPolicy(directPolicy), []string{directCommit}},
+			{"range", linkedPolicy(rangePolicy), []string{base + ".." + rangeCommitTwo}},
+			{"combined", linkedPolicy(tagPolicy, directPolicy, rangePolicy), []string{"policy-outer", directCommit, base + ".." + rangeCommitTwo}},
 		} {
-			text, outcome := assertUnchanged(targets)
+			testsupport.WriteAwfConfig(t, linkedRoot, check.policy)
+			text, outcome := assertUnchanged(check.targets)
 			if !outcome.OK() || !strings.Contains(text, "conform") {
-				t.Fatalf("linked signed %s policy (%s) = %#v, %q", name, hooksPath, outcome, text)
+				t.Fatalf("linked signed %s policy (%s) = %#v, %q", check.name, hooksPath, outcome, text)
 			}
 		}
 	}
@@ -184,12 +204,12 @@ func TestExactCommitEnforcement(t *testing.T) {
 		t.Fatalf("primary policy = %#v, %q", outcome, text)
 	}
 	_, wrongKey := gitfixture.NativeSSHKey(t)
-	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(wrongKey))
+	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(allowedProvenance{"Direct", "direct@example.com", wrongKey}))
 	text, outcome = assertUnchanged([]string{directCommit})
 	if outcome.OK() || len(outcome.Violations) != 1 || outcome.Violations[0].Field != commitpolicy.SignatureField || !strings.Contains(text, "allowed signers") {
 		t.Fatalf("wrong signer = %#v, %q", outcome, text)
 	}
-	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(publicKey))
+	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(directPolicy))
 	text, outcome = assertUnchanged([]string{"missing-target"})
 	if outcome.Refusal == nil || outcome.Refusal.Category != commitpolicy.RevisionFailure || outcome.Refusal.RefsChanged || outcome.Refusal.IndexChanged || !strings.Contains(text, "cause:") {
 		t.Fatalf("revision refusal = %#v, %q", outcome, text)
