@@ -265,6 +265,7 @@ disk.
 | `awf init` | Scaffold `.awf/`, seal first-adoption version, and render. ADR format is authored by each record rather than selected by lock cutoffs. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
 | `awf render` | Re-render after a config or template change. |
 | `awf check` | Run both verification universes. `check repo` aggregates working-tree `drift` and `state` with tracked-corpus `prose` and `memory`; `check staged` runs the HEAD-to-index state transition and rendered-output drift, while `check staged commit` is direct-only. |
+| `awf check commit-policy <revision-or-range>...` | Preview exact author, committer, and optional SSH-signature provenance for explicit targets after the configured baseline. An absent policy succeeds with a disabled note; violations and typed refusals explain reconciliation. It never installs hooks or changes repository state. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
 | `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |

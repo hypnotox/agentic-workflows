@@ -75,6 +75,7 @@ Re-render every enabled target after a template or config change and update .awf
 		HelpBody: `Usage: awf check
        awf check repo [subcommand]
        awf check staged [subcommand]
+       awf check commit-policy <revision-or-range>...
 
 Bare check runs both universes. The repo universe checks drift, current state,
 and the opt-in scans; the staged universe validates the HEAD-to-index transition.
@@ -82,6 +83,8 @@ Outside a Git repository bare check runs the repo universe and reports that the
 staged universe is unavailable.
 `,
 		Children: []Command{
+			{Name: "commit-policy", Summary: "Verify exact commit provenance for explicit targets", MinPos: 1, MaxPos: -1,
+				HelpBody: "Usage: awf check commit-policy <revision-or-range>...\n\nVerify every unique commit reachable from explicit targets after the configured baseline. An absent policy reports one disabled-policy note and succeeds.\n"},
 			{Name: "repo", Summary: "Verify repository properties", MaxPos: -1,
 				HelpBody: `Usage: awf check repo [subcommand]
 

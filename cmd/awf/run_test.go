@@ -273,6 +273,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "checkrepo.go", owner: "runCheckDrift", name: "project.Open"}:         1,
 		{file: "checkrepo.go", owner: "runCheckState", name: "project.Open"}:         1,
 		{file: "commitgate.go", owner: "runCommitGate", name: "project.Open"}:        1,
+		{file: "commitpolicy.go", owner: "runCommitPolicy", name: "project.Open"}:    1,
 		{file: "config.go", owner: "runConfig", name: "project.Open"}:                1,
 		{file: "context.go", owner: "runContext", name: "project.Open"}:              1,
 		{file: "context.go", owner: "runUncovered", name: "project.Open"}:            1,

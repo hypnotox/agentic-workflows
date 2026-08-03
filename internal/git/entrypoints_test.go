@@ -74,6 +74,11 @@ var entrypointSuites = map[string]suite{
 	"RangeChangedPaths": {"internal/git", "TestRangeNativeReadOperations"},
 	"RangeDiffText":     {"internal/git", "TestRangeNativeReadOperations"},
 	"ChangedPaths":      {"internal/git", "TestChangedPathsStaged"},
+	"FullOID":           {"internal/git", "TestCommitPolicyGitReads"},
+	"CommitFacts":       {"internal/git", "TestCommitPolicyGitReads"},
+	"CommitsAfter":      {"internal/git", "TestCommitPolicyGitReads"},
+	"PeelCommit":        {"internal/git", "TestCommitPolicyGitReads"},
+	"VerifySSH":         {"internal/git", "TestCommitPolicyGitReads"},
 
 	// Free entrypoints: each precedes an opened repository or does without one.
 	"Open":                      {"internal/git", "TestOpenRepo"},

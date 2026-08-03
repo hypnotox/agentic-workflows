@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- `awf check commit-policy <revision-or-range>...` previews configured exact author, committer, and optional SSH-signature provenance for explicit commits after a full baseline. Disabled policy succeeds with one note; complete violations and operational refusals are actionable, and hook activation remains a later opt-in step.
+
 - Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
 
 - New plans use `plan-v2`: task-scoped Applying and Context Decision references, slugged Definition-of-done outcomes, and phase Advances and Completes assignments are validated in working and staged universes. `awf read plan` orders only selected resolved Decisions and owning-phase outcomes, excludes whole-plan Definition of done, and adds task scope safety; plan-v1 remains byte-compatible.

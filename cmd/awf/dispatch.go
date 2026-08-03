@@ -74,6 +74,8 @@ func runCheckGroup(c *cmdCtx) error {
 		return &usageErr{fmt.Sprintf("awf check %s: unknown subcommand %q: expected one of %s", c.sub, c.inv.positionals[0], checkSubcommands(c.sub))}
 	}
 	switch c.sub {
+	case "commit-policy":
+		return runCommitPolicy(c.ctx, c.root, c.inv.positionals, c.stdout)
 	case "repo":
 		return runCheckRepo(c.ctx, c.root, c.stdout)
 	case "repo drift":

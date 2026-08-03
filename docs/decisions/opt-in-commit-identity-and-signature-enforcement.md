@@ -208,3 +208,4 @@ hooks automatically.
 - 2026-08-03: Accepted; content-sha256: bbd924bd577ba8878c4c2be3319f4d6fad5dd1ae1e2901256d32c59884097aa0
 - 2026-08-03: Implementing; content-sha256: bbd924bd577ba8878c4c2be3319f4d6fad5dd1ae1e2901256d32c59884097aa0
 - 2026-08-03: Applied; operations: add `config/validation:commit-policy`
+- 2026-08-03: Applied; operations: add `tooling/commit-policy:exact-commit-enforcement`

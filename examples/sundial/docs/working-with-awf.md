@@ -36,6 +36,7 @@ awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf
 - `awf check repo state`: report current-state authority findings over the working tree.
 - `awf check repo prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off).
 - `awf check repo memory`: scan staged decisions and plans for a concrete `.awf/efforts/<slug>/memory.md` citation and exit non-zero on any finding; the bare directory and angle-bracket slug placeholders remain legal (opt-in via `memoryCite.enabled`, default off).
+- `awf check commit-policy <revision-or-range>...`: preview exact author, committer, and optional SSH-signature provenance for explicit targets after the configured baseline. An absent policy prints one disabled note and succeeds; correct actionable refusals or violations and rerun before policy activation. This command does not install hooks or change repository state.
 - `awf check staged`: run the HEAD-to-index current-state transition and rendered-output drift checks.
 - `awf check staged state`: report current-state authority findings over the HEAD-to-index transition.
 - `awf check staged drift`: render from the staged config and report only stale or hand-edited staged rendered output; other repository drift kinds are out of scope.
