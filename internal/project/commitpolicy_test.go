@@ -121,9 +121,14 @@ func TestExactCommitEnforcement(t *testing.T) {
 	gitfixture.NativeWorktreeAdd(t, primary, linkedRoot, "linked-policy")
 	linked := gitfixture.At(linkedRoot)
 	privateKey, publicKey := gitfixture.NativeSSHKey(t)
-	signed := gitfixture.NativeSignedCommit(t, linked, "signed", privateKey)
-	gitfixture.NativeAnnotatedTag(t, linked, "policy-inner", signed)
+	tagCommit := gitfixture.NativeSignedCommit(t, linked, "tag-only", privateKey)
+	gitfixture.NativeAnnotatedTag(t, linked, "policy-inner", tagCommit)
 	gitfixture.NativeAnnotatedTag(t, linked, "policy-outer", "policy-inner")
+	gitfixture.NativeCheckoutNewBranch(t, linked, "direct-only", base)
+	directCommit := gitfixture.NativeSignedCommit(t, linked, "direct-only", privateKey)
+	gitfixture.NativeCheckoutNewBranch(t, linked, "range-only", base)
+	rangeCommitOne := gitfixture.NativeSignedCommit(t, linked, "range-one", privateKey)
+	rangeCommitTwo := gitfixture.NativeSignedCommit(t, linked, "range-two", privateKey)
 	primaryHead := gitfixture.NativeCommitAllowEmpty(t, primary, "primary unsigned")
 	primaryConfig := "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Wrong\n      email: wrong@example.com\n"
 	linkedPolicy := func(key string) string {
@@ -159,10 +164,20 @@ func TestExactCommitEnforcement(t *testing.T) {
 	}
 	for _, hooksPath := range []string{".githooks", filepath.Join(t.TempDir(), "hooks")} {
 		gitfixture.NativeConfig(t, linked, "core.hooksPath", hooksPath)
-		text, outcome := assertUnchanged([]string{"policy-outer", signed, base + ".." + signed})
-		if !outcome.OK() || !strings.Contains(text, "conform") {
-			t.Fatalf("linked signed policy (%s) = %#v, %q", hooksPath, outcome, text)
+		for name, targets := range map[string][]string{
+			"recursive-tag": {"policy-outer"},
+			"direct":        {directCommit},
+			"range":         {base + ".." + rangeCommitTwo},
+			"combined":      {"policy-outer", directCommit, base + ".." + rangeCommitTwo},
+		} {
+			text, outcome := assertUnchanged(targets)
+			if !outcome.OK() || !strings.Contains(text, "conform") {
+				t.Fatalf("linked signed %s policy (%s) = %#v, %q", name, hooksPath, outcome, text)
+			}
 		}
+	}
+	if rangeCommitOne == rangeCommitTwo || tagCommit == directCommit {
+		t.Fatal("distinct target fixtures collapsed")
 	}
 	text, outcome := VerifyCommitPolicyAt(ctx, primary.Root(), []string{primaryHead})
 	if outcome.OK() || len(outcome.Violations) != 2 || !strings.Contains(text, "identity") {
@@ -170,7 +185,7 @@ func TestExactCommitEnforcement(t *testing.T) {
 	}
 	_, wrongKey := gitfixture.NativeSSHKey(t)
 	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(wrongKey))
-	text, outcome = assertUnchanged([]string{signed})
+	text, outcome = assertUnchanged([]string{directCommit})
 	if outcome.OK() || len(outcome.Violations) != 1 || outcome.Violations[0].Field != commitpolicy.SignatureField || !strings.Contains(text, "allowed signers") {
 		t.Fatalf("wrong signer = %#v, %q", outcome, text)
 	}
@@ -186,7 +201,7 @@ func TestExactCommitEnforcement(t *testing.T) {
 		t.Fatalf("tag-peel refusal = %#v", outcome)
 	}
 	testsupport.WriteAwfConfig(t, linkedRoot, "prefix: x\nintegrationBranch: master\ntargets: [pi]\n")
-	text, outcome = VerifyCommitPolicyAt(ctx, linkedRoot, []string{signed})
+	text, outcome = assertUnchanged([]string{directCommit})
 	if !outcome.Disabled || !outcome.OK() || !strings.Contains(text, "disabled") {
 		t.Fatalf("disabled policy = %#v, %q", outcome, text)
 	}
@@ -199,6 +214,16 @@ func TestExactCommitEnforcement(t *testing.T) {
 			repo, err := awfgit.Open(fixture.Root())
 			if err != nil {
 				t.Fatal(err)
+			}
+			testsupport.WriteAwfConfig(t, fixture.Root(), "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: "+formatBase+"\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n")
+			beforeHead := gitfixture.NativeRevParse(t, fixture, "HEAD")
+			beforeIndex := gitfixture.NativeWriteTree(t, fixture)
+			text, outcome := VerifyCommitPolicyAt(ctx, fixture.Root(), []string{"HEAD", formatBase + "..HEAD"})
+			if !outcome.OK() || !strings.Contains(text, "conform") {
+				t.Fatalf("%s project verifier = %#v, %q", format, outcome, text)
+			}
+			if gitfixture.NativeRevParse(t, fixture, "HEAD") != beforeHead || gitfixture.NativeWriteTree(t, fixture) != beforeIndex || beforeHead != formatHead {
+				t.Fatalf("%s project verifier mutated repository", format)
 			}
 			commits, err := repo.CommitsAfter(ctx, formatBase, []string{"HEAD", formatBase + "..HEAD"})
 			if err != nil || len(commits) != 1 || commits[0].ID != formatHead {

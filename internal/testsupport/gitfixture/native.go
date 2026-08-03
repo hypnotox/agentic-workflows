@@ -207,6 +207,12 @@ func NativeCheckout(t *testing.T, f Fixture, ref string) {
 	mustNative(t, f, "checkout", ref)
 }
 
+// NativeCheckoutNewBranch creates and checks out a branch at target.
+func NativeCheckoutNewBranch(t *testing.T, f Fixture, name, target string) {
+	t.Helper()
+	mustNative(t, f, "checkout", "-b", name, target)
+}
+
 // NativeCheckoutOrphan starts an orphan branch, the parentless history go-git
 // cannot check out.
 func NativeCheckoutOrphan(t *testing.T, f Fixture, name string) {

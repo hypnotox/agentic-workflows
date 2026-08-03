@@ -49,6 +49,10 @@ func TestCommitPolicyGitReads(t *testing.T) {
 	if err != nil || emptyFact.Author != (commitpolicy.Person{}) || emptyFact.Committer != (commitpolicy.Person{}) {
 		t.Fatalf("empty identity facts = %#v, %v", emptyFact, err)
 	}
+	emptyOutcome := commitpolicy.Evaluate(commitpolicy.Policy{AllowedIdentities: []commitpolicy.Identity{{Name: "T", Email: "t@example.com"}}}, []commitpolicy.Commit{emptyFact})
+	if len(emptyOutcome.Violations) != 2 || emptyOutcome.Violations[0].Field != commitpolicy.AuthorField || emptyOutcome.Violations[1].Field != commitpolicy.CommitterField {
+		t.Fatalf("empty identity violations = %#v", emptyOutcome)
+	}
 	commits, err := repo.CommitsAfter(ctx, base, []string{"HEAD", "light", "outer", base + "..HEAD"})
 	if err != nil {
 		t.Fatal(err)
@@ -289,9 +293,17 @@ func TestCommitPolicyRejectsMalformedNativeResponses(t *testing.T) {
 	t.Setenv("AWF_FAKE_GIT_MODE", "verify-process")
 	_, err = repo.VerifySSH(ctx, strings.Repeat("a", 40), nil)
 	assertPolicyError(t, err, CommitPolicyVerifyError)
-	repo.removeFile = func(string) error { return errors.New("combined cleanup fault") }
+	cleanupFault := errors.New("combined cleanup fault")
+	repo.removeFile = func(string) error { return cleanupFault }
 	_, err = repo.VerifySSH(ctx, strings.Repeat("a", 40), nil)
 	assertPolicyError(t, err, CommitPolicyTrustError)
+	if !errors.Is(err, cleanupFault) {
+		t.Fatalf("combined cleanup error lost cleanup cause: %v", err)
+	}
+	var commandErr *CommandError
+	if !errors.As(err, &commandErr) || commandErr.ExitCode != 2 {
+		t.Fatalf("combined cleanup error lost signature-process cause: %v", err)
+	}
 }
 
 func fakeCommitPolicyRepo(t *testing.T) *Repo {
