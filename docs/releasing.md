@@ -6,8 +6,9 @@ How to cut a release of the `awf` binary. The distribution model and its rationa
 [ADR-0030](decisions/0030-prebuilt-binary-distribution-and-release.md); this is the runbook.
 
 A release is a `v*` git tag. Pushing the tag triggers `.github/workflows/release.yml`, which
-verifies the tag, `project.Version`, and changelog all pin the same release (see Versioning),
-verifies the tagged commit is on `main`, runs the full gate (`./x gate && ./x check`),
+verifies the canonical AGPL-3.0-only project-license artifacts and that `project.Version` and the
+changelog pin the same release (see Versioning), verifies the tagged commit is on `main`, runs the
+full gate (`./x gate && ./x check`),
 extracts the curated release notes for the tagged version (`awf changelog --version`), then runs
 GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/windows ×
 amd64/arm64), package per-OS archives bundling `LICENSE` + `README.md`, write `checksums.txt`,
@@ -29,10 +30,12 @@ awf is pre-1.0; versions are `vMAJOR.MINOR.PATCH` (SemVer). `project.Version`
 (`internal/project/project.go`) is the single version authority (ADR-0049): it drives `awf
 version`, the lock's `AWFVersion`, the bootstrap pin, and the binary-version gate. The git tag
 must equal it; the Release workflow hard-fails on a mismatch before building, so the tag can
-never mint a version the binary does not carry. The workflow also hard-fails when the changelog
-does not pin the release (`cmd/releasecheck`, ADR-0078): the newest entry must equal
-`project.Version` and the standing `[Unreleased]` section must be present and empty, so a tag
-can neither ship without its own release notes nor strand late entries outside them.
+never mint a version the binary does not carry. The workflow also runs `cmd/releasecheck` before packaging. Its project-license verifier requires
+the exact canonical AGPL-3.0-only `LICENSE`, matching README badge and footer, and GoReleaser
+archive inclusion while excluding dependency metadata and retained third-party notices. Its
+changelog pin (ADR-0078) requires the newest entry to equal `project.Version` and the standing
+`[Unreleased]` section to be present and empty, so a tag can neither ship without its own release
+notes nor strand late entries outside them.
 Schema-generation bumps raise the floor
 mechanically: `minVersionBySchema` must contain an entry for the current generation, at or
 below `project.Version`, or the gate fails.

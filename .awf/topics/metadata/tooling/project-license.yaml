@@ -2,3 +2,4 @@ title: Project license
 summary: The repository license text, public references, and packaged-license contract.
 paths:
   - cmd/releasecheck/**
+  - internal/projectlicense/**

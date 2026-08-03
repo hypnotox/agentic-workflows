@@ -8,6 +8,7 @@ paths:
   - internal/clispec/**
   - internal/commitmsg/**
   - internal/commitpolicy/**
+  - internal/projectlicense/**
   - internal/contextq/**
   - internal/contextdelivery/**
   - internal/contextspill/**

@@ -1,6 +1,6 @@
-// Command releasecheck is the release-time changelog pin (ADR-0078). The every-commit
-// gate only guarantees ordering (entries strictly descending, newest at or below
-// project.Version); this check closes the exact match at the one moment it matters:
+// Command releasecheck is the release-time project-license and changelog pin. The
+// every-commit gate only guarantees changelog ordering (entries strictly descending,
+// newest at or below project.Version); this check closes the exact match at the one moment it matters:
 // the Release workflow runs it before GoReleaser, and the release runbook runs it
 // locally as the pre-tag rehearsal. It fails unless the newest embedded changelog
 // entry equals project.Version and a standing [Unreleased] section is present and
@@ -18,17 +18,24 @@ import (
 	changelogfs "github.com/hypnotox/agentic-workflows/changelog"
 	"github.com/hypnotox/agentic-workflows/internal/changelog"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectlicense"
 	"golang.org/x/mod/semver"
 )
 
-func main() { os.Exit(run(changelogfs.FS, os.Stdout, os.Stderr, project.BridgeTrancheComplete)) } // coverage-ignore: os.Exit wrapper; run is unit-tested
+func main() { // coverage-ignore: os.Exit wrapper; run is unit-tested
+	os.Exit(run(os.DirFS("."), changelogfs.FS, os.Stdout, os.Stderr, project.BridgeTrancheComplete))
+}
 
-func run(fsys fs.FS, stdout, stderr io.Writer, bridgeTrancheComplete bool) int {
+func run(root, changelogFS fs.FS, stdout, stderr io.Writer, bridgeTrancheComplete bool) int {
 	if !bridgeTrancheComplete {
 		fmt.Fprintln(stderr, "releasecheck: current-state bridge tranche is incomplete; Plans 1 and 2 must both land before release")
 		return 1
 	}
-	raw, err := fs.ReadFile(fsys, "CHANGELOG.md")
+	if err := projectlicense.Verify(root); err != nil {
+		fmt.Fprintf(stderr, "releasecheck: project license: %v\n", err)
+		return 1
+	}
+	raw, err := fs.ReadFile(changelogFS, "CHANGELOG.md")
 	if err != nil {
 		fmt.Fprintf(stderr, "releasecheck: read CHANGELOG.md: %v\n", err)
 		return 1

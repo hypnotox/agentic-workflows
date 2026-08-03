@@ -3,8 +3,14 @@
 
 The repository license text, public references, and packaged-license contract.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/releasecheck/**`. Both domain and topic selectors must match. Run `awf topic tooling/project-license --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/releasecheck/**`, `internal/projectlicense/**`. Both domain and topic selectors must match. Run `awf topic tooling/project-license --coverage` for current matched paths and marker sites.
 
 The project-license contract owns the canonical license bytes, public license references, and release-package inclusion. Its verifier distinguishes project licensing from third-party dependency metadata.
 
 ## Claims
+
+### `invariant: project-license-agpl`
+
+The root project uses the exact canonical AGPL-3.0-only license bytes and matching README badge and footer, and every GoReleaser archive includes that license. The release-time verifier rejects obsolete project MIT references while excluding dependency-license metadata and retained third-party notices from the project-license classification.
+Origin: ADR-agpl-3-0-only-cutover-at-the-unpublished-history-boundary
+Backing: test
