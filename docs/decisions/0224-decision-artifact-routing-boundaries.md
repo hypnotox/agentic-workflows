@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: decision-artifact-routing-boundaries
-status: Proposed
+status: Implemented
 date: 2026-08-03
 ---
 # ADR-0224: Decision Artifact Routing Boundaries
@@ -81,3 +81,4 @@ must render coherent prose without a no-value token when optional data is unset.
 ## Status history
 
 - 2026-08-03: Proposed
+- 2026-08-03: Implemented; content-sha256: 4c8a55dc5852f5c2055194ea21e572f38cd65014b241edf2d3106963f7543238

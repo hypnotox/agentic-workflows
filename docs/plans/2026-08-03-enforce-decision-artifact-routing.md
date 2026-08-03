@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-03
 adrs: [decision-artifact-routing-boundaries]
-status: Proposed
+status: Implemented
 ---
 # Plan: Enforce Decision Artifact Routing
 
