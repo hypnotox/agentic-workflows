@@ -6,6 +6,7 @@ import (
 	"io"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -97,23 +98,48 @@ func TestCommitPolicyManifestProjection(t *testing.T) {
 	if !ok {
 		t.Fatalf("manifest missing unrelated output %s", unrelatedPath)
 	}
-	policy := base + "commitPolicy:\n  grandfatheredThrough: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n  allowedIdentities:\n    - name: Ada\n      email: ada@example.test\n"
-	testsupport.WriteAwfConfig(t, root, policy)
-	present := syncAndLoad()
-	if present.Files[consumerPath].ConfigHash == consumerBefore.ConfigHash {
-		t.Fatal("commit-policy consumer manifest hash did not change")
+	generateKey := func(name string) string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), name)
+		if output, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", path).CombinedOutput(); err != nil {
+			t.Fatalf("generate SSH key: %v: %s", err, output)
+		}
+		body, err := os.ReadFile(path + ".pub")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fields := strings.Fields(string(body))
+		if len(fields) < 2 {
+			t.Fatalf("generated public key = %q", body)
+		}
+		return strings.Join(fields[:2], " ")
 	}
-	if present.Files[unrelatedPath].ConfigHash != unrelatedBefore.ConfigHash {
-		t.Fatal("unrelated manifest hash changed with commit policy")
+	key1, key2 := generateKey("one"), generateKey("two")
+	policyYAML := func(baseline, name, email string, signed bool, principal, key string) string {
+		body := fmt.Sprintf("%scommitPolicy:\n  grandfatheredThrough: %s\n  allowedIdentities:\n    - name: %s\n      email: %s\n", base, baseline, name, email)
+		if signed {
+			body += fmt.Sprintf("  requireSignedCommits: true\n  allowedSigners:\n    - principal: %s\n      key: %s\n", principal, key)
+		}
+		return body
 	}
-	policy = strings.Replace(policy, "ada@example.test", "ada2@example.test", 1)
-	testsupport.WriteAwfConfig(t, root, policy)
-	mutated := syncAndLoad()
-	if mutated.Files[consumerPath].ConfigHash == present.Files[consumerPath].ConfigHash {
-		t.Fatal("complete policy mutation did not change consumer manifest hash")
+	variants := []string{
+		policyYAML(strings.Repeat("a", 40), "Ada", "ada@example.test", true, "ada@example.test", key1),
+		policyYAML(strings.Repeat("b", 40), "Ada", "ada@example.test", true, "ada@example.test", key1),
+		policyYAML(strings.Repeat("b", 40), "Grace", "grace@example.test", true, "ada@example.test", key1),
+		policyYAML(strings.Repeat("b", 40), "Grace", "grace@example.test", false, "", ""),
+		policyYAML(strings.Repeat("b", 40), "Grace", "grace@example.test", true, "grace@example.test", key2),
 	}
-	if mutated.Files[unrelatedPath].ConfigHash != unrelatedBefore.ConfigHash {
-		t.Fatal("unrelated manifest hash changed with policy mutation")
+	previous := consumerBefore.ConfigHash
+	for i, policy := range variants {
+		testsupport.WriteAwfConfig(t, root, policy)
+		lock := syncAndLoad()
+		if lock.Files[consumerPath].ConfigHash == previous {
+			t.Fatalf("normalized policy mutation %d did not change consumer manifest hash", i)
+		}
+		if lock.Files[unrelatedPath].ConfigHash != unrelatedBefore.ConfigHash {
+			t.Fatalf("unrelated manifest hash changed with policy mutation %d", i)
+		}
+		previous = lock.Files[consumerPath].ConfigHash
 	}
 }
 

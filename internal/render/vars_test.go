@@ -95,6 +95,7 @@ func TestReferencesCommitPolicy(t *testing.T) {
 		"prose mentioning .commitPolicy outside an action",
 		"{{/* .commitPolicy is documented here */}}",
 		"{{/* multiline\n.commitPolicy\ncomment */}}",
+		"{{- /* .commitPolicy with trim markers */ -}}",
 	} {
 		if render.ReferencesCommitPolicy(src) {
 			t.Errorf("non-consuming commit-policy mention detected in %q", src)

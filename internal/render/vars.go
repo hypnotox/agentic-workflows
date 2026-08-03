@@ -18,7 +18,7 @@ var scopesRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitScopes[^{}]*\}\}`)
 
 var commitPolicyRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitPolicy[^{}]*\}\}`)
 
-var templateCommentRE = regexp.MustCompile(`(?s)\{\{/\*.*?\*/\}\}`)
+var templateCommentRE = regexp.MustCompile(`(?s)\{\{-?\s*/\*.*?\*/\s*-?\}\}`)
 
 // ReferencesCommitPolicy reports whether a non-comment template action reads
 // the typed commit-policy render context.
