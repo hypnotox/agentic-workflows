@@ -363,7 +363,6 @@ var dataKeys = []DataKey{
 	{Kind: "docs", Artifact: "_base", Key: "title", Description: "The local doc's display title: its H1 and document-map label. `awf new doc` seeds it from the name; override to set a custom title."},
 	{Kind: "docs", Artifact: "_base", Key: "description", Description: "The local doc's one-line summary: the document-map description and the lede under its H1. `awf new doc` seeds it; keep it current."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "docCurrencyItems", Description: "The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit doc updates and index regeneration."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the decision record)."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "digestLabel", Description: "The label heading the reviewer's returned digest."},

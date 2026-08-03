@@ -81,6 +81,12 @@ Origin: ADR-0213
 Revised-by: ADR-0217
 Backing: test
 
+### `invariant: repo-check-capability-plan`
+
+The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index for enabled scanners; disabled or scanner-only selections acquire no unrelated capability. The aggregate preserves version, advisory, and step output order, continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
+Origin: ADR-0223
+Backing: test
+
 ### `invariant: single-os-exit`
 
 Within the cmd/awf package, os.Exit appears only in main.go's main function, whose body is the single os.Exit(run(...)) wrapper; no other production source in the package calls os.Exit and no fatal or fatalIf helpers exist.
@@ -126,7 +132,7 @@ Backing: test
 
 ### `invariant: effort-command-contract`
 
-`awf effort` exposes exactly schema-2 `new <outcome-title> [--json] [--no-worktree] [--base <ref>]`, `list [--json]`, `show <slug> [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, and `integrate <slug>`; `--base` is invalid with `--no-worktree`. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`; the new reply additionally carries a `worktree` object with `path` and `branch`, or the explicit absence forms `"worktree": null` and text `worktree=none` under `--no-worktree`, while show/list shapes are unchanged and `schemaVersion` stays 2. `memoryPath` and the text `memory=` fact are primary-root-qualified absolute paths when the invoking checkout is not the primary root. List returns the same objects sorted by slug, and JSON failures keep stdout empty while returning the actionable text error on stderr. Mutation replies are line-oriented and report condition, changed bytes or topology, and next action; there is no rename, standalone memory, lifecycle, repair, manual integration, assignment, Pi-session, or force command.
+`awf effort` exposes schema-2 `new --slug <slug> <outcome-title> [--json] [--no-worktree] [--base <ref>]`, `list [--json]`, `show <slug> [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, `integrate <slug>`, `memory update <slug> [--phase <text>] [--next <text>]`, and protocol-v2 JSON-only `activity attach|heartbeat|detach`, each with one canonical slug, `--owner <uuid>`, and `--json`; no resolve, checkout, destination, CWD, role, or receiving-checkout activity action or flag exists. New requires the nonrepeatable explicit slug value flag around the one independent title positional through interspersed ordering and validates grammar before composition; other flags and subcommands retain their combinations. Memory update requires at least one mutable field, preserves matching identity/body, migrates exact legacy metadata, and updates UTC time. Activity handled replies use exact condition-specific newline-terminated envelopes and the sole `changedActivity` mutation axis; malformed or pre-state failures use nonzero exit, empty stdout, and bounded actionable stderr, while state-observing mechanism failures use structured outcomes with cause. Existing protocol-2 new/show/list shapes, worktree behavior, primary-root-qualified memory paths, and unrelated command availability remain unchanged; there is no rename, standalone memory, lifecycle ledger, manual integration, authoritative assignment, or force command.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175, ADR-0189
+Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218, ADR-0225, ADR-0226
 Backing: test

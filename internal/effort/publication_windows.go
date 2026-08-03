@@ -89,7 +89,41 @@ func publishAtomicWindows(tempPath, path string, expected *fileIdentity, api win
 			return errors.Join(mismatch, fmt.Errorf("flush restored unexpected destination %s: %w", path, flushErr))
 		}
 	}
-	return mismatch
+	return publicationIdentityRefusal(mismatch)
+}
+
+// removeAtomic replaces the expected resident with a disposable sibling, then
+// marks the opened replacement file for deletion. Deletion follows the handle,
+// so a later name replacement leaves a successor intact.
+func removeAtomic(tempPath, path string, expected *fileIdentity) error {
+	displacedPath := tempPath + ".displaced"
+	if err := replaceFile(path, tempPath, displacedPath, 0); err != nil {
+		return err
+	}
+	displaced, err := lstatRegular(displacedPath)
+	if mismatch := unexpectedWindowsPublicationIdentity(path, expected, displaced, err, func(left, right fileIdentity) bool { return os.SameFile(left.info, right.info) }); mismatch != nil {
+		if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil { // coverage-ignore: requires a second namespace race or kernel fault during immediate rollback
+			return errors.Join(publicationIdentityRefusal(mismatch), fmt.Errorf("restore unexpected destination at %s after refused removal: %w", path, rollbackErr))
+		}
+		return publicationIdentityRefusal(mismatch)
+	}
+	file, identity, err := openRegularNoFollow(path, false, 0)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	published, err := lstatRegular(path)
+	if err != nil || !os.SameFile(identity.info, published.info) {
+		if err == nil {
+			err = safety("identity", path, errors.New("replacement changed before removal"))
+		}
+		return publicationIdentityRefusal(err)
+	}
+	deleteOnClose := byte(1)
+	if err := windows.SetFileInformationByHandle(windows.Handle(file.Fd()), windows.FileDispositionInfo, &deleteOnClose, 1); err != nil {
+		return err
+	}
+	return os.Remove(displacedPath)
 }
 
 func unexpectedWindowsPublicationIdentity(path string, expected *fileIdentity, displaced fileIdentity, inspectErr error, same func(fileIdentity, fileIdentity) bool) error {

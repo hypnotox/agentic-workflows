@@ -12,9 +12,23 @@ query a single version or a range.
 
 - `awf check commit-policy <revision-or-range>...` previews configured exact author, committer, and optional SSH-signature provenance for explicit commits after a full baseline. Disabled policy succeeds with one note; complete violations and operational refusals are actionable, and hook activation remains a later opt-in step.
 
+- New efforts now require a caller-selected canonical slug through 32 bytes via `awf effort new --slug <slug> "<outcome>"`; workflow guidance confirms outcome, title, and slug before creation, while schema-2 state, managed topology, and existing resident support through 63 bytes remain unchanged.
+
+- ADR guidance now distinguishes durable commitments from implementation directives with post-implementation and counterfactual tests, routes execution detail to plans and unsettled context to effort memory, and reviews ambiguous mechanisms semantically. ADR scaffolding remains the single source for the current authoring format.
+
+- Repository checks now use capability-planned execution: direct and aggregate checks share prepared config, project reports, and enabled scanner index inputs while preserving successful output order. Any readiness failure occurs before step output.
+
+- Discovery now remains effort-free until the agent presents a labeled concrete outcome and proposed effort title, stops without mutation, and receives clear confirmation in a later user response; existing efforts resume under their fixed identity without reconfirmation only inside their confirmed outcome, a new outcome cannot silently reuse or replace an active effort, and no CLI or schema migration occurs. Adopters with full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this first-creation boundary because default-template projection tests cannot inspect replacement prose.
+
+- `awf audit` now enumerates committed metadata without eager blob reads, then loads only its exact configuration, ADR, and topic authority into a type-distinct immutable selection. Repository and staged checks retain complete snapshots and the full marker, coverage, and domain-sidecar validation boundary, while revisions outside historical authority can reuse their first-parent state. Context cancellation and deadline expiry abort immediately with preserved error identity instead of becoming transition warnings.
+
+- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata. Advisory Pi activity is now protocol 2: JSON-only attach, heartbeat, and detach carry owner/timestamp facts, and explicit attach safely replaces a bounded old v1 resident. The removed checkout and CWD fields and operations have no compatibility execution path. Pi directly associates at repository root, supplies fixed relative effort paths in transient context, and retains advisory Remote Pi metadata and temporary naming without local TUI presentation. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the companion skill and extension. Activity remains advisory and non-locking.
+
 - Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
 
 - New plans use `plan-v2`: task-scoped Applying and Context Decision references, slugged Definition-of-done outcomes, and phase Advances and Completes assignments are validated in working and staged universes. `awf read plan` orders only selected resolved Decisions and owning-phase outcomes, excludes whole-plan Definition of done, and adds task scope safety; plan-v1 remains byte-compatible.
+
+- The repository gate now offers opt-in per-stage timings, keeps ordinary Go tests Docker-free with actionable Pi-lane guidance, and runs the uncached Pi runtime smoke exactly once. The awf and Sundial runners also remove their no-op `gate full` aliases while generic extended-tier support remains available to adopters that have a real second tier.
 
 - Root-confined upgrade attestation traversal now preserves established digest and error behavior.
 
@@ -51,6 +65,10 @@ query a single version or a range.
   what code cannot say, and restructuring until a passage argues its own correctness. The
   section name is a permanent override surface; adopters re-render `docs/maintainable-code-design.md`
   on upgrade.
+
+### Bug fixes
+
+- ADR-authoring guidance now requires `awf new adr` before any ADR-file mutation, followed by capturing and reading the generated scaffold and editing it in place rather than creating or replacing the record through another mechanism.
 
 ### Breaking changes
 

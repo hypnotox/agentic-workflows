@@ -22,14 +22,12 @@ An Accepted ADR appears as a pending implementation instruction and never replac
 Origin: ADR-0133
 Backing: unbacked
 Verify: In a fixture with a conflicting current claim and an Accepted ADR, awf context keeps the claim under current authority and places the ADR only under pending changes.
-
 ### `invariant: accepted-does-not-override-current`
 
 Accepted operations appear only as bounded pending instructions and do not replace current claim output.
 Origin: ADR-0135
 Backing: unbacked
 Verify: A fixture with an Accepted update conflicting with its current claim keeps both clearly separated with the claim remaining current.
-
 ### `invariant: merge-transition-ordered-aggregate`
 
 A merge transition is validated as an ordered aggregate rather than one authoring step: application and re-application batches remain distinct in ascending ADR-identity and intra-ADR history order; a claim's operations across the pair form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates; and appended Status history preserves the prior history as an exact prefix. Repeated updates from one ADR contribute that updater once and require a material endpoint; repeated adds by their originating ADR fold into the chain's first absent-to-present net add; a canceling update endpoint is refused. Per-occurrence materiality is proven by each authored commit, while aggregate validation checks the observable ordered net effect without inventing intermediate claim bytes. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation occurrence per claim, and the fixed status-event shape. A newly introduced ADR in an older intrinsic format is provisional at the staged boundary that lacks merge-parent and message evidence; every other derivable transition check remains blocking, and definitive admission requires exact incoming-parent qualification at commit-msg.
@@ -43,7 +41,6 @@ Normal context retrieval and invariant enforcement consume current-state topic c
 Origin: ADR-0133
 Backing: unbacked
 Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf context emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf topic <claim-id> --history emits the provenance ADR.
-
 ### `invariant: currentstate-handshake-findings-unranked`
 
 A current-state claim-handshake finding carries no rank: every provenance and transition finding the current-state checker produces is blocking, and the check path reports each by message with no severity field. The ranked coverage and fan-out findings the project report also carries are a separate concern and keep their ranks.
@@ -56,7 +53,6 @@ Historical rationale stays reachable from active claim provenance without appear
 Origin: ADR-0133
 Backing: unbacked
 Verify: Over the same fixture, normal context omits Implemented provenance while awf topic <claim-id> --history follows it.
-
 ### `invariant: implemented-impact-bidirectional`
 
 Every applied governed state operation has its required current, removed, or dominated-history result, and every active claim Origin or revision has the inverse applied ADR operation; Remaining, Canceled, and dominated operations provide no authority.

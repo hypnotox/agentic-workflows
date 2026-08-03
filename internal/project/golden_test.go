@@ -12,6 +12,31 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
+func TestADRReadmeDecisionRouting(t *testing.T) {
+	out := renderGolden(t, "adr-readme/README.md.tmpl", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
+	})
+	for _, want := range []string{
+		"remains meaningful after implementation",
+		"post-implementation",
+		"counterfactual",
+		"mechanism itself is load-bearing",
+		"Implementation plan",
+		"rollout inventories",
+		"proof transactions",
+		"Historical ADRs remain unchanged",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("ADR README missing decision-routing contract %q:\n%s", want, out)
+		}
+	}
+	for _, residue := range []string{"<no value>", "{{", "}}"} {
+		if strings.Contains(out, residue) {
+			t.Errorf("ADR README contains publication residue %q:\n%s", residue, out)
+		}
+	}
+}
+
 func TestEndToEndGolden(t *testing.T) {
 	assertV3ADRTemplatePublicationSafe(t)
 	root := scaffold(t, sampleYAML)
@@ -31,6 +56,26 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("agent not interpolated:\n%s", agent)
 	}
 
+	proposingADR, err := os.ReadFile("../../.pi/skills/awf-proposing-adr/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(proposingADR), "preserve exactly the frontmatter emitted by `awf new adr`") {
+		t.Errorf("project proposing skill lost scaffold authority:\n%s", proposingADR)
+	}
+	adrReviewer, err := os.ReadFile("../../.pi/agents/adr-reviewer.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"post-implementation", "counterfactual", "reasoned finding"} {
+		if !strings.Contains(string(adrReviewer), want) {
+			t.Errorf("project ADR reviewer missing semantic routing %q:\n%s", want, adrReviewer)
+		}
+	}
+	if strings.Contains(string(adrReviewer), "## Doc-currency checklist") {
+		t.Errorf("project ADR reviewer retains implementation-inventory checklist:\n%s", adrReviewer)
+	}
+
 	// The review-discipline spine is spliced in from templates/partials via awf:include
 	// (ADR-0052); its content must appear in the fully rendered agent.
 	for _, want := range []string{"## Classification rules", "## Dedup rule", "Impl review complete"} {
@@ -39,11 +84,27 @@ func TestEndToEndGolden(t *testing.T) {
 		}
 	}
 
+	adrReadme, err := os.ReadFile(filepath.Join(root, "docs/decisions/README.md"))
+	if err != nil {
+		t.Fatalf("adr-readme not rendered: %v", err)
+	}
+	if !strings.Contains(string(adrReadme), "remains meaningful after implementation") {
+		t.Errorf("adr-readme lost decision routing:\n%s", adrReadme)
+	}
+
+	agentsGuide, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("agent guide not rendered: %v", err)
+	}
+	if !strings.Contains(string(agentsGuide), "Route settled content by authority lifetime") {
+		t.Errorf("agent guide lost decision routing:\n%s", agentsGuide)
+	}
+
 	plansReadme, err := os.ReadFile(filepath.Join(root, "docs/plans/README.md"))
 	if err != nil {
 		t.Fatalf("plans-readme not rendered: %v", err)
 	}
-	if !strings.Contains(string(plansReadme), "Implementation Plans") {
+	if !strings.Contains(string(plansReadme), "Implementation Plans") || !strings.Contains(string(plansReadme), "implementation directives") {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 
@@ -182,6 +243,11 @@ func assertV3ADRTemplatePublicationSafe(t *testing.T) {
 	tail := out[history:]
 	if strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {
 		t.Fatalf("fresh Proposed Status history contains non-Proposed events:\n%s", tail)
+	}
+	for _, want := range []string{"remains meaningful after implementation", "paths, commands, task order, rollout batches, and ordinary test transactions"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("ADR template missing decision-routing contract %q:\n%s", want, out)
+		}
 	}
 	for _, residue := range []string{"<no value>", "{{", "format: current-state-v1"} {
 		if strings.Contains(out, residue) {

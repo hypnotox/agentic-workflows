@@ -19,6 +19,38 @@ func noTopology(deps *Dependencies) {
 	deps.BranchExists = func(context.Context, string) (bool, error) { return false, nil }
 }
 
+func TestUpdateMemoryRefusesInvalidResidentsAndUnrepairedMetadata(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, nil)
+	value := "replacement"
+	if err := service.UpdateMemory("bad_slug", MemoryUpdate{Phase: &value}); err == nil || !strings.Contains(err.Error(), "invalid effort slug") {
+		t.Fatalf("invalid slug = %v", err)
+	}
+	if err := service.UpdateMemory("missing-effort", MemoryUpdate{Phase: &value}); err == nil {
+		t.Fatal("missing resident accepted")
+	}
+	if _, err := service.New(testContext(t), NewInput{Slug: "update-faults", Title: "Update faults"}); err != nil {
+		t.Fatal(err)
+	}
+	memory := filepath.Join(root, ".awf", "efforts", "update-faults", "memory.md")
+	if err := os.Remove(memory); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UpdateMemory("update-faults", MemoryUpdate{Phase: &value}); err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing memory = %v", err)
+	}
+	if err := os.WriteFile(memory, []byte("---\neffort: update-faults\nphase: old\nnext: old\nupdated: invalid\n---\nbody\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UpdateMemory("update-faults", MemoryUpdate{Phase: &value, Next: &value}); err != nil {
+		t.Fatalf("canonical metadata refresh = %v", err)
+	}
+	raw, err := os.ReadFile(memory)
+	if err != nil || !strings.Contains(string(raw), "updated: ") || strings.Contains(string(raw), "updated: invalid") {
+		t.Fatalf("canonical metadata refresh bytes=%q err=%v", raw, err)
+	}
+}
+
 func TestFinishRenamesCleansAndRetries(t *testing.T) {
 	// invariant: tooling/effort-management:effort-record-authority (TestFinishRenamesCleansAndRetries)
 	root := initEffortRepo(t)
@@ -35,7 +67,7 @@ func TestFinishRenamesCleansAndRetries(t *testing.T) {
 			return nil
 		}
 	})
-	if _, err := service.New(testContext(t), "Restartable finish"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "restartable-finish", Title: "Restartable finish"}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := service.Finish(testContext(t), "restartable-finish")
@@ -89,7 +121,7 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 				}
 				deps.BranchExists = func(context.Context, string) (bool, error) { return test.branch, nil }
 			})
-			if _, err := service.New(testContext(t), "Guarded finish"); err != nil {
+			if _, err := service.New(testContext(t), NewInput{Slug: "guarded-finish", Title: "Guarded finish"}); err != nil {
 				t.Fatal(err)
 			}
 			if test.setup != nil {
@@ -118,7 +150,7 @@ func TestFinishPreservesMismatchedAndMultipleTombstones(t *testing.T) {
 			return nil
 		}
 	})
-	if _, err := service.New(testContext(t), "Foreign tombstone"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "foreign-tombstone", Title: "Foreign tombstone"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.Finish(testContext(t), "foreign-tombstone"); err == nil {
@@ -168,7 +200,7 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 					return nil
 				}
 			})
-			if _, err := service.New(testContext(t), "Finish faults"); err != nil {
+			if _, err := service.New(testContext(t), NewInput{Slug: "finish-faults", Title: "Finish faults"}); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := service.Finish(testContext(t), "finish-faults"); err == nil {
@@ -191,7 +223,7 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 			return nil, errors.New("registration probe")
 		}
 	})
-	if _, err := registrationFault.New(testContext(t), "Probe errors"); err != nil {
+	if _, err := registrationFault.New(testContext(t), NewInput{Slug: "probe-errors", Title: "Probe errors"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := registrationFault.Finish(testContext(t), "probe-errors"); err == nil || !strings.Contains(probeErr(err).Error(), "registration") {
@@ -237,7 +269,7 @@ func TestServiceResidentAndCorruptFinishBranches(t *testing.T) {
 	if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.New(testContext(t), "Corrupt finish"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "corrupt-finish", Title: "Corrupt finish"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(filepath.Join(root, ".awf", "efforts", "corrupt-finish", "memory.md")); err != nil {
@@ -260,13 +292,13 @@ func TestFinishCleanupAndReservationBranches(t *testing.T) {
 			return nil
 		}
 	})
-	if _, err := service.New(testContext(t), "Reserved finish"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "reserved-finish", Title: "Reserved finish"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.Finish(testContext(t), "reserved-finish"); err == nil {
 		t.Fatal("finish fault ignored")
 	}
-	if _, err := service.New(testContext(t), "Reserved finish"); err == nil || !strings.Contains(err.Error(), "reserved by finishing") {
+	if _, err := service.New(testContext(t), NewInput{Slug: "reserved-finish", Title: "Reserved finish"}); err == nil || !strings.Contains(err.Error(), "reserved by finishing") {
 		t.Fatalf("reservation error = %v", err)
 	}
 	entries, err := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
@@ -336,14 +368,75 @@ func TestSlugMintingReportsAnUnusableRefName(t *testing.T) {
 	faulted := openTestService(t, root, func(deps *Dependencies) {
 		deps.ValidateRef = func(context.Context, string) (bool, error) { return false, errors.New("probe fault") }
 	})
-	if _, err := faulted.New(testContext(t), "Probe fault"); err == nil || !strings.Contains(err.Error(), "probe fault") {
+	if _, err := faulted.New(testContext(t), NewInput{Slug: "probe-fault", Title: "Probe fault"}); err == nil || !strings.Contains(err.Error(), "probe fault") {
 		t.Fatalf("probe fault error = %v", err)
 	}
 	refused := openTestService(t, root, func(deps *Dependencies) {
 		deps.ValidateRef = func(context.Context, string) (bool, error) { return false, nil }
 	})
-	if _, err := refused.New(testContext(t), "Refused name"); err == nil || !strings.Contains(err.Error(), "is not a valid Git ref") {
+	if _, err := refused.New(testContext(t), NewInput{Slug: "refused-name", Title: "Refused name"}); err == nil || !strings.Contains(err.Error(), "is not a valid Git ref") {
 		t.Fatalf("invalid ref error = %v", err)
+	}
+}
+
+func TestSlugMintingProbesTheExpectedBranchExactlyOnce(t *testing.T) {
+	root := initEffortRepo(t)
+	var probed []string
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.ValidateRef = func(_ context.Context, branch string) (bool, error) {
+			probed = append(probed, branch)
+			return true, nil
+		}
+	})
+	if _, err := service.New(testContext(t), NewInput{Slug: "probe-once", Title: "Probe once"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(probed) != 1 || probed[0] != "awf/probe-once" {
+		t.Fatalf("ref probes = %q, want exactly [awf/probe-once]", probed)
+	}
+}
+
+func TestNewUsesExplicitIndependentIdentity(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.UUID = func() (string, error) { return testIDA, nil }
+	})
+	record, err := service.New(testContext(t), NewInput{Slug: "caller-selected", Title: "界🙂 independent title"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Slug != "caller-selected" || record.Title != "界🙂 independent title" || record.MemoryPath != ".awf/efforts/caller-selected/memory.md" {
+		t.Fatalf("record = %#v", record)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "efforts", "caller-selected", "state.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNewRefusesInvalidInputBeforeAllocation(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		input NewInput
+		want  string
+	}{
+		{name: "blank title", input: NewInput{Slug: "valid-slug", Title: " "}, want: "outcome title"},
+		{name: "overlong slug", input: NewInput{Slug: strings.Repeat("a", 33), Title: "Valid title"}, want: "1-32 bytes"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := initEffortRepo(t)
+			allocated := false
+			service := openTestService(t, root, func(deps *Dependencies) {
+				deps.UUID = func() (string, error) { allocated = true; return testIDA, nil }
+			})
+			_, err := service.New(testContext(t), test.input)
+			if err == nil || !strings.Contains(err.Error(), test.want) || !strings.Contains(err.Error(), "changed bytes: no") || allocated {
+				t.Fatalf("New(%#v) err=%v allocated=%v", test.input, err, allocated)
+			}
+			entries, readErr := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
+			if readErr != nil || len(entries) != 0 {
+				t.Fatalf("refusal changed residents: entries=%v err=%v", entries, readErr)
+			}
+		})
 	}
 }
 

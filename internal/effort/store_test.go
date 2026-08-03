@@ -38,11 +38,11 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 		}
 	})
 
-	zeta, err := service.New(testContext(t), "Zeta result")
+	zeta, err := service.New(testContext(t), NewInput{Slug: "zeta-result", Title: "Zeta result"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	alpha, err := service.New(testContext(t), "Alpha result")
+	alpha, err := service.New(testContext(t), NewInput{Slug: "alpha-result", Title: "Alpha result"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,12 +80,12 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, phrase := range []string{"Effort: zeta-result\n", "Phase:", "Next:", "Updated:", "## Brief", "## Decision log", "## Observations", "## Handoff log"} {
+	for _, phrase := range []string{"---\n", "effort: zeta-result\n", "phase:", "next:", "updated:", "## Brief", "## Decision log", "## Observations", "## Handoff log"} {
 		if !strings.Contains(string(memory), phrase) {
 			t.Fatalf("memory skeleton missing %q:\n%s", phrase, memory)
 		}
 	}
-	if _, err := service.New(testContext(t), "Zeta result"); err == nil || !strings.Contains(err.Error(), "collides") || !strings.Contains(err.Error(), "changed bytes: no") {
+	if _, err := service.New(testContext(t), NewInput{Slug: "zeta-result", Title: "Zeta result"}); err == nil || !strings.Contains(err.Error(), "collides") || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "choose a distinct explicit slug") || !strings.Contains(err.Error(), "retry `awf effort new --slug \"zeta-result\" \"Zeta result\"`") || strings.Contains(err.Error(), "distinct outcome title") {
 		t.Fatalf("collision error = %v", err)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", ".lock")); !errors.Is(err, os.ErrNotExist) {
@@ -116,7 +116,7 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 					return nil
 				}
 			})
-			if _, err := service.New(testContext(t), "Fault matrix"); err == nil {
+			if _, err := service.New(testContext(t), NewInput{Slug: "fault-matrix", Title: "Fault matrix"}); err == nil {
 				t.Fatal("creation succeeded at injected failure")
 			}
 			wantPrefix := stages[:indexOfStage(t, stages, failStage)+1]
@@ -137,7 +137,7 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 			// Recreating the same slug must name which reservation blocks it: an
 			// incomplete one is a different condition, and a different repair,
 			// from an active effort.
-			_, retryErr := service.New(testContext(t), "Fault matrix")
+			_, retryErr := service.New(testContext(t), NewInput{Slug: "fault-matrix", Title: "Fault matrix"})
 			if retryErr == nil {
 				t.Fatal("recreation over an existing reservation succeeded")
 			}
@@ -149,6 +149,32 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 				t.Fatalf("recreation error = %v, want condition %q", retryErr, wantCondition)
 			}
 		})
+	}
+}
+
+func TestMemoryUpdatePostRenameFaultReportsChangedBytes(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.Fault = func(stage string) error {
+			if stage == "memory-update.directory-fsync" {
+				return errors.New("durability interrupted")
+			}
+			return nil
+		}
+	})
+	if _, err := service.New(testContext(t), NewInput{Slug: "durable-update", Title: "Durable update"}); err != nil {
+		t.Fatal(err)
+	}
+	phase := "Published before directory sync"
+	if err := service.UpdateMemory("durable-update", MemoryUpdate{Phase: &phase}); err == nil || !strings.Contains(err.Error(), "durability interrupted") {
+		t.Fatalf("post-rename fault = %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", "durable-update", "memory.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "phase: Published before directory sync\n") {
+		t.Fatalf("post-rename fault did not retain published memory:\n%s", raw)
 	}
 }
 
@@ -165,7 +191,7 @@ func TestConcurrentSameSlugCreationHasOneWinner(t *testing.T) {
 			deps.UUID = func() (string, error) { return id, nil }
 			service, err := Open(roots, deps)
 			if err == nil {
-				_, err = service.New(testContext(t), "One winner")
+				_, err = service.New(testContext(t), NewInput{Slug: "one-winner", Title: "One winner"})
 			}
 			errs <- err
 		}(id)
@@ -302,14 +328,14 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 	for name, setup := range map[string]func(*testing.T, string){
 		"foreign leaf": func(t *testing.T, root string) {
 			service := openEffortService(t, root, time.Now().UTC())
-			if _, err := service.New(testContext(t), "Foreign leaf"); err != nil {
+			if _, err := service.New(testContext(t), NewInput{Slug: "foreign-leaf", Title: "Foreign leaf"}); err != nil {
 				t.Fatal(err)
 			}
 			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "foreign-leaf", "extra"), "x")
 		},
 		"mismatched memory": func(t *testing.T, root string) {
 			service := openEffortService(t, root, time.Now().UTC())
-			if _, err := service.New(testContext(t), "Wrong memory"); err != nil {
+			if _, err := service.New(testContext(t), NewInput{Slug: "wrong-memory", Title: "Wrong memory"}); err != nil {
 				t.Fatal(err)
 			}
 			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "wrong-memory", "memory.md"), "Effort: other\n")
@@ -345,7 +371,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		root := initEffortRepo(t)
 		writeEffortFile(t, filepath.Join(root, ".awf", "efforts", ".gitignore"), "*")
 		service := openEffortService(t, root, time.Now().UTC())
-		if _, err := service.New(testContext(t), "Listed tombstone"); err != nil {
+		if _, err := service.New(testContext(t), NewInput{Slug: "listed-tombstone", Title: "Listed tombstone"}); err != nil {
 			t.Fatal(err)
 		}
 		active := filepath.Join(root, ".awf", "efforts", "listed-tombstone")
@@ -365,13 +391,13 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o000); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := service.New(testContext(t), "Unreadable reserve"); err == nil {
+		if _, err := service.New(testContext(t), NewInput{Slug: "unreadable-reserve", Title: "Unreadable reserve"}); err == nil {
 			t.Fatal("unreadable reserve accepted")
 		}
 		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o777); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := service.New(testContext(t), "Unsafe reserve"); err == nil {
+		if _, err := service.New(testContext(t), NewInput{Slug: "unsafe-reserve", Title: "Unsafe reserve"}); err == nil {
 			t.Fatal("unsafe reserve accepted")
 		}
 		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o700); err != nil {
@@ -398,7 +424,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 	t.Run("mismatched finishing state", func(t *testing.T) {
 		root := initEffortRepo(t)
 		service := openEffortService(t, root, time.Now().UTC())
-		if _, err := service.New(testContext(t), "Mismatched finish"); err != nil {
+		if _, err := service.New(testContext(t), NewInput{Slug: "mismatched-finish", Title: "Mismatched finish"}); err != nil {
 			t.Fatal(err)
 		}
 		active := filepath.Join(root, ".awf", "efforts", "mismatched-finish")

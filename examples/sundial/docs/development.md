@@ -11,7 +11,7 @@ baseline. The pinned awf binary is fetched on demand by `.awf/bootstrap.sh`.
 <!-- awf:edit command-runner: from .awf/docs/parts/development/command-runner.md -->
 ## Command runner
 
-`./x` wraps every repo task: `gate` (tests + vet; `gate full` is identical), `test`,
+`./x` wraps every repo task: `gate` (tests + vet, with no arguments) and `test` (forwarding Go test arguments),
 and the awf verbs `render`, `check`, `audit`, `new`,
 which run the release pinned in `.awf/bootstrap.sh`.
 

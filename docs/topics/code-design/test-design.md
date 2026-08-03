@@ -3,7 +3,7 @@
 
 How Go tests assert (error identity aside) and how they obtain controlled dependencies without new global seams.
 
-**Applicability:** Global topic within owning domain selectors none. Run `awf topic code-design/test-design --coverage` for current matched paths and marker sites.
+**Applicability:** Global topic within owning domain selectors `internal/execution/**`. Run `awf topic code-design/test-design --coverage` for current matched paths and marker sites.
 
 This topic governs Go tests introduced by new work and sites deliberately converted under
 its authority; the TypeScript lane sits outside `currentState.testGlobs` and outside these
@@ -23,7 +23,6 @@ matcher library.
 Origin: ADR-0201
 Backing: unbacked
 Verify: Inspect the imports of each added or converted test file; an assertion or matcher library import fails, and go.mod gaining a direct assertion-library dependency fails.
-
 ### `invariant: no-new-global-seams`
 
 In a new or deliberately converted test, minting a new package-level variable that exists

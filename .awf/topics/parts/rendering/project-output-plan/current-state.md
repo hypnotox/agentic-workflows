@@ -37,9 +37,10 @@ Backing: test
 
 ### `invariant: multi-target-render`
 
+With multiple targets enabled, every enabled catalog skill and agent renders once per target to that target's descriptor-derived path, while neutral artifacts such as AGENTS.md render exactly once regardless of target count. A target-owned skill or other output renders only for its declaring target when its closed catalog-selection predicate is satisfied; configured-prefix path derivation, declaration, rendering, coalescing, hashing, pruning, provenance, and policy all use the same resolved descriptor.
 With multiple targets enabled, each adapter artifact renders once per target at that descriptor's declared paths - including Claude Code and Pi skills and agents - while neutral artifacts such as `AGENTS.md` render exactly once regardless of target count. Descriptor-specific wording, bridges, capabilities, encodings, and additional outputs remain independently customizable.
 Origin: ADR-0037
-Revised-by: ADR-0214
+Revised-by: ADR-0214, ADR-0218
 Backing: test
 
 ### `invariant: output-plan-complete`
@@ -47,6 +48,12 @@ Backing: test
 The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
 Origin: ADR-0124
 Revised-by: ADR-0164, ADR-0167, ADR-0175
+Backing: test
+
+### `invariant: check-report-single-plan`
+
+Project.CheckReport constructs one operation-owned OutputPlan after deriving its current state and parsed plans, threads that same plan to both drift and advisory projections, and never regenerates domain documents or the config reference inside either projection. Standalone Check, AdvisoryNotes, OutputPlan, and other direct project operations continue to derive their own operation-scoped inputs without a persistent cache.
+Origin: ADR-0223
 Backing: test
 
 ### `invariant: output-policy-explicit`

@@ -17,7 +17,7 @@ The test-first discipline as a project-owned support skill.
 
 ## Procedure
 
-A minimal simple fix may remain effort-free. For any concrete non-minimal feature or fix, create or resume exactly one immutable slugged effort before the failing test; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, keep one user-managed writer, and carry slug/path to the implementation owner. Repository and current-state authority outrank checkpoint prose, helpers never edit memory, and standalone memory is forbidden.
+A minimal simple test-first change uses no effort. Non-minimal work requires one already-confirmed effort with owned memory before this skill starts. This skill never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation three-field confirmation before writing a test or mutating files. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, preserve one user-managed writer, and carry the exact `.awf/efforts/<slug>/memory.md` path to the implementation owner. Repository and current-state authority outrank checkpoint prose, helpers never edit memory, and standalone memory is forbidden.
 
 1. Run `awf context <the implementation and test paths>`, then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.

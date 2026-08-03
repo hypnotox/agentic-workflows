@@ -53,6 +53,7 @@ import {
   type SubagentModelPreferences,
 } from "./model-routing.ts";
 
+// Retained subagent and handoff entrypoints use this floor. The optional using_effort companion stays at the repository root, invokes its binary protocol directly, and uses Remote-event capability presence only for advisory publication.
 export const MIN_PI_VERSION = "0.81.1";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
 export interface MinimumRuntimeDependencies { packageVersion: string; }

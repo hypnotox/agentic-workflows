@@ -20,7 +20,7 @@ This is a **support skill**: it sits off the workflow chain.
 
 ## Procedure
 
-A minimal simple graduation may remain effort-free. Once graduation is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, keep one user-managed writer, and carry slug/path into ADR or implementation review. Repository sources and current-state documentation outrank checkpoint prose, children never edit memory, and standalone memory is forbidden.
+A minimal simple graduation may remain effort-free. Identify and re-verify the roadmap item before treating graduation as a concrete non-minimal outcome; neither reaching this procedure nor citing an item confirms creation. An existing effort resumes under its fixed identity without title reconfirmation only while graduation remains within its confirmed outcome. Confirm either legacy `Effort: <slug>` or canonical frontmatter `effort: <slug>` identity when ownership exists. Repository sources and current-state documentation outrank checkpoint prose, children receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only and never edit memory, standalone memory is forbidden, and one user-managed writer remains responsible.
 
 <!-- awf:edit identify-entry: default; create .awf/skills/parts/roadmap-graduation/identify-entry.md to override -->
 ### 1. Identify the roadmap entry
@@ -31,19 +31,50 @@ Find its block under the right section of `docs/roadmap.md`. Read it: does it ci
 If the entry cites inline numbers, re-measure on the current code before graduating. Roadmap entries can be old; the numbers may not be honest anymore. If the new measurement differs materially, use the **current** number in the graduating artifact (ADR Context or commit body). The old roadmap number is removed or, if both are useful, cited as "originally X; current Y".
 
 <!-- awf:edit graduate-single-commit: default; create .awf/skills/parts/roadmap-graduation/graduate-single-commit.md to override -->
-### 3. Graduate in a single commit
+### 3. Confirm first effort creation
+
+For a concrete non-minimal graduation outcome without existing ownership, complete the mandatory first-creation confirmation below after identifying and re-verifying the item, and before ADR or implementation mutation.
+
+**Mandatory first-creation confirmation.** Discovery creates no effort. Analysis, exploration,
+prioritization, option comparison, and selection remain discovery until one concrete non-minimal
+outcome can be named. A direct concrete non-minimal request follows the same boundary. A minimal
+simple fix remains effort-free. An existing effort resumes under its fixed identity and existing
+validation rules without title reconfirmation only while work remains within its confirmed outcome;
+a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
+effort.
+
+When no existing effort owns the outcome, propose a canonical short slug and present all three
+fields:
+
+`Outcome: <concrete non-minimal outcome>`
+`Effort title: <proposed title>`
+`Effort slug: <proposed-short-slug>`
+
+Ask the user to confirm creation, then end the turn without creating an effort, memory, branch, or
+managed worktree. Only a clear response in a later turn confirms all three fields and permits
+`awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Agreement before the three fields were
+presented does not confirm them. A requested change to any field stays in discovery and receives a
+revised three-field proposal; an ambiguous response receives a focused clarification about the
+outcome, title, and slug.
+
+If creation fails while the three-field proposal and its later confirming response remain available
+in conversational context, report the concrete failure and recovery action and retry without another
+confirmation. If context loss or session replacement makes that evidence unavailable, present and
+confirm all three fields again before retrying creation.
+
+### 4. Graduate in a single commit
 - **Architectural → ADR:** Invoke `sundial-proposing-adr`. Remove the roadmap entry in the same commit as the ADR introduction (or, if the ADR ships across multiple commits, in the final implementation commit).
 - **Small → PR:** Implement the change, write the commit body to capture the why (cite the roadmap entry's reasoning), and remove the roadmap entry in the same commit.
 
 <!-- awf:edit explicit-drop: default; create .awf/skills/parts/roadmap-graduation/explicit-drop.md to override -->
-### 4. Explicit drop
+### 5. Explicit drop
 Commit with subject `docs(roadmap): drop <item>`; the one-line reason goes in the commit body, not the subject or the file.
 
 <!-- awf:edit same-commit: default; create .awf/skills/parts/roadmap-graduation/same-commit.md to override -->
 **Same-commit removal is non-negotiable in every case above.** A graduated entry that lingers reads as still parked; do not defer the deletion to a cleanup pass.
 
 <!-- awf:edit doc-currency: default; create .awf/skills/parts/roadmap-graduation/doc-currency.md to override -->
-### 5. Doc-currency
+### 6. Doc-currency
 If the graduated entry mentions a state doc or ADR that needs updating, fold that update into the same commit.
 
 ## Notes

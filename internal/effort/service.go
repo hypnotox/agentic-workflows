@@ -93,23 +93,22 @@ func RandomUUIDv4() (string, error) {
 
 func (s *Service) now() time.Time { return s.clock().UTC() }
 
-func (s *Service) New(ctx context.Context, title string) (Record, error) {
-	normalized, err := normalizeTitle(title)
+func (s *Service) New(ctx context.Context, input NewInput) (Record, error) {
+	normalized, err := normalizeTitle(input.Title)
 	if err != nil {
 		return Record{}, fmt.Errorf("invalid outcome title: %w; changed bytes: no; next action: provide a nonblank valid UTF-8 outcome title", err)
 	}
-	slug, err := deriveSlug(ctx, s.validateRef, normalized)
-	if err != nil {
+	if err := validateNewSlug(ctx, s.validateRef, input.Slug); err != nil {
 		return Record{}, err
 	}
 	id, err := s.uuid()
 	if err != nil {
-		return Record{}, fmt.Errorf("allocate internal effort UUID: %w; changed bytes: no; next action: retry `awf effort new %q`", err, normalized)
+		return Record{}, fmt.Errorf("allocate internal effort UUID: %w; changed bytes: no; next action: retry `awf effort new --slug %q %q`", err, input.Slug, normalized)
 	}
 	if !uuidV4Pattern.MatchString(id) {
-		return Record{}, fmt.Errorf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry", id)
+		return Record{}, fmt.Errorf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry `awf effort new --slug %q %q`", id, input.Slug, normalized)
 	}
-	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: slug, Title: normalized, CreatedAt: s.now(), MemoryPath: s.paths.publicMemoryPath(slug)}
+	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: input.Slug, Title: normalized, CreatedAt: s.now(), MemoryPath: s.paths.publicMemoryPath(input.Slug)}
 	if err := s.store.create(record); err != nil {
 		return Record{}, err
 	}
@@ -123,6 +122,80 @@ func (s *Service) InvokingRoot() string { return s.paths.roots.InvokingRoot }
 func (s *Service) List() ([]Record, error) { return s.store.list() }
 
 func (s *Service) Show(slug string) (Record, error) { return s.store.load(slug) }
+
+// UpdateMemory changes selected checkpoint fields and migrates a safe legacy
+// header to the canonical closed metadata representation on its first write.
+func (s *Service) UpdateMemory(slug string, update MemoryUpdate) error {
+	if update.Phase == nil && update.Next == nil {
+		return errors.New("memory update requires --phase or --next; changed bytes: no; next action: supply at least one replacement field")
+	}
+	if err := validateSlug(slug); err != nil {
+		return fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
+	}
+	if update.Phase != nil {
+		if err := validateMemoryMutable(*update.Phase); err != nil {
+			return fmt.Errorf("invalid memory phase: %w; changed bytes: no", err)
+		}
+	}
+	if update.Next != nil {
+		if err := validateMemoryMutable(*update.Next); err != nil {
+			return fmt.Errorf("invalid memory next: %w; changed bytes: no", err)
+		}
+	}
+	// Load state separately from memory metadata: an invalid mutable memory is
+	// precisely the repair case, but its resident and immutable identity remain
+	// subject to the normal ownership checks.
+	if _, err := s.store.loadDirectory(s.paths.effort(slug), slug, false); err != nil {
+		return err
+	}
+	path := s.paths.memoryFile(slug)
+	raw, err := readRegularNoFollowBounded(path, maxMemoryBytes)
+	if err != nil {
+		return &CorruptError{Path: path, Err: err}
+	}
+	doc := inspectMemory(raw, slug)
+	if !doc.boundary || doc.identity != slug {
+		return &InvalidMemoryError{Slug: slug, Err: doc.err, NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
+	}
+	if doc.err != nil {
+		if doc.invalid["phase"] && update.Phase == nil || doc.invalid["next"] && update.Next == nil {
+			return &InvalidMemoryError{Slug: slug, Err: doc.err, NextAction: memoryUpdateCommand(slug, doc.invalid)}
+		}
+		// A recognized header with only mutable validation failures is safe to
+		// replace. Unknown syntax and identity failures were rejected above.
+		if len(doc.invalid) == 0 { // coverage-ignore: every boundary-preserving parse error with matching identity either marks a mutable field invalid or was rejected before this repair path
+			return &InvalidMemoryError{Slug: slug, Err: doc.err, NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
+		}
+	}
+	metadata := doc.metadata
+	metadata.Effort = slug
+	if update.Phase != nil {
+		metadata.Phase = *update.Phase
+	}
+	if update.Next != nil {
+		metadata.Next = *update.Next
+	}
+	metadata.Updated = formatMemoryTime(s.now())
+	if err := validateMemoryMutable(metadata.Phase); err != nil || validateMemoryMutable(metadata.Next) != nil { // coverage-ignore: supplied replacements are validated and any unrepaired invalid mutable field returned above
+		return &InvalidMemoryError{Slug: slug, Err: errors.New("missing invalid mutable replacement"), NextAction: memoryUpdateCommand(slug, doc.invalid)}
+	}
+	encoded, err := encodeMemory(metadata, doc.body)
+	if err != nil { // coverage-ignore: encodeMemory marshals a fixed YAML node of already-valid strings
+		return fmt.Errorf("encode updated memory: %w", err)
+	}
+	return s.store.replaceMemory(path, encoded)
+}
+
+func memoryUpdateCommand(slug string, invalid map[string]bool) string {
+	command := "./awf effort memory update " + slug
+	if invalid["phase"] {
+		command += " --phase <replacement-phase>"
+	}
+	if invalid["next"] {
+		command += " --next <replacement-next>"
+	}
+	return command
+}
 
 func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error) {
 	if err := validateSlug(slug); err != nil {

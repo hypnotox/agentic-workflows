@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	pathpkg "path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -425,6 +427,153 @@ func (r *Repo) resolveCommit(rev string) (*object.Commit, error) {
 		return nil, opaqueWrap(fmt.Sprintf("commit %q", rev), err)
 	}
 	return commit, nil
+}
+
+// CommitEntries returns the sorted metadata for every regular, executable, or
+// symlink entry in rev's tree scoped to the handle's project root. It does not
+// read blob objects; gitlinks and unsupported entries are omitted.
+func (r *Repo) CommitEntries(ctx context.Context, rev string) ([]TreeEntry, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	tree, err := r.commitTree(rev)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := treeEntries(ctx, tree, r.prefix)
+	if err != nil {
+		return nil, opaqueError(err)
+	}
+	return entries, nil
+}
+
+// CommitBlobsAt returns the sorted exact blobs selected by canonical,
+// project-relative paths in rev. Every requested path must name a regular,
+// executable, or symlink entry in the handle's project subtree.
+func (r *Repo) CommitBlobsAt(ctx context.Context, rev string, paths []string) ([]IndexBlob, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool, len(paths))
+	for _, projectPath := range paths {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
+		if !safeProjectPath(projectPath) {
+			return nil, fmt.Errorf("select commit blob: unsafe path %q", projectPath)
+		}
+		if seen[projectPath] {
+			return nil, fmt.Errorf("select commit blob: duplicate path %q", projectPath)
+		}
+		seen[projectPath] = true
+	}
+	if len(paths) == 0 {
+		return []IndexBlob{}, nil
+	}
+	tree, err := r.commitTree(rev)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]IndexBlob, 0, len(paths))
+	for _, projectPath := range paths {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
+		entry, err := tree.FindEntry(prefixedPath(r.prefix, projectPath))
+		if err != nil {
+			return nil, opaqueWrap(fmt.Sprintf("select commit blob %q", projectPath), err)
+		}
+		if entry.Mode != filemode.Regular && entry.Mode != filemode.Executable && entry.Mode != filemode.Symlink {
+			return nil, fmt.Errorf("select commit blob: unsupported entry %q", projectPath)
+		}
+		bytes, err := readBlob(r.repo, entry.Hash)
+		if err != nil {
+			return nil, opaqueWrap(fmt.Sprintf("read commit blob %q", projectPath), err)
+		}
+		out = append(out, IndexBlob{Path: projectPath, Bytes: bytes, Mode: blobModeOf(entry.Mode)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out, nil
+}
+
+// commitTree resolves rev to its tree through the seam's opaque error
+// translation.
+func (r *Repo) commitTree(rev string) (*object.Tree, error) {
+	commit, err := r.resolveCommit(rev)
+	if err != nil {
+		return nil, err
+	}
+	tree, err := commit.Tree()
+	if err != nil {
+		return nil, opaqueWrap(fmt.Sprintf("tree %q", rev), err)
+	}
+	return tree, nil
+}
+
+// treeEntries walks tree metadata without constructing a file or blob object.
+func treeEntries(ctx context.Context, tree *object.Tree, prefix string) ([]TreeEntry, error) {
+	if prefix != "" {
+		for _, segment := range strings.Split(prefix, "/") {
+			if err := checkContext(ctx); err != nil {
+				return nil, err
+			}
+			entryIndex := slices.IndexFunc(tree.Entries, func(entry object.TreeEntry) bool { return entry.Name == segment })
+			if entryIndex < 0 || tree.Entries[entryIndex].Mode != filemode.Dir {
+				return []TreeEntry{}, nil
+			}
+			var err error
+			tree, err = tree.Tree(segment)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	out := []TreeEntry{}
+	var walk func(*object.Tree, string) error
+	walk = func(current *object.Tree, base string) error {
+		for _, entry := range current.Entries {
+			if err := checkContext(ctx); err != nil {
+				return err
+			}
+			fullPath := prefixedPath(base, entry.Name)
+			if !safeProjectPath(fullPath) {
+				return fmt.Errorf("read commit entries: unsafe tree path %q", fullPath)
+			}
+			if entry.Mode == filemode.Dir {
+				directory, err := current.Tree(entry.Name)
+				if err != nil {
+					return err
+				}
+				if err := walk(directory, fullPath); err != nil {
+					return err
+				}
+				continue
+			}
+			if entry.Mode == filemode.Regular || entry.Mode == filemode.Executable || entry.Mode == filemode.Symlink {
+				out = append(out, TreeEntry{Path: fullPath, Mode: blobModeOf(entry.Mode)})
+			}
+		}
+		return nil
+	}
+	if err := walk(tree, ""); err != nil {
+		return nil, err
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out, nil
+}
+
+func safeProjectPath(p string) bool {
+	if p == "" || strings.ContainsRune(p, '\\') || pathpkg.IsAbs(p) || p != pathpkg.Clean(p) {
+		return false
+	}
+	return p != "." && p != ".." && !strings.HasPrefix(p, "../")
+}
+
+func prefixedPath(prefix, p string) string {
+	if prefix == "" {
+		return p
+	}
+	return prefix + "/" + p
 }
 
 // CommitBlobs returns the sorted regular and executable blobs of the tree that

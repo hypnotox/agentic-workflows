@@ -3,6 +3,9 @@ package project
 import (
 	"bytes"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
@@ -644,6 +647,178 @@ func TestCheckPendingADRsIgnoresNumberedRecords(t *testing.T) {
 	}
 }
 
+func parseCheckSource(t *testing.T) *ast.File {
+	t.Helper()
+	path := filepath.Join(testsupport.RepoRoot(t), "internal/project/check.go")
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file
+}
+
+func checkFunc(t *testing.T, file *ast.File, name string) *ast.FuncDecl {
+	t.Helper()
+	for _, decl := range file.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == name {
+			return fn
+		}
+	}
+	t.Fatalf("check.go has no %s function", name)
+	return nil
+}
+
+func calledMethodCount(fn *ast.FuncDecl, name string) int {
+	count := 0
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if ok && sel.Sel.Name == name {
+			count++
+		}
+		return true
+	})
+	return count
+}
+
+func calledMethodPosition(fn *ast.FuncDecl, name string) token.Pos {
+	var position token.Pos
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if ok && sel.Sel.Name == name && position == token.NoPos {
+			position = call.Pos()
+		}
+		return true
+	})
+	return position
+}
+
+func hasOutputPlanParameter(fn *ast.FuncDecl) bool {
+	for _, field := range fn.Type.Params.List {
+		ptr, ok := field.Type.(*ast.StarExpr)
+		if !ok {
+			continue
+		}
+		ident, ok := ptr.X.(*ast.Ident)
+		if !ok || ident.Name != "OutputPlan" {
+			continue
+		}
+		for _, name := range field.Names {
+			if name.Name == "op" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func callsMethodWithIdent(fn *ast.FuncDecl, method, argument string) bool {
+	found := false
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != method {
+			return true
+		}
+		for _, arg := range call.Args {
+			if ident, ok := arg.(*ast.Ident); ok && ident.Name == argument {
+				found = true
+			}
+		}
+		return true
+	})
+	return found
+}
+
+// invariant: rendering/project-output-plan:check-report-single-plan (TestCheckReportBuildsOneOutputPlan)
+func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
+	file := parseCheckSource(t)
+	report := checkFunc(t, file, "CheckReport")
+	directAdvisory := checkFunc(t, file, "AdvisoryNotes")
+	check := checkFunc(t, file, "checkWithState")
+	advisory := checkFunc(t, file, "advisoryNotesWithState")
+
+	for _, fn := range []*ast.FuncDecl{report, directAdvisory} {
+		if got := calledMethodCount(fn, "outputPlan"); got != 1 {
+			t.Errorf("%s constructs %d output plans, want exactly one", fn.Name.Name, got)
+		}
+	}
+	outputPlanPosition := calledMethodPosition(report, "outputPlan")
+	for _, producer := range []string{"deriveOperationState", "ParseDir"} {
+		producerPosition := calledMethodPosition(report, producer)
+		if producerPosition == token.NoPos || outputPlanPosition == token.NoPos || outputPlanPosition <= producerPosition {
+			t.Errorf("CheckReport outputPlan position %d must follow %s position %d", outputPlanPosition, producer, producerPosition)
+		}
+	}
+	if !callsMethodWithIdent(directAdvisory, "advisoryNotesWithState", "op") {
+		t.Error("AdvisoryNotes does not pass op to advisoryNotesWithState")
+	}
+	for _, fn := range []*ast.FuncDecl{check, advisory} {
+		if !hasOutputPlanParameter(fn) {
+			t.Errorf("%s does not receive op *OutputPlan", fn.Name.Name)
+		}
+		if got := calledMethodCount(fn, "outputPlan"); got != 0 {
+			t.Errorf("%s reconstructs %d output plans", fn.Name.Name, got)
+		}
+		if !callsMethodWithIdent(report, fn.Name.Name, "op") {
+			t.Errorf("CheckReport does not pass op to %s", fn.Name.Name)
+		}
+	}
+	for _, fn := range []*ast.FuncDecl{check, advisory} {
+		for _, producer := range []string{"generateDomainDocs", "generateConfigReference"} {
+			if got := calledMethodCount(fn, producer); got != 0 {
+				t.Errorf("%s calls %s %d times, want plan write nodes", fn.Name.Name, producer, got)
+			}
+		}
+	}
+
+	root := scaffoldFiles(t,
+		"prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n",
+		map[string]string{
+			"parts/config-reference/intro.md": "<!-- awf:stub -->\nConfig intro.\n<!-- awf:section bogus -->\n",
+		})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	reportValue, err := p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	directNotes, err := p.AdvisoryNotes(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, notes := range map[string][]string{"CheckReport": reportValue.Notes, "AdvisoryNotes": directNotes} {
+		joined := strings.Join(notes, "\n")
+		for _, want := range []string{
+			"docs/domains/config.md has unauthored stub content",
+			"docs/config-reference.md has unauthored stub content: stub-marked parts: intro",
+		} {
+			if got := strings.Count(joined, want); got != 2 {
+				t.Errorf("%s notes contain planned write node %q %d times, want compatibility multiplicity 2:\n%s", name, want, got, joined)
+			}
+		}
+		marker := "part .awf/parts/config-reference/intro.md contains a marker-shaped line"
+		if got := strings.Count(joined, marker); got != 1 {
+			t.Errorf("%s marker note multiplicity = %d, want deduplicated 1:\n%s", name, got, joined)
+		}
+	}
+}
+
 func TestCheckReportParsesPlansOnce(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), "internal/project/check.go"))
 	if err != nil {
@@ -876,6 +1051,31 @@ func TestCheckPropagatesLocalGlossaryError(t *testing.T) {
 	}
 	if _, err := reopened.Check(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("expected Check to propagate the local glossary structural error, got %v", err)
+	}
+}
+
+// A local glossary with valid authored terms passes the blocking glossary check,
+// while malformed standardTerms remains an advisory-only merged-layer fault.
+// CheckReport must propagate that later failure rather than treating its shared
+// output plan as proof that every advisory input was validated.
+func TestCheckReportPropagatesAdvisoryOnlyGlossaryError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\ndomains: []\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/glossary.yaml"),
+		"local: true\ndata:\n  terms:\n    - term: t\n      meaning: m\n  standardTerms: just a string\n")
+	reopened, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reopened.CheckReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "standard vocabulary is malformed") || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected CheckReport to propagate the advisory standardTerms error, got %v", err)
 	}
 }
 

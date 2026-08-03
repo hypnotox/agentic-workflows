@@ -15,6 +15,24 @@ later decision updates those claims directly through a new ADR rather than rewri
 <!-- awf:section when -->
 ## When to write an ADR
 
+A Decision item is a durable design, policy, boundary, or constraint that remains meaningful after implementation. Apply the post-implementation and counterfactual tests:
+
+- **Post-implementation:** does the commitment still constrain the project after delivery?
+- **Counterfactual:** could the detail change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?
+
+A mechanism belongs in the Decision only when the record explains why the mechanism itself is load-bearing. Otherwise route settled content by authority lifetime:
+
+| Content | Authoritative home |
+|---|---|
+| Durable choice and rationale | ADR Decision |
+| Active rule or invariant | Current-state topic claim through `State changes` |
+| Paths, commands, task order, rollout batches, ordinary test transactions, rollout inventories, and proof transactions | Implementation plan |
+| Unsettled analysis, observations, and provisional choices | Effort memory |
+
+Historical ADRs remain unchanged: directive-heavy history may inform generic examples, but is not retrofitted or maintained in a second classification.
+
+Write an ADR when:
+
 - Choosing between two technically viable approaches
 - Establishing a constraint that binds future work (an invariant claim)
 - Changing or retiring a current-state claim an earlier decision established

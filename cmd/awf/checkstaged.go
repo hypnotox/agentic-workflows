@@ -13,11 +13,15 @@ import (
 
 // runCheckStaged runs the staged transition universe. The commit child is direct-only.
 func runCheckStaged(ctx context.Context, root string, stdout io.Writer) error {
+	return runCheckStagedWithPlanNotes(ctx, root, stdout, planNoteSink{})
+}
+
+func runCheckStagedWithPlanNotes(ctx context.Context, root string, stdout io.Writer, planNotes planNoteSink) error {
 	if err := writeStagedAheadNote(ctx, root, stdout); err != nil {
 		return err
 	}
 	err := errors.Join(
-		writeStagedState(ctx, root, stdout, false),
+		writeStagedState(ctx, root, stdout, false, planNotes),
 		writeStagedDrift(ctx, root, stdout, false),
 	)
 	if err == nil {
@@ -30,7 +34,7 @@ func runCheckStagedState(ctx context.Context, root string, stdout io.Writer) err
 	if err := writeStagedAheadNote(ctx, root, stdout); err != nil {
 		return err
 	}
-	return writeStagedState(ctx, root, stdout, true)
+	return writeStagedState(ctx, root, stdout, true, planNoteSink{})
 }
 
 func runCheckStagedDrift(ctx context.Context, root string, stdout io.Writer) error {
@@ -52,14 +56,17 @@ func writeStagedAheadNote(ctx context.Context, root string, stdout io.Writer) er
 	return nil
 }
 
-func writeStagedState(ctx context.Context, root string, stdout io.Writer, printClean bool) error {
+func writeStagedState(ctx context.Context, root string, stdout io.Writer, printClean bool, planNotes planNoteSink) error {
 	report, err := project.CheckStagedRoot(ctx, root)
 	if err != nil {
 		return err
 	}
-	for _, n := range report.Notes() {
+	general := report
+	general.PlanNotes = nil
+	for _, n := range general.Notes() {
 		fmt.Fprintf(stdout, "note: %s\n", n)
 	}
+	planNotes.write(stdout, report.PlanNotes)
 	current := report.Findings()
 	for _, f := range current {
 		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)

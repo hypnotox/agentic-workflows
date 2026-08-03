@@ -1,14 +1,21 @@
 package project
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -108,14 +115,6 @@ func TestAdrReviewerAgent(t *testing.T) {
 					"description": "Verify factual claims in the Context section against named files, ADRs, and state docs; flag stale claims and drift since brainstorm.",
 				},
 			},
-			"docCurrencyItems": []map[string]any{
-				{"check": "each State changes claim is authored to match in the same Implemented commit"},
-				{"check": "each operation's destination topic metadata exists before the ADR is Accepted"},
-				{"check": "docs/workflow.md - update when ADR changes a workflow rule"},
-				{"check": "AGENTS.md - update when ADR changes chain, principles, or invariants"},
-				{"check": "Frontmatter completeness: format, status, date"},
-				{"check": "docs/decisions/INDEX.md - regenerate when status lands as Accepted or Implemented"},
-			},
 		},
 	}
 
@@ -139,6 +138,10 @@ func TestAdrReviewerAgent(t *testing.T) {
 		}
 	}
 	for _, phrase := range []string{
+		"post-implementation",
+		"counterfactual",
+		"mechanism itself is load-bearing",
+		"reasoned finding",
 		"structural-design",
 		"docs/maintainable-code-design.md",
 		"semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract",
@@ -148,6 +151,11 @@ func TestAdrReviewerAgent(t *testing.T) {
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected structural-design phrase %q in output:\n%s", phrase, out)
+		}
+	}
+	for _, banned := range []string{"doc-currency (ADR-level)", "## Doc-currency checklist", "same-commit update of the listed artifact"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("ADR reviewer retains implementation-inventory requirement %q:\n%s", banned, out)
 		}
 	}
 }
@@ -838,8 +846,9 @@ func TestCheckpointDigestShape(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", partial, err)
 		}
+		body := string(raw)
 		steps := 0
-		for _, line := range strings.Split(string(raw), "\n") {
+		for _, line := range strings.Split(body, "\n") {
 			trimmed := strings.TrimSpace(line)
 			if len(trimmed) > 1 && trimmed[0] >= '1' && trimmed[0] <= '9' && strings.HasPrefix(trimmed[1:], ". ") {
 				steps++
@@ -847,6 +856,66 @@ func TestCheckpointDigestShape(t *testing.T) {
 		}
 		if steps != 4 {
 			t.Errorf("%s renders %d numbered steps, want the four-step digest", partial, steps)
+		}
+		if strings.Contains(body, "awf effort new") {
+			t.Errorf("%s creates missing effort ownership", partial)
+		}
+		if got := strings.Count(body, "./awf effort memory update"); got != 1 {
+			t.Errorf("%s has %d structured memory updates, want exactly one", partial, got)
+		}
+		for _, phrase := range []string{
+			"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+			"canonical form is YAML",
+			"legacy form is deprecated",
+			"until active efforts finish",
+			"sole writer of phase, next action, and time",
+			"executable `awf read plan` projection never creates a checkpoint or handoff boundary",
+			"## Handoff log",
+		} {
+			if !strings.Contains(body, phrase) {
+				t.Errorf("%s missing checkpoint contract %q", partial, phrase)
+			}
+		}
+		for _, direct := range []string{"set `Phase:`", "set `Next:`", "refresh `Updated:`"} {
+			if strings.Contains(body, direct) {
+				t.Errorf("%s directly edits checkpoint metadata with %q", partial, direct)
+			}
+		}
+	}
+
+	confirmation, err := fs.ReadFile(templates.FS, "partials/outcome-confirmation.md")
+	if err != nil {
+		t.Fatalf("read outcome confirmation partial: %v", err)
+	}
+	body := string(confirmation)
+	if strings.Count(body, "**Mandatory first-creation confirmation.**") != 1 {
+		t.Error("outcome confirmation partial must carry exactly one boundary header")
+	}
+	for _, want := range []string{"`Outcome: <concrete non-minimal outcome>`", "`Effort title: <proposed title>`", "`Effort slug: <proposed-short-slug>`", "clear response in a later turn", "awf effort new --slug <confirmed-slug> \"<confirmed-title>\""} {
+		if !strings.Contains(body, want) {
+			t.Errorf("outcome confirmation partial missing %q", want)
+		}
+	}
+
+	executingPlans, err := fs.ReadFile(templates.FS, "skills/executing-plans/SKILL.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	executionBody := string(executingPlans)
+	if got := strings.Count(executionBody, "Resolve the mutable plan"); got != 1 {
+		t.Errorf("executing-plans has %d plan-resolution steps, want exactly one", got)
+	}
+	for _, phrase := range []string{
+		"awf read plan <plan> <P[.T]>",
+		"generated task scope notice",
+		"phase-owned Advances and Completes outcomes",
+		"projection changes neither phase ownership nor checkpoint boundaries",
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+		"legacy form is deprecated",
+		"until active efforts finish",
+	} {
+		if !strings.Contains(executionBody, phrase) {
+			t.Errorf("executing-plans missing checkpoint contract %q", phrase)
 		}
 	}
 }
@@ -881,6 +950,8 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"nonempty JSON `Applying:` or `Context:` array",
 		"stable `dod: <slug>` bullets",
 		"frozen `#N` only for pre-V4 Decision prose",
+		"implementation directives",
+		"paths, commands, task order, rollout batches, and ordinary test transactions",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1263,17 +1334,34 @@ func TestProposingAdrTemplate(t *testing.T) {
 		t.Errorf("expected 'name: example-proposing-adr' in output:\n%s", out)
 	}
 
-	// Assert load-bearing phrases unique to proposing-adr
+	// Assert the scaffold-first operations as one ordered procedure.
+	procedure := "Run `awf new adr \"<Title>\"` before any ADR-file mutation. Capture the exact path it creates. Read the exact file it creates, then edit that scaffold in place."
+	if !strings.Contains(out, procedure) {
+		t.Errorf("expected ordered procedure %q in output:\n%s", procedure, out)
+	}
+
+	// Assert load-bearing phrases unique to proposing-adr.
 	loadBearing := []string{
 		"one decision per ADR",
+		"Never create or replace an ADR by any other mechanism",
 		"Context",
 		"Consequences",
 		"status: Proposed",
 		"example-reviewing-adr",
+		"remains meaningful after implementation",
+		"post-implementation",
+		"counterfactual",
+		"mechanism itself is load-bearing",
+		"preserve exactly the frontmatter emitted by `awf new adr`",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "Required frontmatter:") && strings.Contains(line, "current-state-v") {
+			t.Errorf("proposing guidance chooses a literal current format in %q:\n%s", line, out)
 		}
 	}
 }
@@ -1372,6 +1460,8 @@ func TestBrainstormingTemplate(t *testing.T) {
 		"2-3 approaches",
 		"Load-bearing",
 		"Anti-patterns",
+		"remains meaningful after implementation",
+		"implementation directives",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1596,7 +1686,7 @@ func TestAgentsDocGuide(t *testing.T) {
 		"## Workflow",
 		"## Commands",
 		"## Document map",
-
+		"Route settled content by authority lifetime",
 		"make gate",
 	} {
 		if !strings.Contains(out, phrase) {
@@ -1627,6 +1717,226 @@ func TestAgentsDocGuide(t *testing.T) {
 	}
 }
 
+type effortSignatureFinding struct {
+	path     string
+	line     int
+	offset   int
+	contract string
+	lineText string
+}
+
+type effortSignaturePattern struct {
+	contract string
+	pattern  *regexp.Regexp
+}
+
+func effortSignaturePatterns() []effortSignaturePattern {
+	return []effortSignaturePattern{
+		{"title-only creation signature", regexp.MustCompile("awf effort " + `new[^<]*<(confirmed title|outcome|outcome-title)>`)},
+		{"title-derived creation guidance", regexp.MustCompile("[Ee]ffort (creation )?" + `deriv(e|es|ed|ing)[^\r\n]{0,40}slug`)},
+		{"title-derived creation guidance", regexp.MustCompile("[Dd]eriv" + `(e|es|ed|ing) an immutable slug`)},
+		{"two-field confirmation", regexp.MustCompile("outcome/title " + `(pair|confirmation)`)},
+		{"two-field confirmation", regexp.MustCompile("labeled outcome and " + `(proposed )?(effort )?title`)},
+		{"two-field confirmation", regexp.MustCompile("confirms? the " + `pair`)},
+		{"two-field confirmation", regexp.MustCompile("both " + `fields`)},
+	}
+}
+
+func activeEffortSignatureFindings(t *testing.T, root string) []effortSignatureFinding {
+	t.Helper()
+	patterns := effortSignaturePatterns()
+	var findings []effortSignatureFinding
+	scan := func(relative string, raw []byte) {
+		for _, candidate := range patterns {
+			for _, match := range candidate.pattern.FindAllIndex(raw, -1) {
+				lineStart := bytes.LastIndexByte(raw[:match[0]], '\n') + 1
+				lineEnd := bytes.IndexByte(raw[match[0]:], '\n')
+				if lineEnd < 0 {
+					lineEnd = len(raw)
+				} else {
+					lineEnd += match[0]
+				}
+				findings = append(findings, effortSignatureFinding{
+					path: relative, line: bytes.Count(raw[:match[0]], []byte("\n")) + 1,
+					offset: match[0], contract: candidate.contract, lineText: string(raw[lineStart:lineEnd]),
+				})
+			}
+		}
+	}
+	historical := func(relative string) bool {
+		return relative == "docs/decisions" || strings.HasPrefix(relative, "docs/decisions/") ||
+			relative == "docs/plans" || strings.HasPrefix(relative, "docs/plans/") ||
+			relative == "changelog" || strings.HasPrefix(relative, "changelog/")
+	}
+	scanRoot := func(relativeRoot string) {
+		start := filepath.Join(root, filepath.FromSlash(relativeRoot))
+		info, err := os.Lstat(start)
+		if os.IsNotExist(err) {
+			return
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !info.IsDir() {
+			raw, err := os.ReadFile(start)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scan(relativeRoot, raw)
+			return
+		}
+		testsupport.WalkRepoFiles(t, start, func(relative string) bool {
+			full := filepath.ToSlash(filepath.Join(relativeRoot, filepath.FromSlash(relative)))
+			resident := full == ".awf/efforts" || strings.HasPrefix(full, ".awf/efforts/") || strings.Contains(full, "/.awf/efforts/") ||
+				full == ".awf/worktrees" || strings.HasPrefix(full, ".awf/worktrees/") || strings.Contains(full, "/.awf/worktrees/")
+			return !historical(full) && !resident
+		}, func(relative string, raw []byte) {
+			scan(filepath.ToSlash(filepath.Join(relativeRoot, filepath.FromSlash(relative))), raw)
+		})
+	}
+	for _, relativeRoot := range []string{"cmd", "internal", ".awf/parts", ".awf/docs", ".awf/skills", ".awf/topics", "templates", "AGENTS.md", "README.md", "docs", ".pi", ".claude", "examples"} {
+		scanRoot(relativeRoot)
+	}
+	if entries, err := os.ReadDir(filepath.Join(root, "examples")); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			for _, hidden := range []string{".awf", ".pi", ".claude"} {
+				scanRoot(filepath.ToSlash(filepath.Join("examples", entry.Name(), hidden)))
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	sort.Slice(findings, func(i, j int) bool {
+		if findings[i].path != findings[j].path {
+			return findings[i].path < findings[j].path
+		}
+		if findings[i].offset != findings[j].offset {
+			return findings[i].offset < findings[j].offset
+		}
+		return findings[i].contract < findings[j].contract
+	})
+	return findings
+}
+
+func formatEffortSignatureFindings(findings []effortSignatureFinding) string {
+	var lines []string
+	for _, finding := range findings {
+		lines = append(lines, fmt.Sprintf("%s:%d:%d: %s", finding.path, finding.line, finding.offset, finding.contract))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func explicitSlugADRStatus(t *testing.T, root string) string {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(root, "docs", "decisions", "*require-explicit-short-effort-slugs.md"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("explicit-slug ADR matches = %v, err=%v", matches, err)
+	}
+	raw, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`(?m)^status: ([^\r\n]+)$`).FindSubmatch(raw)
+	if len(match) != 2 {
+		t.Fatalf("explicit-slug ADR has no status: %s", matches[0])
+	}
+	return string(match[1])
+}
+
+func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
+	root := filepath.Join("..", "..")
+	findings := activeEffortSignatureFindings(t, root)
+	switch status := explicitSlugADRStatus(t, root); status {
+	case "Implementing":
+		expectedPaths := []string{
+			".awf/topics/parts/rendering/workflow-skill-templates/current-state.md",
+			"docs/topics/rendering/workflow-skill-templates.md",
+		}
+		if len(findings) != len(expectedPaths) {
+			t.Fatalf("Implementing ADR requires exactly two active findings, got:\n%s", formatEffortSignatureFindings(findings))
+		}
+		for index, finding := range findings {
+			if finding.path != expectedPaths[index] || finding.contract != "two-field confirmation" {
+				t.Fatalf("unauthorized intermediate finding:\n%s", formatEffortSignatureFindings(findings))
+			}
+			if digest := fmt.Sprintf("%x", sha256.Sum256([]byte(finding.lineText))); digest != "5a3317a41dbd23aecdb54fdf4d2fc924a19b88e2f8600510b37d163540c0fa3e" {
+				t.Fatalf("intermediate claim passage changed at %s:%d (digest %s)", finding.path, finding.line, digest)
+			}
+		}
+	case "Implemented":
+		if len(findings) != 0 {
+			t.Fatalf("Implemented ADR requires zero active findings:\n%s", formatEffortSignatureFindings(findings))
+		}
+	default:
+		t.Fatalf("explicit-slug signature test does not permit ADR status %q", status)
+	}
+
+	fixture := t.TempDir()
+	writeFixture := func(path, body string) {
+		t.Helper()
+		full := filepath.Join(fixture, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		body     string
+		contract string
+	}{
+		{"awf effort " + "new <outcome-title>", "title-only creation signature"},
+		{"Effort creation " + "derives a slug", "title-derived creation guidance"},
+		{"Deriving" + " an immutable slug", "title-derived creation guidance"},
+		{"outcome/title " + "confirmation", "two-field confirmation"},
+		{"labeled outcome and " + "proposed effort title", "two-field confirmation"},
+		{"labeled outcome and " + "proposed title receive", "two-field confirmation"},
+		{"confirms the " + "pair", "two-field confirmation"},
+		{"both " + "fields", "two-field confirmation"},
+	}
+	var expected []string
+	for index, test := range cases {
+		path := fmt.Sprintf("cmd/stale-%d.md", index)
+		writeFixture(path, test.body)
+		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
+	}
+	multiplePath := "cmd/stale-multiple.md"
+	multiple := cases[5].body + " / " + cases[5].body + "\n" + cases[5].body
+	writeFixture(multiplePath, multiple)
+	secondOffset := len(cases[5].body) + len(" / ")
+	thirdOffset := secondOffset + len(cases[5].body) + 1
+	expected = append(expected,
+		fmt.Sprintf("%s:1:0: %s", multiplePath, cases[5].contract),
+		fmt.Sprintf("%s:1:%d: %s", multiplePath, secondOffset, cases[5].contract),
+		fmt.Sprintf("%s:2:%d: %s", multiplePath, thirdOffset, cases[5].contract),
+	)
+	for _, path := range []string{
+		"cmd/active.md", "internal/active.md",
+		".awf/parts/active.md", ".awf/docs/active.md", ".awf/skills/active.md", ".awf/topics/active.md",
+		"templates/active.md", "AGENTS.md", "README.md", "docs/active.md",
+		".pi/active.md", ".claude/active.md", "examples/demo/active.md",
+		"examples/demo/.awf/active.md", "examples/demo/.pi/active.md", "examples/demo/.claude/active.md",
+	} {
+		writeFixture(path, cases[0].body)
+		expected = append(expected, path+":1:0: "+cases[0].contract)
+	}
+	for _, path := range []string{
+		"docs/decisions/historical.md", "docs/plans/historical.md", "changelog/historical.md",
+		".awf/efforts/ignored.md", ".awf/worktrees/ignored.md",
+		"examples/demo/.awf/efforts/ignored.md", "examples/demo/.awf/worktrees/ignored.md",
+	} {
+		writeFixture(path, cases[0].body)
+	}
+	sort.Strings(expected)
+	if got := formatEffortSignatureFindings(activeEffortSignatureFindings(t, fixture)); got != strings.Join(expected, "\n") {
+		t.Fatalf("closed active-path diagnostics =\n%s\nwant\n%s", got, strings.Join(expected, "\n"))
+	}
+}
+
 // TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
 // detailed protocol home while guides and skills carry executable routing.
 // invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestWorkingMemorySingleHomeSurfaces)
@@ -1641,6 +1951,16 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	routine := renderSkillGolden(t, "executing-plans", data)
 	approval := renderSkillGolden(t, "brainstorming", data)
+	genericWorkingMemory := strings.Index(workflow, "## Working memory")
+	if genericWorkingMemory < 0 {
+		t.Fatal("generic workflow lost the Working memory boundary")
+	}
+	genericChain := workflow[:genericWorkingMemory]
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(genericChain, want) {
+			t.Errorf("generic workflow chain confirmation route missing %q", want)
+		}
+	}
 	for label, body := range map[string]string{"workflow": workflow, "guide": guide, "routine": routine, "approval": approval} {
 		if !strings.Contains(body, ".awf/efforts/<slug>/memory.md") {
 			t.Errorf("%s missing unified owned-memory path", label)
@@ -1649,7 +1969,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("%s retains standalone memory path", label)
 		}
 	}
-	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
+	for _, detailed := range []string{"`phase`", "`next`", "`updated`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
 		if !strings.Contains(workflow, detailed) {
 			t.Errorf("workflow protocol missing %q", detailed)
 		}
@@ -1662,6 +1982,55 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	for _, worktreeDefault := range []string{"managed worktree is the default execution location", "`--no-worktree` is the explicit exception", "stays under the primary checkout"} {
 		if !strings.Contains(guide, worktreeDefault) {
 			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
+		}
+	}
+	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "`Effort slug:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm all three fields again before retrying creation"} {
+		if !strings.Contains(workflow, want) {
+			t.Errorf("workflow confirmation contract missing %q", want)
+		}
+	}
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("guide confirmation route missing %q", want)
+		}
+	}
+	readProjectSurface := func(path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join("../..", path))
+		if err != nil {
+			t.Fatalf("read committed project surface %s: %v", path, err)
+		}
+		return string(raw)
+	}
+	projectGuide := readProjectSurface("AGENTS.md")
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
+		if !strings.Contains(projectGuide, want) {
+			t.Errorf("committed project guide confirmation route missing %q", want)
+		}
+	}
+	projectWorkflow := readProjectSurface("docs/workflow.md")
+	workingMemory := strings.Index(projectWorkflow, "## Working memory")
+	if workingMemory < 0 {
+		t.Fatal("committed project workflow lost the Working memory boundary")
+	}
+	projectChain := projectWorkflow[:workingMemory]
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+		if !strings.Contains(projectChain, want) {
+			t.Errorf("committed project workflow chain confirmation route missing %q", want)
+		}
+	}
+	for label, body := range map[string]string{"routine": routine, "approval": approval} {
+		boundary := "**Routine checkpoint.**"
+		if label == "approval" {
+			boundary = "**Mandatory approval check-in.**"
+		}
+		start := strings.Index(body, boundary)
+		if start < 0 {
+			t.Errorf("%s checkpoint missing boundary %q", label, boundary)
+			continue
+		}
+		if strings.Contains(body[start:], "awf effort new") {
+			t.Errorf("%s checkpoint creates missing ownership", label)
 		}
 	}
 	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
@@ -1875,7 +2244,7 @@ var unsetFallbackCases = []fallbackCase{
 	// invariant: rendering/workflow-skill-templates:reviewers-report-only (agents/adr-reviewer.md.tmpl)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
-		want: []string{"Regen command: `awf render`."},
+		want: []string{"post-implementation", "counterfactual", "reasoned finding"},
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
@@ -1899,7 +2268,8 @@ var unsetFallbackCases = []fallbackCase{
 		tmpl: "skills/brainstorming/SKILL.md.tmpl",
 		want: []string{
 			"hard prerequisite for any non-trivial change",
-			"The design lands in the ADR (if load-bearing) or the plan (if not)",
+			"remains meaningful after implementation lands in the ADR",
+			"implementation directives land in the plan",
 		},
 	},
 	{
@@ -2030,6 +2400,96 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 				t.Errorf("empty-data render is not coherent:\n%s", out)
 			}
 		})
+	}
+}
+
+func TestEffortWorkflowTemplate(t *testing.T) { TestEffortWorkflowSkillContract(t) }
+
+// invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
+func TestEffortWorkflowSkillContract(t *testing.T) {
+	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
+	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "runtime that supplies explicit effort paths may remain at the repository root", "target the exact existing `.awf/worktrees/<slug>` worktree by path", "runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("effort-workflow missing %q", phrase)
+		}
+	}
+	for _, forbidden := range []string{"using_effort", "Pi", "`example effort"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("target-neutral effort workflow leaks %q", forbidden)
+		}
+	}
+	full, _, err := ScaffoldConfig("example", nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(full), "  - effort-workflow\n") {
+		t.Error("new untrimmed scaffold does not select effort-workflow")
+	}
+	trimmed := []string{"tdd"}
+	trim, _, err := ScaffoldConfig("example", nil, &config.CatalogTrim{Skills: &trimmed}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(trim), "effort-workflow") {
+		t.Error("explicit skill trim does not replace the core selection")
+	}
+
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	before, err := os.ReadFile(configPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(configPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("existing config selection changed during sync:\n%s", after)
+	}
+	companion := []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"}
+	for _, rel := range companion {
+		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
+			t.Errorf("existing config without explicit enablement rendered %s: %v", rel, err)
+		}
+	}
+	selected := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
+	selectedProject, err := Open(testContext(t), selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := selectedProject.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range companion {
+		if _, err := os.Stat(filepath.Join(selected, rel)); err != nil {
+			t.Errorf("selected Pi effort workflow omitted %s: %v", rel, err)
+		}
+	}
+	if err := os.WriteFile(configPath(selected), []byte("prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	selectedProject, err = Open(testContext(t), selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := selectedProject.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range companion {
+		if _, err := os.Stat(filepath.Join(selected, rel)); !os.IsNotExist(err) {
+			t.Errorf("non-Pi/pruned effort workflow retained %s: %v", rel, err)
+		}
+	}
+	plan := p.ResolveEnable("skill", "effort-workflow")
+	if len(plan) != 1 || plan[0].Node.Name != "effort-workflow" {
+		t.Fatalf("explicit effort-workflow enablement plan = %#v", plan)
 	}
 }
 

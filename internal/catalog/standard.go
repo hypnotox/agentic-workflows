@@ -32,6 +32,7 @@ var Standard = &Catalog{
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
 			"notes", "red-flags",
 		}},
+		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Use one awf effort through its existing managed worktree and lifecycle.", Trigger: "Use when starting, resuming, switching checkout context for, integrating, or finishing a non-minimal effort."}, Core: true},
 		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct", "executing-plans"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
@@ -121,18 +122,12 @@ var Standard = &Catalog{
 		"adr-reviewer": {
 			Name:        "adr-reviewer",
 			Description: "Independent, lens-diverse reviewer for ADRs under {{ .layout.adrDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
-			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
+			Sections:    []string{"universal-lenses", "project-focus"},
 			Data: map[string]any{
 				"focusItems": []any{
-					map[string]any{"name": "decision-clarity", "description": "each Decision item is a discrete, implementable commitment a reader could act on without further consultation"},
+					map[string]any{"name": "decision-clarity", "description": "each Decision item is a durable commitment that remains meaningful after implementation; apply post-implementation and counterfactual tests, allow a mechanism only when it is itself load-bearing, and route executor instructions to the plan as reasoned findings"},
 					map[string]any{"name": "consequences-honesty", "description": "trade-offs name real costs and operational implications, not straw men"},
 					map[string]any{"name": "claim-topic-cohesion", "description": "each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds."},
-				},
-				"docCurrencyItems": []any{
-					map[string]any{"check": "every document that states the behaviour this ADR changes is updated in the same commit"},
-					map[string]any{"check": "the decision index is regenerated when the ADR's status changes"},
-					map[string]any{"check": "every claim named in the ADR's `State changes` is authored to match in the same Implemented commit: an `add` claim carries this ADR as `Origin`, an `update` appends it to `Revised-by` and changes a canonical field, and a `remove` leaves no active claim"},
-					map[string]any{"check": "each `State changes` operation's destination topic metadata exists before the ADR is Accepted, an empty topic shell for a pending add"},
 				},
 				"reviewSubject": "ADR",
 				"readStep":      "Read the ADR in full. Read every doc, ADR, or current-state topic it references by name.",

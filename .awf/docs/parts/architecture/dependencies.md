@@ -11,7 +11,13 @@
   control-root resolution, refs and worktree topology, and working-tree truth. Both are backends
   of `internal/git` and nothing else: no other production package may import the library or
   construct a git subprocess, and `internal/testsupport/gitfixture` is the single exception on
-  the test side, which the zero-internal-deps rule forces rather than permits.
+  the test side, which the zero-internal-deps rule forces rather than permits. Historical audit
+  enumerates committed path and mode metadata through this seam without reading blobs, then reads
+  only its exact configuration, schema, ADR, and topic authority selection and caches the resulting
+  state only for its invocation. Exact selected reads reject unsafe, duplicate, missing, outside-root,
+  and unsupported paths. First-parent changed paths are separate merge relevance evidence and never
+  populate ordinary commit changes; current and staged checks retain complete snapshots and their full
+  marker, coverage, and domain-sidecar projection.
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`
@@ -21,14 +27,7 @@
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate
   runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable from a
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
-- **Pi ai/TUI 0.81.1, compatible coding-agent 0.81.1, and TypeBox 1.1.38**: peer APIs used only by the generated Pi
-  extensions at runtime; they are supplied by the adopter's Pi installation and are not dependencies
-  of the awf binary. The subagent and handoff extension factories fail closed before functional
-  registration when their required minimum surface is absent. The test package pins pi-ai
-  and pi-tui directly at 0.81.1, TypeBox directly at 1.1.38, and coding-agent to the checksummed
-  `hypnotox/pi` `fork-v0.81.1-awf.3` release URL because the official coding-agent 0.81.1 artifact
-  lacks `ExtensionAPI.queueCommand`. Its lockfile SRI is
-  `sha512-Xk34jkheEgNwBPMfT00+jmhY3YHcMkq5xL3C+a1Cr9yR0hsN76J5am6RJkZVQSxwAdHS2GKgzREElp0awve/sQ==`.
+- **Pi ai/TUI, coding-agent, Remote Pi, and TypeBox**: peer APIs used only by generated Pi extensions at runtime; adopters supply them and they are not awf-binary dependencies. Subagent and handoff factories retain their own guards. The selected `effort-workflow` Pi companion invokes the binary from the repository root, keeps its association process-local, and exposes fixed relative effort paths without changing CWD. Remote Pi name override is separately negotiated, and its absence keeps complete metadata publication advisory and metadata-only.
 - **Docker, Node, TypeScript, and c8**: pinned repo-only test dependencies under
   `tools/pi-extension-test/`; no host npm installation is used.
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`

@@ -16,9 +16,7 @@ problem space? Include any measurements or observations that are verifiable.
 
 ## Decision
 
-The chosen approach, as column-zero numbered items sequential from 1, each a discrete,
-actionable commitment. Be precise enough that a reader can implement it correctly without
-further consultation.
+The chosen approach, as column-zero numbered items sequential from 1. Each item is a durable commitment that remains meaningful after implementation. Apply the post-implementation and counterfactual tests from the ADR guide. A mechanism belongs here only when the record explains why the mechanism itself is load-bearing. Route paths, commands, task order, rollout batches, and ordinary test transactions to the implementation plan.
 
 1. `decision: first-commitment` Describe the first commitment.
 2. `decision: second-commitment` Describe the second commitment.

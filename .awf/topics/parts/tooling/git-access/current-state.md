@@ -14,7 +14,6 @@ Each git capability has exactly one implementation in this package, and which ba
 Origin: ADR-0193
 Backing: unbacked
 Verify: Read the package's exported surface and confirm no two entrypoints answer the same question by different means, and that no signature exposes a backend type. Where two look alike, confirm a recorded reason distinguishes their contracts; the exit-code test repeated in `CurrentBranch` is such a case, because it needs the stdout the shared probe discards.
-
 ### `invariant: pinned-entrypoint-semantics`
 
 Every exported entrypoint of the seam is registered against a backend-agnostic contract suite that pins what it answers, and the registry is derived from the package source rather than restated, so an entrypoint added without a suite fails. The registry additionally rejects a registration naming a test that does not exist or whose body never names the entrypoint.
@@ -33,7 +32,6 @@ One entrypoint answers whether a checkout is clean, and both consumers - the aud
 Origin: ADR-0193
 Backing: unbacked
 Verify: Search the module for working-tree status reads and confirm one production definition serves both consumers, and that neither consumer post-filters the answer with its own notion of which paths do not count.
-
 ### `invariant: fixture-single-home`
 
 `internal/testsupport/gitfixture` is the only home for Git fixtures: no test file outside it constructs Git state through a Git library or a git subprocess, except `internal/git`'s own suites, which exercise the mechanism the seam wraps. Its exported surface is backend-neutral, carrying no library type. The guarantee has the same Go-source scope as `all-access-via-seam`.

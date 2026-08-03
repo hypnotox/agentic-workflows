@@ -21,17 +21,25 @@ var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 const finishingPrefix = ".finishing-"
 
-// maxTitleBytes bounds the outcome title. The title is persisted verbatim and
-// returned in every public reply, and a slug derived from many non-ASCII runes
-// collapses to a short segment however long the title is, so the slug bound
-// cannot stand in for this one.
+// maxTitleBytes bounds the independently persisted outcome title.
 const maxTitleBytes = 160
+
+// maxNewSlugBytes keeps newly minted caller-selected identities concise while
+// resident validation retains the historical 63-byte compatibility boundary.
+const maxNewSlugBytes = 32
 
 // CorruptError identifies resident input that must be preserved byte-for-byte.
 type CorruptError struct {
 	Path string
 	Err  error
 }
+
+// residentReadError marks a failed resident read mechanism. Callers that turn
+// a resident refusal into a protocol outcome can expose its bounded cause
+// without confusing malformed or unsafe content for a mechanism failure.
+type residentReadError struct{ error }
+
+func (e *residentReadError) Unwrap() error { return e.error }
 
 func (e *CorruptError) Error() string {
 	return fmt.Sprintf("unusable effort resident at %s: %v; changed bytes: no; next action: preserve the resident and inspect it for manual cleanup", e.Path, e.Err)
@@ -68,50 +76,28 @@ func normalizeTitle(title string) (string, error) {
 	return title, nil
 }
 
-func deriveSlug(ctx context.Context, validateRef func(context.Context, string) (bool, error), title string) (string, error) {
-	if !utf8.ValidString(title) {
-		return "", slugRepairError("outcome title is not valid UTF-8")
+func validateNewSlug(ctx context.Context, validateRef func(context.Context, string) (bool, error), slug string) error {
+	if len(slug) < 1 || len(slug) > maxNewSlugBytes {
+		return newSlugRefusal("slug must contain 1-32 bytes")
 	}
-	var b strings.Builder
-	separator := false
-	for _, r := range title {
-		switch {
-		case r >= 'A' && r <= 'Z':
-			if separator && b.Len() > 0 {
-				b.WriteByte('-')
-			}
-			separator = false
-			b.WriteByte(byte(r + ('a' - 'A')))
-		case r >= 'a' && r <= 'z' || r >= '0' && r <= '9':
-			if separator && b.Len() > 0 {
-				b.WriteByte('-')
-			}
-			separator = false
-			b.WriteRune(r)
-		default:
-			separator = true
-		}
-	}
-	slug := strings.Trim(b.String(), "-")
 	if err := validateSlug(slug); err != nil {
-		return "", slugRepairError(err.Error())
+		return newSlugRefusal(err.Error())
 	}
-	// The ref probe runs here, at the one point a slug is minted, rather than in
-	// validateSlug: enumeration validates every resident name it reads, and a
-	// probe per resident would make listing cost a git fork each and make
-	// every effort command fail without git on PATH.
-	valid, err := validateRef(ctx, "awf/"+slug)
+	// The ref probe runs once at minting time. Resident reads intentionally use
+	// only validateSlug so listing never forks Git once per effort.
+	branch := "awf/" + slug
+	valid, err := validateRef(ctx, branch)
 	if err != nil {
-		return "", fmt.Errorf("validate branch name for slug %q: %w; changed bytes: no; next action: repair the Git installation and retry", slug, err)
+		return fmt.Errorf("validate Git ref for explicit effort slug %q: %w; changed bytes: no; next action: repair the Git installation and retry with `--slug %q`", slug, err, slug)
 	}
 	if !valid {
-		return "", slugRepairError(fmt.Sprintf("refs/heads/awf/%s is not a valid Git ref", slug))
+		return newSlugRefusal("refs/heads/" + branch + " is not a valid Git ref")
 	}
-	return slug, nil
+	return nil
 }
 
-func slugRepairError(condition string) error {
-	return fmt.Errorf("cannot derive effort slug: %s; changed bytes: no; next action: provide a shorter outcome title with ASCII words or digits", condition)
+func newSlugRefusal(condition string) error {
+	return fmt.Errorf("invalid explicit effort slug: %s; changed bytes: no; next action: provide a different canonical value with `--slug`", condition)
 }
 
 func validateSlug(slug string) error {
@@ -176,7 +162,8 @@ func (s store) hit(stage string) error {
 	return nil
 }
 
-func (s store) reserve(slug string) (string, error) {
+func (s store) reserve(record Record) (string, error) {
+	slug := record.Slug
 	if err := s.paths.ensure(s.paths.efforts); err != nil {
 		return "", fmt.Errorf("prepare efforts root: %w", err)
 	}
@@ -192,7 +179,7 @@ func (s store) reserve(slug string) (string, error) {
 			if _, statErr := os.Lstat(s.paths.stateFile(slug)); statErr == nil {
 				condition = "an active effort already exists"
 			}
-			return "", fmt.Errorf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct outcome title or inspect %s", slug, condition, dir)
+			return "", fmt.Errorf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", slug, condition, slug, record.Title, dir)
 		}
 		return "", fmt.Errorf("reserve effort directory %s: %w", dir, err) // coverage-ignore: ensure and tombstone enumeration just proved the parent usable; a non-collision failure requires a concurrent namespace or storage fault
 	}
@@ -203,11 +190,11 @@ func (s store) reserve(slug string) (string, error) {
 }
 
 func (s store) create(record Record) error {
-	dir, err := s.reserve(record.Slug)
+	dir, err := s.reserve(record)
 	if err != nil {
 		return err
 	}
-	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(record.Slug), "memory"); err != nil {
+	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(record.Slug, record.CreatedAt), "memory"); err != nil {
 		return err
 	}
 	raw, err := json.Marshal(persisted(record))
@@ -222,6 +209,60 @@ func (s store) create(record Record) error {
 	}
 	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: fault injection covers the ordered root-sync boundary; an actual failure requires a kernel or storage fault
 		return fmt.Errorf("fsync efforts root after publishing %s: %w", dir, err)
+	}
+	return nil
+}
+
+// replaceMemory publishes a fully synced sibling and then atomically replaces
+// the old memory. All injected failures before rename leave the old bytes.
+func (s store) replaceMemory(path string, raw []byte) (returnErr error) {
+	dir := filepath.Dir(path)
+	temp, err := os.CreateTemp(dir, ".memory-update-*.tmp")
+	if err != nil { // coverage-ignore: the owned effort directory is validated before update; CreateTemp failure requires a concurrent permission change or storage fault
+		return fmt.Errorf("create sibling temporary memory: %w", err)
+	}
+	tempPath := temp.Name()
+	closed, published := false, false
+	defer func() {
+		if !closed {
+			returnErr = errors.Join(returnErr, temp.Close())
+		}
+		if !published {
+			if err := os.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) { // coverage-ignore: the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault
+				returnErr = errors.Join(returnErr, err)
+			}
+		}
+	}()
+	if err := s.hit("memory-update.write"); err != nil {
+		return err
+	}
+	if n, err := temp.Write(raw); err != nil { // coverage-ignore: injected write stages cover the boundary; a local temporary write failure requires a kernel or storage fault
+		return fmt.Errorf("write temporary memory: %w", err)
+	} else if n != len(raw) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested
+		return io.ErrShortWrite
+	}
+	if err := s.hit("memory-update.fsync"); err != nil {
+		return err
+	}
+	if err := temp.Sync(); err != nil { // coverage-ignore: injected fsync stages cover the boundary; a local temporary sync failure requires a kernel or storage fault
+		return fmt.Errorf("fsync temporary memory: %w", err)
+	}
+	if err := temp.Close(); err != nil { // coverage-ignore: a close failure after a successful local write requires a kernel or storage fault
+		return fmt.Errorf("close temporary memory: %w", err)
+	}
+	closed = true
+	if err := s.hit("memory-update.rename"); err != nil {
+		return err
+	}
+	if err := os.Rename(tempPath, path); err != nil { // coverage-ignore: the validated resident parent and sibling temporary make a rename failure a concurrent namespace or storage fault
+		return fmt.Errorf("replace memory atomically: %w", err)
+	}
+	published = true
+	if err := s.hit("memory-update.directory-fsync"); err != nil {
+		return err
+	}
+	if err := syncDirectory(dir); err != nil { // coverage-ignore: injected directory-fsync stages cover the durability boundary; a real failure requires a kernel or storage fault
+		return fmt.Errorf("fsync effort directory after memory update: %w", err)
 	}
 	return nil
 }
@@ -303,9 +344,9 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil { // coverage-ignore: validateOwnedDirectory just proved a readable owned directory; failure requires a concurrent namespace or storage fault
-		return Record{}, &CorruptError{Path: dir, Err: err}
+		return Record{}, &CorruptError{Path: dir, Err: &residentReadError{err}}
 	}
-	allowed := map[string]bool{"state.json": true, "memory.md": true}
+	allowed := map[string]bool{"state.json": true, "memory.md": true, "activity.json": true}
 	for _, entry := range entries {
 		if !allowed[entry.Name()] {
 			return Record{}, &CorruptError{Path: filepath.Join(dir, entry.Name()), Err: errors.New("foreign leaf in effort resident")}
@@ -314,7 +355,7 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 	statePath := filepath.Join(dir, "state.json")
 	raw, err := readRegularNoFollow(statePath)
 	if err != nil {
-		return Record{}, &CorruptError{Path: statePath, Err: err}
+		return Record{}, &CorruptError{Path: statePath, Err: &residentReadError{err}}
 	}
 	var value persistedRecord
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -332,10 +373,10 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 		memoryPath := filepath.Join(dir, "memory.md")
 		memory, err := readRegularNoFollow(memoryPath)
 		if err != nil {
-			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has absent or invalid owned memory: %w", err)}
+			return Record{}, &CorruptError{Path: memoryPath, Err: &residentReadError{fmt.Errorf("published state has absent or invalid owned memory: %w", err)}}
 		}
-		if !strings.HasPrefix(string(memory), "Effort: "+expectedSlug+"\n") {
-			return Record{}, &CorruptError{Path: memoryPath, Err: errors.New("published state has memory with a mismatched effort identity")}
+		if err := readMemoryIdentity(memory, expectedSlug); err != nil {
+			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has memory with a mismatched effort identity: %w", err)}
 		}
 	}
 	return s.logical(value), nil

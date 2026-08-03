@@ -2,7 +2,7 @@
 # code-design
 
 <!-- awf:edit current-state: from .awf/domains/parts/code-design/current-state.md -->
-The code-design domain owns cross-package structure guidance that does not belong to one product area. It is pathless: its topics may supply explicit global authority, but the domain claims no file territory and creates no path-coverage obligation. Read the owning topic before changing a governed structure rather than copying its claims into local guidance.
+The code-design domain owns cross-package structure guidance and `internal/execution/**` as its scoped capability-planning implementation surface. Its pre-existing topics remain explicit global guidance and do not gain path ownership. Read the owning topic before changing a governed structure rather than copying its claims into local guidance.
 
 
 ## Topics
@@ -10,6 +10,7 @@ The code-design domain owns cross-package structure guidance that does not belon
 [All topics](../topics/code-design/index.md)
 
 - [Dependency composition](../topics/code-design/dependency-composition.md): How awf selects, owns, and wires volatile dependencies without speculative abstraction.
+- [Execution planning](../topics/code-design/execution-planning.md): How closed multi-step operations prepare shared requirements and execute selected steps.
 - [Outcome modeling](../topics/code-design/outcome-modeling.md): How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
 - [Package composition](../topics/code-design/package-composition.md): What a package owns and states, what earns an export, and how exported surface stays documented.
 - [Presentation ownership](../topics/code-design/presentation-ownership.md): Which package renders a result model for humans, and what a command binary keeps.

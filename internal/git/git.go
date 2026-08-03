@@ -143,6 +143,13 @@ const (
 	BlobSymlink
 )
 
+// TreeEntry is one committed project's path and preserved Git blob mode.
+// It carries tree metadata only, never blob content.
+type TreeEntry struct {
+	Path string
+	Mode BlobMode
+}
+
 // IndexBlob is one file's exact bytes and mode from a stage-0 index or a
 // resolved commit tree. Symlink bytes are the inert link target.
 type IndexBlob struct {

@@ -242,9 +242,10 @@ var routineCheckpointSkills = []string{
 	"reviewing-impl", "bugfix", "debugging",
 }
 
-// approvalCheckpointSkills are the two mandatory approval boundaries: the end
-// of brainstorming and the settled ADR review (ADR-0152).
-var approvalCheckpointSkills = []string{"brainstorming", "reviewing-adr"}
+// finalApprovalCheckpointSkills are the two final approval boundaries: the end
+// of brainstorming and the settled ADR review. Brainstorming also carries the
+// distinct mandatory first-creation confirmation boundary.
+var finalApprovalCheckpointSkills = []string{"brainstorming", "reviewing-adr"}
 
 // phaseCheckpointSkills own a whole phase, so each renders exactly one routine
 // checkpoint. Skills that checkpoint per resumable change render more.
@@ -277,14 +278,25 @@ func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestUnifiedEffortWorkflowCoverage)
 func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	cat := loadCatalog(t)
-	roles := map[string]string{
-		"brainstorming": "creation", "proposing-adr": "carry", "adr-lifecycle": "carry",
-		"writing-plans": "creation", "reviewing-plan": "review", "reviewing-plan-resync": "review",
-		"reviewing-adr": "review", "executing-direct": "execution", "executing-plans": "execution",
-		"subagent-driven-development": "execution", "reviewing-impl": "terminal-review",
-		"retrospective": "finish", "debugging": "conditional-creation", "bugfix": "conditional-creation",
-		"tdd": "conditional-creation", "refactor-coupling-audit": "report", "exploring": "report",
-		"orienting": "report", "roadmap-graduation": "conditional-creation",
+	roleMembers := map[string][]string{
+		"first-creation-discovery":     {"brainstorming", "debugging", "roadmap-graduation"},
+		"confirmed-downstream-minimal": {"bugfix", "tdd", "executing-direct"},
+		"confirmed-downstream": {
+			"proposing-adr", "adr-lifecycle", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
+			"reviewing-adr", "executing-plans", "subagent-driven-development", "reviewing-impl", "retrospective",
+			"effort-workflow",
+		},
+		"confirmed-report-support": {"refactor-coupling-audit"},
+		"never-create-support":     {"exploring", "orienting"},
+	}
+	roles := map[string]string{}
+	for role, names := range roleMembers {
+		for _, name := range names {
+			if previous, exists := roles[name]; exists {
+				t.Fatalf("skill %q belongs to both %q and %q", name, previous, role)
+			}
+			roles[name] = role
+		}
 	}
 	if len(roles) != len(cat.Skills) {
 		t.Fatalf("unified-effort classification has %d skills, enabled catalog has %d", len(roles), len(cat.Skills))
@@ -297,16 +309,41 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 
 	minimal := map[string]bool{"brainstorming": true, "executing-direct": true, "debugging": true, "bugfix": true, "tdd": true, "roadmap-graduation": true}
 	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true, "orienting": true}
+	discoveryMutationBoundary := map[string]string{
+		"brainstorming":      "5. **Present the design in sections",
+		"debugging":          "5. **Isolate with a failing test",
+		"roadmap-graduation": "### 4. Graduate in a single commit",
+	}
+	ownershipBoundary := map[string]string{
+		"bugfix":                      "1. **Ensure a regression test",
+		"tdd":                         "1. Run `awf context",
+		"executing-direct":            "2. Implement only the agreed change",
+		"proposing-adr":               "1. **Scaffold the file",
+		"adr-lifecycle":               "1. **Edit the ADR history and status",
+		"writing-plans":               "1. **Confirm scope with the user",
+		"reviewing-plan":              "1. **Identify the plan path",
+		"reviewing-plan-resync":       "Identify the plan path first",
+		"reviewing-adr":               "1. **Identify the ADR path",
+		"executing-plans":             "2. You, the parent executing this plan",
+		"subagent-driven-development": "2. You, the dispatching parent",
+		"reviewing-impl":              "1. **Determine the session SHA range",
+		"retrospective":               "2. **Reflect and record worthy observations",
+		"effort-workflow":             "Update checkpoints with",
+		"refactor-coupling-audit":     "**Pick the audit shape",
+	}
 	routineOrdered := []string{
 		"**Routine checkpoint.**",
 		"minimal simple fix uses no effort",
-		"concrete non-minimal outcome",
+		"reaching a checkpoint never creates one",
+		"already-confirmed immutable slugged effort",
 		"always owns `.awf/efforts/<slug>/memory.md`",
 		"primary-root-relative spelling",
-		"Effort: <slug>",
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
 		"managed worktree when one exists",
 		"writer-owned tool batch",
-		"any unrecorded settled decision and observation",
+		"./awf effort memory update",
+		"sole writer of phase, next action, and time",
+		"Separately append any unrecorded settled decision and observation",
 		"continuity notice",
 	}
 	for _, target := range []string{"pi", "claude"} {
@@ -348,6 +385,92 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			if minimal[name] && !strings.Contains(lower, "minimal simple") {
 				t.Errorf("%s/%s lost the minimal-simple effort exception", target, name)
 			}
+			switch role {
+			case "first-creation-discovery":
+				confirmation := strings.Index(body, "**Mandatory first-creation confirmation.**")
+				laterResponse := strings.Index(body, "clear response in a later turn")
+				creation := strings.Index(body, "awf effort new")
+				mutationBoundary := discoveryMutationBoundary[name]
+				mutation := strings.Index(body, mutationBoundary)
+				for _, want := range []string{
+					"**Mandatory first-creation confirmation.**",
+					"Discovery creates no effort",
+					"`Outcome: <concrete non-minimal outcome>`",
+					"`Effort title: <proposed title>`",
+					"`Effort slug: <proposed-short-slug>`",
+					"Ask the user to confirm creation",
+					"end the turn without creating an effort",
+					"clear response in a later turn",
+					"confirms all three fields",
+					"`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`",
+				} {
+					if !strings.Contains(body, want) {
+						t.Errorf("%s/%s (%s) missing shared confirmation phrase %q", target, name, role, want)
+					}
+				}
+				if confirmation < 0 || laterResponse < confirmation || creation < laterResponse {
+					t.Errorf("%s/%s (%s) must place awf effort new after the complete later-response confirmation", target, name, role)
+				}
+				if mutationBoundary == "" || mutation < 0 || creation >= mutation {
+					t.Errorf("%s/%s (%s) must complete confirmed creation before mutation boundary %q", target, name, role, mutationBoundary)
+				}
+			case "confirmed-downstream-minimal", "confirmed-downstream":
+				boundary := ownershipBoundary[name]
+				end := strings.Index(body, boundary)
+				if boundary == "" || end < 0 {
+					t.Errorf("%s/%s (%s) lost pre-mutation ownership boundary %q", target, name, role, boundary)
+					break
+				}
+				preMutation := strings.ToLower(body[:end])
+				if !strings.Contains(preMutation, "already-confirmed") && !strings.Contains(preMutation, "existing confirmed effort") {
+					t.Errorf("%s/%s (%s) pre-mutation contract does not establish confirmed ownership", target, name, role)
+				}
+				for _, want := range []string{"mandatory first-creation three-field confirmation", "never creates a missing effort"} {
+					if !strings.Contains(preMutation, want) {
+						t.Errorf("%s/%s (%s) pre-mutation contract missing %q", target, name, role, want)
+					}
+				}
+				if role == "confirmed-downstream-minimal" && !strings.Contains(preMutation, "minimal simple") {
+					t.Errorf("%s/%s lost the pre-mutation minimal-simple effort exception", target, name)
+				}
+			case "confirmed-report-support":
+				boundary := ownershipBoundary[name]
+				end := strings.Index(body, boundary)
+				if boundary == "" || end < 0 {
+					t.Errorf("%s/%s (%s) lost pre-analysis ownership boundary %q", target, name, role, boundary)
+					break
+				}
+				preAnalysis := strings.ToLower(body[:end])
+				for _, want := range []string{"existing confirmed effort", "mandatory first-creation three-field confirmation", "never creates a missing effort", "report-only", "never edit"} {
+					if !strings.Contains(preAnalysis, want) {
+						t.Errorf("%s/%s (%s) pre-analysis contract missing %q", target, name, role, want)
+					}
+				}
+			case "never-create-support":
+				if !strings.Contains(lower, "never creates an effort") {
+					t.Errorf("%s/%s (%s) must state that it never creates an effort", target, name, role)
+				}
+				if name == "exploring" && (!strings.Contains(lower, "report-only") || !strings.Contains(lower, "never edit")) {
+					t.Errorf("%s/%s must remain report-only toward parent memory", target, name)
+				}
+				if name == "orienting" && (!strings.Contains(lower, "one user-managed writer") || !strings.Contains(lower, "stale checkpoint")) {
+					t.Errorf("%s/%s must retain one-writer stale-checkpoint correction", target, name)
+				}
+			}
+			if name == "effort-workflow" {
+				for _, branch := range []string{
+					"runtime that supplies explicit effort paths may remain at the repository root",
+					"target the exact existing `.awf/worktrees/<slug>` worktree by path",
+					"runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree",
+				} {
+					if !strings.Contains(body, branch) {
+						t.Errorf("%s/%s missing runtime branch %q", target, name, branch)
+					}
+				}
+			}
+			if role != "first-creation-discovery" && strings.Contains(body, "awf effort new") {
+				t.Errorf("%s/%s (%s) must not create an effort", target, name, role)
+			}
 			if reviewers[name] && !strings.Contains(lower, "never edit") {
 				t.Errorf("%s/%s does not keep report-only children from memory mutation", target, name)
 			}
@@ -382,6 +505,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		// only Pi may name the handoff tool.
 		for _, name := range routineCheckpointSkills {
 			body := read(t, pathFor(name))
+			assertMemoryCheckpointIdentityAndUpdate(t, target+"/"+name, body, "<immediate next action>")
 			ordered := append([]string{}, routineOrdered...)
 			if target == "pi" {
 				ordered = append(ordered,
@@ -466,18 +590,73 @@ func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
 	}
 }
 
-// TestMandatoryApprovalBoundaries asserts the two approval-boundary skills stop
-// for explicit approval, persist it, and only then continue target-natively,
-// and that the approval stop renders nowhere else (ADR-0152).
+// assertMemoryCheckpointIdentityAndUpdate proves the two alternative immutable
+// identities and the exact structured update batch at every checkpoint surface.
+func assertMemoryCheckpointIdentityAndUpdate(t *testing.T, label, body, next string) {
+	t.Helper()
+	for _, clause := range []string{
+		"either legacy `Effort: <slug>` or canonical `effort: <slug>` identity",
+		"./awf effort memory update <slug> --phase \"<completed phase>\" --next \"" + next + "\"",
+	} {
+		if !strings.Contains(body, clause) {
+			t.Errorf("%s missing memory checkpoint clause %q", label, clause)
+		}
+	}
+}
+
+// TestMandatoryApprovalBoundaries asserts first-creation confirmation plus the
+// two final approval boundaries, and that final approval renders nowhere else.
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMandatoryApprovalBoundaries)
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow (TestMandatoryApprovalBoundaries)
 func TestMandatoryApprovalBoundaries(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
 	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
+	confirmationOrdered := []string{
+		"**Mandatory first-creation confirmation.**",
+		"Discovery creates no effort",
+		"direct concrete non-minimal request follows the same boundary",
+		"existing effort resumes under its fixed identity",
+		"only while work remains within its confirmed outcome",
+		"`Outcome: <concrete non-minimal outcome>`",
+		"`Effort title: <proposed title>`",
+		"`Effort slug: <proposed-short-slug>`",
+		"Ask the user to confirm creation",
+		"end the turn without creating an effort",
+		"Only a clear response in a later turn confirms all three fields",
+		"`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`",
+		"requested change to any field stays in discovery",
+		"revised three-field proposal",
+		"an ambiguous response receives a",
+		"focused clarification",
+		"creation fails while the three-field proposal and its later confirming response remain available",
+		"report the concrete failure and recovery action",
+		"retry without another",
+		"confirmation",
+		"context loss or session replacement makes that evidence unavailable",
+		"present and",
+		"confirm all three fields",
+		"before retrying creation",
+	}
+	for _, targetBody := range []struct {
+		label string
+		body  string
+	}{
+		{"pi/brainstorming", read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-brainstorming", "SKILL.md"))},
+		{"claude/brainstorming", read(t, skillPath(nonPiRoot, "brainstorming"))},
+	} {
+		confirm := strings.Index(targetBody.body, "**Mandatory first-creation confirmation.**")
+		design := strings.Index(targetBody.body, "Present the design in sections")
+		if confirm < 0 || design < 0 || confirm > design {
+			t.Errorf("%s does not place first-creation confirmation before detailed design", targetBody.label)
+			continue
+		}
+		assertOrderedBody(t, targetBody.label+" first creation", targetBody.body[confirm:design], confirmationOrdered)
+	}
+
 	ordered := []string{
 		"**Mandatory approval check-in.**",
-		"concrete non-minimal outcome",
+		"already-confirmed non-minimal outcome",
 		"exactly one immutable slugged effort",
 		"always owns `.awf/efforts/<slug>/memory.md`",
 		"primary-root-relative spelling",
@@ -491,8 +670,9 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"request approval again",
 		"After explicit approval, persist the approval and next action before continuing",
 	}
-	for _, name := range approvalCheckpointSkills {
+	for _, name := range finalApprovalCheckpointSkills {
 		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
+		assertMemoryCheckpointIdentityAndUpdate(t, "pi/"+name, piBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
 			"judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence",
 			"No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in",
@@ -505,6 +685,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		}
 		assertNoCheckpointTimeHandoffLog(t, "pi/"+name, piBody)
 		claudeBody := read(t, skillPath(nonPiRoot, name))
+		assertMemoryCheckpointIdentityAndUpdate(t, "claude/"+name, claudeBody, "<immediate action pending approval>")
 		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
 			"Then continue through the target-native successor without claiming session replacement",
 			"the workflow doc's working-memory section",
@@ -520,11 +701,11 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	}
 	for _, entry := range rendered {
 		name := strings.TrimPrefix(entry.Name(), evalPrefix+"-")
-		if slices.Contains(approvalCheckpointSkills, name) {
+		if slices.Contains(finalApprovalCheckpointSkills, name) {
 			continue
 		}
 		if strings.Contains(read(t, filepath.Join(root, ".pi", "skills", entry.Name(), "SKILL.md")), "explicitly request approval") {
-			t.Errorf("skill %q renders an approval stop outside the two mandatory boundaries", name)
+			t.Errorf("skill %q renders a final approval stop outside the two final approval boundaries", name)
 		}
 	}
 }

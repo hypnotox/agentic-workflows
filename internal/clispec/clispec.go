@@ -170,15 +170,17 @@ Create, inspect, finish, integrate, and remove immutable slugged efforts, which 
 `,
 		Children: []Command{
 			{Name: "new", Summary: "Create an effort with a managed worktree by default",
-				BoolFlags: []string{"--json", "--no-worktree"}, ValueFlags: []string{"--base"},
+				BoolFlags: []string{"--json", "--no-worktree"}, ValueFlags: []string{"--slug", "--base"},
 				MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort new <outcome-title> [--json] [--no-worktree] [--base <ref>]
+				HelpBody: `Usage: awf effort new --slug <slug> <outcome-title> [--json] [--no-worktree] [--base <ref>]
 
-Derive an immutable slug, publish schema-2 state with owned memory, and create the
-managed .awf/worktrees/<slug> checkout on awf/<slug> (base: the invoking checkout's
-HEAD, or --base <ref>). --no-worktree keeps execution in the invoking checkout and
-rejects --base. On worktree failure the effort is rolled back only when managed
-topology is proven absent; otherwise it is retained with recovery steps.
+Supply an immutable canonical slug of 1 through 32 bytes independently from the
+single outcome title. Flags may appear before or after that positional. Publish
+schema-2 state with owned memory and create the managed .awf/worktrees/<slug>
+checkout on awf/<slug> (base: the invoking checkout's HEAD, or --base <ref>).
+--no-worktree keeps execution in the invoking checkout and rejects --base. On
+worktree failure the effort is rolled back only when managed topology is proven
+absent; otherwise it is retained with recovery steps.
 `},
 			{Name: "list", Summary: "List efforts by slug", BoolFlags: []string{"--json"}, MaxPos: 0,
 				HelpBody: `Usage: awf effort list [--json]
@@ -203,6 +205,33 @@ Manage the fixed .awf/worktrees/<slug> checkout and awf/<slug> branch without st
 `},
 			{Name: "integrate", Summary: "Integrate a managed worktree", MinPos: 1, MaxPos: 1,
 				HelpBody: "Usage: awf effort integrate <slug>\n\nIntegrate into the invoking clean target checkout without committing, reviewing, removing, or finishing.\n"},
+			{Name: "memory", Summary: "Update bounded effort memory metadata", MaxPos: 0,
+				HelpBody: `Usage: awf effort memory update <slug> [--phase <text>] [--next <text>]
+
+Update one or both mutable memory metadata fields. At least one of --phase and
+--next is required.
+`,
+				Children: []Command{
+					{Name: "update", Summary: "Update memory phase or next action", ValueFlags: []string{"--phase", "--next"}, MinPos: 1, MaxPos: 1,
+						HelpBody: `Usage: awf effort memory update <slug> [--phase <text>] [--next <text>]
+
+Update one or both mutable memory metadata fields. At least one of --phase and
+--next is required.
+`},
+				},
+			},
+			{Name: "activity", Summary: "Mutate advisory Pi session activity", MaxPos: 0,
+				HelpBody: `Usage: awf effort activity attach <slug> --owner <uuid> --json
+       awf effort activity heartbeat <slug> --owner <uuid> --json
+       awf effort activity detach <slug> --owner <uuid> --json
+
+Activity replies are protocol-2 JSON only.`,
+				Children: []Command{
+					{Name: "attach", Summary: "Attach or take over an advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort activity attach <slug> --owner <uuid> --json\n"},
+					{Name: "heartbeat", Summary: "Heartbeat an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort activity heartbeat <slug> --owner <uuid> --json\n"},
+					{Name: "detach", Summary: "Detach an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort activity detach <slug> --owner <uuid> --json\n"},
+				},
+			},
 		},
 	},
 	{

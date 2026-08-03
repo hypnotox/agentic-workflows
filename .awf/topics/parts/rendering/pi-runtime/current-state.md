@@ -23,9 +23,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling Pi renders the standalone context-usage and handoff entrypoints plus the subagent index, bounded model-routing module, and runner with provenance. Context usage owns transient per-model-call fact injection, handoff owns parent-linked main-session replacement, model routing owns pure preference policy, and the subagent entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and every file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics; a target set without Pi renders none of them.
+Enabling Pi renders the standalone context-usage and handoff entrypoints plus the subagent index, bounded model-routing module, and runner with provenance; selecting `effort-workflow` additionally renders the Pi-target-owned `using-effort` skill and `awf-effort` index/client pair through the same output predicate. The effort client alone strictly invokes and decodes activity protocol v2; its index owns direct serialized association, fixed-path transient context, heartbeat/shutdown lifecycle, and Remote Pi translation. Context usage owns transient per-model-call usage facts, handoff owns parent-linked main-session replacement, model routing owns pure preference policy, and the subagent entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and every file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics; a target set without Pi renders none of them.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0218, ADR-0225
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -36,9 +36,9 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-Every generated Pi extension entrypoint requires the minimum Pi runtime APIs used by its retained contract, reports the shared single actionable incompatibility notice, and fails before registering functional hooks when required APIs are absent. Supported context-usage, handoff, and subagent operation emits no compatibility, pressure, or handoff warning.
+Generated Pi extension entrypoints require the minimum Pi runtime APIs used by retained context-usage, subagent, and handoff contracts, report one actionable incompatibility notice, and fail before registering functional hooks when required APIs are absent. The direct `using_effort` companion needs no `changeCwd` capability or foreign package-version floor; its optional Remote Pi event interface remains advisory, and without that interface local association, switching, heartbeat, detach, and fixed-path context remain available. Supported context-usage, handoff, subagent, and effort-association operation emits no compatibility, pressure, handoff, or local TUI warning.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167, ADR-0209
+Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
