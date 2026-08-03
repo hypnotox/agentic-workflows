@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdir } from "node:fs/promises";
+import { Value } from "typebox/value";
 import { activity, EffortProtocolError } from "../../../.pi/extensions/awf-effort/client.ts";
 import effortExtension, { registerEffort } from "../../../.pi/extensions/awf-effort/index.ts";
 
@@ -69,6 +70,13 @@ test("client covers sentinel metadata, exact condition shapes, and cancellation 
   for (const value of malformed) await assert.rejects(decode(value), /invalid envelope/);
   const controller = new AbortController(); controller.abort();
   await activity(async (_command, _argv, options) => { assert.equal(options.signal?.aborted, true); return { stdout: line(success()) }; }, "/repo", "attach", "demo", OWNER, controller.signal);
+});
+
+test("using_effort accepts 63-byte resident slugs and rejects 64-byte slugs", () => {
+  const h = harness();
+  const schema = h.tool().parameters;
+  assert.equal(Value.Check(schema, { effort: "r".repeat(63) }), true);
+  assert.equal(Value.Check(schema, { effort: "r".repeat(64) }), false);
 });
 
 test("using_effort directly validates, attaches, context-injects cached paths, and detaches", async () => {

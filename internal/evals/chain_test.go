@@ -397,9 +397,12 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 					"Discovery creates no effort",
 					"`Outcome: <concrete non-minimal outcome>`",
 					"`Effort title: <proposed title>`",
+					"`Effort slug: <proposed-short-slug>`",
 					"Ask the user to confirm creation",
 					"end the turn without creating an effort",
 					"clear response in a later turn",
+					"confirms all three fields",
+					"`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`",
 				} {
 					if !strings.Contains(body, want) {
 						t.Errorf("%s/%s (%s) missing shared confirmation phrase %q", target, name, role, want)
@@ -422,7 +425,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 				if !strings.Contains(preMutation, "already-confirmed") && !strings.Contains(preMutation, "existing confirmed effort") {
 					t.Errorf("%s/%s (%s) pre-mutation contract does not establish confirmed ownership", target, name, role)
 				}
-				for _, want := range []string{"mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
+				for _, want := range []string{"mandatory first-creation three-field confirmation", "never creates a missing effort"} {
 					if !strings.Contains(preMutation, want) {
 						t.Errorf("%s/%s (%s) pre-mutation contract missing %q", target, name, role, want)
 					}
@@ -438,7 +441,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 					break
 				}
 				preAnalysis := strings.ToLower(body[:end])
-				for _, want := range []string{"existing confirmed effort", "mandatory first-creation outcome/title confirmation", "never creates a missing effort", "report-only", "never edit"} {
+				for _, want := range []string{"existing confirmed effort", "mandatory first-creation three-field confirmation", "never creates a missing effort", "report-only", "never edit"} {
 					if !strings.Contains(preAnalysis, want) {
 						t.Errorf("%s/%s (%s) pre-analysis contract missing %q", target, name, role, want)
 					}
@@ -617,18 +620,22 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"only while work remains within its confirmed outcome",
 		"`Outcome: <concrete non-minimal outcome>`",
 		"`Effort title: <proposed title>`",
+		"`Effort slug: <proposed-short-slug>`",
 		"Ask the user to confirm creation",
 		"end the turn without creating an effort",
-		"Only a clear response in a later turn confirms the pair",
-		"`awf effort new \"<confirmed title>\"`",
-		"requested change stays in discovery and receives a revised pair",
+		"Only a clear response in a later turn confirms all three fields",
+		"`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`",
+		"requested change to any field stays in discovery",
+		"revised three-field proposal",
 		"an ambiguous response receives a",
 		"focused clarification",
-		"creation fails while the pair and its later confirming response remain available",
+		"creation fails while the three-field proposal and its later confirming response remain available",
 		"report the concrete failure and recovery action",
-		"retry without another confirmation",
+		"retry without another",
+		"confirmation",
 		"context loss or session replacement makes that evidence unavailable",
-		"present and confirm the pair",
+		"present and",
+		"confirm all three fields",
 		"before retrying creation",
 	}
 	for _, targetBody := range []struct {

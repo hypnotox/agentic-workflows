@@ -34,7 +34,7 @@ func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
 	service := openTestService(t, root, func(d *Dependencies) {
 		d.Clock = func() time.Time { return time.Date(2026, 8, 2, 13, 0, 0, 0, time.UTC) }
 	})
-	if _, err := service.New(testContext(t), "Coherent effort"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "coherent-effort", Title: "Coherent effort"}); err != nil {
 		t.Fatal(err)
 	}
 	path := service.paths.memoryFile("coherent-effort")

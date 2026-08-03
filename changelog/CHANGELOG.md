@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- New efforts now require a caller-selected canonical slug through 32 bytes via `awf effort new --slug <slug> "<outcome>"`; workflow guidance confirms outcome, title, and slug before creation, while schema-2 state, managed topology, and existing resident support through 63 bytes remain unchanged.
+
 - ADR guidance now distinguishes durable commitments from implementation directives with post-implementation and counterfactual tests, routes execution detail to plans and unsettled context to effort memory, and reviews ambiguous mechanisms semantically. ADR scaffolding remains the single source for the current authoring format.
 
 - Repository checks now use capability-planned execution: direct and aggregate checks share prepared config, project reports, and enabled scanner index inputs while preserving successful output order. Any readiness failure occurs before step output.

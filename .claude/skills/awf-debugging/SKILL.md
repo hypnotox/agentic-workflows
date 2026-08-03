@@ -53,21 +53,24 @@ validation rules without title reconfirmation only while work remains within its
 a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
 effort.
 
-When no existing effort owns the outcome, present both fields:
+When no existing effort owns the outcome, propose a canonical short slug and present all three
+fields:
 
 `Outcome: <concrete non-minimal outcome>`
 `Effort title: <proposed title>`
+`Effort slug: <proposed-short-slug>`
 
 Ask the user to confirm creation, then end the turn without creating an effort, memory, branch, or
-managed worktree. Only a clear response in a later turn confirms the pair and permits
-`awf effort new "<confirmed title>"`. Agreement before the pair was presented does not confirm it.
-A requested change stays in discovery and receives a revised pair; an ambiguous response receives a
-focused clarification.
+managed worktree. Only a clear response in a later turn confirms all three fields and permits
+`awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Agreement before the three fields were
+presented does not confirm them. A requested change to any field stays in discovery and receives a
+revised three-field proposal; an ambiguous response receives a focused clarification about the
+outcome, title, and slug.
 
-If creation fails while the pair and its later confirming response remain available in conversational
-context, report the concrete failure and recovery action and retry without another confirmation. If
-context loss or session replacement makes that evidence unavailable, present and confirm the pair
-again before retrying creation.
+If creation fails while the three-field proposal and its later confirming response remain available
+in conversational context, report the concrete failure and recovery action and retry without another
+confirmation. If context loss or session replacement makes that evidence unavailable, present and
+confirm all three fields again before retrying creation.
 
 5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline. Before writing the test, run `awf context <the suspect paths>`.
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
@@ -108,7 +111,7 @@ These thoughts mean stop. You're rationalizing:
 
 <!-- awf:edit memory-checkpoint: default; create .awf/skills/parts/debugging/memory-checkpoint.md to override -->
 **Routine checkpoint.** At this boundary:
-1. Classify ownership, not the boundary: a minimal simple fix uses no effort, and reaching a checkpoint never creates one. Non-minimal work requires exactly one already-confirmed immutable slugged effort; if ownership is missing, stop and return to mandatory first-creation outcome/title confirmation. The effort always owns `.awf/efforts/<slug>/memory.md`.
+1. Classify ownership, not the boundary: a minimal simple fix uses no effort, and reaching a checkpoint never creates one. Non-minimal work requires exactly one already-confirmed immutable slugged effort; if ownership is missing, stop and return to mandatory first-creation three-field confirmation. The effort always owns `.awf/efforts/<slug>/memory.md`.
 2. Validate the exact `<slug>` and owned path (a primary-root-relative spelling; the file lives under the primary checkout), confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), and continue in the effort's managed worktree when one exists. In its own writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Separately append any unrecorded settled decision and observation.
 3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
 4. Otherwise state a one-line continuity notice with the completed phase and immediate next action, including the exact slug and owned memory path for an effort-backed outcome; the notice is informational, never a stop. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. Authority precedence, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc's working-memory section.

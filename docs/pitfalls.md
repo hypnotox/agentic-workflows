@@ -13,6 +13,21 @@ _Domains: tooling_
 `git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
 
 
+## An intermediate search expectation must respect deferred claim operations
+
+_Domains: adr-system, rendering_
+
+A reviewed plan required a closed-root stale-signature search to reach zero in Phase 1 while
+the same phase was required to leave one matching current-state claim byte-for-byte unchanged
+and its update operation Remaining until the terminal flip. Rendering made the contradiction
+two findings: the authored claim and its generated topic copy. Implementation review caught
+it only after the phase commit because plan review had reasoned about the final clean tree
+rather than executing the search against each declared lifecycle snapshot. A plan that
+partitions claim operations must run every exact census or zero-finding command against the
+intermediate trees it specifies. Name the lifecycle-authorized intermediate findings exactly,
+keep the terminal zero requirement attached to the operation that removes them, and reject any
+additional match; never demand a clean search state before the batch authorized to create it.
+
 ## A census number is only as good as its stated query
 
 _Domains: adr-system_
@@ -1120,7 +1135,7 @@ pathspec commit, including your effort's final one** - and the audit-rule follow
 the roadmap now has five occurrences behind it.
 
 **Scope after ADR-0189 (recorded 2026-07-31).** Managed worktrees are now the default
-execution location: `awf effort new` creates one and directs execution there, so
+execution location: `awf effort new --slug <slug> "<outcome>"` creates one and directs execution there, so
 cross-effort work is separated by default and every occurrence above predates that
 cutover. The discipline in this entry still binds the residual shared-tree cases:
 non-effort work in the primary checkout, two sessions inside one checkout or worktree,

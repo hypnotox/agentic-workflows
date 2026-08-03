@@ -266,8 +266,8 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 // worktree via the same standalone Add machinery (ADR-0189). On Add
 // failure it rolls back through restartable finish, removing the effort
 // only when the finish flow proves managed topology absent.
-func (m *Manager) NewEffort(ctx context.Context, title, base string) (effort.Record, Result, error) {
-	record, err := m.efforts.New(ctx, title)
+func (m *Manager) NewEffort(ctx context.Context, input effort.NewInput, base string) (effort.Record, Result, error) {
+	record, err := m.efforts.New(ctx, input)
 	if err != nil {
 		return effort.Record{}, Result{}, err
 	}
@@ -275,16 +275,17 @@ func (m *Manager) NewEffort(ctx context.Context, title, base string) (effort.Rec
 	if addErr == nil {
 		return record, result, nil
 	}
-	return effort.Record{}, Result{}, m.rollback(ctx, record.Slug, addErr)
+	return effort.Record{}, Result{}, m.rollback(ctx, record, addErr)
 }
 
 // rollback composes the one creation failure from the structured finish
 // outcome and the managed-topology classification, never from error prose.
-func (m *Manager) rollback(ctx context.Context, slug string, addErr error) error {
+func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr error) error {
+	slug := record.Slug
 	finishResult, finishErr := m.efforts.Finish(ctx, slug)
 	switch {
 	case finishErr == nil:
-		return fmt.Errorf("worktree creation failed: %w; effort %s rolled back; next action: fix the reported cause and retry `awf effort new`", addErr, slug)
+		return fmt.Errorf("worktree creation failed: %w; effort %s rolled back; next action: fix the reported cause and retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title)
 	case errors.Is(finishErr, effort.ErrManagedTopologyPresent):
 		return fmt.Errorf("worktree creation failed: %w; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`, clean up with native Git or `awf effort worktree remove %s`, then retry `awf effort worktree add %s` or finish the effort", addErr, slug, slug, slug)
 	case finishResult.Renamed:

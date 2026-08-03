@@ -167,15 +167,17 @@ Create, inspect, finish, integrate, and remove immutable slugged efforts, which 
 `,
 		Children: []Command{
 			{Name: "new", Summary: "Create an effort with a managed worktree by default",
-				BoolFlags: []string{"--json", "--no-worktree"}, ValueFlags: []string{"--base"},
+				BoolFlags: []string{"--json", "--no-worktree"}, ValueFlags: []string{"--slug", "--base"},
 				MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort new <outcome-title> [--json] [--no-worktree] [--base <ref>]
+				HelpBody: `Usage: awf effort new --slug <slug> <outcome-title> [--json] [--no-worktree] [--base <ref>]
 
-Derive an immutable slug, publish schema-2 state with owned memory, and create the
-managed .awf/worktrees/<slug> checkout on awf/<slug> (base: the invoking checkout's
-HEAD, or --base <ref>). --no-worktree keeps execution in the invoking checkout and
-rejects --base. On worktree failure the effort is rolled back only when managed
-topology is proven absent; otherwise it is retained with recovery steps.
+Supply an immutable canonical slug of 1 through 32 bytes independently from the
+single outcome title. Flags may appear before or after that positional. Publish
+schema-2 state with owned memory and create the managed .awf/worktrees/<slug>
+checkout on awf/<slug> (base: the invoking checkout's HEAD, or --base <ref>).
+--no-worktree keeps execution in the invoking checkout and rejects --base. On
+worktree failure the effort is rolled back only when managed topology is proven
+absent; otherwise it is retained with recovery steps.
 `},
 			{Name: "list", Summary: "List efforts by slug", BoolFlags: []string{"--json"}, MaxPos: 0,
 				HelpBody: `Usage: awf effort list [--json]

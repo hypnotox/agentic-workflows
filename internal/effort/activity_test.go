@@ -18,7 +18,7 @@ func TestAdvisoryActivityDoesNotGateUnrelatedEffortCommands(t *testing.T) {
 		d.UUID = func() (string, error) { return testIDA, nil }
 		d.Clock = func() time.Time { return time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC) }
 	})
-	if _, err := service.New(testContext(t), "Activity advisory"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "activity-advisory", Title: "Activity advisory"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := service.AttachActivity("activity-advisory", testIDA); got.Condition != ActivityAttached || got.Activity == nil || got.Activity.SchemaVersion != 2 {
@@ -50,7 +50,7 @@ func TestAdvisoryActivityDoesNotGateUnrelatedEffortCommands(t *testing.T) {
 func TestActivityV2StorageAndResidentBoundaries(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Storage"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "storage", Title: "Storage"}); err != nil {
 		t.Fatal(err)
 	}
 	slug, path := "storage", service.paths.activityFile("storage")
@@ -127,7 +127,7 @@ func TestActivityV2StorageAndResidentBoundaries(t *testing.T) {
 func TestActivityV2SafeRecoveryAndRefusals(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Recovery"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "recovery", Title: "Recovery"}); err != nil {
 		t.Fatal(err)
 	}
 	slug, path := "recovery", service.paths.activityFile("recovery")
@@ -192,7 +192,7 @@ func TestActivityV2SafeRecoveryAndRefusals(t *testing.T) {
 func TestActivityV2MutationAndPublicationBoundaries(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Mutation"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "mutation", Title: "Mutation"}); err != nil {
 		t.Fatal(err)
 	}
 	slug, path := "mutation", service.paths.activityFile("mutation")
@@ -246,7 +246,7 @@ func TestActivityV2MutationAndPublicationBoundaries(t *testing.T) {
 func TestActivityV2AdditionalSafetyBranches(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Additional"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "additional", Title: "Additional"}); err != nil {
 		t.Fatal(err)
 	}
 	slug, path := "additional", service.paths.activityFile("additional")
@@ -313,7 +313,7 @@ func TestActivityV2AdditionalSafetyBranches(t *testing.T) {
 func TestActivityV2LowLevelFailureAndMutationRefusals(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Low level"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "low-level", Title: "Low level"}); err != nil {
 		t.Fatal(err)
 	}
 	path := service.paths.activityFile("low-level")
@@ -388,7 +388,7 @@ func TestActivityV2Refusals(t *testing.T) {
 	if got := service.AttachActivity("missing", testIDA); got.Condition != ActivityMissing || got.Outcome == nil || got.Outcome.Condition != "the requested effort is absent" {
 		t.Fatalf("missing effort = %#v", got)
 	}
-	if _, err := service.New(testContext(t), "V2"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "v2", Title: "V2"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := service.HeartbeatActivity("v2", testIDA); got.Condition != ActivityMissing || got.Outcome == nil || got.Outcome.Condition != "the requested activity is absent" {

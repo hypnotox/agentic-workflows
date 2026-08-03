@@ -16,7 +16,7 @@ func TestEffortResidentsRefuseForeignOwnedBytesUnprivileged(t *testing.T) {
 	service := openTestService(t, root, func(deps *Dependencies) {
 		deps.UUID = func() (string, error) { return testIDA, nil }
 	})
-	if _, err := service.New(testContext(t), "Seam owner"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "seam-owner", Title: "Seam owner"}); err != nil {
 		t.Fatal(err)
 	}
 	resident := filepath.Join(root, ".awf", "efforts", "seam-owner")
@@ -56,7 +56,7 @@ func TestEffortResidentsRefuseForeignOwnedBytes(t *testing.T) {
 	service := openTestService(t, root, func(deps *Dependencies) {
 		deps.UUID = func() (string, error) { return testIDA, nil }
 	})
-	if _, err := service.New(testContext(t), "Foreign owner"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "foreign-owner", Title: "Foreign owner"}); err != nil {
 		t.Fatal(err)
 	}
 	resident := filepath.Join(root, ".awf", "efforts", "foreign-owner")
@@ -97,7 +97,7 @@ func TestEffortResidentsRejectSymlinksAndHardLinksWithoutDeletingTargets(t *test
 		service := openTestService(t, root, func(deps *Dependencies) {
 			deps.UUID = func() (string, error) { return testIDA, nil }
 		})
-		if _, err := service.New(testContext(t), "Hard link"); err != nil {
+		if _, err := service.New(testContext(t), NewInput{Slug: "hard-link", Title: "Hard link"}); err != nil {
 			t.Fatal(err)
 		}
 		memory := filepath.Join(root, ".awf", "efforts", "hard-link", "memory.md")

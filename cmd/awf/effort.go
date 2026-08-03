@@ -84,18 +84,19 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 		return err
 	}
 	service, manager := composed.service, composed.manager
-	slug := firstPos(c.inv.positionals)
+	selected := firstPos(c.inv.positionals)
 	switch c.sub {
 	case "new":
+		input := effort.NewInput{Slug: c.inv.values["--slug"], Title: selected}
 		if c.inv.bools["--no-worktree"] {
-			record, err := service.New(c.ctx, slug)
+			record, err := service.New(c.ctx, input)
 			if err != nil {
 				return err
 			}
 			absent := worktree.Result{Condition: "no managed worktree", ChangedTopology: false, NextAction: "continue the effort in " + service.InvokingRoot()}
 			return writeEffortNew(c.stdout, record, absent, c.inv.bools["--json"])
 		}
-		record, result, err := manager.NewEffort(c.ctx, slug, c.inv.values["--base"])
+		record, result, err := manager.NewEffort(c.ctx, input, c.inv.values["--base"])
 		if err != nil {
 			return err
 		}
@@ -118,17 +119,17 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 		}
 		return nil
 	case "show":
-		record, err := service.Show(slug)
+		record, err := service.Show(selected)
 		if err != nil {
 			return err
 		}
 		return writeEffort(c.stdout, record, c.inv.bools["--json"])
 	case "finish":
-		result, err := service.Finish(c.ctx, slug)
+		result, err := service.Finish(c.ctx, selected)
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(c.stdout, "effort %s finished; changed active rename: %s; changed cleanup: %s; next action: continue without this finished effort\n", slug, yesNo(result.Renamed), yesNo(result.Cleaned))
+		_, err = fmt.Fprintf(c.stdout, "effort %s finished; changed active rename: %s; changed cleanup: %s; next action: continue without this finished effort\n", selected, yesNo(result.Renamed), yesNo(result.Cleaned))
 		return err
 	case "worktree":
 		action, selected := c.inv.positionals[0], c.inv.positionals[1]
@@ -148,10 +149,10 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 		if err != nil {
 			return err
 		}
-		result, err := manager.Integrate(c.ctx, slug, gateCommand)
+		result, err := manager.Integrate(c.ctx, selected, gateCommand)
 		return writeWorktreeResult(c.stdout, result, err)
 	case "memory update":
-		return service.UpdateMemory(slug, effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")})
+		return service.UpdateMemory(selected, effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")})
 	case "activity attach", "activity heartbeat", "activity detach":
 		return writeActivityReply(c.stdout, runEffortActivity(c, service))
 	default:
@@ -218,6 +219,9 @@ func validateEffortGrammar(c *cmdCtx) error {
 		return validateEffortActivityGrammar(c)
 	}
 	if c.sub == "new" {
+		if _, ok := c.inv.values["--slug"]; !ok {
+			return &usageErr{"awf effort new: --slug is required"}
+		}
 		if c.inv.bools["--no-worktree"] && c.inv.values["--base"] != "" {
 			return &usageErr{"awf effort new: --base is invalid with --no-worktree"}
 		}

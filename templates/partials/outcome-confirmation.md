@@ -6,18 +6,21 @@ validation rules without title reconfirmation only while work remains within its
 a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
 effort.
 
-When no existing effort owns the outcome, present both fields:
+When no existing effort owns the outcome, propose a canonical short slug and present all three
+fields:
 
 `Outcome: <concrete non-minimal outcome>`
 `Effort title: <proposed title>`
+`Effort slug: <proposed-short-slug>`
 
 Ask the user to confirm creation, then end the turn without creating an effort, memory, branch, or
-managed worktree. Only a clear response in a later turn confirms the pair and permits
-`awf effort new "<confirmed title>"`. Agreement before the pair was presented does not confirm it.
-A requested change stays in discovery and receives a revised pair; an ambiguous response receives a
-focused clarification.
+managed worktree. Only a clear response in a later turn confirms all three fields and permits
+`awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Agreement before the three fields were
+presented does not confirm them. A requested change to any field stays in discovery and receives a
+revised three-field proposal; an ambiguous response receives a focused clarification about the
+outcome, title, and slug.
 
-If creation fails while the pair and its later confirming response remain available in conversational
-context, report the concrete failure and recovery action and retry without another confirmation. If
-context loss or session replacement makes that evidence unavailable, present and confirm the pair
-again before retrying creation.
+If creation fails while the three-field proposal and its later confirming response remain available
+in conversational context, report the concrete failure and recovery action and retry without another
+confirmation. If context loss or session replacement makes that evidence unavailable, present and
+confirm all three fields again before retrying creation.

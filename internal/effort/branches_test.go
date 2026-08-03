@@ -17,13 +17,13 @@ func TestEffortFocusedFailureBranches(t *testing.T) {
 	service := openTestService(t, root, func(deps *Dependencies) {
 		deps.UUID = func() (string, error) { return "bad", nil }
 	})
-	if _, err := service.New(testContext(t), "Invalid allocator"); err == nil || !strings.Contains(err.Error(), "invalid UUIDv4") {
+	if _, err := service.New(testContext(t), NewInput{Slug: "invalid-allocator", Title: "Invalid allocator"}); err == nil || !strings.Contains(err.Error(), "invalid UUIDv4") {
 		t.Fatalf("allocator error = %v", err)
 	}
 	service = openTestService(t, root, func(deps *Dependencies) {
 		deps.UUID = func() (string, error) { return "", errors.New("entropy") }
 	})
-	if _, err := service.New(testContext(t), "Allocator failure"); err == nil || !strings.Contains(err.Error(), "retry") {
+	if _, err := service.New(testContext(t), NewInput{Slug: "allocator-failure", Title: "Allocator failure"}); err == nil || !strings.Contains(err.Error(), "retry") {
 		t.Fatalf("allocation error = %v", err)
 	}
 	if _, err := service.Finish(testContext(t), "no-such-effort"); err == nil || !strings.Contains(err.Error(), "no active resident") {

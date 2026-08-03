@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -16,10 +17,125 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
+func writePersistedEffortFixture(t *testing.T, root, slug string) {
+	t.Helper()
+	resident := filepath.Join(root, ".awf", "efforts", slug)
+	if err := os.MkdirAll(resident, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	state := fmt.Sprintf(`{"schemaVersion":2,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":%q,"title":"Persisted resident","createdAt":"2026-08-03T00:00:00Z"}`, slug)
+	memory := fmt.Sprintf("---\neffort: %s\nphase: Persisted compatibility\nnext: Exercise resident operations\nupdated: %q\n---\n## Brief\n\nPersisted compatibility fixture.\n\n## Decision log\n\n## Observations\n\n## Handoff log\n", slug, "2026-08-03T00:00:00Z")
+	if err := os.WriteFile(filepath.Join(resident, "state.json"), []byte(state), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resident, "memory.md"), []byte(memory), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// invariant: tooling/effort-management:effort-record-authority (TestPersisted63ByteEffortRemainsOperable)
+func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
+	root := commandRepo(t)
+	slug := strings.Repeat("r", 63)
+	writePersistedEffortFixture(t, root, slug)
+
+	if shown := runEffortCommand(t, root, "show", []string{slug}, map[string]bool{"--json": true}); !strings.Contains(shown, slug) {
+		t.Fatalf("show omitted resident slug: %q", shown)
+	}
+	if listed := runEffortCommand(t, root, "list", nil, map[string]bool{"--json": true}); !strings.Contains(listed, slug) {
+		t.Fatalf("list omitted resident slug: %q", listed)
+	}
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "update", slug, "--phase", "Still operable")
+	if code != 0 || stdout != "" || stderr != "" {
+		t.Fatalf("memory update code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	owner := "128f47a0-7b3d-4c52-8f1a-123456789abc"
+	for _, args := range [][]string{
+		{"effort", "activity", "attach", slug, "--owner", owner, "--json"},
+		{"effort", "activity", "detach", slug, "--owner", owner, "--json"},
+	} {
+		code, stdout, stderr = runEffortCLI(t, root, args...)
+		if code != 0 || !strings.Contains(stdout, `"schemaVersion":2`) || stderr != "" {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
+		}
+	}
+	if output := runEffortCommand(t, root, "worktree", []string{"add", slug}, nil); !strings.Contains(output, slug) {
+		t.Fatalf("worktree add omitted slug: %q", output)
+	}
+	if output := runEffortCommand(t, root, "worktree", []string{"remove", slug}, nil); !strings.Contains(output, "managed worktree topology is absent") {
+		t.Fatalf("worktree remove did not settle topology: %q", output)
+	}
+	if output := runEffortCommand(t, root, "finish", []string{slug}, nil); !strings.Contains(output, "changed cleanup: yes") {
+		t.Fatalf("finish did not clean resident: %q", output)
+	}
+}
+
+// invariant: tooling/cli:effort-command-contract (TestEffortNewExplicitSlugGrammarAndFlagCombinations)
+func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
+	for _, args := range [][]string{
+		{"effort", "new", "--slug", "ordered-input", "--json", "Ordered title", "--no-worktree"},
+		{"effort", "new", "Ordered title", "--no-worktree", "--json", "--slug", "ordered-input"},
+		{"effort", "new", "--slug", "ordered-input", "--base", "HEAD", "Ordered title", "--json"},
+		{"effort", "new", "Ordered title", "--json", "--base", "HEAD", "--slug", "ordered-input"},
+	} {
+		root := commandRepo(t)
+		code, stdout, stderr := runEffortCLI(t, root, args...)
+		var reply struct {
+			SchemaVersion int           `json:"schemaVersion"`
+			Effort        effort.Record `json:"effort"`
+		}
+		decodeErr := json.Unmarshal([]byte(stdout), &reply)
+		if code != 0 || stderr != "" || decodeErr != nil || reply.SchemaVersion != 2 || reply.Effort.Slug != "ordered-input" || reply.Effort.Title != "Ordered title" {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q reply=%#v decode=%v", args, code, stdout, stderr, reply, decodeErr)
+		}
+	}
+	root := commandRepo(t)
+	composed := false
+	err := runEffort(&cmdCtx{
+		ctx:    testContext(t),
+		root:   root,
+		sub:    "new",
+		inv:    invocation{positionals: []string{"Missing slug"}, bools: map[string]bool{}, values: map[string]string{}},
+		stdout: &bytes.Buffer{},
+	}, func(_ context.Context, _ string) (effortComposition, error) {
+		composed = true
+		return effortComposition{}, errors.New("composer invoked")
+	})
+	if err == nil || !strings.Contains(err.Error(), "--slug is required") || composed {
+		t.Fatalf("missing slug err=%v composed=%t", err, composed)
+	}
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"effort", "new", "Missing slug"}, want: "--slug is required"},
+		{args: []string{"effort", "new", "Valueless slug", "--slug"}, want: "needs a value"},
+		{args: []string{"effort", "new", "--slug", "one", "Duplicate slug", "--slug", "two"}, want: "given more than once"},
+		{args: []string{"effort", "new", "--slug", "flag-title", "-title"}, want: "unknown flag"},
+	} {
+		code, stdout, stderr := runEffortCLI(t, root, test.args...)
+		if code == 0 || stdout != "" || !strings.Contains(stderr, test.want) {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q, want %q", test.args, code, stdout, stderr, test.want)
+		}
+	}
+	overlong := strings.Repeat("s", 33)
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
+	if code == 0 || stdout != "" || !strings.Contains(stderr, "1-32 bytes") || !strings.Contains(stderr, "changed bytes: no") || !strings.Contains(stderr, "--slug") {
+		t.Fatalf("33-byte slug code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", overlong)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("33-byte new slug changed residents: %v", err)
+	}
+	writePersistedEffortFixture(t, root, overlong)
+	if shown := runEffortCommand(t, root, "show", []string{overlong}, map[string]bool{"--json": true}); !strings.Contains(shown, overlong) {
+		t.Fatalf("same 33-byte persisted slug is not selectable: %q", shown)
+	}
+}
+
 // invariant: tooling/cli:effort-command-contract (TestEffortMemoryAndActivityCLIContract)
 func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 	root := commandRepo(t)
-	code, _, stderr := runEffortCLI(t, root, "effort", "new", "Demo", "--no-worktree")
+	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "demo", "Demo", "--no-worktree")
 	if code != 0 {
 		t.Fatalf("new: %d %s", code, stderr)
 	}
@@ -170,15 +286,28 @@ func runEffortCLI(t *testing.T, root string, args ...string) (int, string, strin
 	return code, stdout.String(), stderr.String()
 }
 
-func runEffortCommand(t *testing.T, root string, positionals []string, bools map[string]bool) string {
+func runNewEffortCommand(t *testing.T, root, slug, title string, bools map[string]bool) string {
 	t.Helper()
 	if bools == nil {
 		bools = map[string]bool{}
 	}
 	var out bytes.Buffer
-	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: positionals, bools: bools, values: map[string]string{}}, stdout: &out}
+	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{title}, bools: bools, values: map[string]string{"--slug": slug}}, stdout: &out}
 	if err := runEffort(ctx, openEffortComposition); err != nil {
 		t.Fatalf("awf effort new: %v", err)
+	}
+	return out.String()
+}
+
+func runEffortCommand(t *testing.T, root, sub string, positionals []string, bools map[string]bool) string {
+	t.Helper()
+	if bools == nil {
+		bools = map[string]bool{}
+	}
+	var out bytes.Buffer
+	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: invocation{positionals: positionals, bools: bools, values: map[string]string{}}, stdout: &out}
+	if err := runEffort(ctx, openEffortComposition); err != nil {
+		t.Fatalf("awf effort %s: %v", sub, err)
 	}
 	return out.String()
 }
@@ -270,7 +399,7 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 		t.Fatal("worktree writer error ignored")
 	}
 	for _, args := range [][]string{
-		{"effort", "new", "Command branches", "--no-worktree", "--json"},
+		{"effort", "new", "--slug", "command-branches", "Command branches", "--no-worktree", "--json"},
 		{"effort", "show", "command-branches"},
 		{"effort", "show", "command-branches", "--json"},
 		{"effort", "list"},
@@ -295,6 +424,9 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 		if sub != "list" {
 			inv.positionals = []string{"missing"}
 		}
+		if sub == "new" {
+			inv.values["--slug"] = "missing"
+		}
 		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: inv, stdout: effortErrorWriter{}}, openEffortComposition)
 		if sub == "list" && err == nil {
 			t.Fatal("list writer error ignored")
@@ -309,6 +441,7 @@ func TestRunEffortFailureDispatches(t *testing.T) {
 	}
 	newCtx := ctx("new", "Duplicate")
 	newCtx.inv.bools["--no-worktree"] = true
+	newCtx.inv.values["--slug"] = "duplicate"
 	if err := runEffort(newCtx, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}

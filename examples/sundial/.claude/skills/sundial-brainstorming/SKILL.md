@@ -17,7 +17,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 <!-- awf:edit procedure: default; create .awf/skills/parts/brainstorming/procedure.md to override -->
 ## Procedure
 
-A minimal simple fix uses no effort. Discovery creates no effort or shared memory. After the user confirms the labeled outcome and effort title and creation succeeds, carry the one effort slug and exact `.awf/efforts/<slug>/memory.md` path through the remaining steps; children receive them read-only and never edit shared memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives below.
+A minimal simple fix uses no effort. Discovery creates no effort or shared memory. After the user confirms the labeled outcome, effort title, and short effort slug and creation succeeds, carry the one effort slug and exact `.awf/efforts/<slug>/memory.md` path through the remaining steps; children receive them read-only and never edit shared memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives below.
 
 1. **Orient in the topic.** Invoke `sundial-orienting` and follow its ladder: guide-first grounding, delegated exploration where fitting, and managed context over the candidate files the work touches.
 
@@ -41,21 +41,24 @@ validation rules without title reconfirmation only while work remains within its
 a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
 effort.
 
-When no existing effort owns the outcome, present both fields:
+When no existing effort owns the outcome, propose a canonical short slug and present all three
+fields:
 
 `Outcome: <concrete non-minimal outcome>`
 `Effort title: <proposed title>`
+`Effort slug: <proposed-short-slug>`
 
 Ask the user to confirm creation, then end the turn without creating an effort, memory, branch, or
-managed worktree. Only a clear response in a later turn confirms the pair and permits
-`awf effort new "<confirmed title>"`. Agreement before the pair was presented does not confirm it.
-A requested change stays in discovery and receives a revised pair; an ambiguous response receives a
-focused clarification.
+managed worktree. Only a clear response in a later turn confirms all three fields and permits
+`awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Agreement before the three fields were
+presented does not confirm them. A requested change to any field stays in discovery and receives a
+revised three-field proposal; an ambiguous response receives a focused clarification about the
+outcome, title, and slug.
 
-If creation fails while the pair and its later confirming response remain available in conversational
-context, report the concrete failure and recovery action and retry without another confirmation. If
-context loss or session replacement makes that evidence unavailable, present and confirm the pair
-again before retrying creation.
+If creation fails while the three-field proposal and its later confirming response remain available
+in conversational context, report the concrete failure and recovery action and retry without another
+confirmation. If context loss or session replacement makes that evidence unavailable, present and
+confirm all three fields again before retrying creation.
 
 <!-- awf:edit design-sections: default; create .awf/skills/parts/brainstorming/design-sections.md to override -->
 5. **Present the design in sections**, getting approval after each section. Per `docs/maintainable-code-design.md`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision before approving an approach. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling (boundaries as relevant), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
@@ -82,7 +85,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 8. **Stop for approval, then suggest a next step.** The end of brainstorming, after the single-pass grounding check, is a mandatory approval check-in: complete the approval protocol below and do not continue until explicit user approval. If the user requests changes, revise the design and re-present it for approval without repeating the grounding check. Once approved, proposing an ADR is useful for a load-bearing decision, writing a plan is useful for complex implementation, and direct execution is useful for a small understood change.
 
 **Mandatory approval check-in.** This boundary requires explicit user approval:
-1. This boundary follows an already-confirmed non-minimal outcome and never creates missing ownership. Validate exactly one immutable slugged effort; if ownership is absent, stop and return to mandatory first-creation outcome/title confirmation. The effort always owns `.awf/efforts/<slug>/memory.md`.
+1. This boundary follows an already-confirmed non-minimal outcome and never creates missing ownership. Validate exactly one immutable slugged effort; if ownership is absent, stop and return to mandatory first-creation three-field confirmation. The effort always owns `.awf/efforts/<slug>/memory.md`.
 2. Validate the exact `<slug>` and owned path (a primary-root-relative spelling; the file lives under the primary checkout), confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), and continue in the effort's managed worktree when one exists. In its own writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate action pending approval>"`; it is the sole writer of phase, next action, and time. Separately append any unrecorded settled decision and observation.
 3. Present the completed work summary, explicitly request approval, and end the turn. Stop even when there is no concern to raise; this stop is the protocol, not a judgment call.
 4. If the user rejects or requests changes: revise, persist and commit as applicable, regenerate the summary, and request approval again. After explicit approval, persist the approval and next action before continuing, carrying the same slug and owned memory path. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. Then continue through the target-native successor without claiming session replacement. Authority precedence, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc's working-memory section.

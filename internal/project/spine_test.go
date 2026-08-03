@@ -1,15 +1,21 @@
 package project
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -885,7 +891,7 @@ func TestCheckpointDigestShape(t *testing.T) {
 	if strings.Count(body, "**Mandatory first-creation confirmation.**") != 1 {
 		t.Error("outcome confirmation partial must carry exactly one boundary header")
 	}
-	for _, want := range []string{"`Outcome: <concrete non-minimal outcome>`", "`Effort title: <proposed title>`", "clear response in a later turn", "awf effort new \"<confirmed title>\""} {
+	for _, want := range []string{"`Outcome: <concrete non-minimal outcome>`", "`Effort title: <proposed title>`", "`Effort slug: <proposed-short-slug>`", "clear response in a later turn", "awf effort new --slug <confirmed-slug> \"<confirmed-title>\""} {
 		if !strings.Contains(body, want) {
 			t.Errorf("outcome confirmation partial missing %q", want)
 		}
@@ -1711,6 +1717,226 @@ func TestAgentsDocGuide(t *testing.T) {
 	}
 }
 
+type effortSignatureFinding struct {
+	path     string
+	line     int
+	offset   int
+	contract string
+	lineText string
+}
+
+type effortSignaturePattern struct {
+	contract string
+	pattern  *regexp.Regexp
+}
+
+func effortSignaturePatterns() []effortSignaturePattern {
+	return []effortSignaturePattern{
+		{"title-only creation signature", regexp.MustCompile("awf effort " + `new[^<]*<(confirmed title|outcome|outcome-title)>`)},
+		{"title-derived creation guidance", regexp.MustCompile("[Ee]ffort (creation )?" + `deriv(e|es|ed|ing)[^\r\n]{0,40}slug`)},
+		{"title-derived creation guidance", regexp.MustCompile("[Dd]eriv" + `(e|es|ed|ing) an immutable slug`)},
+		{"two-field confirmation", regexp.MustCompile("outcome/title " + `(pair|confirmation)`)},
+		{"two-field confirmation", regexp.MustCompile("labeled outcome and " + `(proposed )?(effort )?title`)},
+		{"two-field confirmation", regexp.MustCompile("confirms? the " + `pair`)},
+		{"two-field confirmation", regexp.MustCompile("both " + `fields`)},
+	}
+}
+
+func activeEffortSignatureFindings(t *testing.T, root string) []effortSignatureFinding {
+	t.Helper()
+	patterns := effortSignaturePatterns()
+	var findings []effortSignatureFinding
+	scan := func(relative string, raw []byte) {
+		for _, candidate := range patterns {
+			for _, match := range candidate.pattern.FindAllIndex(raw, -1) {
+				lineStart := bytes.LastIndexByte(raw[:match[0]], '\n') + 1
+				lineEnd := bytes.IndexByte(raw[match[0]:], '\n')
+				if lineEnd < 0 {
+					lineEnd = len(raw)
+				} else {
+					lineEnd += match[0]
+				}
+				findings = append(findings, effortSignatureFinding{
+					path: relative, line: bytes.Count(raw[:match[0]], []byte("\n")) + 1,
+					offset: match[0], contract: candidate.contract, lineText: string(raw[lineStart:lineEnd]),
+				})
+			}
+		}
+	}
+	historical := func(relative string) bool {
+		return relative == "docs/decisions" || strings.HasPrefix(relative, "docs/decisions/") ||
+			relative == "docs/plans" || strings.HasPrefix(relative, "docs/plans/") ||
+			relative == "changelog" || strings.HasPrefix(relative, "changelog/")
+	}
+	scanRoot := func(relativeRoot string) {
+		start := filepath.Join(root, filepath.FromSlash(relativeRoot))
+		info, err := os.Lstat(start)
+		if os.IsNotExist(err) {
+			return
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !info.IsDir() {
+			raw, err := os.ReadFile(start)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scan(relativeRoot, raw)
+			return
+		}
+		testsupport.WalkRepoFiles(t, start, func(relative string) bool {
+			full := filepath.ToSlash(filepath.Join(relativeRoot, filepath.FromSlash(relative)))
+			resident := full == ".awf/efforts" || strings.HasPrefix(full, ".awf/efforts/") || strings.Contains(full, "/.awf/efforts/") ||
+				full == ".awf/worktrees" || strings.HasPrefix(full, ".awf/worktrees/") || strings.Contains(full, "/.awf/worktrees/")
+			return !historical(full) && !resident
+		}, func(relative string, raw []byte) {
+			scan(filepath.ToSlash(filepath.Join(relativeRoot, filepath.FromSlash(relative))), raw)
+		})
+	}
+	for _, relativeRoot := range []string{"cmd", "internal", ".awf/parts", ".awf/docs", ".awf/skills", ".awf/topics", "templates", "AGENTS.md", "README.md", "docs", ".pi", ".claude", "examples"} {
+		scanRoot(relativeRoot)
+	}
+	if entries, err := os.ReadDir(filepath.Join(root, "examples")); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			for _, hidden := range []string{".awf", ".pi", ".claude"} {
+				scanRoot(filepath.ToSlash(filepath.Join("examples", entry.Name(), hidden)))
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	sort.Slice(findings, func(i, j int) bool {
+		if findings[i].path != findings[j].path {
+			return findings[i].path < findings[j].path
+		}
+		if findings[i].offset != findings[j].offset {
+			return findings[i].offset < findings[j].offset
+		}
+		return findings[i].contract < findings[j].contract
+	})
+	return findings
+}
+
+func formatEffortSignatureFindings(findings []effortSignatureFinding) string {
+	var lines []string
+	for _, finding := range findings {
+		lines = append(lines, fmt.Sprintf("%s:%d:%d: %s", finding.path, finding.line, finding.offset, finding.contract))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func explicitSlugADRStatus(t *testing.T, root string) string {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(root, "docs", "decisions", "*require-explicit-short-effort-slugs.md"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("explicit-slug ADR matches = %v, err=%v", matches, err)
+	}
+	raw, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`(?m)^status: ([^\r\n]+)$`).FindSubmatch(raw)
+	if len(match) != 2 {
+		t.Fatalf("explicit-slug ADR has no status: %s", matches[0])
+	}
+	return string(match[1])
+}
+
+func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
+	root := filepath.Join("..", "..")
+	findings := activeEffortSignatureFindings(t, root)
+	switch status := explicitSlugADRStatus(t, root); status {
+	case "Implementing":
+		expectedPaths := []string{
+			".awf/topics/parts/rendering/workflow-skill-templates/current-state.md",
+			"docs/topics/rendering/workflow-skill-templates.md",
+		}
+		if len(findings) != len(expectedPaths) {
+			t.Fatalf("Implementing ADR requires exactly two active findings, got:\n%s", formatEffortSignatureFindings(findings))
+		}
+		for index, finding := range findings {
+			if finding.path != expectedPaths[index] || finding.contract != "two-field confirmation" {
+				t.Fatalf("unauthorized intermediate finding:\n%s", formatEffortSignatureFindings(findings))
+			}
+			if digest := fmt.Sprintf("%x", sha256.Sum256([]byte(finding.lineText))); digest != "5a3317a41dbd23aecdb54fdf4d2fc924a19b88e2f8600510b37d163540c0fa3e" {
+				t.Fatalf("intermediate claim passage changed at %s:%d (digest %s)", finding.path, finding.line, digest)
+			}
+		}
+	case "Implemented":
+		if len(findings) != 0 {
+			t.Fatalf("Implemented ADR requires zero active findings:\n%s", formatEffortSignatureFindings(findings))
+		}
+	default:
+		t.Fatalf("explicit-slug signature test does not permit ADR status %q", status)
+	}
+
+	fixture := t.TempDir()
+	writeFixture := func(path, body string) {
+		t.Helper()
+		full := filepath.Join(fixture, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		body     string
+		contract string
+	}{
+		{"awf effort " + "new <outcome-title>", "title-only creation signature"},
+		{"Effort creation " + "derives a slug", "title-derived creation guidance"},
+		{"Deriving" + " an immutable slug", "title-derived creation guidance"},
+		{"outcome/title " + "confirmation", "two-field confirmation"},
+		{"labeled outcome and " + "proposed effort title", "two-field confirmation"},
+		{"labeled outcome and " + "proposed title receive", "two-field confirmation"},
+		{"confirms the " + "pair", "two-field confirmation"},
+		{"both " + "fields", "two-field confirmation"},
+	}
+	var expected []string
+	for index, test := range cases {
+		path := fmt.Sprintf("cmd/stale-%d.md", index)
+		writeFixture(path, test.body)
+		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
+	}
+	multiplePath := "cmd/stale-multiple.md"
+	multiple := cases[5].body + " / " + cases[5].body + "\n" + cases[5].body
+	writeFixture(multiplePath, multiple)
+	secondOffset := len(cases[5].body) + len(" / ")
+	thirdOffset := secondOffset + len(cases[5].body) + 1
+	expected = append(expected,
+		fmt.Sprintf("%s:1:0: %s", multiplePath, cases[5].contract),
+		fmt.Sprintf("%s:1:%d: %s", multiplePath, secondOffset, cases[5].contract),
+		fmt.Sprintf("%s:2:%d: %s", multiplePath, thirdOffset, cases[5].contract),
+	)
+	for _, path := range []string{
+		"cmd/active.md", "internal/active.md",
+		".awf/parts/active.md", ".awf/docs/active.md", ".awf/skills/active.md", ".awf/topics/active.md",
+		"templates/active.md", "AGENTS.md", "README.md", "docs/active.md",
+		".pi/active.md", ".claude/active.md", "examples/demo/active.md",
+		"examples/demo/.awf/active.md", "examples/demo/.pi/active.md", "examples/demo/.claude/active.md",
+	} {
+		writeFixture(path, cases[0].body)
+		expected = append(expected, path+":1:0: "+cases[0].contract)
+	}
+	for _, path := range []string{
+		"docs/decisions/historical.md", "docs/plans/historical.md", "changelog/historical.md",
+		".awf/efforts/ignored.md", ".awf/worktrees/ignored.md",
+		"examples/demo/.awf/efforts/ignored.md", "examples/demo/.awf/worktrees/ignored.md",
+	} {
+		writeFixture(path, cases[0].body)
+	}
+	sort.Strings(expected)
+	if got := formatEffortSignatureFindings(activeEffortSignatureFindings(t, fixture)); got != strings.Join(expected, "\n") {
+		t.Fatalf("closed active-path diagnostics =\n%s\nwant\n%s", got, strings.Join(expected, "\n"))
+	}
+}
+
 // TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
 // detailed protocol home while guides and skills carry executable routing.
 // invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestWorkingMemorySingleHomeSurfaces)
@@ -1730,7 +1956,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		t.Fatal("generic workflow lost the Working memory boundary")
 	}
 	genericChain := workflow[:genericWorkingMemory]
-	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
 		if !strings.Contains(genericChain, want) {
 			t.Errorf("generic workflow chain confirmation route missing %q", want)
 		}
@@ -1758,12 +1984,12 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
 		}
 	}
-	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm the pair again before retrying creation"} {
+	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "`Effort slug:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm all three fields again before retrying creation"} {
 		if !strings.Contains(workflow, want) {
 			t.Errorf("workflow confirmation contract missing %q", want)
 		}
 	}
-	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
 		if !strings.Contains(guide, want) {
 			t.Errorf("guide confirmation route missing %q", want)
 		}
@@ -1777,7 +2003,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		return string(raw)
 	}
 	projectGuide := readProjectSurface("AGENTS.md")
-	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
 		if !strings.Contains(projectGuide, want) {
 			t.Errorf("committed project guide confirmation route missing %q", want)
 		}
@@ -1788,7 +2014,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		t.Fatal("committed project workflow lost the Working memory boundary")
 	}
 	projectChain := projectWorkflow[:workingMemory]
-	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
 		if !strings.Contains(projectChain, want) {
 			t.Errorf("committed project workflow chain confirmation route missing %q", want)
 		}
