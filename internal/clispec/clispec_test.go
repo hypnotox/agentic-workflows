@@ -144,7 +144,7 @@ func TestLookup(t *testing.T) {
 	for i, action := range activity.Children {
 		activityNames[i] = action.Name
 	}
-	if !found || strings.Join(activityNames, ",") != "resolve,attach,heartbeat,checkout,detach" {
+	if !found || strings.Join(activityNames, ",") != "attach,heartbeat,detach" {
 		t.Fatalf("effort activity spec = %#v, found %v", activity, found)
 	}
 	for _, action := range activity.Children {

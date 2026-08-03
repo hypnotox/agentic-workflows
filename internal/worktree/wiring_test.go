@@ -238,10 +238,7 @@ func newEffortService(t *testing.T, roots awfgit.ControlRoots, uuid func() (stri
 		BranchExists: repo.BranchExists,
 		ValidateRef:  repo.ValidateRefName,
 		RemoveTree:   os.RemoveAll,
-		ResolveCheckout: func(context.Context, string) (effort.CheckoutFacts, error) {
-			return effort.CheckoutFacts{InvokingRoot: roots.InvokingRoot, PrimaryRoot: roots.PrimaryRoot}, nil
-		},
-		Fault: fault,
+		Fault:        fault,
 	})
 	if err != nil {
 		t.Fatal(err)

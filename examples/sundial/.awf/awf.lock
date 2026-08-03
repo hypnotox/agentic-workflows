@@ -238,21 +238,21 @@
     },
     ".pi/extensions/awf-context-usage/index.ts": {
       "templateId": "pi/awf-context-usage/index.ts.tmpl",
-      "templateHash": "sha256:c246fa8a79ef5c134781a128a00de3c1edbb88dc2d5ae023692552a99f673a19",
+      "templateHash": "sha256:781862cbf9e5a89266aeef23b466393bdf891cd575ff15c36894fb6e841dd405",
       "configHash": "sha256:8d293a30ced3e4d0760c5832f7def9e5cc8ea1c1c6a1b70afa84f4f21ceda4e6",
-      "outputHash": "sha256:4216d4296eda188170bd82d29bb5a639f08203544b2715470722735172400028"
+      "outputHash": "sha256:104d9ce2a2675e251af17f15bccccbb797cedfa1e8c827cfa7ed5a693a81ce3b"
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
-      "templateHash": "sha256:16d51acd35f2aaa89130319e7e497643c2602e12115dc5f43379d05f53ec4c64",
+      "templateHash": "sha256:d036612c3ceaa2ee110de3c811d4cde1adf58acb4aa5403fef3c1a1a125026e1",
       "configHash": "sha256:8d293a30ced3e4d0760c5832f7def9e5cc8ea1c1c6a1b70afa84f4f21ceda4e6",
-      "outputHash": "sha256:e75c271db2f101686f5736cb4b2b28db318ee08e870623230aff565654b72e8e"
+      "outputHash": "sha256:8bc309b2ff07f8e830b887ba893582bf902a80e3e86092c45972b815c73110bb"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:572e83bfd88f840a38903edd7ecc3861c243d06a01cbead51f118ed3ab74ef9b",
+      "templateHash": "sha256:4080a45889e301b037cbecb0270e40d5e482d00feed7bba7df0c431c1f39497b",
       "configHash": "sha256:8d293a30ced3e4d0760c5832f7def9e5cc8ea1c1c6a1b70afa84f4f21ceda4e6",
-      "outputHash": "sha256:8e89378e6429ec216fe971796375f3f779564d8dce1287247b36607d9f68ad34"
+      "outputHash": "sha256:555e32dca847e1fd65993ce3509804096ba80f71ad0fff54d85a6e333338a90b"
     },
     ".pi/extensions/awf-subagents/model-routing.ts": {
       "templateId": "pi/awf-subagents/model-routing.ts.tmpl",
