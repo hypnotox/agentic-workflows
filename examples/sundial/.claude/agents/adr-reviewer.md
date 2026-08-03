@@ -48,15 +48,13 @@ When the brief carries pasted consensus entries (user-provenance decision-log en
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
 Apply all lenses to every ADR:
 
-1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
+1. **decision-clarity**: each Decision item must be a discrete durable commitment that remains meaningful after implementation; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items). Apply the post-implementation test (does it still constrain the project after delivery?) and the counterfactual test (could it change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?). A mechanism is valid only when the ADR explains why the mechanism itself is load-bearing. Treat paths, commands, task order, rollout batches, ordinary test transactions, and comparable executor instructions as plan content; report a misplaced directive as a reasoned finding, not a mechanical format failure.
 
 1. **state-changes-fidelity**: the `State changes` section must be `None.` or a list whose every entry names one claim by a valid `<domain>/<topic>:<slug>` id and picks the operation (add, update, remove) that matches the Decision's intent; a rename is remove plus add. Flag an operation whose destination topic does not exist, an id named more than once, a re-add of a removed id, or a claim the Decision describes changing that is missing an operation. A claim the ADR adds is a rule or an invariant; an invariant claim must state how it will be backed. Backed invariant claims are proven by a test annotation at `./internal/...`.
 
 1. **alternatives-honesty**: no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
 
 1. **consequences-honesty**: tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
-
-1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
 
 1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; batches preserve declaration order and ascending ADR-number, intra-ADR position order; each batch and its current-claim truth are one checked pair.
 
@@ -66,7 +64,7 @@ Apply all lenses to every ADR:
 
 <!-- awf:edit project-focus: default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->
 
-**decision-clarity**: each Decision item is a discrete, implementable commitment a reader could act on without further consultation
+**decision-clarity**: each Decision item is a durable commitment that remains meaningful after implementation; apply post-implementation and counterfactual tests, allow a mechanism only when it is itself load-bearing, and route executor instructions to the plan as reasoned findings
 
 
 **consequences-honesty**: trade-offs name real costs and operational implications, not straw men
@@ -75,18 +73,6 @@ Apply all lenses to every ADR:
 **claim-topic-cohesion**: each claim this ADR adds belongs in the topic its State changes names: it answers the same question that topic's existing claims answer, rather than landing there because the topic is adjacent or convenient. Flag a destination that gives its topic a second subject, and name the subject the claim belongs to instead. Judge by subject, never by how many claims the topic already holds.
 
 
-
-## Doc-currency checklist
-
-<!-- awf:edit doc-currency: default; create .awf/agents/parts/adr-reviewer/doc-currency.md to override -->
-For each item below, flag a finding if the gating condition is met AND the ADR does not commit (in its body) to a same-commit update of the listed artifact:
-
-- every document that states the behaviour this ADR changes is updated in the same commit
-- the decision index is regenerated when the ADR's status changes
-- every claim named in the ADR's `State changes` is authored to match in the same Implemented commit: an `add` claim carries this ADR as `Origin`, an `update` appends it to `Revised-by` and changes a canonical field, and a `remove` leaves no active claim
-- each `State changes` operation's destination topic metadata exists before the ADR is Accepted, an empty topic shell for a pending add
-
-When the ADR status will land as Accepted or Implemented: a task regenerating `docs/decisions/INDEX.md` must be present. Regen command: `./awf render`.
 
 ## Dedup rule
 

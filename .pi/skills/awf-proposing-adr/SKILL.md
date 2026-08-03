@@ -15,7 +15,7 @@ Writes a new ADR to `docs/decisions/NNNN-kebab-title.md` (status `Proposed`) and
 ## When to invoke
 
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/proposing-adr/when-to-invoke.md to override -->
-Per `docs/workflow.md`: load-bearing decisions only, one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
+Per `docs/workflow.md`: load-bearing decisions only, one ADR per decision. A Decision commitment remains meaningful after implementation and passes the post-implementation and counterfactual tests; a mechanism belongs only when the ADR explains why the mechanism itself is load-bearing. Route implementation directives to the plan. Bugfixes and routine refactors do not need an ADR. When in doubt, consult the ADR guide rather than expanding the record into a task list.
 
 Load-bearing triggers include:
 - Introducing a new internal package or changing package boundaries
@@ -32,7 +32,7 @@ When grounding is stale - the ADR will cite repository facts not verified in the
 - **Identity by branch:** `awf new adr` numbers the record on the integration branch and leaves it pending anywhere else, which is where authoring normally happens. Never reuse a number, and never hand-number a pending record: `awf adr number` does that at integration.
 - **Filename:** `NNNN-kebab-title.md` when numbered, `kebab-title.md` while pending.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `docs/decisions/template.md`; never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** exactly four keys, `format` (`current-state-v3`), `slug` (derived from the title, retained forever, never edited by hand), `status` (`Proposed`, the initial state), and `date` (today, ISO-8601). There is no `tags`, `related`, or `domains` key: the affected topics and domains are derived from the `State changes` operations.
+- **Required frontmatter:** preserve exactly the frontmatter emitted by `awf new adr`. The running binary's activation registry owns the current authoring format; never substitute a remembered literal marker. The scaffold emits exactly four keys: `format`, `slug` (derived from the title, retained forever, never edited by hand), `status` (`Proposed`, the initial state), and `date` (today, ISO-8601). There is no `tags`, `related`, or `domains` key: the affected topics and domains are derived from the `State changes` operations.
 - **Required sections:** Context, Decision, State changes, Consequences, Alternatives Considered, Status history, in that order. Delete the authoring checklist before committing.
 - **No predecessor flip:** ADRs are never active authority, so nothing is superseded. A decision that changes an earlier one declares the change as a `State changes` operation on the affected claim, not a status flip on the earlier ADR.
 
@@ -46,7 +46,7 @@ This skill requires the one existing confirmed effort and its exact owned memory
 <!-- awf:edit procedure-write: default; create .awf/skills/parts/proposing-adr/procedure-write.md to override -->
 2. **Fill in every section** of the scaffolded file:
    - **Context:** the problem, couplings, prior discoveries. For a structural decision, preserve the settled model and ownership, boundaries, dependency direction, constraints, and enabling work from `docs/maintainable-code-design.md` here and in Decision; do not replace them with a pattern name. Mutable while `Proposed`.
-   - **Decision:** numbered items, each a discrete commitment. Numbers order the decision for the reader; no machine treats them as anchors.
+   - **Decision:** numbered items, each a discrete durable commitment that remains meaningful after implementation. Apply the post-implementation and counterfactual tests; keep paths, commands, task order, rollout batches, and ordinary test transactions in the plan. Numbers order the decision for the reader; no machine treats them as anchors.
    - **State changes:** see the next step.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.

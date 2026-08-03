@@ -6,7 +6,7 @@ description: Use before any non-trivial {{ .prefix }} work (new feature, refacto
 # {{ .prefix }}-brainstorming
 
 <!-- awf:section preamble -->
-The project's brainstorming skill. The design lands in the ADR (if load-bearing) or the plan (if not), never in a separate spec document.
+The project's brainstorming skill. A durable choice that remains meaningful after implementation lands in the ADR; implementation directives land in the plan; unsettled analysis stays in effort memory. Never create a separate spec document.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -67,7 +67,7 @@ A minimal simple fix uses no effort. Discovery creates no effort or shared memor
 <!-- awf:section definitions -->
 ## Definitions
 
-- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory.{{ with .data.loadBearingExamples }} Examples specific to this project:{{ range . }} {{ .item }};{{ end }}{{ end }} See `{{ .layout.adrReadme }}` "When to write an ADR".
+- **"Load-bearing"** means the project must remember this decision after implementation is complete. Apply the post-implementation and counterfactual tests: a mechanism belongs in an ADR only when changing it would violate the intended boundary and the design explains why the mechanism itself is load-bearing. Examples: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory.{{ with .data.loadBearingExamples }} Examples specific to this project:{{ range . }} {{ .item }};{{ end }}{{ end }} See `{{ .layout.adrReadme }}` "When to write an ADR".
 - **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `{{ .layout.workflowRef }}`.
 <!-- awf:end -->
 

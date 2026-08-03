@@ -211,6 +211,26 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 		assertBoundaryDoesNotCreate(target+" ADR final approval", reviewingADR, "**Mandatory approval check-in.**")
 		writingPlans := readSkill("writing-plans")
 		assertBoundaryDoesNotCreate(target+" routine checkpoint", writingPlans, "**Routine checkpoint.**")
+		for _, want := range []string{"implementation directives", "paths, commands, task order, rollout batches, and ordinary test transactions"} {
+			if !strings.Contains(writingPlans, want) {
+				t.Errorf("%s writing-plans missing decision routing %q", target, want)
+			}
+		}
+		proposingADR := readSkill("proposing-adr")
+		for _, want := range []string{"remains meaningful after implementation", "preserve exactly the frontmatter emitted by `awf new adr`"} {
+			if !strings.Contains(proposingADR, want) {
+				t.Errorf("%s proposing-adr missing decision routing %q", target, want)
+			}
+		}
+		reviewer := readExample(filepath.Join(target, "agents", "adr-reviewer.md"))
+		for _, want := range []string{"post-implementation", "counterfactual", "mechanism itself is load-bearing", "reasoned finding"} {
+			if !strings.Contains(reviewer, want) {
+				t.Errorf("%s ADR reviewer missing semantic routing %q", target, want)
+			}
+		}
+		if strings.Contains(reviewer, "## Doc-currency checklist") {
+			t.Errorf("%s ADR reviewer retains implementation-inventory checklist", target)
+		}
 
 		discoveryBoundaries := map[string]string{
 			"debugging":          "5. **Isolate with a failing test",
@@ -262,7 +282,7 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 		}
 	}
 	guide := readExample("AGENTS.md")
-	for _, want := range []string{"proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+	for _, want := range []string{"proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome", "Route settled content by authority lifetime"} {
 		if !strings.Contains(guide, want) {
 			t.Errorf("sundial guide missing %q", want)
 		}

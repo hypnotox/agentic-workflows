@@ -2,10 +2,7 @@
 # Implementation Plans
 
 <!-- awf:edit intro: default; create .awf/parts/plans-readme/intro.md to override -->
-A plan is the step-by-step execution record for a complex change: reviewable tasks, exact file
-paths and commands, and qualifying implementation-ready detail by default, with exact content for
-contract-bearing work. The design rationale lives in the linked ADR (when one exists); a plan links to it
-(structurally, via its `adrs:` frontmatter) rather than restating it.
+A plan is the step-by-step execution record for a complex change and the authoritative home of implementation directives: reviewable tasks, exact file paths and commands, task order, rollout batches, ordinary test transactions, and qualifying implementation-ready detail by default, with exact content for contract-bearing work. The design rationale lives in the linked ADR (when one exists); a plan links to it structurally through `adrs:` rather than restating it. If planning discovers a new durable choice that remains meaningful after implementation, return to ADR authoring instead of hiding that choice in a task.
 
 <!-- awf:edit naming: default; create .awf/parts/plans-readme/naming.md to override -->
 ## Naming & location

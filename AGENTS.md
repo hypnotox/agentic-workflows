@@ -84,6 +84,8 @@ Every governed subagent dispatch chooses the smallest model expected to complete
 
 Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
 
+Route settled content by authority lifetime: durable choices that remain meaningful after implementation belong in ADRs, active rules and invariants in current-state topics, implementation directives in plans, and unsettled or transient context in effort memory.
+
 Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->

@@ -9,15 +9,13 @@ Independent, lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`.
 <!-- awf:section universal-lenses -->
 Apply all lenses to every ADR:
 
-1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
+1. **decision-clarity**: each Decision item must be a discrete durable commitment that remains meaningful after implementation; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items). Apply the post-implementation test (does it still constrain the project after delivery?) and the counterfactual test (could it change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?). A mechanism is valid only when the ADR explains why the mechanism itself is load-bearing. Treat paths, commands, task order, rollout batches, ordinary test transactions, and comparable executor instructions as plan content; report a misplaced directive as a reasoned finding, not a mechanical format failure.
 
 1. **state-changes-fidelity**: the `State changes` section must be `None.` or a list whose every entry names one claim by a valid `<domain>/<topic>:<slug>` id and picks the operation (add, update, remove) that matches the Decision's intent; a rename is remove plus add. Flag an operation whose destination topic does not exist, an id named more than once, a re-add of a removed id, or a claim the Decision describes changing that is missing an operation. A claim the ADR adds is a rule or an invariant; an invariant claim must state how it will be backed.{{ with .vars.invariantTestPath }} Backed invariant claims are proven by a test annotation at `{{ . }}`.{{ end }}
 
 1. **alternatives-honesty**: no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
 
 1. **consequences-honesty**: tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
-
-1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
 
 1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; batches preserve declaration order and ascending ADR-number, intra-ADR position order; each batch and its current-claim truth are one checked pair.
 
@@ -31,16 +29,6 @@ Apply all lenses to every ADR:
 **{{ .name }}**: {{ .description }}
 
 {{ end }}{{ end }}
-<!-- awf:end -->
-
-## Doc-currency checklist
-
-<!-- awf:section doc-currency -->
-{{ with .data.docCurrencyItems }}For each item below, flag a finding if the gating condition is met AND the ADR does not commit (in its body) to a same-commit update of the listed artifact:
-
-{{ range . }}- {{ .check }}
-{{ end }}{{ end }}
-When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .layout.indexMd }}` must be present. Regen command: `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} render{{ end }}`.
 <!-- awf:end -->
 
 <!-- awf:include review-spine-tail -->

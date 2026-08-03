@@ -109,14 +109,6 @@ func TestAdrReviewerAgent(t *testing.T) {
 					"description": "Verify factual claims in the Context section against named files, ADRs, and state docs; flag stale claims and drift since brainstorm.",
 				},
 			},
-			"docCurrencyItems": []map[string]any{
-				{"check": "each State changes claim is authored to match in the same Implemented commit"},
-				{"check": "each operation's destination topic metadata exists before the ADR is Accepted"},
-				{"check": "docs/workflow.md - update when ADR changes a workflow rule"},
-				{"check": "AGENTS.md - update when ADR changes chain, principles, or invariants"},
-				{"check": "Frontmatter completeness: format, status, date"},
-				{"check": "docs/decisions/INDEX.md - regenerate when status lands as Accepted or Implemented"},
-			},
 		},
 	}
 
@@ -140,6 +132,10 @@ func TestAdrReviewerAgent(t *testing.T) {
 		}
 	}
 	for _, phrase := range []string{
+		"post-implementation",
+		"counterfactual",
+		"mechanism itself is load-bearing",
+		"reasoned finding",
 		"structural-design",
 		"docs/maintainable-code-design.md",
 		"semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract",
@@ -149,6 +145,11 @@ func TestAdrReviewerAgent(t *testing.T) {
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected structural-design phrase %q in output:\n%s", phrase, out)
+		}
+	}
+	for _, banned := range []string{"doc-currency (ADR-level)", "## Doc-currency checklist", "same-commit update of the listed artifact"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("ADR reviewer retains implementation-inventory requirement %q:\n%s", banned, out)
 		}
 	}
 }
@@ -943,6 +944,8 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"nonempty JSON `Applying:` or `Context:` array",
 		"stable `dod: <slug>` bullets",
 		"frozen `#N` only for pre-V4 Decision prose",
+		"implementation directives",
+		"paths, commands, task order, rollout batches, and ordinary test transactions",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1339,11 +1342,19 @@ func TestProposingAdrTemplate(t *testing.T) {
 		"Consequences",
 		"status: Proposed",
 		"example-reviewing-adr",
+		"remains meaningful after implementation",
+		"post-implementation",
+		"counterfactual",
+		"mechanism itself is load-bearing",
+		"preserve exactly the frontmatter emitted by `awf new adr`",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
+	}
+	if strings.Contains(out, "Required frontmatter: exactly four keys, `format` (`current-state-v3`)") {
+		t.Errorf("proposing guidance chooses a stale literal format:\n%s", out)
 	}
 }
 
@@ -1441,6 +1452,8 @@ func TestBrainstormingTemplate(t *testing.T) {
 		"2-3 approaches",
 		"Load-bearing",
 		"Anti-patterns",
+		"remains meaningful after implementation",
+		"implementation directives",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1665,7 +1678,7 @@ func TestAgentsDocGuide(t *testing.T) {
 		"## Workflow",
 		"## Commands",
 		"## Document map",
-
+		"Route settled content by authority lifetime",
 		"make gate",
 	} {
 		if !strings.Contains(out, phrase) {
@@ -2003,7 +2016,7 @@ var unsetFallbackCases = []fallbackCase{
 	// invariant: rendering/workflow-skill-templates:reviewers-report-only (agents/adr-reviewer.md.tmpl)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
-		want: []string{"Regen command: `awf render`."},
+		want: []string{"post-implementation", "counterfactual", "reasoned finding"},
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
@@ -2027,7 +2040,8 @@ var unsetFallbackCases = []fallbackCase{
 		tmpl: "skills/brainstorming/SKILL.md.tmpl",
 		want: []string{
 			"hard prerequisite for any non-trivial change",
-			"The design lands in the ADR (if load-bearing) or the plan (if not)",
+			"remains meaningful after implementation lands in the ADR",
+			"implementation directives land in the plan",
 		},
 	},
 	{

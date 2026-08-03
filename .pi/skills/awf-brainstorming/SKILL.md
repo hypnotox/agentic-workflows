@@ -7,7 +7,7 @@ description: Use before any non-trivial awf work (new feature, refactor, bug inv
 # awf-brainstorming
 
 <!-- awf:edit preamble: default; create .awf/skills/parts/brainstorming/preamble.md to override -->
-The project's brainstorming skill. The design lands in the ADR (if load-bearing) or the plan (if not), never in a separate spec document.
+The project's brainstorming skill. A durable choice that remains meaningful after implementation lands in the ADR; implementation directives land in the plan; unsettled analysis stays in effort memory. Never create a separate spec document.
 
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/brainstorming/when-to-invoke.md to override -->
 ## When to invoke
@@ -85,7 +85,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 <!-- awf:edit definitions: default; create .awf/skills/parts/brainstorming/definitions.md to override -->
 ## Definitions
 
-- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. See `docs/decisions/README.md` "When to write an ADR".
+- **"Load-bearing"** means the project must remember this decision after implementation is complete. Apply the post-implementation and counterfactual tests: a mechanism belongs in an ADR only when changing it would violate the intended boundary and the design explains why the mechanism itself is load-bearing. Examples: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. See `docs/decisions/README.md` "When to write an ADR".
 - **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `docs/workflow.md`.
 
 <!-- awf:edit anti-patterns: default; create .awf/skills/parts/brainstorming/anti-patterns.md to override -->
