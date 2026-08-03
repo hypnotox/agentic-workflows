@@ -121,6 +121,51 @@ test("association lifecycle covers idle turns, malformed heartbeat facts, and se
   assert.equal(lastText(await request(serial, { effort: "demo" })), "Attached to demo.");
 });
 
+test("using_effort serializes overlapping invocations in invocation order", async () => {
+  let releaseFirst!: () => void;
+  let firstStarted!: () => void;
+  const firstSettled = new Promise<void>(resolve => { releaseFirst = resolve; });
+  const firstInvoked = new Promise<void>(resolve => { firstStarted = resolve; });
+  const tools = new Map<string, any>(); const calls: string[][] = [];
+  const pi: any = { registerTool: (tool: any) => tools.set(tool.name, tool), exec: async (_: string, args: string[]) => {
+    calls.push(args); if (calls.length === 1) { firstStarted(); await firstSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
+    if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
+    return { code: 0, stdout: line(success("attached", OWNER, "second")), stderr: "" };
+  } };
+  registerEffort(pi, { uuid: () => OWNER, isDirectory: async () => false });
+  const execute = tools.get("using_effort").execute;
+  const first = execute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  await firstInvoked;
+  const second = execute("second", { effort: "second" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  assert.deepEqual(calls.map(args => args[2]), ["attach"], "second binary invocation began before the first settled");
+  releaseFirst();
+  assert.equal(lastText(await first), "Attached to first.");
+  assert.equal(lastText(await second), "Attached to second.");
+  assert.deepEqual(calls.map(args => args[2]), ["attach", "detach", "attach"]);
+
+  let releaseFailure!: () => void;
+  let failureStarted!: () => void;
+  const failureSettled = new Promise<void>(resolve => { releaseFailure = resolve; });
+  const failureInvoked = new Promise<void>(resolve => { failureStarted = resolve; });
+  const failureTools = new Map<string, any>(); const failureHooks = new Map<string, any>(); const failureCalls: string[][] = [];
+  const failurePi: any = { registerTool: (tool: any) => failureTools.set(tool.name, tool), on: (name: string, hook: any) => failureHooks.set(name, hook), exec: async (_: string, args: string[]) => {
+    failureCalls.push(args); if (failureCalls.length === 1) { failureStarted(); await failureSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
+    if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
+    return { code: 0, stdout: line(refusal("missing")), stderr: "" };
+  } };
+  registerEffort(failurePi, { uuid: () => OWNER, isDirectory: async () => false });
+  const failureExecute = failureTools.get("using_effort").execute;
+  const attached = failureExecute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  await failureInvoked;
+  const refused = failureExecute("second", { effort: "second" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  assert.deepEqual(failureCalls.map(args => args[2]), ["attach"], "failed switch began before the first attach settled");
+  releaseFailure();
+  await attached;
+  assert.match(lastText(await refused), /operation/);
+  assert.deepEqual(failureCalls.map(args => args[2]), ["attach", "detach", "attach"]);
+  assert.equal(failureHooks.get("context")({ messages: [] }, { cwd: "/repo" }), undefined, "refused switch retained the detached prior association");
+});
+
 test("remote Pi capability, replay, publication failures, restart, and shutdown remain advisory", async () => {
   let defaultTool: any; const standalone: any = { exec: async (_: string, argv: string[]) => ({ stdout: line(success("attached", argv[5], argv[3])) }), registerTool: (tool: any) => { defaultTool = tool } }; effortExtension(standalone); // default factory is intentionally usable
   await mkdir("/tmp/.awf/worktrees/demo", { recursive: true });

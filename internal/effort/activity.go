@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 const activitySchemaVersion = 2
@@ -109,8 +111,19 @@ func refusalForObserved(operation activityOperation, condition ActivityCondition
 	r.Outcome = &ActionableOutcome{Category: "operation", Condition: observed, ChangedActivity: changedActivityForFailure(operation, cause), NextActions: next}
 	if storage != nil {
 		r.Outcome.Cause = storage.Error()
+	} else if activityReadMechanismFailure(cause) {
+		r.Outcome.Cause = cause.Error()
 	}
 	return r
+}
+
+// activityReadMechanismFailure separates OS read failures from semantic and
+// safety observations without inspecting error prose.
+func activityReadMechanismFailure(err error) bool {
+	var resident *residentReadError
+	var path *os.PathError
+	var unsafe *awfgit.HardSafetyError
+	return errors.As(err, &resident) || (!errors.As(err, &unsafe) && (errors.As(err, &path) || errors.Is(err, os.ErrNotExist) || errors.Is(err, os.ErrPermission)))
 }
 
 func activityObservedCondition(condition ActivityCondition) string {
@@ -131,7 +144,7 @@ func activityObservedCondition(condition ActivityCondition) string {
 func activityRecoveryActions(condition ActivityCondition) []string {
 	switch condition {
 	case ActivityNotOwner:
-		return []string{"confirm the active session owner", "detach the conflicting session"}
+		return []string{"confirm the active session owner", "attach this session owner to take over"}
 	case ActivityMissing:
 		return []string{"inspect the requested effort resident", "restore the requested effort"}
 	case ActivityInvalidMemory:
@@ -282,7 +295,7 @@ func (s *Service) activityEffort(slug string, operation activityOperation) (*Act
 	}
 	raw, err := readRegularNoFollowBounded(s.paths.memoryFile(slug), maxMemoryBytes)
 	if err != nil {
-		x := invalidMemoryRefusal(operation, slug, err, true)
+		x := invalidMemoryRefusal(operation, slug, err, activityReadMechanismFailure(err))
 		return nil, nil, &x
 	}
 	m, _, err := readMemoryMetadata(raw, slug)
@@ -298,7 +311,7 @@ func invalidMemoryRefusal(operation activityOperation, slug string, err error, r
 		observed = "the effort memory cannot be read"
 	}
 	r := refusalForObserved(operation, ActivityInvalidMemory, nil, observed, []string{"inspect .awf/efforts/" + slug + "/memory.md", "repair .awf/efforts/" + slug + "/memory.md manually"})
-	if readFailure {
+	if readFailure && activityReadMechanismFailure(err) {
 		r.Outcome.Cause = err.Error()
 	}
 	return r

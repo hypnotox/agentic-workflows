@@ -454,6 +454,17 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 					t.Errorf("%s/%s must retain one-writer stale-checkpoint correction", target, name)
 				}
 			}
+			if name == "effort-workflow" {
+				for _, branch := range []string{
+					"runtime that supplies explicit effort paths may remain at the repository root",
+					"target the exact existing `.awf/worktrees/<slug>` worktree by path",
+					"runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree",
+				} {
+					if !strings.Contains(body, branch) {
+						t.Errorf("%s/%s missing runtime branch %q", target, name, branch)
+					}
+				}
+			}
 			if role != "first-creation-discovery" && strings.Contains(body, "awf effort new") {
 				t.Errorf("%s/%s (%s) must not create an effort", target, name, role)
 			}

@@ -2182,7 +2182,7 @@ func TestEffortWorkflowTemplate(t *testing.T) { TestEffortWorkflowSkillContract(
 // invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
 func TestEffortWorkflowSkillContract(t *testing.T) {
 	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "native persistent checkout or context tooling", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
+	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "runtime that supplies explicit effort paths may remain at the repository root", "target the exact existing `.awf/worktrees/<slug>` worktree by path", "runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("effort-workflow missing %q", phrase)
 		}
@@ -2227,9 +2227,38 @@ func TestEffortWorkflowSkillContract(t *testing.T) {
 	if string(after) != string(before) {
 		t.Errorf("existing config selection changed during sync:\n%s", after)
 	}
-	for _, rel := range []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
+	companion := []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"}
+	for _, rel := range companion {
 		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
 			t.Errorf("existing config without explicit enablement rendered %s: %v", rel, err)
+		}
+	}
+	selected := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
+	selectedProject, err := Open(testContext(t), selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := selectedProject.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range companion {
+		if _, err := os.Stat(filepath.Join(selected, rel)); err != nil {
+			t.Errorf("selected Pi effort workflow omitted %s: %v", rel, err)
+		}
+	}
+	if err := os.WriteFile(configPath(selected), []byte("prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	selectedProject, err = Open(testContext(t), selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := selectedProject.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range companion {
+		if _, err := os.Stat(filepath.Join(selected, rel)); !os.IsNotExist(err) {
+			t.Errorf("non-Pi/pruned effort workflow retained %s: %v", rel, err)
 		}
 	}
 	plan := p.ResolveEnable("skill", "effort-workflow")

@@ -43,6 +43,52 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 			t.Fatalf("%s envelope %#v", action, reply)
 		}
 	}
+	// Every handled refusal has the closed three-key envelope, and only a
+	// genuine resident-read failure carries cause at this JSON boundary.
+	decode := func(args ...string) map[string]json.RawMessage {
+		t.Helper()
+		code, stdout, stderr := runEffortCLI(t, root, args...)
+		if code != 0 || stderr != "" {
+			t.Fatalf("%v: code=%d stderr=%q", args, code, stderr)
+		}
+		var reply map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(stdout), &reply); err != nil {
+			t.Fatal(err)
+		}
+		return reply
+	}
+	assertRefusal := func(condition string, cause bool, args ...string) {
+		t.Helper()
+		reply := decode(args...)
+		if got := string(reply["condition"]); got != `"`+condition+`"` || len(reply) != 3 {
+			t.Fatalf("%s envelope = %#v", condition, reply)
+		}
+		var outcome map[string]json.RawMessage
+		if err := json.Unmarshal(reply["outcome"], &outcome); err != nil {
+			t.Fatal(err)
+		}
+		if len(outcome) != map[bool]int{true: 5, false: 4}[cause] || outcome["changedActivity"] == nil || (outcome["cause"] != nil) != cause {
+			t.Fatalf("%s outcome = %#v", condition, outcome)
+		}
+	}
+	other := "00000000-0000-4000-8000-000000000002"
+	decode("effort", "activity", "attach", "demo", "--owner", owner, "--json")
+	assertRefusal("not-owner", false, "effort", "activity", "heartbeat", "demo", "--owner", other, "--json")
+	decode("effort", "activity", "detach", "demo", "--owner", owner, "--json")
+	assertRefusal("missing", false, "effort", "activity", "heartbeat", "demo", "--owner", owner, "--json")
+	if err := os.WriteFile(filepath.Join(root, ".awf", "efforts", "demo", "memory.md"), []byte("broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assertRefusal("invalid-memory", false, "effort", "activity", "attach", "demo", "--owner", owner, "--json")
+	if err := os.Remove(filepath.Join(root, ".awf", "efforts", "demo", "memory.md")); err != nil {
+		t.Fatal(err)
+	}
+	assertRefusal("invalid-memory", true, "effort", "activity", "attach", "demo", "--owner", owner, "--json")
+	if err := os.WriteFile(filepath.Join(root, ".awf", "efforts", "demo", "activity.json"), []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assertRefusal("unsafe-resident", false, "effort", "activity", "detach", "demo", "--owner", owner, "--json")
+
 	for _, args := range [][]string{
 		{"effort", "activity", "attach", "Bad", "--owner", owner, "--json"},
 		{"effort", "activity", "attach", strings.Repeat("a", 64), "--owner", owner, "--json"},

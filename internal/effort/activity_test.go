@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +123,7 @@ func TestActivityV2StorageAndResidentBoundaries(t *testing.T) {
 	service.store.fault = nil
 }
 
+// invariant: tooling/effort-management:effort-record-authority (TestActivityV2SafeRecoveryAndRefusals)
 func TestActivityV2SafeRecoveryAndRefusals(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
@@ -186,6 +188,7 @@ func TestActivityV2SafeRecoveryAndRefusals(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority (TestActivityV2MutationAndPublicationBoundaries)
 func TestActivityV2MutationAndPublicationBoundaries(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
@@ -239,6 +242,7 @@ func TestActivityV2MutationAndPublicationBoundaries(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority (TestActivityV2AdditionalSafetyBranches)
 func TestActivityV2AdditionalSafetyBranches(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
@@ -396,20 +400,29 @@ func TestActivityV2Refusals(t *testing.T) {
 }
 
 func TestActivityV2RefusalActionsAndMemoryCausesArePrecise(t *testing.T) {
-	for _, condition := range []ActivityCondition{ActivityNotOwner, ActivityMissing, ActivityInvalidMemory, ActivityUnsafeResident} {
-		for _, action := range activityRecoveryActions(condition) {
-			if strings.Contains(action, "retry") || strings.Contains(action, " and ") {
-				t.Fatalf("%s action is not independently executable: %q", condition, action)
-			}
-		}
+	if got, want := activityRecoveryActions(ActivityNotOwner), []string{"confirm the active session owner", "attach this session owner to take over"}; !slices.Equal(got, want) {
+		t.Fatalf("not-owner recovery = %q, want %q", got, want)
 	}
-	mechanism := invalidMemoryRefusal(activityAttach, "demo", errors.New("permission denied"), true)
-	if mechanism.Outcome == nil || mechanism.Outcome.Condition != "the effort memory cannot be read" || mechanism.Outcome.Cause != "permission denied" {
+	mechanismErr := &os.PathError{Op: "open", Path: "memory.md", Err: os.ErrPermission}
+	if !activityReadMechanismFailure(&residentReadError{errors.New("state read failed")}) {
+		t.Fatal("resident read mechanism was not classified")
+	}
+	if got := refusalFor(activityHeartbeat, ActivityUnsafeResident, mechanismErr); got.Outcome == nil || got.Outcome.Cause != mechanismErr.Error() {
+		t.Fatalf("activity read mechanism cause = %#v", got)
+	}
+	mechanism := invalidMemoryRefusal(activityAttach, "demo", mechanismErr, true)
+	if mechanism.Outcome == nil || mechanism.Outcome.Condition != "the effort memory cannot be read" || mechanism.Outcome.Cause != mechanismErr.Error() {
 		t.Fatalf("memory read failure = %#v", mechanism)
 	}
 	semantic := invalidMemoryRefusal(activityAttach, "demo", errors.New("invalid header"), false)
 	if semantic.Outcome == nil || semantic.Outcome.Condition != "the effort memory metadata is invalid" || semantic.Outcome.Cause != "" {
 		t.Fatalf("invalid memory = %#v", semantic)
+	}
+	for _, err := range []error{errors.New("invalid JSON"), safety("symlink", "activity.json", nil)} {
+		got := refusalFor(activityHeartbeat, ActivityUnsafeResident, err)
+		if got.Outcome == nil || got.Outcome.Cause != "" {
+			t.Fatalf("semantic/safety read cause = %#v", got)
+		}
 	}
 	identity := &activityPublicationRefusal{Operation: activityAttach, Err: errors.New("changed")}
 	if got := serviceRefusalForTest(identity); got.Outcome == nil || got.Outcome.Condition != "the activity publication identity changed" {
