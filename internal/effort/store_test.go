@@ -85,7 +85,7 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 			t.Fatalf("memory skeleton missing %q:\n%s", phrase, memory)
 		}
 	}
-	if _, err := service.New(testContext(t), NewInput{Slug: "zeta-result", Title: "Zeta result"}); err == nil || !strings.Contains(err.Error(), "collides") || !strings.Contains(err.Error(), "changed bytes: no") {
+	if _, err := service.New(testContext(t), NewInput{Slug: "zeta-result", Title: "Zeta result"}); err == nil || !strings.Contains(err.Error(), "collides") || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "choose a distinct explicit slug") || !strings.Contains(err.Error(), "retry `awf effort new --slug \"zeta-result\" \"Zeta result\"`") || strings.Contains(err.Error(), "distinct outcome title") {
 		t.Fatalf("collision error = %v", err)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", ".lock")); !errors.Is(err, os.ErrNotExist) {

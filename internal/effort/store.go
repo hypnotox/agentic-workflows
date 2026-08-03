@@ -78,13 +78,13 @@ func validateNewSlug(ctx context.Context, validateRef func(context.Context, stri
 	}
 	// The ref probe runs once at minting time. Resident reads intentionally use
 	// only validateSlug so listing never forks Git once per effort.
-	ref := "refs/heads/awf/" + slug
-	valid, err := validateRef(ctx, ref)
+	branch := "awf/" + slug
+	valid, err := validateRef(ctx, branch)
 	if err != nil {
 		return fmt.Errorf("validate Git ref for explicit effort slug %q: %w; changed bytes: no; next action: repair the Git installation and retry with `--slug %q`", slug, err, slug)
 	}
 	if !valid {
-		return newSlugRefusal(ref + " is not a valid Git ref")
+		return newSlugRefusal("refs/heads/" + branch + " is not a valid Git ref")
 	}
 	return nil
 }
@@ -155,7 +155,8 @@ func (s store) hit(stage string) error {
 	return nil
 }
 
-func (s store) reserve(slug string) (string, error) {
+func (s store) reserve(record Record) (string, error) {
+	slug := record.Slug
 	if err := s.paths.ensure(s.paths.efforts); err != nil {
 		return "", fmt.Errorf("prepare efforts root: %w", err)
 	}
@@ -171,7 +172,7 @@ func (s store) reserve(slug string) (string, error) {
 			if _, statErr := os.Lstat(s.paths.stateFile(slug)); statErr == nil {
 				condition = "an active effort already exists"
 			}
-			return "", fmt.Errorf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct outcome title or inspect %s", slug, condition, dir)
+			return "", fmt.Errorf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", slug, condition, slug, record.Title, dir)
 		}
 		return "", fmt.Errorf("reserve effort directory %s: %w", dir, err) // coverage-ignore: ensure and tombstone enumeration just proved the parent usable; a non-collision failure requires a concurrent namespace or storage fault
 	}
@@ -182,7 +183,7 @@ func (s store) reserve(slug string) (string, error) {
 }
 
 func (s store) create(record Record) error {
-	dir, err := s.reserve(record.Slug)
+	dir, err := s.reserve(record)
 	if err != nil {
 		return err
 	}

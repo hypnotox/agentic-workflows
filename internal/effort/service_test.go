@@ -391,6 +391,23 @@ func TestSlugMintingReportsAnUnusableRefName(t *testing.T) {
 	}
 }
 
+func TestSlugMintingProbesTheExpectedBranchExactlyOnce(t *testing.T) {
+	root := initEffortRepo(t)
+	var probed []string
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.ValidateRef = func(_ context.Context, branch string) (bool, error) {
+			probed = append(probed, branch)
+			return true, nil
+		}
+	})
+	if _, err := service.New(testContext(t), NewInput{Slug: "probe-once", Title: "Probe once"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(probed) != 1 || probed[0] != "awf/probe-once" {
+		t.Fatalf("ref probes = %q, want exactly [awf/probe-once]", probed)
+	}
+}
+
 func TestNewUsesExplicitIndependentIdentity(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(deps *Dependencies) {

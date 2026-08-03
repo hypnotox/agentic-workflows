@@ -86,8 +86,8 @@ func TestOutcomeTitleByteBound(t *testing.T) {
 	if _, err := normalizeTitle(strings.Repeat("a", 161)); err == nil || !strings.Contains(err.Error(), "160") {
 		t.Fatalf("161-byte title accepted or unclear: %v", err)
 	}
-	// Many multi-byte runes collapse to one hyphen, so the derived slug is tiny
-	// while the title is far past the bound.
+	// Multi-byte title content is validated independently from the explicit
+	// ASCII slug, so its own byte boundary must reject this value.
 	overlong := strings.Repeat("界", 80) + " ok"
 	if _, err := normalizeTitle(overlong); err == nil {
 		t.Fatal("overlong multi-byte title accepted")

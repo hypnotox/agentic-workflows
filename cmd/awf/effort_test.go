@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -112,14 +113,65 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	}
 }
 
-func TestEffortNewExplicitSlugGrammar(t *testing.T) {
+// invariant: tooling/effort-management:effort-record-authority (TestPersisted63ByteEffortRemainsOperable)
+func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
+	root := commandRepo(t)
+	slug := strings.Repeat("r", 63)
+	resident := filepath.Join(root, ".awf", "efforts", slug)
+	if err := os.MkdirAll(resident, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	state := fmt.Sprintf(`{"schemaVersion":2,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":%q,"title":"Persisted resident","createdAt":"2026-08-03T00:00:00Z"}`, slug)
+	memory := fmt.Sprintf("---\neffort: %s\nphase: Persisted compatibility\nnext: Exercise resident operations\nupdated: %q\n---\n## Brief\n\nPersisted compatibility fixture.\n\n## Decision log\n\n## Observations\n\n## Handoff log\n", slug, "2026-08-03T00:00:00Z")
+	if err := os.WriteFile(filepath.Join(resident, "state.json"), []byte(state), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resident, "memory.md"), []byte(memory), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if shown := runEffortCommand(t, root, "show", []string{slug}, map[string]bool{"--json": true}); !strings.Contains(shown, slug) {
+		t.Fatalf("show omitted resident slug: %q", shown)
+	}
+	if listed := runEffortCommand(t, root, "list", nil, map[string]bool{"--json": true}); !strings.Contains(listed, slug) {
+		t.Fatalf("list omitted resident slug: %q", listed)
+	}
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "update", slug, "--phase", "Still operable")
+	if code != 0 || stdout != "" || stderr != "" {
+		t.Fatalf("memory update code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	owner := "128f47a0-7b3d-4c52-8f1a-123456789abc"
+	for _, args := range [][]string{
+		{"effort", "activity", "attach", slug, "--owner", owner, "--cwd", root, "--role", "receiving", "--receiving-checkout", root, "--json"},
+		{"effort", "activity", "detach", slug, "--owner", owner, "--json"},
+	} {
+		code, stdout, stderr = runEffortCLI(t, root, args...)
+		if code != 0 || !strings.Contains(stdout, `"schemaVersion":1`) || stderr != "" {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
+		}
+	}
+	if output := runEffortCommand(t, root, "worktree", []string{"add", slug}, nil); !strings.Contains(output, slug) {
+		t.Fatalf("worktree add omitted slug: %q", output)
+	}
+	if output := runEffortCommand(t, root, "worktree", []string{"remove", slug}, nil); !strings.Contains(output, "managed worktree topology is absent") {
+		t.Fatalf("worktree remove did not settle topology: %q", output)
+	}
+	if output := runEffortCommand(t, root, "finish", []string{slug}, nil); !strings.Contains(output, "changed cleanup: yes") {
+		t.Fatalf("finish did not clean resident: %q", output)
+	}
+}
+
+// invariant: tooling/cli:effort-command-contract (TestEffortNewExplicitSlugGrammarAndFlagCombinations)
+func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 	root := commandRepo(t)
 	for _, args := range [][]string{
-		{"effort", "new", "--slug", "before-title", "Before title", "--no-worktree"},
-		{"effort", "new", "After title", "--no-worktree", "--slug", "after-title"},
+		{"effort", "new", "--slug", "before-title", "--json", "Before title", "--no-worktree"},
+		{"effort", "new", "After title", "--no-worktree", "--json", "--slug", "after-title"},
+		{"effort", "new", "--slug", "before-base", "--base", "HEAD", "Before base", "--json"},
+		{"effort", "new", "After base", "--json", "--base", "HEAD", "--slug", "after-base"},
 	} {
 		code, stdout, stderr := runEffortCLI(t, root, args...)
-		if code != 0 || stdout == "" || stderr != "" {
+		if code != 0 || !strings.Contains(stdout, `"schemaVersion":2`) || stderr != "" {
 			t.Fatalf("%q code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
 		}
 	}
