@@ -36,7 +36,7 @@ Applying: ["require-explicit-short-effort-slugs:require-explicit-slug", "require
 Paths: ["internal/effort/types_test.go", "internal/effort/service_test.go", "internal/effort/store_test.go", "internal/effort/branches_test.go", "internal/effort/activity_test.go", "internal/effort/memory_metadata_test.go", "internal/effort/memory_test.go", "internal/effort/safety_test.go", "internal/worktree/manager_test.go", "cmd/awf/effort_test.go", "cmd/awf/effort_worktree_test.go", "cmd/awf/main_test.go", "cmd/awf/gate_test.go", "internal/clispec/clispec_test.go"]
 Representative: "Replace title-only creation calls with named `effort.NewInput{Slug: ..., Title: ...}` values and assert that the supplied slug, not a title transformation, becomes record identity, resident path, worktree path, and branch suffix."
 Edge: "Prove 1- and 32-byte new slugs succeed, a 33-byte new slug fails without mutation, a persisted canonical 63-byte resident still loads and finishes, Unicode-only titles succeed with an explicit ASCII slug, and malformed grammar, invalid Git refs, collisions, allocator failures, and rollback retain actionable identity-specific errors."
-Post-check: "After Task 1.3 supplies the production API, `go test ./internal/effort ./internal/worktree ./internal/clispec ./cmd/awf -run 'Test.*(Effort|Slug|New|Worktree|ParseArgs|CommandSpec)'` passes; `rg -n 'service\\.New\\([^,]+, [^e]|NewEffort\\([^,]+, [^e]' internal cmd` has no title-only creation caller."
+Post-check: "`go test ./internal/effort ./internal/worktree ./internal/clispec ./cmd/awf -run 'Test.*(Effort|Slug|New|Worktree|ParseArgs|CommandSpec)'` exits nonzero only because the new `NewInput` API and required `--slug` behavior are not implemented yet; its output names that missing contract and contains no unrelated failure. Record this expected red state. Task 1.3 reruns the same package set to a passing terminal state after production consumers land."
 
 Update the existing derivation table into two explicit policy tables rather than retaining a helper
 whose name implies derivation. The new-creation table must cover empty, uppercase, underscore,
@@ -246,6 +246,11 @@ Latitude: exact
 Applying: ["require-explicit-short-effort-slugs:gate-signature-drift", "require-explicit-short-effort-slugs:prove-boundaries"]
 Paths: ["internal/project/spine_test.go"]
 
+Before modifying Phase 2 files, rerun Task 1.4's path-limited tracked search over the complete closed
+active policy and require zero stale sites. If it reports any active site, stop with Phase 2
+unchanged and return that source/output to Phase 1 ownership; do not expand Phase 2 into conditional
+source cleanup.
+
 Add one deterministic repository-surface test using the file-reading and project-root helpers already
 owned by `internal/project` tests. Encode the ADR's closed policy exactly:
 
@@ -293,26 +298,19 @@ changing activity authority or checkout semantics. Verify the rendered template 
 extension remain identical after render. Use the project runner's Pi lane rather than invoking an
 unversioned host tool.
 
-### Task 2.3: Re-run synchronization and publish deterministic coverage
-Kind: batch
-Latitude: exact
-Applying: ["require-explicit-short-effort-slugs:synchronize-active-signatures", "require-explicit-short-effort-slugs:gate-signature-drift", "require-explicit-short-effort-slugs:render-lifecycle-index"]
-Paths: ["README.md", ".awf/parts/", ".awf/docs/", ".awf/skills/", ".awf/topics/", "templates/", "AGENTS.md", "docs/", ".pi/", ".claude/", "examples/", ".awf/awf.lock"]
-Representative: "Run the new active-surface test after rendering and inspect its stable zero-finding result alongside representative root and adopter outputs."
-Edge: "Confirm old signatures remain untouched and discoverable only in excluded historical roots; do not rewrite history to make an unrestricted grep empty."
-Post-check: "`./x render && ./x check` is clean; the closed-root signature test has zero findings; `git diff --check`, focused Go tests, and the Pi extension lane pass; `git status --short` lists only intended Phase 2 test/source and render-derived changes."
-
-Run `./x render` after all test and source changes. If the new audit finds an active stale site, update
-its owning authoring source or direct current file, render again, and keep the path in the closed
-policy; never add a file exemption. Inspect the generated Pi/Claude extension and brainstorming
-skills plus Sundial outputs. Keep the ADR at Implementing and do not mutate the final
-`unified-effort-workflow-coverage` claim in this phase.
-
 ### Phase close
 
-Stage the complete deterministic-coverage transaction explicitly. Verify no ADR status/history or
-current-state claim mutation is staged. Run `awf check staged` and `./x gate`; both must pass with
-clean drift and 100% coverage. Create one commit:
+Run `./x render` and require a no-op render with `./x check` clean; Phase 2 introduces tests, not new
+active authoring or generated output. Run the closed-root signature test and inspect its stable
+zero-finding result alongside representative root and adopter outputs. Confirm old signatures remain
+untouched and discoverable only in excluded historical roots; do not rewrite history to make an
+unrestricted grep empty.
+
+Stage the complete deterministic-coverage transaction explicitly. Verify no ADR status/history,
+current-state claim mutation, active guidance source, or render-derived output is staged. Run
+`git diff --check`, focused Go tests, the Pi extension lane, `awf check staged`, and `./x gate`; every
+command must pass with clean drift and 100% coverage. `git status --short` must list only intended
+Phase 2 test changes. Create one commit:
 
 ```commit
 test(rendering): gate explicit effort slug signatures
