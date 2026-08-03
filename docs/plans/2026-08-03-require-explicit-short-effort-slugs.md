@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-03
 adrs: [require-explicit-short-effort-slugs]
-status: Proposed
+status: Implemented
 ---
 # Plan: Require Explicit Short Effort Slugs
 
