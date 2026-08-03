@@ -1947,6 +1947,14 @@ the decision's content is still open. (The original note about a terminal event 
 repeating a `state-sequence` retired with the global sequence itself in ADR-0191; Applied
 events carry operations only.)
 
+This recurred on 2026-08-03 when ADR review requested one direct Implemented transaction
+containing implementation, documentation, claims, and the terminal flip. Plan authoring
+caught that such a commit cannot be independently reviewed before it freezes the ADR. ADR
+and plan authors must model two boundaries explicitly: pre-review implementation commits
+carry their matching tests and behavior documentation, then the settled terminal review
+authorizes the deferred claim/status flip. Never satisfy same-commit documentation advice
+by moving the terminal flip ahead of review.
+
 ## In a managed worktree, a primary-checkout path silently splits the transaction
 
 _Domains: tooling_

@@ -42,7 +42,7 @@ func TestEffortGrammarIsClosedAndHasNoForceSurface(t *testing.T) {
 func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	root := commandRepo(t)
 	managed := filepath.Join(root, ".awf", "worktrees", "default-cli")
-	text := runEffortCommand(t, root, "new", []string{"Default CLI"}, nil)
+	text := runEffortCommand(t, root, []string{"Default CLI"}, nil)
 	wantText := "effort default-cli title=\"Default CLI\" memory=.awf/efforts/default-cli/memory.md worktree=" + managed + " branch=awf/default-cli\n" +
 		"managed worktree added for default-cli; changed topology: yes; next action: continue the effort in " + managed + "\n"
 	if text != wantText {
@@ -55,7 +55,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 		t.Fatal("managed branch absent")
 	}
 
-	createdJSON := runEffortCommand(t, root, "new", []string{"JSON CLI"}, map[string]bool{"--json": true})
+	createdJSON := runEffortCommand(t, root, []string{"JSON CLI"}, map[string]bool{"--json": true})
 	var created struct {
 		Worktree *effortWorktreeFacts `json:"worktree"`
 	}
@@ -67,7 +67,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 		t.Fatalf("default new JSON worktree = %#v, want %q on awf/json-cli", created.Worktree, jsonManaged)
 	}
 
-	absent := runEffortCommand(t, root, "new", []string{"Opted out"}, map[string]bool{"--no-worktree": true})
+	absent := runEffortCommand(t, root, []string{"Opted out"}, map[string]bool{"--no-worktree": true})
 	wantAbsent := "effort opted-out title=\"Opted out\" memory=.awf/efforts/opted-out/memory.md worktree=none\n" +
 		"no managed worktree; changed topology: no; next action: continue the effort in " + root + "\n"
 	if absent != wantAbsent {
@@ -76,7 +76,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "worktrees", "opted-out")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("--no-worktree created topology: %v", err)
 	}
-	absentJSON := runEffortCommand(t, root, "new", []string{"Opted out JSON"}, map[string]bool{"--json": true, "--no-worktree": true})
+	absentJSON := runEffortCommand(t, root, []string{"Opted out JSON"}, map[string]bool{"--json": true, "--no-worktree": true})
 	if !strings.Contains(absentJSON, `"worktree":null`) {
 		t.Fatalf("--no-worktree JSON = %q, want an explicit null worktree", absentJSON)
 	}
@@ -151,7 +151,7 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := commandRepo(t)
-	runEffortCommand(t, root, "new", []string{"CLI worktree"}, map[string]bool{"--no-worktree": true})
+	runEffortCommand(t, root, []string{"CLI worktree"}, map[string]bool{"--no-worktree": true})
 	var output bytes.Buffer
 	add := &cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"add", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}
 	if err := runEffort(add, openEffortComposition); err != nil {

@@ -6,6 +6,6 @@ description: Explicitly associate this Pi session with one awf effort.
 
 # Using an effort in Pi
 
-Use `using_effort` explicitly with an effort slug and destination `managed` or `receiving`. Supply an absolute receiving checkout when first attaching from a managed worktree. The tool keeps the same conversation while Pi rebinds its live CWD.
+Use `using_effort` explicitly as `{ effort: "<canonical-slug>" }` to attach or `{ detach: true }` to detach. Pi remains at repository root; use the supplied relative memory and managed-worktree paths for effort work.
 
-A takeover is advisory and proceeds. Heartbeat, metadata, and temporary peer-name information are advisory only: activity is neither authority nor a lock. Use `detach: true` to remove this session's claim without moving CWD.
+A takeover is advisory and proceeds. Heartbeat, metadata, and temporary peer-name information are advisory only: activity is neither authority nor a lock. Restart begins detached.

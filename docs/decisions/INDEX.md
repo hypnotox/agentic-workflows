@@ -229,3 +229,4 @@ _No decisions are in flight._
 - [ADR-0222: Require confirmed outcomes before effort creation](0222-require-confirmed-outcomes-before-effort-creation.md) (Implemented)
 - [ADR-0223: Capability-planned execution for multi-step systems](0223-capability-planned-execution-for-multi-step-systems.md) (Implemented)
 - [ADR-0224: Decision Artifact Routing Boundaries](0224-decision-artifact-routing-boundaries.md) (Implemented)
+- [ADR-0225: Simplify Pi effort association around fixed repository paths](0225-simplify-pi-effort-association-around-fixed-repository-paths.md) (Implemented)
