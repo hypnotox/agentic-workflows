@@ -39,6 +39,13 @@ would create a second normalization policy in Go, and makes a purportedly exact 
 predictable. The useful conventions are instead batch evaluation against original content, unique
 matches, non-overlap, familiar diagnostics, and diff facts.
 
+Concurrent work is standardizing ordinary command presentation around one closed syntax renderer,
+model-owner semantic mappings, and an explicit set of byte-exact protocol bypasses. Effort memory
+operations intersect that boundary: owner-free output is ordinary presentation, while owner-scoped
+JSON exists because the generated Pi tools require a machine protocol. This decision must build on
+the settled shared presentation boundary rather than introduce another local output grammar or let
+required protocol JSON be mistaken for the optional convenience modes that work removes.
+
 This changes terminal ADR-0225 forward through current-state claims. Its history is not rewritten.
 
 ## Decision
@@ -79,26 +86,63 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
 
    `--owner` is optional, nonrepeatable, and valid only with `--json`; its presence selects the
    advisory owner check. Owner-free forms retain ordinary direct-command semantics. Edit reads one
-   closed JSON object from stdin containing exactly `edits`, with 1 through 128 exact
-   `{oldText,newText}` objects, nonempty `oldText`, decoded strings individually bounded by the
-   one-MiB memory limit, and a 16-MiB transport limit. Read selection is capped at 2,000 lines or
+   closed JSON object from stdin with this literal shape:
+
+   ```json
+   {"edits":[{"oldText":"nonempty string","newText":"string"}]}
+   ```
+
+   The object contains no additional properties and contains 1 through 128 edit objects with no
+   additional properties. Each decoded string is individually bounded by the one-MiB memory limit,
+   and the complete stdin request is bounded to 16 MiB. Read selection is capped at 2,000 lines or
    50 KiB after honoring its optional line limit.
 
-   JSON mode writes exactly one newline-terminated protocol-1 envelope. Every envelope has only
-   `schemaVersion` and a stable `condition` plus its condition-specific facts. `read` carries exact
-   `memory`, `content`, and `range` facts; range contains start, end, total, nullable next offset,
-   and truncation kind `none`, `limit`, `lines`, or `bytes`. `edited` carries exact `memory`,
-   replacement count, and a 50-KiB-bounded diff with first changed line and truncation fact.
-   `updated` carries exact `memory`. Memory facts contain exactly effort, phase, next, and updated.
+   JSON mode writes exactly one newline-terminated protocol-1 envelope, with stdout bounded to one
+   MiB and stderr bounded to 50 KiB. Every memory fact uses a canonical slug through 63 bytes,
+   phase and next strings through 500 bytes, and an updated value that is either RFC3339Nano UTC or
+   the exact legacy `Not yet updated.` sentinel. A successful read has exactly this shape, where
+   every line fact is a positive integer, `nextOffset` is a positive integer or null, and
+   `truncatedBy` is exactly `none`, `limit`, `lines`, or `bytes`:
+
+   ```json
+   {"schemaVersion":1,"condition":"read","memory":{"effort":"slug","phase":"text","next":"text","updated":"RFC3339Nano UTC"},"content":"text","range":{"startLine":1,"endLine":1,"totalLines":1,"nextOffset":null,"truncatedBy":"none"}}
+   ```
+
+   A successful edit has exactly the following shape. `replacementCount` is an integer from 1
+   through 128, `diff.text` is a string bounded to 50 KiB, `firstChangedLine` is a positive integer
+   or null for a body no-op, and `truncated` is boolean:
+
+   ```json
+   {"schemaVersion":1,"condition":"edited","memory":{"effort":"slug","phase":"text","next":"text","updated":"RFC3339Nano UTC"},"replacementCount":1,"diff":{"text":"text","firstChangedLine":1,"truncated":false}}
+   ```
+
+   A successful update has exactly this shape:
+
+   ```json
+   {"schemaVersion":1,"condition":"updated","memory":{"effort":"slug","phase":"text","next":"text","updated":"RFC3339Nano UTC"}}
+   ```
 
    Handled refusal conditions are `not-owner`, `missing`, `unsafe-activity`, `invalid-memory`,
    `unsafe-memory`, `no-match`, `ambiguous-match`, `overlapping-edits`, `result-too-large`, and
-   `memory-failure`. A refusal carries only an actionable `operation` outcome with a present-tense
-   observed condition, `changedMemory`, ordered independently executable next actions, and a cause
-   exactly for mechanism failure. Match refusals additionally carry only the relevant edit index,
-   occurrence count, conflicting indexes, or byte bounds. `changedMemory` is false unless a
-   durability failure occurs after atomic replacement. Malformed grammar or stdin, invalid bounds,
-   and failures before managed state is observed use nonzero exit, empty stdout, and bounded
+   `memory-failure`. Every refusal has exactly `schemaVersion`, `condition`, and `outcome`, except
+   for the condition-specific extra fact stated below. `outcome` has exactly string
+   `category:"operation"`, nonempty present-tense string `condition` through 4 KiB, boolean
+   `changedMemory`, and `nextActions` containing 1 through 8 nonempty strings through 4 KiB each.
+   Only `memory-failure` adds a nonempty string `cause` through 50 KiB to `outcome`; every other
+   condition forbids it. The base refusal shape is:
+
+   ```json
+   {"schemaVersion":1,"condition":"not-owner","outcome":{"category":"operation","condition":"observed state","changedMemory":false,"nextActions":["independently executable action"]}}
+   ```
+
+   `no-match` adds exactly `"edit":{"index":0}`. `ambiguous-match` adds exactly
+   `"edit":{"index":0,"occurrences":2}`. `overlapping-edits` adds exactly
+   `"edits":{"firstIndex":0,"secondIndex":1}`. `result-too-large` adds exactly
+   `"size":{"bytes":1048577,"maxBytes":1048576}`. Indexes and byte counts are nonnegative
+   integers, and an occurrence count is an integer greater than one. No other refusal carries an
+   extra fact. `changedMemory` is false for every refusal except `memory-failure` after atomic
+   replacement, where it is true. Handled refusals exit zero. Malformed grammar or stdin, invalid
+   bounds, and failures before managed state is observed use nonzero exit, empty stdout, and bounded
    actionable stderr. Human mode uses the same typed results and refusals through effort-package
    rendering. The generated client owns a bounded, timeout-aware, cancellation-aware child process
    for edit stdin and strictly validates every reply; it never reads or writes the effort resident
@@ -120,22 +164,32 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
 
 7. `decision: cohesive-runtime-boundary` Preserve the existing ownership split. The Go effort
    package owns resident safety, activity-owner comparison, memory parsing, exact body matching,
-   clocking, atomic publication, typed outcomes, and human rendering. Command code owns grammar,
-   stdin and JSON transport, renderer selection, and exit mapping. The generated client owns
-   bounded invocation and strict protocol decoding. The generated index owns association state,
-   dynamic activation, local serialization, file-queue participation, transient context, and
-   Remote Pi publication. The Pi target alone derives these tools from selected `effort-workflow`;
-   no non-Pi target names or renders them.
+   clocking, atomic publication, typed outcomes, and the semantic mapping for human output. The
+   repository's shared presentation authority owns ordinary text syntax and rendering. Command code
+   owns grammar, stdin and JSON transport, presentation-versus-protocol selection, stream choice,
+   and exit mapping. The generated client owns bounded invocation and strict protocol decoding.
+   The generated index owns association state, dynamic activation, local serialization, file-queue
+   participation, transient context, and Remote Pi publication. The Pi target alone derives these
+   tools from selected `effort-workflow`; no non-Pi target names or renders them.
 
-8. `decision: compatibility-and-runtime-floor` Require no on-disk migration and retain the existing
+8. `decision: compatible-runtime-floor` Require no on-disk migration and retain the existing
    owner-free structured update command. Extend the Pi runtime floor only by the dynamic-tool and
    file-mutation-queue APIs used by the companion, with an actionable compatibility refusal before
-   functional registration when they are unavailable. Every changed template retains
-   missingkey-zero behavior and renders coherent generic output for empty variables without
-   `<no value>` or another unresolved-value token. Add the
-   `rendering/pi-workflows:pi-effort-memory-tools` invariant with `Backing: test`, proved by the
-   `TestPiEffortMemoryToolContract` unit and its matching proof marker; route the remaining
-   execution sequence and ordinary verification transactions to the reviewed implementation plan.
+   functional registration when they are unavailable.
+
+9. `decision: publication-safe-memory-tool-templates` Require every changed template to retain
+   missingkey-zero behavior and render coherent generic output for empty variables without
+   `<no value>` or another unresolved-value token.
+
+10. `decision: memory-tool-claim-backing` Add the
+    `rendering/pi-workflows:pi-effort-memory-tools` invariant with `Backing: test`, proved by the
+    `TestPiEffortMemoryToolContract` unit and its matching proof marker.
+
+11. `decision: presentation-protocol-composition` Classify owner-scoped memory JSON as a required,
+    byte-exact machine protocol and explicit ordinary-presentation bypass, never as an optional
+    convenience renderer. Owner-free memory results use the repository's accepted ordinary text
+    contract through effort-owned semantic mappings. No memory command creates a feature-local
+    presentation tree, syntax renderer, or second human-output contract.
 
 ## State changes
 
