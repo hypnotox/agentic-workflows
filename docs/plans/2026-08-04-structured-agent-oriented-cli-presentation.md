@@ -33,14 +33,16 @@ Completes: ["closed-presentation-tree"]
 
 ### Task 1.1: Specify and implement the presentation grammar
 Latitude: exact
-Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:closed-presentation-tree", "structured-agent-oriented-cli-presentation:standard-result-shapes", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:interactive-presentation", "structured-agent-oriented-cli-presentation:package-and-authority-home", "structured-agent-oriented-cli-presentation:claim-backing"]
-Paths: ["internal/presentation/tree.go", "internal/presentation/values.go", "internal/presentation/render.go", "internal/presentation/shapes.go", "internal/presentation/prompt.go", "internal/presentation/presentation_test.go", "internal/presentation/testdata/"]
+Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:closed-presentation-tree", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:package-and-authority-home", "structured-agent-oriented-cli-presentation:claim-backing"]
+Paths: ["internal/presentation/tree.go", "internal/presentation/values.go", "internal/presentation/render.go", "internal/presentation/presentation_test.go", "internal/presentation/testdata/"]
 
 Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
 `go test ./internal/... ./cmd/awf` to exit zero at the accepted-plan baseline.
 
-Create `internal/presentation` with no dependency outside the Go standard library. Export only the
-constructors and representation types needed by real consumers in this plan. Model `Document`,
+Create `internal/presentation` with no dependency outside the Go standard library. Add a one-sentence
+package comment stating that it owns the closed CLI presentation grammar, and document every exported
+type, constructor, and function. Export only the constructors and representation types needed by
+real consumers in this phase and later phases. Model `Document`,
 `Field`, `Section`, `List`, `RecordGroup`, fixed-arity `Record`, and `Steps` as a closed tree; do not
 expose a raw node, alternate renderer, visitor, domain field, or generic map. Enforce the ADR's exact
 root child ordering, section child matrix, three-level section bound, lowercase label grammar,
@@ -48,14 +50,12 @@ nonempty shapes, newline rejection, prose whitespace normalization, literal hori
 preservation, compact-record escaping, deterministic order, blank-line matrix, and one terminal
 newline. Validate the complete tree into a buffer before exactly one destination write.
 
-Add only the five standard shapes with concrete consumers named by the ADR: `Report`, `Mutation`,
-`Diagnostic`, `Detail`, and `Collection`. Their fields are presentation vocabulary, not domain
-models, and each lowers through the same constructors. Add the governed prompt operation that writes
-one validated complete prelude, then one validated and flushed `prompt:` tail without a newline.
+Do not add any standard shape or prompt operation in this phase. Each arrives with its first live
+production consumer in Phases 2-6 so every phase remains dead-code clean.
 
 Drive implementation through table tests covering every admitted and rejected child transition,
 root ordering permutation, depth boundary, label/value failure, whitespace mode, record arity,
-escaping, atomic-write failure, blank-line combination, standard-shape lowering, and prompt flush.
+escaping, atomic-write failure, blank-line combination, tree rendering through the live version consumer.
 Long successful examples belong in checked-in `testdata`; no update flag or snapshot generator may
 rewrite them. Put this exact marker on the named proof unit:
 
@@ -66,16 +66,32 @@ rewrite them. Put this exact marker on the named proof unit:
 Run `gofmt -w internal/presentation/*.go` and
 `go test ./internal/presentation -run TestPresentationTreeContract`; both must succeed.
 
-### Task 1.2: Apply presentation ownership and enter Implementing
+### Task 1.2: Convert version output as the first production consumer
+Kind: batch
+Latitude: exact
+Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:explicit-bypasses", "structured-agent-oriented-cli-presentation:enforced-adoption"]
+Paths: ["cmd/awf/version.go", "cmd/awf/version_test.go", ".github/workflows/release.yml", "templates/bootstrap/awf-bootstrap.sh.tmpl", "examples/sundial/.awf/bootstrap.sh", "internal/project/bootstrap_test.go"]
+Representative: "Render version as one `version: <value>` Field through `internal/presentation`, then make release and bootstrap consumers require that exact label boundary instead of positional whitespace."
+Edge: "Reject a missing, duplicated, or malformed `version:` label in consumer tests; retain stderr suppression and bootstrap fallback behavior without accepting legacy unlabeled output."
+Post-check: "`go test ./cmd/awf ./internal/project -run 'Test.*(Version|Bootstrap)'` exits zero; the release workflow and bootstrap template contain no positional `awk '{print $2}'` parser; rendered Sundial bootstrap output matches its template projection."
+
+Use the tree directly rather than introducing a speculative standard shape. Update the release
+workflow and bootstrap template in the same transaction as the public label, render the enabled
+Sundial bootstrap from its source, and extend bootstrap projection tests to pin label-aware parsing.
+This live command and its consumers make the new package reachable before the Phase 1 gate.
+
+### Task 1.3: Apply presentation ownership and enter Implementing
 Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:package-and-authority-home", "structured-agent-oriented-cli-presentation:claim-backing"]
-Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/code-design/presentation-ownership/current-state.md", "docs/topics/code-design/presentation-ownership.md", "docs/domains/code-design.md", "docs/decisions/INDEX.md", ".awf/awf.lock", "examples/sundial/.awf/awf.lock"]
+Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/domains/code-design.yaml", ".awf/topics/parts/code-design/presentation-ownership/current-state.md", "docs/topics/code-design/presentation-ownership.md", "docs/domains/code-design.md", "docs/decisions/INDEX.md", ".awf/awf.lock", "examples/sundial/.awf/awf.lock"]
 Representative: "Revise `model-owner-renders` so result owners map semantics into the central representation while `internal/presentation` alone validates and renders syntax, preserving its existing Origin/Revised-by chain before appending this ADR."
 Edge: "Add `closed-presentation-tree` with this ADR as Origin and `Backing: test`; do not apply any tooling claim or describe unconverted command output as current reality."
 Post-check: "After `./x render`, `./x check` is clean and `./awf context docs/decisions/structured-agent-oriented-cli-presentation.md` reports exactly the first two declared operations Applied and every later operation Remaining."
 
-Use `awf-adr-lifecycle`: move the ADR from Proposed to Implementing, append the Implementing content
+Add `internal/presentation/**` to `.awf/domains/code-design.yaml` so the new production package has
+its ADR-assigned domain owner before render and the staged ownership check. Use `awf-adr-lifecycle`:
+move the ADR from Proposed to Implementing, append the Implementing content
 stamp, then one Applied event listing the first two State changes in declaration order. Mutate exactly
 `model-owner-renders` and the new `closed-presentation-tree` claim in the authoring topic. Preserve
 the former claim's unbacked verification contract; add the new claim with the proof marker from Task
@@ -110,8 +126,9 @@ Before editing, require `git status --short` to print nothing, `./x check` to ex
 `go test ./internal/presentation ./internal/contextq ./internal/topic ./cmd/awf` to exit zero at the
 Phase 1 commit.
 
-Keep query assembly and semantic mapping in `internal/contextq`; replace only its syntax renderer with
-a mapping into `presentation.Detail`. Map topic query results in their model-owning package rather
+Introduce `presentation.Detail` in `internal/presentation/shapes.go` with this first production
+consumer; do not add the other standard shapes yet. Keep query assembly and semantic mapping in
+`internal/contextq`; replace only its syntax renderer with a mapping into `presentation.Detail`. Map topic query results in their model-owning package rather
 than constructing presentation records in `cmd/awf`. Update public labels, grouping, order, and
 escaping through exact tests. Remove the topic convenience JSON flag from parser specification,
 help, dispatch, tests, and documentation assertions touched by these files. Do not change topic
@@ -154,8 +171,8 @@ feat(tooling): migrate context output (applies presentation)
 
 **Execution mode: subagent-driven.**
 
-Advances: ["ordinary-output-contract"]
-Completes: ["typed-output-boundary", "structured-help-and-prompts"]
+Advances: ["ordinary-output-contract", "typed-output-boundary"]
+Completes: ["structured-help-and-prompts"]
 
 ### Task 3.1: Make help specifications structured model data
 Kind: batch
@@ -180,18 +197,15 @@ without printing one failure twice. Retain handler argument parsing and project/
 Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:standard-result-shapes", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:interactive-presentation"]
-Paths: ["internal/commitpolicy/render.go", "internal/commitpolicy/render_test.go", "internal/project/currentstate.go", "internal/project/currentstate_test.go", "cmd/awf/commitpolicy.go", "cmd/awf/commitpolicy_test.go", "cmd/awf/commitgate.go", "cmd/awf/commitgate_test.go", "internal/initspec/initspec.go", "internal/initspec/initspec_test.go", "cmd/awf/init.go", "cmd/awf/init_test.go", "cmd/awf/run_test.go"]
+Paths: ["internal/presentation/shapes.go", "internal/presentation/prompt.go", "internal/commitpolicy/render.go", "internal/commitpolicy/render_test.go", "internal/project/currentstate.go", "internal/project/currentstate_test.go", "cmd/awf/commitpolicy.go", "cmd/awf/commitpolicy_test.go", "cmd/awf/commitgate.go", "cmd/awf/commitgate_test.go", "cmd/awf/presentation_boundary_test.go", "internal/initspec/initspec.go", "internal/initspec/initspec_test.go", "cmd/awf/init.go", "cmd/awf/init_test.go", "cmd/awf/run_test.go"]
 Representative: "Map commit-policy and current-state refusals into `Diagnostic` with condition, state, changed axes, cause, and `Steps`; carry produced-report exit status separately from renderer errors."
 Edge: "A partial mutation lists every safety-relevant changed axis before recovery steps; init writes and flushes exactly one validated non-newline `prompt:` tail only after a complete prelude, while collision refusal emits no prompt bytes and performs no mutation."
 Post-check: "`go test ./internal/commitpolicy ./internal/project ./internal/initspec ./cmd/awf -run 'Test.*(Commit|Outcome|Prompt|Init)'` exits zero and tests prove renderer failure cannot leak partial presentation bytes."
 
-Put the exact marker below on the named command-boundary proof test in
-`cmd/awf/presentation_boundary_test.go`; the matching current-state claim remains pending until the
-post-review flip:
-
-```go
-// invariant: tooling/cli:typed-command-output-boundary (TestCommandOutputBoundary)
-```
+Introduce `presentation.Diagnostic` and the governed prompt operation with these first consumers.
+Create the named `TestCommandOutputBoundary` proof unit now, but do not add its invariant marker while
+the matching current-state claim remains absent. The post-review lifecycle transaction adds the
+marker atomically with that claim.
 
 ### Task 3.3: Apply outcome modeling and structured command-spec updates
 Kind: batch
@@ -233,7 +247,9 @@ Post-check: "`go test ./internal/effort ./internal/worktree ./cmd/awf -run 'Test
 Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
 `go test ./internal/effort ./internal/worktree ./cmd/awf` to exit zero at the Phase 3 commit.
 
-Keep semantic status, labels, ordering, identity, notes, changes, and next actions with the package
+Introduce `presentation.Mutation` with these first production consumers; do not add Report or
+Collection yet. Keep semantic status, labels, ordering, identity, notes, changes, and next actions
+with the package
 that owns each typed result. Do not move resident loading, topology decisions, rollback policy, or
 activity selection into `internal/presentation`. Exact tests must cover successful and partial
 mutations, restartable finish, no-worktree creation, empty list, detail ordering, protocol bytes,
@@ -263,8 +279,8 @@ feat(tooling): migrate effort output (applies presentation)
 
 **Execution mode: subagent-driven.**
 
-Advances: ["ordinary-output-contract", "typed-output-boundary"]
-Completes: ["collected-report-contract"]
+Advances: ["ordinary-output-contract"]
+Completes: ["typed-output-boundary", "collected-report-contract"]
 
 ### Task 5.1: Collect check and audit outcomes into categorized reports
 Kind: batch
@@ -279,6 +295,7 @@ Before editing, require `git status --short` to print nothing, `./x check` to ex
 `go test ./internal/execution ./internal/project ./internal/migrate ./internal/audit ./cmd/awf` to
 exit zero at the Phase 4 commit.
 
+Introduce `presentation.Report` with these first production consumers; do not add Collection yet.
 Do not change check selection or continuation policy. Bound execution actions collect typed results
 rather than writing presentation bytes eagerly. Preserve stable finding order and include all
 failure evidence in the complete report before exit mapping.
@@ -326,13 +343,19 @@ Completes: ["ordinary-output-contract", "repository-consumer-contract"]
 Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:standard-result-shapes", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:interactive-presentation", "structured-agent-oriented-cli-presentation:enforced-adoption"]
-Paths: ["internal/project/", "internal/config/", "internal/adr/", "cmd/awf/sync.go", "cmd/awf/list_add.go", "cmd/awf/init.go", "cmd/awf/new.go", "cmd/awf/adr.go", "cmd/awf/uninstall.go", "cmd/awf/version.go", "cmd/awf/configreference_print.go", "cmd/awf/changelog.go", "glob:cmd/awf/*_test.go", "cmd/awf/testdata/"]
-Representative: "Map sync/render, enable/disable, init, new, ADR numbering, uninstall, version, and config-reference results in their model-owning packages into `Mutation`, `Detail`, or `Collection`, with one stable label or record per semantic fact."
-Edge: "Preserve init descriptor JSON and selected changelog bytes as isolated protocols/payloads; keep a no-release changelog diagnostic ordinary; render version as a labeled field; forbid Markdown headings, tables, alignment padding, and semicolon-compressed result lines."
-Post-check: "`go test ./internal/project ./internal/config ./internal/adr ./cmd/awf` exits zero; exact command goldens cover success, emptiness, refusal, partial mutation, and renderer failure; a repository search finds no remaining ordinary command-owned `fmt.Fprint*` call outside the explicit bypass allowlist defined in Phase 7."
+Paths: ["internal/presentation/shapes.go", "internal/project/", "internal/config/", "internal/adr/", "cmd/awf/sync.go", "cmd/awf/list_add.go", "cmd/awf/init.go", "cmd/awf/new.go", "cmd/awf/adr.go", "cmd/awf/uninstall.go", "cmd/awf/config.go", "internal/project/configreference_print.go", "cmd/awf/changelog.go", "glob:cmd/awf/*_test.go", "cmd/awf/testdata/"]
+Representative: "Map sync/render, enable/disable, init, new, ADR numbering, uninstall, and config-reference results in their model-owning packages into `Mutation`, `Detail`, or `Collection`, with one stable label or record per semantic fact."
+Edge: "Preserve init descriptor JSON and selected changelog bytes as isolated protocols/payloads; keep a no-release changelog diagnostic ordinary; forbid Markdown headings, tables, alignment padding, and semicolon-compressed result lines."
+Post-check: "`go test ./internal/project ./internal/config ./internal/adr ./cmd/awf` exits zero; exact command goldens cover success, emptiness, refusal, partial mutation, and renderer failure; a deterministic repository search reports direct output only in the named plan-projection, changelog-payload, effort-activity-JSON, init-descriptor-JSON, and context-spill protocol functions, and fails on every other finding."
 
 Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
 `go test ./internal/... ./cmd/awf` to exit zero at the Phase 5 commit.
+
+Introduce `presentation.Collection` with its first config-reference and list consumers. Extract or
+retain closed bypass functions named `runReadPlan`, `writeChangelogPayload`,
+`writeEffortActivityProtocol`, `writeInitDescriptorProtocol`, and `contextdelivery.Deliver`; the
+Phase 6 direct-output search permits only those symbols and fails without manual classification on
+any other direct writer.
 
 Treat `internal/render` as the existing project-template engine and leave it independent; do not use it
 for CLI presentation. Keep semantic mapping beside typed result owners rather than centralizing
@@ -342,10 +365,10 @@ command meanings in `internal/presentation` or a universal command result map.
 Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:explicit-bypasses", "structured-agent-oriented-cli-presentation:enforced-adoption"]
-Paths: [".github/workflows/release.yml", "x", "examples/sundial/x", "README.md", "changelog/CHANGELOG.md", ".awf/docs/", ".awf/parts/", ".awf/skills/", "templates/docs/", "templates/skills/", "internal/clispec/clispec.go", "internal/clispec/clispec_test.go", ".awf/awf.lock", "AGENTS.md", "docs/", ".pi/", ".claude/", "examples/"]
-Representative: "Change release version extraction from positional whitespace to the exact `version:` label boundary, and update active command/help guidance from tables, Markdown-like output, optional ordinary JSON, and `note:` lines to the new readable contract."
+Paths: ["x", "examples/sundial/x", "README.md", "changelog/CHANGELOG.md", ".awf/docs/", ".awf/parts/", ".awf/skills/", "templates/docs/", "templates/skills/", "internal/clispec/clispec.go", "internal/clispec/clispec_test.go", ".awf/awf.lock", "AGENTS.md", "docs/", ".pi/", ".claude/", "examples/"]
+Representative: "Update active command/help guidance from tables, Markdown-like output, optional ordinary JSON, and `note:` lines to the new readable contract, and make runner consumers rely on declared labels rather than incidental whitespace."
 Edge: "Preserve the exact context spill notice, effort activity JSON, init descriptor JSON, plan projection, and changelog payload descriptions; update authoring sources before `./x render`, never hand-edit generated output, and do not rewrite terminal ADR or historical plan prose."
-Post-check: "After `./x render`, `./x check` is clean; release and runner tests parse declared labels rather than whitespace positions; `git grep -n -E -- '--json|note: ' README.md .awf templates AGENTS.md docs .pi .claude examples` reports only explicit protocol, historical, or literal migration-test references reviewed in the task diff."
+Post-check: "After `./x render`, `./x check` is clean and runner tests parse declared labels rather than whitespace positions; `git grep -n -E -- 'effort (new|list|show).*--json|topic.*--json|^note: ' README.md .awf templates AGENTS.md docs/working-with-awf.md docs/config-reference.md .pi .claude examples/sundial` returns no output."
 
 Add an `[Unreleased]` changelog entry for the readable default, removed convenience JSON modes, and
 retained protocols/payloads. Update config reference and working guidance only where behavior or
@@ -379,20 +402,15 @@ Build the structural test with `go/packages` and AST inspection, following the r
 context-boundary detector pattern. Scan production `cmd/awf` plus model-owner mapping packages and
 reject direct formatted ordinary output, ad hoc builders, padded formatting, Markdown headings, raw
 presentation strings, and renderer implementations outside `internal/presentation`. The allowlist is
-closed to named functions for plan projection, changelog payload, effort activity JSON, init
-descriptor JSON, and context spill notice; template rendering in `internal/render` and non-user-facing
-serialization are not presentation bypasses. Match symbols and call paths, not merely file names.
+closed to `runReadPlan`, `writeChangelogPayload`, `writeEffortActivityProtocol`,
+`writeInitDescriptorProtocol`, and `contextdelivery.Deliver`; template rendering in
+`internal/render` and non-user-facing serialization are not presentation bypasses. Match symbols and call paths, not merely file names.
 
 Use negative fixtures to prove every detector branch and a positive fixture for each allowlisted
-bypass. Keep diagnostics deterministic and path/line attributed. Put these exact markers on the
-named tests; the claims are applied only in the post-review flip:
-
-```go
-// invariant: tooling/cli:readable-text-output (TestOrdinaryCommandOutputUsesPresentation)
-// invariant: tooling/cli:explicit-output-bypasses (TestExplicitOutputBypasses)
-```
-
-The earlier `TestCommandOutputBoundary` marker must remain on its live unit. Run
+bypass. Keep diagnostics deterministic and path/line attributed. Create the named `TestOrdinaryCommandOutputUsesPresentation` and `TestExplicitOutputBypasses` proof
+units without invariant markers because their claims are still absent. The post-review flip adds all
+three pending markers, including the marker for the earlier live `TestCommandOutputBoundary` unit,
+atomically with their current-state claims. Run
 `go test ./internal/presentation ./cmd/awf -run 'Test(PresentationTreeContract|OrdinaryCommandOutputUsesPresentation|CommandOutputBoundary|ExplicitOutputBypasses)'`;
 it must succeed and exercise positive and negative branches.
 
@@ -441,7 +459,9 @@ test(tooling): enforce CLI presentation adoption
 - After settled terminal implementation review, the deferred flip transaction adds
   `tooling/cli:readable-text-output`, `tooling/cli:typed-command-output-boundary`, and
   `tooling/cli:explicit-output-bypasses` in their `.awf/topics/parts/tooling/cli/current-state.md`
-  declaration order with the three exact proof markers. It appends one final Applied event for
+  declaration order and adds the three exact invariant markers to the already-live
+  `TestOrdinaryCommandOutputUsesPresentation`, `TestCommandOutputBoundary`, and
+  `TestExplicitOutputBypasses` units. It appends one final Applied event for
   operations 8-10, then the Implemented status event, flips this plan to `Implemented`, runs
   `./x render`, stages generated topic/domain/index/lock output, and passes `awf check staged` plus
   `./x gate` before the final lifecycle commit.
