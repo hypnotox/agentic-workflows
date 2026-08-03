@@ -2,6 +2,12 @@ Config-tree validation rules: names, path globs, targets, tags, and anchoring.
 
 ## Claims
 
+### `invariant: commit-policy`
+
+An optional commitPolicy block is structurally validated for an exact full-OID baseline, exact identity pairs, and, when signing is required, supported OpenSSH signer records; absent policy preserves existing behavior.
+Origin: ADR-opt-in-commit-identity-and-signature-enforcement
+Backing: test
+
 ### `invariant: domain-name-validated`
 
 Config validation rejects a domain name that contains a path separator (a forward or back slash) or a .. segment.

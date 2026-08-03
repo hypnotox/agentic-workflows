@@ -71,6 +71,7 @@ var registry = []Migration{
 	{To: intrinsicADRFormatGeneration, Name: "intrinsic-adr-format", Apply: applyIntrinsicADRFormat, OwnsSchemaStamp: true},
 	{To: retargetCheckCommandsGeneration, Name: "retarget-check-commands", Apply: treeOnly(applyRetargetCheckCommands)},
 	{To: 33, Name: "decision-item-slugs", Apply: applyDecisionItemSlugs},
+	{To: 34, Name: "commit-policy", Apply: treeOnly(applyCommitPolicy)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the

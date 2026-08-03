@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -28,6 +29,25 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func TestCommitPolicyRenderDataProjection(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := p.data(config.Sidecar{}, map[string]bool{})["commitPolicy"].(*config.CommitPolicyConfig); !ok || got != nil {
+		t.Fatalf("absent commitPolicy projection = %#v, want typed nil", got)
+	}
+	policy := &config.CommitPolicyConfig{
+		GrandfatheredThrough: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		AllowedIdentities:    []config.CommitPolicyIdentity{{Name: "Ada", Email: "ada@example.test"}},
+	}
+	p.Cfg.CommitPolicy = policy
+	if got := p.data(config.Sidecar{}, map[string]bool{})["commitPolicy"]; got != policy {
+		t.Fatalf("commitPolicy projection = %#v, want typed policy %#v", got, policy)
+	}
 }
 
 // A whole-line awf:comment directive in a convention part never reaches

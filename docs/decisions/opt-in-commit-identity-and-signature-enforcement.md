@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: opt-in-commit-identity-and-signature-enforcement
-status: Accepted
+status: Implementing
 date: 2026-08-02
 ---
 # ADR-opt-in-commit-identity-and-signature-enforcement: Opt-in commit identity and signature enforcement
@@ -206,3 +206,5 @@ hooks automatically.
 
 - 2026-08-02: Proposed
 - 2026-08-03: Accepted; content-sha256: bbd924bd577ba8878c4c2be3319f4d6fad5dd1ae1e2901256d32c59884097aa0
+- 2026-08-03: Implementing; content-sha256: bbd924bd577ba8878c4c2be3319f4d6fad5dd1ae1e2901256d32c59884097aa0
+- 2026-08-03: Applied; operations: add `config/validation:commit-policy`

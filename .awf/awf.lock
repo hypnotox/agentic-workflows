@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.30.0",
-  "schemaVersion": 33,
+  "schemaVersion": 34,
   "files": {
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",
@@ -383,21 +383,21 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:75e8859692cf8ef0e533c6f188175fc5bbb83d862a68f6f8678f80df688d569d",
-      "outputHash": "sha256:272cdf78c219c90954df64e653350b67c71765cca16b22387688b57c7280ec89"
+      "configHash": "sha256:272ae07cdd78900b7a217cf661875c33118b6c6dbd7c1db06bff6d5aa08807ea",
+      "outputHash": "sha256:6c7fffef21377f3c0d46ddbf4861ac440616eaa11127bf723ff097ddf1f374b4"
     },
     "docs/config-reference.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:b15c55776c2058d03c9d5ba614d00f6f4f04fee9c1defd1013f39d8bcd185be8",
+      "outputHash": "sha256:8fabcadb381b5ee5eb888e943feaea5fbc787c21744e1c58de1d930f5015b030",
       "regenChecked": true
     },
     "docs/decisions/INDEX.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:9c207eb0759170c44470b6a7ec2f195dca116685f6572de70ee40995c1fa19e6",
+      "outputHash": "sha256:5a2c1f1fb29fcf017b9fe19d333cee81b1f29a83d14513744525635adfefa316",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -613,8 +613,8 @@
     "docs/topics/config/validation.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:0d8d14e2c22224c5ec00935263e5f23c838c4330f304272470c03876552bc488",
-      "outputHash": "sha256:2f482b2cd102efca9bdbfbc93bbba77ba38d2016f6110bb79c79c1d8bc84a554"
+      "configHash": "sha256:0292ec173a146c81be28f4683a8c3cc11ff662b1610caa9f017bf9e8f2d3fd44",
+      "outputHash": "sha256:d5b6a89705992b288adbf03694ff56f1abeddfb6bb9f961c55731721d8c14e5c"
     },
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",

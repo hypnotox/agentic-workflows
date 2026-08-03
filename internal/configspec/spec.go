@@ -129,6 +129,46 @@ var keys = []Entry{
 		Availability: "Always; consulted by working and staged context path expansion and coverage.",
 	},
 	{
+		Path: "commitPolicy.grandfatheredThrough", Type: "lowercase full object ID", Default: "none: required when commitPolicy is present",
+		Description:  "The exact full SHA-1 or SHA-256 commit object ID whose reachable ancestry is tolerated. Abbreviations, uppercase IDs, and non-object IDs are invalid; repository resolution happens when policy enforcement runs.",
+		Availability: "Within commitPolicy.",
+	},
+	{
+		Path: "commitPolicy.allowedIdentities", Type: "list of {name, email} mappings", Default: "none (identity matching disabled)",
+		Description:  "Optional nonempty allowlist of exact author and committer identity pairs. Identity matching is disabled when omitted; duplicate pairs are invalid.",
+		Availability: "Within commitPolicy.",
+	},
+	{
+		Path: "commitPolicy.allowedIdentities[].name", Type: "string", Default: "required within each identity record",
+		Description:  "The exact author and committer name. It is nonempty valid UTF-8 without controls or leading/trailing whitespace, and pairs with email for byte-for-byte matching.",
+		Availability: "Within each optional commitPolicy.allowedIdentities record.",
+	},
+	{
+		Path: "commitPolicy.allowedIdentities[].email", Type: "string", Default: "required within each identity record",
+		Description:  "The exact author and committer email. It is nonempty valid UTF-8 without controls or leading/trailing whitespace, and pairs with name for byte-for-byte matching.",
+		Availability: "Within each optional commitPolicy.allowedIdentities record.",
+	},
+	{
+		Path: "commitPolicy.requireSignedCommits", Type: "bool", Default: "false",
+		Description:  "Requires policy-era commits to carry a verified SSH signature from an allowed signer. False with allowedSigners, or true without allowedSigners, is invalid.",
+		Availability: "Within commitPolicy.",
+	},
+	{
+		Path: "commitPolicy.allowedSigners", Type: "list of {principal, key} mappings", Default: "none: required when requireSignedCommits is true",
+		Description:  "Nonempty exact SSH signer records when signing is required. Signers are invalid while signing is disabled, and duplicate records are invalid.",
+		Availability: "Within commitPolicy while requireSignedCommits is true.",
+	},
+	{
+		Path: "commitPolicy.allowedSigners[].principal", Type: "ASCII authorization token", Default: "required within each signer record",
+		Description:  "The signer authorization principal, containing only letters, digits, `.`, `_`, `@`, `+`, or `-`. It authorizes its associated key and is not an asserted commit identity.",
+		Availability: "Within each commitPolicy.allowedSigners record while requireSignedCommits is true.",
+	},
+	{
+		Path: "commitPolicy.allowedSigners[].key", Type: "OpenSSH public-key record", Default: "required within each signer record",
+		Description:  "An exact option-free, comment-free single OpenSSH public-key record accepted by ssh-keygen and using a supported SSH algorithm. Newlines, trailing records, and unsupported keys are invalid.",
+		Availability: "Within each commitPolicy.allowedSigners record while requireSignedCommits is true.",
+	},
+	{
 		Path: "currentState.sources", Type: "list of {globs, marker, close} mappings", Default: "none",
 		Description:  "Source families scanned for qualified current-state relevance, advisory, and invariant proof markers during topic validation.",
 		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",

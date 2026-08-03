@@ -4,13 +4,17 @@ package config
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
@@ -65,10 +69,33 @@ type Config struct {
 	Runner            *RunnerConfig       `yaml:"runner"`
 	ProseGate         *ProseGateConfig    `yaml:"proseGate"`
 	MemoryCite        *MemoryCiteConfig   `yaml:"memoryCite"`
+	CommitPolicy      *CommitPolicyConfig `yaml:"commitPolicy"`
 	root              string              // <project>/.awf, for sidecar/part resolution
 	raw               []byte              // the exact config.yaml bytes Load read, for in-place byte edits
 	read              TreeReader          // selected filesystem or immutable snapshot universe
 	filesystem        bool
+}
+
+// CommitPolicyConfig is an optional exact-commit provenance policy. Repository
+// resolution and verification belong to later operation owners; this package
+// validates only the authored structural contract.
+type CommitPolicyConfig struct {
+	GrandfatheredThrough string                 `yaml:"grandfatheredThrough"`
+	AllowedIdentities    []CommitPolicyIdentity `yaml:"allowedIdentities"`
+	RequireSignedCommits bool                   `yaml:"requireSignedCommits"`
+	AllowedSigners       []CommitPolicySigner   `yaml:"allowedSigners"`
+}
+
+// CommitPolicyIdentity is one exact author/committer name and email pair.
+type CommitPolicyIdentity struct {
+	Name  string `yaml:"name"`
+	Email string `yaml:"email"`
+}
+
+// CommitPolicySigner is one SSH signing principal and public key pair.
+type CommitPolicySigner struct {
+	Principal string `yaml:"principal"`
+	Key       string `yaml:"key"`
 }
 
 // TreeReader supplies canonical config-tree-relative bytes without exposing a
@@ -548,6 +575,11 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	if c.CommitPolicy != nil {
+		if err := validateCommitPolicy(c.CommitPolicy, validateOpenSSHPublicKey); err != nil {
+			return err
+		}
+	}
 	if c.Audit != nil {
 		for _, g := range c.Audit.DependencyManifests {
 			if err := validatePathGlob(g); err != nil {
@@ -677,6 +709,126 @@ func validateIntegrationBranch(b string) error {
 		return fmt.Errorf("integrationBranch %q must not start with %q", b, "-")
 	}
 	return nil
+}
+
+func validateCommitPolicy(policy *CommitPolicyConfig, validateKey func(string) error) error {
+	if !isFullOID(policy.GrandfatheredThrough) {
+		return errors.New("commitPolicy.grandfatheredThrough must be a lowercase full object ID")
+	}
+	if policy.AllowedIdentities != nil && len(policy.AllowedIdentities) == 0 {
+		return errors.New("commitPolicy.allowedIdentities must be non-empty when present")
+	}
+	identities := map[CommitPolicyIdentity]bool{}
+	for i, identity := range policy.AllowedIdentities {
+		if err := validateIdentityField(identity.Name); err != nil {
+			return fmt.Errorf("commitPolicy.allowedIdentities[%d].name %w", i, err)
+		}
+		if err := validateIdentityField(identity.Email); err != nil {
+			return fmt.Errorf("commitPolicy.allowedIdentities[%d].email %w", i, err)
+		}
+		if identities[identity] {
+			return fmt.Errorf("commitPolicy.allowedIdentities[%d] duplicates an earlier identity", i)
+		}
+		identities[identity] = true
+	}
+	if policy.RequireSignedCommits && len(policy.AllowedSigners) == 0 {
+		return errors.New("commitPolicy.allowedSigners must be non-empty when commitPolicy.requireSignedCommits is true")
+	}
+	if !policy.RequireSignedCommits && len(policy.AllowedSigners) != 0 {
+		return errors.New("commitPolicy.allowedSigners requires commitPolicy.requireSignedCommits to be true")
+	}
+	signers := map[CommitPolicySigner]bool{}
+	for i, signer := range policy.AllowedSigners {
+		if !validPrincipal(signer.Principal) {
+			return fmt.Errorf("commitPolicy.allowedSigners[%d].principal must contain only [A-Za-z0-9._@+-]", i)
+		}
+		if signers[signer] {
+			return fmt.Errorf("commitPolicy.allowedSigners[%d] duplicates an earlier signer", i)
+		}
+		if err := validateKey(signer.Key); err != nil {
+			return fmt.Errorf("commitPolicy.allowedSigners[%d].key is not a supported OpenSSH public key", i)
+		}
+		signers[signer] = true
+	}
+	return nil
+}
+
+func validateIdentityField(value string) error {
+	if value == "" || strings.TrimSpace(value) != value || !utf8.ValidString(value) || strings.ContainsFunc(value, unicode.IsControl) {
+		return errors.New("must be non-empty UTF-8 without leading/trailing whitespace or control characters")
+	}
+	return nil
+}
+
+func isFullOID(value string) bool {
+	// Git currently supports SHA-1 and SHA-256 object formats. Runtime resolution
+	// later compares the configured width to the opened repository.
+	if len(value) != 40 && len(value) != 64 {
+		return false
+	}
+	for _, r := range value {
+		if r >= '0' && r <= '9' || r >= 'a' && r <= 'f' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func validPrincipal(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("._@+-", r) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// validateOpenSSHPublicKey is the operation-scoped subprocess seam. Unit tests
+// pass a controlled function to validateCommitPolicy rather than replacing a
+// process package global.
+func validateOpenSSHPublicKey(key string) error {
+	if strings.ContainsAny(key, "\r\n") || strings.TrimSpace(key) != key {
+		return errors.New("not a single record")
+	}
+	fields := strings.Fields(key)
+	if len(fields) != 2 || fields[0] == "" {
+		return errors.New("must have algorithm and key only")
+	}
+	if !supportedSSHKeyAlgorithm(fields[0]) || !matchingSSHKeyBlob(fields[0], fields[1]) {
+		return errors.New("unsupported or malformed key")
+	}
+	cmd := exec.Command("ssh-keygen", "-lf", "-")
+	cmd.Stdin = strings.NewReader(key)
+	if err := cmd.Run(); err != nil {
+		return errors.New("ssh-keygen rejected key")
+	}
+	return nil
+}
+
+func supportedSSHKeyAlgorithm(algorithm string) bool {
+	switch algorithm {
+	case "ssh-ed25519", "ecdsa-sha2-nistp256", "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com":
+		return true
+	default:
+		return false
+	}
+}
+
+func matchingSSHKeyBlob(algorithm, encoded string) bool {
+	blob, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil || len(blob) < 4 {
+		return false
+	}
+	n := binary.BigEndian.Uint32(blob[:4])
+	if int(n) > len(blob)-4 {
+		return false
+	}
+	return string(blob[4:4+int(n)]) == algorithm
 }
 
 func validateUniquePathGlobs(globs []string) error {

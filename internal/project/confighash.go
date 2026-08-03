@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -53,6 +54,11 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		vs[r] = p.Cfg.Vars[r]
 	}
 	proj["vars"] = vs
+	if strings.Contains(assembled, ".commitPolicy") {
+		// Only consumers fold the normalized typed policy. This keeps unrelated
+		// outputs and adopters with no policy byte-stable.
+		proj["commitPolicy"] = p.Cfg.CommitPolicy
+	}
 	if render.ReferencesSkills(assembled) {
 		// A template that reads .skills re-renders when the enable array
 		// changes; folding the effective set in flags it stale (ADR-0046).

@@ -81,15 +81,18 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 	return map[string]any{
-		"prefix":        p.Cfg.Prefix,
-		"vars":          nonNil(p.Cfg.Vars),
-		"data":          nonNil(sc.Data),
-		"layout":        p.layout().templateMap(),
-		"version":       Version,
-		"adrFormat":     adr.CurrentFormatMarker(),
-		"skills":        eff,
-		"skillRows":     p.skillRows(),
-		"commitScopes":  p.commitScopesDisplay(),
+		"prefix":       p.Cfg.Prefix,
+		"vars":         nonNil(p.Cfg.Vars),
+		"data":         nonNil(sc.Data),
+		"layout":       p.layout().templateMap(),
+		"version":      Version,
+		"adrFormat":    adr.CurrentFormatMarker(),
+		"skills":       eff,
+		"skillRows":    p.skillRows(),
+		"commitScopes": p.commitScopesDisplay(),
+		// commitPolicy is a typed projection, not reparsed YAML. A nil value is
+		// safe for publication templates: `with` and `if` treat it as absent.
+		"commitPolicy":  p.Cfg.CommitPolicy,
 		"gatedCommands": gatedCommandsDisplay(),
 		// Runner-enabled state for awf-verb fallback arms (ADR-0156 Decision 4):
 		// enabled renders ./awf forms; disabled - and empty publication data -

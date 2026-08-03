@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-agpl-3-0-only-cutover-at-the-unpublished-history-boundary: AGPL-3.0-only cutover at the unpublished history boundary](agpl-3-0-only-cutover-at-the-unpublished-history-boundary.md) (Accepted)
-- [ADR-opt-in-commit-identity-and-signature-enforcement: Opt-in commit identity and signature enforcement](opt-in-commit-identity-and-signature-enforcement.md) (Accepted)
+- [ADR-opt-in-commit-identity-and-signature-enforcement: Opt-in commit identity and signature enforcement](opt-in-commit-identity-and-signature-enforcement.md) (Implementing)
 
 ## History
 

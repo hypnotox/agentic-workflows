@@ -22,7 +22,7 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	for path, content := range fixtures {
 		testsupport.WriteFile(t, filepath.Join(root, path), string(content))
 	}
-	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 32)
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current()-2)
 	ordinary := []byte("ordinary authored bytes\n")
 	testsupport.WriteFile(t, filepath.Join(root, "notes.txt"), string(ordinary))
 
@@ -31,8 +31,9 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"decision-item-slugs"}) || out.Len() != 0 {
-		t.Fatalf("upgrade = %v, output %q", applied, out.String())
+	wantApplied := []string{registry[len(registry)-2].Name, registry[len(registry)-1].Name}
+	if !reflect.DeepEqual(applied, wantApplied) || out.Len() != 0 {
+		t.Fatalf("upgrade = %v, output %q; want %v", applied, out.String(), wantApplied)
 	}
 	for path, want := range fixtures {
 		got, err := os.ReadFile(filepath.Join(root, path))
@@ -44,8 +45,8 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	if err != nil || !bytes.Equal(got, ordinary) {
 		t.Fatalf("ordinary bytes after upgrade = %q, %v", got, err)
 	}
-	if generation, err := Generation(root); err != nil || generation != 33 {
-		t.Fatalf("generation = %d, %v; want 33", generation, err)
+	if generation, err := Generation(root); err != nil || generation != Current() {
+		t.Fatalf("generation = %d, %v; want Current()=%d", generation, err, Current())
 	}
 	if err := applyDecisionItemSlugs(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)

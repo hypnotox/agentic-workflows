@@ -702,6 +702,75 @@ func TestHooksConfigDecode(t *testing.T) {
 	}
 }
 
+// invariant: config/validation:commit-policy (TestCommitPolicyValidation)
+func TestCommitPolicyValidation(t *testing.T) {
+	validKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSyHgjX4Y74rFN//IDMW2HBGkTMn5JF1Ls6VJr4pojt"
+	valid := &CommitPolicyConfig{
+		GrandfatheredThrough: strings.Repeat("a", 40),
+		AllowedIdentities:    []CommitPolicyIdentity{{Name: "Ada", Email: "ada@example.test"}},
+		RequireSignedCommits: true,
+		AllowedSigners:       []CommitPolicySigner{{Principal: "ada@example.test", Key: validKey}},
+	}
+	if err := validateCommitPolicy(valid, validateOpenSSHPublicKey); err != nil {
+		t.Fatalf("valid commit policy rejected: %v", err)
+	}
+	cfg := &Config{Prefix: "x", IntegrationBranch: "main", DocsDir: "docs", Targets: []string{"pi"}, CommitPolicy: valid}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("config rejected valid commit policy: %v", err)
+	}
+	invalidPolicy := *valid
+	invalidPolicy.GrandfatheredThrough = "abbreviated"
+	cfg.CommitPolicy = &invalidPolicy
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "commitPolicy.grandfatheredThrough") {
+		t.Fatalf("config validation = %v, want commit-policy error", err)
+	}
+	cases := []struct {
+		name string
+		edit func(*CommitPolicyConfig)
+		want string
+	}{
+		{"abbreviated baseline", func(p *CommitPolicyConfig) { p.GrandfatheredThrough = "abcdef" }, "grandfatheredThrough"},
+		{"uppercase baseline", func(p *CommitPolicyConfig) { p.GrandfatheredThrough = strings.Repeat("A", 40) }, "grandfatheredThrough"},
+		{"empty identities", func(p *CommitPolicyConfig) { p.AllowedIdentities = []CommitPolicyIdentity{} }, "allowedIdentities"},
+		{"space name", func(p *CommitPolicyConfig) { p.AllowedIdentities[0].Name = " Ada" }, "allowedIdentities[0].name"},
+		{"control email", func(p *CommitPolicyConfig) { p.AllowedIdentities[0].Email = "a\n@example.test" }, "allowedIdentities[0].email"},
+		{"invalid UTF-8 email", func(p *CommitPolicyConfig) { p.AllowedIdentities[0].Email = string([]byte{0xff}) }, "allowedIdentities[0].email"},
+		{"duplicate identity", func(p *CommitPolicyConfig) { p.AllowedIdentities = append(p.AllowedIdentities, p.AllowedIdentities[0]) }, "allowedIdentities[1]"},
+		{"missing signers", func(p *CommitPolicyConfig) { p.AllowedSigners = nil }, "allowedSigners"},
+		{"signers without requirement", func(p *CommitPolicyConfig) { p.RequireSignedCommits = false }, "allowedSigners"},
+		{"bad principal", func(p *CommitPolicyConfig) { p.AllowedSigners[0].Principal = "bad space" }, "allowedSigners[0].principal"},
+		{"duplicate signer", func(p *CommitPolicyConfig) { p.AllowedSigners = append(p.AllowedSigners, p.AllowedSigners[0]) }, "allowedSigners[1]"},
+		{"key comment", func(p *CommitPolicyConfig) { p.AllowedSigners[0].Key += " comment" }, "allowedSigners[0].key"},
+		{"key newline", func(p *CommitPolicyConfig) { p.AllowedSigners[0].Key += "\nnext" }, "allowedSigners[0].key"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := *valid
+			got.AllowedIdentities = append([]CommitPolicyIdentity(nil), valid.AllowedIdentities...)
+			got.AllowedSigners = append([]CommitPolicySigner(nil), valid.AllowedSigners...)
+			tc.edit(&got)
+			if err := validateCommitPolicy(&got, validateOpenSSHPublicKey); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("validation = %v, want key %q", err, tc.want)
+			}
+		})
+	}
+	called := false
+	if err := validateCommitPolicy(valid, func(string) error { called = true; return nil }); err != nil || !called {
+		t.Fatalf("operation key seam = %v, called=%v", err, called)
+	}
+	for _, key := range []string{"ssh-rsa AAAA", "ssh-ed25519 !!!", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSyHgjX4Y74rFN//IDMW2HBGkTMn5JF1Ls6VJr4pojt\textra", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSyHgjX4Y74rFN//IDMW2HBGkTMn5JF1Ls6VJr4pojt\n", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5"} {
+		if err := validateOpenSSHPublicKey(key); err == nil {
+			t.Errorf("invalid key %q accepted", key)
+		}
+	}
+	if !isFullOID(strings.Repeat("b", 64)) || isFullOID(strings.Repeat("g", 40)) || validPrincipal("") || validPrincipal("bad space") {
+		t.Fatal("OID or principal helper accepted an invalid value")
+	}
+	if matchingSSHKeyBlob("ssh-ed25519", "AAAAIA==") || matchingSSHKeyBlob("ssh-ed25519", "!!!") {
+		t.Fatal("malformed SSH key blob accepted")
+	}
+}
+
 func TestPathHelpers(t *testing.T) {
 	root := filepath.Join("x", "y")
 	if got, want := RootDir(root), filepath.Join("x", "y", ".awf"); got != want {
