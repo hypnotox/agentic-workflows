@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: simplify-pi-effort-association-around-fixed-repository-paths
-status: Proposed
+status: Implemented
 date: 2026-08-03
 ---
 # ADR-simplify-pi-effort-association-around-fixed-repository-paths: Simplify Pi effort association around fixed repository paths
@@ -213,3 +213,4 @@ post-review direct claim/status transaction.
 ## Status history
 
 - 2026-08-03: Proposed
+- 2026-08-03: Implemented; content-sha256: f4d5eef1e60d7586a93afadd3f128f87685676c08f93fae24c1fbd3953d01432

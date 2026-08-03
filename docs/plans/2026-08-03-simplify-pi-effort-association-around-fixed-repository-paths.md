@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-03
 adrs: [simplify-pi-effort-association-around-fixed-repository-paths]
-status: Proposed
+status: Implemented
 ---
 # Plan: Simplify Pi effort association around fixed repository paths
 
@@ -163,3 +163,4 @@ refactor(rendering): freeze fixed-path Pi effort association
 - The one pre-review implementation commit deliberately leaves all eight current-state claims and both lifecycle statuses unchanged. Review fixes also land before Phase 2 and contain their matching tests, behavior-stating authoring sources, generated outputs, and changelog correction when applicable.
 - Frozen terminal ADRs and implemented historical plans that describe protocol v1 remain unchanged; searches for removed machinery exclude those history surfaces rather than rewriting them.
 - Phase 2 preserves the already-recorded durable deferred-flip pitfall and contains no production behavior.
+- Implementation and terminal review: the CWD-neutral protocol/runtime transaction and every review-fix commit passed the full gate; independent terminal review settled with no unresolved finding before the direct claim/status transaction.
