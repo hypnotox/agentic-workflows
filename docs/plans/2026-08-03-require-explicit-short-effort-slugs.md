@@ -147,7 +147,7 @@ Applying: ["require-explicit-short-effort-slugs:confirm-three-fields", "require-
 Paths: ["README.md", ".awf/parts/", ".awf/docs/", ".awf/skills/", ".awf/topics/", "templates/", "changelog/CHANGELOG.md", ".awf/awf.lock", "AGENTS.md", "docs/", ".pi/", ".claude/", "examples/"]
 Representative: "Change the shared first-creation block to present `Outcome:`, `Effort title:`, and `Effort slug: <proposed-short-slug>`, require later confirmation of all three, and invoke `awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`."
 Edge: "Update active help, recovery, architecture, guide, workflow, skill, README, current-state, Pi, Claude, and Sundial output while preserving old signatures under `docs/decisions/`, `docs/plans/`, and `changelog/`; render generated files from their sources and do not hand-edit them."
-Post-check: "After `./x render`, `./x check` reports clean drift; a tracked search over the ADR's closed active path policy finds no active title-only creation signature or title-derived creation guidance; the only old-signature matches are under the three historical exclusions."
+Post-check: "After `./x render`, `./x check` reports clean drift; the exact tracked search reports only the byte-unchanged Remaining `unified-effort-workflow-coverage` claim in its authoring source and rendered topic copy. All other active title-only creation signatures and title-derived guidance are absent; historical matches remain under the three exclusions."
 
 Update `templates/partials/outcome-confirmation.md` as the single operative first-creation protocol.
 It must present the three labels, ask the user to confirm creation, stop without mutation, require a
@@ -184,8 +184,11 @@ creation at their release time.
 
 Before rendering, enumerate active occurrences with the exact command below and classify each match
 as authored source, direct current file, generated output, or current-behavior fixture. Edit sources
-and direct files only. After rendering, rerun the same command and require its zero-finding terminal
-state: `git grep` exits 1, captured output is empty, and the enclosing shell exits 0.
+and direct files only. After rendering, rerun the same command and require exactly two lifecycle-
+authorized findings: the byte-unchanged Remaining `unified-effort-workflow-coverage` claim in
+`.awf/topics/parts/rendering/workflow-skill-templates/current-state.md` and its rendered copy in
+`docs/topics/rendering/workflow-skill-templates.md`. The deferred terminal flip removes both; only
+then must the same command reach the zero-finding terminal state.
 
 ```sh
 set +e
@@ -208,8 +211,10 @@ if [ "$status" -gt 1 ]; then
   exit "$status"
 fi
 printf '%s' "$stale"
-test "$status" -eq 1
-test -z "$stale"
+test "$status" -eq 0
+test "$(printf '%s\n' "$stale" | wc -l)" -eq 2
+printf '%s\n' "$stale" | grep -F '.awf/topics/parts/rendering/workflow-skill-templates/current-state.md:' >/dev/null
+printf '%s\n' "$stale" | grep -F 'docs/topics/rendering/workflow-skill-templates.md:' >/dev/null
 ```
 
 Run `./x render` once all authoring changes are complete, then inspect representative Pi, Claude,
@@ -275,9 +280,10 @@ Applying: ["require-explicit-short-effort-slugs:gate-signature-drift", "require-
 Paths: ["internal/project/spine_test.go"]
 
 Before modifying Phase 2 files, rerun the exact shell block in Task 1.4 and require its documented
-zero-finding terminal state. If `git grep` exits 0 with any match, stop with Phase 2 unchanged and
-return that source/output to Phase 1 ownership; if it exits above 1, treat that as a search failure.
-Do not expand Phase 2 into conditional source cleanup.
+exact two-finding intermediate state. Any other match returns to Phase 1 ownership; an exit above 1
+is a search failure. Do not expand Phase 2 into conditional source cleanup. The deterministic test
+may recognize only these two exact claim locations while the owning ADR operation is Remaining; the
+deferred terminal flip must remove that allowance and prove the same scan reaches zero.
 
 Add one deterministic repository-surface test using the file-reading and project-root helpers already
 owned by `internal/project` tests. Encode the ADR's closed policy exactly:
@@ -329,10 +335,11 @@ unversioned host tool.
 ### Phase close
 
 Run `./x render` and require a no-op render with `./x check` clean; Phase 2 introduces tests, not new
-active authoring or generated output. Run the closed-root signature test and inspect its stable
-zero-finding result alongside representative root and adopter outputs. Confirm old signatures remain
-untouched and discoverable only in excluded historical roots; do not rewrite history to make an
-unrestricted grep empty.
+active authoring or generated output. Run the closed-root signature test and inspect its stable exact
+two-finding intermediate result alongside representative root and adopter outputs. Confirm both are
+the deferred claim locations and old signatures otherwise remain untouched only in excluded
+historical roots; do not rewrite history to make an unrestricted grep empty. The deferred terminal
+flip removes the two-location allowance and proves the final zero-finding result.
 
 Stage the complete deterministic-coverage transaction explicitly. Verify no ADR status/history,
 current-state claim mutation, active guidance source, or render-derived output is staged. Run

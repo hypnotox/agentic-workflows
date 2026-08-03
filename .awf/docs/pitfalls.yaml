@@ -1,5 +1,19 @@
 data:
   pitfalls:
+    - title: "An intermediate search expectation must respect deferred claim operations"
+      domains: [adr-system, rendering]
+      tags: [plan-artifact, adr-lifecycle, verification-discipline]
+      body: |
+        A reviewed plan required a closed-root stale-signature search to reach zero in Phase 1 while
+        the same phase was required to leave one matching current-state claim byte-for-byte unchanged
+        and its update operation Remaining until the terminal flip. Rendering made the contradiction
+        two findings: the authored claim and its generated topic copy. Implementation review caught
+        it only after the phase commit because plan review had reasoned about the final clean tree
+        rather than executing the search against each declared lifecycle snapshot. A plan that
+        partitions claim operations must run every exact census or zero-finding command against the
+        intermediate trees it specifies. Name the lifecycle-authorized intermediate findings exactly,
+        keep the terminal zero requirement attached to the operation that removes them, and reject any
+        additional match; never demand a clean search state before the batch authorized to create it.
     - title: "A census number is only as good as its stated query"
       domains: [adr-system]
       tags: [verification-discipline]
