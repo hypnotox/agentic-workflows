@@ -34,6 +34,11 @@ type CorruptError struct {
 	Err  error
 }
 
+// residentReadError marks a failed resident read mechanism. Callers that turn
+// a resident refusal into a protocol outcome can expose its bounded cause
+// without confusing malformed or unsafe content for a mechanism failure.
+type residentReadError struct{ error }
+
 func (e *CorruptError) Error() string {
 	return fmt.Sprintf("unusable effort resident at %s: %v; changed bytes: no; next action: preserve the resident and inspect it for manual cleanup", e.Path, e.Err)
 }
@@ -337,7 +342,7 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil { // coverage-ignore: validateOwnedDirectory just proved a readable owned directory; failure requires a concurrent namespace or storage fault
-		return Record{}, &CorruptError{Path: dir, Err: err}
+		return Record{}, &CorruptError{Path: dir, Err: &residentReadError{err}}
 	}
 	allowed := map[string]bool{"state.json": true, "memory.md": true, "activity.json": true}
 	for _, entry := range entries {
@@ -348,7 +353,7 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 	statePath := filepath.Join(dir, "state.json")
 	raw, err := readRegularNoFollow(statePath)
 	if err != nil {
-		return Record{}, &CorruptError{Path: statePath, Err: err}
+		return Record{}, &CorruptError{Path: statePath, Err: &residentReadError{err}}
 	}
 	var value persistedRecord
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -366,7 +371,7 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 		memoryPath := filepath.Join(dir, "memory.md")
 		memory, err := readRegularNoFollow(memoryPath)
 		if err != nil {
-			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has absent or invalid owned memory: %w", err)}
+			return Record{}, &CorruptError{Path: memoryPath, Err: &residentReadError{fmt.Errorf("published state has absent or invalid owned memory: %w", err)}}
 		}
 		if err := readMemoryIdentity(memory, expectedSlug); err != nil {
 			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has memory with a mismatched effort identity: %w", err)}

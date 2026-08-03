@@ -115,14 +115,6 @@ func TestAdrReviewerAgent(t *testing.T) {
 					"description": "Verify factual claims in the Context section against named files, ADRs, and state docs; flag stale claims and drift since brainstorm.",
 				},
 			},
-			"docCurrencyItems": []map[string]any{
-				{"check": "each State changes claim is authored to match in the same Implemented commit"},
-				{"check": "each operation's destination topic metadata exists before the ADR is Accepted"},
-				{"check": "docs/workflow.md - update when ADR changes a workflow rule"},
-				{"check": "AGENTS.md - update when ADR changes chain, principles, or invariants"},
-				{"check": "Frontmatter completeness: format, status, date"},
-				{"check": "docs/decisions/INDEX.md - regenerate when status lands as Accepted or Implemented"},
-			},
 		},
 	}
 
@@ -146,6 +138,10 @@ func TestAdrReviewerAgent(t *testing.T) {
 		}
 	}
 	for _, phrase := range []string{
+		"post-implementation",
+		"counterfactual",
+		"mechanism itself is load-bearing",
+		"reasoned finding",
 		"structural-design",
 		"docs/maintainable-code-design.md",
 		"semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract",
@@ -155,6 +151,11 @@ func TestAdrReviewerAgent(t *testing.T) {
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected structural-design phrase %q in output:\n%s", phrase, out)
+		}
+	}
+	for _, banned := range []string{"doc-currency (ADR-level)", "## Doc-currency checklist", "same-commit update of the listed artifact"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("ADR reviewer retains implementation-inventory requirement %q:\n%s", banned, out)
 		}
 	}
 }
@@ -949,6 +950,8 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"nonempty JSON `Applying:` or `Context:` array",
 		"stable `dod: <slug>` bullets",
 		"frozen `#N` only for pre-V4 Decision prose",
+		"implementation directives",
+		"paths, commands, task order, rollout batches, and ordinary test transactions",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1331,17 +1334,34 @@ func TestProposingAdrTemplate(t *testing.T) {
 		t.Errorf("expected 'name: example-proposing-adr' in output:\n%s", out)
 	}
 
-	// Assert load-bearing phrases unique to proposing-adr
+	// Assert the scaffold-first operations as one ordered procedure.
+	procedure := "Run `awf new adr \"<Title>\"` before any ADR-file mutation. Capture the exact path it creates. Read the exact file it creates, then edit that scaffold in place."
+	if !strings.Contains(out, procedure) {
+		t.Errorf("expected ordered procedure %q in output:\n%s", procedure, out)
+	}
+
+	// Assert load-bearing phrases unique to proposing-adr.
 	loadBearing := []string{
 		"one decision per ADR",
+		"Never create or replace an ADR by any other mechanism",
 		"Context",
 		"Consequences",
 		"status: Proposed",
 		"example-reviewing-adr",
+		"remains meaningful after implementation",
+		"post-implementation",
+		"counterfactual",
+		"mechanism itself is load-bearing",
+		"preserve exactly the frontmatter emitted by `awf new adr`",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "Required frontmatter:") && strings.Contains(line, "current-state-v") {
+			t.Errorf("proposing guidance chooses a literal current format in %q:\n%s", line, out)
 		}
 	}
 }
@@ -1440,6 +1460,8 @@ func TestBrainstormingTemplate(t *testing.T) {
 		"2-3 approaches",
 		"Load-bearing",
 		"Anti-patterns",
+		"remains meaningful after implementation",
+		"implementation directives",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1664,7 +1686,7 @@ func TestAgentsDocGuide(t *testing.T) {
 		"## Workflow",
 		"## Commands",
 		"## Document map",
-
+		"Route settled content by authority lifetime",
 		"make gate",
 	} {
 		if !strings.Contains(out, phrase) {
@@ -1840,7 +1862,7 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 			if finding.path != expectedPaths[index] || finding.contract != "two-field confirmation" {
 				t.Fatalf("unauthorized intermediate finding:\n%s", formatEffortSignatureFindings(findings))
 			}
-			if digest := fmt.Sprintf("%x", sha256.Sum256([]byte(finding.lineText))); digest != "7ab31a07392911e121978b5bfc28a1ea181268282e0022644a286bbdb7d8cfe8" {
+			if digest := fmt.Sprintf("%x", sha256.Sum256([]byte(finding.lineText))); digest != "5a3317a41dbd23aecdb54fdf4d2fc924a19b88e2f8600510b37d163540c0fa3e" {
 				t.Fatalf("intermediate claim passage changed at %s:%d (digest %s)", finding.path, finding.line, digest)
 			}
 		}
@@ -2221,7 +2243,7 @@ var unsetFallbackCases = []fallbackCase{
 	// invariant: rendering/workflow-skill-templates:reviewers-report-only (agents/adr-reviewer.md.tmpl)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
-		want: []string{"Regen command: `awf render`."},
+		want: []string{"post-implementation", "counterfactual", "reasoned finding"},
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
@@ -2245,7 +2267,8 @@ var unsetFallbackCases = []fallbackCase{
 		tmpl: "skills/brainstorming/SKILL.md.tmpl",
 		want: []string{
 			"hard prerequisite for any non-trivial change",
-			"The design lands in the ADR (if load-bearing) or the plan (if not)",
+			"remains meaningful after implementation lands in the ADR",
+			"implementation directives land in the plan",
 		},
 	},
 	{
@@ -2384,7 +2407,7 @@ func TestEffortWorkflowTemplate(t *testing.T) { TestEffortWorkflowSkillContract(
 // invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
 func TestEffortWorkflowSkillContract(t *testing.T) {
 	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "native persistent checkout or context tooling", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
+	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "runtime that supplies explicit effort paths may remain at the repository root", "target the exact existing `.awf/worktrees/<slug>` worktree by path", "runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("effort-workflow missing %q", phrase)
 		}
@@ -2429,9 +2452,38 @@ func TestEffortWorkflowSkillContract(t *testing.T) {
 	if string(after) != string(before) {
 		t.Errorf("existing config selection changed during sync:\n%s", after)
 	}
-	for _, rel := range []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
+	companion := []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"}
+	for _, rel := range companion {
 		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
 			t.Errorf("existing config without explicit enablement rendered %s: %v", rel, err)
+		}
+	}
+	selected := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
+	selectedProject, err := Open(testContext(t), selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := selectedProject.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range companion {
+		if _, err := os.Stat(filepath.Join(selected, rel)); err != nil {
+			t.Errorf("selected Pi effort workflow omitted %s: %v", rel, err)
+		}
+	}
+	if err := os.WriteFile(configPath(selected), []byte("prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	selectedProject, err = Open(testContext(t), selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := selectedProject.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range companion {
+		if _, err := os.Stat(filepath.Join(selected, rel)); !os.IsNotExist(err) {
+			t.Errorf("non-Pi/pruned effort workflow retained %s: %v", rel, err)
 		}
 	}
 	plan := p.ResolveEnable("skill", "effort-workflow")

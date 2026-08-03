@@ -87,8 +87,9 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 }
 
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
+// invariant: rendering/pi-workflows:using-effort-skill (TestPiRuntimeTargetRender)
 func TestPiRuntimeTargetRender(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +105,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 		}
 	}
 	expectedExtensions := map[string]bool{}
-	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+	for _, path := range []string{".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
 		expectedExtensions[path] = true
 		content, ok := extensions[path]
 		if !ok {
@@ -143,6 +144,23 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if !strings.Contains(index, `from "./model-routing.ts"`) {
 		t.Error("subagent entrypoint does not consume model-routing module")
 	}
+	if _, ok := extensions[".pi/extensions/awf-effort/index.ts"]; !ok {
+		t.Error("selected effort-workflow did not render awf-effort index")
+	}
+	if _, ok := extensions[".pi/extensions/awf-effort/client.ts"]; !ok {
+		t.Error("selected effort-workflow did not render awf-effort client")
+	}
+	usingEffort := ""
+	for _, file := range files {
+		if file.Path == ".pi/skills/example-using-effort/SKILL.md" {
+			usingEffort = file.Content
+		}
+	}
+	for _, want := range []string{"{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "supplied relative memory and managed-worktree paths", "Restart begins detached", "temporary peer-name information are advisory only", "activity is neither authority nor a lock"} {
+		if !strings.Contains(usingEffort, want) {
+			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
+		}
+	}
 }
 
 func TestPiMinimumRuntime(t *testing.T) {
@@ -174,7 +192,6 @@ func TestPiContextUsageInjection(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-effort-session-association (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:using-effort-skill (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRealRuntimeSmoke)
 // invariant: rendering/project-output-plan:multi-target-render (TestPiRealRuntimeSmoke)
 // invariant: rendering/catalog-and-targets:target-dialect-render (TestPiRealRuntimeSmoke)

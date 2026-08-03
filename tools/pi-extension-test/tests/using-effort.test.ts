@@ -1,623 +1,196 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdir } from "node:fs/promises";
 import { Value } from "typebox/value";
-import { activity, EffortProtocolError, type ActivityCondition, type ActivityReply } from "../../../.pi/extensions/awf-effort/client.ts";
-import effortExtension, {
-  registerEffort,
-  type EffortTransferCoordinator,
-  type RemotePiAssignedNameDiagnosticPayload,
-  type RemotePiCapabilitiesReplyPayload,
-  type RemotePiCapabilitiesRequestPayload,
-  type RemotePiMetadataReplayRequestPayload,
-  type RemotePiMetadataSetPayload,
-  type RemotePiNameOverrideReplayRequestPayload,
-  type RemotePiNameOverrideSetPayload,
-} from "../../../.pi/extensions/awf-effort/index.ts";
+import { activity, EffortProtocolError } from "../../../.pi/extensions/awf-effort/client.ts";
+import effortExtension, { registerEffort } from "../../../.pi/extensions/awf-effort/index.ts";
 
-const T0 = "2026-08-02T00:00:00Z";
-const T1 = "2026-08-02T01:00:00.123456789Z";
 const OWNER = "00000000-0000-4000-8000-000000000001";
-const PRIOR = "00000000-0000-4000-8000-000000000099";
-const metadataReplay: RemotePiMetadataReplayRequestPayload = undefined;
-const capabilityRequest: RemotePiCapabilitiesRequestPayload = undefined;
-const capabilityReply: RemotePiCapabilitiesReplyPayload = { metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } };
-const nameOverrideReplay: RemotePiNameOverrideReplayRequestPayload = undefined;
-const assignedDiagnostic: RemotePiAssignedNameDiagnosticPayload = { namespace: "awf", requested: "demo", assigned: "demo#2", active: true, changed: true };
+const OTHER = "00000000-0000-4000-8000-000000000002";
+const TIME = "2026-08-03T00:00:00Z";
+const line = (x: unknown) => `${JSON.stringify(x)}\n`;
+function success(condition: "attached" | "taken-over" | "heartbeat" = "attached", owner = OWNER, slug = "demo") {
+  return { schemaVersion: 2, condition, effort: { slug, title: "Demo" }, memory: { effort: slug, phase: "Build", next: "Test", updated: TIME }, activity: { schemaVersion: 2, owner, attachedAt: TIME, heartbeatAt: TIME } };
+}
+function refusal(condition = "missing", actions = ["repair and retry"], extra: any = {}) { return { schemaVersion: 2, condition, outcome: { category: "operation", condition: "resident is absent", changedActivity: false, nextActions: actions, ...extra } }; }
 
-function fact(owner = OWNER, cwd = "/repo", role: "managed" | "receiving" = "managed", heartbeatAt = T1) {
-  return { schemaVersion: 1, owner, attachedAt: T0, heartbeatAt, cwd, receivingCheckout: "/repo", role } as const;
-}
-function effort(slug = "demo") { return { slug, title: `Title ${slug}` }; }
-function memory(slug = "demo") { return { effort: slug, phase: "Build", next: "Run tests", updated: T1 }; }
-function destination(cwd = "/repo", role: "managed" | "receiving" = "managed") { return { cwd, role, receivingCheckout: "/repo" }; }
-function outcome(condition: ActivityCondition, overrides: Record<string, unknown> = {}) {
-  return { category: "operation" as const, condition, changedActivity: false, changedMemory: false, changedCwd: false, nextActions: ["repair and retry"], ...overrides };
-}
-function envelope(condition: ActivityCondition, options: { slug?: string; owner?: string; cwd?: string; role?: "managed" | "receiving"; heartbeatAt?: string; priorHeartbeat?: string; sentinel?: boolean; cause?: string } = {}): ActivityReply {
-  const slug = options.slug ?? "demo";
-  const owner = options.owner ?? OWNER;
-  const cwd = options.cwd ?? "/repo";
-  const role = options.role ?? "managed";
-  const common = { schemaVersion: 1 as const, condition };
-  switch (condition) {
-    case "ready": return { ...common, effort: effort(slug), memory: { ...memory(slug), ...(options.sentinel ? { updated: "Not yet updated." } : {}) }, destination: destination(cwd, role) };
-    case "attached": return { ...common, effort: effort(slug), memory: memory(slug), activity: fact(owner, cwd, role, options.heartbeatAt) };
-    case "taken-over": return { ...common, effort: effort(slug), memory: memory(slug), activity: fact(owner, cwd, role, options.heartbeatAt), priorClaim: fact(PRIOR, "/prior", "receiving", options.priorHeartbeat ?? T0) };
-    case "heartbeat":
-    case "checkout-updated": return { ...common, effort: effort(slug), memory: memory(slug), activity: fact(owner, cwd, role, options.heartbeatAt) };
-    case "detached": return { ...common, effort: effort(slug) };
-    case "not-owner": return { ...common, effort: effort(slug), activity: fact(PRIOR, cwd, role), outcome: outcome(condition) };
-    case "missing": return { ...common, outcome: outcome(condition) };
-    case "invalid-memory": return { ...common, effort: effort(slug), outcome: outcome(condition) };
-    case "unsafe-resident":
-    case "repository-mismatch": return { ...common, outcome: outcome(condition, options.cause ? { cause: options.cause } : {}) };
+async function decode(value: unknown, op: any = "attach") { return activity(async () => ({ code: 0, stdout: line(value), stderr: "" }), "/repo", op, "demo", OWNER); }
+
+test("client accepts exact v2 success and refusal matrices with immutable facts", async () => {
+  for (const condition of ["attached", "taken-over", "heartbeat"] as const) {
+    const reply = await decode(success(condition));
+    assert.equal(reply.condition, condition); assert.equal(Object.isFrozen(reply), true); assert.equal(Object.isFrozen(reply.activity), true);
   }
-}
-function line(reply: unknown): string { return `${JSON.stringify(reply)}\n`; }
-function clone(value: unknown): any { return JSON.parse(JSON.stringify(value)); }
-
-async function decode(value: unknown) {
-  return activity(async () => ({ code: 0, stdout: line(value), stderr: "" }), "/repo", ["resolve", "demo"]);
-}
-
-test("activity client accepts every exact protocol matrix and preserves immutable facts", async () => {
-  for (const condition of ["ready", "attached", "taken-over", "heartbeat", "checkout-updated", "detached", "not-owner", "missing", "invalid-memory", "unsafe-resident", "repository-mismatch"] as const) {
-    const reply = await decode(envelope(condition, condition === "ready" ? { sentinel: true } : {}));
-    assert.equal(reply.condition, condition);
-    assert.equal(Object.isFrozen(reply), true);
-    if (reply.activity) assert.equal(Object.isFrozen(reply.activity), true);
-    if (reply.memory) assert.equal(Object.isFrozen(reply.memory), true);
-    if (reply.outcome) assert.equal(Object.isFrozen(reply.outcome.nextActions), true);
-  }
-  const readyWithPrior = { ...envelope("ready"), priorClaim: fact(PRIOR) };
-  assert.equal((await decode(readyWithPrior)).priorClaim?.owner, PRIOR);
-  assert.equal((await decode({ schemaVersion: 1, condition: "detached" })).effort, undefined);
-  const caused = await decode(envelope("repository-mismatch", { cause: "git unavailable" }));
-  assert.equal(caused.outcome?.cause, "git unavailable");
+  assert.deepEqual(await decode({ schemaVersion: 2, condition: "detached" }, "detach"), { schemaVersion: 2, condition: "detached" });
+  for (const condition of ["not-owner", "missing", "invalid-memory", "unsafe-resident"]) assert.equal((await decode(refusal(condition))).condition, condition);
 });
 
-test("activity client rejects malformed transport and bounds diagnostics", async () => {
-  const cases: Array<[() => Promise<any>, RegExp]> = [
-    [() => activity(async () => { throw new Error("spawn failed"); }, "/repo", []), /execution failed/],
-    [() => activity(async () => { throw "string failure"; }, "/repo", []), /execution failed/],
-    [() => activity(async () => ({ code: 3, stderr: "bad" }), "/repo", []), /activity failed/],
-    [() => activity(async () => ({ code: 0, stdout: "", stderr: "" }), "/repo", []), /single JSON/],
-    [() => activity(async () => ({ code: 0, stdout: "\n", stderr: "" }), "/repo", []), /single JSON/],
-    [() => activity(async () => ({ code: 0, stdout: "{}", stderr: "" }), "/repo", []), /single JSON/],
-    [() => activity(async () => ({ code: 0, stdout: `${line(envelope("ready"))}${line(envelope("ready"))}`, stderr: "" }), "/repo", []), /single JSON/],
-    [() => activity(async () => ({ code: 0, stdout: "{]\n", stderr: "" }), "/repo", []), /malformed JSON/],
-    [() => activity(async () => ({ code: 0, stdout: "x".repeat(50 * 1024 + 1), stderr: "" }), "/repo", []), /exceeded bounds/],
-    [() => activity(async () => ({ code: 0, stdout: line(envelope("ready")), stderr: "x".repeat(50 * 1024 + 1) }), "/repo", []), /exceeded bounds/],
+test("client strictly rejects transport, closed envelopes, facts, and outcomes", async () => {
+  const bad: any[] = [null, [], {}, { schemaVersion: 1, condition: "attached" }, { schemaVersion: 2, condition: "other" }, { ...success(), extra: true }, { ...success(), effort: { slug: "", title: "x" } }, { ...success("attached", OWNER, "other"), memory: { effort: "other", phase: "x", next: "x", updated: TIME } }, { ...success(), memory: { effort: "other", phase: "x", next: "x", updated: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: "BAD", attachedAt: TIME, heartbeatAt: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: OWNER, attachedAt: "", heartbeatAt: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: OWNER, attachedAt: "bad", heartbeatAt: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: OWNER, attachedAt: "2026-02-30T00:00:00Z", heartbeatAt: TIME } }, { ...success(), memory: { ...success().memory, updated: "2026-02-30T00:00:00Z" } }, { ...refusal(), outcome: { category: "bad", condition: "x", changedActivity: false, nextActions: ["x"] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: [] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: [""] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: ["x"], cause: "" } }];
+  for (const value of bad) await assert.rejects(decode(value), /invalid envelope/);
+  await assert.rejects(activity(async () => ({ stdout: line(success()) }), "/repo", "attach", "bad_slug", OWNER), /invocation is invalid/);
+  const transports: Array<[any, RegExp]> = [
+    [async () => { throw new Error("spawn") }, /execution failed/], [async () => ({ code: 1, stderr: "bad" }), /activity failed/], [async () => ({ stdout: "" }), /single JSON/], [async () => ({ stdout: "{}\n{}\n" }), /single JSON/], [async () => ({ stdout: "{]\n" }), /malformed JSON/], [async () => ({ stdout: "x".repeat(50 * 1024 + 1) }), /exceeded bounds/], [async () => ({ stdout: line(success()), stderr: "x".repeat(50 * 1024 + 1) }), /exceeded bounds/],
   ];
-  for (const [run, expected] of cases) await assert.rejects(run(), expected);
-  const error = await activity(async (command, argv, options) => {
-    assert.equal(command, "./awf");
-    assert.deepEqual(argv, ["effort", "activity", "heartbeat", "demo", "--json"]);
-    assert.equal(options.cwd, "/repo");
-    assert.equal(options.timeout, 15_000);
-    assert.equal(options.signal?.aborted, false);
-    return { stdout: line(envelope("heartbeat")) };
-  }, "/repo", ["heartbeat", "demo"], new AbortController().signal);
-  assert.equal(error.condition, "heartbeat");
-  assert.equal(new EffortProtocolError("x").name, "EffortProtocolError");
+  for (const [exec, pattern] of transports) await assert.rejects(activity(exec, "/repo", "attach", "demo", OWNER), pattern);
+  const signal = new AbortController().signal;
+  let argv: readonly string[] = [];
+  await activity(async (command, a, options) => { assert.equal(command, "./awf"); argv = a; assert.equal(options.signal, signal); return { stdout: line(success()) }; }, "/repo", "detach", "demo", OWNER, signal);
+  assert.deepEqual(argv, ["effort", "activity", "detach", "demo", "--owner", OWNER, "--json"]); assert.equal(new EffortProtocolError("x").name, "EffortProtocolError");
 });
 
-test("activity client rejects every malformed closed fact and presence branch", async () => {
-  const invalid: unknown[] = [null, [], {}, { schemaVersion: 2, condition: "ready" }, { schemaVersion: 1, condition: 2 }, { schemaVersion: 1, condition: "other" }];
-  for (const condition of ["ready", "attached", "taken-over", "heartbeat", "checkout-updated", "detached", "not-owner", "missing", "invalid-memory", "unsafe-resident", "repository-mismatch"] as const) {
-    const extra = { ...envelope(condition), extra: true };
-    invalid.push(extra);
-    const source = clone(envelope(condition));
-    const removable = Object.keys(source).find((key) => !["schemaVersion", "condition"].includes(key));
-    if (removable && !(condition === "detached" && removable === "effort")) { delete source[removable]; invalid.push(source); }
-  }
-  const badEfforts = [null, [], { slug: "demo" }, { slug: "", title: "x" }, { slug: "demo", title: "" }, { slug: "demo", title: "x", extra: 1 }, { slug: "x".repeat(256), title: "x" }];
-  for (const value of badEfforts) invalid.push({ ...envelope("ready"), effort: value });
-  const badMemory = [null, [], { effort: "demo" }, { effort: "demo", phase: "", next: "x", updated: T1 }, { effort: "demo", phase: "x", next: "", updated: T1 }, { effort: "demo", phase: "x", next: "x", updated: "bad" }, { effort: "other", phase: "x", next: "x", updated: T1 }, { ...memory(), extra: 1 }, { ...memory(), phase: "x".repeat(501) }];
-  for (const value of badMemory) invalid.push({ ...envelope("ready"), memory: value });
-  const badDestinations = [null, [], { cwd: "/repo" }, { cwd: "relative", role: "managed", receivingCheckout: "/repo" }, { cwd: "/repo/..", role: "managed", receivingCheckout: "/repo" }, { cwd: "/repo", role: "bad", receivingCheckout: "/repo" }, { cwd: "/repo", role: "managed", receivingCheckout: "relative" }, { ...destination(), extra: 1 }];
-  for (const value of badDestinations) invalid.push({ ...envelope("ready"), destination: value });
-  const badActivities = [null, [], { schemaVersion: 1 }, { ...fact(), schemaVersion: 2 }, { ...fact(), owner: "BAD" }, { ...fact(), attachedAt: "bad" }, { ...fact(), heartbeatAt: "bad" }, { ...fact(), cwd: "relative" }, { ...fact(), receivingCheckout: "relative" }, { ...fact(), role: "bad" }, { ...fact(), extra: 1 }];
-  for (const value of badActivities) invalid.push({ ...envelope("attached"), activity: value });
-  const badOutcomes = [null, [], {}, { ...outcome("missing"), category: "bad" }, { ...outcome("missing"), condition: "unsafe-resident" }, { ...outcome("missing"), changedActivity: 1 }, { ...outcome("missing"), changedMemory: 1 }, { ...outcome("missing"), changedCwd: 1 }, { ...outcome("missing"), nextActions: [] }, { ...outcome("missing"), nextActions: [""] }, { ...outcome("missing"), cause: "" }, { ...outcome("missing"), extra: 1 }];
-  for (const value of badOutcomes) invalid.push({ ...envelope("missing"), outcome: value });
-  invalid.push({ ...envelope("attached"), outcome: outcome("attached") });
-  invalid.push({ ...envelope("taken-over"), priorClaim: { ...fact(PRIOR), owner: "bad" } });
-  for (const value of invalid) await assert.rejects(decode(value), /invalid envelope/);
-});
-
-type Harness = ReturnType<typeof makeHarness>;
-type ReplyOverride = ActivityReply | Error | string | ((argv: readonly string[]) => ActivityReply | Promise<ActivityReply>);
-function flag(argv: readonly string[], name: string): string | undefined { const index = argv.indexOf(name); return index < 0 ? undefined : argv[index + 1]; }
-function makeUUIDSource(start = 1) {
-  let next = start;
-  return () => `00000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
+function harness(replies: any[] = [], opts: { directory?: any; emitThrows?: boolean } = {}) {
+  const tools = new Map<string, any>(), hooks = new Map<string, any>(), listeners = new Map<string, any>(); const events: any[] = [], calls: any[] = [], options: any[] = [];
+  const pi: any = { registerTool: (x: any) => tools.set(x.name, x), on: (n: string, h: any) => hooks.set(n, h), events: { emit: (n: string, p: any) => { if (opts.emitThrows) throw new Error("emit"); events.push([n, p]); }, on: (n: string, h: any) => listeners.set(n, h) }, exec: async (_: string, args: string[], option: any) => { calls.push(args); options.push(option); const r = replies.shift() ?? success(args[2] as any, args[5], args[3]); if (r instanceof Error) throw r; return { code: 0, stdout: typeof r === "string" ? r : line(r), stderr: "" }; } };
+  let n = 0; registerEffort(pi, { uuid: () => n++ ? OTHER : OWNER, isDirectory: opts.directory ?? (async () => true) });
+  const tool = () => tools.get("using_effort"); const ctx = { cwd: "/repo" };
+  return { pi, tools, hooks, listeners, events, calls, options, tool, ctx };
 }
-function makeHarness(options: { cwd?: string; shared?: EffortTransferCoordinator; overrides?: Record<string, ReplyOverride[]>; uuid?: () => string; now?: () => Date; wait?: (milliseconds: number) => Promise<void>; emitThrows?: Set<string>; events?: boolean } = {}) {
-  const tools = new Map<string, any>();
-  const commands = new Map<string, any>();
-  const hooks = new Map<string, any>();
-  const listeners = new Map<string, any>();
-  const events: Array<[string, any]> = [];
-  const calls: readonly string[][] = [];
-  const notices: string[] = [];
-  const queued: Array<[string, string]> = [];
-  const overrides = new Map(Object.entries(options.overrides ?? {}).map(([key, values]) => [key, [...values]]));
-  const pi: any = {
-    registerTool: (tool: any) => tools.set(tool.name, tool),
-    registerCommand: (name: string, command: any) => commands.set(name, command),
-    queueCommand: (name: string, argument: string) => queued.push([name, argument]),
-    on: (name: string, handler: any) => hooks.set(name, handler),
-    ...(options.events === false ? {} : { events: {
-      emit: (name: string, payload: any) => { if (options.emitThrows?.has(name)) throw new Error("event failure"); events.push([name, payload]); },
-      on: (name: string, handler: any) => listeners.set(name, handler),
-    } }),
-    exec: async (_command: string, argv: readonly string[]) => {
-      (calls as string[][]).push([...argv]);
-      const action = argv[2]!;
-      const next = overrides.get(action)?.shift();
-      if (next instanceof Error) throw next;
-      if (typeof next === "string") return { code: 0, stdout: next, stderr: "" };
-      const chosen = typeof next === "function" ? await next(argv) : next;
-      const slug = argv[3] ?? "demo";
-      const owner = flag(argv, "--owner") ?? OWNER;
-      const cwd = flag(argv, "--cwd") ?? options.cwd ?? "/repo";
-      const role = (flag(argv, "--role") ?? flag(argv, "--destination") ?? "managed") as "managed" | "receiving";
-      const fallback = action === "resolve" ? envelope("ready", { slug, cwd: role === "receiving" ? (flag(argv, "--receiving-checkout") ?? cwd) : cwd, role })
-        : action === "attach" ? envelope("attached", { slug, owner, cwd, role })
-        : action === "checkout" ? envelope("checkout-updated", { slug, owner, cwd, role })
-        : action === "heartbeat" ? envelope("heartbeat", { slug, owner, cwd, role })
-        : envelope("detached", { slug });
-      return { code: 0, stdout: line(chosen ?? fallback), stderr: "" };
-    },
-  };
-  const ctx: any = {
-    cwd: options.cwd ?? "/repo",
-    changeCwd: async (cwd: string, changeOptions?: { withSession?: (ctx: any) => Promise<void> }) => {
-      const changed = cwd !== ctx.cwd;
-      if (!changed) return { changed: false, cwd };
-      ctx.cwd = cwd;
-      await changeOptions?.withSession?.(ctx);
-      return { changed: true, cwd };
-    },
-    ui: {
-      notify: (message: string) => notices.push(message),
-      setStatus: (_key: string, value: string | undefined) => { if (value) notices.push(value); },
-    },
-  };
-  registerEffort(pi, { uuid: options.uuid ?? makeUUIDSource(), coordinator: options.shared ?? {}, now: options.now, wait: options.wait });
-  return { pi, ctx, tools, commands, hooks, listeners, events, calls, notices, queued, overrides };
-}
-async function request(h: Harness, args: any) { return h.tools.get("using_effort").execute("call", args); }
-async function continueRequest(h: Harness, token = h.queued.at(-1)?.[1]) { return h.commands.get("awf-using-effort-continue").handler(token, h.ctx); }
-function emitted(h: Harness, name: string) { return h.events.filter(([event]) => event === name).map(([, payload]) => payload); }
+async function request(h: any, args: any, signal = new AbortController().signal) { return h.tool().execute("id", args, signal, () => {}, h.ctx); }
+function lastText(r: any) { return r.content[0].text; }
 
-async function attachSameCwd(h: Harness, slug = "demo") {
-  await request(h, { effort: slug, destination: "managed" });
-  await continueRequest(h);
-}
-
-test("default extension factory uses the process coordinator and registers the runtime", () => {
-  const tools: unknown[] = [];
-  const commands: string[] = [];
-  effortExtension({
-    exec: async () => ({ code: 1 }),
-    registerTool: (tool: unknown) => tools.push(tool),
-    registerCommand: (name: string) => commands.push(name),
-    queueCommand: () => undefined,
-  });
-  assert.equal(tools.length, 1);
-  assert.deepEqual(commands, ["awf-using-effort-continue"]);
+test("client covers sentinel metadata, exact condition shapes, and cancellation transport", async () => {
+  const sentinel = success(); sentinel.memory.updated = "Not yet updated.";
+  assert.equal((await decode(sentinel)).memory?.updated, "Not yet updated.");
+  const nano = success(); nano.activity.attachedAt = "2026-08-03T00:00:00.123456789Z"; nano.activity.heartbeatAt = "2026-08-03T00:00:00.1Z";
+  assert.equal((await decode(nano)).activity?.attachedAt, nano.activity.attachedAt);
+  const invalidSentinel = success(); invalidSentinel.activity.attachedAt = "Not yet updated.";
+  await assert.rejects(decode(invalidSentinel), /invalid envelope/);
+  const malformed = [
+    { schemaVersion: 2, condition: "attached", effort: success().effort, memory: success().memory },
+    { schemaVersion: 2, condition: "detached", outcome: refusal().outcome },
+    { schemaVersion: 2, condition: "missing" },
+    { ...refusal("missing"), effort: success().effort },
+    { ...success(), activity: undefined },
+    { ...success(), memory: undefined },
+    { ...success(), effort: undefined },
+    { ...refusal("missing"), outcome: undefined },
+    { ...success(), memory: { ...success().memory, updated: "bad" } },
+  ];
+  for (const value of malformed) await assert.rejects(decode(value), /invalid envelope/);
+  const controller = new AbortController(); controller.abort();
+  await activity(async (_command, _argv, options) => { assert.equal(options.signal?.aborted, true); return { stdout: line(success()) }; }, "/repo", "attach", "demo", OWNER, controller.signal);
 });
 
-test("using_effort validates explicit inputs, queues only a private command, and capability-degrades", async () => {
-  const h = makeHarness();
-  for (const args of [{}, { effort: "Bad", destination: "managed" }, { effort: "demo" }, { effort: "demo", destination: "receiving", receivingCheckout: "relative" }, { detach: true, destination: "managed" }, { detach: true, receivingCheckout: "/repo" }]) await assert.rejects(request(h, args));
-  const queued = await request(h, { effort: "demo", destination: "receiving", receivingCheckout: "/repo" });
-  assert.equal(queued.terminate, true);
-  assert.equal(h.calls.length, 0);
-  assert.equal(h.queued[0]?.[0], "awf-using-effort-continue");
-  delete h.ctx.changeCwd;
-  await continueRequest(h);
-  assert.match(h.notices.join(" "), /using_effort requires Pi command-context changeCwd; changedCwd=false changedActivity=false changedMemory=false/);
-  assert.equal(h.ctx.cwd, "/repo");
-  assert.equal(h.calls.length, 0);
-  await h.hooks.get("turn_end")({}, h.ctx);
-  assert.equal(h.calls.length, 0);
-  await continueRequest(h, "stale-token");
-  assert.match(h.notices.join(" "), /no longer current/);
+test("using_effort accepts 63-byte resident slugs and rejects 64-byte slugs", () => {
+  const h = harness();
+  const schema = h.tool().parameters;
+  assert.equal(Value.Check(schema, { effort: "r".repeat(63) }), true);
+  assert.equal(Value.Check(schema, { effort: "r".repeat(64) }), false);
 });
 
-test("using_effort accepts 63-byte residents and rejects 64-byte slugs", async () => {
-  const resident = "r".repeat(63);
-  const rejected = "r".repeat(64);
-  const h = makeHarness();
-  const schema = h.tools.get("using_effort").parameters;
-  assert.equal(Value.Check(schema, { effort: resident, destination: "managed" }), true);
-  assert.equal(Value.Check(schema, { effort: rejected, destination: "managed" }), false);
-  await attachSameCwd(h, resident);
-  assert.deepEqual(h.calls.slice(0, 2).map((argv) => argv[3]), [resident, resident]);
+test("using_effort directly validates, attaches, context-injects cached paths, and detaches", async () => {
+  const h = harness([success(), { schemaVersion: 2, condition: "detached" }]);
+  for (const value of [{}, { effort: "demo", detach: true }, { effort: "Bad" }, { effort: "demo", extra: true }, { detach: false }]) await assert.rejects(request(h, value));
+  assert.equal(lastText(await request(h, { effort: "demo" })), "Attached to demo.");
+  assert.deepEqual(h.calls[0], ["effort", "activity", "attach", "demo", "--owner", OWNER, "--json"]);
+  const cancellation = new AbortController(); const h2 = harness([success()]); await request(h2, { effort: "demo" }, cancellation.signal); assert.equal(h2.calls[0][5], OWNER); assert.equal(h2.options[0].signal, cancellation.signal);
+  const context = h.hooks.get("context")({ messages: [] }, h.ctx); assert.equal(context.messages.length, 1); assert.equal(context.messages[0].display, false); assert.equal(context.messages[0].content, "[awf effort] active=demo memory=.awf/efforts/demo/memory.md managedWorktree=.awf/worktrees/demo");
+  assert.equal(lastText(await request(h, { detach: true })), "Detached."); assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx), undefined);
 });
 
-test("same-checkout attach, heartbeat, replay, collision diagnostics, and explicit detach use advisory publication", async () => {
-  const h = makeHarness();
-  assert.equal(emitted(h, "remote-pi:capabilities:request")[0] as RemotePiCapabilitiesRequestPayload, capabilityRequest);
-  h.listeners.get("remote-pi:capabilities")(capabilityReply, h.ctx);
-  await attachSameCwd(h);
-  assert.deepEqual(h.calls.slice(0, 2).map((argv) => argv[2]), ["resolve", "attach"]);
-  assert.equal(flag(h.calls[1]!, "--receiving-checkout"), "/repo");
-  const metadataSet = emitted(h, "remote-pi:metadata:set").at(-1) as RemotePiMetadataSetPayload;
-  const nameOverrideSet = emitted(h, "remote-pi:name-override:set").at(-1) as RemotePiNameOverrideSetPayload;
-  assert.equal(metadataSet.value?.effort.slug, "demo");
-  assert.equal(nameOverrideSet.value, "demo");
-  h.listeners.get("remote-pi:metadata:request")(metadataReplay, h.ctx);
-  h.listeners.get("remote-pi:metadata:request")(metadataReplay);
-  h.listeners.get("remote-pi:name-override:request")(nameOverrideReplay, h.ctx);
-  h.listeners.get("remote-pi:name-override:request")(nameOverrideReplay);
-  h.listeners.get("remote-pi:name-override:assigned")(assignedDiagnostic, h.ctx);
-  h.listeners.get("remote-pi:name-override:assigned")({ namespace: "awf", requested: "demo", assigned: "demo#3", active: true, changed: true });
-  h.listeners.get("remote-pi:name-override:assigned")({ namespace: "other", active: true, changed: true, assigned: "ignored" }, h.ctx);
-  assert.match(h.notices.join(" "), /collision-assigned/);
-  await h.hooks.get("turn_end")({}, h.ctx);
-  assert.equal(h.calls.at(-1)?.[2], "heartbeat");
-  await request(h, { detach: true });
-  await continueRequest(h);
-  assert.equal(h.calls.at(-1)?.[2], "detach");
-  assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value, null);
-  assert.equal(emitted(h, "remote-pi:name-override:set").at(-1).value, null);
-  await request(h, { detach: true });
-  await continueRequest(h);
-  assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value, null);
-  await h.hooks.get("turn_end")({}, h.ctx);
+test("switching preserves prior association on detach refusal and otherwise remains detached on attach refusal", async () => {
+  const retain = harness([success(), refusal("unsafe-resident")]); await request(retain, { effort: "demo" }); assert.match(lastText(await request(retain, { effort: "other" })), /operation/); await retain.hooks.get("turn_end")({}, retain.ctx); assert.equal(retain.calls.at(-1)[2], "heartbeat");
+  const detached = harness([success(), { schemaVersion: 2, condition: "detached" }, refusal("missing", ["first", "second"])]); await request(detached, { effort: "demo" }); assert.equal(lastText(await request(detached, { effort: "other" })), "operation; resident is absent; changedActivity=false; 1. first 2. second"); assert.equal(detached.hooks.get("context")({ messages: [] }, detached.ctx), undefined);
+  const repeat = harness([success(), success("attached", OWNER)]); await request(repeat, { effort: "demo" }); await request(repeat, { effort: "demo" }); assert.deepEqual(repeat.calls.map((x: any) => x[2]), ["attach", "attach"]); assert.deepEqual(repeat.calls.map((x: any) => x[5]), [OWNER, OWNER]);
 });
 
-test("complete Remote Pi absence preserves local resolve, switching, heartbeat, and detach", async () => {
-  const shared: EffortTransferCoordinator = {};
-  const source = makeHarness({ shared, cwd: "/receiving", events: false });
-  source.overrides.set("resolve", [envelope("ready", { cwd: "/managed", role: "managed" })]);
-  let managed: Harness | undefined;
-  source.ctx.changeCwd = async (cwd: string, options: any) => {
-    await source.hooks.get("session_shutdown")({ reason: "cwd", targetCwd: cwd }, source.ctx);
-    managed = makeHarness({ shared, cwd, events: false, uuid: makeUUIDSource(100) });
-    await managed.hooks.get("session_start")({ reason: "cwd" }, managed.ctx);
-    await options.withSession(managed.ctx);
-    return { changed: true, cwd };
-  };
-  await request(source, { effort: "demo", destination: "managed" });
-  await continueRequest(source);
-  assert.ok(managed);
-  assert.equal(managed.ctx.cwd, "/managed");
-
-  managed.overrides.set("resolve", [envelope("ready", { cwd: "/receiving", role: "receiving" })]);
-  let receiving: Harness | undefined;
-  managed.ctx.changeCwd = async (cwd: string, options: any) => {
-    await managed!.hooks.get("session_shutdown")({ reason: "cwd", targetCwd: cwd }, managed!.ctx);
-    receiving = makeHarness({ shared, cwd, events: false, uuid: makeUUIDSource(200) });
-    await receiving.hooks.get("session_start")({ reason: "cwd" }, receiving.ctx);
-    await options.withSession(receiving.ctx);
-    return { changed: true, cwd };
-  };
-  await request(managed, { effort: "demo", destination: "receiving" });
-  await continueRequest(managed);
-  assert.ok(receiving);
-  assert.equal(receiving.ctx.cwd, "/receiving");
-  await receiving.hooks.get("turn_end")({}, receiving.ctx);
-  await request(receiving, { detach: true });
-  await continueRequest(receiving);
-
-  const calls = [...source.calls, ...managed.calls, ...receiving.calls];
-  assert.deepEqual(calls.map((argv) => argv[2]), ["resolve", "attach", "resolve", "checkout", "heartbeat", "detach"]);
-  assert.equal(flag(calls[1]!, "--cwd"), "/managed");
-  assert.equal(flag(calls[1]!, "--role"), "managed");
-  assert.equal(flag(calls[3]!, "--cwd"), "/receiving");
-  assert.equal(flag(calls[3]!, "--role"), "receiving");
-  for (const h of [source, managed, receiving]) {
-    assert.equal(h.events.length, 0);
-    assert.equal(h.listeners.size, 0);
-  }
+test("heartbeat refreshes presence and clears or degrades advisory snapshots conservatively", async () => {
+  for (const loss of ["not-owner", "missing"]) { const h = harness([success(), refusal(loss)]); await request(h, { effort: "demo" }); await h.hooks.get("turn_end")({}, h.ctx); assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx), undefined); }
+  for (const result of [refusal("invalid-memory"), refusal("unsafe-resident", ["repair"], { cause: "disk" }), new Error("broken")]) { const h = harness([success(), result]); await request(h, { effort: "demo" }); await h.hooks.get("turn_end")({}, h.ctx); const c = h.hooks.get("context")({ messages: [] }, h.ctx); assert.equal(c.messages[0].content, "[awf effort] active=demo memory=.awf/efforts/demo/memory.md"); }
+  let checks = 0; const h = harness([success(), success("heartbeat")], { directory: async () => ++checks === 1 }); await request(h, { effort: "demo" }); await h.hooks.get("turn_end")({}, h.ctx); assert.equal(checks, 2); assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx).messages[0].content.includes("managedWorktree"), false);
 });
 
-test("receiving attach, same-effort checkout, and different-effort switch use resolved facts and ordered owner operations", async () => {
-  const h = makeHarness();
-  await request(h, { effort: "demo", destination: "receiving", receivingCheckout: "/repo" });
-  await continueRequest(h);
-  await request(h, { effort: "demo", destination: "managed" });
-  await continueRequest(h);
-  await request(h, { effort: "other", destination: "managed" });
-  await continueRequest(h);
-  assert.deepEqual(h.calls.map((argv) => argv[2]), ["resolve", "attach", "resolve", "checkout", "resolve", "detach", "attach"]);
-  assert.equal(flag(h.calls[3]!, "--role"), "managed");
-  assert.equal(h.calls[5]?.[3], "demo");
-  assert.equal(h.calls[6]?.[3], "other");
+test("direct association handles impossible success, detach refusal, and shutdown cleanup", async () => {
+  const wrongOwner = harness([success("attached", OTHER)]);
+  await assert.rejects(request(wrongOwner, { effort: "demo" }), /incomplete attached reply/);
+  const refusalDetach = harness([success(), refusal("unsafe-resident", ["retry"], { cause: "disk" })]);
+  await request(refusalDetach, { effort: "demo" });
+  assert.equal(lastText(await request(refusalDetach, { detach: true })), "operation; resident is absent; changedActivity=false; cause=disk; retry");
+  assert.match((refusalDetach.hooks.get("context")({ messages: [] }, refusalDetach.ctx)).messages[0].content, /active=demo/);
+  const shutdownFailure = harness([success(), new Error("disk")]);
+  await request(shutdownFailure, { effort: "demo" }); await shutdownFailure.hooks.get("session_shutdown")({}, shutdownFailure.ctx);
+  assert.equal(shutdownFailure.hooks.get("context")({ messages: [] }, shutdownFailure.ctx), undefined);
+  const shutdownRefusal = harness([success(), refusal("unsafe-resident")]);
+  await request(shutdownRefusal, { effort: "demo" }); await shutdownRefusal.hooks.get("session_shutdown")({}, shutdownRefusal.ctx);
+  assert.equal(shutdownRefusal.hooks.get("context")({ messages: [] }, shutdownRefusal.ctx), undefined);
+  const restart = harness([success()]); await request(restart, { effort: "demo" }); restart.hooks.get("session_start")({});
+  assert.equal(restart.hooks.get("context")({ messages: [] }, restart.ctx), undefined);
+  assert.deepEqual(restart.events.at(-1), ["remote-pi:metadata:set", { namespace: "awf", value: null }]);
 });
 
-test("different-effort same-CWD attach refusal clears the detached source association", async () => {
-  for (const [reply, notice] of [
-    [envelope("not-owner", { slug: "other" }), /prior effort detached: not-owner; changedCwd=false changedActivity=true changedMemory=false/],
-    [envelope("attached", { slug: "other", owner: PRIOR }), /prior effort detached: attached;.*Retry from the current checkout/],
-  ] as const) {
-    const h = makeHarness();
-    await attachSameCwd(h);
-    h.overrides.set("attach", [reply]);
-    await request(h, { effort: "other", destination: "managed" });
-    await continueRequest(h);
-    assert.deepEqual(h.calls.map((argv) => argv[2]), ["resolve", "attach", "resolve", "detach", "attach", "detach"]);
-    assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value, null);
-    assert.match(h.notices.join(" "), notice);
-    const calls = h.calls.length;
-    await h.hooks.get("turn_end")({}, h.ctx);
-    assert.equal(h.calls.length, calls);
-  }
+test("association lifecycle covers idle turns, malformed heartbeat facts, and serialized recovery", async () => {
+  const idle = harness(); await idle.hooks.get("turn_end")({}, idle.ctx);
+  const mismatchedHeartbeat = harness([success(), success("heartbeat", OTHER)]);
+  await request(mismatchedHeartbeat, { effort: "demo" }); await mismatchedHeartbeat.hooks.get("turn_end")({}, mismatchedHeartbeat.ctx);
+  assert.equal(mismatchedHeartbeat.hooks.get("context")({ messages: [] }, mismatchedHeartbeat.ctx).messages[0].content, "[awf effort] active=demo memory=.awf/efforts/demo/memory.md");
+  const serial = harness([success("attached", OTHER), success("attached", OWNER)]);
+  await assert.rejects(request(serial, { effort: "demo" }), /incomplete attached reply/);
+  assert.equal(lastText(await request(serial, { effort: "demo" })), "Attached to demo.");
 });
 
-test("changed CWD transfers through the destination instance and matching cwd shutdown skips source detach", async () => {
-  const shared: EffortTransferCoordinator = {};
-  const source = makeHarness({ shared, cwd: "/source" });
-  let destinationHarness: Harness | undefined;
-  source.ctx.changeCwd = async (cwd: string, options: any) => {
-    await source.hooks.get("session_shutdown")({ reason: "cwd", targetCwd: cwd }, source.ctx);
-    destinationHarness = makeHarness({ shared, cwd, uuid: makeUUIDSource(100) });
-    await destinationHarness.hooks.get("session_start")({ reason: "cwd" }, destinationHarness.ctx);
-    await options.withSession(destinationHarness.ctx);
-    return { changed: true, cwd };
-  };
-  source.overrides.set("resolve", [envelope("ready", { cwd: "/managed" })]);
-  await request(source, { effort: "demo", destination: "managed" });
-  await continueRequest(source);
-  assert.ok(destinationHarness);
-  assert.equal(source.calls.filter((argv) => argv[2] === "detach").length, 0);
-  assert.equal(destinationHarness!.calls.some((argv) => argv[2] === "attach"), true);
-  assert.equal(emitted(destinationHarness!, "remote-pi:metadata:set").at(-1).value.effort.slug, "demo");
+test("using_effort serializes overlapping invocations in invocation order", async () => {
+  let releaseFirst!: () => void;
+  let firstStarted!: () => void;
+  const firstSettled = new Promise<void>(resolve => { releaseFirst = resolve; });
+  const firstInvoked = new Promise<void>(resolve => { firstStarted = resolve; });
+  const tools = new Map<string, any>(); const calls: string[][] = [];
+  const pi: any = { registerTool: (tool: any) => tools.set(tool.name, tool), exec: async (_: string, args: string[]) => {
+    calls.push(args); if (calls.length === 1) { firstStarted(); await firstSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
+    if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
+    return { code: 0, stdout: line(success("attached", OWNER, "second")), stderr: "" };
+  } };
+  registerEffort(pi, { uuid: () => OWNER, isDirectory: async () => false });
+  const execute = tools.get("using_effort").execute;
+  const first = execute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  await firstInvoked;
+  const second = execute("second", { effort: "second" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  assert.deepEqual(calls.map(args => args[2]), ["attach"], "second binary invocation began before the first settled");
+  releaseFirst();
+  assert.equal(lastText(await first), "Attached to first.");
+  assert.equal(lastText(await second), "Attached to second.");
+  assert.deepEqual(calls.map(args => args[2]), ["attach", "detach", "attach"]);
+
+  let releaseFailure!: () => void;
+  let failureStarted!: () => void;
+  const failureSettled = new Promise<void>(resolve => { releaseFailure = resolve; });
+  const failureInvoked = new Promise<void>(resolve => { failureStarted = resolve; });
+  const failureTools = new Map<string, any>(); const failureHooks = new Map<string, any>(); const failureCalls: string[][] = [];
+  const failurePi: any = { registerTool: (tool: any) => failureTools.set(tool.name, tool), on: (name: string, hook: any) => failureHooks.set(name, hook), exec: async (_: string, args: string[]) => {
+    failureCalls.push(args); if (failureCalls.length === 1) { failureStarted(); await failureSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
+    if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
+    return { code: 0, stdout: line(refusal("missing")), stderr: "" };
+  } };
+  registerEffort(failurePi, { uuid: () => OWNER, isDirectory: async () => false });
+  const failureExecute = failureTools.get("using_effort").execute;
+  const attached = failureExecute("first", { effort: "first" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  await failureInvoked;
+  const refused = failureExecute("second", { effort: "second" }, new AbortController().signal, () => {}, { cwd: "/repo" });
+  assert.deepEqual(failureCalls.map(args => args[2]), ["attach"], "failed switch began before the first attach settled");
+  releaseFailure();
+  await attached;
+  assert.match(lastText(await refused), /operation/);
+  assert.deepEqual(failureCalls.map(args => args[2]), ["attach", "detach", "attach"]);
+  assert.equal(failureHooks.get("context")({ messages: [] }, { cwd: "/repo" }), undefined, "refused switch retained the detached prior association");
 });
 
-test("pre-teardown failure retains the old association and destination receiver absence changes only CWD", async () => {
-  const retained = makeHarness();
-  await attachSameCwd(retained);
-  retained.ctx.changeCwd = async () => { throw new Error("rebind failed"); };
-  retained.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-  await request(retained, { effort: "demo", destination: "managed" });
-  await continueRequest(retained);
-  await retained.hooks.get("turn_end")({}, retained.ctx);
-  assert.equal(retained.calls.at(-1)?.[2], "heartbeat");
-  assert.match(retained.notices.join(" "), /prior association is unchanged/);
-
-  const shared: EffortTransferCoordinator = {};
-  const absent = makeHarness({ shared, cwd: "/source" });
-  absent.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-  absent.ctx.changeCwd = async (cwd: string, options: any) => {
-    await options.withSession({ ...absent.ctx, cwd });
-    return { changed: true, cwd };
-  };
-  await request(absent, { effort: "demo", destination: "managed" });
-  await continueRequest(absent);
-  assert.match(absent.notices.join(" "), /receiver is unavailable/);
-  assert.equal(absent.calls.filter((argv) => argv[2] === "attach").length, 0);
-
-  const noCallback = makeHarness({ cwd: "/source" });
-  noCallback.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-  noCallback.ctx.changeCwd = async (cwd: string) => ({ changed: true, cwd });
-  await request(noCallback, { effort: "demo", destination: "managed" });
-  await continueRequest(noCallback);
-  assert.match(noCallback.notices.join(" "), /without running the replacement-session callback/);
-});
-
-test("post-rebind refusal and transfer timeout clear publication and owner-detach recovery", async () => {
-  for (const mode of ["refusal", "timeout"] as const) {
-    const shared: EffortTransferCoordinator = {};
-    const source = makeHarness({ shared, cwd: "/source", wait: mode === "timeout" ? async () => undefined : () => new Promise(() => undefined) });
-    source.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-    let destinationHarness: Harness | undefined;
-    source.ctx.changeCwd = async (cwd: string, options: any) => {
-      destinationHarness = makeHarness({
-        shared,
-        cwd,
-        uuid: makeUUIDSource(100),
-        overrides: mode === "refusal"
-          ? { attach: [envelope("not-owner", { slug: "demo", cwd })] }
-          : { attach: [() => new Promise<ActivityReply>(() => undefined)] },
-      });
-      await options.withSession(destinationHarness.ctx);
-      return { changed: true, cwd };
-    };
-    await request(source, { effort: "demo", destination: "managed" });
-    await continueRequest(source);
-    assert.ok(destinationHarness);
-    assert.equal(destinationHarness!.calls.some((argv) => argv[2] === "detach"), true);
-    assert.equal(emitted(destinationHarness!, "remote-pi:metadata:set").at(-1).value, null);
-    assert.match(destinationHarness!.notices.join(" "), mode === "timeout" ? /timed out/ : /not-owner/);
-  }
-
-  const shared: EffortTransferCoordinator = {};
-  const source = makeHarness({ shared, cwd: "/source", wait: async () => undefined });
-  source.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-  let destinationHarness: Harness | undefined;
-  source.ctx.changeCwd = async (cwd: string, options: any) => {
-    destinationHarness = makeHarness({ shared, cwd, uuid: makeUUIDSource(200), overrides: { attach: [() => new Promise<ActivityReply>(() => undefined)], detach: [new Error("cleanup failed")] } });
-    await options.withSession(destinationHarness.ctx);
-    return { changed: true, cwd };
-  };
-  await request(source, { effort: "demo", destination: "managed" });
-  await continueRequest(source);
-  assert.match(destinationHarness!.notices.join(" "), /could not confirm activity cleanup/);
-});
-
-test("resolve and commit refusals remain structured, and detach refusal or mechanism failure retains association", async () => {
-  const resolveRefused = makeHarness({ overrides: { resolve: [envelope("missing")] } });
-  await request(resolveRefused, { effort: "demo", destination: "managed" });
-  await continueRequest(resolveRefused);
-  assert.match(resolveRefused.notices.join(" "), /destination refused: missing/);
-  const resolveFailed = makeHarness({ overrides: { resolve: [new Error("git unavailable")] } });
-  await request(resolveFailed, { effort: "demo", destination: "managed" });
-  await continueRequest(resolveFailed);
-  assert.match(resolveFailed.notices.join(" "), /resolution failed/);
-
-  for (const reply of [envelope("unsafe-resident", { cause: "disk" }), new Error("detach I/O")] as const) {
-    const h = makeHarness();
-    await attachSameCwd(h);
-    h.overrides.set("detach", [reply]);
-    await request(h, { detach: true });
-    await continueRequest(h);
-    await h.hooks.get("turn_end")({}, h.ctx);
-    assert.equal(h.calls.at(-1)?.[2], "heartbeat");
-  }
-});
-
-test("heartbeat ownership loss clears while damaged metadata and mechanism failures degrade advisory-only", async () => {
-  for (const reply of [envelope("not-owner"), envelope("missing")]) {
-    const h = makeHarness();
-    await attachSameCwd(h);
-    h.overrides.set("heartbeat", [reply]);
-    await h.hooks.get("turn_end")({}, h.ctx);
-    assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value, null);
-  }
-  for (const reply of [envelope("invalid-memory"), envelope("unsafe-resident", { cause: "disk" }), new Error("heartbeat failed")]) {
-    const h = makeHarness();
-    await attachSameCwd(h);
-    h.overrides.set("heartbeat", [reply]);
-    await h.hooks.get("turn_end")({}, h.ctx);
-    const metadata = emitted(h, "remote-pi:metadata:set").at(-1).value;
-    assert.equal(metadata.effort.slug, "demo");
-    assert.equal(metadata.memory, null);
-    assert.match(h.notices.join(" "), /heartbeat/);
-  }
-});
-
-test("fresh and stale takeover warn identically without changing permission", async () => {
-  for (const priorHeartbeat of ["2026-08-02T02:30:00Z", "2026-08-01T00:00:00Z"]) {
-    const h = makeHarness({ now: () => new Date("2026-08-02T03:00:00Z"), overrides: { attach: [(argv) => envelope("taken-over", { owner: flag(argv, "--owner"), priorHeartbeat })] } });
-    await attachSameCwd(h);
-    assert.equal(emitted(h, "remote-pi:metadata:set").at(-1).value.effort.slug, "demo");
-    assert.match(h.notices.join(" "), /Took over (fresh|stale).*Presence is advisory, not a lock/);
-  }
-});
-
-test("shutdown reasons detach, matching transfer shutdown skips, and restart begins detached", async () => {
-  for (const reason of ["quit", "reload", "new", "resume", "fork"] as const) {
-    const h = makeHarness();
-    await attachSameCwd(h);
-    await h.hooks.get("session_shutdown")({ reason }, h.ctx);
-    assert.equal(h.calls.at(-1)?.[2], "detach");
-  }
-  const restarted = makeHarness();
-  await restarted.hooks.get("session_start")({ reason: "startup" }, restarted.ctx);
-  assert.equal(emitted(restarted, "remote-pi:metadata:set").at(-1).value, null);
-});
-
-test("Remote Pi negotiation is bounded, metadata-only fallback is silent, and publication failures stay advisory", async () => {
-  const fallback = makeHarness();
-  await attachSameCwd(fallback);
-  assert.equal(emitted(fallback, "remote-pi:metadata:set").at(-1).value.effort.slug, "demo");
-  assert.equal(emitted(fallback, "remote-pi:name-override:set").length, 0);
-  fallback.listeners.get("remote-pi:capabilities")({ metadata: { version: 2 }, nameOverride: { version: 1, namespaces: ["awf"] } }, fallback.ctx);
-  fallback.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 2, namespaces: ["awf"] } }, fallback.ctx);
-  fallback.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: "awf" } }, fallback.ctx);
-  assert.equal(emitted(fallback, "remote-pi:name-override:set").length, 0);
-  fallback.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } }, fallback.ctx);
-  assert.equal(emitted(fallback, "remote-pi:name-override:set").at(-1).value, "demo");
-
-  const broken = makeHarness({ emitThrows: new Set(["remote-pi:metadata:set", "remote-pi:name-override:set"]) });
-  broken.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } }, broken.ctx);
-  await attachSameCwd(broken);
-  broken.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } });
-  await request(broken, { detach: true });
-  await continueRequest(broken);
-  assert.match(broken.notices.join(" "), /publication is unavailable|cleanup is unavailable/);
-});
-
-test("defensive transfer branches preserve ownership and report exact recovery posture", async () => {
-  for (const detachedCondition of ["missing", "not-owner"] as const) {
-    const h = makeHarness();
-    await attachSameCwd(h);
-    h.overrides.set("detach", [envelope(detachedCondition)]);
-    await request(h, { effort: "other", destination: "managed" });
-    await continueRequest(h);
-    assert.equal(h.calls.at(-1)?.[2], "attach");
-  }
-
-  const detachRefused = makeHarness();
-  await attachSameCwd(detachRefused);
-  detachRefused.overrides.set("detach", [envelope("unsafe-resident", { cause: "disk" })]);
-  await request(detachRefused, { effort: "other", destination: "managed" });
-  await continueRequest(detachRefused);
-  assert.match(detachRefused.notices.join(" "), /prior association is unchanged/);
-
-  const wrongOwner = makeHarness({ overrides: { attach: [envelope("attached", { owner: PRIOR })] } });
-  await request(wrongOwner, { effort: "demo", destination: "managed" });
-  await continueRequest(wrongOwner);
-  assert.match(wrongOwner.notices.join(" "), /prior association is unchanged/);
-
-  const shared: EffortTransferCoordinator = {};
-  const wrongContext = makeHarness({ shared, cwd: "/source", wait: () => new Promise(() => undefined) });
-  wrongContext.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-  let destinationHarness: Harness | undefined;
-  wrongContext.ctx.changeCwd = async (cwd: string, options: any) => {
-    destinationHarness = makeHarness({ shared, cwd: "/wrong", uuid: makeUUIDSource(300) });
-    await options.withSession(destinationHarness.ctx);
-    return { changed: true, cwd };
-  };
-  await request(wrongContext, { effort: "demo", destination: "managed" });
-  await continueRequest(wrongContext);
-  assert.match(destinationHarness!.notices.join(" "), /replacement context does not match/);
-
-  const replacedReceiverShared: EffortTransferCoordinator = {};
-  const replacedReceiver = makeHarness({ shared: replacedReceiverShared });
-  replacedReceiver.ctx.changeCwd = async (cwd: string) => {
-    makeHarness({ shared: replacedReceiverShared, cwd, uuid: makeUUIDSource(400) });
-    return { changed: false, cwd };
-  };
-  await request(replacedReceiver, { effort: "demo", destination: "managed" });
-  await continueRequest(replacedReceiver);
-  assert.match(replacedReceiver.notices.join(" "), /receiver changed/);
-
-  const detachWithoutOutcome = makeHarness();
-  await attachSameCwd(detachWithoutOutcome);
-  detachWithoutOutcome.overrides.set("detach", [envelope("heartbeat")]);
-  await request(detachWithoutOutcome, { detach: true });
-  await continueRequest(detachWithoutOutcome);
-  assert.match(detachWithoutOutcome.notices.join(" "), /Retry detach/);
-
-  for (const failure of ["reply-without-outcome", "string-error"] as const) {
-    const transferShared: EffortTransferCoordinator = {};
-    const transfer = makeHarness({
-      shared: transferShared,
-      cwd: "/source",
-      wait: failure === "string-error" ? async () => { throw "string timeout"; } : () => new Promise(() => undefined),
-    });
-    transfer.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-    let transferred: Harness | undefined;
-    transfer.ctx.changeCwd = async (cwd: string, options: any) => {
-      transferred = makeHarness({ shared: transferShared, cwd, uuid: makeUUIDSource(500), overrides: failure === "reply-without-outcome" ? { attach: [envelope("heartbeat")] } : { attach: [() => new Promise<ActivityReply>(() => undefined)] } });
-      await options.withSession(transferred.ctx);
-      return { changed: true, cwd };
-    };
-    await request(transfer, { effort: "demo", destination: "managed" });
-    await continueRequest(transfer);
-    assert.match(transferred!.notices.join(" "), failure === "reply-without-outcome" ? /Retry from the current checkout/ : /string timeout/);
-  }
-
-  const stringRebind = makeHarness();
-  stringRebind.overrides.set("resolve", [envelope("ready", { cwd: "/other" })]);
-  stringRebind.ctx.changeCwd = async () => { throw "string rebind"; };
-  await request(stringRebind, { effort: "demo", destination: "managed" });
-  await continueRequest(stringRebind);
-  assert.match(stringRebind.notices.join(" "), /string rebind/);
-
-  const defaultNow = makeHarness({ overrides: { attach: [(argv) => envelope("taken-over", { owner: flag(argv, "--owner"), priorHeartbeat: T0 })] } });
-  await attachSameCwd(defaultNow);
-  assert.match(defaultNow.notices.join(" "), /Took over/);
-});
-
-test("transition queue serializes heartbeat races", async () => {
-  let release: (() => void) | undefined;
-  let active = 0;
-  let maximum = 0;
-  const h = makeHarness({ overrides: { heartbeat: [async (argv) => { active++; maximum = Math.max(maximum, active); await new Promise<void>((resolve) => { release = resolve; }); active--; return envelope("heartbeat", { owner: flag(argv, "--owner") }); }, (argv) => envelope("heartbeat", { owner: flag(argv, "--owner") })] } });
-  await attachSameCwd(h);
-  const first = h.hooks.get("turn_end")({}, h.ctx);
-  const second = h.hooks.get("turn_end")({}, h.ctx);
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(active, 1);
-  release!();
-  await Promise.all([first, second]);
-  assert.equal(maximum, 1);
+test("remote Pi capability, replay, publication failures, restart, and shutdown remain advisory", async () => {
+  let defaultTool: any; const standalone: any = { exec: async (_: string, argv: string[]) => ({ stdout: line(success("attached", argv[5], argv[3])) }), registerTool: (tool: any) => { defaultTool = tool } }; effortExtension(standalone); // default factory is intentionally usable
+  await mkdir("/tmp/.awf/worktrees/demo", { recursive: true });
+  await defaultTool.execute("id", { effort: "demo" }, new AbortController().signal, () => {}, { cwd: "/tmp" });
+  let missingDirectoryTool: any; effortExtension({ exec: standalone.exec, registerTool: (tool: any) => { missingDirectoryTool = tool } });
+  await missingDirectoryTool.execute("id", { effort: "missing-dir" }, new AbortController().signal, () => {}, { cwd: "/definitely-missing" });
+  assert.throws(() => registerEffort({ exec: async () => ({ stdout: "" }), registerTool: () => {} } as any, { uuid: () => "bad" }), /lowercase UUIDv4/);
+  const noCurrent = harness(); assert.equal(lastText(await request(noCurrent, { detach: true })), "Detached.");
+  noCurrent.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } });
+  await request(noCurrent, { detach: true });
+  const missingDetach = harness([success(), refusal("missing")]); await request(missingDetach, { effort: "demo" }); assert.equal(lastText(await request(missingDetach, { detach: true })), "Detached.");
+  const takeover = harness([success("taken-over")]); assert.equal(lastText(await request(takeover, { effort: "demo" })), "Attached to demo.");
+  const h = harness([success(), { schemaVersion: 2, condition: "detached" }]);
+  await request(h, { effort: "demo" }); assert.equal(h.events.some(([n]: any) => n === "remote-pi:metadata:set"), true);
+  h.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } }); assert.equal(h.events.at(-1)[0], "remote-pi:name-override:set");
+  h.listeners.get("remote-pi:metadata:request")(); h.listeners.get("remote-pi:name-override:request")(); h.listeners.get("remote-pi:capabilities")({ metadata: { version: 2 }, nameOverride: { version: 1, namespaces: "awf" } });
+  assert.deepEqual(h.events.at(-1), ["remote-pi:name-override:set", { namespace: "awf", value: null }]);
+  await h.hooks.get("session_shutdown")({}, h.ctx); h.hooks.get("session_start")({}); assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx), undefined);
+  const broken = harness([success()], { emitThrows: true, directory: async () => { throw new Error("stat") } }); await request(broken, { effort: "demo" }); assert.equal(broken.hooks.get("context")({ messages: [] }, broken.ctx).messages[0].content.includes("managedWorktree"), false);
 });

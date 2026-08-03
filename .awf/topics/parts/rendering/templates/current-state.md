@@ -50,6 +50,13 @@ Every file in the embedded templates tree is free of concrete ADR citations (the
 Origin: ADR-0082
 Backing: test
 
+### `invariant: decision-artifact-routing`
+
+ADR Decision items own durable commitments that remain meaningful after implementation; current-state claims own active rules and invariants; plans own affected paths, commands, task order, rollout batches, ordinary test transactions, and comparable execution directives; and effort memory owns unsettled or transient working context. ADR review applies the post-implementation and counterfactual tests semantically, treats a misplaced implementation directive as a reasoned finding, and accepts a mechanism only when the record explains why that mechanism is itself load-bearing. Authoring guidance preserves scaffold-emitted ADR frontmatter, objective rendering checks enforce publication contracts without inferring prose meaning, and terminal ADR bodies remain unchanged.
+Origin: ADR-0224
+Backing: unbacked
+Verify: For each new or amended ADR and its linked plan, apply the post-implementation and counterfactual tests to every Decision item; confirm execution directives live in the plan, any retained mechanism has an explicit durable rationale, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
+
 ### `invariant: templates-valid-frontmatter`
 
 Every catalog skill and agent template, rendered with representative data, produces leading frontmatter that parses as YAML with a non-empty name and a non-empty description.

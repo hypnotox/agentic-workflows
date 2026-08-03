@@ -4,7 +4,7 @@ slug: require-explicit-short-effort-slugs
 status: Implementing
 date: 2026-08-03
 ---
-# ADR-require-explicit-short-effort-slugs: Require Explicit Short Effort Slugs
+# ADR-0226: Require Explicit Short Effort Slugs
 
 
 ## Context

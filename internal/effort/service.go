@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -25,13 +24,12 @@ import (
 // answers. Each is bound to the checkout the service was opened against, so
 // none of them names a root.
 type Dependencies struct {
-	Clock           func() time.Time
-	UUID            func() (string, error)
-	Worktrees       func(context.Context) ([]awfgit.WorktreeRegistration, error)
-	BranchExists    func(context.Context, string) (bool, error)
-	ValidateRef     func(context.Context, string) (bool, error)
-	RemoveTree      func(string) error
-	ResolveCheckout func(context.Context, string) (CheckoutFacts, error)
+	Clock        func() time.Time
+	UUID         func() (string, error)
+	Worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	BranchExists func(context.Context, string) (bool, error)
+	ValidateRef  func(context.Context, string) (bool, error)
+	RemoveTree   func(string) error
 	// Fault is the durability-boundary hook the restartable-finish tests
 	// interrupt the service at. It is the one optional member: a nil Fault
 	// injects nothing, which is what production wants and what "no fault
@@ -41,15 +39,14 @@ type Dependencies struct {
 
 // Service owns immutable effort residents and restartable finish.
 type Service struct {
-	paths            paths
-	store            store
-	clock            func() time.Time
-	uuid             func() (string, error)
-	worktrees        func(context.Context) ([]awfgit.WorktreeRegistration, error)
-	branchExists     func(context.Context, string) (bool, error)
-	validateRef      func(context.Context, string) (bool, error)
-	removeTree       func(string) error
-	checkoutResolver func(context.Context, string) (CheckoutFacts, error)
+	paths        paths
+	store        store
+	clock        func() time.Time
+	uuid         func() (string, error)
+	worktrees    func(context.Context) ([]awfgit.WorktreeRegistration, error)
+	branchExists func(context.Context, string) (bool, error)
+	validateRef  func(context.Context, string) (bool, error)
+	removeTree   func(string) error
 }
 
 // Open resolves the resident paths owned by roots and composes the service over
@@ -70,8 +67,6 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 		panic("effort Service: missing reference validation dependency")
 	case deps.RemoveTree == nil:
 		panic("effort Service: missing tree removal dependency")
-	case deps.ResolveCheckout == nil:
-		panic("effort Service: missing checkout resolution dependency")
 	}
 	resolved, err := resolvePaths(roots)
 	if err != nil {
@@ -80,7 +75,7 @@ func Open(roots awfgit.ControlRoots, deps Dependencies) (*Service, error) {
 	return &Service{
 		paths: resolved, store: store{paths: resolved, fault: deps.Fault},
 		clock: deps.Clock, uuid: deps.UUID, worktrees: deps.Worktrees,
-		branchExists: deps.BranchExists, validateRef: deps.ValidateRef, removeTree: deps.RemoveTree, checkoutResolver: deps.ResolveCheckout,
+		branchExists: deps.BranchExists, validateRef: deps.ValidateRef, removeTree: deps.RemoveTree,
 	}, nil
 }
 
@@ -200,17 +195,6 @@ func memoryUpdateCommand(slug string, invalid map[string]bool) string {
 		command += " --next <replacement-next>"
 	}
 	return command
-}
-
-func memoryRepairCommand(slug string, doc memoryDocument) string {
-	if doc.invalid["phase"] || doc.invalid["next"] {
-		return memoryUpdateCommand(slug, doc.invalid)
-	}
-	return "./awf effort memory update " + slug + " --phase " + shellQuote(doc.metadata.Phase)
-}
-
-func shellQuote(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error) {

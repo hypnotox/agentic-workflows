@@ -217,27 +217,16 @@ Update one or both mutable memory metadata fields. At least one of --phase and
 `},
 				},
 			},
-			{Name: "activity", Summary: "Resolve or mutate advisory Pi session activity", MaxPos: 0,
-				HelpBody: `Usage: awf effort activity resolve <slug> --destination <managed|receiving> [--receiving-checkout <absolute-path>] --json
-       awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json
+			{Name: "activity", Summary: "Mutate advisory Pi session activity", MaxPos: 0,
+				HelpBody: `Usage: awf effort activity attach <slug> --owner <uuid> --json
        awf effort activity heartbeat <slug> --owner <uuid> --json
-       awf effort activity checkout <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --json
        awf effort activity detach <slug> --owner <uuid> --json
 
-Activity replies are protocol-1 JSON only. Each action accepts only the flags
-shown in its usage form.
-`,
+Activity replies are protocol-2 JSON only.`,
 				Children: []Command{
-					{Name: "resolve", Summary: "Resolve a validated activity destination", BoolFlags: []string{"--json"}, ValueFlags: []string{"--destination", "--receiving-checkout"}, MinPos: 1, MaxPos: 1,
-						HelpBody: "Usage: awf effort activity resolve <slug> --destination <managed|receiving> [--receiving-checkout <absolute-path>] --json\n"},
-					{Name: "attach", Summary: "Attach or take over an advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner", "--cwd", "--role", "--receiving-checkout"}, MinPos: 1, MaxPos: 1,
-						HelpBody: "Usage: awf effort activity attach <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --receiving-checkout <absolute-path> --json\n"},
-					{Name: "heartbeat", Summary: "Heartbeat an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1,
-						HelpBody: "Usage: awf effort activity heartbeat <slug> --owner <uuid> --json\n"},
-					{Name: "checkout", Summary: "Update an owned advisory activity checkout", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner", "--cwd", "--role"}, MinPos: 1, MaxPos: 1,
-						HelpBody: "Usage: awf effort activity checkout <slug> --owner <uuid> --cwd <absolute-path> --role <managed|receiving> --json\n"},
-					{Name: "detach", Summary: "Detach an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1,
-						HelpBody: "Usage: awf effort activity detach <slug> --owner <uuid> --json\n"},
+					{Name: "attach", Summary: "Attach or take over an advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort activity attach <slug> --owner <uuid> --json\n"},
+					{Name: "heartbeat", Summary: "Heartbeat an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort activity heartbeat <slug> --owner <uuid> --json\n"},
+					{Name: "detach", Summary: "Detach an owned advisory activity claim", BoolFlags: []string{"--json"}, ValueFlags: []string{"--owner"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort activity detach <slug> --owner <uuid> --json\n"},
 				},
 			},
 		},

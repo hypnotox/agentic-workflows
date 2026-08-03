@@ -50,14 +50,16 @@ Backing: test
 
 ### `invariant: pi-effort-session-association`
 
-When selected `effort-workflow` and an enabled Pi target render the generated `using-effort` skill and `using_effort` tool, they explicitly associate one running session with at most one effort, resolve managed or recorded/explicit receiving checkout through the awf binary, and queue command-only `changeCwd` before owner-checked activity commit; they never infer an effort, guess a receiving checkout, follow topology, create a conversation, or write residents directly. Immutable process-local snapshots and a one-shot runtime-replacement coordinator preserve the same-session association across a successful CWD rebind but never across process restart; missing capability visibly changes no CWD/activity/memory axis. Activity takeover warns and proceeds, heartbeat/metadata/name failures remain advisory, stale age never changes permission, Remote Pi publication uses complete `awf` metadata replacement plus negotiated transient name override/replay, and detach/restart restore the base identity without turning presence into authority or a lock.
+When selected `effort-workflow` and an enabled Pi target render the generated `using-effort` skill and `using_effort` tool, they explicitly associate one running process with at most one effort through direct non-terminating attach or detach at the repository root. A switch conservatively detaches the prior owner before attaching the next effort; immutable process-local snapshots, owner-checked heartbeat, restart-detached behavior, and ownership-loss cleanup keep advisory state bounded. Every attached model call receives the fixed relative memory path and, when cached directory presence confirms it, the fixed managed-worktree path; failures silently omit unverified advisory facts. The runtime never infers an effort, resolves a checkout, changes CWD, queues a command, replaces or creates a conversation, writes residents directly, or uses local TUI presentation. Remote Pi publication retains complete `awf` metadata replacement plus negotiated transient name override and replay; detach, restart, and ownership loss clear publication without turning presence into authority or a lock.
 Origin: ADR-0218
+Revised-by: ADR-0225
 Backing: test
 
 ### `invariant: using-effort-skill`
 
-The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from selected `effort-workflow`; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. The skill documents the explicit tool arguments, validated managed/receiving switches, first-receiving-path repair, takeover warning, advisory heartbeat/metadata/name behavior, explicit detach, and the rule that activity is neither authority nor a lock.
+The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from selected `effort-workflow`; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. The skill documents exactly direct `{effort:"<canonical-slug>"}` attachment and `{detach:true}` detachment from the repository root, use of the supplied fixed relative memory and optional managed-worktree paths, explicit-only association, restart-detached and advisory heartbeat/Remote-name behavior, and the rule that activity is neither authority nor a lock.
 Origin: ADR-0218
+Revised-by: ADR-0225
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`

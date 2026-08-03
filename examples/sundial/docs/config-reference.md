@@ -71,7 +71,7 @@ declined; the generic prose renders).
 - `testCmd`: Command that runs the test suite. Consumed while an enabled artifact's template references it.
   State: set (`./x test`). Consumed by: agents-doc, doc workflow, skill tdd.
 - `activeMdRegenCmd`: Command that regenerates the generated ADR decision index (INDEX.md). Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).
-  State: absent, declined; the generic prose renders. Consumed by: agent adr-reviewer, skill adr-lifecycle, skill proposing-adr.
+  State: absent, declined; the generic prose renders. Consumed by: skill adr-lifecycle, skill proposing-adr.
 - `awfInvokeCmd`: Command the rendered ./awf wrapper execs to invoke awf. Leave empty to resolve the bootstrap-pinned binary, falling back to PATH awf. Consumed by the rendered runner wrapper template while the runner singleton is enabled.
   State: absent, declined; the generic prose renders. Consumed by: runner.
 - `invariantTestPath`: Path or glob where invariant-backing tests live. Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).
@@ -95,7 +95,6 @@ declined; the generic prose renders).
 - `skill proposing-adr` · `data.adrTriggers` (catalog default): The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers.
 - `skill executing-plans` · `data.e2eSuitePaths`: Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders.
 - `agent adr-reviewer` · `data.focusItems` (catalog default): The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty.
-- `agent adr-reviewer` · `data.docCurrencyItems` (catalog default): The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit doc updates and index regeneration.
 - `agent adr-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the decision record).
 - `agent adr-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction: what to read in full before applying lenses.
 - `agent adr-reviewer` · `data.digestLabel` (catalog default): The label heading the reviewer's returned digest.

@@ -84,6 +84,7 @@ exit 0
 // invariant: tooling/quality-gates:example-zero-notes (TestExampleAdopterWiring)
 // invariant: tooling/quality-gates:example-module-isolated (TestExampleAdopterWiring)
 func TestExampleAdopterWiring(t *testing.T) {
+	assertExampleDecisionRouting(t)
 	raw, err := os.ReadFile("../../x")
 	if err != nil {
 		t.Fatalf("read x: %v", err)
@@ -121,6 +122,44 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 	if _, err := os.Stat("../../examples/sundial/go.mod"); err != nil {
 		t.Errorf("examples/sundial must stay its own Go module (ADR-0090): %v", err)
+	}
+}
+
+func assertExampleDecisionRouting(t *testing.T) {
+	t.Helper()
+	read := func(path string) string {
+		raw, err := os.ReadFile(filepath.Join("../../examples/sundial", path))
+		if err != nil {
+			t.Fatalf("read sundial %s: %v", path, err)
+		}
+		return string(raw)
+	}
+	for _, target := range []string{".pi", ".claude"} {
+		writingPlans := read(filepath.Join(target, "skills", "sundial-writing-plans", "SKILL.md"))
+		for _, want := range []string{"implementation directives", "paths, commands, task order, rollout batches, and ordinary test transactions"} {
+			if !strings.Contains(writingPlans, want) {
+				t.Errorf("%s writing-plans missing decision routing %q", target, want)
+			}
+		}
+		proposingADR := read(filepath.Join(target, "skills", "sundial-proposing-adr", "SKILL.md"))
+		for _, want := range []string{"remains meaningful after implementation", "preserve exactly the frontmatter emitted by `awf new adr`"} {
+			if !strings.Contains(proposingADR, want) {
+				t.Errorf("%s proposing-adr missing decision routing %q", target, want)
+			}
+		}
+		reviewer := read(filepath.Join(target, "agents", "adr-reviewer.md"))
+		for _, want := range []string{"post-implementation", "counterfactual", "mechanism itself is load-bearing", "reasoned finding"} {
+			if !strings.Contains(reviewer, want) {
+				t.Errorf("%s ADR reviewer missing semantic routing %q", target, want)
+			}
+		}
+		if strings.Contains(reviewer, "## Doc-currency checklist") {
+			t.Errorf("%s ADR reviewer retains implementation-inventory checklist", target)
+		}
+	}
+	guide := read("AGENTS.md")
+	if !strings.Contains(guide, "Route settled content by authority lifetime") || strings.Contains(guide, "<no value>") {
+		t.Errorf("Sundial AGENTS decision routing is missing or contains unresolved-value residue")
 	}
 }
 
@@ -213,7 +252,6 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 		assertBoundaryDoesNotCreate(target+" ADR final approval", reviewingADR, "**Mandatory approval check-in.**")
 		writingPlans := readSkill("writing-plans")
 		assertBoundaryDoesNotCreate(target+" routine checkpoint", writingPlans, "**Routine checkpoint.**")
-
 		discoveryBoundaries := map[string]string{
 			"debugging":          "5. **Isolate with a failing test",
 			"roadmap-graduation": "### 4. Graduate in a single commit",

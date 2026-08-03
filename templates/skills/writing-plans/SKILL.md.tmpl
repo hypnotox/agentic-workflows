@@ -6,7 +6,7 @@ description: Use to write an implementation plan for a complex {{ .prefix }} tas
 # {{ .prefix }}-writing-plans
 
 <!-- awf:section positioning -->
-Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .prefix }} plan convention. The plan is the execution record; the design lives in the linked ADR(s) (when any exist); a plan may link zero or more, declared structurally in its `adrs:` frontmatter. Do not duplicate rationale; link.
+Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .prefix }} plan convention. The plan is the execution record and owns implementation directives: paths, commands, task order, rollout batches, and ordinary test transactions. The durable design lives in linked ADRs when any exist; link through `adrs:` rather than duplicating rationale. If planning discovers a new choice that remains meaningful after implementation, return to ADR authoring instead of hiding it in a task.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->

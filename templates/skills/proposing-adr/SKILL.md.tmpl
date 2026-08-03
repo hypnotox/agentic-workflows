@@ -15,7 +15,7 @@ Writes a new ADR to `{{ .layout.adrDir }}/NNNN-kebab-title.md` (status `Proposed
 ## When to invoke
 
 <!-- awf:section when-to-invoke -->
-Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
+Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decision. A Decision commitment remains meaningful after implementation and passes the post-implementation and counterfactual tests; a mechanism belongs only when the ADR explains why the mechanism itself is load-bearing. Route implementation directives to the plan. Bugfixes and routine refactors do not need an ADR. When in doubt, consult the ADR guide rather than expanding the record into a task list.
 
 {{ with .data.adrTriggers }}Load-bearing triggers include:
 {{ range . }}- {{ . }}
@@ -29,7 +29,7 @@ When grounding is stale - the ADR will cite repository facts not verified in the
 - **Identity by branch:** `awf new adr` numbers the record on the integration branch and leaves it pending anywhere else, which is where authoring normally happens. Never reuse a number, and never hand-number a pending record: `awf adr number` does that at integration.
 - **Filename:** `NNNN-kebab-title.md` when numbered, `kebab-title.md` while pending.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `{{ .layout.adrTemplate }}`; never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** exactly four keys, `format` (`current-state-v3`), `slug` (derived from the title, retained forever, never edited by hand), `status` (`Proposed`, the initial state), and `date` (today, ISO-8601). There is no `tags`, `related`, or `domains` key: the affected topics and domains are derived from the `State changes` operations.
+- **Required frontmatter:** preserve exactly the frontmatter emitted by `awf new adr`. The running binary's activation registry owns the current authoring format; never substitute a remembered literal marker. The scaffold emits exactly four keys: `format`, `slug` (derived from the title, retained forever, never edited by hand), `status` (`Proposed`, the initial state), and `date` (today, ISO-8601). There is no `tags`, `related`, or `domains` key: the affected topics and domains are derived from the `State changes` operations.
 - **Required sections:** {{ with .data.adrSections }}{{ range . }}{{ . }}, {{ end }}in that order. {{ else }}follow the ADR template's section order. {{ end }}Delete the authoring checklist before committing.
 - **No predecessor flip:** ADRs are never active authority, so nothing is superseded. A decision that changes an earlier one declares the change as a `State changes` operation on the affected claim, not a status flip on the earlier ADR.
 <!-- awf:end -->
@@ -39,13 +39,13 @@ When grounding is stale - the ADR will cite repository facts not verified in the
 This skill requires the one existing confirmed effort and its exact owned memory path before durable authoring or lifecycle mutation. It never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity and carry the verified effort slug and exact `.awf/efforts/<slug>/memory.md` path from brainstorming. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible; reviewers never edit the shared file.
 
 <!-- awf:section procedure-number -->
-1. **Scaffold the file.** Run `awf new adr "<Title>"` with the rendered template's marker comments stripped and its date and title heading filled in. Off the integration branch this creates the pending `{{ .layout.adrDir }}/kebab-title.md`, headed `# ADR-kebab-title:`; on the integration branch it creates `{{ .layout.adrDir }}/NNNN-kebab-title.md` with the next sequential number. Cite a pending record as `ADR-<slug>` everywhere, including in this record's own body: the slug is retained after numbering, so the reference keeps resolving and nothing has to be rewritten.
+1. **Scaffold the file.** Run `awf new adr "<Title>"` before any ADR-file mutation. Capture the exact path it creates. Read the exact file it creates, then edit that scaffold in place. Never create or replace an ADR by any other mechanism. The command strips the rendered template's marker comments and fills in its date and title heading. Off the integration branch it creates the pending `{{ .layout.adrDir }}/kebab-title.md`, headed `# ADR-kebab-title:`; on the integration branch it creates `{{ .layout.adrDir }}/NNNN-kebab-title.md` with the next sequential number. Cite a pending record as `ADR-<slug>` everywhere, including in this record's own body: the slug is retained after numbering, so the reference keeps resolving and nothing has to be rewritten.
 <!-- awf:end -->
 
 <!-- awf:section procedure-write -->
 2. **Fill in every section** of the scaffolded file:
    - **Context:** the problem, couplings, prior discoveries. For a structural decision, preserve the settled model and ownership, boundaries, dependency direction, constraints, and enabling work from `{{ .layout.maintainableCodeDesign }}` here and in Decision; do not replace them with a pattern name. Mutable while `Proposed`.
-   - **Decision:** numbered items, each a discrete commitment. Numbers order the decision for the reader; no machine treats them as anchors.
+   - **Decision:** numbered items, each a discrete durable commitment that remains meaningful after implementation. Apply the post-implementation and counterfactual tests; keep paths, commands, task order, rollout batches, and ordinary test transactions in the plan. Numbers order the decision for the reader; no machine treats them as anchors.
    - **State changes:** see the next step.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.

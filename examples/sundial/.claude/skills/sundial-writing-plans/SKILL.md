@@ -7,7 +7,7 @@ description: Use to write an implementation plan for a complex sundial task unde
 # sundial-writing-plans
 
 <!-- awf:edit positioning: default; create .awf/skills/parts/writing-plans/positioning.md to override -->
-Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the sundial plan convention. The plan is the execution record; the design lives in the linked ADR(s) (when any exist); a plan may link zero or more, declared structurally in its `adrs:` frontmatter. Do not duplicate rationale; link.
+Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the sundial plan convention. The plan is the execution record and owns implementation directives: paths, commands, task order, rollout batches, and ordinary test transactions. The durable design lives in linked ADRs when any exist; link through `adrs:` rather than duplicating rationale. If planning discovers a new choice that remains meaningful after implementation, return to ADR authoring instead of hiding it in a task.
 
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/writing-plans/when-to-invoke.md to override -->
 ## When to invoke

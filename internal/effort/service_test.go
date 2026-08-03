@@ -19,18 +19,6 @@ func noTopology(deps *Dependencies) {
 	deps.BranchExists = func(context.Context, string) (bool, error) { return false, nil }
 }
 
-func TestOpenRequiresCheckoutResolutionDependency(t *testing.T) {
-	root := initEffortRepo(t)
-	roots, deps := testWiring(t, root)
-	deps.ResolveCheckout = nil
-	defer func() {
-		if got := recover(); got != "effort Service: missing checkout resolution dependency" {
-			t.Fatalf("panic = %v", got)
-		}
-	}()
-	_, _ = Open(roots, deps)
-}
-
 func TestUpdateMemoryRefusesInvalidResidentsAndUnrepairedMetadata(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
