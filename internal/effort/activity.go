@@ -31,6 +31,8 @@ type Activity struct {
 	AttachedAt    time.Time `json:"attachedAt"`
 	HeartbeatAt   time.Time `json:"heartbeatAt"`
 }
+
+// ActivityCondition identifies the handled protocol-v2 activity result.
 type ActivityCondition string
 
 const (
@@ -44,6 +46,7 @@ const (
 	ActivityUnsafeResident ActivityCondition = "unsafe-resident"
 )
 
+// ActivityReply is the protocol-v2 envelope returned by activity operations.
 type ActivityReply struct {
 	SchemaVersion int                `json:"schemaVersion"`
 	Condition     ActivityCondition  `json:"condition"`
@@ -52,10 +55,14 @@ type ActivityReply struct {
 	Activity      *Activity          `json:"activity,omitempty"`
 	Outcome       *ActionableOutcome `json:"outcome,omitempty"`
 }
+
+// ActivityEffort is the immutable effort identity included in successful replies.
 type ActivityEffort struct {
 	Slug  string `json:"slug"`
 	Title string `json:"title"`
 }
+
+// ActionableOutcome describes a handled refusal and independently executable recovery actions.
 type ActionableOutcome struct {
 	Category        string   `json:"category"`
 	Condition       string   `json:"condition"`
@@ -79,14 +86,50 @@ const (
 
 func refusalFor(operation activityOperation, condition ActivityCondition, cause error, next []string) ActivityReply {
 	if len(next) == 0 {
-		next = []string{"inspect the effort resident and retry"}
+		next = activityRecoveryActions(condition)
+	}
+	observed := activityObservedCondition(condition)
+	var storage *activityStorageError
+	if errors.As(cause, &storage) {
+		observed = "activity storage cannot complete the operation"
+		next = []string{"inspect available activity storage", "retry the activity operation"}
 	}
 	r := activityReply(condition)
-	r.Outcome = &ActionableOutcome{Category: "operation", Condition: string(condition), ChangedActivity: changedActivityForFailure(operation, cause), NextActions: next}
-	if cause != nil {
-		r.Outcome.Cause = cause.Error()
+	r.Outcome = &ActionableOutcome{Category: "operation", Condition: observed, ChangedActivity: changedActivityForFailure(operation, cause), NextActions: next}
+	if storage != nil {
+		r.Outcome.Cause = storage.Error()
 	}
 	return r
+}
+
+func activityObservedCondition(condition ActivityCondition) string {
+	switch condition {
+	case ActivityNotOwner:
+		return "the resident owner differs from this invocation"
+	case ActivityMissing:
+		return "the requested activity or effort is absent"
+	case ActivityInvalidMemory:
+		return "the effort memory metadata is invalid"
+	case ActivityUnsafeResident:
+		return "the activity resident cannot be safely used"
+	default:
+		return "the activity operation cannot complete"
+	}
+}
+
+func activityRecoveryActions(condition ActivityCondition) []string {
+	switch condition {
+	case ActivityNotOwner:
+		return []string{"confirm the active session owner", "retry with that owner"}
+	case ActivityMissing:
+		return []string{"restore or create the requested effort", "retry the activity operation"}
+	case ActivityInvalidMemory:
+		return []string{"repair the effort memory metadata", "retry the activity operation"}
+	case ActivityUnsafeResident:
+		return []string{"inspect the activity resident for unsafe storage", "repair the resident and retry"}
+	default:
+		return []string{"inspect the activity operation", "retry after correcting the observed condition"}
+	}
 }
 func changedActivityForFailure(operation activityOperation, cause error) bool {
 	var storage *activityStorageError
@@ -239,12 +282,9 @@ func (s *Service) activityEffort(slug string, operation activityOperation) (*Act
 	return &ActivityEffort{slug, r.Title}, &m, nil
 }
 func invalidMemoryRefusal(operation activityOperation, slug string, err error, readFailure bool) ActivityReply {
-	action := "repair .awf/efforts/" + slug + "/memory.md manually"
-	var cause error
-	if readFailure {
-		cause = err
-	}
-	return refusalFor(operation, ActivityInvalidMemory, cause, []string{action})
+	_ = err
+	_ = readFailure
+	return refusalFor(operation, ActivityInvalidMemory, nil, []string{"repair .awf/efforts/" + slug + "/memory.md manually", "retry the activity operation"})
 }
 func (s *Service) activityIdentity(slug string) (*fileIdentity, error) {
 	_, identity, err := readRegularNoFollowBoundedIdentity(s.paths.activityFile(slug), maxMemoryBytes)

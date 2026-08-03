@@ -163,7 +163,7 @@ func TestActivityV2SafeRecoveryAndRefusals(t *testing.T) {
 	if err := os.Remove(service.paths.memoryFile(slug)); err != nil {
 		t.Fatal(err)
 	}
-	if got := service.AttachActivity(slug, testIDA); got.Condition != ActivityInvalidMemory || got.Outcome.Cause == "" {
+	if got := service.AttachActivity(slug, testIDA); got.Condition != ActivityInvalidMemory || got.Outcome.Cause != "" {
 		t.Fatalf("missing memory = %#v", got)
 	}
 	if err := os.WriteFile(service.paths.memoryFile(slug), memorySkeleton(slug, time.Now()), 0o600); err != nil {
@@ -229,7 +229,7 @@ func TestActivityV2MutationAndPublicationBoundaries(t *testing.T) {
 	if got := service.DetachActivity("absent", testIDA); got.Condition != ActivityMissing {
 		t.Fatalf("missing effort detach = %#v", got)
 	}
-	if got := service.publicationRefusal(activityAttach, errors.New("plain")); got.Outcome == nil || got.Outcome.Cause == "" {
+	if got := service.publicationRefusal(activityAttach, errors.New("plain")); got.Outcome == nil || got.Outcome.Cause != "" {
 		t.Fatalf("plain refusal = %#v", got)
 	}
 	activityBeforePublish = func() { _ = os.WriteFile(path, []byte("race"), 0o600) }
@@ -353,6 +353,23 @@ func TestActivityV2LowLevelFailureAndMutationRefusals(t *testing.T) {
 	}
 	if got := service.HeartbeatActivity("low-level", testIDA); got.Condition != ActivityInvalidMemory || got.Outcome == nil {
 		t.Fatalf("invalid memory = %#v", got)
+	}
+}
+
+func TestActivityV2RefusalEnvelopesAreConditionSpecific(t *testing.T) {
+	for _, condition := range []ActivityCondition{ActivityNotOwner, ActivityMissing, ActivityInvalidMemory, ActivityUnsafeResident} {
+		got := refusalFor(activityAttach, condition, errors.New("safety observation"), nil)
+		if got.SchemaVersion != 2 || got.Condition != condition || got.Outcome == nil || got.Outcome.Category != "operation" || got.Outcome.Condition == string(condition) || got.Outcome.Cause != "" || len(got.Outcome.NextActions) < 2 || got.Outcome.ChangedActivity {
+			t.Fatalf("%s envelope = %#v", condition, got)
+		}
+	}
+	if activityObservedCondition("other") != "the activity operation cannot complete" || len(activityRecoveryActions("other")) != 2 {
+		t.Fatal("default refusal constructor is not bounded")
+	}
+	storage := activityStorageFailure(activityAttach, "directory-fsync", errors.New("disk full"))
+	got := refusalFor(activityAttach, ActivityUnsafeResident, storage, nil)
+	if got.Outcome == nil || got.Outcome.Condition != "activity storage cannot complete the operation" || got.Outcome.Cause == "" || !got.Outcome.ChangedActivity {
+		t.Fatalf("storage envelope = %#v", got)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,11 @@ import (
 // effortComposition is the wiring one effort command runs against: the resident
 // authority and the managed-topology manager, both bound to the same resolved
 // control roots.
+var (
+	activitySlugPattern  = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+	activityOwnerPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+)
+
 type effortComposition struct {
 	service *effort.Service
 	manager *worktree.Manager
@@ -238,6 +244,9 @@ func validateEffortGrammar(c *cmdCtx) error {
 
 func validateEffortActivityGrammar(c *cmdCtx) error {
 	usage := "usage: awf effort " + c.sub
+	if len(c.inv.positionals) != 1 || !activitySlugPattern.MatchString(firstPos(c.inv.positionals)) || len(firstPos(c.inv.positionals)) > 63 {
+		return &usageErr{usage + " requires a canonical 1-63-byte slug"}
+	}
 	if !c.inv.bools["--json"] {
 		return &usageErr{usage + " requires --json"}
 	}
@@ -245,6 +254,12 @@ func validateEffortActivityGrammar(c *cmdCtx) error {
 		if _, ok := c.inv.values[flag]; !ok {
 			return &usageErr{usage + " requires " + flag}
 		}
+	}
+	if len(c.inv.values) != 1 {
+		return &usageErr{usage + " accepts only --owner and --json"}
+	}
+	if !activityOwnerPattern.MatchString(c.inv.values["--owner"]) {
+		return &usageErr{usage + " requires a lowercase UUIDv4 owner"}
 	}
 	return nil
 }

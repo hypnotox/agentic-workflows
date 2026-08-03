@@ -44,12 +44,15 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 		}
 	}
 	for _, args := range [][]string{
+		{"effort", "activity", "attach", "Bad", "--owner", owner, "--json"},
+		{"effort", "activity", "attach", strings.Repeat("a", 64), "--owner", owner, "--json"},
+		{"effort", "activity", "attach", "demo", "--owner", "AAAAAAAA-0000-4000-8000-000000000001", "--json"},
 		{"effort", "activity", "resolve", "demo", "--json"},
 		{"effort", "activity", "checkout", "demo", "--owner", owner, "--json"},
 		{"effort", "activity", "attach", "demo", "--owner", owner, "--cwd", root, "--json"},
 		{"effort", "activity", "attach", "demo", "--json"},
 	} {
-		code, stdout, _ := runEffortCLI(t, root, args...)
+		code, stdout, _ := runEffortCLI(t, root, append([]string(nil), args...)...)
 		if code == 0 || stdout != "" {
 			t.Fatalf("removed/malformed grammar accepted: %v (%d, %q)", args, code, stdout)
 		}
@@ -92,6 +95,12 @@ func TestEffortActivityGrammarHelpers(t *testing.T) {
 	}
 	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{}}}); err == nil {
 		t.Fatal("missing owner accepted")
+	}
+	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{positionals: []string{"bad_slug"}, bools: map[string]bool{"--json": true}, values: map[string]string{"--owner": "00000000-0000-4000-8000-000000000001"}}}); err == nil {
+		t.Fatal("malformed slug accepted")
+	}
+	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--json": true}, values: map[string]string{"--owner": "00000000-0000-4000-8000-000000000001", "--cwd": "/repo"}}}); err == nil {
+		t.Fatal("removed activity flag accepted")
 	}
 }
 
@@ -162,10 +171,10 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 	if err := validateEffortGrammar(&cmdCtx{sub: "memory update", inv: invocation{bools: map[string]bool{}, values: map[string]string{"--phase": "p"}}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{bools: map[string]bool{}, values: map[string]string{"--owner": "x"}}}); err == nil {
+	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{"--owner": "00000000-0000-4000-8000-000000000001"}}}); err == nil {
 		t.Fatal("non-json activity accepted")
 	}
-	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{"--owner": "x"}}}); err != nil {
+	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--json": true}, values: map[string]string{"--owner": "00000000-0000-4000-8000-000000000001"}}}); err != nil {
 		t.Fatal(err)
 	}
 	if value := effortValue(invocation{values: map[string]string{"--phase": "p"}}, "--phase"); value == nil || *value != "p" {
