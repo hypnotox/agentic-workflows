@@ -113,10 +113,8 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:effort-record-authority (TestPersisted63ByteEffortRemainsOperable)
-func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
-	root := commandRepo(t)
-	slug := strings.Repeat("r", 63)
+func writePersistedEffortFixture(t *testing.T, root, slug string) {
+	t.Helper()
 	resident := filepath.Join(root, ".awf", "efforts", slug)
 	if err := os.MkdirAll(resident, 0o700); err != nil {
 		t.Fatal(err)
@@ -129,6 +127,13 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(resident, "memory.md"), []byte(memory), 0o600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// invariant: tooling/effort-management:effort-record-authority (TestPersisted63ByteEffortRemainsOperable)
+func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
+	root := commandRepo(t)
+	slug := strings.Repeat("r", 63)
+	writePersistedEffortFixture(t, root, slug)
 
 	if shown := runEffortCommand(t, root, "show", []string{slug}, map[string]bool{"--json": true}); !strings.Contains(shown, slug) {
 		t.Fatalf("show omitted resident slug: %q", shown)
@@ -163,18 +168,24 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 
 // invariant: tooling/cli:effort-command-contract (TestEffortNewExplicitSlugGrammarAndFlagCombinations)
 func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
-	root := commandRepo(t)
 	for _, args := range [][]string{
-		{"effort", "new", "--slug", "before-title", "--json", "Before title", "--no-worktree"},
-		{"effort", "new", "After title", "--no-worktree", "--json", "--slug", "after-title"},
-		{"effort", "new", "--slug", "before-base", "--base", "HEAD", "Before base", "--json"},
-		{"effort", "new", "After base", "--json", "--base", "HEAD", "--slug", "after-base"},
+		{"effort", "new", "--slug", "ordered-input", "--json", "Ordered title", "--no-worktree"},
+		{"effort", "new", "Ordered title", "--no-worktree", "--json", "--slug", "ordered-input"},
+		{"effort", "new", "--slug", "ordered-input", "--base", "HEAD", "Ordered title", "--json"},
+		{"effort", "new", "Ordered title", "--json", "--base", "HEAD", "--slug", "ordered-input"},
 	} {
+		root := commandRepo(t)
 		code, stdout, stderr := runEffortCLI(t, root, args...)
-		if code != 0 || !strings.Contains(stdout, `"schemaVersion":2`) || stderr != "" {
-			t.Fatalf("%q code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
+		var reply struct {
+			SchemaVersion int           `json:"schemaVersion"`
+			Effort        effort.Record `json:"effort"`
+		}
+		decodeErr := json.Unmarshal([]byte(stdout), &reply)
+		if code != 0 || stderr != "" || decodeErr != nil || reply.SchemaVersion != 2 || reply.Effort.Slug != "ordered-input" || reply.Effort.Title != "Ordered title" {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q reply=%#v decode=%v", args, code, stdout, stderr, reply, decodeErr)
 		}
 	}
+	root := commandRepo(t)
 	for _, test := range []struct {
 		args []string
 		want string
@@ -188,6 +199,18 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		if code == 0 || stdout != "" || !strings.Contains(stderr, test.want) {
 			t.Fatalf("%q code=%d stdout=%q stderr=%q, want %q", test.args, code, stdout, stderr, test.want)
 		}
+	}
+	overlong := strings.Repeat("s", 33)
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
+	if code == 0 || stdout != "" || !strings.Contains(stderr, "1-32 bytes") || !strings.Contains(stderr, "changed bytes: no") || !strings.Contains(stderr, "--slug") {
+		t.Fatalf("33-byte slug code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", overlong)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("33-byte new slug changed residents: %v", err)
+	}
+	writePersistedEffortFixture(t, root, overlong)
+	if shown := runEffortCommand(t, root, "show", []string{overlong}, map[string]bool{"--json": true}); !strings.Contains(shown, overlong) {
+		t.Fatalf("same 33-byte persisted slug is not selectable: %q", shown)
 	}
 }
 

@@ -1,9 +1,12 @@
 package project
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -1689,6 +1692,125 @@ func TestAgentsDocGuide(t *testing.T) {
 	}
 }
 
+type effortSignatureFinding struct {
+	path     string
+	contract string
+}
+
+func activeEffortSignatureFindings(root string) ([]effortSignatureFinding, error) {
+	patterns := []struct {
+		contract string
+		pattern  *regexp.Regexp
+	}{
+		{"title-only creation signature", regexp.MustCompile("awf effort " + `new[^<]*<(confirmed title|outcome|outcome-title)>`)},
+		{"title-derived creation guidance", regexp.MustCompile("[Ee]ffort (creation )?" + `deriv(e|es|ed|ing)[^\r\n]{0,40}slug`)},
+		{"title-derived creation guidance", regexp.MustCompile("[Dd]eriv" + `(e|es|ed|ing) an immutable slug`)},
+		{"two-field confirmation", regexp.MustCompile("outcome/title " + `(pair|confirmation)`)},
+		{"two-field confirmation", regexp.MustCompile("labeled outcome and " + `(proposed )?effort title`)},
+		{"two-field confirmation", regexp.MustCompile("confirms? the " + `pair`)},
+		{"two-field confirmation", regexp.MustCompile("both " + `fields`)},
+	}
+	roots := []string{"cmd", "internal", ".awf/parts", ".awf/docs", ".awf/skills", ".awf/topics", "templates", "AGENTS.md", "README.md", "docs", ".pi", ".claude", "examples"}
+	historical := []string{"docs/decisions", "docs/plans", "changelog"}
+	var findings []effortSignatureFinding
+	for _, relativeRoot := range roots {
+		start := filepath.Join(root, filepath.FromSlash(relativeRoot))
+		if _, err := os.Lstat(start); errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		err := filepath.WalkDir(start, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			relative, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			relative = filepath.ToSlash(relative)
+			for _, excluded := range historical {
+				if relative == excluded || strings.HasPrefix(relative, excluded+"/") {
+					if entry.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+			}
+			if entry.IsDir() || !entry.Type().IsRegular() {
+				return nil
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			for _, candidate := range patterns {
+				if candidate.pattern.Match(raw) {
+					findings = append(findings, effortSignatureFinding{path: relative, contract: candidate.contract})
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	sort.Slice(findings, func(i, j int) bool {
+		if findings[i].path == findings[j].path {
+			return findings[i].contract < findings[j].contract
+		}
+		return findings[i].path < findings[j].path
+	})
+	return findings, nil
+}
+
+func formatEffortSignatureFindings(findings []effortSignatureFinding) string {
+	var lines []string
+	for _, finding := range findings {
+		lines = append(lines, finding.path+": "+finding.contract)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
+	findings, err := activeEffortSignatureFindings(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := formatEffortSignatureFindings(findings)
+	intermediate := strings.Join([]string{
+		".awf/topics/parts/rendering/workflow-skill-templates/current-state.md: two-field confirmation",
+		"docs/topics/rendering/workflow-skill-templates.md: two-field confirmation",
+	}, "\n")
+	if got != "" && got != intermediate {
+		t.Fatalf("active effort-signature drift:\n%s", got)
+	}
+
+	fixture := t.TempDir()
+	stale := "awf effort " + "new <outcome-title>"
+	for path, content := range map[string]string{
+		"cmd/stale.md":                 stale,
+		"docs/decisions/historical.md": stale,
+		"docs/plans/historical.md":     stale,
+		"changelog/historical.md":      stale,
+	} {
+		full := filepath.Join(fixture, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	injected, err := activeEffortSignatureFindings(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := formatEffortSignatureFindings(injected); got != "cmd/stale.md: title-only creation signature" {
+		t.Fatalf("closed active-path diagnostic = %q", got)
+	}
+}
+
 // TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
 // detailed protocol home while guides and skills carry executable routing.
 // invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestWorkingMemorySingleHomeSurfaces)
@@ -1741,7 +1863,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("workflow confirmation contract missing %q", want)
 		}
 	}
-	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
 		if !strings.Contains(guide, want) {
 			t.Errorf("guide confirmation route missing %q", want)
 		}
@@ -1755,7 +1877,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		return string(raw)
 	}
 	projectGuide := readProjectSurface("AGENTS.md")
-	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
 		if !strings.Contains(projectGuide, want) {
 			t.Errorf("committed project guide confirmation route missing %q", want)
 		}

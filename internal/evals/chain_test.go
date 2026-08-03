@@ -397,9 +397,12 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 					"Discovery creates no effort",
 					"`Outcome: <concrete non-minimal outcome>`",
 					"`Effort title: <proposed title>`",
+					"`Effort slug: <proposed-short-slug>`",
 					"Ask the user to confirm creation",
 					"end the turn without creating an effort",
 					"clear response in a later turn",
+					"confirms all three fields",
+					"`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`",
 				} {
 					if !strings.Contains(body, want) {
 						t.Errorf("%s/%s (%s) missing shared confirmation phrase %q", target, name, role, want)

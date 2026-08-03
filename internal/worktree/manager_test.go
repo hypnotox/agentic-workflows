@@ -347,15 +347,26 @@ func TestNewEffortReturnsResidentFailuresBeforeAnyTopology(t *testing.T) {
 			return stub.Runner.WorktreeAdd(ctx, path, branch, base)
 		}
 	}))
-	record, result, err := manager.NewEffort(testContext(t), effort.NewInput{Slug: "", Title: "   "}, "")
-	if err == nil || !strings.Contains(err.Error(), "invalid outcome title") {
-		t.Fatalf("blank title error = %v", err)
-	}
-	if record != (effort.Record{}) || result != (Result{}) {
-		t.Fatalf("record=%#v result=%#v, want zero values", record, result)
-	}
-	if added {
-		t.Fatal("add was attempted after a resident failure")
+	for _, test := range []struct {
+		name  string
+		input effort.NewInput
+		want  string
+	}{
+		{name: "blank title", input: effort.NewInput{Slug: "", Title: "   "}, want: "invalid outcome title"},
+		{name: "33-byte new slug", input: effort.NewInput{Slug: strings.Repeat("s", 33), Title: "Overlong slug"}, want: "1-32 bytes"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			record, result, err := manager.NewEffort(testContext(t), test.input, "")
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("resident error = %v, want %q", err, test.want)
+			}
+			if record != (effort.Record{}) || result != (Result{}) {
+				t.Fatalf("record=%#v result=%#v, want zero values", record, result)
+			}
+			if added {
+				t.Fatal("add was attempted after a resident failure")
+			}
+		})
 	}
 }
 

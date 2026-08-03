@@ -163,9 +163,11 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			"Discovery creates no effort",
 			"`Outcome: <concrete non-minimal outcome>`",
 			"`Effort title: <proposed title>`",
+			"`Effort slug: <proposed-short-slug>`",
 			"Ask the user to confirm creation",
 			"end the turn without creating an effort",
 			"clear response in a later turn",
+			"confirms all three fields",
 			"awf effort new --slug <confirmed-slug> \"<confirmed-title>\"",
 		)
 		if !strings.Contains(body, "fixed identity") || !strings.Contains(body, "without title reconfirmation") {
@@ -262,7 +264,7 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 		}
 	}
 	guide := readExample("AGENTS.md")
-	for _, want := range []string{"proposed effort title", "clear response in a later turn", "only for work inside its confirmed outcome"} {
+	for _, want := range []string{"proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
 		if !strings.Contains(guide, want) {
 			t.Errorf("sundial guide missing %q", want)
 		}

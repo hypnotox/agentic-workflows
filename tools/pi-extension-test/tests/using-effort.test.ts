@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Value } from "typebox/value";
 import { activity, EffortProtocolError, type ActivityCondition, type ActivityReply } from "../../../.pi/extensions/awf-effort/client.ts";
 import effortExtension, {
   registerEffort,
@@ -225,6 +226,17 @@ test("using_effort validates explicit inputs, queues only a private command, and
   assert.equal(h.calls.length, 0);
   await continueRequest(h, "stale-token");
   assert.match(h.notices.join(" "), /no longer current/);
+});
+
+test("using_effort accepts 63-byte residents and rejects 64-byte slugs", async () => {
+  const resident = "r".repeat(63);
+  const rejected = "r".repeat(64);
+  const h = makeHarness();
+  const schema = h.tools.get("using_effort").parameters;
+  assert.equal(Value.Check(schema, { effort: resident, destination: "managed" }), true);
+  assert.equal(Value.Check(schema, { effort: rejected, destination: "managed" }), false);
+  await attachSameCwd(h, resident);
+  assert.deepEqual(h.calls.slice(0, 2).map((argv) => argv[3]), [resident, resident]);
 });
 
 test("same-checkout attach, heartbeat, replay, collision diagnostics, and explicit detach use advisory publication", async () => {
