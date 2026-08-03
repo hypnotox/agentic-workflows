@@ -1892,7 +1892,10 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 		fmt.Sprintf("%s:2:%d: %s", multiplePath, thirdOffset, cases[5].contract),
 	)
 	for _, path := range []string{
-		".awf/parts/active.md", ".pi/active.md", ".claude/active.md",
+		"cmd/active.md", "internal/active.md",
+		".awf/parts/active.md", ".awf/docs/active.md", ".awf/skills/active.md", ".awf/topics/active.md",
+		"templates/active.md", "AGENTS.md", "README.md", "docs/active.md",
+		".pi/active.md", ".claude/active.md", "examples/demo/active.md",
 		"examples/demo/.awf/active.md", "examples/demo/.pi/active.md", "examples/demo/.claude/active.md",
 	} {
 		writeFixture(path, cases[0].body)

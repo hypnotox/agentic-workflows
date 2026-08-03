@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -186,6 +187,20 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		}
 	}
 	root := commandRepo(t)
+	composed := false
+	err := runEffort(&cmdCtx{
+		ctx:    testContext(t),
+		root:   root,
+		sub:    "new",
+		inv:    invocation{positionals: []string{"Missing slug"}, bools: map[string]bool{}, values: map[string]string{}},
+		stdout: &bytes.Buffer{},
+	}, func(_ context.Context, _ string) (effortComposition, error) {
+		composed = true
+		return effortComposition{}, errors.New("composer invoked")
+	})
+	if err == nil || !strings.Contains(err.Error(), "--slug is required") || composed {
+		t.Fatalf("missing slug err=%v composed=%t", err, composed)
+	}
 	for _, test := range []struct {
 		args []string
 		want string
