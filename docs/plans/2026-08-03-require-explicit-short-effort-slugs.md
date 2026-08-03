@@ -181,12 +181,39 @@ three-field confirmation, unchanged schema/topology, and continued 63-byte exist
 The changelog entry is new history; do not rewrite prior entries that accurately describe derived
 creation at their release time.
 
-Before rendering, enumerate active occurrences with a path-limited `git grep` over the included roots
-and classify each as authored source, direct current file, generated output, or current-behavior
-fixture. Edit sources and direct files only. Run `./x render` once all authoring changes are complete,
-then inspect representative Pi, Claude, root, and Sundial brainstorming and command guidance. Never
-edit `docs/decisions/INDEX.md`, generated topics, skills, guides, extensions, or adopter outputs by
-hand.
+Before rendering, enumerate active occurrences with the exact command below and classify each match
+as authored source, direct current file, generated output, or current-behavior fixture. Edit sources
+and direct files only. After rendering, rerun the same command and require its zero-finding terminal
+state: `git grep` exits 1, captured output is empty, and the enclosing shell exits 0.
+
+```sh
+set +e
+stale=$(git grep -n -E \
+  -e 'awf effort new[^<]*<(confirmed title|outcome|outcome-title)>' \
+  -e '[Ee]ffort (creation )?deriv(e|es|ed|ing)[^[:cntrl:]]{0,40}slug' \
+  -e '[Dd]eriv(e|es|ed|ing) an immutable slug' \
+  -e 'outcome/title (pair|confirmation)' \
+  -e 'labeled outcome and (proposed )?effort title' \
+  -e 'confirms? the pair' \
+  -e 'both fields' \
+  -- cmd internal .awf/parts .awf/docs .awf/skills .awf/topics templates \
+  AGENTS.md README.md docs .pi .claude examples \
+  ':(exclude)docs/decisions/**' ':(exclude)docs/plans/**' \
+  ':(exclude)changelog/**')
+status=$?
+set -e
+if [ "$status" -gt 1 ]; then
+  printf '%s\n' "$stale" >&2
+  exit "$status"
+fi
+printf '%s' "$stale"
+test "$status" -eq 1
+test -z "$stale"
+```
+
+Run `./x render` once all authoring changes are complete, then inspect representative Pi, Claude,
+root, and Sundial brainstorming and command guidance. Never edit `docs/decisions/INDEX.md`, generated
+topics, skills, guides, extensions, or adopter outputs by hand.
 
 ### Task 1.5: Apply the first five claim updates and enter Implementing
 Kind: batch
@@ -246,10 +273,10 @@ Latitude: exact
 Applying: ["require-explicit-short-effort-slugs:gate-signature-drift", "require-explicit-short-effort-slugs:prove-boundaries"]
 Paths: ["internal/project/spine_test.go"]
 
-Before modifying Phase 2 files, rerun Task 1.4's path-limited tracked search over the complete closed
-active policy and require zero stale sites. If it reports any active site, stop with Phase 2
-unchanged and return that source/output to Phase 1 ownership; do not expand Phase 2 into conditional
-source cleanup.
+Before modifying Phase 2 files, rerun the exact shell block in Task 1.4 and require its documented
+zero-finding terminal state. If `git grep` exits 0 with any match, stop with Phase 2 unchanged and
+return that source/output to Phase 1 ownership; if it exits above 1, treat that as a search failure.
+Do not expand Phase 2 into conditional source cleanup.
 
 Add one deterministic repository-surface test using the file-reading and project-root helpers already
 owned by `internal/project` tests. Encode the ADR's closed policy exactly:
