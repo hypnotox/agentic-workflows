@@ -56,6 +56,26 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("agent not interpolated:\n%s", agent)
 	}
 
+	proposingADR, err := os.ReadFile("../../.pi/skills/awf-proposing-adr/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(proposingADR), "preserve exactly the frontmatter emitted by `awf new adr`") {
+		t.Errorf("project proposing skill lost scaffold authority:\n%s", proposingADR)
+	}
+	adrReviewer, err := os.ReadFile("../../.pi/agents/adr-reviewer.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"post-implementation", "counterfactual", "reasoned finding"} {
+		if !strings.Contains(string(adrReviewer), want) {
+			t.Errorf("project ADR reviewer missing semantic routing %q:\n%s", want, adrReviewer)
+		}
+	}
+	if strings.Contains(string(adrReviewer), "## Doc-currency checklist") {
+		t.Errorf("project ADR reviewer retains implementation-inventory checklist:\n%s", adrReviewer)
+	}
+
 	// The review-discipline spine is spliced in from templates/partials via awf:include
 	// (ADR-0052); its content must appear in the fully rendered agent.
 	for _, want := range []string{"## Classification rules", "## Dedup rule", "Impl review complete"} {

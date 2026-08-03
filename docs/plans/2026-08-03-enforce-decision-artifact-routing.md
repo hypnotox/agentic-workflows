@@ -155,4 +155,7 @@ three omitted Sundial guide outputs and replacing broad or non-expanding changed
 an explicit exhaustive allowlist. During execution, render also regenerated the awf and Sundial
 configuration references because removing ADR-reviewer `docCurrencyItems` changed their published
 catalog data; those two generated outputs and this mutable plan update were added to the exhaustive
-scope before the phase closed.
+scope before the phase closed. Terminal implementation review found three mechanical test gaps:
+the stale-format assertion was too specific, full-project golden coverage omitted the proposing and
+reviewer outputs, and Sundial fan-out assertions lived outside the selected adopter test and did not
+check AGENTS no-value residue. A focused follow-up corrected all three without changing behavior.

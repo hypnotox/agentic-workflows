@@ -1353,8 +1353,10 @@ func TestProposingAdrTemplate(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
-	if strings.Contains(out, "Required frontmatter: exactly four keys, `format` (`current-state-v3`)") {
-		t.Errorf("proposing guidance chooses a stale literal format:\n%s", out)
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "Required frontmatter:") && strings.Contains(line, "current-state-v") {
+			t.Errorf("proposing guidance chooses a literal current format in %q:\n%s", line, out)
+		}
 	}
 }
 
