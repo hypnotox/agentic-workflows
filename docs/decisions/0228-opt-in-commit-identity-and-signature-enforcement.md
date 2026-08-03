@@ -4,7 +4,7 @@ slug: opt-in-commit-identity-and-signature-enforcement
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-opt-in-commit-identity-and-signature-enforcement: Opt-in commit identity and signature enforcement
+# ADR-0228: Opt-in commit identity and signature enforcement
 
 ## Context
 

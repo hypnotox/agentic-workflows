@@ -4,7 +4,7 @@ slug: agpl-3-0-only-cutover-at-the-unpublished-history-boundary
 status: Implemented
 date: 2026-08-02
 ---
-# ADR-agpl-3-0-only-cutover-at-the-unpublished-history-boundary: AGPL-3.0-only cutover at the unpublished history boundary
+# ADR-0227: AGPL-3.0-only cutover at the unpublished history boundary
 
 ## Context
 

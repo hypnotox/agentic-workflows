@@ -5,7 +5,7 @@ Config-tree validation rules: names, path globs, targets, tags, and anchoring.
 ### `invariant: commit-policy`
 
 An optional commitPolicy block is structurally validated for an exact full-OID baseline, exact identity pairs, and, when signing is required, supported OpenSSH signer records; absent policy preserves existing behavior.
-Origin: ADR-opt-in-commit-identity-and-signature-enforcement
+Origin: ADR-0228
 Backing: test
 
 ### `invariant: domain-name-validated`

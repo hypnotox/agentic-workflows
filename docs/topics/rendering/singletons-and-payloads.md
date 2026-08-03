@@ -31,13 +31,13 @@ Backing: test
 
 With the hooks singleton enabled, exactly five payloads render at .awf/hooks/pre-commit.sh, .awf/hooks/commit-msg.sh, .awf/hooks/pre-push.sh, .awf/hooks/pre-merge-commit.sh, and .awf/hooks/reference-transaction.sh; with it absent or disabled, no path under .awf/hooks/ renders.
 Origin: ADR-0148
-Revised-by: ADR-0202, ADR-opt-in-commit-identity-and-signature-enforcement
+Revised-by: ADR-0202, ADR-0228
 Backing: test
 
 ### `invariant: commit-policy-hook-payloads`
 
 The rendered reference-transaction payload buffers the complete prepared transaction and checks commit-bearing local branch updates through the common commit-policy verifier before refs move; the rendered pre-push payload buffers every update, expands commit-bearing local branch and recursively peeled tag targets through the same verifier, and invokes the configured project gate only after policy succeeds. Both payloads remain inert until adopter-owned wiring activates them, resolve policy from the invoking worktree, and fail closed on malformed or unresolvable policy inputs without rewriting history.
-Origin: ADR-opt-in-commit-identity-and-signature-enforcement
+Origin: ADR-0228
 Backing: test
 
 ### `invariant: memory-gitignore-always-on`

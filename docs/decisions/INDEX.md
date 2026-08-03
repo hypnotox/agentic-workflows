@@ -231,5 +231,5 @@ _No decisions are in flight._
 - [ADR-0224: Decision Artifact Routing Boundaries](0224-decision-artifact-routing-boundaries.md) (Implemented)
 - [ADR-0225: Simplify Pi effort association around fixed repository paths](0225-simplify-pi-effort-association-around-fixed-repository-paths.md) (Implemented)
 - [ADR-0226: Require Explicit Short Effort Slugs](0226-require-explicit-short-effort-slugs.md) (Implemented)
-- [ADR-agpl-3-0-only-cutover-at-the-unpublished-history-boundary: AGPL-3.0-only cutover at the unpublished history boundary](agpl-3-0-only-cutover-at-the-unpublished-history-boundary.md) (Implemented)
-- [ADR-opt-in-commit-identity-and-signature-enforcement: Opt-in commit identity and signature enforcement](opt-in-commit-identity-and-signature-enforcement.md) (Implemented)
+- [ADR-0227: AGPL-3.0-only cutover at the unpublished history boundary](0227-agpl-3-0-only-cutover-at-the-unpublished-history-boundary.md) (Implemented)
+- [ADR-0228: Opt-in commit identity and signature enforcement](0228-opt-in-commit-identity-and-signature-enforcement.md) (Implemented)
