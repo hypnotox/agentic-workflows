@@ -137,11 +137,15 @@ feat(rendering): enforce decision artifact routing
 
 ## Notes
 
-The terminal implementation-review transaction adds the unbacked
-`rendering/templates:decision-artifact-routing` claim with `Origin: ADR-decision-artifact-routing-boundaries`,
-a reasoned `Verify:` procedure, and no proof marker; directly applies the ADR operation and freezes
-both the ADR and this plan as `Implemented`. The objective rendering tests are regressions for
-publication mechanisms and must not be marked as backing for the unbacked semantic claim.
+The terminal implementation-review transaction edits
+`.awf/topics/parts/rendering/templates/current-state.md` to add the unbacked
+`rendering/templates:decision-artifact-routing` claim with `Origin:
+ADR-decision-artifact-routing-boundaries`, a reasoned `Verify:` procedure, and no proof marker;
+directly applies the ADR operation and freezes both the ADR and this plan as `Implemented`. Run
+`./x render` in that same transaction and stage the resulting
+`docs/topics/rendering/templates.md`, `docs/decisions/INDEX.md`, and `.awf/awf.lock` with the claim,
+Applied event, and status flips. The objective rendering tests are regressions for publication
+mechanisms and must not be marked as backing for the unbacked semantic claim.
 
 Plan review confirmed that every `Paths:` value remains repository-root relative, as required by
 the plan-v2 convention; the reviewer's absolute-path suggestion was rejected. The user approved
