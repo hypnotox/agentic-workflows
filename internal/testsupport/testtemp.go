@@ -226,36 +226,42 @@ func (m *testTempManager) logicalBytes(path string) (int64, error) {
 	return total, err
 }
 
-func preserveDefaultGOPATH(
-	lookupEnv func(string) (string, bool),
-	userHomeDir func() (string, error),
-	setEnv func(string, string) error,
-) error {
-	if goPath, ok := lookupEnv("GOPATH"); ok && goPath != "" {
+type testEnvironment struct {
+	lookupEnv   func(string) (string, bool)
+	userHomeDir func() (string, error)
+	setEnv      func(string, string) error
+}
+
+func osTestEnvironment() testEnvironment {
+	return testEnvironment{os.LookupEnv, os.UserHomeDir, os.Setenv}
+}
+
+func preserveDefaultGOPATH(env testEnvironment) error {
+	if goPath, ok := env.lookupEnv("GOPATH"); ok && goPath != "" {
 		return nil
 	}
-	home, err := userHomeDir()
+	home, err := env.userHomeDir()
 	if err != nil {
 		return fmt.Errorf("resolve default GOPATH home: %w", err)
 	}
-	if err := setEnv("GOPATH", filepath.Join(home, "go")); err != nil {
+	if err := env.setEnv("GOPATH", filepath.Join(home, "go")); err != nil {
 		return fmt.Errorf("preserve default GOPATH: %w", err)
 	}
 	return nil
 }
 
 func RunIsolated(m *testing.M) int {
-	if err := preserveDefaultGOPATH(os.LookupEnv, os.UserHomeDir, os.Setenv); err != nil { // coverage-ignore: helper fault paths are injected above; production environment access cannot be faulted safely
-		panic(err)
-	}
 	manager, err := productionTestTempManager()
 	if err != nil { // coverage-ignore: Unix production root selection cannot fail; Windows compiles but does not run tests
 		panic(err)
 	}
-	return runIsolated(m.Run, func(home string) error { return os.Setenv("HOME", home) }, manager, os.Stderr)
+	return runIsolated(m.Run, osTestEnvironment(), manager, os.Stderr)
 }
 
-func runIsolated(run func() int, setHome func(string) error, manager *testTempManager, stderr io.Writer) int {
+func runIsolated(run func() int, env testEnvironment, manager *testTempManager, stderr io.Writer) int {
+	if err := preserveDefaultGOPATH(env); err != nil {
+		panic(err)
+	}
 	if err := manager.ensureRoot(); err != nil {
 		panic(err)
 	}
@@ -268,7 +274,7 @@ func runIsolated(run func() int, setHome func(string) error, manager *testTempMa
 	if err != nil {
 		panic(err)
 	}
-	if err := setHome(home); err != nil {
+	if err := env.setEnv("HOME", home); err != nil {
 		panic(err)
 	}
 	code := run()

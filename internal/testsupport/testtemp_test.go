@@ -2,6 +2,7 @@ package testsupport
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -516,16 +517,29 @@ func TestTestTempLogicalBytesWalkFaults(t *testing.T) {
 	}
 }
 
+func isolatedTestEnvironment(setHome func(string) error) testEnvironment {
+	return testEnvironment{
+		lookupEnv:   func(string) (string, bool) { return "/explicit", true },
+		userHomeDir: func() (string, error) { return "", errors.New("unexpected home lookup") },
+		setEnv: func(name, value string) error {
+			if name != "HOME" {
+				return fmt.Errorf("unexpected environment assignment %s", name)
+			}
+			return setHome(value)
+		},
+	}
+}
+
 func TestPreserveDefaultGOPATHWhenHomeWillBeIsolated(t *testing.T) {
 	var name, value string
-	err := preserveDefaultGOPATH(
-		func(string) (string, bool) { return "", false },
-		func() (string, error) { return filepath.Join("original", "home"), nil },
-		func(gotName, gotValue string) error {
+	err := preserveDefaultGOPATH(testEnvironment{
+		lookupEnv:   func(string) (string, bool) { return "", false },
+		userHomeDir: func() (string, error) { return filepath.Join("original", "home"), nil },
+		setEnv: func(gotName, gotValue string) error {
 			name, value = gotName, gotValue
 			return nil
 		},
-	)
+	})
 	if err != nil || name != "GOPATH" || value != filepath.Join("original", "home", "go") {
 		t.Fatalf("err=%v assignment=%s=%q", err, name, value)
 	}
@@ -533,11 +547,11 @@ func TestPreserveDefaultGOPATHWhenHomeWillBeIsolated(t *testing.T) {
 
 func TestPreserveDefaultGOPATHKeepsExplicitValue(t *testing.T) {
 	called := false
-	err := preserveDefaultGOPATH(
-		func(string) (string, bool) { return "/explicit", true },
-		func() (string, error) { called = true; return "", nil },
-		func(string, string) error { called = true; return nil },
-	)
+	err := preserveDefaultGOPATH(testEnvironment{
+		lookupEnv:   func(string) (string, bool) { return "/explicit", true },
+		userHomeDir: func() (string, error) { called = true; return "", nil },
+		setEnv:      func(string, string) error { called = true; return nil },
+	})
 	if err != nil || called {
 		t.Fatalf("err=%v called=%v", err, called)
 	}
@@ -545,20 +559,64 @@ func TestPreserveDefaultGOPATHKeepsExplicitValue(t *testing.T) {
 
 func TestPreserveDefaultGOPATHPropagatesEnvironmentFailures(t *testing.T) {
 	homeFailure := errors.New("home")
-	if err := preserveDefaultGOPATH(
-		func(string) (string, bool) { return "", false },
-		func() (string, error) { return "", homeFailure },
-		func(string, string) error { return nil },
-	); !errors.Is(err, homeFailure) {
+	if err := preserveDefaultGOPATH(testEnvironment{
+		lookupEnv:   func(string) (string, bool) { return "", false },
+		userHomeDir: func() (string, error) { return "", homeFailure },
+		setEnv:      func(string, string) error { return nil },
+	}); !errors.Is(err, homeFailure) {
 		t.Fatalf("home error = %v", err)
 	}
 	setFailure := errors.New("set")
-	if err := preserveDefaultGOPATH(
-		func(string) (string, bool) { return "", true },
-		func() (string, error) { return "/original", nil },
-		func(string, string) error { return setFailure },
-	); !errors.Is(err, setFailure) {
+	if err := preserveDefaultGOPATH(testEnvironment{
+		lookupEnv:   func(string) (string, bool) { return "", true },
+		userHomeDir: func() (string, error) { return "/original", nil },
+		setEnv:      func(string, string) error { return setFailure },
+	}); !errors.Is(err, setFailure) {
 		t.Fatalf("set error = %v", err)
+	}
+}
+
+func TestRunIsolatedPreservesGOPATHBeforeHOME(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		goPath        string
+		goPathPresent bool
+		wantGoPath    string
+		wantOrder     string
+	}{
+		{"unset", "", false, filepath.Join("original", "home", "go"), "GOPATH,HOME"},
+		{"empty", "", true, filepath.Join("original", "home", "go"), "GOPATH,HOME"},
+		{"explicit", "/explicit", true, "/explicit", "HOME"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			values := map[string]string{"GOPATH": tc.goPath}
+			var order []string
+			env := testEnvironment{
+				lookupEnv: func(name string) (string, bool) {
+					if name == "GOPATH" {
+						return values[name], tc.goPathPresent
+					}
+					value, ok := values[name]
+					return value, ok
+				},
+				userHomeDir: func() (string, error) { return filepath.Join("original", "home"), nil },
+				setEnv: func(name, value string) error {
+					order = append(order, name)
+					values[name] = value
+					return nil
+				},
+			}
+			manager := safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now())
+			code := runIsolated(func() int {
+				if values["GOPATH"] != tc.wantGoPath || !strings.HasPrefix(values["HOME"], manager.root+string(filepath.Separator)) {
+					t.Fatalf("GOPATH=%q HOME=%q", values["GOPATH"], values["HOME"])
+				}
+				return 0
+			}, env, manager, io.Discard)
+			if code != 0 || strings.Join(order, ",") != tc.wantOrder {
+				t.Fatalf("code=%d order=%q", code, order)
+			}
+		})
 	}
 }
 
@@ -596,7 +654,7 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 		return os.RemoveAll(path)
 	}
 	m.fs = files
-	if got := runIsolated(func() int { sequence = append(sequence, "run"); return 0 }, func(string) error { sequence = append(sequence, "home"); return nil }, m, &stderr); got != 0 {
+	if got := runIsolated(func() int { sequence = append(sequence, "run"); return 0 }, isolatedTestEnvironment(func(string) error { sequence = append(sequence, "home"); return nil }), m, &stderr); got != 0 {
 		t.Fatalf("code = %d", got)
 	}
 	if strings.Join(sequence, ",") != "root,root,cleanup,root,allocate,home,run,remove" || !strings.Contains(stderr.String(), "stale test-home cleanup") {
@@ -625,7 +683,7 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 				t.Fatal("expected warning write panic")
 			}
 		}()
-		runIsolated(func() int { ran = true; return 0 }, func(string) error { return nil }, warningManager(), testTempErrorWriter{errors.New("write warning")})
+		runIsolated(func() int { ran = true; return 0 }, isolatedTestEnvironment(func(string) error { return nil }), warningManager(), testTempErrorWriter{errors.New("write warning")})
 	}()
 	if ran {
 		t.Fatal("suite ran after warning write failure")
@@ -634,17 +692,22 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		manager func() *testTempManager
-		setHome func(string) error
+		env     testEnvironment
 	}{
-		{"root", func() *testTempManager { return safeTestTempManager(t, "relative", time.Now()) }, func(string) error { return nil }},
+		{"GOPATH", func() *testTempManager { return safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now()) }, testEnvironment{
+			lookupEnv:   func(string) (string, bool) { return "", false },
+			userHomeDir: func() (string, error) { return "", errors.New("GOPATH") },
+			setEnv:      func(string, string) error { return nil },
+		}},
+		{"root", func() *testTempManager { return safeTestTempManager(t, "relative", time.Now()) }, isolatedTestEnvironment(func(string) error { return nil })},
 		{"allocation", func() *testTempManager {
 			x := safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now())
 			f := x.fs
 			f.mkdirTemp = func(string, string) (string, error) { return "", errors.New("allocate") }
 			x.fs = f
 			return x
-		}, func(string) error { return nil }},
-		{"HOME", func() *testTempManager { return safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now()) }, func(string) error { return errors.New("HOME") }},
+		}, isolatedTestEnvironment(func(string) error { return nil })},
+		{"HOME", func() *testTempManager { return safeTestTempManager(t, filepath.Join(t.TempDir(), "root"), time.Now()) }, isolatedTestEnvironment(func(string) error { return errors.New("HOME") })},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ran := false
@@ -656,7 +719,7 @@ func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 					t.Fatal("suite ran after pre-run failure")
 				}
 			}()
-			runIsolated(func() int { ran = true; return 0 }, tc.setHome, tc.manager(), io.Discard)
+			runIsolated(func() int { ran = true; return 0 }, tc.env, tc.manager(), io.Discard)
 		})
 	}
 }
@@ -790,7 +853,7 @@ func TestRunIsolatedCleanupExitMapping(t *testing.T) {
 	files.removeAll = func(string) error { return errors.New("remove") }
 	m.fs = files
 	var stderr strings.Builder
-	if got := runIsolated(func() int { return 0 }, func(string) error { return nil }, m, &stderr); got != 1 {
+	if got := runIsolated(func() int { return 0 }, isolatedTestEnvironment(func(string) error { return nil }), m, &stderr); got != 1 {
 		t.Fatalf("code = %d", got)
 	}
 	if !strings.Contains(stderr.String(), "remove current test home") {
@@ -800,7 +863,7 @@ func TestRunIsolatedCleanupExitMapping(t *testing.T) {
 	files = m.fs
 	files.removeAll = func(string) error { return errors.New("remove") }
 	m.fs = files
-	if got := runIsolated(func() int { return 7 }, func(string) error { return nil }, m, io.Discard); got != 7 {
+	if got := runIsolated(func() int { return 7 }, isolatedTestEnvironment(func(string) error { return nil }), m, io.Discard); got != 7 {
 		t.Fatalf("nonzero code = %d", got)
 	}
 }
