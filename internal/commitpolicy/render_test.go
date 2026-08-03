@@ -29,7 +29,7 @@ func TestRenderOutcomes(t *testing.T) {
 		})
 	}
 	identityOnly := Render(Policy{AllowedIdentities: policy.AllowedIdentities}, Outcome{Violations: []Violation{{Field: CommitterField, Observed: "bad"}}})
-	if !strings.Contains(identityOnly, "correct Git identity") {
+	if !strings.Contains(identityOnly, "correct the author or committer identity") {
 		t.Fatal(identityOnly)
 	}
 }

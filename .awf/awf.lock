@@ -511,8 +511,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:ea2b7fe392c4517ac58023e825bf795a64cdb735d3c7036aa9eef13ab0261f43",
-      "configHash": "sha256:f16d59818d9160bc0bbd8be465b11c92cdb02f39833cb6f29b2146aab554456b",
-      "outputHash": "sha256:2c8f9972f272f7f82d8eac6cc968b89d49854c7e6fd0a6d9b697b72731e55d9a"
+      "configHash": "sha256:bcc8df3717f8dcd54efb653c29f6abff4bbaf4d35581bb978646ca23463aecd2",
+      "outputHash": "sha256:0630cde246c12c9635402abc78ae84f7673aaf70df54bfcf2879b68845a56f6c"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -757,8 +757,8 @@
     "docs/topics/tooling/commit-policy.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:6396cedbc15cded84a01f24d222721c0c5d36e5099eef0ab327633febc27bd7b",
-      "outputHash": "sha256:e02e2a2f0b121cfcc03219198dd0e9e7182779d8fcb6cc12dd976b89b038e81a"
+      "configHash": "sha256:1d39daee4a73647210f383147445c6c728095231a858b60115d2805e61214faa",
+      "outputHash": "sha256:2a19917396949458de3591284dec8cfa905a01c063c4e7088f8327ee3c6a48ae"
     },
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",

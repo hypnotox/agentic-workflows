@@ -1,7 +1,5 @@
 package commitpolicy
 
-import "fmt"
-
 // Field identifies the exact commit fact that violated policy.
 type Field string
 
@@ -38,22 +36,6 @@ type Refusal struct {
 	RefsChanged, IndexChanged bool
 	Actions                   []string
 	Cause                     error
-}
-
-func (r *Refusal) Error() string {
-	if r == nil {
-		return "commit policy refusal"
-	}
-	if r.Cause == nil {
-		return fmt.Sprintf("%s: %s", r.Category, r.Observed)
-	}
-	return fmt.Sprintf("%s: %s: %v", r.Category, r.Observed, r.Cause)
-}
-func (r *Refusal) Unwrap() error {
-	if r == nil {
-		return nil
-	}
-	return r.Cause
 }
 
 // Outcome is the complete result of one policy operation.

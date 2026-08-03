@@ -1,7 +1,6 @@
 package commitpolicy
 
 import (
-	"errors"
 	"strings"
 	"testing"
 )
@@ -33,16 +32,5 @@ func TestExactCommitEnforcement(t *testing.T) {
 	}
 	if got := Evaluate(Policy{}, []Commit{{ID: "ok", Author: Person{"x", "y"}, Committer: Person{"z", "q"}, Signature: SignatureMalformed}}); !got.OK() {
 		t.Fatalf("disabled identity/signature requirements = %#v", got)
-	}
-	cause := errors.New("boom")
-	refusal := &Refusal{Category: ConfigFailure, Observed: "bad config", Cause: cause}
-	if !errors.Is(refusal, cause) || refusal.Error() == "" {
-		t.Fatal("refusal did not preserve cause")
-	}
-	if (&Refusal{Category: BaselineFailure, Observed: "bad"}).Error() == "" || (*Refusal)(nil).Error() == "" {
-		t.Fatal("refusal errors are not actionable")
-	}
-	if (*Refusal)(nil).Unwrap() != nil {
-		t.Fatal("nil refusal unwrap")
 	}
 }

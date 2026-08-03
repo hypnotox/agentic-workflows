@@ -32,10 +32,11 @@ var ErrNotARepository = errors.New("not a git repository")
 // root is the repository root itself. It is what lets an adopted project nested
 // inside a containing monorepo read only its own paths.
 type Repo struct {
-	root   string
-	prefix string
-	repo   *gogit.Repository
-	runner runner
+	root       string
+	prefix     string
+	repo       *gogit.Repository
+	runner     runner
+	createTemp func(string, string) (*os.File, error)
 }
 
 // Open opens the repository at root exactly, tolerating the layouts awf must

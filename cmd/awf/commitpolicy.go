@@ -2,26 +2,32 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// runCommitPolicy opens the ordinary project once and emits its model-owned policy rendering.
+type commitPolicyExit string
+
+const (
+	commitPolicyViolationExit commitPolicyExit = "violations"
+	commitPolicyRefusalExit   commitPolicyExit = "operational-refusal"
+)
+
+type renderedCommitPolicyError struct{ kind commitPolicyExit }
+
+func (e *renderedCommitPolicyError) Error() string { return "commit policy " + string(e.kind) }
+
+// runCommitPolicy resolves the invoking worktree once and emits only model-owned policy rendering.
 func runCommitPolicy(ctx context.Context, root string, targets []string, stdout io.Writer) error {
-	p, err := project.Open(ctx, root)
-	if err != nil { // coverage-ignore: all ordinary command handlers share project-open refusal coverage
-		return err
-	}
-	outcome := p.VerifyCommitPolicy(ctx, targets)
-	fmt.Fprint(stdout, p.CommitPolicyText(outcome))
+	text, outcome := project.VerifyCommitPolicyAt(ctx, root, targets)
+	fmt.Fprint(stdout, text)
 	if outcome.Disabled || outcome.OK() {
 		return nil
 	}
-	if outcome.Refusal != nil { // coverage-ignore: typed project refusals are covered at composition; command mapping is the direct return
-		return outcome.Refusal
+	if outcome.Refusal != nil {
+		return &renderedCommitPolicyError{kind: commitPolicyRefusalExit}
 	}
-	return errors.New("commit policy violations") // coverage-ignore: violations are rendered by the model and mapped to the ordinary nonzero handler error
+	return &renderedCommitPolicyError{kind: commitPolicyViolationExit}
 }

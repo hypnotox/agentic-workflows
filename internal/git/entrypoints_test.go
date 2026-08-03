@@ -78,7 +78,7 @@ var entrypointSuites = map[string]suite{
 	"CommitFacts":       {"internal/git", "TestCommitPolicyGitReads"},
 	"CommitsAfter":      {"internal/git", "TestCommitPolicyGitReads"},
 	"PeelCommit":        {"internal/git", "TestCommitPolicyGitReads"},
-	"VerifySSH":         {"internal/git", "TestCommitPolicyGitReads"},
+	"VerifySSH":         {"internal/git", "TestVerifySSHUsesRealGitAndCleansTrustFile"},
 
 	// Free entrypoints: each precedes an opened repository or does without one.
 	"Open":                      {"internal/git", "TestOpenRepo"},

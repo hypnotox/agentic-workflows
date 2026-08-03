@@ -261,6 +261,10 @@ func projectGuardState(ctx context.Context, root string, staged bool) (present b
 // dispatchErr prints err and maps it to an exit code: a usageErr (CLI misuse)
 // is exit 2, any other failure is exit 1.
 func dispatchErr(stderr io.Writer, err error) int {
+	var rendered *renderedCommitPolicyError
+	if errors.As(err, &rendered) {
+		return 1
+	}
 	fmt.Fprintln(stderr, "awf:", err)
 	var ue *usageErr
 	if errors.As(err, &ue) {
