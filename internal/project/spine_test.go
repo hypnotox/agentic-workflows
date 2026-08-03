@@ -1802,7 +1802,7 @@ func activeEffortSignatureFindings(t *testing.T, root string) []effortSignatureF
 func formatEffortSignatureFindings(findings []effortSignatureFinding) string {
 	var lines []string
 	for _, finding := range findings {
-		lines = append(lines, fmt.Sprintf("%s:%d: %s", finding.path, finding.line, finding.contract))
+		lines = append(lines, fmt.Sprintf("%s:%d:%d: %s", finding.path, finding.line, finding.offset, finding.contract))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -1853,6 +1853,16 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 	}
 
 	fixture := t.TempDir()
+	writeFixture := func(path, body string) {
+		t.Helper()
+		full := filepath.Join(fixture, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	cases := []struct {
 		body     string
 		contract string
@@ -1868,24 +1878,34 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 	var expected []string
 	for index, test := range cases {
 		path := fmt.Sprintf("cmd/stale-%d.md", index)
-		full := filepath.Join(fixture, filepath.FromSlash(path))
-		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte(test.body), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		expected = append(expected, fmt.Sprintf("%s:1: %s", path, test.contract))
+		writeFixture(path, test.body)
+		expected = append(expected, fmt.Sprintf("%s:1:0: %s", path, test.contract))
 	}
-	for _, path := range []string{"docs/decisions/historical.md", "docs/plans/historical.md", "changelog/historical.md"} {
-		full := filepath.Join(fixture, filepath.FromSlash(path))
-		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte(cases[0].body), 0o600); err != nil {
-			t.Fatal(err)
-		}
+	multiplePath := "cmd/stale-multiple.md"
+	multiple := cases[5].body + " / " + cases[6].body + "\n" + cases[0].body
+	writeFixture(multiplePath, multiple)
+	secondOffset := len(cases[5].body) + len(" / ")
+	thirdOffset := secondOffset + len(cases[6].body) + 1
+	expected = append(expected,
+		fmt.Sprintf("%s:1:0: %s", multiplePath, cases[5].contract),
+		fmt.Sprintf("%s:1:%d: %s", multiplePath, secondOffset, cases[6].contract),
+		fmt.Sprintf("%s:2:%d: %s", multiplePath, thirdOffset, cases[0].contract),
+	)
+	for _, path := range []string{
+		".awf/parts/active.md", ".pi/active.md", ".claude/active.md",
+		"examples/demo/.awf/active.md", "examples/demo/.pi/active.md", "examples/demo/.claude/active.md",
+	} {
+		writeFixture(path, cases[0].body)
+		expected = append(expected, path+":1:0: "+cases[0].contract)
 	}
+	for _, path := range []string{
+		"docs/decisions/historical.md", "docs/plans/historical.md", "changelog/historical.md",
+		".awf/efforts/ignored.md", ".awf/worktrees/ignored.md",
+		"examples/demo/.awf/efforts/ignored.md", "examples/demo/.awf/worktrees/ignored.md",
+	} {
+		writeFixture(path, cases[0].body)
+	}
+	sort.Strings(expected)
 	if got := formatEffortSignatureFindings(activeEffortSignatureFindings(t, fixture)); got != strings.Join(expected, "\n") {
 		t.Fatalf("closed active-path diagnostics =\n%s\nwant\n%s", got, strings.Join(expected, "\n"))
 	}
