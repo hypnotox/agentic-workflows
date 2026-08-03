@@ -250,6 +250,12 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if after := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/heads/master")); after != before {
 		t.Fatalf("rejected transaction moved ref: before=%s after=%s", before, after)
 	}
+	if output, err := run(transactionPath, "bad "+head+" refs/tags/malformed\n", "prepared"); err == nil || !strings.Contains(output, "malformed object ID") || readLog() != "" {
+		t.Fatalf("malformed non-branch record: err=%v output=%q log=%q", err, output, readLog())
+	}
+	if output, err := run(transactionPath, strings.Repeat("0", len(head))+" ref:refs/heads/master HEAD\n", "prepared"); err != nil || readLog() != "" {
+		t.Fatalf("valid symbolic pseudoref record: err=%v output=%q log=%q", err, output, readLog())
+	}
 	clearLog()
 	if output, err := run(transactionPath, base+" "+head+" refs/heads/master\n"+base+" "+head+" refs/heads/duplicate\n", "prepared"); err != nil {
 		t.Fatalf("prepared update: %v: %s", err, output)
@@ -296,6 +302,15 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	annotatedBlob := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/annotated-blob"))
 	if output, err := run(pushPath, "refs/tags/annotated-blob "+annotatedBlob+" refs/tags/annotated-blob "+base+"\n"); err != nil || !strings.Contains(output, "resolves to non-commit blob") || readLog() != "gate\n" {
 		t.Fatalf("non-commit tag: err=%v output=%q log=%q", err, output, readLog())
+	}
+	clearLog()
+	missing := strings.Repeat("f", len(head))
+	if output, err := run(pushPath, "refs/heads/missing "+missing+" refs/heads/missing "+base+"\n"); err == nil || !strings.Contains(output, "names missing object") || readLog() != "" {
+		t.Fatalf("missing push object: err=%v output=%q log=%q", err, output, readLog())
+	}
+	brokenTag := gitfixture.NativeHashObject(t, gitfixture.At(root), "tag", []byte("object "+missing+"\ntype commit\ntag broken\ntagger Hook Test <hook@example.test> 1 +0000\n\nbroken\n"))
+	if output, err := run(pushPath, "refs/tags/broken "+brokenTag+" refs/tags/broken "+base+"\n"); err == nil || !strings.Contains(output, "cannot be peeled") || readLog() != "" {
+		t.Fatalf("broken push tag: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
 	if err := os.WriteFile(filepath.Join(root, "fail-policy"), nil, 0o644); err != nil {
@@ -462,8 +477,8 @@ func testCommitPolicyHooksNative(t *testing.T) {
 
 			run(true, "-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "--no-gpg-sign", "-m", "bypass")
 			bypass := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
-			remote := filepath.Join(t.TempDir(), "remote.git")
-			gitfixture.NativeInitBare(t, remote)
+			remote := filepath.Join(t.TempDir(), "remote")
+			gitfixture.InitNativeAt(t, remote)
 			run(true, "remote", "add", "origin", remote)
 			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "commits must be signed") {
 				t.Fatalf("pre-push refusal = %q", output)
@@ -474,6 +489,13 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			run(true, "reset", "--hard", allowed)
 			if got := strings.TrimSpace(run(true, "rev-parse", "HEAD")); got != allowed || bypass == allowed {
 				t.Fatalf("cleanup failed: head=%s allowed=%s bypass=%s", got, allowed, bypass)
+			}
+			missingBaseline := strings.Repeat("f", len(base))
+			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(strings.Replace(config, base, missingBaseline, 1)), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "commit policy refused (baseline)") || strings.Contains(output, "gate") {
+				t.Fatalf("baseline refusal = %q", output)
 			}
 			if output := run(true, "ls-remote", "--heads", "origin"); strings.TrimSpace(output) != "" {
 				t.Fatalf("refused push created remote ref: %q", output)

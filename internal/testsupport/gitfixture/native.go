@@ -48,16 +48,6 @@ func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 	return f
 }
 
-// NativeInitBare creates a disposable bare repository at root.
-func NativeInitBare(t *testing.T, root string) Fixture {
-	t.Helper()
-	output, err := runGit("", "init", "--bare", root)
-	if err != nil { // coverage-ignore: init into a writable fixture directory fails only on a permission fault a test cannot trigger
-		t.Fatalf("git init --bare: %v: %s", err, output)
-	}
-	return Fixture{root: root}
-}
-
 // NativeRun executes Git in a disposable fixture and returns combined output and the exact process error.
 func NativeRun(f Fixture, args ...string) (string, error) {
 	return runNative(f, args...)

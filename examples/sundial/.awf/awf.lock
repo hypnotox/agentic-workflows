@@ -40,9 +40,9 @@
     },
     ".awf/hooks/reference-transaction.sh": {
       "templateId": "hooks/reference-transaction.sh.tmpl",
-      "templateHash": "sha256:0bd441aa4629df8c5ea1415034d7c5159bdee846837927117d2007358a259e72",
+      "templateHash": "sha256:ada2dd81d2e5e117a6c748ce1807d7a3f36b310f3c2d0d5d64dacf8bfbccfb49",
       "configHash": "sha256:e9cccb10c8b4cfc2366399a4a9c552b0ce8f1475c8235bd7d4d7a674f04c4c04",
-      "outputHash": "sha256:bc83e48830b4bebc085c32193a54e7a9ba9700339ac3001961b32ea3ce93206a"
+      "outputHash": "sha256:e218b08541d1b92b1dd545e678b4d5d866f06310a1a9ee3771f396d514476b1e"
     },
     ".awf/upgrade.sh": {
       "templateId": "bootstrap/awf-upgrade.sh.tmpl",
@@ -420,7 +420,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:25917c8b76ffbdebed5b6ef7fa345de78d9c6a7607989d96123f8261173af89c",
+      "outputHash": "sha256:084f7d834c38a78019d3e0a3981d139ac90713e7e70f8927be72222caacd76b7",
       "regenChecked": true
     },
     "docs/debugging.md": {

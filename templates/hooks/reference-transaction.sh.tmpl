@@ -22,6 +22,19 @@ add_target() {
   targets+=("$1")
 }
 
+valid_oid_or_symref() {
+  [[ "$1" =~ ^[[:xdigit:]]+$ && ${#1} -eq ${#zero_oid} ]] && return
+  [[ "$1" == ref:* ]] && git check-ref-format "${1#ref:}" >/dev/null 2>&1
+}
+
+valid_hook_ref() {
+  if [[ "$1" == refs/* ]]; then
+    git check-ref-format "$1" >/dev/null 2>&1
+    return
+  fi
+  [[ "$1" =~ ^[A-Z][A-Z0-9_]*$ ]]
+}
+
 refusal() {
   printf '%s\n' "commit policy refused: $1" >&2
   printf '%s\n' 'refs changed: false' >&2
@@ -34,9 +47,10 @@ refusal() {
 for update in "${updates[@]}"; do
   IFS=' ' read -r old_oid new_oid ref extra <<< "$update"
   [[ -n "${old_oid:-}" && -n "${new_oid:-}" && -n "${ref:-}" && -z "${extra:-}" ]] || refusal "malformed reference-transaction update"
+  valid_oid_or_symref "$old_oid" && valid_oid_or_symref "$new_oid" || refusal "malformed object ID"
+  valid_hook_ref "$ref" || refusal "malformed reference name"
   [[ "$ref" == refs/heads/* ]] || continue
-  [[ "$old_oid" =~ ^[[:xdigit:]]+$ && "$new_oid" =~ ^[[:xdigit:]]+$ && ${#old_oid} -eq ${#zero_oid} && ${#new_oid} -eq ${#zero_oid} ]] || refusal "malformed object ID"
-  git check-ref-format "$ref" || refusal "malformed branch reference name"
+  [[ "$old_oid" != ref:* && "$new_oid" != ref:* ]] || refusal "branch update uses a symbolic target"
   [[ "$new_oid" == "$zero_oid" ]] && continue
   git rev-parse --verify "$new_oid^{commit}" >/dev/null 2>&1 || refusal "new branch target is not a resolvable commit"
   if [[ "$old_oid" == "$zero_oid" ]]; then

@@ -34,9 +34,9 @@
     },
     ".awf/hooks/reference-transaction.sh": {
       "templateId": "hooks/reference-transaction.sh.tmpl",
-      "templateHash": "sha256:0bd441aa4629df8c5ea1415034d7c5159bdee846837927117d2007358a259e72",
+      "templateHash": "sha256:ada2dd81d2e5e117a6c748ce1807d7a3f36b310f3c2d0d5d64dacf8bfbccfb49",
       "configHash": "sha256:0b5ddc755a4bd0c28b45cd7416465607195c0fc7ef1f73cabc178278f9415abd",
-      "outputHash": "sha256:bc83e48830b4bebc085c32193a54e7a9ba9700339ac3001961b32ea3ce93206a"
+      "outputHash": "sha256:e218b08541d1b92b1dd545e678b4d5d866f06310a1a9ee3771f396d514476b1e"
     },
     ".awf/worktrees/.gitignore": {
       "templateId": "worktrees/gitignore.tmpl",
@@ -426,7 +426,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:c06e447c8983e1331420b2280a44bd615e932bf730a91b553c97d091ef4cd5d5",
+      "outputHash": "sha256:28fd6588aca77a3388b5f53bd6a3b6089aabfc070b9978fce3f6e4475b17ccec",
       "regenChecked": true
     },
     "docs/decisions/INDEX.md": {
