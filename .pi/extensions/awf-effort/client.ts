@@ -8,13 +8,13 @@ export type ActionableOutcome = Readonly<{ category: "operation"; condition: str
 export type ActivityReply = Readonly<{ schemaVersion: 2; condition: ActivityCondition; effort?: EffortFact; memory?: MemoryFact; activity?: ActivityFact; outcome?: ActionableOutcome }>;
 export type ExecResult = Readonly<{ code?: number; stdout?: string; stderr?: string }>;
 export type ActivityExecutor = (command: string, argv: readonly string[], options: Readonly<{ cwd: string; signal?: AbortSignal; timeout: number }>) => Promise<ExecResult>;
-const MAX=50*1024, TEXT=4096, UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, SLUG=/^[a-z0-9]+(?:-[a-z0-9]+)*$/, UTC=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z$/;
+const MAX=50*1024, TEXT=4096, UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, SLUG=/^[a-z0-9]+(?:-[a-z0-9]+)*$/, UTC=/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:\.\d{1,9})?Z$/;
 const conditions=new Set<ActivityCondition>(["attached","taken-over","heartbeat","detached","not-owner","missing","invalid-memory","unsafe-resident"]);
 export class EffortProtocolError extends Error { constructor(message:string,readonly stdout="",readonly stderr=""){super(message);this.name="EffortProtocolError"} }
 function obj(v:unknown):Record<string,unknown>|undefined{return v!==null&&typeof v==="object"&&!Array.isArray(v)?v as Record<string,unknown>:undefined}
 function exact(v:Record<string,unknown>,keys:string[]):boolean{return Object.keys(v).length===keys.length&&Object.keys(v).every(k=>keys.includes(k))}
 function text(v:unknown,n=TEXT):v is string{return typeof v==="string"&&v.trim()!==""&&Buffer.byteLength(v,"utf8")<=n}
-function utc(v:unknown):v is string{return text(v)&&UTC.test(v)&&!Number.isNaN(Date.parse(v))}
+function utc(v:unknown):v is string{if(!text(v))return false;const parts=UTC.exec(v);if(!parts)return false;const d=new Date(v);return !Number.isNaN(d.getTime())&&d.getUTCFullYear()===Number(parts[1])&&d.getUTCMonth()===Number(parts[2])-1&&d.getUTCDate()===Number(parts[3])&&d.getUTCHours()===Number(parts[4])&&d.getUTCMinutes()===Number(parts[5])&&d.getUTCSeconds()===Number(parts[6])}
 function slug(v:unknown):v is string{return typeof v==="string"&&Buffer.byteLength(v,"utf8")>=1&&Buffer.byteLength(v,"utf8")<=63&&SLUG.test(v)}
 function effort(v:unknown):EffortFact|undefined{const x=obj(v);return x&&exact(x,["slug","title"])&&slug(x.slug)&&text(x.title,500)?Object.freeze({slug:x.slug,title:x.title}):undefined}
 function memory(v:unknown):MemoryFact|undefined{const x=obj(v);return x&&exact(x,["effort","phase","next","updated"])&&slug(x.effort)&&text(x.phase,500)&&text(x.next,500)&&(x.updated==="Not yet updated."||utc(x.updated))?Object.freeze({effort:x.effort,phase:x.phase,next:x.next,updated:x.updated}):undefined}

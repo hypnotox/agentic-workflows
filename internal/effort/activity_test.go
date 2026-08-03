@@ -163,7 +163,7 @@ func TestActivityV2SafeRecoveryAndRefusals(t *testing.T) {
 	if err := os.Remove(service.paths.memoryFile(slug)); err != nil {
 		t.Fatal(err)
 	}
-	if got := service.AttachActivity(slug, testIDA); got.Condition != ActivityInvalidMemory || got.Outcome.Cause != "" {
+	if got := service.AttachActivity(slug, testIDA); got.Condition != ActivityInvalidMemory || got.Outcome == nil || got.Outcome.Cause == "" {
 		t.Fatalf("missing memory = %#v", got)
 	}
 	if err := os.WriteFile(service.paths.memoryFile(slug), memorySkeleton(slug, time.Now()), 0o600); err != nil {
@@ -258,7 +258,7 @@ func TestActivityV2AdditionalSafetyBranches(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(service.paths.effort(slug), "unexpected"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if got := service.AttachActivity(slug, testIDA); got.Condition != ActivityUnsafeResident {
+	if got := service.AttachActivity(slug, testIDA); got.Condition != ActivityUnsafeResident || got.Outcome == nil || got.Outcome.Condition != "the effort resident cannot be safely used" {
 		t.Fatalf("unsafe effort = %#v", got)
 	}
 	if err := os.Remove(filepath.Join(service.paths.effort(slug), "unexpected")); err != nil {
@@ -345,7 +345,7 @@ func TestActivityV2LowLevelFailureAndMutationRefusals(t *testing.T) {
 	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if got := service.HeartbeatActivity("low-level", testIDA); got.Condition != ActivityUnsafeResident || got.Outcome == nil {
+	if got := service.HeartbeatActivity("low-level", testIDA); got.Condition != ActivityUnsafeResident || got.Outcome == nil || got.Outcome.Condition != "the activity resident cannot be safely used" {
 		t.Fatalf("unsafe activity = %#v", got)
 	}
 	if err := os.WriteFile(service.paths.memoryFile("low-level"), []byte("broken"), 0o600); err != nil {
@@ -358,7 +358,7 @@ func TestActivityV2LowLevelFailureAndMutationRefusals(t *testing.T) {
 
 func TestActivityV2RefusalEnvelopesAreConditionSpecific(t *testing.T) {
 	for _, condition := range []ActivityCondition{ActivityNotOwner, ActivityMissing, ActivityInvalidMemory, ActivityUnsafeResident} {
-		got := refusalFor(activityAttach, condition, errors.New("safety observation"), nil)
+		got := refusalFor(activityAttach, condition, errors.New("safety observation"))
 		if got.SchemaVersion != 2 || got.Condition != condition || got.Outcome == nil || got.Outcome.Category != "operation" || got.Outcome.Condition == string(condition) || got.Outcome.Cause != "" || len(got.Outcome.NextActions) < 2 || got.Outcome.ChangedActivity {
 			t.Fatalf("%s envelope = %#v", condition, got)
 		}
@@ -367,25 +367,56 @@ func TestActivityV2RefusalEnvelopesAreConditionSpecific(t *testing.T) {
 		t.Fatal("default refusal constructor is not bounded")
 	}
 	storage := activityStorageFailure(activityAttach, "directory-fsync", errors.New("disk full"))
-	got := refusalFor(activityAttach, ActivityUnsafeResident, storage, nil)
+	got := refusalFor(activityAttach, ActivityUnsafeResident, storage)
 	if got.Outcome == nil || got.Outcome.Condition != "activity storage cannot complete the operation" || got.Outcome.Cause == "" || !got.Outcome.ChangedActivity {
 		t.Fatalf("storage envelope = %#v", got)
+	}
+	for _, action := range got.Outcome.NextActions {
+		if strings.Contains(action, "retry") || strings.Contains(action, " and ") {
+			t.Fatalf("storage action is not independently executable: %q", action)
+		}
 	}
 }
 
 func TestActivityV2Refusals(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d); d.UUID = func() (string, error) { return testIDA, nil } })
-	if got := service.AttachActivity("missing", testIDA); got.Condition != ActivityMissing || got.Outcome == nil {
-		t.Fatalf("missing = %#v", got)
+	if got := service.AttachActivity("missing", testIDA); got.Condition != ActivityMissing || got.Outcome == nil || got.Outcome.Condition != "the requested effort is absent" {
+		t.Fatalf("missing effort = %#v", got)
 	}
 	if _, err := service.New(testContext(t), "V2"); err != nil {
 		t.Fatal(err)
 	}
-	if got := service.HeartbeatActivity("v2", testIDA); got.Condition != ActivityMissing {
+	if got := service.HeartbeatActivity("v2", testIDA); got.Condition != ActivityMissing || got.Outcome == nil || got.Outcome.Condition != "the requested activity is absent" {
 		t.Fatalf("missing activity = %#v", got)
 	}
-	if got := service.AttachActivity("v2", "bad"); got.Condition != ActivityUnsafeResident {
+	if got := service.AttachActivity("v2", "bad"); got.Condition != ActivityUnsafeResident || got.Outcome == nil || got.Outcome.Condition != "the supplied activity identity is invalid" {
 		t.Fatalf("bad owner = %#v", got)
 	}
+}
+
+func TestActivityV2RefusalActionsAndMemoryCausesArePrecise(t *testing.T) {
+	for _, condition := range []ActivityCondition{ActivityNotOwner, ActivityMissing, ActivityInvalidMemory, ActivityUnsafeResident} {
+		for _, action := range activityRecoveryActions(condition) {
+			if strings.Contains(action, "retry") || strings.Contains(action, " and ") {
+				t.Fatalf("%s action is not independently executable: %q", condition, action)
+			}
+		}
+	}
+	mechanism := invalidMemoryRefusal(activityAttach, "demo", errors.New("permission denied"), true)
+	if mechanism.Outcome == nil || mechanism.Outcome.Condition != "the effort memory cannot be read" || mechanism.Outcome.Cause != "permission denied" {
+		t.Fatalf("memory read failure = %#v", mechanism)
+	}
+	semantic := invalidMemoryRefusal(activityAttach, "demo", errors.New("invalid header"), false)
+	if semantic.Outcome == nil || semantic.Outcome.Condition != "the effort memory metadata is invalid" || semantic.Outcome.Cause != "" {
+		t.Fatalf("invalid memory = %#v", semantic)
+	}
+	identity := &activityPublicationRefusal{Operation: activityAttach, Err: errors.New("changed")}
+	if got := serviceRefusalForTest(identity); got.Outcome == nil || got.Outcome.Condition != "the activity publication identity changed" {
+		t.Fatalf("identity refusal = %#v", got)
+	}
+}
+
+func serviceRefusalForTest(err error) ActivityReply {
+	return (&Service{}).publicationRefusal(activityAttach, err)
 }

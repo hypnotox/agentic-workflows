@@ -36,13 +36,21 @@ type Activity struct {
 type ActivityCondition string
 
 const (
-	ActivityAttached       ActivityCondition = "attached"
-	ActivityTakenOver      ActivityCondition = "taken-over"
-	ActivityHeartbeat      ActivityCondition = "heartbeat"
-	ActivityDetached       ActivityCondition = "detached"
-	ActivityNotOwner       ActivityCondition = "not-owner"
-	ActivityMissing        ActivityCondition = "missing"
-	ActivityInvalidMemory  ActivityCondition = "invalid-memory"
+	// ActivityAttached reports that the invocation attached a new activity.
+	ActivityAttached ActivityCondition = "attached"
+	// ActivityTakenOver reports that the invocation replaced a prior activity.
+	ActivityTakenOver ActivityCondition = "taken-over"
+	// ActivityHeartbeat reports that the invocation refreshed its activity.
+	ActivityHeartbeat ActivityCondition = "heartbeat"
+	// ActivityDetached reports that the invocation removed its activity.
+	ActivityDetached ActivityCondition = "detached"
+	// ActivityNotOwner reports that the resident belongs to another owner.
+	ActivityNotOwner ActivityCondition = "not-owner"
+	// ActivityMissing reports that the requested effort or activity is absent.
+	ActivityMissing ActivityCondition = "missing"
+	// ActivityInvalidMemory reports that the effort memory is unreadable or invalid.
+	ActivityInvalidMemory ActivityCondition = "invalid-memory"
+	// ActivityUnsafeResident reports that a resident cannot be safely used.
 	ActivityUnsafeResident ActivityCondition = "unsafe-resident"
 )
 
@@ -84,15 +92,18 @@ const (
 	activityDetach    activityOperation = "detach"
 )
 
-func refusalFor(operation activityOperation, condition ActivityCondition, cause error, next []string) ActivityReply {
+func refusalFor(operation activityOperation, condition ActivityCondition, cause error) ActivityReply {
+	return refusalForObserved(operation, condition, cause, activityObservedCondition(condition), nil)
+}
+
+func refusalForObserved(operation activityOperation, condition ActivityCondition, cause error, observed string, next []string) ActivityReply {
 	if len(next) == 0 {
 		next = activityRecoveryActions(condition)
 	}
-	observed := activityObservedCondition(condition)
 	var storage *activityStorageError
 	if errors.As(cause, &storage) {
 		observed = "activity storage cannot complete the operation"
-		next = []string{"inspect available activity storage", "retry the activity operation"}
+		next = []string{"inspect available activity storage", "repair the activity storage"}
 	}
 	r := activityReply(condition)
 	r.Outcome = &ActionableOutcome{Category: "operation", Condition: observed, ChangedActivity: changedActivityForFailure(operation, cause), NextActions: next}
@@ -107,7 +118,7 @@ func activityObservedCondition(condition ActivityCondition) string {
 	case ActivityNotOwner:
 		return "the resident owner differs from this invocation"
 	case ActivityMissing:
-		return "the requested activity or effort is absent"
+		return "the requested resident is absent"
 	case ActivityInvalidMemory:
 		return "the effort memory metadata is invalid"
 	case ActivityUnsafeResident:
@@ -120,15 +131,15 @@ func activityObservedCondition(condition ActivityCondition) string {
 func activityRecoveryActions(condition ActivityCondition) []string {
 	switch condition {
 	case ActivityNotOwner:
-		return []string{"confirm the active session owner", "retry with that owner"}
+		return []string{"confirm the active session owner", "detach the conflicting session"}
 	case ActivityMissing:
-		return []string{"restore or create the requested effort", "retry the activity operation"}
+		return []string{"inspect the requested effort resident", "restore the requested effort"}
 	case ActivityInvalidMemory:
-		return []string{"repair the effort memory metadata", "retry the activity operation"}
+		return []string{"inspect the effort memory metadata", "repair the effort memory metadata"}
 	case ActivityUnsafeResident:
-		return []string{"inspect the activity resident for unsafe storage", "repair the resident and retry"}
+		return []string{"inspect the unsafe resident", "repair the unsafe resident"}
 	default:
-		return []string{"inspect the activity operation", "retry after correcting the observed condition"}
+		return []string{"inspect the activity operation", "correct the observed condition"}
 	}
 }
 func changedActivityForFailure(operation activityOperation, cause error) bool {
@@ -263,10 +274,10 @@ func (s *Service) activityEffort(slug string, operation activityOperation) (*Act
 	r, err := s.store.loadDirectory(s.paths.effort(slug), slug, false)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			x := refusalFor(operation, ActivityMissing, nil, nil)
+			x := refusalForObserved(operation, ActivityMissing, nil, "the requested effort is absent", []string{"inspect the requested effort resident", "restore the requested effort"})
 			return nil, nil, &x
 		}
-		x := refusalFor(operation, ActivityUnsafeResident, err, nil)
+		x := refusalForObserved(operation, ActivityUnsafeResident, err, "the effort resident cannot be safely used", nil)
 		return nil, nil, &x
 	}
 	raw, err := readRegularNoFollowBounded(s.paths.memoryFile(slug), maxMemoryBytes)
@@ -282,9 +293,15 @@ func (s *Service) activityEffort(slug string, operation activityOperation) (*Act
 	return &ActivityEffort{slug, r.Title}, &m, nil
 }
 func invalidMemoryRefusal(operation activityOperation, slug string, err error, readFailure bool) ActivityReply {
-	_ = err
-	_ = readFailure
-	return refusalFor(operation, ActivityInvalidMemory, nil, []string{"repair .awf/efforts/" + slug + "/memory.md manually", "retry the activity operation"})
+	observed := "the effort memory metadata is invalid"
+	if readFailure {
+		observed = "the effort memory cannot be read"
+	}
+	r := refusalForObserved(operation, ActivityInvalidMemory, nil, observed, []string{"inspect .awf/efforts/" + slug + "/memory.md", "repair .awf/efforts/" + slug + "/memory.md manually"})
+	if readFailure {
+		r.Outcome.Cause = err.Error()
+	}
+	return r
 }
 func (s *Service) activityIdentity(slug string) (*fileIdentity, error) {
 	_, identity, err := readRegularNoFollowBoundedIdentity(s.paths.activityFile(slug), maxMemoryBytes)
@@ -321,11 +338,13 @@ func (s *Service) activityCurrentIdentity(slug string) (*Activity, *fileIdentity
 }
 func (s *Service) publicationRefusal(op activityOperation, err error) ActivityReply {
 	var refusal *activityPublicationRefusal
-	if !errors.As(err, &refusal) {
-		return refusalFor(op, ActivityUnsafeResident, err, nil)
+	if errors.As(err, &refusal) {
+		return refusalForObserved(op, ActivityUnsafeResident, refusal, "the activity publication identity changed", []string{"inspect the activity resident identity", "attach a new activity"})
 	}
-	return refusalFor(op, ActivityUnsafeResident, refusal, nil)
+	return refusalForObserved(op, ActivityUnsafeResident, err, "the activity resident cannot be safely used", nil)
 }
+
+// AttachActivity attaches owner to slug, replacing any safe prior activity.
 func (s *Service) AttachActivity(slug, owner string) ActivityReply {
 	unlock := lockActivity(s.paths.activityFile(slug))
 	defer unlock()
@@ -336,11 +355,11 @@ func (s *Service) AttachActivity(slug, owner string) ActivityReply {
 	now := s.now().UTC()
 	a := Activity{SchemaVersion: activitySchemaVersion, Owner: owner, AttachedAt: now, HeartbeatAt: now}
 	if err := validActivity(a); err != nil {
-		return refusalFor(activityAttach, ActivityUnsafeResident, err, nil)
+		return refusalForObserved(activityAttach, ActivityUnsafeResident, err, "the supplied activity identity is invalid", []string{"generate a valid lowercase UUIDv4 owner", "inspect the activity invocation"})
 	}
 	identity, err := s.activityIdentity(slug)
 	if err != nil {
-		return refusalFor(activityAttach, ActivityUnsafeResident, err, nil)
+		return refusalForObserved(activityAttach, ActivityUnsafeResident, err, "the activity resident cannot be safely used", nil)
 	}
 	op := activityAttach
 	condition := ActivityAttached
@@ -360,27 +379,31 @@ func (s *Service) AttachActivity(slug, owner string) ActivityReply {
 	r.Activity = &a
 	return r
 }
+
+// HeartbeatActivity refreshes the activity for slug when owner still owns it.
 func (s *Service) HeartbeatActivity(slug, owner string) ActivityReply {
 	return s.mutateActivity(slug, owner, activityHeartbeat, ActivityHeartbeat, func(a *Activity) { a.HeartbeatAt = s.now().UTC() })
 }
+
+// DetachActivity removes the activity for slug when owner still owns it.
 func (s *Service) DetachActivity(slug, owner string) ActivityReply {
 	unlock := lockActivity(s.paths.activityFile(slug))
 	defer unlock()
 	if _, err := s.store.loadDirectory(s.paths.effort(slug), slug, false); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return refusalFor(activityDetach, ActivityMissing, nil, nil)
+			return refusalForObserved(activityDetach, ActivityMissing, nil, "the requested effort is absent", []string{"inspect the requested effort resident", "restore the requested effort"})
 		}
-		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
+		return refusalForObserved(activityDetach, ActivityUnsafeResident, err, "the effort resident cannot be safely used", nil)
 	}
 	a, identity, err := s.activityCurrentIdentity(slug)
 	if err != nil {
-		return refusalFor(activityDetach, ActivityUnsafeResident, err, nil)
+		return refusalForObserved(activityDetach, ActivityUnsafeResident, err, "the activity resident cannot be safely used", nil)
 	}
 	if a == nil {
 		return activityReply(ActivityDetached)
 	}
 	if a.Owner != owner {
-		return refusalFor(activityDetach, ActivityNotOwner, nil, nil)
+		return refusalFor(activityDetach, ActivityNotOwner, nil)
 	}
 	if activityBeforePublish != nil {
 		activityBeforePublish()
@@ -399,13 +422,13 @@ func (s *Service) mutateActivity(slug, owner string, op activityOperation, condi
 	}
 	a, identity, err := s.activityCurrentIdentity(slug)
 	if err != nil {
-		return refusalFor(op, ActivityUnsafeResident, err, nil)
+		return refusalForObserved(op, ActivityUnsafeResident, err, "the activity resident cannot be safely used", nil)
 	}
 	if a == nil {
-		return refusalFor(op, ActivityMissing, nil, nil)
+		return refusalForObserved(op, ActivityMissing, nil, "the requested activity is absent", []string{"inspect the requested activity resident", "attach a new activity"})
 	}
 	if a.Owner != owner {
-		return refusalFor(op, ActivityNotOwner, nil, nil)
+		return refusalFor(op, ActivityNotOwner, nil)
 	}
 	change(a)
 	if err = s.store.replaceActivity(s.paths.activityFile(slug), *a, identity, op); err != nil {

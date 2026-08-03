@@ -25,7 +25,7 @@ test("client accepts exact v2 success and refusal matrices with immutable facts"
 });
 
 test("client strictly rejects transport, closed envelopes, facts, and outcomes", async () => {
-  const bad: any[] = [null, [], {}, { schemaVersion: 1, condition: "attached" }, { schemaVersion: 2, condition: "other" }, { ...success(), extra: true }, { ...success(), effort: { slug: "", title: "x" } }, { ...success("attached", OWNER, "other"), memory: { effort: "other", phase: "x", next: "x", updated: TIME } }, { ...success(), memory: { effort: "other", phase: "x", next: "x", updated: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: "BAD", attachedAt: TIME, heartbeatAt: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: OWNER, attachedAt: "bad", heartbeatAt: TIME } }, { ...refusal(), outcome: { category: "bad", condition: "x", changedActivity: false, nextActions: ["x"] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: [] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: [""] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: ["x"], cause: "" } }];
+  const bad: any[] = [null, [], {}, { schemaVersion: 1, condition: "attached" }, { schemaVersion: 2, condition: "other" }, { ...success(), extra: true }, { ...success(), effort: { slug: "", title: "x" } }, { ...success("attached", OWNER, "other"), memory: { effort: "other", phase: "x", next: "x", updated: TIME } }, { ...success(), memory: { effort: "other", phase: "x", next: "x", updated: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: "BAD", attachedAt: TIME, heartbeatAt: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: OWNER, attachedAt: "", heartbeatAt: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: OWNER, attachedAt: "bad", heartbeatAt: TIME } }, { ...success(), activity: { schemaVersion: 2, owner: OWNER, attachedAt: "2026-02-30T00:00:00Z", heartbeatAt: TIME } }, { ...success(), memory: { ...success().memory, updated: "2026-02-30T00:00:00Z" } }, { ...refusal(), outcome: { category: "bad", condition: "x", changedActivity: false, nextActions: ["x"] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: [] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: [""] } }, { ...refusal(), outcome: { category: "operation", condition: "x", changedActivity: false, nextActions: ["x"], cause: "" } }];
   for (const value of bad) await assert.rejects(decode(value), /invalid envelope/);
   await assert.rejects(activity(async () => ({ stdout: line(success()) }), "/repo", "attach", "bad_slug", OWNER), /invocation is invalid/);
   const transports: Array<[any, RegExp]> = [
@@ -51,6 +51,10 @@ function lastText(r: any) { return r.content[0].text; }
 test("client covers sentinel metadata, exact condition shapes, and cancellation transport", async () => {
   const sentinel = success(); sentinel.memory.updated = "Not yet updated.";
   assert.equal((await decode(sentinel)).memory?.updated, "Not yet updated.");
+  const nano = success(); nano.activity.attachedAt = "2026-08-03T00:00:00.123456789Z"; nano.activity.heartbeatAt = "2026-08-03T00:00:00.1Z";
+  assert.equal((await decode(nano)).activity?.attachedAt, nano.activity.attachedAt);
+  const invalidSentinel = success(); invalidSentinel.activity.attachedAt = "Not yet updated.";
+  await assert.rejects(decode(invalidSentinel), /invalid envelope/);
   const malformed = [
     { schemaVersion: 2, condition: "attached", effort: success().effort, memory: success().memory },
     { schemaVersion: 2, condition: "detached", outcome: refusal().outcome },
@@ -133,6 +137,7 @@ test("remote Pi capability, replay, publication failures, restart, and shutdown 
   await request(h, { effort: "demo" }); assert.equal(h.events.some(([n]: any) => n === "remote-pi:metadata:set"), true);
   h.listeners.get("remote-pi:capabilities")({ metadata: { version: 1 }, nameOverride: { version: 1, namespaces: ["awf"] } }); assert.equal(h.events.at(-1)[0], "remote-pi:name-override:set");
   h.listeners.get("remote-pi:metadata:request")(); h.listeners.get("remote-pi:name-override:request")(); h.listeners.get("remote-pi:capabilities")({ metadata: { version: 2 }, nameOverride: { version: 1, namespaces: "awf" } });
+  assert.deepEqual(h.events.at(-1), ["remote-pi:name-override:set", { namespace: "awf", value: null }]);
   await h.hooks.get("session_shutdown")({}, h.ctx); h.hooks.get("session_start")({}); assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx), undefined);
   const broken = harness([success()], { emitThrows: true, directory: async () => { throw new Error("stat") } }); await request(broken, { effort: "demo" }); assert.equal(broken.hooks.get("context")({ messages: [] }, broken.ctx).messages[0].content.includes("managedWorktree"), false);
 });
