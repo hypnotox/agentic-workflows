@@ -64,6 +64,59 @@ func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) str
 	return root
 }
 
+func TestCommitPolicyManifestProjection(t *testing.T) {
+	const base = "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\ndocs: [architecture]\n"
+	root := scaffold(t, base)
+	syncAndLoad := func() *manifest.Lock {
+		t.Helper()
+		p, err := Open(testContext(t), root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := p.Sync(); err != nil {
+			t.Fatal(err)
+		}
+		lock, err := manifest.Load(lockFile(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return lock
+	}
+	absent := syncAndLoad()
+	absentAgain := syncAndLoad()
+	if !reflect.DeepEqual(absent, absentAgain) {
+		t.Fatal("repeated absent-policy sync changed the manifest")
+	}
+	consumerPath := "docs/architecture.md"
+	unrelatedPath := "AGENTS.md"
+	consumerBefore, ok := absent.Files[consumerPath]
+	if !ok {
+		t.Fatalf("manifest missing consumer %s", consumerPath)
+	}
+	unrelatedBefore, ok := absent.Files[unrelatedPath]
+	if !ok {
+		t.Fatalf("manifest missing unrelated output %s", unrelatedPath)
+	}
+	policy := base + "commitPolicy:\n  grandfatheredThrough: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n  allowedIdentities:\n    - name: Ada\n      email: ada@example.test\n"
+	testsupport.WriteAwfConfig(t, root, policy)
+	present := syncAndLoad()
+	if present.Files[consumerPath].ConfigHash == consumerBefore.ConfigHash {
+		t.Fatal("commit-policy consumer manifest hash did not change")
+	}
+	if present.Files[unrelatedPath].ConfigHash != unrelatedBefore.ConfigHash {
+		t.Fatal("unrelated manifest hash changed with commit policy")
+	}
+	policy = strings.Replace(policy, "ada@example.test", "ada2@example.test", 1)
+	testsupport.WriteAwfConfig(t, root, policy)
+	mutated := syncAndLoad()
+	if mutated.Files[consumerPath].ConfigHash == present.Files[consumerPath].ConfigHash {
+		t.Fatal("complete policy mutation did not change consumer manifest hash")
+	}
+	if mutated.Files[unrelatedPath].ConfigHash != unrelatedBefore.ConfigHash {
+		t.Fatal("unrelated manifest hash changed with policy mutation")
+	}
+}
+
 // gitScaffold writes gitSampleYAML into a fresh git-backed root whose checkout
 // sits on branch. A test that exercises branch-aware behaviour needs a real
 // repository, because the branch is read through the git seam rather than

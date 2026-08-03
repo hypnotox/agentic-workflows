@@ -406,15 +406,15 @@
     },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
-      "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:928fe8298d3aeab3a48e9bcb7a7d9f75226e077aeece358b1af4f8663a4847cf",
+      "templateHash": "sha256:c56119ce966433aa67f4d4e23790a1e853085df416a5811b950b178604ae9cf9",
+      "configHash": "sha256:33077175f6f65075b466ad0bb8d556bb7ad63526f92776f65b783dcc980842b0",
       "outputHash": "sha256:e6ae452bb8b9f9c2eca6c1c6ddf25fb64de0440dc2fdcc631afcaa3517f978b9"
     },
     "docs/config-reference.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:d22e19851a65449fd926c1fd3500992e946535fae190acdb23b8e7a634a57539",
+      "outputHash": "sha256:4a50d2a3ca89b66c154f964483e5b28fcaf125ef09b50d9d7e8a13f58f32ac20",
       "regenChecked": true
     },
     "docs/debugging.md": {

@@ -130,12 +130,12 @@ var keys = []Entry{
 	},
 	{
 		Path: "commitPolicy.grandfatheredThrough", Type: "lowercase full object ID", Default: "none: required when commitPolicy is present",
-		Description:  "The exact full SHA-1 or SHA-256 commit object ID whose reachable ancestry is tolerated. Abbreviations, uppercase IDs, and non-object IDs are invalid; repository resolution happens when policy enforcement runs.",
-		Availability: "Within commitPolicy.",
+		Description:  "The exact full SHA-1 or SHA-256 commit object ID whose reachable ancestry is tolerated. Abbreviations, uppercase IDs, and non-object IDs are invalid; repository resolution happens when policy enforcement runs. Omitting the complete commitPolicy block preserves existing behavior and activates no policy.",
+		Availability: "Required when the optional commitPolicy block is present; the block itself may be absent.",
 	},
 	{
 		Path: "commitPolicy.allowedIdentities", Type: "list of {name, email} mappings", Default: "none (identity matching disabled)",
-		Description:  "Optional nonempty allowlist of exact author and committer identity pairs. Identity matching is disabled when omitted; duplicate pairs are invalid.",
+		Description:  "Optional nonempty allowlist of exact author and committer identity pairs. Identity matching is disabled when this key is omitted; an explicitly empty or null key and duplicate pairs are invalid.",
 		Availability: "Within commitPolicy.",
 	},
 	{
@@ -155,7 +155,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "commitPolicy.allowedSigners", Type: "list of {principal, key} mappings", Default: "none: required when requireSignedCommits is true",
-		Description:  "Nonempty exact SSH signer records when signing is required. Signers are invalid while signing is disabled, and duplicate records are invalid.",
+		Description:  "Nonempty exact SSH signer records when signing is required. A present empty or null list, signers while signing is disabled, and duplicate records are invalid.",
 		Availability: "Within commitPolicy while requireSignedCommits is true.",
 	},
 	{

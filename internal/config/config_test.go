@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -724,6 +725,50 @@ func TestCommitPolicyValidation(t *testing.T) {
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "commitPolicy.grandfatheredThrough") {
 		t.Fatalf("config validation = %v, want commit-policy error", err)
 	}
+	base := "prefix: x\nintegrationBranch: main\n"
+	decodeCases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "absent policy", body: base},
+		{name: "identity only", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities:\n    - name: Ada\n      email: ada@example.test\n"},
+		{name: "signer only", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: ada@example.test\n      key: " + validKey + "\n"},
+		{name: "null identities", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities: null\n", want: "commitPolicy.allowedIdentities"},
+		{name: "empty identities", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities: []\n", want: "commitPolicy.allowedIdentities"},
+		{name: "null signers disabled", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedSigners: null\n", want: "commitPolicy.allowedSigners"},
+		{name: "empty signers disabled", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedSigners: []\n", want: "commitPolicy.allowedSigners"},
+		{name: "null signers required", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: true\n  allowedSigners: null\n", want: "commitPolicy.allowedSigners"},
+		{name: "policy not mapping", body: base + "commitPolicy: nope\n", want: "commitPolicy must be a mapping"},
+		{name: "duplicate policy key", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  grandfatheredThrough: " + strings.Repeat("b", 40) + "\n", want: "grandfatheredThrough"},
+		{name: "baseline not string", body: base + "commitPolicy:\n  grandfatheredThrough: 123\n", want: "commitPolicy.grandfatheredThrough"},
+		{name: "signing flag not bool", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: nope\n", want: "commitPolicy.requireSignedCommits"},
+		{name: "unknown policy key", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  unknown: value\n", want: "unknown"},
+		{name: "identity not mapping", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities:\n    - nope\n", want: "allowedIdentities[0]"},
+		{name: "duplicate identity key", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities:\n    - name: Ada\n      name: Grace\n      email: ada@example.test\n", want: "name"},
+		{name: "identity name not string", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities:\n    - name: 123\n      email: ada@example.test\n", want: "allowedIdentities[0].name"},
+		{name: "identity email not string", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities:\n    - name: Ada\n      email: 123\n", want: "allowedIdentities[0].email"},
+		{name: "unknown identity key", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  allowedIdentities:\n    - name: Ada\n      email: ada@example.test\n      handle: ada\n", want: "handle"},
+		{name: "signer not mapping", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: true\n  allowedSigners:\n    - nope\n", want: "allowedSigners[0]"},
+		{name: "duplicate signer key", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: ada@example.test\n      principal: grace@example.test\n      key: " + validKey + "\n", want: "principal"},
+		{name: "signer principal not string", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: 123\n      key: " + validKey + "\n", want: "allowedSigners[0].principal"},
+		{name: "signer key not string", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: ada@example.test\n      key: 123\n", want: "allowedSigners[0].key"},
+		{name: "unknown signer key", body: base + "commitPolicy:\n  grandfatheredThrough: " + strings.Repeat("a", 40) + "\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: ada@example.test\n      key: " + validKey + "\n      comment: no\n", want: "comment"},
+	}
+	for _, tc := range decodeCases {
+		t.Run("decode "+tc.name, func(t *testing.T) {
+			parsed, err := Parse("staged/.awf", []byte(tc.body))
+			if err == nil {
+				err = parsed.Validate()
+			}
+			if tc.want == "" && err != nil {
+				t.Fatalf("valid config rejected: %v", err)
+			}
+			if tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+				t.Fatalf("validation = %v, want key %q", err, tc.want)
+			}
+		})
+	}
 	cases := []struct {
 		name string
 		edit func(*CommitPolicyConfig)
@@ -762,6 +807,21 @@ func TestCommitPolicyValidation(t *testing.T) {
 		if err := validateOpenSSHPublicKey(key); err == nil {
 			t.Errorf("invalid key %q accepted", key)
 		}
+	}
+	rsaPath := filepath.Join(t.TempDir(), "rsa")
+	if output, err := exec.Command("ssh-keygen", "-q", "-t", "rsa", "-b", "2048", "-N", "", "-f", rsaPath).CombinedOutput(); err != nil {
+		t.Fatalf("generate unsupported RSA key: %v: %s", err, output)
+	}
+	rsaPublic, err := os.ReadFile(rsaPath + ".pub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsaFields := strings.Fields(string(rsaPublic))
+	if len(rsaFields) < 2 {
+		t.Fatalf("generated RSA public key = %q", rsaPublic)
+	}
+	if err := validateOpenSSHPublicKey(strings.Join(rsaFields[:2], " ")); err == nil {
+		t.Fatal("well-formed unsupported RSA key accepted")
 	}
 	if !isFullOID(strings.Repeat("b", 64)) || isFullOID(strings.Repeat("g", 40)) || validPrincipal("") || validPrincipal("bad space") {
 		t.Fatal("OID or principal helper accepted an invalid value")

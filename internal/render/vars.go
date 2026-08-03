@@ -16,6 +16,16 @@ func ReferencesSkills(src string) bool { return skillsRE.MatchString(src) }
 
 var scopesRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitScopes[^{}]*\}\}`)
 
+var commitPolicyRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitPolicy[^{}]*\}\}`)
+
+var templateCommentRE = regexp.MustCompile(`(?s)\{\{/\*.*?\*/\}\}`)
+
+// ReferencesCommitPolicy reports whether a non-comment template action reads
+// the typed commit-policy render context.
+func ReferencesCommitPolicy(src string) bool {
+	return commitPolicyRE.MatchString(templateCommentRE.ReplaceAllString(src, ""))
+}
+
 // ReferencesScopes reports whether src reads the resolved commit-scope render
 // context (any {{ ... .commitScopes ... }} action) - such templates fold the
 // resolved scope list into their config hash (ADR-0051, mirroring ADR-0046's

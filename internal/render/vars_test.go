@@ -82,6 +82,26 @@ func TestReferencedVarsDeduplicated(t *testing.T) {
 	}
 }
 
+func TestReferencesCommitPolicy(t *testing.T) {
+	for _, src := range []string{
+		"{{ with .commitPolicy }}{{ end }}",
+		"{{ if $.commitPolicy }}{{ end }}",
+	} {
+		if !render.ReferencesCommitPolicy(src) {
+			t.Errorf("commit-policy action not detected in %q", src)
+		}
+	}
+	for _, src := range []string{
+		"prose mentioning .commitPolicy outside an action",
+		"{{/* .commitPolicy is documented here */}}",
+		"{{/* multiline\n.commitPolicy\ncomment */}}",
+	} {
+		if render.ReferencesCommitPolicy(src) {
+			t.Errorf("non-consuming commit-policy mention detected in %q", src)
+		}
+	}
+}
+
 func TestReferencesScopes(t *testing.T) {
 	if !render.ReferencesScopes("x {{ with .commitScopes }}y{{ end }} z") {
 		t.Error("expected a .commitScopes action to be detected")

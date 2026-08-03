@@ -8,7 +8,11 @@ For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, 
 `awf config [<key-or-var>]`.
 <!-- awf:end -->
 
-## config.yaml keys
+{{ with .commitPolicy }}This checkout currently authors the optional `commitPolicy` block. Its values are
+structurally validated, but configuration alone does not activate or wire runtime
+enforcement.
+
+{{ end }}## config.yaml keys
 
 | Key | Type | Default | Current | Description | Availability |
 |---|---|---|---|---|---|

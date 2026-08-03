@@ -382,15 +382,15 @@
     },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
-      "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:272ae07cdd78900b7a217cf661875c33118b6c6dbd7c1db06bff6d5aa08807ea",
+      "templateHash": "sha256:c56119ce966433aa67f4d4e23790a1e853085df416a5811b950b178604ae9cf9",
+      "configHash": "sha256:4ae401c8f129c00e2bc9d6843a37e419655f529770f57d3a3aa9483a16be1138",
       "outputHash": "sha256:6c7fffef21377f3c0d46ddbf4861ac440616eaa11127bf723ff097ddf1f374b4"
     },
     "docs/config-reference.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:8fabcadb381b5ee5eb888e943feaea5fbc787c21744e1c58de1d930f5015b030",
+      "outputHash": "sha256:ed4f99097a5fd758aadf717ded765ca2fbb8f69fc8a5041efbd2dc75f80df3d2",
       "regenChecked": true
     },
     "docs/decisions/INDEX.md": {

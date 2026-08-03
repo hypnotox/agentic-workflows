@@ -22,4 +22,9 @@ _How a request, build, or command moves through the system end to end: the path 
 ## Key dependencies
 
 _The external dependencies that shape the architecture and the role each plays. Note anything load-bearing enough that replacing it would be a significant change._
-<!-- awf:end -->
+<!-- awf:end -->{{ with .commitPolicy }}
+
+This checkout includes optional commit-policy configuration. The block is
+structurally validated and available to generated artifacts, but its presence
+alone does not activate runtime enforcement.
+{{ end }}

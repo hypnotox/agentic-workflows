@@ -84,6 +84,8 @@ type CommitPolicyConfig struct {
 	AllowedIdentities    []CommitPolicyIdentity `yaml:"allowedIdentities"`
 	RequireSignedCommits bool                   `yaml:"requireSignedCommits"`
 	AllowedSigners       []CommitPolicySigner   `yaml:"allowedSigners"`
+	allowedIdentitiesSet bool
+	allowedSignersSet    bool
 }
 
 // CommitPolicyIdentity is one exact author/committer name and email pair.
@@ -96,6 +98,116 @@ type CommitPolicyIdentity struct {
 type CommitPolicySigner struct {
 	Principal string `yaml:"principal"`
 	Key       string `yaml:"key"`
+}
+
+// UnmarshalYAML retains optional-list presence while preserving strict nested
+// field validation for the commitPolicy mapping and its records.
+func (c *CommitPolicyConfig) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return errors.New("commitPolicy must be a mapping")
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if seen[key] {
+			return fmt.Errorf("field %s already set in commitPolicy", key)
+		}
+		seen[key] = true
+		switch key {
+		case "grandfatheredThrough":
+			if err := decodeStringScalar(value, &c.GrandfatheredThrough, "commitPolicy.grandfatheredThrough"); err != nil {
+				return err
+			}
+		case "allowedIdentities":
+			c.allowedIdentitiesSet = true
+			if err := decodeCommitPolicyIdentities(value, &c.AllowedIdentities); err != nil {
+				return err
+			}
+		case "requireSignedCommits":
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
+				return errors.New("commitPolicy.requireSignedCommits must be a boolean scalar")
+			}
+			if err := value.Decode(&c.RequireSignedCommits); err != nil { // coverage-ignore: a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag check above
+				return fmt.Errorf("commitPolicy.requireSignedCommits must be a boolean scalar: %w", err)
+			}
+		case "allowedSigners":
+			c.allowedSignersSet = true
+			if err := decodeCommitPolicySigners(value, &c.AllowedSigners); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("field %s not found in type config.CommitPolicyConfig", key)
+		}
+	}
+	return nil
+}
+
+func decodeCommitPolicyIdentities(node *yaml.Node, out *[]CommitPolicyIdentity) error {
+	if node.Kind != yaml.SequenceNode {
+		return errors.New("commitPolicy.allowedIdentities must be a list, not null")
+	}
+	identities := make([]CommitPolicyIdentity, len(node.Content))
+	for i, item := range node.Content {
+		if item.Kind != yaml.MappingNode {
+			return fmt.Errorf("commitPolicy.allowedIdentities[%d] must be a mapping", i)
+		}
+		seen := map[string]bool{}
+		for j := 0; j < len(item.Content); j += 2 {
+			key, value := item.Content[j].Value, item.Content[j+1]
+			if seen[key] {
+				return fmt.Errorf("field %s already set in commitPolicy.allowedIdentities[%d]", key, i)
+			}
+			seen[key] = true
+			switch key {
+			case "name":
+				if err := decodeStringScalar(value, &identities[i].Name, fmt.Sprintf("commitPolicy.allowedIdentities[%d].name", i)); err != nil {
+					return err
+				}
+			case "email":
+				if err := decodeStringScalar(value, &identities[i].Email, fmt.Sprintf("commitPolicy.allowedIdentities[%d].email", i)); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("field %s not found in type config.CommitPolicyIdentity", key)
+			}
+		}
+	}
+	*out = identities
+	return nil
+}
+
+func decodeCommitPolicySigners(node *yaml.Node, out *[]CommitPolicySigner) error {
+	if node.Kind != yaml.SequenceNode {
+		return errors.New("commitPolicy.allowedSigners must be a list, not null")
+	}
+	signers := make([]CommitPolicySigner, len(node.Content))
+	for i, item := range node.Content {
+		if item.Kind != yaml.MappingNode {
+			return fmt.Errorf("commitPolicy.allowedSigners[%d] must be a mapping", i)
+		}
+		seen := map[string]bool{}
+		for j := 0; j < len(item.Content); j += 2 {
+			key, value := item.Content[j].Value, item.Content[j+1]
+			if seen[key] {
+				return fmt.Errorf("field %s already set in commitPolicy.allowedSigners[%d]", key, i)
+			}
+			seen[key] = true
+			switch key {
+			case "principal":
+				if err := decodeStringScalar(value, &signers[i].Principal, fmt.Sprintf("commitPolicy.allowedSigners[%d].principal", i)); err != nil {
+					return err
+				}
+			case "key":
+				if err := decodeStringScalar(value, &signers[i].Key, fmt.Sprintf("commitPolicy.allowedSigners[%d].key", i)); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("field %s not found in type config.CommitPolicySigner", key)
+			}
+		}
+	}
+	*out = signers
+	return nil
 }
 
 // TreeReader supplies canonical config-tree-relative bytes without exposing a
@@ -715,7 +827,8 @@ func validateCommitPolicy(policy *CommitPolicyConfig, validateKey func(string) e
 	if !isFullOID(policy.GrandfatheredThrough) {
 		return errors.New("commitPolicy.grandfatheredThrough must be a lowercase full object ID")
 	}
-	if policy.AllowedIdentities != nil && len(policy.AllowedIdentities) == 0 {
+	identitiesPresent := policy.allowedIdentitiesSet || policy.AllowedIdentities != nil
+	if identitiesPresent && len(policy.AllowedIdentities) == 0 {
 		return errors.New("commitPolicy.allowedIdentities must be non-empty when present")
 	}
 	identities := map[CommitPolicyIdentity]bool{}
@@ -731,10 +844,11 @@ func validateCommitPolicy(policy *CommitPolicyConfig, validateKey func(string) e
 		}
 		identities[identity] = true
 	}
+	signersPresent := policy.allowedSignersSet || policy.AllowedSigners != nil
 	if policy.RequireSignedCommits && len(policy.AllowedSigners) == 0 {
 		return errors.New("commitPolicy.allowedSigners must be non-empty when commitPolicy.requireSignedCommits is true")
 	}
-	if !policy.RequireSignedCommits && len(policy.AllowedSigners) != 0 {
+	if !policy.RequireSignedCommits && signersPresent {
 		return errors.New("commitPolicy.allowedSigners requires commitPolicy.requireSignedCommits to be true")
 	}
 	signers := map[CommitPolicySigner]bool{}

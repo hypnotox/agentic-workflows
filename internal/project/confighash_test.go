@@ -15,25 +15,45 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 		t.Fatal(err)
 	}
 	eff := mustDeriveSkills(t, p)
-	consumerBefore, err := p.artifactConfigHash("{{ with .commitPolicy }}{{ .grandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
+	consumerBefore, err := p.artifactConfigHash("{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unrelatedBefore, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, eff)
+	unrelatedBefore, err := p.artifactConfigHash("plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.CommitPolicy = &config.CommitPolicyConfig{GrandfatheredThrough: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
-	consumerAfter, err := p.artifactConfigHash("{{ with .commitPolicy }}{{ .grandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
+	commentBefore, err := p.artifactConfigHash("{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unrelatedAfter, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, eff)
+	policies := []*config.CommitPolicyConfig{
+		{GrandfatheredThrough: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		{GrandfatheredThrough: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", AllowedIdentities: []config.CommitPolicyIdentity{{Name: "Ada", Email: "ada@example.test"}}},
+		{GrandfatheredThrough: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", AllowedIdentities: []config.CommitPolicyIdentity{{Name: "Ada", Email: "ada@example.test"}}, RequireSignedCommits: true, AllowedSigners: []config.CommitPolicySigner{{Principal: "ada@example.test", Key: "ssh-ed25519 key"}}},
+	}
+	previous := consumerBefore
+	for i, policy := range policies {
+		p.Cfg.CommitPolicy = policy
+		got, err := p.artifactConfigHash("{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == previous {
+			t.Fatalf("policy mutation %d did not change consumer hash %q", i, got)
+		}
+		previous = got
+	}
+	unrelatedAfter, err := p.artifactConfigHash("plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if consumerBefore == consumerAfter || unrelatedBefore != unrelatedAfter {
-		t.Fatalf("consumer hashes %q/%q and unrelated hashes %q/%q", consumerBefore, consumerAfter, unrelatedBefore, unrelatedAfter)
+	commentAfter, err := p.artifactConfigHash("{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unrelatedBefore != unrelatedAfter || commentBefore != commentAfter {
+		t.Fatalf("non-consumer hashes changed: prose %q/%q comment %q/%q", unrelatedBefore, unrelatedAfter, commentBefore, commentAfter)
 	}
 	part := filepath.Join(root, ".awf", "parts", "scope.md")
 	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
