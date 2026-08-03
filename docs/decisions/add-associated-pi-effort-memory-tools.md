@@ -78,14 +78,21 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
    activity. The owner check is advisory process consistency, not permission, lifecycle state, a
    cross-process lock, or protection against a takeover after the check.
 
-4. `decision: closed-memory-protocol` Add these exact command forms:
+4. `decision: closed-memory-protocol` Add these exact owner-free human forms:
 
-   - `awf effort memory read <slug> [--offset <positive-line>] [--limit <positive-lines>] [--owner <uuid>] [--json]`
-   - `awf effort memory edit <slug> [--owner <uuid>] [--json]`
-   - `awf effort memory update <slug> [--phase <text>] [--next <text>] [--owner <uuid>] [--json]`
+   - `awf effort memory read <slug> [--offset <positive-line>] [--limit <positive-lines>]`
+   - `awf effort memory edit <slug>`
+   - `awf effort memory update <slug> [--phase <text>] [--next <text>]`
 
-   `--owner` is optional, nonrepeatable, and valid only with `--json`; its presence selects the
-   advisory owner check. Owner-free forms retain ordinary direct-command semantics. Edit reads one
+   Add these exact owner-scoped protocol forms:
+
+   - `awf effort memory read <slug> [--offset <positive-line>] [--limit <positive-lines>] --owner <uuid> --json`
+   - `awf effort memory edit <slug> --owner <uuid> --json`
+   - `awf effort memory update <slug> [--phase <text>] [--next <text>] --owner <uuid> --json`
+
+   `--owner` and `--json` are nonrepeatable and mutually required: supplying either without the
+   other is invalid. Their presence selects the advisory owner check and machine protocol;
+   owner-free forms retain ordinary direct-command presentation. Edit in either form reads one
    closed JSON object from stdin with this literal shape:
 
    ```json
