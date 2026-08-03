@@ -542,9 +542,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:b31e8f9994247bf6b7e24af912b1a49cecd47c7cebfda23901eda11572528809",
+      "templateHash": "sha256:d7cccf91c741e92c65ecde51d6b13eba788d12418a87ee084149732e409573a4",
       "configHash": "sha256:ef8342ab0ac6b40eeff56fcbb3f03ff792367e222551f73f137c9eb2a7b8d3c2",
-      "outputHash": "sha256:a1fb145997642aafcec24a565c1d8e5dbbeff471b185cf314d366cae02ccc4b7"
+      "outputHash": "sha256:a996b223fbcebde104e2983907546de5f62e041906b71d41a8f4df07c13d2df5"
     }
   }
 }

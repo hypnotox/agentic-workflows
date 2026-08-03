@@ -1736,7 +1736,7 @@ func effortSignaturePatterns() []effortSignaturePattern {
 		{"title-derived creation guidance", regexp.MustCompile("[Ee]ffort (creation )?" + `deriv(e|es|ed|ing)[^\r\n]{0,40}slug`)},
 		{"title-derived creation guidance", regexp.MustCompile("[Dd]eriv" + `(e|es|ed|ing) an immutable slug`)},
 		{"two-field confirmation", regexp.MustCompile("outcome/title " + `(pair|confirmation)`)},
-		{"two-field confirmation", regexp.MustCompile("labeled outcome and " + `(proposed )?effort title`)},
+		{"two-field confirmation", regexp.MustCompile("labeled outcome and " + `(proposed )?(effort )?title`)},
 		{"two-field confirmation", regexp.MustCompile("confirms? the " + `pair`)},
 		{"two-field confirmation", regexp.MustCompile("both " + `fields`)},
 	}
@@ -1894,6 +1894,7 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 		{"Deriving" + " an immutable slug", "title-derived creation guidance"},
 		{"outcome/title " + "confirmation", "two-field confirmation"},
 		{"labeled outcome and " + "proposed effort title", "two-field confirmation"},
+		{"labeled outcome and " + "proposed title receive", "two-field confirmation"},
 		{"confirms the " + "pair", "two-field confirmation"},
 		{"both " + "fields", "two-field confirmation"},
 	}
