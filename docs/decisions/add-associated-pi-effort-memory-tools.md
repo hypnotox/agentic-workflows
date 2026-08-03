@@ -71,14 +71,38 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
    activity. The owner check is advisory process consistency, not permission, lifecycle state, a
    cross-process lock, or protection against a takeover after the check.
 
-4. `decision: closed-memory-protocol` Give associated memory calls bounded, closed machine replies
-   carrying the facts their tools need. Read returns selected content and continuation facts;
-   edit returns replacement count, diff facts, and resulting validated memory metadata; update
-   returns resulting validated memory metadata. Expected state refusals remain distinguishable
-   from malformed invocation and mechanism failure. Carry an edit request as bounded JSON on the
-   binary's stdin, and keep stdout reserved for its single JSON reply. The generated client owns a
-   bounded, timeout-aware, cancellation-aware child process for that stdin operation and strictly
-   validates every reply; it never reads or writes the effort resident itself.
+4. `decision: closed-memory-protocol` Add these exact command forms:
+
+   - `awf effort memory read <slug> [--offset <positive-line>] [--limit <positive-lines>] [--owner <uuid>] [--json]`
+   - `awf effort memory edit <slug> [--owner <uuid>] [--json]`
+   - `awf effort memory update <slug> [--phase <text>] [--next <text>] [--owner <uuid>] [--json]`
+
+   `--owner` is optional, nonrepeatable, and valid only with `--json`; its presence selects the
+   advisory owner check. Owner-free forms retain ordinary direct-command semantics. Edit reads one
+   closed JSON object from stdin containing exactly `edits`, with 1 through 128 exact
+   `{oldText,newText}` objects, nonempty `oldText`, decoded strings individually bounded by the
+   one-MiB memory limit, and a 16-MiB transport limit. Read selection is capped at 2,000 lines or
+   50 KiB after honoring its optional line limit.
+
+   JSON mode writes exactly one newline-terminated protocol-1 envelope. Every envelope has only
+   `schemaVersion` and a stable `condition` plus its condition-specific facts. `read` carries exact
+   `memory`, `content`, and `range` facts; range contains start, end, total, nullable next offset,
+   and truncation kind `none`, `limit`, `lines`, or `bytes`. `edited` carries exact `memory`,
+   replacement count, and a 50-KiB-bounded diff with first changed line and truncation fact.
+   `updated` carries exact `memory`. Memory facts contain exactly effort, phase, next, and updated.
+
+   Handled refusal conditions are `not-owner`, `missing`, `unsafe-activity`, `invalid-memory`,
+   `unsafe-memory`, `no-match`, `ambiguous-match`, `overlapping-edits`, `result-too-large`, and
+   `memory-failure`. A refusal carries only an actionable `operation` outcome with a present-tense
+   observed condition, `changedMemory`, ordered independently executable next actions, and a cause
+   exactly for mechanism failure. Match refusals additionally carry only the relevant edit index,
+   occurrence count, conflicting indexes, or byte bounds. `changedMemory` is false unless a
+   durability failure occurs after atomic replacement. Malformed grammar or stdin, invalid bounds,
+   and failures before managed state is observed use nonzero exit, empty stdout, and bounded
+   actionable stderr. Human mode uses the same typed results and refusals through effort-package
+   rendering. The generated client owns a bounded, timeout-aware, cancellation-aware child process
+   for edit stdin and strictly validates every reply; it never reads or writes the effort resident
+   itself.
 
 5. `decision: contextual-tool-activation` Register the three memory tools with the generated
    effort extension but leave them inactive while detached. Successful attachment adds them to
@@ -96,18 +120,22 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
 
 7. `decision: cohesive-runtime-boundary` Preserve the existing ownership split. The Go effort
    package owns resident safety, activity-owner comparison, memory parsing, exact body matching,
-   clocking, and atomic publication. Command code owns grammar, stdin and JSON transport, and human
-   presentation. The generated client owns bounded invocation and strict protocol decoding. The
-   generated index owns association state, dynamic activation, local serialization, file-queue
-   participation, transient context, and Remote Pi publication. The Pi target alone derives these
-   tools from selected `effort-workflow`; no non-Pi target names or renders them.
+   clocking, atomic publication, typed outcomes, and human rendering. Command code owns grammar,
+   stdin and JSON transport, renderer selection, and exit mapping. The generated client owns
+   bounded invocation and strict protocol decoding. The generated index owns association state,
+   dynamic activation, local serialization, file-queue participation, transient context, and
+   Remote Pi publication. The Pi target alone derives these tools from selected `effort-workflow`;
+   no non-Pi target names or renders them.
 
 8. `decision: compatibility-and-runtime-floor` Require no on-disk migration and retain the existing
    owner-free structured update command. Extend the Pi runtime floor only by the dynamic-tool and
    file-mutation-queue APIs used by the companion, with an actionable compatibility refusal before
-   functional registration when they are unavailable. Verify the binary operations, CLI protocol,
-   generated state machine, active-only guidance, target render and prune behavior, safe failure
-   boundaries, generated documentation, and repository gate before applying the declared claims.
+   functional registration when they are unavailable. Every changed template retains
+   missingkey-zero behavior and renders coherent generic output for empty variables without
+   `<no value>` or another unresolved-value token. Add the
+   `rendering/pi-workflows:pi-effort-memory-tools` invariant with `Backing: test`, proved by the
+   `TestPiEffortMemoryToolContract` unit and its matching proof marker; route the remaining
+   execution sequence and ordinary verification transactions to the reviewed implementation plan.
 
 ## State changes
 
