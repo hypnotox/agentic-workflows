@@ -226,7 +226,28 @@ func (m *testTempManager) logicalBytes(path string) (int64, error) {
 	return total, err
 }
 
+func preserveDefaultGOPATH(
+	lookupEnv func(string) (string, bool),
+	userHomeDir func() (string, error),
+	setEnv func(string, string) error,
+) error {
+	if goPath, ok := lookupEnv("GOPATH"); ok && goPath != "" {
+		return nil
+	}
+	home, err := userHomeDir()
+	if err != nil {
+		return fmt.Errorf("resolve default GOPATH home: %w", err)
+	}
+	if err := setEnv("GOPATH", filepath.Join(home, "go")); err != nil {
+		return fmt.Errorf("preserve default GOPATH: %w", err)
+	}
+	return nil
+}
+
 func RunIsolated(m *testing.M) int {
+	if err := preserveDefaultGOPATH(os.LookupEnv, os.UserHomeDir, os.Setenv); err != nil { // coverage-ignore: helper fault paths are injected above; production environment access cannot be faulted safely
+		panic(err)
+	}
 	manager, err := productionTestTempManager()
 	if err != nil { // coverage-ignore: Unix production root selection cannot fail; Windows compiles but does not run tests
 		panic(err)

@@ -516,6 +516,52 @@ func TestTestTempLogicalBytesWalkFaults(t *testing.T) {
 	}
 }
 
+func TestPreserveDefaultGOPATHWhenHomeWillBeIsolated(t *testing.T) {
+	var name, value string
+	err := preserveDefaultGOPATH(
+		func(string) (string, bool) { return "", false },
+		func() (string, error) { return filepath.Join("original", "home"), nil },
+		func(gotName, gotValue string) error {
+			name, value = gotName, gotValue
+			return nil
+		},
+	)
+	if err != nil || name != "GOPATH" || value != filepath.Join("original", "home", "go") {
+		t.Fatalf("err=%v assignment=%s=%q", err, name, value)
+	}
+}
+
+func TestPreserveDefaultGOPATHKeepsExplicitValue(t *testing.T) {
+	called := false
+	err := preserveDefaultGOPATH(
+		func(string) (string, bool) { return "/explicit", true },
+		func() (string, error) { called = true; return "", nil },
+		func(string, string) error { called = true; return nil },
+	)
+	if err != nil || called {
+		t.Fatalf("err=%v called=%v", err, called)
+	}
+}
+
+func TestPreserveDefaultGOPATHPropagatesEnvironmentFailures(t *testing.T) {
+	homeFailure := errors.New("home")
+	if err := preserveDefaultGOPATH(
+		func(string) (string, bool) { return "", false },
+		func() (string, error) { return "", homeFailure },
+		func(string, string) error { return nil },
+	); !errors.Is(err, homeFailure) {
+		t.Fatalf("home error = %v", err)
+	}
+	setFailure := errors.New("set")
+	if err := preserveDefaultGOPATH(
+		func(string) (string, bool) { return "", true },
+		func() (string, error) { return "/original", nil },
+		func(string, string) error { return setFailure },
+	); !errors.Is(err, setFailure) {
+		t.Fatalf("set error = %v", err)
+	}
+}
+
 func TestRunIsolatedOrderingWarningsAndFailures(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "root")
 	if err := os.Mkdir(root, 0o700); err != nil {
