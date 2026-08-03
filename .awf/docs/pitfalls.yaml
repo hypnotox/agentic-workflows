@@ -1056,7 +1056,7 @@ data:
         the roadmap now has five occurrences behind it.
 
         **Scope after ADR-0189 (recorded 2026-07-31).** Managed worktrees are now the default
-        execution location: `awf effort new` creates one and directs execution there, so
+        execution location: `awf effort new --slug <slug> "<outcome>"` creates one and directs execution there, so
         cross-effort work is separated by default and every occurrence above predates that
         cutover. The discipline in this entry still binds the residual shared-tree cases:
         non-effort work in the primary checkout, two sessions inside one checkout or worktree,

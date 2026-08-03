@@ -21,11 +21,12 @@ var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 const finishingPrefix = ".finishing-"
 
-// maxTitleBytes bounds the outcome title. The title is persisted verbatim and
-// returned in every public reply, and a slug derived from many non-ASCII runes
-// collapses to a short segment however long the title is, so the slug bound
-// cannot stand in for this one.
+// maxTitleBytes bounds the independently persisted outcome title.
 const maxTitleBytes = 160
+
+// maxNewSlugBytes keeps newly minted caller-selected identities concise while
+// resident validation retains the historical 63-byte compatibility boundary.
+const maxNewSlugBytes = 32
 
 // CorruptError identifies resident input that must be preserved byte-for-byte.
 type CorruptError struct {
@@ -68,50 +69,28 @@ func normalizeTitle(title string) (string, error) {
 	return title, nil
 }
 
-func deriveSlug(ctx context.Context, validateRef func(context.Context, string) (bool, error), title string) (string, error) {
-	if !utf8.ValidString(title) {
-		return "", slugRepairError("outcome title is not valid UTF-8")
+func validateNewSlug(ctx context.Context, validateRef func(context.Context, string) (bool, error), slug string) error {
+	if len(slug) < 1 || len(slug) > maxNewSlugBytes {
+		return newSlugRefusal("slug must contain 1-32 bytes")
 	}
-	var b strings.Builder
-	separator := false
-	for _, r := range title {
-		switch {
-		case r >= 'A' && r <= 'Z':
-			if separator && b.Len() > 0 {
-				b.WriteByte('-')
-			}
-			separator = false
-			b.WriteByte(byte(r + ('a' - 'A')))
-		case r >= 'a' && r <= 'z' || r >= '0' && r <= '9':
-			if separator && b.Len() > 0 {
-				b.WriteByte('-')
-			}
-			separator = false
-			b.WriteRune(r)
-		default:
-			separator = true
-		}
-	}
-	slug := strings.Trim(b.String(), "-")
 	if err := validateSlug(slug); err != nil {
-		return "", slugRepairError(err.Error())
+		return newSlugRefusal(err.Error())
 	}
-	// The ref probe runs here, at the one point a slug is minted, rather than in
-	// validateSlug: enumeration validates every resident name it reads, and a
-	// probe per resident would make listing cost a git fork each and make
-	// every effort command fail without git on PATH.
-	valid, err := validateRef(ctx, "awf/"+slug)
+	// The ref probe runs once at minting time. Resident reads intentionally use
+	// only validateSlug so listing never forks Git once per effort.
+	ref := "refs/heads/awf/" + slug
+	valid, err := validateRef(ctx, ref)
 	if err != nil {
-		return "", fmt.Errorf("validate branch name for slug %q: %w; changed bytes: no; next action: repair the Git installation and retry", slug, err)
+		return fmt.Errorf("validate Git ref for explicit effort slug %q: %w; changed bytes: no; next action: repair the Git installation and retry with `--slug %q`", slug, err, slug)
 	}
 	if !valid {
-		return "", slugRepairError(fmt.Sprintf("refs/heads/awf/%s is not a valid Git ref", slug))
+		return newSlugRefusal(ref + " is not a valid Git ref")
 	}
-	return slug, nil
+	return nil
 }
 
-func slugRepairError(condition string) error {
-	return fmt.Errorf("cannot derive effort slug: %s; changed bytes: no; next action: provide a shorter outcome title with ASCII words or digits", condition)
+func newSlugRefusal(condition string) error {
+	return fmt.Errorf("invalid explicit effort slug: %s; changed bytes: no; next action: provide a different canonical value with `--slug`", condition)
 }
 
 func validateSlug(slug string) error {

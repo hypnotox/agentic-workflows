@@ -166,12 +166,12 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 			"Ask the user to confirm creation",
 			"end the turn without creating an effort",
 			"clear response in a later turn",
-			"awf effort new \"<confirmed title>\"",
+			"awf effort new --slug <confirmed-slug> \"<confirmed-title>\"",
 		)
 		if !strings.Contains(body, "fixed identity") || !strings.Contains(body, "without title reconfirmation") {
 			t.Errorf("%s does not preserve fixed-identity resume without reconfirmation", label)
 		}
-		creation := strings.Index(body, "awf effort new \"<confirmed title>\"")
+		creation := strings.Index(body, "awf effort new --slug <confirmed-slug> \"<confirmed-title>\"")
 		mutation := strings.Index(body, mutationBoundary)
 		if mutationBoundary == "" || mutation < 0 || creation < 0 || creation >= mutation {
 			t.Errorf("%s must complete confirmed creation before mutation boundary %q", label, mutationBoundary)
@@ -191,7 +191,7 @@ func TestSundialConfirmedEffortBoundary(t *testing.T) {
 		if !strings.Contains(preMutation, "already-confirmed") && !strings.Contains(preMutation, "existing confirmed effort") {
 			t.Errorf("%s pre-mutation contract does not establish confirmed ownership", label)
 		}
-		for _, want := range []string{"mandatory first-creation outcome/title confirmation", "never creates a missing effort"} {
+		for _, want := range []string{"mandatory first-creation three-field confirmation", "never creates a missing effort"} {
 			if !strings.Contains(preMutation, want) {
 				t.Errorf("%s pre-mutation ownership contract is missing %q", label, want)
 			}

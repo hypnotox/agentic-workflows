@@ -98,8 +98,8 @@ func legacyWorktreeNextAction(id string) string {
 //
 // The reset is announced rather than performed silently because it is a
 // breaking change: protocol-1 records and standalone memory are discarded, not
-// ported. Nothing here invents a slug for the efforts that are lost; protocol 2
-// derives a slug from an outcome title a person supplies.
+// ported. Nothing here invents a slug for the efforts that are lost; callers
+// supply a new explicit slug and independent outcome title.
 func applyUnifiedEffortResidents(ctx context.Context, root string, out io.Writer) error {
 	classified, err := ClassifyLegacyResidents(ctx, root)
 	if err != nil {
@@ -115,7 +115,7 @@ func applyUnifiedEffortResidents(ctx context.Context, root string, out io.Writer
 		)
 	}
 	fmt.Fprintln(out, "unified-effort-residents: breaking change: protocol-1 effort records and standalone .awf/memory/ content are reset, not migrated")
-	fmt.Fprintln(out, "unified-effort-residents: protocol 2 keeps each effort at .awf/efforts/<slug>/ with its own memory.md; recreate the ones you still need with `awf effort new \"<outcome>\"`")
+	fmt.Fprintln(out, "unified-effort-residents: protocol 2 keeps each effort at .awf/efforts/<slug>/ with its own memory.md; recreate the ones you still need with `awf effort new --slug <slug> \"<outcome>\"`")
 	return upgrade.ResetLegacyResidents(root, classified.Quarantine, 22, out)
 }
 

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: require-explicit-short-effort-slugs
-status: Proposed
+status: Implementing
 date: 2026-08-03
 ---
 # ADR-require-explicit-short-effort-slugs: Require Explicit Short Effort Slugs
@@ -163,3 +163,5 @@ judgment.
 ## Status history
 
 - 2026-08-03: Proposed
+- 2026-08-03: Implementing; content-sha256: 25528f6461e42c4879107bc8ab887e0ff84ec9e3c7b077166f69c7a961e6382a
+- 2026-08-03: Applied; operations: update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:default-worktree-creation`, update `tooling/cli:effort-command-contract`, update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`

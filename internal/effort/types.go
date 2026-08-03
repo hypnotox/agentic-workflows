@@ -25,6 +25,13 @@ func managedTopologyRefusal(format string, args ...any) error {
 
 const SchemaVersion = 2
 
+// NewInput carries the caller-selected immutable identity and independent
+// descriptive title for one effort creation.
+type NewInput struct {
+	Slug  string
+	Title string
+}
+
 // Record is the public protocol-2 effort view. SchemaVersion belongs to the
 // containing reply, while static state carries it directly.
 type Record struct {

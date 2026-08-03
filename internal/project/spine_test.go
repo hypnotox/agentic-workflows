@@ -884,7 +884,7 @@ func TestCheckpointDigestShape(t *testing.T) {
 	if strings.Count(body, "**Mandatory first-creation confirmation.**") != 1 {
 		t.Error("outcome confirmation partial must carry exactly one boundary header")
 	}
-	for _, want := range []string{"`Outcome: <concrete non-minimal outcome>`", "`Effort title: <proposed title>`", "clear response in a later turn", "awf effort new \"<confirmed title>\""} {
+	for _, want := range []string{"`Outcome: <concrete non-minimal outcome>`", "`Effort title: <proposed title>`", "`Effort slug: <proposed-short-slug>`", "clear response in a later turn", "awf effort new --slug <confirmed-slug> \"<confirmed-title>\""} {
 		if !strings.Contains(body, want) {
 			t.Errorf("outcome confirmation partial missing %q", want)
 		}
@@ -1708,7 +1708,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		t.Fatal("generic workflow lost the Working memory boundary")
 	}
 	genericChain := workflow[:genericWorkingMemory]
-	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
 		if !strings.Contains(genericChain, want) {
 			t.Errorf("generic workflow chain confirmation route missing %q", want)
 		}
@@ -1736,7 +1736,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
 		}
 	}
-	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm the pair again before retrying creation"} {
+	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "`Effort slug:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm all three fields again before retrying creation"} {
 		if !strings.Contains(workflow, want) {
 			t.Errorf("workflow confirmation contract missing %q", want)
 		}
@@ -1766,7 +1766,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		t.Fatal("committed project workflow lost the Working memory boundary")
 	}
 	projectChain := projectWorkflow[:workingMemory]
-	for _, want := range []string{"Discovery creates no effort", "labeled outcome and effort title", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
+	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
 		if !strings.Contains(projectChain, want) {
 			t.Errorf("committed project workflow chain confirmation route missing %q", want)
 		}

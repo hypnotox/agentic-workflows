@@ -25,9 +25,9 @@ Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
-The rendered brainstorming skill carries mandatory first-creation confirmation before detailed design: it presents labeled `Outcome:` and `Effort title:` fields, asks the user to confirm creation, ends the turn without mutation, and permits first creation only after a clear response in a later turn. Brainstorming also closes with final grounded-design approval, and ADR review closes with settled-ADR approval; each final approval persists memory, presents the completed summary, explicitly requests approval, and stops. Continuation and handoff begin only after the applicable later response is persisted when an effort exists. No other chain skill renders a final approval stop, and no checkpoint creates missing ownership.
+The rendered brainstorming skill carries mandatory first-creation confirmation before detailed design: it presents labeled `Outcome:`, `Effort title:`, and `Effort slug:` fields, asks the user to confirm all three, ends the turn without mutation, and permits the required explicit-slug creation command only after a clear response in a later turn. Brainstorming also closes with final grounded-design approval, and ADR review closes with settled-ADR approval; each final approval persists memory, presents the completed summary, explicitly requests approval, and stops. Continuation and handoff begin only after the applicable later response is persisted when an effort exists. No other chain skill renders a final approval stop, and no checkpoint creates missing ownership.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-require-explicit-short-effort-slugs
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`

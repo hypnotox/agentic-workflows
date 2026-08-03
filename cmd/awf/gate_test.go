@@ -231,7 +231,7 @@ var gatedProbes = map[string][]string{
 	"read plan":                 {"awf", "read", "plan", "2026-08-02-plan", "1"},
 	"audit":                     {"awf", "audit"},
 	"effort":                    {"awf", "effort", "list"},
-	"effort new":                {"awf", "effort", "new", "gate probe outcome"},
+	"effort new":                {"awf", "effort", "new", "--slug", "gate-probe", "gate probe outcome"},
 	"effort list":               {"awf", "effort", "list"},
 	"effort show":               {"awf", "effort", "show", "gate-probe"},
 	"effort finish":             {"awf", "effort", "finish", "gate-probe"},

@@ -52,7 +52,7 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	linked := filepath.Join(filepath.Dir(primary), "linked with spaces")
 	gitfixture.NativeWorktreeAddDetached(t, fixture, linked, "HEAD")
 
-	createdJSON := runEffortCommand(t, primary, "new", []string{"CLI outcome"}, map[string]bool{"--json": true, "--no-worktree": true})
+	createdJSON := runNewEffortCommand(t, primary, "cli-outcome", "CLI outcome", map[string]bool{"--json": true, "--no-worktree": true})
 	var created struct {
 		SchemaVersion int                  `json:"schemaVersion"`
 		Effort        effort.Record        `json:"effort"`
@@ -109,6 +109,33 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	}
 	if _, err := os.Stat(resident); !os.IsNotExist(err) {
 		t.Fatalf("finished resident remains: %v", err)
+	}
+}
+
+func TestEffortNewExplicitSlugGrammar(t *testing.T) {
+	root := commandRepo(t)
+	for _, args := range [][]string{
+		{"effort", "new", "--slug", "before-title", "Before title", "--no-worktree"},
+		{"effort", "new", "After title", "--no-worktree", "--slug", "after-title"},
+	} {
+		code, stdout, stderr := runEffortCLI(t, root, args...)
+		if code != 0 || stdout == "" || stderr != "" {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
+		}
+	}
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"effort", "new", "Missing slug"}, want: "--slug is required"},
+		{args: []string{"effort", "new", "Valueless slug", "--slug"}, want: "needs a value"},
+		{args: []string{"effort", "new", "--slug", "one", "Duplicate slug", "--slug", "two"}, want: "given more than once"},
+		{args: []string{"effort", "new", "--slug", "flag-title", "-title"}, want: "unknown flag"},
+	} {
+		code, stdout, stderr := runEffortCLI(t, root, test.args...)
+		if code == 0 || stdout != "" || !strings.Contains(stderr, test.want) {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q, want %q", test.args, code, stdout, stderr, test.want)
+		}
 	}
 }
 
@@ -170,7 +197,7 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 	linked := filepath.Join(filepath.Dir(primary), "linked")
 	gitfixture.NativeWorktreeAddDetached(t, fixture, linked, "HEAD")
 
-	runEffortCommand(t, primary, "new", []string{"Activity contract"}, map[string]bool{"--no-worktree": true})
+	runNewEffortCommand(t, primary, "activity-contract", "Activity contract", map[string]bool{"--no-worktree": true})
 	slug := "activity-contract"
 	memoryPath := filepath.Join(primary, ".awf", "efforts", slug, "memory.md")
 	body := "## Brief\r\n\r\nbody bytes stay exact\r\n"
@@ -342,7 +369,11 @@ func TestEffortJSONFailuresWriteNoStdoutAndRejectProtocol1(t *testing.T) {
 		{sub: "show", pos: []string{"missing-effort"}},
 	} {
 		var stdout bytes.Buffer
-		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout}, openEffortComposition)
+		values := map[string]string{}
+		if test.sub == "new" {
+			values["--slug"] = "bad_slug"
+		}
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{"--json": true}, values: values}, stdout: &stdout}, openEffortComposition)
 		if err == nil || stdout.Len() != 0 || !strings.Contains(err.Error(), "next action") {
 			t.Fatalf("%s error=%v stdout=%q", test.sub, err, stdout.String())
 		}
@@ -377,11 +408,11 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 		t.Fatal("invalid repository accepted")
 	}
 	for _, bools := range []map[string]bool{{}, {"--no-worktree": true}} {
-		if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: bools, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
+		if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: bools, values: map[string]string{"--slug": "blank-title"}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
 			t.Fatalf("blank title accepted with bools %v", bools)
 		}
 	}
-	runEffortCommand(t, root, "new", []string{"Output errors"}, map[string]bool{"--no-worktree": true})
+	runNewEffortCommand(t, root, "output-errors", "Output errors", map[string]bool{"--no-worktree": true})
 	for _, test := range []struct {
 		sub   string
 		pos   []string
@@ -397,7 +428,11 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 		if test.bools == nil {
 			test.bools = map[string]bool{}
 		}
-		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: test.bools, values: map[string]string{}}, stdout: effortErrorWriter{}}, openEffortComposition)
+		values := map[string]string{}
+		if test.sub == "new" {
+			values["--slug"] = strings.ToLower(strings.ReplaceAll(test.pos[0], " ", "-"))
+		}
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: test.bools, values: values}, stdout: effortErrorWriter{}}, openEffortComposition)
 		if err == nil {
 			t.Errorf("%s output error ignored", test.sub)
 		}
@@ -486,6 +521,19 @@ func TestEffortCompositionGrammarAndPresentationBranches(t *testing.T) {
 	if !strings.Contains(textOut.String(), "worktree=/managed/presentation branch=awf/presentation") {
 		t.Fatalf("managed-worktree text = %q", textOut.String())
 	}
+}
+
+func runNewEffortCommand(t *testing.T, root, slug, title string, bools map[string]bool) string {
+	t.Helper()
+	if bools == nil {
+		bools = map[string]bool{}
+	}
+	var out bytes.Buffer
+	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{title}, bools: bools, values: map[string]string{"--slug": slug}}, stdout: &out}
+	if err := runEffort(ctx, openEffortComposition); err != nil {
+		t.Fatalf("awf effort new: %v", err)
+	}
+	return out.String()
 }
 
 func runEffortCommand(t *testing.T, root, sub string, positionals []string, bools map[string]bool) string {

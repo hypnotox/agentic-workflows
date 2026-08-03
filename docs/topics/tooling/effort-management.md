@@ -11,9 +11,9 @@ The awf binary owns lightweight repository-local effort records and their option
 
 ### `invariant: effort-record-authority`
 
-The awf binary derives the immutable slug/UUID identity, durably owns schema-2 `state.json`, always-owned `memory.md`, and optional mutable protocol-1 `activity.json` under `.awf/efforts/<slug>/`. Directory presence remains the active-effort fact; listing ignores unpublished reservations and preserves foreign residents; show/list/finish validate only dual-format memory identity and do not gate on activity or mutable checkpoint metadata. The binary alone atomically updates bounded memory metadata and creates/replaces/removes owner-checked advisory activity; finish consumes activity only inside proven tombstone deletion after managed topology is absent. Activity is a fallible Pi-session claim, never authorization, a lock, lifecycle/worktree state, or tracked-project authority; Git remains topology authority and older binaries need not read an effort after activity exists.
+The awf binary accepts a caller-supplied canonical slug through 32 bytes when minting a new immutable slug/UUID identity, retains canonical resident reads and command selection through 63 bytes, and durably owns otherwise-unchanged schema-2 `state.json`, always-owned `memory.md`, and optional mutable protocol-1 `activity.json` under `.awf/efforts/<slug>/`. Directory presence remains the active-effort fact; listing ignores unpublished reservations and preserves foreign residents; show/list/finish validate only dual-format memory identity and do not gate on activity or mutable checkpoint metadata. The binary alone atomically updates bounded memory metadata and creates/replaces/removes owner-checked advisory activity; finish consumes activity only inside proven tombstone deletion after managed topology is absent. Activity is a fallible Pi-session claim, never authorization, a lock, lifecycle/worktree state, or tracked-project authority; Git remains topology authority and older binaries need not read an effort after activity exists.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218
+Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218, ADR-require-explicit-short-effort-slugs
 Backing: test
 
 ### `invariant: managed-worktree-lifecycle`
@@ -25,8 +25,9 @@ Backing: test
 
 ### `invariant: default-worktree-creation`
 
-`awf effort new` without `--no-worktree` publishes the effort residents, then creates the managed worktree through the same standalone Add machinery at `.awf/worktrees/<slug>/` on `awf/<slug>`, based on the invoking checkout's `HEAD` unless `--base <ref>` selects another base; `--base` is invalid with `--no-worktree`. On worktree failure the orchestration rolls back through restartable finish, removing the effort only when the finish flow proves managed topology absent and otherwise retaining or tombstone-reporting it with reported recovery steps; it branches on the structured finish outcome and managed-topology classification, never on error prose. Success reports the worktree path and branch and directs continuation there; `--no-worktree` reports explicit absence and keeps execution in the invoking checkout.
+`awf effort new --slug <slug> <outcome-title>` without `--no-worktree` feeds the required explicit slug through resident publication, then creates the managed worktree through the same standalone Add machinery at `.awf/worktrees/<slug>/` on `awf/<slug>`, based on the invoking checkout's `HEAD` unless `--base <ref>` selects another base; `--base` is invalid with `--no-worktree`. On worktree failure the orchestration rolls back through restartable finish, removing the effort only when the finish flow proves managed topology absent and otherwise retaining or tombstone-reporting it with reported recovery steps; it branches on the structured finish outcome and managed-topology classification, never on error prose. Success reports the worktree path and branch and directs continuation there; `--no-worktree` reports explicit absence and keeps execution in the invoking checkout.
 Origin: ADR-0189
+Revised-by: ADR-require-explicit-short-effort-slugs
 Backing: test
 
 ### `invariant: memory-skeleton-purpose-partition`

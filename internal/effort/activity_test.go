@@ -27,7 +27,7 @@ func TestAdvisoryActivityDoesNotGateUnrelatedEffortCommands(t *testing.T) {
 		d.UUID = func() (string, error) { return testIDA, nil }
 		d.Clock = func() time.Time { return time.Date(2026, 8, 2, 13, 0, 0, 0, time.UTC) }
 	})
-	if _, err := service.New(testContext(t), "Activity advisory"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "activity-advisory", Title: "Activity advisory"}); err != nil {
 		t.Fatal(err)
 	}
 	first := activityFor(root, testIDA)
@@ -65,7 +65,7 @@ func TestAdvisoryActivityDoesNotGateUnrelatedEffortCommands(t *testing.T) {
 func TestActivityConcurrentTakeoverCannotBeOverwrittenOrDeletedByOldOwner(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { d.UUID = func() (string, error) { return testIDA, nil } })
-	if _, err := service.New(testContext(t), "Concurrent activity"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "concurrent-activity", Title: "Concurrent activity"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := service.AttachActivity(testContext(t), "concurrent-activity", activityFor(root, testIDA)); got.Condition != ActivityAttached {
@@ -112,7 +112,7 @@ func TestActivityCrossProcessTakeoverRefusesStaleMutations(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			root := initEffortRepo(t)
 			service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-			if _, err := service.New(testContext(t), "Cross process"); err != nil {
+			if _, err := service.New(testContext(t), NewInput{Slug: "cross-process", Title: "Cross process"}); err != nil {
 				t.Fatal(err)
 			}
 			if got := service.AttachActivity(testContext(t), "cross-process", activityFor(root, testIDA)); got.Condition != ActivityAttached {
@@ -149,7 +149,7 @@ func TestActivityCrossProcessFirstAttachRefusesWinner(t *testing.T) {
 	}
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "First attach"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "first-attach", Title: "First attach"}); err != nil {
 		t.Fatal(err)
 	}
 	activityBeforePublish = func() {
@@ -169,7 +169,7 @@ func TestActivityCrossProcessFirstAttachRefusesWinner(t *testing.T) {
 func TestActivityStorageFailuresIdentifyOperationAndStage(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Storage context"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "storage-context", Title: "Storage context"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
@@ -270,7 +270,7 @@ func TestActivityFaultAndRefusalMatrix(t *testing.T) {
 	service := openTestService(t, root, func(d *Dependencies) {
 		d.Clock = func() time.Time { return time.Date(2026, 8, 2, 13, 0, 0, 0, time.UTC) }
 	})
-	if _, err := service.New(testContext(t), "Activity matrix"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "activity-matrix", Title: "Activity matrix"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "activity-matrix"
@@ -346,7 +346,7 @@ func TestActivityFaultAndRefusalMatrix(t *testing.T) {
 func TestActivityResolutionDefensesAndResidentCodec(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Resolution defenses"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "resolution-defenses", Title: "Resolution defenses"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "resolution-defenses"
@@ -385,7 +385,7 @@ func TestActivityResolutionDefensesAndResidentCodec(t *testing.T) {
 func TestActivityReviewFixReceivingResolutionNeverUsesDotAndValidatesRequestedCheckout(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Receiving review fix"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "receiving-review-fix", Title: "Receiving review fix"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "receiving-review-fix"
@@ -449,7 +449,7 @@ func TestActivityReviewFixReceivingResolutionNeverUsesDotAndValidatesRequestedCh
 func TestActivityReviewFixRefusalsReportOperationAxesAndMemoryRemedies(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Outcome review fix"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "outcome-review-fix", Title: "Outcome review fix"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "outcome-review-fix"
@@ -501,7 +501,7 @@ func TestActivityReviewFixRefusalsReportOperationAxesAndMemoryRemedies(t *testin
 func TestActivityDestinationAndPersistenceFaultBoundaries(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Destination branches"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "destination-branches", Title: "Destination branches"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "destination-branches"
@@ -562,7 +562,7 @@ func TestActivityDestinationAndPersistenceFaultBoundaries(t *testing.T) {
 func TestActivityRefusalsAndDestinationVerification(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Activity defenses"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "activity-defenses", Title: "Activity defenses"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "activity-defenses"
@@ -610,7 +610,7 @@ func TestActivityRefusalsAndDestinationVerification(t *testing.T) {
 func TestActivityPersistenceFaultStagesAndOwnerBoundaries(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Activity persistence"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "activity-persistence", Title: "Activity persistence"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "activity-persistence"
@@ -654,7 +654,7 @@ func TestActivityPersistenceFaultStagesAndOwnerBoundaries(t *testing.T) {
 func TestActivityUncoveredPolicyBranches(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, func(d *Dependencies) { noTopology(d) })
-	if _, err := service.New(testContext(t), "Uncovered policy"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "uncovered-policy", Title: "Uncovered policy"}); err != nil {
 		t.Fatal(err)
 	}
 	slug := "uncovered-policy"
@@ -834,7 +834,7 @@ func TestActivityUncoveredPolicyBranches(t *testing.T) {
 func TestActivityCodecAndResolutionEdgeCases(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Codec edges"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "codec-edges", Title: "Codec edges"}); err != nil {
 		t.Fatal(err)
 	}
 	slug, path := "codec-edges", service.paths.activityFile("codec-edges")

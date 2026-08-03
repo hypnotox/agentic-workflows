@@ -53,7 +53,7 @@ func TestMemoryMetadataRejectsClosedSchemaHazards(t *testing.T) {
 func TestUpdateMemoryRejectsOversizedResidentWithoutChangingBytes(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Oversized update"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "oversized-update", Title: "Oversized update"}); err != nil {
 		t.Fatal(err)
 	}
 	path := service.paths.memoryFile("oversized-update")
@@ -76,7 +76,7 @@ func TestUpdateMemoryMigratesLegacyAndPreservesBody(t *testing.T) {
 	root := initEffortRepo(t)
 	now := time.Date(2026, 8, 2, 12, 0, 0, 123456789, time.UTC)
 	service := openTestService(t, root, func(deps *Dependencies) { deps.Clock = func() time.Time { return now } })
-	if _, err := service.New(testContext(t), "Migration"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "migration", Title: "Migration"}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".awf", "efforts", "migration", "memory.md")
@@ -112,7 +112,7 @@ func TestUpdateMemoryRepairsOnlySuppliedInvalidMutableFields(t *testing.T) {
 	t.Parallel()
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Repair"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "repair", Title: "Repair"}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".awf", "efforts", "repair", "memory.md")
@@ -134,7 +134,7 @@ func TestUpdateMemoryRepairsOnlySuppliedInvalidMutableFields(t *testing.T) {
 func TestUpdateMemoryRepairsNonScalarMutableField(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Non scalar"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "non-scalar", Title: "Non scalar"}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".awf", "efforts", "non-scalar", "memory.md")
@@ -196,7 +196,7 @@ func TestMemoryMetadataGrammarAndErrorContracts(t *testing.T) {
 func TestUpdateMemoryRejectsEveryUnsafeRepairBoundary(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
-	if _, err := service.New(testContext(t), "Unsafe update"); err != nil {
+	if _, err := service.New(testContext(t), NewInput{Slug: "unsafe-update", Title: "Unsafe update"}); err != nil {
 		t.Fatal(err)
 	}
 	value := "ok"
@@ -319,7 +319,7 @@ func TestUpdateMemoryPreRenameFaultPreservesBytes(t *testing.T) {
 					return nil
 				}
 			})
-			if _, err := service.New(testContext(t), "Atomic"); err != nil {
+			if _, err := service.New(testContext(t), NewInput{Slug: "atomic", Title: "Atomic"}); err != nil {
 				t.Fatal(err)
 			}
 			path := filepath.Join(root, ".awf", "efforts", "atomic", "memory.md")

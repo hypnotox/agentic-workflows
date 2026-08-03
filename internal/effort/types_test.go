@@ -42,52 +42,32 @@ func TestProtocol2StaticStateAndPublicObject(t *testing.T) {
 	}
 }
 
-func TestSlugDerivationAndValidation(t *testing.T) {
-	tests := []struct {
-		title string
-		want  string
-	}{
-		{title: "Ship Protocol 2", want: "ship-protocol-2"},
-		{title: "  Alpha---BETA___42  ", want: "alpha-beta-42"},
-		{title: "a🙂界b", want: "a-b"},
-		{title: "one\t\n two", want: "one-two"},
-		{title: "123", want: "123"},
-	}
-	for _, test := range tests {
-		t.Run(test.title, func(t *testing.T) {
-			got, err := deriveSlug(testContext(t), acceptEveryRefName, test.title)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != test.want {
-				t.Fatalf("deriveSlug(%q) = %q, want %q", test.title, got, test.want)
-			}
-			if err := validateSlug(got); err != nil {
-				t.Fatalf("derived slug is invalid: %v", err)
+func TestNewSlugPolicy(t *testing.T) {
+	for _, slug := range []string{"a", "short-slug", strings.Repeat("a", 32)} {
+		t.Run("accept-"+slug, func(t *testing.T) {
+			if err := validateNewSlug(testContext(t), acceptEveryRefName, slug); err != nil {
+				t.Fatalf("validateNewSlug(%q) = %v", slug, err)
 			}
 		})
 	}
-
-	for _, title := range []string{
-		"界🙂",
-		strings.Repeat("a", 64),
-		string([]byte{0xff}),
-	} {
-		t.Run("reject-title", func(t *testing.T) {
-			_, err := deriveSlug(testContext(t), acceptEveryRefName, title)
-			if err == nil || !strings.Contains(err.Error(), "shorter outcome title with ASCII words or digits") {
-				t.Fatalf("error = %v, want actionable ASCII-title repair", err)
+	for _, slug := range []string{"", "A", "a_b", "a/b", ".", "..", "a-", "-a", "a--b", strings.Repeat("a", 33)} {
+		t.Run("reject-"+slug, func(t *testing.T) {
+			err := validateNewSlug(testContext(t), acceptEveryRefName, slug)
+			if err == nil || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "--slug") {
+				t.Fatalf("validateNewSlug(%q) = %v, want actionable unchanged refusal", slug, err)
 			}
 		})
 	}
+}
 
-	// Both sides of the 63-byte bound, so narrowing the implementation by one
-	// byte fails rather than passing on the reject case alone.
-	if err := validateSlug(strings.Repeat("a", 63)); err != nil {
-		t.Fatalf("63-byte slug rejected: %v", err)
+func TestResidentSlugPolicy(t *testing.T) {
+	for _, slug := range []string{"a", strings.Repeat("a", 33), strings.Repeat("a", 63)} {
+		if err := validateSlug(slug); err != nil {
+			t.Fatalf("resident slug %q rejected: %v", slug, err)
+		}
 	}
-	for _, slug := range []string{"", "A", "a_b", "a/b", ".", "..", "a-", "-a", strings.Repeat("a", 64)} {
-		t.Run("reject-slug-"+slug, func(t *testing.T) {
+	for _, slug := range []string{"", "A", "a_b", "a/b", ".", "..", "a-", "-a", "a--b", strings.Repeat("a", 64)} {
+		t.Run("reject-"+slug, func(t *testing.T) {
 			if err := validateSlug(slug); err == nil {
 				t.Fatalf("validateSlug(%q) succeeded", slug)
 			}
@@ -151,6 +131,6 @@ func TestPersistedProtocol2Validation(t *testing.T) {
 	}
 }
 
-// acceptEveryRefName isolates slug derivation from the branch-name probe, whose
-// own refusals are proven where the probe is injected.
+// acceptEveryRefName isolates new-slug validation from the branch-name probe,
+// whose own refusals are proven where the probe is injected.
 func acceptEveryRefName(context.Context, string) (bool, error) { return true, nil }

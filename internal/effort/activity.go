@@ -514,7 +514,7 @@ func (s *Service) AttachActivity(ctx context.Context, slug string, a Activity) A
 		return *bad
 	}
 	// The service owns persistence time; callers cannot backdate a new claim.
-	// Populate both fields before validation so the command boundary supplies
+	// Populate both activity coordinates before validation so the command boundary supplies
 	// only caller-owned identity and checkout facts.
 	now := s.now().UTC()
 	a.AttachedAt, a.HeartbeatAt = now, now

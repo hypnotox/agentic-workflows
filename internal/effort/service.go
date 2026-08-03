@@ -98,23 +98,22 @@ func RandomUUIDv4() (string, error) {
 
 func (s *Service) now() time.Time { return s.clock().UTC() }
 
-func (s *Service) New(ctx context.Context, title string) (Record, error) {
-	normalized, err := normalizeTitle(title)
+func (s *Service) New(ctx context.Context, input NewInput) (Record, error) {
+	normalized, err := normalizeTitle(input.Title)
 	if err != nil {
 		return Record{}, fmt.Errorf("invalid outcome title: %w; changed bytes: no; next action: provide a nonblank valid UTF-8 outcome title", err)
 	}
-	slug, err := deriveSlug(ctx, s.validateRef, normalized)
-	if err != nil {
+	if err := validateNewSlug(ctx, s.validateRef, input.Slug); err != nil {
 		return Record{}, err
 	}
 	id, err := s.uuid()
 	if err != nil {
-		return Record{}, fmt.Errorf("allocate internal effort UUID: %w; changed bytes: no; next action: retry `awf effort new %q`", err, normalized)
+		return Record{}, fmt.Errorf("allocate internal effort UUID: %w; changed bytes: no; next action: retry `awf effort new --slug %q %q`", err, input.Slug, normalized)
 	}
 	if !uuidV4Pattern.MatchString(id) {
-		return Record{}, fmt.Errorf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry", id)
+		return Record{}, fmt.Errorf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry `awf effort new --slug %q %q`", id, input.Slug, normalized)
 	}
-	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: slug, Title: normalized, CreatedAt: s.now(), MemoryPath: s.paths.publicMemoryPath(slug)}
+	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: input.Slug, Title: normalized, CreatedAt: s.now(), MemoryPath: s.paths.publicMemoryPath(input.Slug)}
 	if err := s.store.create(record); err != nil {
 		return Record{}, err
 	}

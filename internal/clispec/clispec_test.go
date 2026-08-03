@@ -126,7 +126,7 @@ func TestLookup(t *testing.T) {
 	if !ok || len(effort.Children) != 8 {
 		t.Fatalf("effort spec = %#v, found %v", effort, ok)
 	}
-	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--json,--no-worktree" || strings.Join(newEffort.ValueFlags, ",") != "--base" {
+	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--json,--no-worktree" || strings.Join(newEffort.ValueFlags, ",") != "--slug,--base" || !strings.Contains(newEffort.HelpBody, "awf effort new --slug <slug> <outcome-title>") || !strings.Contains(newEffort.HelpBody, "1 through 32 bytes") {
 		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
 	}
 	wantEffortChildren := []string{"new", "list", "show", "finish", "worktree", "integrate", "memory", "activity"}

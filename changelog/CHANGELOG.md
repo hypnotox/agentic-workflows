@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- New efforts now require a caller-selected canonical slug through 32 bytes via `awf effort new --slug <slug> "<outcome>"`; workflow guidance confirms outcome, title, and slug before creation, while schema-2 state, managed topology, and existing resident support through 63 bytes remain unchanged.
+
 - Repository checks now use capability-planned execution: direct and aggregate checks share prepared config, project reports, and enabled scanner index inputs while preserving successful output order. Any readiness failure occurs before step output.
 
 - Discovery now remains effort-free until the agent presents a labeled concrete outcome and proposed effort title, stops without mutation, and receives clear confirmation in a later user response; existing efforts resume under their fixed identity without reconfirmation only inside their confirmed outcome, a new outcome cannot silently reuse or replace an active effort, and no CLI or schema migration occurs. Adopters with full-replacement workflow, guide, checkpoint, or affected skill parts must re-derive this first-creation boundary because default-template projection tests cannot inspect replacement prose.

@@ -313,7 +313,7 @@ export function registerEffort(pi: PiLike, dependencies: EffortExtensionDependen
     label: "Use effort",
     description: "Explicitly associate this Pi session with one effort and switch to its validated managed or receiving checkout.",
     parameters: Type.Object({
-      effort: Type.Optional(Type.String({ minLength: 1, maxLength: 255 })),
+      effort: Type.Optional(Type.String({ minLength: 1, maxLength: 63 })),
       destination: Type.Optional(StringEnum(["managed", "receiving"] as const)),
       receivingCheckout: Type.Optional(Type.String({ maxLength: 4096 })),
       detach: Type.Optional(Type.Boolean()),

@@ -42,7 +42,7 @@ func TestEffortGrammarIsClosedAndHasNoForceSurface(t *testing.T) {
 func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	root := commandRepo(t)
 	managed := filepath.Join(root, ".awf", "worktrees", "default-cli")
-	text := runEffortCommand(t, root, "new", []string{"Default CLI"}, nil)
+	text := runNewEffortCommand(t, root, "default-cli", "Default CLI", nil)
 	wantText := "effort default-cli title=\"Default CLI\" memory=.awf/efforts/default-cli/memory.md worktree=" + managed + " branch=awf/default-cli\n" +
 		"managed worktree added for default-cli; changed topology: yes; next action: continue the effort in " + managed + "\n"
 	if text != wantText {
@@ -55,7 +55,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 		t.Fatal("managed branch absent")
 	}
 
-	createdJSON := runEffortCommand(t, root, "new", []string{"JSON CLI"}, map[string]bool{"--json": true})
+	createdJSON := runNewEffortCommand(t, root, "json-cli", "JSON CLI", map[string]bool{"--json": true})
 	var created struct {
 		Worktree *effortWorktreeFacts `json:"worktree"`
 	}
@@ -67,7 +67,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 		t.Fatalf("default new JSON worktree = %#v, want %q on awf/json-cli", created.Worktree, jsonManaged)
 	}
 
-	absent := runEffortCommand(t, root, "new", []string{"Opted out"}, map[string]bool{"--no-worktree": true})
+	absent := runNewEffortCommand(t, root, "opted-out", "Opted out", map[string]bool{"--no-worktree": true})
 	wantAbsent := "effort opted-out title=\"Opted out\" memory=.awf/efforts/opted-out/memory.md worktree=none\n" +
 		"no managed worktree; changed topology: no; next action: continue the effort in " + root + "\n"
 	if absent != wantAbsent {
@@ -76,7 +76,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "worktrees", "opted-out")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("--no-worktree created topology: %v", err)
 	}
-	absentJSON := runEffortCommand(t, root, "new", []string{"Opted out JSON"}, map[string]bool{"--json": true, "--no-worktree": true})
+	absentJSON := runNewEffortCommand(t, root, "opted-out-json", "Opted out JSON", map[string]bool{"--json": true, "--no-worktree": true})
 	if !strings.Contains(absentJSON, `"worktree":null`) {
 		t.Fatalf("--no-worktree JSON = %q, want an explicit null worktree", absentJSON)
 	}
@@ -92,7 +92,7 @@ func TestEffortNewBasesTheManagedBranchOnTheNamedRef(t *testing.T) {
 	gitfixture.NativeAdd(t, gitfixture.At(root), "tracked.txt")
 	gitfixture.NativeCommit(t, gitfixture.At(root), "second")
 	var out bytes.Buffer
-	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Based CLI"}, bools: map[string]bool{}, values: map[string]string{"--base": base}}, stdout: &out}
+	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Based CLI"}, bools: map[string]bool{}, values: map[string]string{"--slug": "based-cli", "--base": base}}, stdout: &out}
 	if err := runEffort(ctx, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
@@ -104,9 +104,9 @@ func TestEffortNewBasesTheManagedBranchOnTheNamedRef(t *testing.T) {
 func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
-	rolled := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Rolled back CLI"}, bools: map[string]bool{}, values: map[string]string{"--base": "no-such-ref"}}, stdout: &out}
+	rolled := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Rolled back CLI"}, bools: map[string]bool{}, values: map[string]string{"--slug": "rolled-back-cli", "--base": "no-such-ref"}}, stdout: &out}
 	err := runEffort(rolled, openEffortComposition)
-	if err == nil || !strings.Contains(err.Error(), "effort rolled-back-cli rolled back") || !strings.Contains(err.Error(), "retry `awf effort new`") {
+	if err == nil || !strings.Contains(err.Error(), "effort rolled-back-cli rolled back") || !strings.Contains(err.Error(), "retry `awf effort new --slug \"rolled-back-cli\" \"Rolled back CLI\"`") {
 		t.Fatalf("unresolvable base error = %v", err)
 	}
 	if _, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "rolled-back-cli")); !errors.Is(statErr, os.ErrNotExist) {
@@ -115,7 +115,7 @@ func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 
 	gitfixture.NativeBranch(t, gitfixture.At(root), "awf/retained-cli")
 	out.Reset()
-	retained := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Retained CLI"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}
+	retained := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Retained CLI"}, bools: map[string]bool{}, values: map[string]string{"--slug": "retained-cli"}}, stdout: &out}
 	err = runEffort(retained, openEffortComposition)
 	if err == nil || !strings.Contains(err.Error(), "effort retained-cli retained: managed topology remains") {
 		t.Fatalf("colliding branch error = %v", err)
@@ -132,7 +132,7 @@ func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 func TestEffortNewRejectsBaseWithoutAWorktree(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
-	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Invalid CLI"}, bools: map[string]bool{"--no-worktree": true}, values: map[string]string{"--base": "HEAD"}}, stdout: &out}
+	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Invalid CLI"}, bools: map[string]bool{"--no-worktree": true}, values: map[string]string{"--slug": "invalid-cli", "--base": "HEAD"}}, stdout: &out}
 	err := runEffort(ctx, openEffortComposition)
 	if err == nil || !strings.Contains(err.Error(), "--base is invalid with --no-worktree") {
 		t.Fatalf("--no-worktree --base error = %v", err)
@@ -151,7 +151,7 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := commandRepo(t)
-	runEffortCommand(t, root, "new", []string{"CLI worktree"}, map[string]bool{"--no-worktree": true})
+	runNewEffortCommand(t, root, "cli-worktree", "CLI worktree", map[string]bool{"--no-worktree": true})
 	var output bytes.Buffer
 	add := &cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"add", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}
 	if err := runEffort(add, openEffortComposition); err != nil {
@@ -268,7 +268,11 @@ func TestWorktreeCompositionFailuresRemainSilentOnStdout(t *testing.T) {
 		{sub: "integrate", pos: []string{"slug"}},
 	} {
 		var stdout bytes.Buffer
-		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{}, values: map[string]string{}}, stdout: &stdout}, unopenable)
+		values := map[string]string{}
+		if test.sub == "new" {
+			values["--slug"] = "unopenable-manager"
+		}
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{}, values: values}, stdout: &stdout}, unopenable)
 		if err == nil || stdout.Len() != 0 {
 			t.Fatalf("%s err=%v stdout=%q", test.sub, err, stdout.String())
 		}
