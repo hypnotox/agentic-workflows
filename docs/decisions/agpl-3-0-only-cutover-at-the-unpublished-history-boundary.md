@@ -1,7 +1,7 @@
 ---
 format: current-state-v3
 slug: agpl-3-0-only-cutover-at-the-unpublished-history-boundary
-status: Proposed
+status: Accepted
 date: 2026-08-02
 ---
 # ADR-agpl-3-0-only-cutover-at-the-unpublished-history-boundary: AGPL-3.0-only cutover at the unpublished history boundary
@@ -160,3 +160,4 @@ or contributors.
 ## Status history
 
 - 2026-08-02: Proposed
+- 2026-08-03: Accepted; content-sha256: 135fa5e0798b6f91fcb067684df525cff038a606c2641c4560601839ee94d517
