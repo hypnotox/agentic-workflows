@@ -90,12 +90,15 @@ semantically distinct strings without positional transposition or duplicated pol
    ADRs, historical plans, and changelog history even where they quote the former command because
    those records describe past behavior rather than current instructions.
 
-8. `decision: gate-signature-drift` Add deterministic coverage over an explicit list of active
-   authoring roots and rendered outputs to reject the former live signature, title-derived creation
-   guidance, or two-field first-creation confirmation. Exclude complete immutable history roots such
-   as decisions, plans, and changelog storage instead of using a raw repository-wide textual ban;
-   update current-behavior fixtures where applicable. Existing catalog projection and
-   missing-key-zero tests continue to prove every enabled runtime and the example adopter.
+8. `decision: gate-signature-drift` Add deterministic coverage over a closed path policy to reject
+   the former live signature, title-derived creation guidance, or two-field first-creation
+   confirmation. Scan the authoring roots `cmd/`, `internal/`, `.awf/parts/`, `.awf/docs/`,
+   `.awf/skills/`, `.awf/topics/`, and `templates/`; scan the rendered or current surfaces
+   `AGENTS.md`, `README.md`, `docs/`, `.pi/`, `.claude/`, and `examples/`. Exclude only the historical
+   roots `docs/decisions/`, `docs/plans/`, and `changelog/` from that policy instead of using a raw
+   repository-wide textual ban; update current-behavior fixtures where applicable. Existing catalog
+   projection and missing-key-zero tests continue to prove every enabled runtime and the example
+   adopter.
 
 9. `decision: prove-boundaries` Test 1-, 32-, and 33-byte new slugs, canonical grammar failures,
    independent Unicode titles, Git-ref validation, collision and publication behavior, and
