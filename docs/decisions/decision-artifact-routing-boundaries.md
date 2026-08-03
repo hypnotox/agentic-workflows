@@ -65,6 +65,8 @@ task list.
 
 The current authoring format can advance without updating prose that copied the previous marker.
 The sanctioned scaffold becomes more important and remains the only supported creation path.
+All affected templates preserve the existing `missingkey=zero` publication-safety constraint and
+must render coherent prose without a no-value token when optional data is unset.
 
 ## Alternatives Considered
 
