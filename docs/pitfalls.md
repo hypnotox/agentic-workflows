@@ -2070,16 +2070,17 @@ _Related: ADR-0134, ADR-0188, ADR-0191, ADR-0212_
 
 An Amended event changes a non-terminal ADR's decision content but authorizes no claim
 mutation. If an operation has not been Applied, amend that declaration directly. If an add
-or update has already been Applied and the ADR remains Implementing with another operation
-still pending, append a `Reapplied; operations:` event in the same commit as one further
-material correction. The declaration remains unique, progress still counts it once, and
+or update has already been Applied and the ADR remains Implementing, append a
+`Reapplied; operations:` event in the same commit as one further material correction,
+including after every declared operation is Applied. The declaration remains unique,
+progress still counts it once, and
 provenance stays exactly as its first application wrote it: an update preserves the
 existing canonical Revised-by entry, while an add preserves its Origin and byte-identical
 Revised-by list. The same operation may be Reapplied again while the window remains open.
 Do not declare the operation twice or encode the correction as a second Applied event; both
 forms are refused and hide whether the repeat is intentional. Reapplied also refuses remove
-operations, an operation with no earlier Applied occurrence, and events after the final
-Applied batch or a terminal status. Those cases require a follow-up ADR or, when the claim
+operations, an operation with no earlier Applied occurrence, and events after a terminal
+status. Those cases require a follow-up ADR or, when the claim
 identity itself must change, remove plus add. Remember that bare `awf check` examines the
 current tree, while `awf check staged` proves the Reapplied event and its immediate claim
 mutation are one authored transaction.

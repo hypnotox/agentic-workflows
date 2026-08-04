@@ -37,6 +37,30 @@ func TestADRReadmeDecisionRouting(t *testing.T) {
 	}
 }
 
+func TestProjectCorrectiveReapplicationPitfall(t *testing.T) {
+	for _, path := range []string{"../../.awf/docs/pitfalls.yaml", "../../docs/pitfalls.md"} {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(body)
+		for _, want := range []string{
+			"ADR remains Implementing",
+			"including after every declared operation is Applied",
+			"events after a terminal",
+		} {
+			if !strings.Contains(text, want) {
+				t.Errorf("%s missing corrective-reapplication guidance %q", path, want)
+			}
+		}
+		for _, stale := range []string{"with another operation still pending", "events after the final Applied batch"} {
+			if strings.Contains(text, stale) {
+				t.Errorf("%s retains stale corrective-reapplication guidance %q", path, stale)
+			}
+		}
+	}
+}
+
 func TestEndToEndGolden(t *testing.T) {
 	assertV3ADRTemplatePublicationSafe(t)
 	root := scaffold(t, sampleYAML)
