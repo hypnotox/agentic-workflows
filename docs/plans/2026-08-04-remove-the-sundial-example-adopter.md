@@ -45,7 +45,7 @@ Completes: ["temporary-coverage"]
 Latitude: exact
 Applying: ["remove-the-sundial-example-adopter:temporary-contract-fixtures"]
 Paths: ["internal/evals/fixture_test.go"]
-Post-check: `go test ./internal/evals -run 'TestFullCatalogCoverage' -count=1` passes, and reverting either target case or the post-render drift check makes that test fail.
+Post-check: `go test ./internal/evals -run 'TestFullCatalogCoverage' -count=1` passes. Inside each target subtest, remove one representative rendered skill file after initialization and require `Project.Check` to report that target-native path as missing, restore it by `SyncReport`, tamper `AGENTS.md`, require stale drift, restore again, and require the final check to be clean.
 
 Before dispatch, require `git status --short` to print no entries, `./x check` to be clean while Sundial still exists, and `go test ./internal/evals ./internal/project ./cmd/awf` to pass from the Phase 1 commit.
 
@@ -57,7 +57,9 @@ Applying: ["remove-the-sundial-example-adopter:temporary-contract-fixtures"]
 Paths: ["internal/project/adopter_fixture_test.go", "internal/project/example_wiring_test.go"]
 Post-check: `go test ./internal/project -run 'TestTemporaryAdopterRenderDriftLifecycle|TestPiExtensionEditorQuietStrip' -count=1` passes; tampering with the selected managed output makes the lifecycle test observe drift, and removing the Pi directive from a rendered temporary output makes the Pi test fail.
 
-Create `internal/project/adopter_fixture_test.go` in package `project`. Build the fixture only with existing test helpers and `t.TempDir`: enable Claude and Pi, one workflow skill and its required agent closure, one domain/topic, representative sidecar data and a convention part, current-state configuration, and the runner, bootstrap, and hooks singletons. Initialize the project, require a clean `Project.Check`, append a tamper to one managed output such as `AGENTS.md`, require the check to report that output as stale, call the normal sync path, and require the next check to be clean. Use standard-library assertions and no new package-level swappable seam.
+Create `internal/project/adopter_fixture_test.go` in package `project` with helper `temporaryAuthoredAdopter(t *testing.T) string`. Use `scaffoldFiles` with this exact config shape: prefix `fixture`; integration branch `main`; targets `claude` and `pi`; skills `tdd` and `exploring`; agent `explorer` (the exact `exploring` requirement closure); no optional docs; vars `testCmd: go test ./...`, `gateCmd: ./x gate`, and `invariantTestPath: ./internal/...`; domain `alpha`; `currentState.maxTopicsPerPath: 8`; and `bootstrap.enabled`, `hooks.enabled`, and `runner.enabled` all true. Supply these exact authored fixture files relative to `.awf/`: `skills/tdd.yaml` with `data.testSurfaces` containing `{name: Unit, kind: isolated, location: internal}`, `skills/parts/tdd/notes.md` containing `Fixture-specific TDD notes.`, `domains/alpha.yaml` with `paths: ["internal/**"]`, `domains/parts/alpha/current-state.md` containing `Fixture domain guidance.`, `topics/metadata/alpha/model.yaml` with title `Model`, summary `Fixture model rules.`, and path `internal/**`, and `topics/parts/alpha/model/current-state.md` containing an introduction plus an empty `## Claims` section.
+
+Call `Open`, then `InitializeReport` with `InitAuthority{InitializedWithVersion: Version}`. Require a clean `Project.Check`, append `tampered\n` to the exact managed output `AGENTS.md`, require the next check's drift list to contain `AGENTS.md` with stale kind, call `SyncReport`, and require the final check to be clean. Use standard-library assertions and no new package-level swappable seam.
 
 In `TestPiExtensionEditorQuietStrip`, replace the second committed rendered root with the temporary Pi fixture. Enumerate governed TypeScript outputs from `piTarget.Outputs`; require each output actually selected by the fixture to carry the provenance banner and immediate `// @ts-nocheck` directive, and keep the reverse walk that rejects undeclared TypeScript files under the temporary `.pi/extensions` root. Continue checking the root container harness's copy-strip-compile ordering separately. Do not weaken `rendering/pi-runtime:pi-extension-target-render` or `rendering/pi-workflows:pi-extension-editor-quiet-strip` backing.
 
@@ -65,9 +67,9 @@ In `TestPiExtensionEditorQuietStrip`, replace the second committed rendered root
 Latitude: exact
 Applying: ["remove-the-sundial-example-adopter:temporary-contract-fixtures"]
 Paths: ["cmd/awf/run_test.go"]
-Post-check: `go test ./cmd/awf -run 'TestRunUpgradeLegacyAdopterRendersAndChecksClean' -count=1` passes; removing `runUpgrade`'s terminal sync or skipping the final `runCheck` assertion makes it fail.
+Post-check: `go test ./cmd/awf -run 'TestRunUpgradeLegacyAdopterRendersAndChecksClean' -count=1` passes; removing `runUpgrade`'s terminal sync makes the expected `AGENTS.md` assertion or repository drift check fail.
 
-Rename and strengthen `TestRunUpgradeAppliesLegacyMigration` as `TestRunUpgradeLegacyAdopterRendersAndChecksClean`. Preserve its real generation-zero `.claude/awf.yaml` and legacy lock input and its assertion that at least one migration applies. After `runUpgrade`, assert the current `.awf/config.yaml` and `.awf/awf.lock` exist, assert the expected initialized root guidance exists, and call `runCheck` against the upgraded root, requiring a clean result. This is the CLI composition seam for migration plus terminal rendering plus normal adopter checking; focused migration transformations remain owned by `internal/migrate` and `internal/upgrade` tests.
+Rename and strengthen `TestRunUpgradeAppliesLegacyMigration` as `TestRunUpgradeLegacyAdopterRendersAndChecksClean`. Preserve its real generation-zero `.claude/awf.yaml` and legacy lock input and its assertion that at least one migration applies. After `runUpgrade`, assert the current `.awf/config.yaml` and `.awf/awf.lock` exist, assert root `AGENTS.md` exists and contains the stable heading `# example Agent Guide`, and call `runCheckRepo` against the upgraded working tree, requiring a clean repository-universe result. Do not call aggregate `runCheck`: this fixture intentionally leaves the Git index at its committed legacy state, so staged-universe checking would test an unrelated unstaged-lock condition. This is the CLI composition seam for migration plus terminal rendering plus normal adopter repository checking; focused migration transformations remain owned by `internal/migrate` and `internal/upgrade` tests.
 
 ### Phase close
 
@@ -121,7 +123,20 @@ Post-check: `./x render && ./x check` are clean; `./awf context docs/decisions/r
 
 Remove `contextIgnore: examples/**` from `.awf/config.yaml`. Retain the historical `example-adopter` tag vocabulary key with wording that says it classifies the former committed adopter, because removing it would invalidate retained ADR tags. Generalize the config-reference descriptor in `internal/configspec/spec.go` so it describes configured exclusions without naming a current example.
 
-Delete the obsolete example-adopter and quality-oracle glossary terms, onboarding links, roadmap statement, runner and testing prose, agent-guide comparison, plan-reviewer wording, and the single-home scope exclusion. In `.awf/docs/pitfalls.yaml`, delete the zero-note-oracle entry and either remove or generalize every other operational instruction that assumes a second lock, fixed nested path, example re-render, or Sundial staging obligation. Preserve useful generic lessons and the explicitly user-requested lifecycle misconception pitfall. Edit only these authored sources; never hand-edit their generated docs.
+Delete the obsolete example-adopter and quality-oracle glossary terms, onboarding links, roadmap statement, runner and testing prose, agent-guide comparison, and the single-home scope exclusion. In `.awf/agents/plan-reviewer.yaml`, replace `the root project or an example adopter` with `one or more adopted project roots`; preserve the entire generated-source-closure lens and its requirement that every configured root pairs authored causes with generated outputs.
+
+Apply these exact `.awf/docs/pitfalls.yaml` dispositions:
+
+- Preserve `Applying every state operation does not mean terminal review has settled` byte-for-byte.
+- In `A schema-generation bump needs awf upgrade, not awf render`, delete the second-tree upgrade instructions and state that the repository's one adopted tree must run the source-built upgrade before render/check.
+- In `A data: list override replaces the catalog defaults wholesale`, replace the former per-project/Sundial verification sentence with a requirement to read every affected enabled target output.
+- In `Topic and decision edits regenerate navigation outside the authored file`, retain the navigation/staging lesson but delete the Sundial/config-reference recurrence and fixed nested staged-check claim.
+- Rewrite `A plan editing a catalog template or default under-enumerates the render fan-out` to enumerate all enabled targets, the root lock, generated outputs, and changelog obligation for the one adopted root; remove its `example-adopter` tag and every former second-root incident/instruction.
+- In `A token or convention rename must sweep every rendered doc surface`, replace the fixed Sundial pathspec sentence with the generic rule that a leading-path pathspec never reaches a separately rooted nested adoption and such a root, when present in another repository, must be named explicitly.
+- In `Registering a migration has fallout the plan never lists`, generalize the historic broken-test inventory so it does not name `example_wiring_test.go`, and replace the two-lock/separate-module ending with the one root lock's required source-built upgrade.
+- Delete the complete `A new awf check note producer must be inert for the example adopter` entry; focused note-producer tests retain the generic opt-in behavior.
+
+Edit only these authored sources; never hand-edit their generated docs.
 
 Apply all four ADR operations atomically. In `docs/decisions/remove-the-sundial-example-adopter.md`, change frontmatter to `status: Implementing`, append the dated `Implementing; content-sha256: <accepted digest>` event, then append one `Applied; operations:` event containing the four declared removals. ADR-0229 permits this all-Applied nonterminal state. Remove the four claim blocks and their proof markers in the same staged phase transaction. Do not append `Implemented`; terminal review owns that later status-only event.
 
@@ -134,7 +149,15 @@ rg -l 'Sundial|sundial|examples/sundial|committed example adopter|example adopte
   | grep -vE '^(\.awf/docs/pitfalls\.yaml|\.awf/config\.yaml)$'
 ```
 
-The command must return no output. The two excluded authored files may contain only the historical tag description and the user-requested misconception incident; generated `docs/pitfalls.md` may mirror that incident. Generic fixture paths such as `examples/nested` remain legal where they test product behavior and do not name the removed tree.
+The command must return no output. Then verify the two excluded authored files rather than trusting the exclusion:
+
+```bash
+grep -Fxq '  example-adopter: Historical tag for the former committed example adopter' .awf/config.yaml
+if grep -vFx '  example-adopter: Historical tag for the former committed example adopter' .awf/config.yaml | rg -n 'Sundial|sundial|examples/sundial|committed example adopter|example adopter'; then exit 1; fi
+if awk '$0 == "    - title: \"Applying every state operation does not mean terminal review has settled\"" {skip=1; next} skip && /^    - title:/ {skip=0} !skip {print}' .awf/docs/pitfalls.yaml | rg -n 'Sundial|sundial|examples/sundial|committed example adopter|example adopter'; then exit 1; fi
+```
+
+The exact historical tag line and the one skipped lifecycle-pitfall block are the only allowed authored occurrences; generated `docs/pitfalls.md` may mirror that incident. Generic fixture paths such as `examples/nested` remain legal where they test product behavior and do not name the removed tree.
 
 ### Phase close
 
