@@ -99,7 +99,7 @@ feat(rendering): add proportional simplicity guardrails
 - `dod: approval-boundary` Brainstorming settles a proportionate contract, and every implementation path stops for material deviations while preserving mechanical autonomy.
 - `dod: review-restraint` Plan and code review reject speculative additions without weakening correctness, contract, invariant, or regression obligations.
 - `dod: authority-backed` All five ADR claim updates are Applied atomically and backed by focused existing tests that exercise their added clauses.
-- `dod: render-green` Root, Pi, Claude, and Sundial outputs are regenerated, drift-free, and pass the full project gate.
+- `dod: render-green` Active root, Pi, and Claude outputs are regenerated, drift-free, and pass the full project gate.
 
 ## Notes
 
@@ -108,3 +108,5 @@ Record deviations, review findings, and any exact rendered-output surprise befor
 Plan-review settlement: the plan remains Proposed through implementation and freezes only in the deferred terminal-review transaction, per the active plan lifecycle contract. Repository-relative `Paths:` are intentional because plan-v2 scope entries are root-confined repository selectors; the absolute managed-worktree root above supplies execution location without encoding invalid absolute scope entries.
 
 Phase-review settlement: the project-authored `.awf/parts/workflow/chain.md` fully replaces the changed workflow template section, so the initial render omitted the root workflow's proportionate-planning semantics. The user approved adding the concise equivalent to that existing override, rerendering, and strengthening the two incomplete semantic proofs; no new mechanism or output surface was introduced.
+
+Integration settlement: ADR-0230 removed Sundial from the active adopter and render set before integration, so the governed merge retained that authoritative removal and render-green now covers the active root, Pi, and Claude outputs. Another integration took ADR-0231 after the first numbering attempt; the documented reset, merge-current-main, and renumber sequence assigned this record ADR-0232. The user-approved project-override proof was then reapplied to the reconstructed branch before renewed terminal review.
