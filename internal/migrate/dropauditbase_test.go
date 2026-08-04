@@ -11,7 +11,7 @@ import (
 )
 
 // applyDropAuditBase is the schema 10 -> 11 migration. Neither this repo's
-// config nor examples/sundial sets audit.baseBranch, so no sync or check run
+// config sets audit.baseBranch, so no sync or check run
 // exercises it (ADR-0127 Consequences): these fixtures are its only coverage.
 func TestApplyDropAuditBase(t *testing.T) {
 	cases := []struct {

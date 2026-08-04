@@ -119,7 +119,7 @@ tags:
   editable-sections: The awf:edit editable-section markers
   enable-closure: The enable/disable requirement closure
   eval-suite: The golden-task eval suite
-  example-adopter: The committed example adopter
+  example-adopter: Historical tag for the former committed example adopter
   foreign-file-backup: Backup of pre-existing foreign files
   frontmatter-validation: Frontmatter field validation
   git-hooks: The git-hook payloads and their wiring
@@ -176,7 +176,6 @@ tags:
 contextIgnore:
   - .awf/**
   - docs/**
-  - examples/**
   - .github/**
   - .githooks/**
   - changelog/**

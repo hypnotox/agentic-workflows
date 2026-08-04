@@ -166,9 +166,6 @@ func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T, helper stri
 	if err := os.WriteFile(filepath.Join(fakeBin, "go"), []byte(goScript), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(root, "examples", "sundial"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	local := filepath.Join(root, ".awf", "local")
 	if err := os.Mkdir(local, 0o700); err != nil {
 		t.Fatal(err)

@@ -1,4 +1,0 @@
-title: CLI interface
-summary: The sundial command coordinate input contract and its usage-error behaviour.
-paths:
-  - cmd/**

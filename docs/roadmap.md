@@ -79,7 +79,7 @@
   entry.
 - Publish the standard as an artifact. No versioned spec exists (the standard is implied
   by the renderer and its templates), there is no discoverability surface beyond the
-  GitHub README, and no examples gallery beyond `examples/sundial`.
+  GitHub README, and no examples gallery.
 - Audit this repo's own overrides for dogfooding. The principle (user, 2026-07-26): only
   overwrite what is really needed, otherwise dogfood the shipped defaults, and use
   template defaults inside overrides so they keep rendering. A survey that day found 7

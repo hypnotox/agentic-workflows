@@ -494,14 +494,7 @@ catalog's own lens prose is governed text and drifts like any other doc.
 
 _Domains: config, tooling_
 
-Registering a migration raises `migrate.Current()`, which immediately puts the repo's own
-`.awf/` tree one generation behind its freshly-built binary. `awf render` and `awf check` then
-*refuse* with "config schema is behind (generation N-1 < N); run awf upgrade" rather than
-re-rendering, so a plan step that says "run `./x render` and stage the result" cannot work at
-that point. Run `go run ./cmd/awf upgrade`, which applies the new migration to this repo and
-re-syncs. The same applies to `examples/sundial`: it carries its own schema generation and is
-gated by `./x check` (ADR-0090), so upgrade it too, with a source-built binary from the repo
-root. Bit the ADR-0127 plan, whose Task 2.5 named the wrong command for both trees.
+Registering a migration puts the repository's one adopted `.awf/` tree behind its freshly-built binary. Run the source-built upgrade before render and check.
 
 ## `awf audit` and `extensions.worktreeConfig`
 
@@ -685,29 +678,7 @@ the advisory as intended signal.
 
 _Domains: config_
 
-Setting a list key in an artifact's `.awf/<kind>/<name>.yaml` `data:` block (e.g. the
-plan-reviewer's `focusItems`) replaces the catalog's default list; it does not append. Adding
-one project-local focus item this way silently dropped the two default items
-(`step-exactness`, `dependency-order`) from this repo's rendered reviewer for a day, and
-nothing flagged it: the render is drift-clean because the config said exactly that. When adding
-a project-local list entry, copy the catalog defaults you still want into the override
-alongside it (they live in `internal/catalog/standard.go`), and eyeball the rendered diff for
-deleted default lines before committing.
-
-**The reverse direction is worse, and this entry did not state it until it bit (ADR-0116,
-2026-07-15).** Adding a *new catalog default* to a list is invisible to every project that
-overrides that list: the default ships to adopters and is silently dropped for the
-overriding project. ADR-0116 added a `docCurrencyItems` entry to the `adr-reviewer` catalog
-default and cited *this pitfall* as the reason to edit the catalog rather than an override,
-without noticing `.awf/agents/adr-reviewer.yaml` already overrode that very list. The rule
-would have reached every adopter except awf itself, the one project meant to dogfood it,
-with a green gate and a clean `awf check` throughout; the ADR reviewer caught it. So the
-rule is bidirectional: **a `data:` list has as many sites as there are overrides of it.**
-Before adding a catalog default, `grep -rn '<listKey>' .awf/` and mirror it into every
-override found (restate it deliberately, as `.awf/agents/code-reviewer.yaml` does in a
-comment); before adding a local entry, copy the defaults you still want. Verify by reading
-the *rendered* artifact for each affected project, `examples/sundial` included, not the
-config.
+A `data:` list override replaces the catalog defaults rather than appending. Copy the defaults still needed, then read every affected enabled target output.
 
 ## Registry-relative constants in migration code drift
 
@@ -828,18 +799,9 @@ safe inside non-doc comments or raw strings.
 
 ## Topic and decision edits regenerate navigation outside the authored file
 
-_Domains: adr-system_
+_Domains: rendering, adr-system_
 
-`./x render` regenerates `docs/decisions/INDEX.md` from the ADR corpus and regenerates topic
-indexes plus owning domain-doc navigation from topic metadata. Stage from `git status`, not
-from a memorised authored-file list: a status transition can move the decision index, while
-a topic add, rename, or metadata change can move both its topic index and domain doc. The
-older per-domain ADR-index implementation exposed the same rendered-file staging class when
-an ADR-0080 flip missed an index-only domain-doc refresh (2026-07-09). It recurred in
-ADR-0121's phase 1 when a configspec edit omitted the example adopter's regenerated config
-reference. The `.githooks/pre-commit` staged-slice validation now drift-checks
-`examples/sundial` too, providing a deterministic net for repo and example outputs, but the
-complete sync transaction must still be staged before the explicit staged check and gate.
+Run render after topic and decision edits, inspect generated navigation, and stage it with its authored causes.
 
 ## The atomic `.awf/awf.lock` forces multi-scope rendering work into one commit
 
@@ -1304,39 +1266,7 @@ lock but not a schema- or version-behind one, which only `gate()` sees.
 
 _Domains: rendering_
 
-A plan whose diff touches a shipped template (`templates/**`) or a catalog default
-(`internal/catalog/standard.go`) naturally lists the one `.claude/` output the author is looking
-at, and misses the rest of the fan-out. One source edit re-renders **every enabled target**
-(`.claude/` *and* `.pi/` here), **both** `.awf/awf.lock` files (root *and* `examples/sundial`),
-and the example adopter's own outputs; and because the change is adopter-facing, it also owes an
-`[Unreleased]` entry in `changelog/CHANGELOG.md`. In the ADR-0095 session all three slipped: the
-plan's `git add` named `awf-writing-plans` under sundial (which renders `sundial-writing-plans`,
-prefix `sundial`), omitted one target output and the example lock, and scheduled no changelog
-task; caught downstream by plan review, by reading `git status`, and by `./x audit-local`
-respectively, not up front. Two lessons: when a plan edits a catalog artifact, enumerate the fan-out
-explicitly (all targets × {root, example} × {rendered, lock}, plus a changelog task), and at
-execution treat the plan's `git add` list as a *floor*; run `./x render`, then stage exactly what
-`git status --short` reports, adding paths the plan forgot rather than only dropping ones it
-over-named.
-
-**Recurred (ADR-0103, 2026-07-13)** despite this note: adding one `internal/configspec` entry
-regenerates `examples/sundial/docs/config-reference.md` too, but the Phase-3 commit staged only
-the root reference, leaving the example regen for a follow-up commit and three intermediate
-commits `./x check`-red at checkout. The root cause the prose above missed is why staging
-discipline alone keeps failing here: a hook that validates the *working tree* (where the
-preceding `./x render` has already written the example file) cannot see a regenerated-but-unstaged
-output, so the commit passes the hook while being drift-red on its own.
-
-**The deterministic backstop now exists** (34d839c, 2026-07-15): `.githooks/pre-commit` checks the
-index out into a throwaway tree and runs `./x check` there alongside the `go build` staged-slice
-check (ADR-0088), so a commit missing a rendered, lock, or config hunk refuses at commit time.
-Two limits keep the up-front discipline load-bearing rather than redundant. It is **repo-local**:
-the staged-slice logic lives in awf's hand-maintained `.githooks/` stub, while the rendered payload
-adopters get (`.awf/hooks/pre-commit.sh`) still checks the worktree, so an adopter hitting this
-fan-out has no backstop at all. And it fires **late**, after the commit message is written, telling
-you a hunk is missing but not which fan-out arm you forgot. So: when a plan edits a catalog
-artifact, still enumerate the fan-out up front, and after `./x render` stage **every** path
-`git status --short` reports, `examples/sundial` included.
+Enumerate every enabled target, the root lock, generated outputs, and the changelog obligation for the one adopted root.
 
 ## GoReleaser aborts on a dirty git tree; pre-release artifacts belong outside the worktree
 
@@ -1389,73 +1319,15 @@ reads nothing beyond what `Open` validates (2026-07-13).
 
 ## A token or convention rename must sweep every rendered doc surface
 
-_Domains: invariants, rendering_
+_Domains: rendering_
 
-Renaming a token or changing a convention breaks in more places than the authoring
-template. When `inv:`→`invariant:` landed, the doc-currency lens flagged stale `inv:`
-spellings three separate times (plan review, verify pass, resync) because the reword
-touched only the ADR template and the "Backed invariants" rule and missed sibling
-surfaces. Before committing a rename, sweep ALL rendered surfaces that mention the token
-or convention: `.awf/agents-doc.yaml` (AGENTS.md rules AND the `(inv: <slug>)` prose
-citations on every invariant bullet), `.awf/docs/glossary.yaml`, the domain
-`current-state.md` narratives and their citations, `.awf/docs/pitfalls.yaml`, the
-adr-readme part, and the architecture/working-with-awf guide sources, not just the one
-authoring template. A post-rename `grep -rnE '\b<oldtoken>' .awf/` reaching zero is the
-cheap catch (2026-07-13).
-
-Grep the BARE TOKEN, never the phrase. ADR-0159 renamed five commands and wrote its
-discovery greps as phrases (`awf sync`, `awf prose-gate`), which missed the same two
-shapes three separate times across three phases even after the first phase recorded
-them. A verb list names the command as a bare token in prose that never says `awf`
-("the awf verbs `render`, `check`, `invariants`, `audit`"), and an unset-var template
-fallback splits the phrase across a template action (`{{ end }} sync{{ end }}`), so no
-phrase grep can see either. Both are invisible to review too, because the rendered
-output looks right wherever the var IS set. Pair every phrase grep with
-`git grep -nE '\b<oldtoken>\b'` and a `\}\} *<oldtoken>\b` grep, and treat
-`go test ./...` as the real oracle: bare-token argv fixtures
-(`resolve([]string{"sync"})`, `clispec.Lookup("sync")`) are reached by no prose grep at
-all. Note also that a git pathspec is a leading-path match, so `.awf` never reaches
-`examples/sundial/.awf`; the example needs its own pathspec entries (2026-07-26).
-
-A shape change must sweep `templates/` too, not only `.awf/`. ADR-0175 reduced the resident
-roots to two, updated every authored `.awf/` part, and still left three sentences in
-`templates/docs/working-with-awf.md.tmpl` naming three roots, which shipped to every adopter
-and to the example (2026-07-29). Only one of the three was masked locally: a
-full-replacement section override replaces its generic default, while a sectionDefault
-override appends to that default and an un-overridden section renders it verbatim. So this
-repo's own guide asserted three roots on one line and exactly two seventeen lines later, and
-the contradiction still went unread until terminal review. Two cheap catches: put
-`templates/` in the sweep grep, and read the rendered guide end to end after a shape change
-instead of only diffing the parts you edited.
+A leading-path pathspec never reaches a separately rooted nested adoption. Name such a root explicitly when it exists in another repository.
 
 ## Registering a migration has fallout the plan never lists
 
-_Domains: config_
+_Domains: config, tooling_
 
-Adding one line to the migration registry moves `migrate.Current()`, and everything
-pinned to the old tip fails at once. ADR-0159's plan specified the migration and its
-test and named none of the rest; eight assertions across six files broke
-(`internal/project/{version,example_wiring}_test.go`,
-`internal/migrate/{migrate,workflowtelemetry,maxclaimspertopic,enablerunner}_test.go`,
-`cmd/awf/{upgrade,run}_test.go`). Most want a new number, but two need judgment: a
-fixture asserting the schema is AHEAD must move to tip+1 to stay ahead, and each
-migration's own `TestXIsCurrent` asserts a premise ("enable-runner is the tip") that the
-next migration falsifies, so it is deleted rather than renumbered while the new
-migration's file adds its own.
-
-The version floor is the part that is easy to get wrong quietly. `minVersionBySchema`
-needs an entry for the new generation at or below `project.Version` (ADR-0049
-Decision 4), and reusing the previous generation's version is only correct while that
-version is UNRELEASED. Generations 17 and 18 both map to 0.22.0 because both landed
-during its cycle; generation 19 landed after 0.22.0 shipped, so mapping it there would
-claim a published binary can render a tree it has no migration for. It maps to 0.23.0
-and the const moves with it, the mid-cycle bump `docs/releasing.md` already prescribes.
-Check the changelog for a released heading before reusing a version.
-
-Finally, registering the migration trips the version gate in the repo's OWN trees:
-`./x render` and `./x check` refuse until both `.awf/awf.lock` and
-`examples/sundial/.awf/awf.lock` are upgraded, and the example is a separate Go module,
-so it needs a built binary rather than `go run ../../cmd/awf` (2026-07-26).
+Derive affected tests from failures rather than a stale inventory, then run the source-built upgrade for the one root lock before render and check.
 
 ## A new config field needs a config-reference live-state projection case
 
@@ -1510,21 +1382,6 @@ ignores the rest. Lesson for any future fence-based marker: check the token agai
 language aliases (`lib/linguist/languages.yml`) before adopting it, and prefer a
 checked-by-default marker plus an explicit opt-out over a namespaced token that silently loses
 highlighting and fails open (ADR-0111; 2026-07-14).
-
-## A new `awf check` note producer must be inert for the example adopter
-
-_Domains: tooling_
-
-A new advisory note wired into `awf check` (a producer folded into
-`Project.AdvisoryNotes`) fires over whatever corpus the project has, including the committed
-example adopter `examples/sundial`, whose ADR-0090 `example-zero-notes` gate fails on *any*
-`note:` line. sundial carries free-form ADR/pitfall tags but no `tags:` vocabulary, so a
-tag-health note that keyed only off tag *presence* would fire there and redden the example
-check. Guard the producer on the opt-in config it governs; `tagHealthNotes` returns early when
-`len(p.Cfg.Tags) == 0`, so an un-curated adopter and the example stay note-free, mirroring how
-`tag-vocabulary-governed` is itself inert under an empty vocabulary. Any future advisory note
-must degrade to inert for a minimally-configured project, or `example-zero-notes` catches it
-(ADR-0109, ADR-0090; 2026-07-13).
 
 ## A render primitive proven against Markdown hides output-language gaps until a real target runs
 
