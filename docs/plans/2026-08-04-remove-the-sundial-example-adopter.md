@@ -12,7 +12,7 @@ Remove the committed `examples/sundial` adoption and every repository-specific d
 
 ## Architecture summary
 
-Execution first accepts the settled ADR, then establishes package-owned temporary coverage before deleting any example-backed checks. The final implementation transaction removes the fixed nested tree, root orchestration, obsolete proofs, and active guidance together with all four declared claim removals. ADR-0229 permits that transaction to leave every operation Applied while the ADR remains `Implementing`; terminal implementation review later owns the status-only `Implemented` event and plan freeze. Generic nested-adopter fixtures remain generic, and generated documentation changes only through authored `.awf/` inputs followed by `./x render`.
+Execution first accepts the settled ADR, then establishes package-owned temporary coverage before deleting any example-backed checks. The final implementation transaction removes the fixed nested tree, root orchestration, obsolete proofs, and active guidance together with all five declared claim operations: four removals and one update. ADR-0229 permits that transaction to leave every operation Applied while the ADR remains `Implementing`; terminal implementation review later owns the status-only `Implemented` event and plan freeze. Generic nested-adopter fixtures remain generic, and generated documentation changes only through authored `.awf/` inputs followed by `./x render`.
 
 ## Phase 1: Accept the removal decision
 
@@ -73,7 +73,7 @@ Rename and strengthen `TestRunUpgradeAppliesLegacyMigration` as `TestRunUpgradeL
 
 ### Phase close
 
-Stage exactly the Phase 2 test files. Run the three Post-check commands from the clean phase result, then run `git diff --cached --check`, `./awf check staged`, and `./x gate`. Create the phase commit only with Sundial still present and the four removal claims still active and backed.
+Stage exactly the Phase 2 test files. Run the three Post-check commands from the clean phase result, then run `git diff --cached --check`, `./awf check staged`, and `./x gate`. Create the phase commit only with Sundial still present, the four removal claims still active and backed, and the single-home claim still carrying its pre-removal scope.
 
 ```commit
 test(tooling): replace Sundial integration coverage
@@ -91,7 +91,7 @@ Applying: ["remove-the-sundial-example-adopter:no-committed-example-adopter"]
 Paths: ["x", ".githooks/pre-commit", ".githooks/check-nested-staged", "cmd/awf/check_test.go", "internal/project/context_wrapper_test.go"]
 Post-check: `test ! -e .githooks/check-nested-staged` succeeds; `rg -n 'examples/sundial|check-nested-staged|example adopter|nested Sundial' x .githooks cmd/awf/check_test.go internal/project/context_wrapper_test.go` returns no output; and `go test ./cmd/awf ./internal/project -run 'TestRepositoryPreCommit|TestContextSpillObservabilityContract' -count=1` passes.
 
-Before dispatch, require `git status --short` to print no entries, `./x check` to be clean, the Phase 2 focused tests to pass, `test -d examples/sundial` to succeed, and the ADR to be Accepted with four Remaining operations and no Applied operation.
+Before dispatch, require `git status --short` to print no entries, `./x check` to be clean, the Phase 2 focused tests to pass, `test -d examples/sundial` to succeed, and the ADR to be Accepted with five Remaining operations and no Applied operation.
 
 In `x`, remove only the source-built Sundial render block from `render)` and the Sundial repo check, zero-note parsing, and separate Go-module test from `check)`. Preserve root render, context-spill validation, every gate lane, cleanup behavior, and command forwarding.
 
@@ -112,14 +112,14 @@ Delete every tracked path below `examples/sundial` with the exact `git rm` comma
 
 Keep generic nested-adopter behavior by renaming only fixture paths and labels in `internal/project/staged_test.go`; the test must still construct a nested adopted tree and prove its HEAD-to-index current-state transition. Remove the `examples/` module exclusion from `internal/git/seamwalker_test.go` because no committed nested module remains, while retaining testdata exclusions. Generalize the synthetic production-import case in `internal/testsupport/deps_test.go`, the empty-tag-vocabulary comment in `internal/project/notes_test.go`, and the migration-coverage comment in `internal/migrate/dropauditbase_test.go` so their actual contracts remain unchanged without claiming Sundial exercises them.
 
-### Task 3.3: Retire the four claims and remove stale active guidance
+### Task 3.3: Retire four claims, update claim scope, and remove stale active guidance
 Kind: batch
 Latitude: exact
 Applying: ["remove-the-sundial-example-adopter:no-committed-example-adopter", "remove-the-sundial-example-adopter:history-remains-history"]
 Paths: ["README.md", ".awf/config.yaml", ".awf/agents/plan-reviewer.yaml", ".awf/parts/agents-doc/awf-setup.md", ".awf/parts/working-with-awf/overview.md", ".awf/docs/glossary.yaml", ".awf/docs/pitfalls.yaml", ".awf/docs/parts/development/command-runner.md", ".awf/docs/parts/roadmap/ideas.md", ".awf/docs/parts/testing/gate.md", ".awf/docs/parts/testing/tiers.md", ".awf/topics/parts/code-design/single-home/current-state.md", ".awf/topics/parts/rendering/companion-scripts/current-state.md", ".awf/topics/parts/tooling/quality-gates/current-state.md", "internal/configspec/spec.go", "docs/decisions/remove-the-sundial-example-adopter.md", "docs/decisions/INDEX.md", "glob:docs/*.md", "glob:docs/topics/**/*.md", "glob:docs/domains/**/*.md", ".claude/agents/plan-reviewer.md", ".pi/agents/plan-reviewer.md", "AGENTS.md", "CLAUDE.md", ".awf/awf.lock"]
 Representative: remove the complete `example-adopter-checked`, `example-module-isolated`, and `example-zero-notes` claim blocks from the quality-gates part and `runner-example-adopted` from companion scripts, then remove their proof markers in Task 3.2 in the same phase transaction.
 Edge: keep `.awf/config.yaml`'s `example-adopter` tag key because retained ADR-0090 uses it, but change its meaning to explicitly historical wording; preserve the user-requested "Applying every state operation does not mean terminal review has settled" pitfall even though its incident names Sundial; do not edit implemented ADRs, completed plans, changelog entries, or research reports.
-Post-check: `./x render && ./x check` are clean; `./awf context docs/decisions/remove-the-sundial-example-adopter.md` reports all four operations Applied with zero Remaining while status remains Implementing; the active-source residue command in the task body returns no unexpected paths; and `git diff -- docs/decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md 'docs/plans/**' 'docs/research/**' 'changelog/**'` returns no output.
+Post-check: `./x render && ./x check` are clean; `./awf context docs/decisions/remove-the-sundial-example-adopter.md` reports all five operations Applied with zero Remaining while status remains Implementing; the active-source residue command in the task body returns no unexpected paths; and `git diff -- docs/decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md 'docs/plans/**' 'docs/research/**' 'changelog/**'` returns no output.
 
 Remove `contextIgnore: examples/**` from `.awf/config.yaml`. Retain the historical `example-adopter` tag vocabulary key with wording that says it classifies the former committed adopter, because removing it would invalidate retained ADR tags. Generalize the config-reference descriptor in `internal/configspec/spec.go` so it describes configured exclusions without naming a current example.
 
@@ -138,7 +138,7 @@ Apply these exact `.awf/docs/pitfalls.yaml` dispositions:
 
 Edit only these authored sources; never hand-edit their generated docs.
 
-Apply all four ADR operations atomically. In `docs/decisions/remove-the-sundial-example-adopter.md`, change frontmatter to `status: Implementing`, append the dated `Implementing; content-sha256: <accepted digest>` event, then append one `Applied; operations:` event containing the four declared removals. ADR-0229 permits this all-Applied nonterminal state. Remove the four claim blocks and their proof markers in the same staged phase transaction. Do not append `Implemented`; terminal review owns that later status-only event.
+Apply all five ADR operations atomically. In `docs/decisions/remove-the-sundial-example-adopter.md`, change frontmatter to `status: Implementing`, append the dated `Implementing; content-sha256: <accepted digest>` event, then append one `Applied; operations:` event containing the four declared removals and the single-home update. ADR-0229 permits this all-Applied nonterminal state. Remove the four claim blocks and their proof markers and update `code-design/single-home:single-implementation` to remove the obsolete example-adopter scope exclusion in the same staged phase transaction. Preserve its Origin, Backing, and Verify fields and append `ADR-remove-the-sundial-example-adopter` exactly once to `Revised-by`. Do not append `Implemented`; terminal review owns that later status-only event.
 
 Run `./x render` after Tasks 3.1 and 3.2 have removed every fixed-path invocation and the nested tree. Inspect all regenerated outputs and stage them with their authored causes. Define the active-source residue set with:
 
@@ -169,10 +169,10 @@ refactor(awf): remove Sundial adopter (applies ADR removal batch)
 
 ## Definition of done
 
-- `dod: decision-authorized` The reviewed removal ADR is Accepted with its content stamp and four pending operations before implementation changes begin.
+- `dod: decision-authorized` The reviewed removal ADR is Accepted with its then-current content stamp and four pending removal operations before implementation changes begin.
 - `dod: temporary-coverage` Temporary fixtures prove full-catalog Claude and Pi rendering and clean drift checks, a representative authored-adoption render/tamper/repair lifecycle, Pi governed-output directives, and legacy CLI upgrade followed by clean checking without depending on a committed example tree.
 - `dod: sundial-absent` No tracked `examples/sundial` path, fixed-path root runner branch, nested staged helper, fictional module test, or Sundial-only generated-prose assertion remains.
-- `dod: active-state-current` All four removal operations are Applied atomically with claim/proof deletion; active config and documentation describe the single adopted root and package-owned fixtures, while retained historical records and required historical tag metadata remain intact.
+- `dod: active-state-current` All five operations are Applied atomically with four claim/proof deletions and the single-home scope update; active config and documentation describe the single adopted root and package-owned fixtures, while retained historical records and required historical tag metadata remain intact.
 
 ## Notes
 
