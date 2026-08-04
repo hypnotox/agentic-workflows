@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+func helpText(c Command) string {
+	return strings.Join(append(append([]string{}, c.Help.Usage...), append([]string{c.Help.Description}, c.Help.Details...)...), " ")
+}
+
 func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
 	check, ok := Lookup("check")
 	if !ok {
@@ -22,7 +26,7 @@ func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
 		t.Fatalf("summary = %q", commit.Summary)
 	}
 	for _, text := range []string{"MERGE_HEAD", "AWF-Allow-Version", "AWF-Allow-Reason", "unchanged", "git commit"} {
-		if !strings.Contains(commit.HelpBody, text) {
+		if !strings.Contains(helpText(commit), text) {
 			t.Errorf("help missing %q", text)
 		}
 	}
@@ -37,8 +41,8 @@ func TestReadPlanSpec(t *testing.T) {
 	if !ok || plan.MinPos != 2 || plan.MaxPos != 2 {
 		t.Fatalf("read plan spec = %#v, found %v", plan, ok)
 	}
-	for _, text := range []string{"Usage: awf read plan <plan> <P[.T]>", "exact filename", "canonical positive", "available"} {
-		if !strings.Contains(plan.HelpBody, text) {
+	for _, text := range []string{"awf read plan <plan> <P[.T]>", "exact filename", "canonical positive", "available"} {
+		if !strings.Contains(helpText(plan), text) {
 			t.Errorf("read plan help missing %q", text)
 		}
 	}
@@ -53,7 +57,7 @@ func TestContextHumanOnlyFacetSpec(t *testing.T) {
 		t.Fatalf("context spec=%#v", context)
 	}
 	for _, text := range []string{"tier 0", "tier-1", "relationships", "invariants", "all-rules", "all eight facets", "Only artifacts", "8,192", "caller", "JSON is not supported"} {
-		if !strings.Contains(context.HelpBody, text) {
+		if !strings.Contains(helpText(context), text) {
 			t.Errorf("help missing %q", text)
 		}
 	}
@@ -64,20 +68,20 @@ func TestContextHumanOnlyFacetSpec(t *testing.T) {
 func TestCommandsWellFormed(t *testing.T) {
 	seen := map[string]bool{}
 	for _, c := range Commands {
-		if c.Name == "" || c.Summary == "" || c.HelpBody == "" {
-			t.Errorf("command %q has an empty Name/Summary/HelpBody", c.Name)
+		if c.Name == "" || c.Summary == "" || len(c.Help.Usage) == 0 {
+			t.Errorf("command %q has empty command metadata", c.Name)
 		}
 		if seen[c.Name] {
 			t.Errorf("duplicate top-level command %q", c.Name)
 		}
 		seen[c.Name] = true
-		if !strings.Contains(c.HelpBody, "Usage: awf "+c.Name) {
+		if !strings.Contains(helpText(c), "awf "+c.Name) {
 			t.Errorf("command %q help missing its usage line", c.Name)
 		}
 		var walk func(parent string, children []Command)
 		walk = func(parent string, children []Command) {
 			for _, ch := range children {
-				if ch.Name == "" || ch.Summary == "" || ch.HelpBody == "" {
+				if ch.Name == "" || ch.Summary == "" || len(ch.Help.Usage) == 0 {
 					t.Errorf("child %s/%s has empty metadata", parent, ch.Name)
 				}
 				walk(parent+"/"+ch.Name, ch.Children)
@@ -109,7 +113,7 @@ func TestLookup(t *testing.T) {
 	}
 	if topic, ok := newCmd.Child("topic"); !ok {
 		t.Error("new.Child(topic) missing")
-	} else if topic.MinPos != 2 || topic.MaxPos != -1 || !strings.Contains(topic.HelpBody, "without syncing") {
+	} else if topic.MinPos != 2 || topic.MaxPos != -1 || !strings.Contains(helpText(topic), "without syncing") {
 		t.Errorf("new topic spec = %#v", topic)
 	}
 	if _, ok := newCmd.Child("nope"); ok {
@@ -126,7 +130,7 @@ func TestLookup(t *testing.T) {
 	if !ok || len(effort.Children) != 8 {
 		t.Fatalf("effort spec = %#v, found %v", effort, ok)
 	}
-	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--json,--no-worktree" || strings.Join(newEffort.ValueFlags, ",") != "--slug,--base" || !strings.Contains(newEffort.HelpBody, "awf effort new --slug <slug> <outcome-title>") || !strings.Contains(newEffort.HelpBody, "1 through 32 bytes") {
+	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--json,--no-worktree" || strings.Join(newEffort.ValueFlags, ",") != "--slug,--base" || !strings.Contains(helpText(newEffort), "awf effort new --slug <slug> <outcome-title>") || !strings.Contains(helpText(newEffort), "1 through 32 bytes") {
 		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
 	}
 	wantEffortChildren := []string{"new", "list", "show", "finish", "worktree", "integrate", "memory", "activity"}
@@ -148,7 +152,7 @@ func TestLookup(t *testing.T) {
 		t.Fatalf("effort activity spec = %#v, found %v", activity, found)
 	}
 	for _, action := range activity.Children {
-		if !strings.Contains(strings.Join(action.BoolFlags, ","), "--json") || !strings.Contains(action.HelpBody, "Usage: awf effort activity "+action.Name) {
+		if !strings.Contains(strings.Join(action.BoolFlags, ","), "--json") || !strings.Contains(helpText(action), "awf effort activity "+action.Name) {
 			t.Errorf("activity %s does not declare JSON-only grammar: %#v", action.Name, action)
 		}
 	}

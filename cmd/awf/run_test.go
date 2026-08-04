@@ -556,7 +556,7 @@ func TestRunHelp(t *testing.T) {
 		if code := run([]string{"awf", arg}, &out, &errb); code != 0 {
 			t.Fatalf("%s: expected exit 0, got %d", arg, code)
 		}
-		if !strings.Contains(out.String(), "Commands:") || !strings.Contains(out.String(), "uninstall") {
+		if !strings.Contains(out.String(), "commands:") || !strings.Contains(out.String(), "uninstall") {
 			t.Errorf("%s: help text missing content:\n%s", arg, out.String())
 		}
 	}

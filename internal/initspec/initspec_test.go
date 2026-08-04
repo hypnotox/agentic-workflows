@@ -2,6 +2,7 @@ package initspec
 
 import (
 	"errors"
+	"io"
 	"slices"
 	"strings"
 	"testing"
@@ -43,6 +44,36 @@ func TestResolveExplicitAnswersWin(t *testing.T) {
 	}
 	if vars["flavor"] != "//" {
 		t.Errorf("flavor = %q", vars["flavor"])
+	}
+}
+
+type failingPromptWriter struct{}
+
+func (failingPromptWriter) Write([]byte) (int, error) { return 0, errors.New("write") }
+
+func TestWritePromptValidation(t *testing.T) {
+	for _, test := range []struct {
+		descriptor catalog.VarDescriptor
+		options    []string
+		tail       string
+	}{
+		{catalog.VarDescriptor{Key: "bad\n"}, nil, "tail"},
+		{catalog.VarDescriptor{Key: "key", Description: " "}, nil, "tail"},
+		{catalog.VarDescriptor{Key: "key"}, []string{" "}, "tail"},
+		{catalog.VarDescriptor{Key: "key"}, nil, " "},
+	} {
+		if err := writePrompt(io.Discard, test.descriptor, test.options, test.tail); err == nil {
+			t.Fatal("invalid prompt accepted")
+		}
+	}
+	if err := writePrompt(failingPromptWriter{}, catalog.VarDescriptor{Key: "key"}, nil, "tail"); err == nil {
+		t.Fatal("prompt write failure accepted")
+	}
+	if _, _, _, err := Resolve([]catalog.VarDescriptor{{Key: "choices", Kind: "multiselect", Options: []string{"one"}}}, nil, strings.NewReader(""), failingPromptWriter{}, true, nil); err == nil {
+		t.Fatal("multiselect prompt write failure accepted")
+	}
+	if _, _, _, err := Resolve([]catalog.VarDescriptor{{Key: "key", Kind: "string"}}, nil, strings.NewReader(""), failingPromptWriter{}, true, nil); err == nil {
+		t.Fatal("scalar prompt write failure accepted")
 	}
 }
 
@@ -273,10 +304,10 @@ func TestResolveEOFFallsSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "first:") {
+	if !strings.Contains(out.String(), "variable: first") {
 		t.Errorf("the first prompt should have been emitted:\n%s", out.String())
 	}
-	if strings.Contains(out.String(), "second:") {
+	if strings.Contains(out.String(), "variable: second") {
 		t.Errorf("prompt text emitted after EOF:\n%s", out.String())
 	}
 	if vars["first"] != "d1" {

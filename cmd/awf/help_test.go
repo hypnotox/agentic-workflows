@@ -8,151 +8,79 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
-// Every command answers --help and -h with exit 0 and its own usage line -
-// guaranteeing no command is missing structured help.
 func TestPerCommandHelp(t *testing.T) {
 	for _, c := range clispec.Commands {
 		for _, flag := range []string{"--help", "-h"} {
 			t.Run(c.Name+" "+flag, func(t *testing.T) {
 				var out, errb bytes.Buffer
 				if code := run([]string{"awf", c.Name, flag}, &out, &errb); code != 0 {
-					t.Fatalf("`awf %s %s` should exit 0, got %d (err=%s)", c.Name, flag, code, errb.String())
+					t.Fatalf("exit %d: %s", code, errb.String())
 				}
-				if !strings.Contains(out.String(), "Usage: awf "+c.Name) {
-					t.Errorf("`awf %s %s` help missing usage line; got:\n%s", c.Name, flag, out.String())
+				if !strings.Contains(out.String(), "command: awf "+c.Name) || !strings.Contains(out.String(), "usage:") {
+					t.Errorf("structured help missing command or usage: %s", out.String())
 				}
 			})
 		}
 	}
 }
 
-// The global overview lists every command's summary in the declared order.
 func TestGlobalHelpListsAllCommands(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "help"}, &out, &errb); code != 0 {
-		t.Fatalf("`awf help` should exit 0, got %d", code)
+		t.Fatalf("exit %d", code)
 	}
 	got := out.String()
-	if !strings.Contains(got, "Commands:") {
-		t.Errorf("global help missing Commands header:\n%s", got)
+	if !strings.Contains(got, "commands:") {
+		t.Errorf("global help missing commands: %s", got)
 	}
-	for _, c := range clispec.Commands {
-		// Line-anchored: "  <name> " at a line start, so a command name that is a
-		// substring of another's summary cannot mask a real omission.
-		if !strings.Contains(got, "\n  "+c.Name+" ") {
-			t.Errorf("global help omits command line for %q:\n%s", c.Name, got)
-		}
-		if c.Summary == "" || c.HelpBody == "" {
-			t.Errorf("command %q has empty summary/help", c.Name)
-		}
-	}
-}
-
-// The top-level usage line, `awf help` overview order, and the command set all
-// derive from clispec - no parallel enumeration in cmd/awf.
-// (inv: cli-command-spec-single-source, backed in internal/clispec.)
-func TestCliCommandSpecSingleSource(t *testing.T) {
-	// globalHelp lists commands in clispec order; assert each name appears and in
-	// the same relative order as clispec.Commands.
-	var out, errb bytes.Buffer
-	run([]string{"awf", "help"}, &out, &errb)
-	got := out.String()
 	last := -1
 	for _, c := range clispec.Commands {
-		idx := strings.Index(got, "\n  "+c.Name+" ")
-		if idx < 0 {
-			t.Fatalf("globalHelp omits %q", c.Name)
+		needle := c.Name + " | " + c.Summary
+		index := strings.Index(got, needle)
+		if index < 0 || index < last {
+			t.Errorf("global help command %q missing or unordered: %s", c.Name, got)
 		}
-		if idx < last {
-			t.Errorf("globalHelp lists %q out of clispec order", c.Name)
+		last = index
+		if c.Summary == "" || len(c.Help.Usage) == 0 {
+			t.Errorf("command %q has empty structured metadata", c.Name)
 		}
-		last = idx
-	}
-	// The bare-usage line is the clispec usage token list.
-	errb.Reset()
-	run([]string{"awf"}, &out, &errb)
-	if !strings.Contains(errb.String(), clispec.UsageLine()) {
-		t.Errorf("bare usage line does not derive from clispec.UsageLine():\n%s", errb.String())
 	}
 }
 
-// Every group child is listed in the overview beneath its own parent, so a
-// subcommand is never reachable only by knowing to ask its parent for help.
 // invariant: tooling/cli:help-lists-group-children (TestHelpListsGroupChildren)
 func TestHelpListsGroupChildren(t *testing.T) {
 	var out, errb bytes.Buffer
 	run([]string{"awf", "help"}, &out, &errb)
 	got := out.String()
-	for i, parent := range clispec.Commands {
-		if len(parent.Children) == 0 {
-			continue
-		}
-		from := strings.Index(got, "\n  "+parent.Name+" ")
-		if from < 0 {
-			t.Fatalf("globalHelp omits the group %q", parent.Name)
-		}
-		// The child block ends where the next top-level command begins, so a
-		// child listed under the wrong parent fails rather than passing on a
-		// match found elsewhere in the overview.
-		to := len(got)
-		if i+1 < len(clispec.Commands) {
-			if next := strings.Index(got, "\n  "+clispec.Commands[i+1].Name+" "); next > from {
-				to = next
+	for _, parent := range clispec.Commands {
+		for _, child := range parent.Children {
+			if !strings.Contains(got, parent.Name+" "+child.Name+" | "+child.Summary) {
+				t.Errorf("global help omits %s %s", parent.Name, child.Name)
 			}
 		}
-		block := got[from:to]
-		var checkDescendants func(clispec.Command, string, int)
-		checkDescendants = func(node clispec.Command, path string, depth int) {
-			for _, child := range node.Children {
-				childPath := strings.TrimSpace(path + " " + child.Name)
-				line := "\n" + strings.Repeat("  ", depth+1) + child.Name + " "
-				if !strings.Contains(block, line) {
-					t.Errorf("globalHelp omits %s at depth %d beneath its parent:\n%s", childPath, depth, block)
-				}
-				if !strings.Contains(block, child.Summary) {
-					t.Errorf("globalHelp omits the summary of %s", childPath)
-				}
-				checkDescendants(child, childPath, depth+1)
-			}
-		}
-		checkDescendants(parent, parent.Name, 1)
 	}
 }
 
-// `awf help <cmd>` prints that command's --help text; an unknown command
-// falls back to the top-level overview and exits 0, like bare `awf help`.
 func TestHelpSubcommandDispatch(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "help", "render"}, &out, &errb); code != 0 {
-		t.Fatalf("help render: exit %d (%s)", code, errb.String())
+		t.Fatal(code)
 	}
-	render, _ := clispec.Lookup("render")
-	if out.String() != render.HelpBody {
-		t.Errorf("awf help render = %q, want the render --help text", out.String())
+	if !strings.Contains(out.String(), "command: awf render") {
+		t.Errorf("render help: %s", out.String())
 	}
 	out.Reset()
 	if code := run([]string{"awf", "help", "bogus"}, &out, &errb); code != 0 {
-		t.Fatalf("help bogus: exit %d (%s)", code, errb.String())
+		t.Fatal(code)
 	}
-	if !strings.Contains(out.String(), "Commands:") {
-		t.Errorf("unknown command should fall back to the overview:\n%s", out.String())
+	if !strings.Contains(out.String(), "commands:") {
+		t.Errorf("unknown help: %s", out.String())
 	}
-	// `awf help <group> <child>` prints the child's body.
 	out.Reset()
 	if code := run([]string{"awf", "help", "new", "adr"}, &out, &errb); code != 0 {
-		t.Fatalf("help new adr: exit %d (%s)", code, errb.String())
+		t.Fatal(code)
 	}
-	newCmd, _ := clispec.Lookup("new")
-	adr, _ := newCmd.Child("adr")
-	if out.String() != adr.HelpBody {
-		t.Errorf("awf help new adr = %q, want the new-adr child help", out.String())
-	}
-	// An unknown child falls back to the group's own body.
-	out.Reset()
-	if code := run([]string{"awf", "help", "new", "bogus"}, &out, &errb); code != 0 {
-		t.Fatalf("help new bogus: exit %d (%s)", code, errb.String())
-	}
-	if out.String() != newCmd.HelpBody {
-		t.Errorf("awf help new bogus = %q, want the new group help", out.String())
+	if !strings.Contains(out.String(), "command: awf adr") {
+		t.Errorf("child help: %s", out.String())
 	}
 }

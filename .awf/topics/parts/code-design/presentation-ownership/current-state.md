@@ -9,3 +9,9 @@ Origin: ADR-0195
 Revised-by: ADR-structured-agent-oriented-cli-presentation
 Backing: unbacked
 Verify: when touching a command surface, confirm the rendering of each result model it prints lives in the package owning that model.
+
+### `invariant: closed-presentation-tree`
+
+`internal/presentation` owns the closed Document, Field, Section, List, RecordGroup, Record, and Steps tree and is the sole syntax validator and text renderer; no raw-text node or alternate renderer bypasses that boundary.
+Origin: ADR-structured-agent-oriented-cli-presentation
+Backing: test

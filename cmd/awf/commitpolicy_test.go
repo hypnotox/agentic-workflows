@@ -76,7 +76,7 @@ func TestCommitPolicyCommandUsesRealSignedCommitsAndTypedExits(t *testing.T) {
 	out.Reset()
 	errb.Reset()
 	code = runAt(t, root, []string{"awf", "check", "commit-policy", "missing-target"}, &out, &errb)
-	if code != 1 || !strings.Contains(out.String(), "revision-resolution") || !strings.Contains(out.String(), "refs changed: false") || errb.Len() != 0 {
+	if code != 1 || !strings.Contains(out.String(), "revision-resolution") || !strings.Contains(out.String(), "refs: false") || errb.Len() != 0 {
 		t.Fatalf("refusal command: exit=%d stdout=%q stderr=%q", code, out.String(), errb.String())
 	}
 }

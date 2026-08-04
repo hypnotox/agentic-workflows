@@ -9,7 +9,8 @@ type badNode struct{}
 
 func (badNode) presentationNode() {}
 
-func TestPresentationTreeShapes(t *testing.T) {
+// invariant: code-design/presentation-ownership:closed-presentation-tree (TestPresentationTreeContract)
+func TestPresentationTreeContract(t *testing.T) {
 	v := func(s string) value {
 		got, err := Prose(s)
 		if err != nil {
@@ -25,7 +26,9 @@ func TestPresentationTreeShapes(t *testing.T) {
 	group.presentationNode()
 	list, _ := NewList("items", v("one"), v("two"))
 	list.presentationNode()
-	inner, _ := NewSection("inner", f, list, group)
+	steps, _ := NewSteps("steps", v("first"), v("second"))
+	steps.presentationNode()
+	inner, _ := NewSection("inner", f, list, group, steps)
 	inner.presentationNode()
 	r1.presentationNode()
 	middle, _ := NewSection("middle", inner)
@@ -38,7 +41,7 @@ func TestPresentationTreeShapes(t *testing.T) {
 	if err := Render(&out, doc); err != nil {
 		t.Fatal(err)
 	}
-	const wantGolden = "field: value\n\nouter:\n  middle:\n    inner:\n      field: value\n      items:\n        one\n        two\n      records:\n        left\\|right | slash\\\\\\\\\n        two | three\n"
+	const wantGolden = "field: value\n\nouter:\n  middle:\n    inner:\n      field: value\n      items:\n        one\n        two\n      records:\n        left\\|right | slash\\\\\\\\\n        two | three\n      steps:\n        step 1: first\n        step 2: second\n"
 	if out.String() != wantGolden {
 		t.Fatalf("presentation grammar:\n--- got ---\n%s--- want ---\n%s", out.String(), wantGolden)
 	}

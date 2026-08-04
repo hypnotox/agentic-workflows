@@ -255,7 +255,7 @@ func TestExactCommitEnforcement(t *testing.T) {
 
 func TestVerifyCommitPolicyAtReturnsTypedRootAndConfigRefusals(t *testing.T) {
 	text, out := VerifyCommitPolicyAt(testContext(t), t.TempDir(), []string{"HEAD"})
-	if out.Refusal == nil || out.Refusal.Category != commitpolicy.LinkedWorktreeFailure || !strings.Contains(text, "refs changed: false") {
+	if out.Refusal == nil || out.Refusal.Category != commitpolicy.LinkedWorktreeFailure || !strings.Contains(text, "refs: false") {
 		t.Fatalf("root refusal = %#v, %q", out, text)
 	}
 	fixture := gitfixture.InitNativeAt(t, t.TempDir())

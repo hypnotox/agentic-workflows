@@ -431,12 +431,12 @@ func TestHelpListsCheckChildren(t *testing.T) {
 	run([]string{"awf", "help"}, &out, &errb)
 	got := out.String()
 	for _, sub := range []string{"repo", "staged"} {
-		if !strings.Contains(got, "\n    "+sub+" ") {
+		if !strings.Contains(got, "check "+sub+" |") {
 			t.Errorf("awf help omits the check child %q:\n%s", sub, got)
 		}
 	}
 	// The four retired top-level names are gone from the overview.
-	for _, retired := range []string{"\n  invariants ", "\n  prose-gate ", "\n  memory-gate ", "\n  commit-gate "} {
+	for _, retired := range []string{"invariants |", "prose-gate |", "memory-gate |", "commit-gate |"} {
 		if strings.Contains(got, retired) {
 			t.Errorf("awf help still lists the retired top-level %q", strings.TrimSpace(retired))
 		}

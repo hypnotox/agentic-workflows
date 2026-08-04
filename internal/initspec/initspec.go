@@ -17,6 +17,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"gopkg.in/yaml.v3"
 )
 
@@ -244,15 +245,17 @@ func promptMultiselect(r *promptReader, out io.Writer, d catalog.VarDescriptor) 
 	for _, n := range splitNames(d.Default) {
 		core[n] = true
 	}
-	fmt.Fprintf(out, "%s: %s\n", d.Key, d.Description)
+	options := make([]string, len(d.Options))
 	for i, o := range d.Options {
 		mark := " "
 		if core[o] {
 			mark = "x"
 		}
-		fmt.Fprintf(out, "  %d) [%s] %s\n", i+1, mark, o)
+		options[i] = fmt.Sprintf("%d [%s] %s", i+1, mark, o)
 	}
-	fmt.Fprint(out, "  enter full selection (comma-sep numbers), empty=keep: ")
+	if err := writePrompt(out, d, options, "enter full selection (comma-sep numbers), empty=keep"); err != nil {
+		return nil, false, err
+	}
 	line, err := r.line()
 	if err != nil {
 		return nil, false, err
@@ -275,6 +278,59 @@ func promptMultiselect(r *promptReader, out io.Writer, d catalog.VarDescriptor) 
 	return sel, true, nil
 }
 
+// writePrompt is the sole interactive init write. It validates and buffers the
+// complete ordinary-tree prelude, then writes one flushed non-newline tail.
+func writePrompt(out io.Writer, descriptor catalog.VarDescriptor, options []string, tail string) error {
+	key, err := presentation.Literal(descriptor.Key)
+	if err != nil {
+		return err
+	}
+	variable, err := presentation.NewField("variable", key)
+	if err != nil { // coverage-ignore: fixed label and validated literal cannot fail
+		return err
+	}
+	descriptionText := descriptor.Description
+	if descriptionText == "" {
+		descriptionText = "configuration value"
+	}
+	descriptionValue, err := presentation.Prose(descriptionText)
+	if err != nil {
+		return err // coverage-ignore: empty descriptions become the nonempty fallback above
+	}
+	description, err := presentation.NewField("description", descriptionValue)
+	if err != nil { // coverage-ignore: fixed label and validated prose cannot fail
+		return err // coverage-ignore: the fixed label and validated value cannot fail
+	}
+	nodes := []presentation.Node{description}
+	if len(options) > 0 {
+		values := make([]presentation.Value, len(options))
+		for i, option := range options {
+			values[i], err = presentation.Prose(option)
+			if err != nil {
+				return err
+			}
+		}
+		list, err := presentation.NewList("options", values...)
+		if err != nil { // coverage-ignore: fixed label and validated values cannot fail
+			return err // coverage-ignore: fixed label and validated option values cannot fail
+		}
+		nodes = append(nodes, list)
+	}
+	input, err := presentation.NewSection("input", nodes...)
+	if err != nil { // coverage-ignore: fixed label and validated child nodes cannot fail
+		return err // coverage-ignore: fixed label and validated child nodes cannot fail
+	}
+	prelude, err := presentation.NewDocument(variable, input)
+	if err != nil { // coverage-ignore: validated root field and section cannot fail
+		return err // coverage-ignore: validated root field and section cannot fail
+	}
+	tailValue, err := presentation.Prose(tail)
+	if err != nil {
+		return err
+	}
+	return presentation.Prompt(out, prelude, tailValue)
+}
+
 // splitNames trims and drops empties from a comma-separated string.
 func splitNames(s string) []string {
 	var out []string
@@ -289,15 +345,22 @@ func splitNames(s string) []string {
 // prompt reads one line for descriptor d, returning d.Default on empty input.
 // For an enum, a numeric reply selects the option at that 1-based index.
 func prompt(r *promptReader, out io.Writer, d catalog.VarDescriptor) (string, error) {
-	fmt.Fprintf(out, "%s: %s\n", d.Key, d.Description)
+	options := []string(nil)
 	if d.Kind == "enum" {
+		options = make([]string, len(d.Options))
 		for i, o := range d.Options {
-			fmt.Fprintf(out, "  %d) %s\n", i+1, o)
+			options[i] = fmt.Sprintf("%d %s", i+1, o)
 		}
 	} else if len(d.Options) > 0 {
-		fmt.Fprintf(out, "  e.g. %s\n", strings.Join(d.Options, ", "))
+		options = []string{"for example " + strings.Join(d.Options, ", ")}
 	}
-	fmt.Fprintf(out, "  [%s]: ", d.Default)
+	tail := "default " + d.Default
+	if d.Default == "" {
+		tail = "default is empty"
+	}
+	if err := writePrompt(out, d, options, tail); err != nil {
+		return "", err
+	}
 	line, err := r.line()
 	if err != nil {
 		return "", err

@@ -137,3 +137,4 @@ test transactions rather than becoming authority before the converted surfaces e
 - 2026-08-04: Implementing; content-sha256: 83d3b46e7e9cff7e94b21a4a0436305249838c0de8403e2ea84196d1d3d5e7dd
 - 2026-08-04: Applied; operations: update `code-design/presentation-ownership:model-owner-renders`, add `code-design/presentation-package:presentation-package-boundary`
 - 2026-08-04: Applied; operations: update `tooling/context-and-topic:context-query-boundary`
+- 2026-08-04: Applied; operations: add `code-design/presentation-ownership:closed-presentation-tree`, update `code-design/outcome-modeling:actionable-outcome-protocol`, update `tooling/cli:cli-command-spec-single-source`

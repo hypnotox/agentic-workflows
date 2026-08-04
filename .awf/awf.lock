@@ -595,8 +595,8 @@
     "docs/topics/code-design/outcome-modeling.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:555ea87358d79cc9062f1cd08f9dd3014d055adf8908c1d0f7e4c8db2fbdee19",
-      "outputHash": "sha256:913bfde2cf113f7c208640058edeacb09d82849f664152339c340eb792e82387"
+      "configHash": "sha256:827fbf1f5447db4b500cf2632505454e14467af2e1f22e1bdb02d3db825fc8d3",
+      "outputHash": "sha256:133398bec4f317bd08b856ed2d8c9f8a41d454a17658f6c96a4463cf88bc6aa7"
     },
     "docs/topics/code-design/package-composition.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -607,8 +607,8 @@
     "docs/topics/code-design/presentation-ownership.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:a4705f232b378b3df2700843bad84a08a4486fbe08c3c98552c73fb3fba84222",
-      "outputHash": "sha256:185c7c6fa982d19bdedaf0f566b99b22a858dc36d7b97d3ba7964c7d38610832"
+      "configHash": "sha256:7cd09dd0df22e4883e067f205f7642eedb728deba41003af12244f1668021910",
+      "outputHash": "sha256:45a1d7efef7bdc044bd08ba42b22522ac3e7cb134e8569f713473dd212fb41b5"
     },
     "docs/topics/code-design/presentation-package.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -799,8 +799,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:cc2f45c14a8274b737e5a381c44542e4ad68ccd64666c3df5fc0ac9f3f7376ba",
-      "outputHash": "sha256:5a284c071c17b177a68f475744532d6f7cb6913b27e470b825c83fac2eea4498"
+      "configHash": "sha256:b55e4955e0f90e2aaf644469ac6961399dde4a3c7959c90c186e95a9709a4e6c",
+      "outputHash": "sha256:c7a9753a0e66b12ec5e71a9df857987e9bb094743417a6aeaad7f2610ae8130a"
     },
     "docs/topics/tooling/commit-policy.md": {
       "templateId": "topics/topic.md.tmpl",

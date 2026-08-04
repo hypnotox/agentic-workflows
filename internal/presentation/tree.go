@@ -13,7 +13,7 @@ type Document struct {
 }
 
 // Node is a grammar node. The closed implementation is Field, Section, List,
-// RecordGroup, and Record.
+// RecordGroup, Record, and Steps.
 type Node interface{ presentationNode() }
 
 type nodeMarker struct{}
@@ -52,6 +52,13 @@ type RecordGroup struct {
 // Record is a fixed-arity compact record leaf.
 type Record struct {
 	nodeMarker
+	values []value
+}
+
+// Steps is a labeled ordered collection of actionable values.
+type Steps struct {
+	nodeMarker
+	label  string
 	values []value
 }
 
@@ -118,6 +125,15 @@ func NewList(label string, values ...value) (List, error) {
 		return List{}, err
 	}
 	return list, nil
+}
+
+// NewSteps constructs a labeled ordered action collection.
+func NewSteps(label string, values ...value) (Steps, error) {
+	steps := Steps{label: label, values: append([]value(nil), values...)}
+	if err := validateSteps(steps); err != nil {
+		return Steps{}, err
+	}
+	return steps, nil
 }
 
 // NewRecord constructs one fixed-arity compact record.
@@ -215,8 +231,12 @@ func validateSection(section Section, depth int) error {
 			if err := validateRecordGroup(n); err != nil {
 				return err
 			}
+		case Steps:
+			if err := validateSteps(n); err != nil {
+				return err
+			}
 		default:
-			return errors.New("presentation section admits only fields, sections, lists, and record groups")
+			return errors.New("presentation section admits only fields, sections, lists, record groups, and steps")
 		}
 	}
 	return nil
@@ -235,6 +255,21 @@ func validateList(list List) error {
 	}
 	return nil
 }
+func validateSteps(steps Steps) error {
+	if err := validateLabel(steps.label); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		return err
+	}
+	if len(steps.values) == 0 {
+		return errors.New("presentation steps requires values")
+	}
+	for _, v := range steps.values {
+		if err := v.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func validateRecordGroup(group RecordGroup) error {
 	if err := validateLabel(group.label); err != nil {
 		return err

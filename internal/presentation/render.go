@@ -67,6 +67,11 @@ func writeNode(dst *bytes.Buffer, node Node, depth int) {
 			}
 			fmt.Fprintf(dst, "%s  %s\n", indent, strings.Join(fields, " | "))
 		}
+	case Steps:
+		fmt.Fprintf(dst, "%s%s:\n", indent, n.label)
+		for i, value := range n.values {
+			fmt.Fprintf(dst, "%s  step %d: %s\n", indent, i+1, value.text)
+		}
 	}
 }
 func escapeRecord(text string) string {

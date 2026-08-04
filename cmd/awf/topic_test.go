@@ -331,7 +331,7 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 		}
 	}
 	var help, errOut bytes.Buffer
-	if code := run([]string{"awf", "topic", "--help"}, &help, &errOut); code != 0 || !strings.Contains(help.String(), "Usage: awf topic") {
+	if code := run([]string{"awf", "topic", "--help"}, &help, &errOut); code != 0 || !strings.Contains(help.String(), "command: awf topic") {
 		t.Fatalf("help = %d %s %s", code, help.String(), errOut.String())
 	}
 	root := t.TempDir()

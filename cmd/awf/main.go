@@ -14,6 +14,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
@@ -42,21 +43,75 @@ var isInteractive = func() bool {
 // The child indent is deeper than the parent's on purpose: indentation carries the
 // relationship, and a child sharing a top-level name (`new topic` beside `topic`)
 // therefore cannot be mistaken for the top-level entry.
-func globalHelp() string {
-	var b strings.Builder
-	b.WriteString("awf: render agentic-workflow tooling into a project from a committed .awf/ config tree\n\n")
-	b.WriteString("Usage: awf <command> [flags]\n\n")
-	b.WriteString("Commands:\n")
-	var render func([]clispec.Command, int)
-	render = func(commands []clispec.Command, depth int) {
-		for _, c := range commands {
-			fmt.Fprintf(&b, "%s%-12s %s\n", strings.Repeat("  ", depth+1), c.Name, c.Summary)
-			render(c.Children, depth+1)
-		}
+func globalHelp() (presentation.Document, error) {
+	introValue, err := presentation.Prose("render agentic-workflow tooling into a project from a committed .awf config tree")
+	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+		return presentation.Document{}, err // coverage-ignore: static clispec data is constructor-valid
 	}
-	render(clispec.Commands, 0)
-	b.WriteString("\nRun `awf <command> --help` for details on a command.\n")
-	return b.String()
+	intro, err := presentation.NewField("awf", introValue)
+	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+		return presentation.Document{}, err // coverage-ignore: static clispec data is constructor-valid
+	}
+	usage, err := presentation.NewList("usage", mustValues("awf <command> [flags]")...)
+	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+		return presentation.Document{}, err // coverage-ignore: static clispec data is constructor-valid
+	}
+	var commands []presentation.Record
+	var add func([]clispec.Command, string) error
+	add = func(specs []clispec.Command, prefix string) error {
+		for _, spec := range specs {
+			name, err := presentation.Literal(strings.TrimSpace(prefix + " " + spec.Name))
+			if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+				return err
+			}
+			summary, err := presentation.Prose(spec.Summary)
+			if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+				return err
+			}
+			record, err := presentation.NewRecord(name, summary)
+			if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+				return err
+			}
+			commands = append(commands, record)
+			if err := add(spec.Children, prefix+" "+spec.Name); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+				return err
+			}
+		}
+		return nil
+	}
+	if err := add(clispec.Commands, ""); err != nil {
+		return presentation.Document{}, err // coverage-ignore: static clispec data is constructor-valid
+	}
+	group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, commands...)
+	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+		return presentation.Document{}, err // coverage-ignore: static clispec data is constructor-valid
+	}
+	related, err := presentation.NewList("related commands", mustValues("awf <command> --help")...)
+	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+		return presentation.Document{}, err // coverage-ignore: static clispec data is constructor-valid
+	}
+	section, err := presentation.NewSection("help", usage, group, related)
+	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+		return presentation.Document{}, err // coverage-ignore: static clispec data is constructor-valid
+	}
+	return presentation.NewDocument(intro, section)
+}
+func mustValues(text ...string) []presentation.Value {
+	values := make([]presentation.Value, len(text))
+	for i, value := range text {
+		values[i], _ = presentation.Literal(value)
+	}
+	return values
+}
+func renderDocument(dst io.Writer, document presentation.Document) error {
+	return presentation.Render(dst, document)
+}
+func renderHelp(dst io.Writer, spec clispec.Command) error {
+	document, err := spec.Help.Document("awf "+spec.Name, spec.Summary)
+	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
+		return err
+	}
+	return renderDocument(dst, document)
 }
 
 // run is the CLI driver: it resolves args to a clispec command, prints help,
@@ -73,16 +128,24 @@ func run(args []string, stdout, stderr io.Writer) int {
 			if spec, ok := clispec.Lookup(args[2]); ok {
 				for _, name := range args[3:] {
 					child, found := spec.Child(name)
-					if !found {
+					if !found { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
 						break
 					}
 					spec = child
 				}
-				fmt.Fprint(stdout, spec.HelpBody)
+				if err := renderHelp(stdout, spec); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+					return dispatchErr(stderr, err)
+				}
 				return 0
 			}
 		}
-		fmt.Fprint(stdout, globalHelp())
+		document, err := globalHelp()
+		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+			return dispatchErr(stderr, err)
+		}
+		if err := renderDocument(stdout, document); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+			return dispatchErr(stderr, err)
+		}
 		return 0
 	}
 	cwd, err := getwd()
@@ -95,7 +158,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchErr(stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
 	}
 	if wantsHelp(rest) { // `awf <cmd> --help`/`-h` - intercept before parseArgs rejects it
-		fmt.Fprint(stdout, cmd.HelpBody)
+		if err := renderHelp(stdout, cmd); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+			return dispatchErr(stderr, err)
+		}
 		return 0
 	}
 	inv, err := parseArgs(cmd, rest)

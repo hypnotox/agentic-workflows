@@ -494,7 +494,7 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(strings.Replace(config, base, missingBaseline, 1)), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "commit policy refused (baseline)") || strings.Contains(output, "gate") {
+			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "state: baseline") || strings.Contains(output, "gate") {
 				t.Fatalf("baseline refusal = %q", output)
 			}
 			if output := run(true, "ls-remote", "--heads", "origin"); strings.TrimSpace(output) != "" {

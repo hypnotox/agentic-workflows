@@ -15,7 +15,7 @@ func TestRenderOutcomes(t *testing.T) {
 	}{
 		{"disabled", Outcome{Disabled: true}, []string{"disabled"}},
 		{"success", Outcome{}, []string{"all selected commits conform"}},
-		{"refusal", Outcome{Refusal: &Refusal{Category: RevisionFailure, Observed: "missing", RefsChanged: false, IndexChanged: true, Actions: []string{"fix", "rerun"}, Cause: errors.New("x")}}, []string{"refused (revision-resolution)", "refs changed: false", "index changed: true", "next: fix", "next: rerun"}},
+		{"refusal", Outcome{Refusal: &Refusal{Category: RevisionFailure, Observed: "missing", RefsChanged: false, IndexChanged: true, Actions: []string{"fix", "rerun"}, Cause: errors.New("x")}}, []string{"state: revision-resolution", "refs: false", "index: true", "step 1: fix", "step 2: rerun"}},
 		{"violations", Outcome{Violations: []Violation{{Commit: "abc", Field: AuthorField, Observed: "Bad <bad>"}, {Commit: "abc", Field: SignatureField, Observed: "missing"}}}, []string{"commit abc author", "commit abc signature", "allowed identities: Ada <ada@example.test>", "allowed signers: ada@example.test ssh-ed25519 key", "rerun"}},
 	}
 	for _, tc := range cases {
