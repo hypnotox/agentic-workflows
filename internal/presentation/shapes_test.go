@@ -162,6 +162,7 @@ type alternateConsumer struct{}
 func FormatPresentation(document Document) {}
 func presentationNode(document Document) {}
 func (alternateConsumer) presentationNode(document Document) {}
+func (Document) presentationNode() bool { return false }
 `)
 	err := presentationContract(fileSet, files, wantNodes, wantBoundary)
 	if err == nil {
@@ -272,7 +273,7 @@ func presentationContract(fileSet *token.FileSet, files []*ast.File, wantNodes, 
 }
 
 func isPresentationNodeMarker(function *ast.FuncDecl, signature *types.Signature) bool {
-	return function.Name.Name == "presentationNode" && signature.Recv() != nil && signature.Params().Len() == 0
+	return function.Name.Name == "presentationNode" && signature.Recv() != nil && signature.Params().Len() == 0 && signature.Results().Len() == 0
 }
 
 func difference(got, want []string) []string {
