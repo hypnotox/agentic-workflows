@@ -2,6 +2,13 @@ package presentation
 
 import (
 	"bytes"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -11,6 +18,7 @@ func (badNode) presentationNode() {}
 
 // invariant: code-design/presentation-ownership:closed-presentation-tree (TestPresentationTreeContract)
 func TestPresentationTreeContract(t *testing.T) {
+	assertPresentationSourceContract(t)
 	v := func(s string) value {
 		got, err := Prose(s)
 		if err != nil {
@@ -127,4 +135,97 @@ func TestPresentationTreeContract(t *testing.T) {
 	if _, err := NewSection("four", tooDeep); err == nil {
 		t.Error("fourth section level accepted")
 	}
+}
+
+func assertPresentationSourceContract(t *testing.T) {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate presentation source")
+	}
+	directory := filepath.Dir(file)
+	paths, err := filepath.Glob(filepath.Join(directory, "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var production []*ast.File
+	for _, path := range paths {
+		if filepath.Ext(path) != ".go" || strings.HasSuffix(filepath.Base(path), "_test.go") {
+			continue
+		}
+		parsed, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		production = append(production, parsed)
+	}
+	var nodeTypes, markerMethods []string
+	for _, source := range production {
+		for _, declaration := range source.Decls {
+			decl, ok := declaration.(*ast.GenDecl)
+			if !ok || decl.Tok != token.TYPE {
+				continue
+			}
+			for _, specification := range decl.Specs {
+				typeSpec, ok := specification.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				structType, ok := typeSpec.Type.(*ast.StructType)
+				if !ok {
+					continue
+				}
+				for _, field := range structType.Fields.List {
+					if identifier, ok := field.Type.(*ast.Ident); ok && identifier.Name == "nodeMarker" {
+						nodeTypes = append(nodeTypes, typeSpec.Name.Name)
+					}
+				}
+			}
+		}
+		for _, declaration := range source.Decls {
+			function, ok := declaration.(*ast.FuncDecl)
+			if !ok || function.Name.Name != "presentationNode" || function.Recv == nil || len(function.Recv.List) != 1 {
+				continue
+			}
+			receiver := function.Recv.List[0].Type
+			if pointer, ok := receiver.(*ast.StarExpr); ok {
+				receiver = pointer.X
+			}
+			if identifier, ok := receiver.(*ast.Ident); ok {
+				markerMethods = append(markerMethods, identifier.Name)
+			}
+		}
+	}
+	sort.Strings(nodeTypes)
+	sort.Strings(markerMethods)
+	if got, want := nodeTypes, []string{"Field", "List", "Record", "RecordGroup", "Section", "Steps"}; !equalStrings(got, want) {
+		t.Fatalf("presentation Node implementations = %v, want %v", got, want)
+	}
+	if got, want := markerMethods, []string{"nodeMarker"}; !equalStrings(got, want) {
+		t.Fatalf("presentationNode methods = %v, want %v", got, want)
+	}
+	var functions []string
+	for _, source := range production {
+		for _, declaration := range source.Decls {
+			if function, ok := declaration.(*ast.FuncDecl); ok && strings.Contains(strings.ToLower(function.Name.Name), "render") {
+				functions = append(functions, function.Name.Name)
+			}
+		}
+	}
+	sort.Strings(functions)
+	if want := []string{"Render"}; !equalStrings(functions, want) {
+		t.Fatalf("presentation renderer functions = %v, want %v", functions, want)
+	}
+}
+
+func equalStrings(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			return false
+		}
+	}
+	return true
 }

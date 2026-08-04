@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -545,8 +546,9 @@ func TestRunNoArgs(t *testing.T) {
 	if code := run([]string{"awf"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for no args, got %d", code)
 	}
-	if !strings.Contains(errb.String(), "usage:") {
-		t.Errorf("missing usage text: %q", errb.String())
+	want := "condition: awf: usage: " + clispec.UsageLine() + " [args]; run `awf help` for command details\n"
+	if out.Len() != 0 || errb.String() != want {
+		t.Errorf("streams stdout=%q stderr=%q, want stderr=%q", out.String(), errb.String(), want)
 	}
 }
 
@@ -567,6 +569,9 @@ func TestRunGetwdError(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on getwd error, got %d", code)
+	}
+	if out.Len() != 0 || errb.String() != "condition: awf: boom\n" {
+		t.Errorf("streams stdout=%q stderr=%q", out.String(), errb.String())
 	}
 }
 

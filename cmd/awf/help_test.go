@@ -143,17 +143,88 @@ func TestHelpSubcommandDispatch(t *testing.T) {
 		t.Errorf("render help: %s", out.String())
 	}
 	out.Reset()
-	if code := run([]string{"awf", "help", "bogus"}, &out, &errb); code != 0 {
-		t.Fatal(code)
-	}
-	if !strings.Contains(out.String(), "commands:") {
-		t.Errorf("unknown help: %s", out.String())
-	}
-	out.Reset()
+	errb.Reset()
 	if code := run([]string{"awf", "help", "new", "adr"}, &out, &errb); code != 0 {
 		t.Fatal(code)
 	}
 	if !strings.Contains(out.String(), "command: awf new adr") {
 		t.Errorf("child help: %s", out.String())
+	}
+}
+
+func TestHelpRejectsUnknownChildrenRecursively(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"awf", "help", "bogus"}, &stdout, &stderr); code != 2 {
+		t.Fatalf("top-level unknown help exit = %d, want 2", code)
+	}
+	if stdout.Len() != 0 || stderr.String() != "condition: awf: unknown command \"bogus\"\n" {
+		t.Fatalf("top-level unknown help streams stdout=%q stderr=%q", stdout.String(), stderr.String())
+	}
+
+	var walk func([]string, []clispec.Command)
+	walk = func(path []string, commands []clispec.Command) {
+		for _, command := range commands {
+			commandPath := append(append([]string{}, path...), command.Name)
+			args := append(append([]string{"awf", "help"}, commandPath...), "bogus")
+			var stdout, stderr bytes.Buffer
+			if code := run(args, &stdout, &stderr); code != 2 {
+				t.Errorf("help %s bogus exit = %d, want 2", strings.Join(commandPath, " "), code)
+			}
+			if stdout.Len() != 0 || stderr.String() != "condition: awf: unknown command \"bogus\"\n" {
+				t.Errorf("help %s bogus streams stdout=%q stderr=%q", strings.Join(commandPath, " "), stdout.String(), stderr.String())
+			}
+			walk(commandPath, command.Children)
+		}
+	}
+	walk(nil, clispec.Commands)
+}
+
+func TestHelpConstructionPropagatesInvalidMetadata(t *testing.T) {
+	cases := []struct {
+		name      string
+		construct func() error
+	}{
+		{
+			name: "top-level record",
+			construct: func() error {
+				_, err := commandSections([]clispec.Command{{Name: "bad\n", Summary: "summary"}})
+				return err
+			},
+		},
+		{
+			name: "top-level child propagation",
+			construct: func() error {
+				_, err := commandSections([]clispec.Command{{Name: "group", Summary: "summary", Children: []clispec.Command{{Name: "bad\n", Summary: "summary"}}}})
+				return err
+			},
+		},
+		{
+			name: "child record",
+			construct: func() error {
+				_, err := commandSection(clispec.Command{Name: "group", Children: []clispec.Command{{Name: "bad\n", Summary: "summary"}}})
+				return err
+			},
+		},
+		{
+			name: "grandchild record",
+			construct: func() error {
+				_, err := commandSection(clispec.Command{Name: "group", Children: []clispec.Command{{Name: "child", Summary: "summary", Children: []clispec.Command{{Name: "bad\n", Summary: "summary"}}}}})
+				return err
+			},
+		},
+		{
+			name: "nested group label",
+			construct: func() error {
+				_, err := commandSection(clispec.Command{Name: "group", Children: []clispec.Command{{Name: "BAD", Summary: "summary", Children: []clispec.Command{{Name: "leaf", Summary: "summary"}}}}})
+				return err
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.construct(); err == nil {
+				t.Fatal("invalid command metadata succeeded")
+			}
+		})
 	}
 }

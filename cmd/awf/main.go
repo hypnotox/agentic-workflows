@@ -71,70 +71,70 @@ func globalHelp() (presentation.Document, error) {
 	return presentation.NewDocument(intro, section)
 }
 
-// commandSections preserves the command table's tree: each group owns exactly
-// its direct children. The three permitted Section levels are commands, a
-// top-level group, and its nested group; a deepest group's direct leaves remain
-// records in that group instead of being flattened into an ancestor.
+// commandSections preserves the command table's tree. Each hierarchy owns one
+// record group containing its direct commands. Top-level groups get a Section;
+// nested groups remain record groups under that Section, keeping the closed
+// presentation grammar's three Section levels while retaining command depth.
 func commandSections(specs []clispec.Command) (presentation.Section, error) {
-	nodes := make([]presentation.Node, 0, len(specs)*2)
+	records, err := commandRecords(specs)
+	if err != nil {
+		return presentation.Section{}, err
+	}
+	group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, records...)
+	if err != nil { // coverage-ignore: fixed label/schema and commandRecords always produce arity-two records
+		return presentation.Section{}, err
+	}
+	nodes := []presentation.Node{group}
 	for _, spec := range specs {
-		record, err := commandRecord(spec)
-		if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-			return presentation.Section{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+		if len(spec.Children) == 0 {
+			continue
 		}
-		group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, record)
-		if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-			return presentation.Section{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+		section, err := commandSection(spec)
+		if err != nil {
+			return presentation.Section{}, err
 		}
-		nodes = append(nodes, group)
-		if len(spec.Children) > 0 {
-			children, err := commandSection(spec)
-			if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-				return presentation.Section{}, err // coverage-ignore: checked-in command metadata is presentation-valid
-			}
-			nodes = append(nodes, children)
-		}
+		nodes = append(nodes, section)
 	}
 	return presentation.NewSection("commands", nodes...)
 }
 
 func commandSection(spec clispec.Command) (presentation.Section, error) {
-	nodes := make([]presentation.Node, 0, len(spec.Children)*2)
+	records, err := commandRecords(spec.Children)
+	if err != nil {
+		return presentation.Section{}, err
+	}
+	group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, records...)
+	if err != nil { // coverage-ignore: fixed label/schema and commandRecords always produce arity-two records
+		return presentation.Section{}, err
+	}
+	nodes := []presentation.Node{group}
 	for _, child := range spec.Children {
-		record, err := commandRecord(child)
-		if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-			return presentation.Section{}, err // coverage-ignore: checked-in command metadata is presentation-valid
-		}
 		if len(child.Children) == 0 {
-			group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, record)
-			if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-				return presentation.Section{}, err // coverage-ignore: checked-in command metadata is presentation-valid
-			}
-			nodes = append(nodes, group)
 			continue
 		}
-		// This is the third and final Section level. Its leaves are a direct
-		// RecordGroup so descendants never flatten into an ancestor.
-		grandchildren := make([]presentation.Record, 0, len(child.Children))
-		for _, grandchild := range child.Children {
-			grandchildRecord, err := commandRecord(grandchild)
-			if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-				return presentation.Section{}, err // coverage-ignore: checked-in command metadata is presentation-valid
-			}
-			grandchildren = append(grandchildren, grandchildRecord)
+		children, err := commandRecords(child.Children)
+		if err != nil {
+			return presentation.Section{}, err
 		}
-		group, err := presentation.NewRecordGroup(child.Name, []string{"command", "summary"}, grandchildren...)
-		if err != nil { // coverage-ignore: checked-in command metadata is presentation-valid
-			return presentation.Section{}, err // coverage-ignore: checked-in command metadata is presentation-valid
+		nested, err := presentation.NewRecordGroup(child.Name, []string{"command", "summary"}, children...)
+		if err != nil {
+			return presentation.Section{}, err
 		}
-		nodes = append(nodes, recordGroup(record), group)
+		nodes = append(nodes, nested)
 	}
 	return presentation.NewSection(spec.Name, nodes...)
 }
 
-func recordGroup(record presentation.Record) presentation.RecordGroup {
-	group, _ := presentation.NewRecordGroup("commands", []string{"command", "summary"}, record)
-	return group
+func commandRecords(specs []clispec.Command) ([]presentation.Record, error) {
+	records := make([]presentation.Record, 0, len(specs))
+	for _, spec := range specs {
+		record, err := commandRecord(spec)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, nil
 }
 
 func commandRecord(spec clispec.Command) (presentation.Record, error) {
@@ -157,14 +157,12 @@ func mustValues(text ...string) []presentation.Value {
 	return values
 }
 
-var renderDocument = presentation.Render
-
 func renderHelp(dst io.Writer, spec clispec.Command, path string) error {
 	document, err := spec.Help.Document("awf "+path, spec.Summary)
 	if err != nil { // coverage-ignore: static clispec literals are constructor-valid
 		return err
 	}
-	return renderDocument(dst, document)
+	return presentation.Render(dst, document)
 }
 
 // run is the CLI driver: it resolves args to a clispec command, prints help,
@@ -172,39 +170,38 @@ func renderHelp(dst io.Writer, spec clispec.Command, path string) error {
 // to the command's handler - a single parse-once path shared by every command.
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage:", clispec.UsageLine(), "[args]")
-		fmt.Fprintln(stderr, "run `awf help` for command details")
-		return 2
+		return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("usage: %s [args]; run `awf help` for command details", clispec.UsageLine())})
 	}
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
 		if a == "help" && len(args) >= 3 {
-			if spec, ok := clispec.Lookup(args[2]); ok {
-				for _, name := range args[3:] {
-					child, found := spec.Child(name)
-					if !found { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
-						break
-					}
-					spec = child
-				}
-				if err := renderHelp(stdout, spec, strings.Join(args[2:], " ")); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
-					return dispatchFailure(stdout, stderr, err)
-				}
-				return 0
+			spec, ok := clispec.Lookup(args[2])
+			if !ok {
+				return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("unknown command %q", args[2])})
 			}
+			for _, name := range args[3:] {
+				child, found := spec.Child(name)
+				if !found {
+					return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("unknown command %q", name)})
+				}
+				spec = child
+			}
+			if err := renderHelp(stdout, spec, strings.Join(args[2:], " ")); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+				return dispatchFailure(stdout, stderr, err)
+			}
+			return 0
 		}
 		document, err := globalHelp()
 		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
 			return dispatchFailure(stdout, stderr, err)
 		}
-		if err := renderDocument(stdout, document); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err := presentation.Render(stdout, document); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
 			return dispatchFailure(stdout, stderr, err)
 		}
 		return 0
 	}
 	cwd, err := getwd()
 	if err != nil {
-		fmt.Fprintln(stderr, "awf:", err)
-		return 1
+		return dispatchFailure(stdout, stderr, err)
 	}
 	cmd, top, sub, rest, ok := resolve(args[1:])
 	if !ok {
@@ -423,18 +420,22 @@ func diagnosticOutcome(err error) commandOutcome {
 	return commandOutcome{document: document, stream: commandStderr, exit: exit, err: err}
 }
 
-func writeOutcome(stdout, stderr io.Writer, outcome commandOutcome) int {
+func writeOutcomeWithRenderer(stdout, stderr io.Writer, outcome commandOutcome, render func(io.Writer, presentation.Document) error) int {
 	dst := stdout
 	if outcome.stream == commandStderr {
 		dst = stderr
 	}
-	if err := renderDocument(dst, outcome.document); err != nil {
+	if err := render(dst, outcome.document); err != nil {
 		// A renderer failure has no valid presentation to duplicate. Keep the
 		// mechanism failure on stderr exactly once.
 		fmt.Fprintln(stderr, "awf:", err)
 		return 1
 	}
 	return outcome.exit
+}
+
+func writeOutcome(stdout, stderr io.Writer, outcome commandOutcome) int {
+	return writeOutcomeWithRenderer(stdout, stderr, outcome, presentation.Render)
 }
 
 func dispatchFailure(stdout, stderr io.Writer, err error) int {

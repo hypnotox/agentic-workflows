@@ -85,6 +85,10 @@ func TestRunCommitGateAccepts(t *testing.T) {
 	if err := runCommitGate(ctx, root, writeMsg(t, "feat: a clean subject\n"), nil, &out); err != nil {
 		t.Fatalf("conforming subject must pass: %v (out=%q)", err, out.String())
 	}
+	want := "condition: stale merge authorization satisfied\nstate: operation\n\ndiagnostic:\n  changed:\n    index: no\n    message: no\n    merge state: no\n"
+	if out.String() != want {
+		t.Fatalf("success output = %q, want %q", out.String(), want)
+	}
 }
 
 // invariant: adr-system/adr-lifecycle:older-format-incoming-parent-sanction (TestCheckCommitAuthorizesOlderFormatIncomingParent)
@@ -289,8 +293,9 @@ func TestRunCommitGateRejectsMalformedAuthorizationByIdentity(t *testing.T) {
 	if !errors.As(err, &syntax) {
 		t.Fatalf("error = %#v, want SyntaxError; output=%q", err, out.String())
 	}
-	if !strings.Contains(out.String(), "index: no\n    message: no\n    merge state: no") {
-		t.Fatalf("missing non-mutation outcome: %q", out.String())
+	want := "condition: non-merge: malformed reserved trailer at cleaned line 3: AWF-Allow-Version must be immediately followed by AWF-Allow-Reason\nstate: operation\n\ndiagnostic:\n  changed:\n    index: no\n    message: no\n    merge state: no\n  steps:\n    step 1: correct the message trailers\n    step 2: run git commit to finish the existing merge\n"
+	if out.String() != want {
+		t.Fatalf("malformed authorization output = %q, want %q", out.String(), want)
 	}
 	gitfixture.StageUnmerged(t, gitfixture.At(root), "conflict.md")
 	out.Reset()
@@ -323,6 +328,10 @@ func TestRunCommitGateRejectsNonConventional(t *testing.T) {
 	// invariant: tooling/audit-and-snapshots:commit-gate-shared-rule (TestRunCommitGateRejectsNonConventional)
 	if err := runCommitGate(ctx, root, writeMsg(t, "just some words\n"), nil, &out); err == nil {
 		t.Fatal("a non-Conventional-Commits subject must be rejected")
+	}
+	want := "check staged commit: subject is not Conventional Commits (type(scope)?: subject)\n"
+	if out.String() != want {
+		t.Fatalf("refusal output = %q, want %q", out.String(), want)
 	}
 }
 
@@ -374,8 +383,11 @@ func TestDispatchCommitGate(t *testing.T) {
 	}
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "check", "staged", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code == 0 {
-		t.Fatal("dispatch check staged commit should block a non-conforming subject")
+	if code := run([]string{"awf", "check", "staged", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code != 1 {
+		t.Fatalf("dispatch refusal exit = %d, want 1", code)
+	}
+	if out.String() != "check staged commit: subject is not Conventional Commits (type(scope)?: subject)\n" || errb.String() != "condition: awf: check staged commit: rejected \"nope not conventional\"\n" {
+		t.Fatalf("dispatch refusal streams stdout=%q stderr=%q", out.String(), errb.String())
 	}
 }
 
@@ -489,52 +501,58 @@ func TestRunCommitGateMechanismFailuresPreserveIdentity(t *testing.T) {
 	root := scaffoldProject(t)
 	failure := errors.New("injected failure")
 	message := func() string { return writeMsg(t, "feat: seam\n") }
-	assertFailure := func(t *testing.T, err error) {
+	assertFailure := func(t *testing.T, dependencies commitGateDependencies, messagePath string, stdin io.Reader) {
 		t.Helper()
+		err := runCommitGateWithDependencies(testContext(t), root, messagePath, stdin, &bytes.Buffer{}, dependencies)
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want identity %v", err, failure)
 		}
 	}
+	authorizationResult := func() commitGateDependencies {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+			return project.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
+		}
+		return dependencies
+	}
 	t.Run("message file", func(t *testing.T) {
-		testsupport.SwapVar(t, &readCommitGateFile, func(string) ([]byte, error) { return nil, failure })
-		assertFailure(t, runCommitGate(testContext(t), root, message(), nil, &bytes.Buffer{}))
+		dependencies := defaultCommitGateDependencies()
+		dependencies.readFile = func(string) ([]byte, error) { return nil, failure }
+		assertFailure(t, dependencies, message(), nil)
 	})
 	t.Run("message stdin", func(t *testing.T) {
-		testsupport.SwapVar(t, &readCommitGateStdin, func(io.Reader) ([]byte, error) { return nil, failure })
-		assertFailure(t, runCommitGate(testContext(t), root, "", strings.NewReader("feat: seam\n"), &bytes.Buffer{}))
+		dependencies := defaultCommitGateDependencies()
+		dependencies.readStdin = func(io.Reader) ([]byte, error) { return nil, failure }
+		assertFailure(t, dependencies, "", strings.NewReader("feat: seam\n"))
 	})
 	t.Run("config loading", func(t *testing.T) {
-		testsupport.SwapVar(t, &openCommitGateProject, func(context.Context, string) (*project.Project, error) { return nil, failure })
-		assertFailure(t, runCommitGate(testContext(t), root, message(), nil, &bytes.Buffer{}))
+		dependencies := defaultCommitGateDependencies()
+		dependencies.openProject = func(context.Context, string) (*project.Project, error) { return nil, failure }
+		assertFailure(t, dependencies, message(), nil)
 	})
 	t.Run("policy and staged transition loading", func(t *testing.T) {
-		testsupport.SwapVar(t, &authorizeCommitGate, func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
 			return project.CommitAuthorizationResult{}, failure
-		})
-		assertFailure(t, runCommitGate(testContext(t), root, message(), nil, &bytes.Buffer{}))
+		}
+		assertFailure(t, dependencies, message(), nil)
 	})
 	t.Run("diagnostic construction", func(t *testing.T) {
-		testsupport.SwapVar(t, &authorizeCommitGate, func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
-			return project.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
-		})
-		testsupport.SwapVar(t, &commitGateDiagnostic, func(project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
+		dependencies := authorizationResult()
+		dependencies.diagnostic = func(project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
 			return presentation.Diagnostic{}, failure
-		})
-		assertFailure(t, runCommitGate(testContext(t), root, message(), nil, &bytes.Buffer{}))
+		}
+		assertFailure(t, dependencies, message(), nil)
 	})
 	t.Run("diagnostic document", func(t *testing.T) {
-		testsupport.SwapVar(t, &authorizeCommitGate, func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
-			return project.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
-		})
-		testsupport.SwapVar(t, &commitGateDocument, func(presentation.Diagnostic) (presentation.Document, error) { return presentation.Document{}, failure })
-		assertFailure(t, runCommitGate(testContext(t), root, message(), nil, &bytes.Buffer{}))
+		dependencies := authorizationResult()
+		dependencies.diagnosticDocument = func(presentation.Diagnostic) (presentation.Document, error) { return presentation.Document{}, failure }
+		assertFailure(t, dependencies, message(), nil)
 	})
 	t.Run("diagnostic render", func(t *testing.T) {
-		testsupport.SwapVar(t, &authorizeCommitGate, func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
-			return project.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
-		})
-		testsupport.SwapVar(t, &renderCommitGateOutput, func(io.Writer, presentation.Document) error { return failure })
-		assertFailure(t, runCommitGate(testContext(t), root, message(), nil, &bytes.Buffer{}))
+		dependencies := authorizationResult()
+		dependencies.render = func(io.Writer, presentation.Document) error { return failure }
+		assertFailure(t, dependencies, message(), nil)
 	})
 }
 

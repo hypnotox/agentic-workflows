@@ -1,8 +1,11 @@
 package clispec
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 func helpText(c Command) string {
@@ -98,9 +101,10 @@ func TestCommandsWellFormed(t *testing.T) {
 	}
 }
 
-// TestCommandHelpSemantics audits the sole registry recursively. Each public
-// datum must identify a real command form and explain its own input rather than
-// relying on a shared placeholder sentence.
+// TestCommandHelpSemantics audits the sole registry recursively. It proves
+// every structured Help field lowers through the common presentation boundary,
+// and that parser-declared flags have complete, truthful option metadata.
+// invariant: tooling/cli:cli-command-spec-single-source (TestCommandHelpSemantics)
 func TestCommandHelpSemantics(t *testing.T) {
 	var walk func(path string, commands []Command)
 	walk = func(path string, commands []Command) {
@@ -110,6 +114,30 @@ func TestCommandHelpSemantics(t *testing.T) {
 			if help.Description == "" {
 				t.Errorf("%s has no semantic help description", fullPath)
 			}
+			options := map[string]HelpItem{}
+			for _, option := range help.Options {
+				if _, duplicate := options[option.Name]; duplicate {
+					t.Errorf("%s repeats option %s", fullPath, option.Name)
+				}
+				options[option.Name] = option
+			}
+			declaredFlags := append(append([]string{}, command.BoolFlags...), command.ValueFlags...)
+			for _, flag := range declaredFlags {
+				item, found := options[flag]
+				if !found || item.Description == "" {
+					t.Errorf("%s parser flag %s lacks an option description", fullPath, flag)
+				}
+			}
+			for option := range options {
+				if !contains(declaredFlags, option) {
+					t.Errorf("%s documents undeclared option %s", fullPath, option)
+				}
+			}
+			for _, flag := range command.Repeatable {
+				if !contains(command.ValueFlags, flag) || options[flag].Description == "" {
+					t.Errorf("%s repeatable flag %s is not completely described", fullPath, flag)
+				}
+			}
 			for _, item := range append(append([]HelpItem{}, help.Positionals...), help.Options...) {
 				if item.Name == "" || item.Description == "" {
 					t.Errorf("%s has incomplete help item %#v", fullPath, item)
@@ -117,9 +145,12 @@ func TestCommandHelpSemantics(t *testing.T) {
 				if strings.Contains(item.Description, "input required by this command") || strings.Contains(item.Description, "command positional argument") {
 					t.Errorf("%s has placeholder help for %s", fullPath, item.Name)
 				}
-				if !strings.Contains(strings.Join(help.Usage, " "), item.Name) && !strings.HasPrefix(item.Name, "--") {
+				if !strings.HasPrefix(item.Name, "--") && !usageNames(item.Name, help.Usage) {
 					t.Errorf("%s documents positional %s outside its usage", fullPath, item.Name)
 				}
+			}
+			if command.MaxPos == 0 && len(help.Positionals) != 0 {
+				t.Errorf("%s documents positionals although its parser accepts none", fullPath)
 			}
 			for _, example := range help.Examples {
 				if !strings.HasPrefix(example, "awf "+fullPath) {
@@ -131,10 +162,65 @@ func TestCommandHelpSemantics(t *testing.T) {
 					t.Errorf("%s related command %q is not public CLI syntax", fullPath, related)
 				}
 			}
+			document, err := help.Document("awf "+fullPath, command.Summary)
+			if err != nil {
+				t.Errorf("%s help document: %v", fullPath, err)
+			} else {
+				var rendered bytes.Buffer
+				if err := presentation.Render(&rendered, document); err != nil {
+					t.Errorf("%s help render: %v", fullPath, err)
+				}
+				for _, text := range helpValues(help) {
+					if !strings.Contains(compactHelp(rendered.String()), compactHelp(text)) {
+						t.Errorf("%s lowered help omits %q", fullPath, text)
+					}
+				}
+			}
 			walk(fullPath, command.Children)
 		}
 	}
 	walk("", Commands)
+}
+
+func contains(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+// usageNames handles mutually exclusive usage alternatives such as
+// <add|remove>: either literal token is valid, but they never occur together.
+func usageNames(name string, usage []string) bool {
+	if strings.Contains(strings.Join(usage, " "), name) {
+		return true
+	}
+	if strings.HasPrefix(name, "<") && strings.HasSuffix(name, ">") && strings.Contains(name, "|") {
+		for _, alternative := range strings.Split(name[1:len(name)-1], "|") {
+			if !strings.Contains(strings.Join(usage, " "), alternative) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func compactHelp(text string) string {
+	return strings.NewReplacer(" ", "", "\n", "", "\\", "").Replace(text)
+}
+
+func helpValues(help Help) []string {
+	values := append(append([]string{}, help.Usage...), help.Description)
+	values = append(values, help.Details...)
+	values = append(values, help.Examples...)
+	values = append(values, help.Related...)
+	for _, item := range append(append([]HelpItem{}, help.Positionals...), help.Options...) {
+		values = append(values, item.Name, item.Description)
+	}
+	return values
 }
 
 func TestLookup(t *testing.T) {
@@ -226,7 +312,6 @@ func TestGatedCommandNames(t *testing.T) {
 
 func TestNamesAndUsageLine(t *testing.T) {
 	names := Names()
-	// invariant: tooling/cli:cli-command-spec-single-source (TestNamesAndUsageLine)
 	if len(names) != len(Commands) || names[0] != "init" {
 		t.Errorf("Names() = %v", names)
 	}

@@ -16,19 +16,33 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-var (
-	readCommitGateFile    = os.ReadFile
-	readCommitGateStdin   = io.ReadAll
-	openCommitGateProject = openCommitGateProjectFromDisk
-	authorizeCommitGate   = func(ctx context.Context, p *project.Project, msg commitmsg.Message) (project.CommitAuthorizationResult, error) {
-		return p.CheckCommitAuthorization(ctx, msg)
+type commitGateDependencies struct {
+	readFile           func(string) ([]byte, error)
+	readStdin          func(io.Reader) ([]byte, error)
+	openProject        func(context.Context, string) (*project.Project, error)
+	authorize          func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error)
+	diagnostic         func(project.CommitAuthorizationResult) (presentation.Diagnostic, error)
+	diagnosticDocument func(presentation.Diagnostic) (presentation.Document, error)
+	render             func(io.Writer, presentation.Document) error
+}
+
+func defaultCommitGateDependencies() commitGateDependencies {
+	return commitGateDependencies{
+		readFile:    os.ReadFile,
+		readStdin:   io.ReadAll,
+		openProject: openCommitGateProjectFromDisk,
+		authorize: func(ctx context.Context, p *project.Project, msg commitmsg.Message) (project.CommitAuthorizationResult, error) {
+			return p.CheckCommitAuthorization(ctx, msg)
+		},
+		diagnostic: func(result project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
+			return result.Diagnostic()
+		},
+		diagnosticDocument: func(diagnostic presentation.Diagnostic) (presentation.Document, error) {
+			return diagnostic.Document()
+		},
+		render: presentation.Render,
 	}
-	commitGateDiagnostic = func(result project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
-		return result.Diagnostic()
-	}
-	commitGateDocument     = func(diagnostic presentation.Diagnostic) (presentation.Document, error) { return diagnostic.Document() }
-	renderCommitGateOutput = presentation.Render
-)
+}
 
 func openCommitGateProjectFromDisk(ctx context.Context, root string) (*project.Project, error) {
 	return project.Open(ctx, root)
@@ -46,18 +60,22 @@ func openCommitGateProjectFromDisk(ctx context.Context, root string) (*project.P
 // passes as $1) or stdin when msgPath is empty; citation line numbers are
 // relative to the git-cleaned message, not to the raw file.
 func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, stdout io.Writer) error {
+	return runCommitGateWithDependencies(ctx, root, msgPath, stdin, stdout, defaultCommitGateDependencies())
+}
+
+func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, stdin io.Reader, stdout io.Writer, dependencies commitGateDependencies) error {
 	var raw []byte
 	var err error
 	if msgPath != "" {
-		raw, err = readCommitGateFile(msgPath)
+		raw, err = dependencies.readFile(msgPath)
 	} else {
-		raw, err = readCommitGateStdin(stdin)
+		raw, err = dependencies.readStdin(stdin)
 	}
 	if err != nil {
 		return fmt.Errorf("check staged commit: read message: %w", err)
 	}
 	msg := commitmsg.Clean(raw)
-	p, err := openCommitGateProject(ctx, root)
+	p, err := dependencies.openProject(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check staged commit: %w", err)
 	}
@@ -87,17 +105,17 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 			}
 		}
 	}
-	result, authErr := authorizeCommitGate(ctx, p, msg)
+	result, authErr := dependencies.authorize(ctx, p, msg)
 	if result.Category != "" {
-		diagnostic, diagnosticErr := commitGateDiagnostic(result)
+		diagnostic, diagnosticErr := dependencies.diagnostic(result)
 		if diagnosticErr != nil {
 			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
 		}
-		document, diagnosticErr := commitGateDocument(diagnostic)
+		document, diagnosticErr := dependencies.diagnosticDocument(diagnostic)
 		if diagnosticErr != nil {
 			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
 		}
-		if diagnosticErr := renderCommitGateOutput(stdout, document); diagnosticErr != nil {
+		if diagnosticErr := dependencies.render(stdout, document); diagnosticErr != nil {
 			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
 		}
 	}
