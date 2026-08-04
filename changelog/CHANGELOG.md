@@ -70,6 +70,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Pi handoff kickoffs now scope managed-worktree-only execution to the pre-integration phase and preserve the governed switch to the target checkout for integration, deferred lifecycle closure, worktree removal, and retrospective.
+
 - ADR-authoring guidance now requires `awf new adr` before any ADR-file mutation, followed by capturing and reading the generated scaffold and editing it in place rather than creating or replacing the record through another mechanism.
 
 ### Breaking changes
