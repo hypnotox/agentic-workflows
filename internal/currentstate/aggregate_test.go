@@ -37,26 +37,33 @@ func TestMergeAggregateAcceptsSeveralBatchesFromOneADR(t *testing.T) {
 }
 
 // TestMergeAggregateKeepsOccurrenceChronologyWithUnorderedBatchMembership
-// proves that an Applied event's authored operation positions do not sequence
-// distinct occurrences. The reverse membership order is retained within the
-// first occurrence; the later update remains after it in ADR history and folds
-// with the preexisting claim independently of that membership order.
+// proves that operation positions inside a newly appended Applied event create
+// no chronology. Distinct occurrences still fold in intra-ADR history order,
+// then a higher-numbered ADR contributes its later update.
 // invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateKeepsOccurrenceChronologyWithUnorderedBatchMembership)
 func TestMergeAggregateKeepsOccurrenceChronologyWithUnorderedBatchMembership(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))
 	updateX := op(adr.OpUpdate, "d/t:x")
 	addY := op(adr.OpAdd, "d/t:y")
 	addZ := op(adr.OpAdd, "d/t:z")
-	partial := v2rec("0141", "Implementing", []adr.Operation{updateX, addY, addZ},
-		v2status("Proposed"), v2status("Implementing"), v2batch(addZ, addY))
-	complete := partial
-	complete.History = append(append([]adr.HistoryEvent(nil), partial.History...), v2batch(updateX))
+	firstBefore := v2rec("0141", "Proposed", []adr.Operation{updateX, addY, addZ}, v2status("Proposed"))
+	firstAfter := firstBefore
+	firstAfter.Status = "Implementing"
+	firstAfter.History = append(append([]adr.HistoryEvent(nil), firstBefore.History...),
+		v2status("Implementing"), v2batch(addZ, addY), v2reapplied(addY), v2batch(updateX))
+	updateY := op(adr.OpUpdate, "d/t:y")
+	secondBefore := v2rec("0142", "Proposed", []adr.Operation{updateY}, v2status("Proposed"))
+	secondAfter := secondBefore
+	secondAfter.Status = "Implemented"
+	secondAfter.History = append(append([]adr.HistoryEvent(nil), secondBefore.History...), v2status("Implemented"))
 
-	before := uni([]adr.ADR{base, partial}, prosed(claim("d/t:x", "0137"), "old"), claim("d/t:y", "0141"), claim("d/t:z", "0141"))
-	after := uni([]adr.ADR{base, complete},
-		prosed(claim("d/t:x", "0137", "0141"), "revised"), claim("d/t:y", "0141"), claim("d/t:z", "0141"))
+	before := uni([]adr.ADR{base, firstBefore, secondBefore}, prosed(claim("d/t:x", "0137"), "old"))
+	after := uni([]adr.ADR{base, firstAfter, secondAfter},
+		prosed(claim("d/t:x", "0137", "0141"), "revised"),
+		prosed(claim("d/t:y", "0141", "0142"), "revised"),
+		claim("d/t:z", "0141"))
 	if f := currentstate.CheckPair(before, after, currentstate.MergeAggregate); len(f) != 0 {
-		t.Fatalf("unordered batch membership must preserve aggregate occurrence chronology and claim chains:\n%s", messages(f))
+		t.Fatalf("unordered new membership must preserve intra-ADR and cross-ADR occurrence chronology:\n%s", messages(f))
 	}
 }
 
@@ -326,17 +333,35 @@ func TestMergeAggregateAcceptsMultiStepStatusHistory(t *testing.T) {
 // invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateStillRequiresAnExactHistoryPrefix)
 func TestMergeAggregateStillRequiresAnExactHistoryPrefix(t *testing.T) {
 	addX := op(adr.OpAdd, "d/t:x")
-	before := v2rec("0141", "Implementing", []adr.Operation{addX, op(adr.OpAdd, "d/t:y")},
-		v2status("Proposed"), v2status("Implementing"), v2batch(addX))
-	rewritten := v2rec("0141", "Implementing", []adr.Operation{addX, op(adr.OpAdd, "d/t:y")},
-		v2status("Proposed"), v2status("Accepted"), v2status("Implementing"), v2batch(addX))
+	addY := op(adr.OpAdd, "d/t:y")
+	before := v2rec("0141", "Implementing", []adr.Operation{addX, addY},
+		v2status("Proposed"), v2status("Implementing"), v2batch(addX, addY))
+	claims := []topic.Claim{claim("d/t:x", "0141"), claim("d/t:y", "0141")}
 
-	got := messages(currentstate.CheckPair(
-		uni([]adr.ADR{before}, claim("d/t:x", "0141")),
-		uni([]adr.ADR{rewritten}, claim("d/t:x", "0141")),
-		currentstate.MergeAggregate))
-	if !strings.Contains(got, "history-prefix rule") {
-		t.Fatalf("a rewritten retained event must still be rejected:\n%s", got)
+	for _, tc := range []struct {
+		name      string
+		rewritten adr.ADR
+	}{
+		{
+			name: "status event",
+			rewritten: v2rec("0141", "Implementing", []adr.Operation{addX, addY},
+				v2status("Proposed"), v2status("Accepted"), v2status("Implementing"), v2batch(addX, addY)),
+		},
+		{
+			name: "operation positions inside an Applied event",
+			rewritten: v2rec("0141", "Implementing", []adr.Operation{addX, addY},
+				v2status("Proposed"), v2status("Implementing"), v2batch(addY, addX)),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := messages(currentstate.CheckPair(
+				uni([]adr.ADR{before}, claims...),
+				uni([]adr.ADR{tc.rewritten}, claims...),
+				currentstate.MergeAggregate))
+			if !strings.Contains(got, "history-prefix rule") {
+				t.Fatalf("a rewritten retained event must still be rejected:\n%s", got)
+			}
+		})
 	}
 }
 
