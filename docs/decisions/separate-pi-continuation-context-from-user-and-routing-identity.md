@@ -68,28 +68,43 @@ become capability authority.
 
 3. `decision: display-suffix-capability` Replace awf's use of the routing-affecting name override
    with a distinct generic capability-gated display-suffix interface. Remote Pi is the normative
-   owner of version 1 and advertises only `displaySuffix: {version: 1}`. Its set event accepts exactly
-   an object carrying `value`, where any string replaces one process-local register and null clears
-   it unconditionally; malformed non-object or non-string/non-null input is ignored only to protect
-   the runtime. The contract carries no namespace, producer identity, producer-specific validation,
-   slug grammar, ordering, or value bound. Last writer wins across extensions. Remote Pi composes
-   `<assigned name> - <latest suffix>` only for human-facing projection. awf publishes its canonical
-   effort slug as an ordinary producer and pins the exact structural interface with Remote Pi
-   owner-commit provenance; it does not import or version-gate a Remote Pi package. Unsupported,
-   malformed, or failing integration degrades silently to metadata without falling back to name
-   replacement.
+   owner of version 1. `remote-pi:capabilities:request` has no payload, and
+   `remote-pi:capabilities` returns one complete snapshot whose `displaySuffix` member, when
+   supported, is exactly `{version: 1}`; unrelated members such as the independent metadata
+   capability remain permitted. `remote-pi:display-suffix:set` accepts exactly an object carrying
+   `value`, where any string replaces one process-local register and null clears it unconditionally;
+   malformed non-object or non-string/non-null input is ignored only to protect the runtime.
+   `remote-pi:display-suffix:request` has no payload. The contract carries no namespace, producer
+   identity, producer-specific validation, slug grammar, producer precedence, explicit ordering
+   metadata, or value bound. Last writer wins across extensions according only to ordinary
+   synchronous event-delivery order. Remote Pi composes `<assigned name> - <latest suffix>` only for
+   human-facing projection. awf publishes its canonical effort slug as an ordinary producer and
+   pins the exact structural interface with Remote Pi owner-commit provenance; it does not import or
+   version-gate a Remote Pi package. Unsupported, malformed, or failing integration degrades
+   silently to metadata without falling back to name replacement.
 
-4. `decision: authoritative-capability-replay` Treat each received Remote Pi capabilities event as
-   a complete authoritative singleton-provider snapshot. No response leaves the consumer in its
-   initial unsupported state; an actual snapshot with absent or malformed display-suffix support
-   withdraws that support and clears active presentation. Request capabilities during factory load
-   and again at `session_start`, publish current state when support arrives late, accept idempotent
-   `{value: null}` clears, clear unconditionally at session lifecycle boundaries, and let Remote Pi
-   synchronously emit a payload-free replay request after it clears the register at replacement
-   `session_start`. Every loaded producer may answer synchronously; event-listener order and
-   last-writer-wins semantics determine the final register. These mechanics are load-bearing because
-   either side may be reused or loaded first and process-local publication flags cannot prove that
-   foreign presentation state is clear.
+4. `decision: authoritative-capability-replay` Treat each received
+   `remote-pi:capabilities` event as a complete authoritative singleton-provider snapshot. No
+   response leaves the awf consumer in its initial unsupported state; an actual snapshot with an
+   absent or malformed `displaySuffix` member withdraws awf support and makes awf synchronously emit
+   `{value: null}`. At factory load awf installs its capability and replay listeners before emitting
+   the payload-free capability request. On every awf `session_start`, including a replacement, awf
+   clears its association, emits null metadata and an unconditional suffix clear, then requests
+   capabilities again. Successful attach and late support publish the current effort slug;
+   successful detach or switch-detach, ownership loss, shutdown, and replay without a supported
+   current association publish null. A payload-free replay request is answered synchronously with
+   exactly the awf producer's current string or null; it never schedules a promise or timer.
+
+   Remote Pi clears its register on shutdown and first on every `session_start`, including startup,
+   new, fork, reload, resume, and reused-module replacement, then synchronously emits the payload-free
+   replay request after producer listeners exist and before initial presentation reads the register.
+   Every loaded producer may answer; the last synchronously delivered write is the resulting
+   register. A malformed set leaves the prior register unchanged. An awf event emission failure
+   leaves association and metadata behavior intact and the Remote Pi register at its prior value; a
+   Remote Pi presentation or transport failure leaves the accepted register and all routing identity
+   unchanged for later projection or replay. These mechanics are load-bearing because either side
+   may be reused or loaded first and process-local publication flags cannot prove that foreign
+   presentation state is clear.
 
 5. `decision: independently-owned-delivery` Keep dependency direction explicit across the two
    repositories. awf specifies only the consumed event shapes, replay and degradation behavior, and
@@ -126,7 +141,14 @@ new event family, payload-free replay, and cross-repository provenance. Both ext
 must clear and replay advisory state, and Remote Pi must separate presentation helpers from identity
 helpers. The generic contract permits other extensions to use the same presentation facility without
 Remote Pi knowing their identity or policy. Concurrent producers do not aggregate: any write,
-including null, replaces the prior register according to event order.
+including null, replaces the prior register according to synchronous event order.
+
+Because any trusted extension may publish any string, the register can contain empty, very large,
+control-bearing, or otherwise awkward display text, and one producer can erase another's suffix.
+Remote Pi presentation surfaces must treat the value only as data and fail safely without promoting
+it into identity, routing, configuration, or executable content, but version 1 deliberately adds no
+producer grammar or bound. A presentation or transport refusal can therefore omit or delay the
+human-facing suffix while leaving the accepted process-local register and stable identity intact.
 
 Delivery requires coordinated but independently governed changes. Either consumer or provider can
 land first because absence degrades to metadata-only behavior, but complete presentation appears
@@ -144,6 +166,7 @@ boundary without claiming authority over Remote Pi internals.
 | Extend name override with a suffix mode | It overloads an identity contract with presentation-only semantics and preserves coupling that this decision removes. |
 | Give Remote Pi an awf namespace or slug validator | It makes a generic presentation provider know one producer's identity and policy. |
 | Keep a namespace-to-suffix map and aggregate producers | It preserves simultaneous annotations but adds ordering, collision, composition, and total-bound policy that the required single glanceable suffix does not need. |
+| Keep the first writer or designate one owner | It requires producer identity, ownership lifetime, and stale-owner recovery policy; a crashed or inactive owner can strand presentation and block a newer live producer. |
 | Fall back to the old name override when display suffix is unsupported | Stable routing is more important than retaining optional effort presentation on an older integration. |
 | Use effort metadata alone with no visible suffix | It preserves routing but removes the user-facing glanceable association that motivated temporary presentation. |
 
