@@ -1,12 +1,48 @@
 package effort
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
+
+func TestNewEffortMutationRejectsMissingIdentity(t *testing.T) {
+	mutation := presentation.Mutation{Status: "completed"}
+	if _, err := (Record{}).NewEffortMutation(mutation); err == nil {
+		t.Fatal("missing effort identity accepted")
+	}
+}
+
+func TestPartialFinishErrorDiagnostic(t *testing.T) {
+	refusal := &managedTopologyError{message: "legacy message"}
+	refusalDiagnostic, refusalErr := refusal.Diagnostic()
+	if refusalErr != nil || refusalDiagnostic.Condition != "managed topology remains" || len(refusalDiagnostic.Changed) != 2 {
+		t.Fatalf("topology diagnostic=%#v err=%v", refusalDiagnostic, refusalErr)
+	}
+	err := &PartialFinishError{Result: FinishResult{Renamed: true, Cleaned: true}, Cause: errors.New("disk fault"), Slug: "demo"}
+	diagnostic, diagnosticErr := err.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	document, documentErr := diagnostic.Document()
+	if documentErr != nil {
+		t.Fatal(documentErr)
+	}
+	var out bytes.Buffer
+	if renderErr := presentation.Render(&out, document); renderErr != nil {
+		t.Fatal(renderErr)
+	}
+	const want = "condition: effort finish was interrupted\nstate: finish\ncause: disk fault\n\ndiagnostic:\n  changed:\n    active resident: yes\n    finishing cleanup: yes\n  steps:\n    step 1: retry `awf effort finish demo`\n"
+	if out.String() != want {
+		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
+	}
+}
 
 func TestProtocol2StaticStateAndPublicObject(t *testing.T) {
 	// invariant: tooling/effort-management:effort-record-authority (TestProtocol2StaticStateAndPublicObject)

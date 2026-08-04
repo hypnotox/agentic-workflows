@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -9,7 +10,33 @@ import (
 	"testing"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
+
+func TestTopologyDiagnostics(t *testing.T) {
+	for _, err := range []interface {
+		Diagnostic() (presentation.Diagnostic, error)
+	}{
+		&RefusalError{Category: "topology", Condition: "path exists", ChangedTopology: true, NextAction: "inspect", Err: errors.New("probe failed")},
+		&CreationError{Message: "creation", Condition: "creation failed", ChangedEffort: true, ChangedTopology: true, Cause: errors.New("add failed"), Steps: []string{"inspect", "retry"}},
+	} {
+		diagnostic, diagnosticErr := err.Diagnostic()
+		if diagnosticErr != nil {
+			t.Fatal(diagnosticErr)
+		}
+		document, documentErr := diagnostic.Document()
+		if documentErr != nil {
+			t.Fatal(documentErr)
+		}
+		var out bytes.Buffer
+		if renderErr := presentation.Render(&out, document); renderErr != nil || out.Len() == 0 {
+			t.Fatalf("render=%v output=%q", renderErr, out.String())
+		}
+	}
+	if (&CreationError{}).Unwrap() != nil {
+		t.Fatal("nil creation cause unwrap was non-nil")
+	}
+}
 
 func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
 	cause := errors.New("cause")

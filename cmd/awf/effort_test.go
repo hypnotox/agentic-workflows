@@ -417,6 +417,42 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 	}
 }
 
+func TestEffortPublicTextProtocol(t *testing.T) {
+	root := commandRepo(t)
+	run := func(args ...string) string {
+		t.Helper()
+		code, stdout, stderr := runEffortCLI(t, root, args...)
+		if code != 0 || stderr != "" {
+			t.Fatalf("%v: code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
+		}
+		return stdout
+	}
+	if got, want := run("effort", "new", "--slug", "public-output", "Public output", "--no-worktree"), fmt.Sprintf("status: no managed worktree\n\nmutation:\n  identity:\n    effort: public-output\n    title: Public output\n    memory: .awf/efforts/public-output/memory.md\n  next actions:\n    step 1: continue the effort in %s\n", root); got != want {
+		t.Fatalf("initial new output = %q, want %q", got, want)
+	}
+	managed := filepath.Join(root, ".awf", "worktrees", "public-output")
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"effort", "list"}, "efforts:\n  items:\n    public-output: Public output\n"},
+		{[]string{"effort", "show", "public-output"}, "slug: public-output\ntitle: Public output\nmemory: .awf/efforts/public-output/memory.md\n"},
+		{[]string{"effort", "worktree", "add", "public-output"}, fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in %s\n", managed, managed)},
+		{[]string{"effort", "integrate", "public-output"}, "status: effort tip is already integrated into the target\n\nmutation:\n  next actions:\n    step 1: run `awf effort worktree remove public-output` after terminal review is settled\n"},
+		{[]string{"effort", "worktree", "remove", "public-output"}, "status: managed worktree topology is absent\n\nmutation:\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue to retrospective, then finish the effort\n"},
+		{[]string{"effort", "finish", "public-output"}, "status: completed\n\nmutation:\n  identity:\n    effort: public-output\n  changes:\n    completed:\n      active resident\n      finishing cleanup\n  next actions:\n    step 1: continue without this finished effort\n"},
+	} {
+		if got := run(test.args...); got != test.want {
+			t.Fatalf("%v output = %q, want %q", test.args, got, test.want)
+		}
+	}
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "finish", "public-output")
+	const restart = "condition: awf: effort \"public-output\" has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug\n"
+	if code != 1 || stdout != "" || stderr != restart {
+		t.Fatalf("restarted finish: code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+}
+
 func TestRunEffortFailureDispatches(t *testing.T) {
 	root := commandRepo(t)
 	ctx := func(sub string, positions ...string) *cmdCtx {

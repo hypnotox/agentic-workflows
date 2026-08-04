@@ -51,8 +51,25 @@ func ListDocument(records []Record) (presentation.Document, error) {
 	return presentation.NewDocument(section)
 }
 
-// FinishMutation maps restartable resident deletion facts without inspecting
-// error prose. It is used only after a completed finish.
+// NewEffortMutation composes effort-owned identity with worktree-owned
+// creation facts. The caller supplies a mutation already mapped by worktree.
+func (r Record) NewEffortMutation(mutation presentation.Mutation) (presentation.Mutation, error) {
+	identity := make([]presentation.Field, 0, 3)
+	for _, fact := range []struct{ label, value string }{{"effort", r.Slug}, {"title", r.Title}, {"memory", r.MemoryPath}} {
+		value, err := presentation.Prose(fact.value)
+		if err != nil {
+			return presentation.Mutation{}, err
+		}
+		field, err := presentation.NewField(fact.label, value)
+		if err != nil { // coverage-ignore: NewEffortMutation owns fixed grammar-valid labels and Prose returned a validated value
+			return presentation.Mutation{}, err
+		}
+		identity = append(identity, field)
+	}
+	mutation.Identity = append(identity, mutation.Identity...)
+	return mutation, nil
+}
+
 func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error) {
 	value, err := presentation.Prose(slug)
 	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping

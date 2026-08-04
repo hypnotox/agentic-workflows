@@ -280,13 +280,29 @@ func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr err
 	finishResult, finishErr := m.efforts.Finish(ctx, slug)
 	switch {
 	case finishErr == nil:
-		return fmt.Errorf("worktree creation failed: %w; effort %s rolled back; next action: fix the reported cause and retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rolled back; next action: fix the reported cause and retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title),
+			Condition: "managed worktree creation failed and the effort was rolled back", Cause: addErr,
+			Steps: []string{fmt.Sprintf("fix the reported cause and retry `awf effort new --slug %q %q`", record.Slug, record.Title)},
+		}
 	case errors.Is(finishErr, effort.ErrManagedTopologyPresent):
-		return fmt.Errorf("worktree creation failed: %w; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`, clean up with native Git or `awf effort worktree remove %s`, then retry `awf effort worktree add %s` or finish the effort", addErr, slug, slug, slug)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`, clean up with native Git or `awf effort worktree remove %s`, then retry `awf effort worktree add %s` or finish the effort", addErr, slug, slug, slug),
+			Condition: "managed worktree creation failed and topology remains", ChangedEffort: true, ChangedTopology: true, Cause: addErr,
+			Steps: []string{"inspect `git worktree list --porcelain`", fmt.Sprintf("clean up with native Git or `awf effort worktree remove %s`", slug), fmt.Sprintf("retry `awf effort worktree add %s` or finish the effort", slug)},
+		}
 	case finishResult.Renamed:
-		return fmt.Errorf("worktree creation failed: %w; effort %s rollback interrupted after rename: %w; next action: retry `awf effort finish %s`", addErr, slug, finishErr, slug)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rollback interrupted after rename: %v; next action: retry `awf effort finish %s`", addErr, slug, finishErr, slug),
+			Condition: "managed worktree creation failed and effort rollback was interrupted", ChangedEffort: true, Cause: addErr,
+			Steps: []string{fmt.Sprintf("retry `awf effort finish %s`", slug)},
+		}
 	default:
-		return fmt.Errorf("worktree creation failed: %w; effort %s retained: rollback failed: %w; next action: resolve the rollback failure, then retry `awf effort worktree add %s` or `awf effort finish %s`", addErr, slug, finishErr, slug, slug)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: rollback failed: %v; next action: resolve the rollback failure, then retry `awf effort worktree add %s` or `awf effort finish %s`", addErr, slug, finishErr, slug, slug),
+			Condition: "managed worktree creation failed and effort rollback failed", ChangedEffort: finishResult.Renamed, Cause: addErr,
+			Steps: []string{"resolve the rollback failure", fmt.Sprintf("retry `awf effort worktree add %s` or `awf effort finish %s`", slug, slug)},
+		}
 	}
 }
 

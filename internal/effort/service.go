@@ -219,10 +219,14 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 			return FinishResult{}, fmt.Errorf("rename effort %s to finishing reservation: %w", slug, err)
 		}
 		if err := s.store.hit("finish.root-fsync"); err != nil {
-			return FinishResult{Renamed: true}, fmt.Errorf("effort became inactive but finishing root sync failed: %w; changed bytes: yes; next action: retry `awf effort finish %s`", err, slug)
+			result := FinishResult{Renamed: true}
+			cause := fmt.Errorf("effort became inactive but finishing root sync failed: %w; changed bytes: yes; next action: retry `awf effort finish %s`", err, slug)
+			return result, &PartialFinishError{Result: result, Cause: cause, Slug: slug}
 		}
 		if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers the ordered boundary; actual sync failure requires a kernel or storage fault
-			return FinishResult{Renamed: true}, fmt.Errorf("fsync efforts root after finishing rename: %w; changed bytes: yes; next action: retry `awf effort finish %s`", err, slug)
+			result := FinishResult{Renamed: true}
+			cause := fmt.Errorf("fsync efforts root after finishing rename: %w; changed bytes: yes; next action: retry `awf effort finish %s`", err, slug)
+			return result, &PartialFinishError{Result: result, Cause: cause, Slug: slug}
 		}
 		return s.cleanTombstone(slug, tombstone, true)
 	}
@@ -279,13 +283,19 @@ func (s *Service) cleanTombstone(slug, tombstone string, renamed bool) (FinishRe
 		return FinishResult{Renamed: renamed}, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
 	}
 	if err := s.store.hit("finish.delete"); err != nil {
-		return FinishResult{Renamed: renamed}, fmt.Errorf("finishing cleanup interrupted: %w; changed bytes: %s; next action: retry `awf effort finish %s`", err, yesNo(renamed), slug)
+		result := FinishResult{Renamed: renamed}
+		cause := fmt.Errorf("finishing cleanup interrupted: %w; changed bytes: %s; next action: retry `awf effort finish %s`", err, yesNo(renamed), slug)
+		return result, &PartialFinishError{Result: result, Cause: cause, Slug: slug}
 	}
 	if err := s.removeTree(tombstone); err != nil {
-		return FinishResult{Renamed: renamed}, fmt.Errorf("delete proven finishing reservation %s: %w; changed bytes: %s; next action: retry `awf effort finish %s`", tombstone, err, yesNo(renamed), slug)
+		result := FinishResult{Renamed: renamed}
+		cause := fmt.Errorf("delete proven finishing reservation %s: %w; changed bytes: %s; next action: retry `awf effort finish %s`", tombstone, err, yesNo(renamed), slug)
+		return result, &PartialFinishError{Result: result, Cause: cause, Slug: slug}
 	}
 	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: the owned root remains openable after deleting one proven child; failure requires a kernel or storage fault
-		return FinishResult{Renamed: renamed, Cleaned: true}, fmt.Errorf("fsync efforts root after finishing cleanup: %w; changed bytes: yes; next action: verify %s is absent, then retry finish if it remains", err, tombstone)
+		result := FinishResult{Renamed: renamed, Cleaned: true}
+		cause := fmt.Errorf("fsync efforts root after finishing cleanup: %w; changed bytes: yes; next action: verify %s is absent, then retry finish if it remains", err, tombstone)
+		return result, &PartialFinishError{Result: result, Cause: cause, Slug: slug}
 	}
 	return FinishResult{Renamed: renamed, Cleaned: true}, nil
 }

@@ -496,16 +496,17 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "      .claude/skills/example-tdd/SKILL.md\n") {
-		t.Errorf("missing prune line:\n%s", out.String())
+	const pruned = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n    pruned:\n      .claude/skills/example-tdd/SKILL.md\n"
+	if out.String() != pruned {
+		t.Errorf("pruned sync bytes = %q, want %q", out.String(), pruned)
 	}
-	// A drift-clean re-sync prints no prune lines.
+	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out.String(), "pruned") {
-		t.Errorf("routine re-sync must not report prunes:\n%s", out.String())
+	if got := out.String(); got != "status: completed\n" {
+		t.Errorf("empty sync bytes = %q", got)
 	}
 }
 
@@ -519,16 +520,17 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "      changed .claude/skills/example-tdd/SKILL.md (config)\n") {
-		t.Errorf("missing config-cause change line:\n%s", out.String())
+	const changed = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed .claude/skills/example-tdd/SKILL.md (config)\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      changed docs/plans/template.md (config)\n      changed docs/workflow.md (config)\n"
+	if out.String() != changed {
+		t.Errorf("changed sync bytes = %q, want %q", out.String(), changed)
 	}
-	// A drift-clean re-sync prints no change lines.
+	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out.String(), "changed") || strings.Contains(out.String(), "added") {
-		t.Errorf("routine re-sync must not report changes:\n%s", out.String())
+	if got := out.String(); got != "status: completed\n" {
+		t.Errorf("empty sync bytes = %q", got)
 	}
 	// Enabling an artifact reports its files as added.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"docs: [pitfalls]\n")
@@ -536,8 +538,9 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "      added docs/pitfalls.md\n") {
-		t.Errorf("missing added line:\n%s", out.String())
+	const added = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      added docs/pitfalls.md\n"
+	if out.String() != added {
+		t.Errorf("added sync bytes = %q, want %q", out.String(), added)
 	}
 }
 

@@ -304,7 +304,11 @@ func writeEffort(out io.Writer, record effort.Record) error {
 }
 
 func writeEffortNew(out io.Writer, record effort.Record, result worktree.Result) error {
-	mutation, err := result.NewEffortMutation(record)
+	mutation, err := result.Mutation()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
+	}
+	mutation, err = record.NewEffortMutation(mutation)
 	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
 		return err
 	}

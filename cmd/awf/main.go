@@ -399,7 +399,23 @@ type commandOutcome struct {
 	err      error
 }
 
+type diagnosticError interface {
+	Diagnostic() (presentation.Diagnostic, error)
+}
+
 func diagnosticOutcome(err error) commandOutcome {
+	var typed diagnosticError
+	if errors.As(err, &typed) {
+		diagnostic, diagnosticErr := typed.Diagnostic()
+		if diagnosticErr != nil {
+			return commandOutcome{stream: commandStderr, exit: 1, err: diagnosticErr}
+		}
+		document, documentErr := diagnostic.Document()
+		if documentErr != nil {
+			return commandOutcome{stream: commandStderr, exit: 1, err: documentErr}
+		}
+		return commandOutcome{document: document, stream: commandStderr, exit: 1, err: err}
+	}
 	condition, documentErr := presentation.Prose("awf: " + err.Error())
 	if documentErr != nil { // coverage-ignore: normalized diagnostic text and fixed presentation labels are valid
 		return commandOutcome{stream: commandStderr, exit: 1, err: documentErr}

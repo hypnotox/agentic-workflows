@@ -87,17 +87,17 @@ type Mutation struct {
 // Document lowers a mutation into the closed presentation tree.
 func (m Mutation) Document() (Document, error) {
 	statusValue, err := Prose(m.Status)
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+	if err != nil {
 		return Document{}, err
 	}
 	status, err := NewField("status", statusValue)
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+	if err != nil { // coverage-ignore: Prose returned a validated value and status is a fixed grammar-valid label
 		return Document{}, err
 	}
 	children := []Node{}
 	if len(m.Identity) > 0 {
 		identity, err := NewSection("identity", fieldsAsNodes(m.Identity)...)
-		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		if err != nil {
 			return Document{}, err
 		}
 		children = append(children, identity)
@@ -106,27 +106,27 @@ func (m Mutation) Document() (Document, error) {
 		changeNodes := make([]Node, 0, len(m.Changes))
 		for _, change := range m.Changes {
 			list, err := NewList(change.Label, change.Values...)
-			if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+			if err != nil {
 				return Document{}, err
 			}
 			changeNodes = append(changeNodes, list)
 		}
 		changes, err := NewSection("changes", changeNodes...)
-		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		if err != nil { // coverage-ignore: each NewList succeeded, so the fixed changes section has valid children
 			return Document{}, err
 		}
 		children = append(children, changes)
 	}
 	if len(m.Notes) > 0 {
 		notes, err := NewList("notes", m.Notes...)
-		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		if err != nil {
 			return Document{}, err
 		}
 		children = append(children, notes)
 	}
 	if len(m.NextActions) > 0 {
 		steps, err := NewSteps("next actions", m.NextActions...)
-		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		if err != nil {
 			return Document{}, err
 		}
 		children = append(children, steps)
@@ -135,7 +135,7 @@ func (m Mutation) Document() (Document, error) {
 		return NewDocument(status)
 	}
 	section, err := NewSection("mutation", children...)
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+	if err != nil { // coverage-ignore: every child was constructed above, so the fixed mutation section is valid
 		return Document{}, err
 	}
 	return NewDocument(status, section)
