@@ -47,7 +47,9 @@ agent can act on it.
 3. `decision: material-deviation-approval` Treat the approved simplicity contract as the
    implementation boundary. A newly discovered need that changes behavior, scope, structure,
    dependencies, patterns, checks, or testing strategy returns to the user before further mutation.
-   Equivalent mechanical choices that preserve the approved design remain autonomous.
+   The escalation identifies the changed fact, why the approved approach no longer fits, the
+   affected approved categories, and the simplest viable options. Equivalent mechanical choices
+   that preserve the approved design remain autonomous.
 
 4. `decision: proportionate-planning` Use an implementation plan only when sequencing,
    coordination, or resumability materially helps. A plan records and operationalizes approved
@@ -62,8 +64,10 @@ agent can act on it.
 
 6. `decision: judgment-not-mechanism` Keep proportionality a user-approved judgment boundary, not
    a new machine-enforced policy model. Preserve the maintainable-code guide as the canonical
-   rationale, project a concise global instruction through the agent guide, and avoid a new schema,
-   manifest, approval artifact, command, linter, scanner, or workflow stage.
+   rationale and project a concise global instruction through the agent guide. Introduce no new
+   schema, manifest, approval artifact, automated check, shared enforcement engine, test framework,
+   command, linter, scanner, or workflow stage. Add no template data or conditional surface for this
+   rule; verify its rendered semantics through the existing rendering and invariant-backing tests.
 
 ## State changes
 
@@ -83,9 +87,8 @@ missing obligations with rejecting speculative additions.
 
 The simplicity contract adds one more design concern to brainstorming and can cause implementation
 to pause when source facts invalidate an approved choice. Keeping the contract proportional and
-leaving equivalent mechanical details autonomous limits interruption. A pause reports the changed
-fact, affected approved category, and simplest viable options rather than reopening every settled
-detail.
+leaving equivalent mechanical details autonomous limits interruption without reopening every
+settled detail.
 
 The valid grounds deliberately include existing contracts and applicable invariants, so simplicity
 cannot excuse skipping project obligations. Conversely, a project obligation does not justify
