@@ -30,6 +30,7 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 
 ## Boundaries
 
+- If a newly discovered need affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy, stop before further mutation and return to the user with the changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options. Equivalent mechanical choices remain autonomous.
 - Stop and return to brainstorming if implementation exposes a new load-bearing or materially larger choice, rather than silently expanding scope or accepting a workaround.
 - Stop and write a plan if the work becomes multi-step or interdependent.
 - Preserve unrelated work in the checkout.

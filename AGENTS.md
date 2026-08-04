@@ -84,6 +84,8 @@ Every governed subagent dispatch chooses the smallest model expected to complete
 
 Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
 
+Preserve the user-approved material design boundary; see `docs/maintainable-code-design.md` for the full proportional-simplicity rule.
+
 Route settled content by authority lifetime: durable choices that remain meaningful after implementation belong in ADRs, active rules and invariants in current-state topics, implementation directives in plans, and unsettled or transient context in effort memory.
 
 Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).

@@ -58,7 +58,7 @@ Apply all lenses to every implementation diff:
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
 
-1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design; flag behavior bolted onto an unsuitable abstraction or refactoring scope silently broadened beyond the settled design.
+1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design; flag behavior bolted onto an unsuitable abstraction, refactoring scope silently broadened beyond the settled design, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 
 ## Project-specific focus items
 

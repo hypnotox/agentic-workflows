@@ -213,7 +213,8 @@ func TestPlanReviewerAgent(t *testing.T) {
 		"bounded to the failure they prevent",
 		"deterministically verifiable",
 		"approved, deferred, or declined disposition",
-		"needless indirection and pattern mandates",
+		"needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process",
+		"Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 	}
 	for _, phrase := range planPhrases {
 		if !strings.Contains(out, phrase) {
@@ -321,7 +322,10 @@ func TestImplementerAgent(t *testing.T) {
 		"the exact output of `git status --short`",
 		"what you completed",
 		"what remains",
-		"the failing check, named, with its actual output",
+		"either the failing check, named, with its actual output",
+		"complete approval-requiring invalidating-source report",
+		"changed fact, why the approved approach no longer fits, affected approved categories, and simplest viable options",
+		"stop before any further mutation",
 		"what you already tried, so the next attempt does not repeat it",
 		"There is no third outcome",
 		"The invariants, conventions, and commands in the repository's agent guide bind you",
@@ -476,12 +480,12 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 		"plan": {
 			"model", "ownership", "representations", "translation boundaries", "dependency direction", "test seams",
 			"ordered before dependent behavior", "bounded to the failure they prevent", "deterministically verifiable",
-			"approved, deferred, or declined disposition", "needless indirection", "pattern mandates",
+			"approved, deferred, or declined disposition", "needless indirection", "pattern mandates", "unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process", "Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 		},
 		"code": {
 			"cohesion", "coupling", "dependency direction", "representation leakage", "duplicated policy", "testability",
 			"needless indirection", "conformance to the settled design", "behavior bolted onto an unsuitable abstraction",
-			"refactoring scope silently broadened",
+			"refactoring scope silently broadened", "unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process", "Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 		},
 		"adr": {
 			"semantic model", "representation", "module/package boundary", "dependency direction", "ownership boundary",
@@ -544,7 +548,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 	}
 	cases := map[string]stageContract{
 		"brainstorming": {wants: []string{
-			"docs/maintainable-code-design.md", "semantic model and ownership", "representation boundaries", "dependency direction", "test seams", "preparatory-refactor decision", "before approving an approach",
+			"docs/maintainable-code-design.md", "semantic model and ownership", "representation boundaries", "dependency direction", "test seams", "preparatory-refactor decision", "proportionate simplicity contract", "scope and exclusions", "structural approach and dependencies", "patterns or abstractions", "checks and testing strategy", "few sentences rather than a fixed checklist", "final approved design becomes the implementation boundary",
 		}},
 		"proposing-adr": {wants: []string{
 			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, constraints, and enabling work", "here and in Decision", "do not replace them with a pattern name",
@@ -553,22 +557,22 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "duplication, coupling, representation leakage, or a workaround", "bounded enabling-refactor or larger-work result", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "ADR scope", "Context section before", "Decision is drafted", "Scope shrink rule", "defer X",
 		}},
 		"writing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context",
+			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context", "sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work",
 		}},
 		"tdd": {wants: []string{
-			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass",
+			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "stop before further mutation", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"executing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan",
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan", "stop before further mutation", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"executing-direct": {wants: []string{
-			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design",
+			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design", "stop before further mutation", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"subagent-driven-development": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "allowCommits: true",
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "allowCommits: true", "stop before further mutation", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"bugfix": {wants: []string{
-			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit",
+			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "stop before further mutation", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 	}
 	for skill, contract := range cases {
@@ -1677,6 +1681,7 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 }
 
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocGuide)
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestAgentsDocGuide)
 func TestAgentsDocGuide(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -1697,6 +1702,8 @@ func TestAgentsDocGuide(t *testing.T) {
 		"## Commands",
 		"## Document map",
 		"Route settled content by authority lifetime",
+		"Preserve the user-approved material design boundary",
+		"docs/maintainable-code-design.md",
 		"make gate",
 	} {
 		if !strings.Contains(out, phrase) {

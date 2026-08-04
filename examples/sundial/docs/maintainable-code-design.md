@@ -4,7 +4,7 @@
 <!-- awf:edit decision-posture: default; create .awf/parts/maintainable-code-design/decision-posture.md to override -->
 ## Decision posture
 
-Start with the requested behavior and the surrounding model before choosing a structure. Prefer cohesive ownership and explicit seams, and make abstraction or indirection earn its cost for the actual change rather than for a hypothetical future.
+Start with the requested behavior and the surrounding model before choosing a structure. Make the simplest sufficient solution the default. Added abstraction, indirection, validation, test machinery, tooling, cleanup, or process must be justified by requested behavior, a reproduced defect, an existing documented contract, or a clearly applicable project invariant. Generic robustness, hypothetical future use, and the mere possibility of doing more are insufficient. Prefer cohesive ownership and explicit seams, and make abstraction or indirection earn its cost for the actual change rather than for a hypothetical future.
 
 <!-- awf:edit contextual-heuristics: default; create .awf/parts/maintainable-code-design/contextual-heuristics.md to override -->
 ## SOLID, DRY, and YAGNI

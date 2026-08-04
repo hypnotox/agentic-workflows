@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: proportional-simplicity-boundaries
-status: Proposed
+status: Implementing
 date: 2026-08-04
 ---
 # ADR-proportional-simplicity-boundaries: Proportional Simplicity Boundaries
@@ -112,3 +112,5 @@ new enforcement mechanism is introduced.
 ## Status history
 
 - 2026-08-04: Proposed
+- 2026-08-04: Implementing; content-sha256: 98df8945ce3d6891784320fd29efd9d3b335a9b4121060e62c152d6fa2823b78
+- 2026-08-04: Applied; operations: update `rendering/guide-and-doc-templates:maintainable-code-design-guide`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:maintainable-code-stage-coverage`, update `rendering/workflow-skill-templates:implementer-role-contract`, update `rendering/workflow-skill-templates:maintainable-code-review-lenses`

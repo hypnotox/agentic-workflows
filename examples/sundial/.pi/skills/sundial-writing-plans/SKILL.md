@@ -12,7 +12,7 @@ Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the sundial plan convent
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/writing-plans/when-to-invoke.md to override -->
 ## When to invoke
 
-Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) and complex non-ADR work where the implementation steps benefit from upfront enumeration: multi-commit work, interdependent steps, refactors applying an already-decided pattern across many sites, or work destined for subagent dispatch. Skip for one-line bugfixes and changes that follow established patterns. When in doubt, write the plan.
+Per `docs/workflow.md`: use a plan when sequencing, coordination, or resumability materially helps, including multi-commit or interdependent work, refactors applying an already-decided pattern across many sites, or work destined for subagent dispatch when they meet that criterion. A plan records and operationalizes approved choices rather than inventing speculative structure, checks, or work. Skip one-line bugfixes and changes that follow established patterns.
 
 ## Conventions enforced
 

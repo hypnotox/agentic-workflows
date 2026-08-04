@@ -130,6 +130,7 @@ func TestAgentsDocSectionParity(t *testing.T) {
 // TestWorkflowDocChainOrder asserts the workflow doc's default render carries
 // the canonical chain string: the ADR step precedes the plan step and the
 // resync step is surfaced explicitly.
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestWorkflowDocChainOrder)
 func TestWorkflowDocChainOrder(t *testing.T) {
 	out := renderGolden(t, "docs/workflow.md.tmpl", map[string]any{
 		"vars":   map[string]any{},
@@ -143,6 +144,11 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync (TestWorkflowDocChainOrder)
 	if !strings.Contains(out, "resync (when both)") {
 		t.Errorf("workflow chain must surface the resync step:\n%s", out)
+	}
+	for _, want := range []string{"sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("workflow plan selection missing %q:\n%s", want, out)
+		}
 	}
 }
 
@@ -173,7 +179,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 
 	out := renderGolden(t, entry.TID, map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}})
 	assertNoLeaks(t, out)
-	for _, want := range append([]string{"# Maintainable Code Design", "SOLID", "DRY", "YAGNI", "Strategy", "Adapter", "without mechanically adding wrapper types"}, append([]string{"## Decision posture", "## SOLID, DRY, and YAGNI", "## Semantic modeling", "## Readability", "## Boundaries and dependency direction", "## Illustrative pattern toolbox", "## Preparatory refactoring", "## Failure modes"}, []string{"perform it first", "include it in the current effort", "defer it in a durable project-owned record", "decline it with the trade-off stated"}...)...) {
+	for _, want := range append([]string{"# Maintainable Code Design", "SOLID", "DRY", "YAGNI", "Strategy", "Adapter", "without mechanically adding wrapper types", "simplest sufficient solution", "requested behavior", "reproduced defect", "existing documented contract", "clearly applicable project invariant"}, append([]string{"## Decision posture", "## SOLID, DRY, and YAGNI", "## Semantic modeling", "## Readability", "## Boundaries and dependency direction", "## Illustrative pattern toolbox", "## Preparatory refactoring", "## Failure modes"}, []string{"perform it first", "include it in the current effort", "defer it in a durable project-owned record", "decline it with the trade-off stated"}...)...) {
 		if !strings.Contains(out, want) {
 			t.Errorf("guide missing %q:\n%s", want, out)
 		}
