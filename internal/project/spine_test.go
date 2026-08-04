@@ -528,6 +528,7 @@ func TestExecutingDirectTemplate(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMaintainableCodeStageCoverage)
 // invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage (TestMaintainableCodeStageCoverage)
 func TestMaintainableCodeStageCoverage(t *testing.T) {
 	allSkills := map[string]bool{
