@@ -18,8 +18,8 @@ func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
 	}
 	steps := make([]presentation.Value, 0, len(e.actions))
 	for _, action := range e.actions {
-		step, err := presentation.Prose(action.Text)
-		if err != nil { // coverage-ignore: model-owned recovery actions are validated nonempty text
+		step, err := presentation.Literal(action.Text)
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		steps = append(steps, step)
@@ -46,8 +46,8 @@ func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
 	}
 	steps := make([]presentation.Value, 0, len(e.Actions))
 	for _, action := range e.Actions {
-		step, err := presentation.Prose(action.Text)
-		if err != nil { // coverage-ignore: model-owned recovery actions are validated nonempty text
+		step, err := presentation.Literal(action.Text)
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		steps = append(steps, step)

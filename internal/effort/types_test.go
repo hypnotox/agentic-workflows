@@ -37,7 +37,7 @@ func TestPartialFinishErrorDiagnostic(t *testing.T) {
 	if refusalOut.String() != refusalWant {
 		t.Fatalf("topology diagnostic = %q, want %q", refusalOut.String(), refusalWant)
 	}
-	err := &PartialFinishError{Result: FinishResult{Renamed: true, Cleaned: true}, Cause: errors.New("disk fault"), Actions: []RecoveryAction{{Text: "retry `awf effort finish demo`"}}}
+	err := &PartialFinishError{Result: FinishResult{Renamed: true, Cleaned: true}, Cause: errors.New("disk fault"), Actions: []RecoveryAction{{Text: "retry `awf effort finish path/with  spaces`"}}}
 	diagnostic, diagnosticErr := err.Diagnostic()
 	if diagnosticErr != nil {
 		t.Fatal(diagnosticErr)
@@ -50,9 +50,18 @@ func TestPartialFinishErrorDiagnostic(t *testing.T) {
 	if renderErr := presentation.Render(&out, document); renderErr != nil {
 		t.Fatal(renderErr)
 	}
-	const want = "condition: effort finish was interrupted\nstate: operation\ncause: disk fault\n\ndiagnostic:\n  changed:\n    active resident: yes\n    finishing cleanup: yes\n  steps:\n    step 1: retry `awf effort finish demo`\n"
+	const want = "condition: effort finish was interrupted\nstate: operation\ncause: disk fault\n\ndiagnostic:\n  changed:\n    active resident: yes\n    finishing cleanup: yes\n  steps:\n    step 1: retry `awf effort finish path/with  spaces`\n"
 	if out.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
+	}
+}
+
+func TestRecoveryActionDiagnosticsRejectLineBreaks(t *testing.T) {
+	if _, err := (&managedTopologyError{actions: []RecoveryAction{{Text: "retry\nnow"}}}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "line break") {
+		t.Fatalf("topology action line break diagnostic error = %v", err)
+	}
+	if _, err := (&PartialFinishError{Actions: []RecoveryAction{{Text: "retry\nnow"}}}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "line break") {
+		t.Fatalf("partial finish action line break diagnostic error = %v", err)
 	}
 }
 

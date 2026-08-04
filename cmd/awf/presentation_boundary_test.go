@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -49,14 +50,40 @@ func TestDiagnosticOutcomeUsesTypedDiagnostic(t *testing.T) {
 	if stderr.String() != want {
 		t.Fatalf("typed diagnostic stderr = %q, want %q", stderr.String(), want)
 	}
+}
 
-	mappingErr := errors.New("mapping failed")
-	if got := diagnosticOutcome(typedDiagnosticError{err: mappingErr}); !errors.Is(got.err, mappingErr) {
-		t.Fatalf("mapping failure outcome = %#v", got)
-	}
-	invalid := diagnosticOutcome(typedDiagnosticError{diagnostic: presentation.Diagnostic{Condition: " "}})
-	if invalid.err == nil {
-		t.Fatalf("document failure outcome = %#v", invalid)
+func TestTypedDiagnosticFallbackRendersOriginalFailureOnce(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		err  error
+	}{
+		{name: "mapping", err: typedDiagnosticError{err: errors.New("mapping failed")}},
+		{name: "document", err: typedDiagnosticError{diagnostic: presentation.Diagnostic{Condition: " "}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := writeOutcome(&stdout, &stderr, diagnosticOutcome(test.err)); code != 1 {
+				t.Fatalf("writeOutcome exit = %d", code)
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("writeOutcome stdout = %q", stdout.String())
+			}
+			failure := "mapping failed"
+			if test.name == "document" {
+				failure = "presentation value is empty"
+			}
+			if strings.Count(stderr.String(), failure) != 1 {
+				t.Fatalf("writeOutcome stderr = %q, want %q exactly once", stderr.String(), failure)
+			}
+			if strings.Contains(stderr.String(), "presentation document is empty") {
+				t.Fatalf("writeOutcome replaced original failure: %q", stderr.String())
+			}
+
+			var dispatchStdout, dispatchStderr bytes.Buffer
+			if code := dispatchFailure(&dispatchStdout, &dispatchStderr, test.err); code != 1 || dispatchStdout.Len() != 0 || dispatchStderr.String() != stderr.String() {
+				t.Fatalf("dispatchFailure exit=%d stdout=%q stderr=%q", code, dispatchStdout.String(), dispatchStderr.String())
+			}
+		})
 	}
 }
 

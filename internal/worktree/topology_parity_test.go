@@ -34,8 +34,8 @@ func TestTopologyDiagnostics(t *testing.T) {
 		},
 		{
 			name: "creation with rollback cause",
-			err:  &CreationError{Message: "creation", Condition: "creation failed", ChangedEffort: true, ChangedTopology: true, Cause: errors.New("add failed"), RollbackCause: errors.New("rollback failed"), Steps: []string{"inspect", "retry"}},
-			want: "condition: creation failed\nstate: operation\ncause: add failed | rollback failed\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect\n    step 2: retry\n",
+			err:  &CreationError{Message: "creation", Condition: "creation failed", ChangedEffort: true, ChangedTopology: true, Cause: errors.New("add failed"), RollbackCause: errors.New("rollback failed"), Steps: []string{"inspect", "retry `awf effort new --slug demo \"Title  With  Spaces\"`"}},
+			want: "condition: creation failed\nstate: operation\ncause: add failed | rollback failed\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect\n    step 2: retry `awf effort new --slug demo \"Title  With  Spaces\"`\n",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -55,6 +55,9 @@ func TestTopologyDiagnostics(t *testing.T) {
 				t.Fatalf("diagnostic = %q, want %q", out.String(), test.want)
 			}
 		})
+	}
+	if _, err := (&CreationError{Steps: []string{"retry\nnow"}}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "line break") {
+		t.Fatalf("creation action line break diagnostic error = %v", err)
 	}
 	if (&CreationError{}).Unwrap() != nil {
 		t.Fatal("nil creation cause unwrap was non-nil")

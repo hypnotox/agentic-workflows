@@ -408,31 +408,30 @@ func diagnosticOutcome(err error) commandOutcome {
 	if errors.As(err, &typed) {
 		diagnostic, diagnosticErr := typed.Diagnostic()
 		if diagnosticErr != nil {
-			return commandOutcome{stream: commandStderr, exit: 1, err: diagnosticErr}
+			return genericDiagnosticOutcome(diagnosticErr, 1)
 		}
 		document, documentErr := diagnostic.Document()
 		if documentErr != nil {
-			return commandOutcome{stream: commandStderr, exit: 1, err: documentErr}
+			return genericDiagnosticOutcome(documentErr, 1)
 		}
 		return commandOutcome{document: document, stream: commandStderr, exit: 1, err: err}
-	}
-	condition, documentErr := presentation.Prose("awf: " + err.Error())
-	if documentErr != nil { // coverage-ignore: normalized diagnostic text and fixed presentation labels are valid
-		return commandOutcome{stream: commandStderr, exit: 1, err: documentErr}
-	}
-	field, documentErr := presentation.NewField("condition", condition)
-	if documentErr != nil { // coverage-ignore: normalized diagnostic text and fixed presentation labels are valid
-		return commandOutcome{stream: commandStderr, exit: 1, err: documentErr}
-	}
-	document, documentErr := presentation.NewDocument(field)
-	if documentErr != nil { // coverage-ignore: normalized diagnostic text and fixed presentation labels are valid
-		return commandOutcome{stream: commandStderr, exit: 1, err: documentErr}
 	}
 	exit := 1
 	var usage *usageErr
 	if errors.As(err, &usage) {
 		exit = 2
 	}
+	return genericDiagnosticOutcome(err, exit)
+}
+
+// genericDiagnosticOutcome builds the bounded fallback used when a typed
+// diagnostic cannot be mapped. Prose normalizes arbitrary error text and the
+// fixed label guarantees this one-field document is valid, without re-entering
+// the typed mapper that just failed.
+func genericDiagnosticOutcome(err error, exit int) commandOutcome {
+	condition, _ := presentation.Prose("awf: " + err.Error())
+	field, _ := presentation.NewField("condition", condition)
+	document, _ := presentation.NewDocument(field)
 	return commandOutcome{document: document, stream: commandStderr, exit: exit, err: err}
 }
 

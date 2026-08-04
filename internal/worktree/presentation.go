@@ -54,8 +54,8 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 	}
 	steps := make([]presentation.Value, 0, len(e.Steps))
 	for _, text := range e.Steps {
-		step, err := presentation.Prose(text)
-		if err != nil { // coverage-ignore: manager-owned recovery steps are nonempty text
+		step, err := presentation.Literal(text)
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		steps = append(steps, step)
