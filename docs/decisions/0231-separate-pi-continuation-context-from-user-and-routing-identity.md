@@ -4,7 +4,7 @@ slug: separate-pi-continuation-context-from-user-and-routing-identity
 status: Implementing
 date: 2026-08-04
 ---
-# ADR-separate-pi-continuation-context-from-user-and-routing-identity: Separate Pi continuation context from user and routing identity
+# ADR-0231: Separate Pi continuation context from user and routing identity
 
 
 ## Context
