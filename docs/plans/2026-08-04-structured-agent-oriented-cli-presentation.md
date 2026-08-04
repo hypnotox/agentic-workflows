@@ -388,8 +388,7 @@ Post-check: "After `./x render`, `./x check` is clean; `git grep -n -E -- 'effor
 
 Add an `[Unreleased]` changelog entry for the readable default, removed convenience JSON modes, and
 retained protocols/payloads. Update config reference and working guidance only where behavior or
-examples changed. Render all generated adopters and inspect representative root, Pi, Claude, and
-Sundial outputs.
+examples changed. Render generated outputs and inspect representative root, Pi, and Claude surfaces.
 
 ### Task 6.3: Add a structural ordinary-output gate
 Latitude: exact
