@@ -93,12 +93,12 @@ func ListDocument(records []Record) (presentation.Document, error) {
 		}
 		values = append(values, value)
 	}
-	list, err := presentation.NewList("items", values...)
+	list, err := presentation.NewList("efforts", values...)
 	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
 		return presentation.Document{}, err
 	}
-	section, err := presentation.NewSection("efforts", list)
-	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+	section, err := presentation.NewSection("effort list", list)
+	if err != nil { // coverage-ignore: the fixed section label and validated list form a valid root section
 		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(section)

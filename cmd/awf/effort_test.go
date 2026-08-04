@@ -136,7 +136,7 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"effort", "list"}, "efforts:\n  items:\n    readable: Readable contract\n"},
+		{[]string{"effort", "list"}, "effort list:\n  efforts:\n    readable: Readable contract\n"},
 		{[]string{"effort", "show", "readable"}, "slug: readable\ntitle: Readable contract\nmemory: .awf/efforts/readable/memory.md\n"},
 	} {
 		code, stdout, stderr = runEffortCLI(t, root, test.args...)
@@ -502,7 +502,7 @@ func TestEffortPublicTextProtocol(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"effort", "list"}, "efforts:\n  items:\n    public-output: Public output\n"},
+		{[]string{"effort", "list"}, "effort list:\n  efforts:\n    public-output: Public output\n"},
 		{[]string{"effort", "show", "public-output"}, "slug: public-output\ntitle: Public output\nmemory: .awf/efforts/public-output/memory.md\n"},
 		{[]string{"effort", "worktree", "add", "public-output"}, fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in %s\n", managed, managed)},
 		{[]string{"effort", "integrate", "public-output"}, "status: effort tip is already integrated into the target\n\nmutation:\n  next actions:\n    step 1: run `awf effort worktree remove public-output` after terminal review is settled\n"},

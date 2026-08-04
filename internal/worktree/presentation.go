@@ -24,7 +24,7 @@ func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
 	steps := make([]presentation.Value, 0, len(e.NextActions))
 	for _, action := range e.NextActions {
 		step, err := presentation.Literal(action)
-		if err != nil { // coverage-ignore: constructors require nonempty recovery actions
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		steps = append(steps, step)

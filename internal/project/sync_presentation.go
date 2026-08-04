@@ -10,11 +10,21 @@ import (
 // Backup ownership and output provenance stay semantic facts of this package.
 func SyncMutation(backups []Backup, changes []Change, pruned []string) (presentation.Mutation, error) {
 	groups := make([]presentation.MutationChange, 0, 3)
+	notes := []presentation.Value{}
+	for _, backup := range backups {
+		if backup.Index {
+			value, err := presentation.Literal("awf now generates " + backup.Path + "; retire any external generator for it")
+			if err != nil {
+				return presentation.Mutation{}, err
+			}
+			notes = append(notes, value)
+		}
+	}
 	if len(backups) > 0 {
 		values := make([]presentation.Value, 0, len(backups))
 		for _, backup := range backups {
 			value, err := presentation.Literal(fmt.Sprintf("%s to %s", backup.Path, backup.Bak))
-			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+			if err != nil {
 				return presentation.Mutation{}, err
 			}
 			values = append(values, value)
@@ -31,7 +41,7 @@ func SyncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 				text = fmt.Sprintf("changed %s (%s)", text, change.Cause)
 			}
 			value, err := presentation.Literal(text)
-			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+			if err != nil {
 				return presentation.Mutation{}, err
 			}
 			values = append(values, value)
@@ -42,22 +52,12 @@ func SyncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 		values := make([]presentation.Value, 0, len(pruned))
 		for _, path := range pruned {
 			value, err := presentation.Literal(path)
-			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+			if err != nil {
 				return presentation.Mutation{}, err
 			}
 			values = append(values, value)
 		}
 		groups = append(groups, presentation.MutationChange{Label: "pruned", Values: values})
-	}
-	notes := []presentation.Value{}
-	for _, backup := range backups {
-		if backup.Index {
-			value, err := presentation.Literal("awf now generates " + backup.Path + "; retire any external generator for it")
-			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
-				return presentation.Mutation{}, err
-			}
-			notes = append(notes, value)
-		}
 	}
 	next, err := presentation.Prose("continue with the rendered project state")
 	if err != nil { // coverage-ignore: fixed nonempty completion action always validates as prose

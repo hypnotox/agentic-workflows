@@ -59,6 +59,11 @@ func TestTopologyDiagnostics(t *testing.T) {
 	if _, err := (&CreationError{Steps: []string{"retry\nnow"}}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "line break") {
 		t.Fatalf("creation action line break diagnostic error = %v", err)
 	}
+	for _, action := range []string{"retry\nnow", "retry\rnow"} {
+		if _, err := (&RefusalError{NextActions: []string{action}}).Diagnostic(); err == nil || err.Error() != "presentation value contains a line break" {
+			t.Fatalf("refusal action %q diagnostic error = %v", action, err)
+		}
+	}
 	if (&CreationError{}).Unwrap() != nil {
 		t.Fatal("nil creation cause unwrap was non-nil")
 	}
