@@ -13,7 +13,7 @@ func SyncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 	if len(backups) > 0 {
 		values := make([]presentation.Value, 0, len(backups))
 		for _, backup := range backups {
-			value, err := presentation.Prose(fmt.Sprintf("%s to %s", backup.Path, backup.Bak))
+			value, err := presentation.Literal(fmt.Sprintf("%s to %s", backup.Path, backup.Bak))
 			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
 				return presentation.Mutation{}, err
 			}
@@ -30,7 +30,7 @@ func SyncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 			} else {
 				text = fmt.Sprintf("changed %s (%s)", text, change.Cause)
 			}
-			value, err := presentation.Prose(text)
+			value, err := presentation.Literal(text)
 			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
 				return presentation.Mutation{}, err
 			}
@@ -41,7 +41,7 @@ func SyncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 	if len(pruned) > 0 {
 		values := make([]presentation.Value, 0, len(pruned))
 		for _, path := range pruned {
-			value, err := presentation.Prose(path)
+			value, err := presentation.Literal(path)
 			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
 				return presentation.Mutation{}, err
 			}
@@ -52,7 +52,7 @@ func SyncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 	notes := []presentation.Value{}
 	for _, backup := range backups {
 		if backup.Index {
-			value, err := presentation.Prose("awf now generates " + backup.Path + "; retire any external generator for it")
+			value, err := presentation.Literal("awf now generates " + backup.Path + "; retire any external generator for it")
 			if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
 				return presentation.Mutation{}, err
 			}

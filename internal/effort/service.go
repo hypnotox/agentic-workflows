@@ -249,7 +249,7 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) error {
 	managed := filepath.Clean(s.paths.managedWorktree(slug))
 	if _, err := os.Lstat(managed); err == nil {
-		return managedTopologyRefusal("managed worktree path %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", managed, slug)
+		return managedTopologyRefusal([]RecoveryAction{{Text: "run `awf effort worktree remove " + slug + "`"}, {Text: "retry `awf effort finish " + slug + "`"}}, "managed worktree path %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", managed, slug)
 	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat returns an inode or os.ErrNotExist absent a kernel fault
 		return fmt.Errorf("inspect managed worktree path %s: %w", managed, err)
 	}
@@ -260,7 +260,7 @@ func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) err
 	wantBranch := "refs/heads/awf/" + slug
 	for _, registration := range registrations {
 		if filepath.Clean(registration.Path) == managed || registration.Branch == wantBranch {
-			return managedTopologyRefusal("managed Git registration for %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
+			return managedTopologyRefusal([]RecoveryAction{{Text: "run `awf effort worktree remove " + slug + "`"}, {Text: "retry `awf effort finish " + slug + "`"}}, "managed Git registration for %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 		}
 	}
 	exists, err := s.branchExists(ctx, "awf/"+slug)
@@ -268,7 +268,7 @@ func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) err
 		return fmt.Errorf("inspect managed branch for %s: %w", slug, err)
 	}
 	if exists {
-		return managedTopologyRefusal("managed branch awf/%s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
+		return managedTopologyRefusal([]RecoveryAction{{Text: "run `awf effort worktree remove " + slug + "`"}, {Text: "retry `awf effort finish " + slug + "`"}}, "managed branch awf/%s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 	}
 	return nil
 }

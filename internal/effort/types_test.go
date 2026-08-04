@@ -20,10 +20,22 @@ func TestNewEffortMutationRejectsMissingIdentity(t *testing.T) {
 }
 
 func TestPartialFinishErrorDiagnostic(t *testing.T) {
-	refusal := &managedTopologyError{message: "legacy message"}
+	refusal := &managedTopologyError{message: "legacy message", actions: []RecoveryAction{{Text: "run `awf effort worktree remove demo`"}, {Text: "retry `awf effort finish demo`"}}}
 	refusalDiagnostic, refusalErr := refusal.Diagnostic()
 	if refusalErr != nil || refusalDiagnostic.Condition != "managed topology remains" || refusalDiagnostic.State != "topology" || len(refusalDiagnostic.Changed) != 2 {
 		t.Fatalf("topology diagnostic=%#v err=%v", refusalDiagnostic, refusalErr)
+	}
+	refusalDocument, refusalDocumentErr := refusalDiagnostic.Document()
+	if refusalDocumentErr != nil {
+		t.Fatal(refusalDocumentErr)
+	}
+	var refusalOut bytes.Buffer
+	if renderErr := presentation.Render(&refusalOut, refusalDocument); renderErr != nil {
+		t.Fatal(renderErr)
+	}
+	const refusalWant = "condition: managed topology remains\nstate: topology\n\ndiagnostic:\n  changed:\n    active resident: no\n    managed topology: no\n  steps:\n    step 1: run `awf effort worktree remove demo`\n    step 2: retry `awf effort finish demo`\n"
+	if refusalOut.String() != refusalWant {
+		t.Fatalf("topology diagnostic = %q, want %q", refusalOut.String(), refusalWant)
 	}
 	err := &PartialFinishError{Result: FinishResult{Renamed: true, Cleaned: true}, Cause: errors.New("disk fault"), Actions: []RecoveryAction{{Text: "retry `awf effort finish demo`"}}}
 	diagnostic, diagnosticErr := err.Diagnostic()

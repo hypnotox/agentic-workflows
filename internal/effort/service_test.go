@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -134,6 +135,14 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 			}
 			if !errors.Is(err, ErrManagedTopologyPresent) {
 				t.Fatalf("refusal %v is not classified as managed topology", err)
+			}
+			var refusal *managedTopologyError
+			if !errors.As(err, &refusal) {
+				t.Fatalf("refusal %v does not retain its typed recovery model", err)
+			}
+			wantActions := []RecoveryAction{{Text: "run `awf effort worktree remove guarded-finish`"}, {Text: "retry `awf effort finish guarded-finish`"}}
+			if !slices.Equal(refusal.actions, wantActions) {
+				t.Fatalf("%s recovery actions = %#v, want %#v", name, refusal.actions, wantActions)
 			}
 		})
 	}

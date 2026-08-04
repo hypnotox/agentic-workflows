@@ -60,12 +60,14 @@ func (e *CreationError) Unwrap() []error {
 	return []error{e.Cause, e.RollbackCause}
 }
 
-func refusal(category, condition string, changed bool, next string) error {
-	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: next}
+// refusal records model-owned, independently executable recovery actions. NextAction
+// remains the legacy one-line summary used by Error; presentation uses NextActions.
+func refusal(category, condition string, changed bool, actions ...string) error {
+	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: strings.Join(actions, "; "), NextActions: actions}
 }
 
-func refusalCause(category, condition string, changed bool, next string, err error) error {
-	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: next, Err: err}
+func refusalCause(category, condition string, changed bool, err error, actions ...string) error {
+	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: strings.Join(actions, "; "), NextActions: actions, Err: err}
 }
 
 // exactRegistration proves that path is registered exactly once, on branch, and

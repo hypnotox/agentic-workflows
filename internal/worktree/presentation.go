@@ -1,6 +1,10 @@
 package worktree
 
-import "github.com/hypnotox/agentic-workflows/internal/presentation"
+import (
+	"errors"
+
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
+)
 
 // Diagnostic maps a typed refusal into the common readable diagnostic.
 func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
@@ -12,12 +16,11 @@ func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
 	if err != nil { // coverage-ignore: fixed grammar-valid topology label always validates
 		return presentation.Diagnostic{}, err
 	}
-	actions := e.NextActions
-	if len(actions) == 0 {
-		actions = []string{e.NextAction}
+	if len(e.NextActions) == 0 {
+		return presentation.Diagnostic{}, errors.New("worktree refusal has no modeled recovery actions")
 	}
-	steps := make([]presentation.Value, 0, len(actions))
-	for _, action := range actions {
+	steps := make([]presentation.Value, 0, len(e.NextActions))
+	for _, action := range e.NextActions {
 		step, err := presentation.Literal(action)
 		if err != nil { // coverage-ignore: constructors require nonempty recovery actions
 			return presentation.Diagnostic{}, err

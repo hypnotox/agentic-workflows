@@ -289,7 +289,7 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	if !errors.As(err, &refusal) || !errors.Is(err, refusal.Err) {
 		t.Fatalf("add failure lost typed refusal identity: %v", err)
 	}
-	const want = "condition: git worktree add failed\nstate: operation\ncause: injected post-add failure\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git\n"
+	const want = "condition: git worktree add failed\nstate: operation\ncause: injected post-add failure\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: inspect actual Git topology\n    step 2: retry add, or clean only the named path, registration, and branch with native Git\n"
 	if got := renderedTopologyDiagnostic(t, refusal); got != want {
 		t.Fatalf("worktree refusal diagnostic = %q, want %q", got, want)
 	}
@@ -339,7 +339,7 @@ func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 		if !errors.As(err, &creation) || !errors.Is(err, creation.Cause) || creation.RollbackCause != nil {
 			t.Fatalf("rolled-back creation lost typed mechanism identity: %v", err)
 		}
-		const want = "condition: managed worktree creation failed and the effort was rolled back\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: no; next action: inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git: injected worktree add\n\ndiagnostic:\n  changed:\n    effort resident: no\n    managed topology: no\n  steps:\n    step 1: fix the reported cause\n    step 2: retry `awf effort new --slug \"rolled-back\" \"Rolled back\"`\n"
+		const want = "condition: managed worktree creation failed and the effort was rolled back\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: no; next action: inspect actual Git topology; retry add, or clean only the named path, registration, and branch with native Git: injected worktree add\n\ndiagnostic:\n  changed:\n    effort resident: no\n    managed topology: no\n  steps:\n    step 1: fix the reported cause\n    step 2: retry `awf effort new --slug \"rolled-back\" \"Rolled back\"`\n"
 		if got := renderedTopologyDiagnostic(t, creation); got != want {
 			t.Fatalf("rollback before rename diagnostic = %q, want %q", got, want)
 		}
@@ -366,7 +366,7 @@ func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 		if !errors.As(err, &creation) || !errors.Is(err, creation.Cause) || !errors.Is(err, creation.RollbackCause) || !errors.Is(err, effort.ErrManagedTopologyPresent) {
 			t.Fatalf("retained creation lost typed mechanism identity: %v", err)
 		}
-		want := "condition: managed worktree creation failed and topology remains\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: yes; next action: inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git: injected post-add failure | managed worktree path " + filepath.Join(root, ".awf", "worktrees", "retained-topology") + " remains; changed bytes: no; next action: run `awf effort worktree remove retained-topology`\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect `git worktree list --porcelain`\n    step 2: clean up with native Git or `awf effort worktree remove retained-topology`\n    step 3: retry `awf effort worktree add retained-topology` or finish the effort\n"
+		want := "condition: managed worktree creation failed and topology remains\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: yes; next action: inspect actual Git topology; retry add, or clean only the named path, registration, and branch with native Git: injected post-add failure | managed worktree path " + filepath.Join(root, ".awf", "worktrees", "retained-topology") + " remains; changed bytes: no; next action: run `awf effort worktree remove retained-topology`\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect `git worktree list --porcelain`\n    step 2: clean up with native Git or `awf effort worktree remove retained-topology`\n    step 3: retry `awf effort worktree add retained-topology` or finish the effort\n"
 		if got := renderedTopologyDiagnostic(t, creation); got != want {
 			t.Fatalf("retained topology diagnostic = %q, want %q", got, want)
 		}
@@ -412,9 +412,9 @@ func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 			if !errors.As(err, &creation) || !errors.Is(err, creation.Cause) || !errors.Is(err, creation.RollbackCause) {
 				t.Fatalf("faulted rollback lost typed mechanism identity: %v", err)
 			}
-			want := "condition: managed worktree creation failed and effort rollback failed\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: no; next action: inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git: injected worktree add | injected failure at finish.rename: injected finish.rename\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: resolve the rollback failure\n    step 2: retry `awf effort worktree add retained-rollback` or `awf effort finish retained-rollback`\n"
+			want := "condition: managed worktree creation failed and effort rollback failed\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: no; next action: inspect actual Git topology; retry add, or clean only the named path, registration, and branch with native Git: injected worktree add | injected failure at finish.rename: injected finish.rename\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: resolve the rollback failure\n    step 2: retry `awf effort worktree add retained-rollback` or `awf effort finish retained-rollback`\n"
 			if test.stage == "finish.root-fsync" {
-				want = "condition: managed worktree creation failed and effort rollback was interrupted\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: no; next action: inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git: injected worktree add | effort became inactive but finishing root sync failed: injected failure at finish.root-fsync: injected finish.root-fsync\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: retry `awf effort finish retained-rollback`\n"
+				want = "condition: managed worktree creation failed and effort rollback was interrupted\nstate: operation\ncause: worktree refusal (operation): git worktree add failed; changed topology: no; next action: inspect actual Git topology; retry add, or clean only the named path, registration, and branch with native Git: injected worktree add | effort became inactive but finishing root sync failed: injected failure at finish.root-fsync: injected finish.root-fsync\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: no\n  steps:\n    step 1: retry `awf effort finish retained-rollback`\n"
 			}
 			if got := renderedTopologyDiagnostic(t, creation); got != want {
 				t.Fatalf("%s diagnostic = %q, want %q", test.name, got, want)

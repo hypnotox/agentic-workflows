@@ -22,9 +22,14 @@ func TestTopologyDiagnostics(t *testing.T) {
 		want string
 	}{
 		{
-			name: "refusal",
-			err:  &RefusalError{Category: "topology", Condition: "path exists", ChangedTopology: true, NextAction: "inspect", Err: errors.New("probe failed")},
-			want: "condition: path exists\nstate: topology\ncause: probe failed\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: inspect\n",
+			name: "unchanged refusal",
+			err:  &RefusalError{Category: "topology", Condition: "path exists", ChangedTopology: false, NextActions: []string{"inspect the existing path", "perform safe manual cleanup", "retry add"}},
+			want: "condition: path exists\nstate: topology\n\ndiagnostic:\n  changed:\n    managed topology: no\n  steps:\n    step 1: inspect the existing path\n    step 2: perform safe manual cleanup\n    step 3: retry add\n",
+		},
+		{
+			name: "changed refusal",
+			err:  &RefusalError{Category: "operation", Condition: "removal probe failed", ChangedTopology: true, NextActions: []string{"run `git worktree list --porcelain`", "inspect the managed path and branch", "resolve the reported probe failure", "retry ordinary removal"}, Err: errors.New("probe failed")},
+			want: "condition: removal probe failed\nstate: operation\ncause: probe failed\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: run `git worktree list --porcelain`\n    step 2: inspect the managed path and branch\n    step 3: resolve the reported probe failure\n    step 4: retry ordinary removal\n",
 		},
 		{
 			name: "creation with rollback cause",
@@ -66,13 +71,16 @@ func TestTopologyDiagnostics(t *testing.T) {
 
 func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
 	cause := errors.New("cause")
-	refused := refusalCause("test", "condition", false, "next", cause)
+	refused := refusalCause("test", "condition", false, cause, "next")
 	if !errors.Is(refused, cause) || !strings.Contains(refused.Error(), "changed topology: no") {
 		t.Fatalf("refusal = %v", refused)
 	}
 	var nilRefusal *RefusalError
 	if nilRefusal.Unwrap() != nil {
 		t.Fatal("nil refusal unwrap was non-nil")
+	}
+	if _, err := (&RefusalError{}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "modeled recovery actions") {
+		t.Fatalf("refusal without modeled actions diagnostic error = %v", err)
 	}
 
 	registered := func(regs ...awfgit.WorktreeRegistration) Runner {

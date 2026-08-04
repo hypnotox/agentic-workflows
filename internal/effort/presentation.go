@@ -16,11 +16,15 @@ func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		changed = append(changed, field)
 	}
-	step, err := presentation.Prose("remove the managed worktree, then retry finish")
-	if err != nil { // coverage-ignore: fixed nonempty recovery action always validates as prose
-		return presentation.Diagnostic{}, err
+	steps := make([]presentation.Value, 0, len(e.actions))
+	for _, action := range e.actions {
+		step, err := presentation.Prose(action.Text)
+		if err != nil { // coverage-ignore: model-owned recovery actions are validated nonempty text
+			return presentation.Diagnostic{}, err
+		}
+		steps = append(steps, step)
 	}
-	return presentation.Diagnostic{Condition: "managed topology remains", State: "topology", Changed: changed, Steps: []presentation.Value{step}}, nil
+	return presentation.Diagnostic{Condition: "managed topology remains", State: "topology", Changed: changed, Steps: steps}, nil
 }
 
 // Diagnostic maps a partial finish without embedding recovery prose in Cause.
