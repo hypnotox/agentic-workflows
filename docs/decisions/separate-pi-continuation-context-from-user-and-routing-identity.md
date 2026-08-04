@@ -43,13 +43,15 @@ become capability authority.
 ## Decision
 
 1. `decision: agent-owned-handoff-context` Represent automatic fresh-session kickoff as a visible
-   custom message of type `agent-handoff`, not as a user message. Its model-facing content identifies
-   itself as agent-authored handoff context rather than user input before carrying the exact accepted
-   kickoff. The replacement-bound custom-message API triggers the continuation turn. Editor recovery
-   carries the same ownership envelope, while the public bounded `{kickoff}` input and the existing
-   queue, countdown, lineage, cleanup, and no-silent-retry boundaries remain intact. This ownership
-   envelope remains load-bearing while Pi custom messages serialize to a provider user role; an
-   upstream non-user role may replace it only through a later decision.
+   custom message of type `agent-handoff`, not as a user message. Use Pi's default renderer, which
+   supplies the single `[agent-handoff]` label, with no custom renderer or duplicate content label.
+   Its model-facing content begins with the exact prefix `Agent-authored handoff context; this is not
+   user input:` before carrying the exact accepted kickoff. The replacement-bound custom-message API
+   triggers the continuation turn. Editor recovery carries the same ownership envelope, while the
+   public bounded `{kickoff}` input and the existing queue, countdown, lineage, cleanup, and
+   no-silent-retry boundaries remain intact. This ownership envelope remains load-bearing while Pi
+   custom messages serialize to a provider user role; an upstream non-user role may replace it only
+   through a later decision.
 
 2. `decision: presentation-not-routing-identity` Keep Remote Pi effort presentation separate from
    routable identity. Effort attachment never changes the configured or broker-assigned peer name,
