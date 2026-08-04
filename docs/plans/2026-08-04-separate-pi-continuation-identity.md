@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-04
 adrs:
   - separate-pi-continuation-context-from-user-and-routing-identity
-status: Proposed
+status: Implemented
 ---
 # Plan: Separate Pi Continuation Identity
 
@@ -374,3 +374,7 @@ again, and finishes the effort last.
   verifies another repository's implementation.
 - Phase 1 landed as `d9afaf1d` with review settlement `331d80c5`; its independent verify review
   returned zero unresolved findings.
+- Phase 2 landed as `e2082307`; its phase review found three mechanical documentation and test-contract gaps, settlement `6c0d3bf9` resolved them, and the verify review returned zero findings.
+- Terminal awf review found one mechanical replacement-boundary recovery defect. Commit `cad1ba3a` kept recovery on the replacement context after replacement began and corrected a flaky timestamp assertion found during verification. The mechanical-only fix required no verify pass under review policy.
+- Synchronization merge `681c09ae` retained main's Sundial removal and the current Pi testing contract; the required combined-history review returned zero findings. Numbering commit `2fdf4640` assigned ADR-0231. The expected domain-page numbering consequence was absent because current domain pages carry compact topic navigation rather than claim provenance; the ADR rename, index, topic source and output, and lock were the complete deterministic numbering result.
+- Validation included the phase-specific Pi and Go suites, render and drift checks, staged authority checks, repeated full gates at 100 percent accountable statement coverage, process audits with no errors, and clean-checkout verification before synchronization, numbering, and integration.

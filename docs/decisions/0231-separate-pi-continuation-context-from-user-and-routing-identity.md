@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-pi-continuation-context-from-user-and-routing-identity
-status: Implementing
+status: Implemented
 date: 2026-08-04
 ---
 # ADR-0231: Separate Pi continuation context from user and routing identity
@@ -130,3 +130,4 @@ package dependency, provider implementation, or cross-repository completion obli
 - 2026-08-04: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - 2026-08-04: Amended; content-sha256: 5590e155c7272cf2ebddcdd497e318de145f875dd9edc42c8ff49595df5ab836
 - 2026-08-04: Applied; operations: update `rendering/pi-workflows:pi-effort-session-association`, update `rendering/pi-workflows:using-effort-skill`
+- 2026-08-04: Implemented; content-sha256: 5590e155c7272cf2ebddcdd497e318de145f875dd9edc42c8ff49595df5ab836
