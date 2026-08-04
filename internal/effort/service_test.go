@@ -71,8 +71,9 @@ func TestFinishRenamesCleansAndRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := service.Finish(testContext(t), "restartable-finish")
-	if err == nil || !result.Renamed || result.Cleaned || !strings.Contains(err.Error(), "changed bytes: yes") {
-		t.Fatalf("first finish result=%#v err=%v", result, err)
+	var partial *PartialFinishError
+	if err == nil || !result.Renamed || result.Cleaned || !errors.As(err, &partial) || !strings.Contains(partial.Cause.Error(), "finishing cleanup interrupted") || len(partial.Actions) != 1 || partial.Actions[0].Text != "retry `awf effort finish restartable-finish`" {
+		t.Fatalf("first finish result=%#v err=%v partial=%#v", result, err, partial)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", "restartable-finish")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("active directory remains: %v", err)

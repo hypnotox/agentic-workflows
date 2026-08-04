@@ -22,10 +22,10 @@ func TestNewEffortMutationRejectsMissingIdentity(t *testing.T) {
 func TestPartialFinishErrorDiagnostic(t *testing.T) {
 	refusal := &managedTopologyError{message: "legacy message"}
 	refusalDiagnostic, refusalErr := refusal.Diagnostic()
-	if refusalErr != nil || refusalDiagnostic.Condition != "managed topology remains" || len(refusalDiagnostic.Changed) != 2 {
+	if refusalErr != nil || refusalDiagnostic.Condition != "managed topology remains" || refusalDiagnostic.State != "topology" || len(refusalDiagnostic.Changed) != 2 {
 		t.Fatalf("topology diagnostic=%#v err=%v", refusalDiagnostic, refusalErr)
 	}
-	err := &PartialFinishError{Result: FinishResult{Renamed: true, Cleaned: true}, Cause: errors.New("disk fault"), Slug: "demo"}
+	err := &PartialFinishError{Result: FinishResult{Renamed: true, Cleaned: true}, Cause: errors.New("disk fault"), Actions: []RecoveryAction{{Text: "retry `awf effort finish demo`"}}}
 	diagnostic, diagnosticErr := err.Diagnostic()
 	if diagnosticErr != nil {
 		t.Fatal(diagnosticErr)
@@ -38,9 +38,58 @@ func TestPartialFinishErrorDiagnostic(t *testing.T) {
 	if renderErr := presentation.Render(&out, document); renderErr != nil {
 		t.Fatal(renderErr)
 	}
-	const want = "condition: effort finish was interrupted\nstate: finish\ncause: disk fault\n\ndiagnostic:\n  changed:\n    active resident: yes\n    finishing cleanup: yes\n  steps:\n    step 1: retry `awf effort finish demo`\n"
+	const want = "condition: effort finish was interrupted\nstate: operation\ncause: disk fault\n\ndiagnostic:\n  changed:\n    active resident: yes\n    finishing cleanup: yes\n  steps:\n    step 1: retry `awf effort finish demo`\n"
 	if out.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
+	}
+}
+
+func TestPartialFinishDiagnosticReportsEveryAxis(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		result FinishResult
+		want   string
+	}{
+		{"neither", FinishResult{}, "active resident: no\n    finishing cleanup: no"},
+		{"resident only", FinishResult{Renamed: true}, "active resident: yes\n    finishing cleanup: no"},
+		{"cleanup only", FinishResult{Cleaned: true}, "active resident: no\n    finishing cleanup: yes"},
+		{"both", FinishResult{Renamed: true, Cleaned: true}, "active resident: yes\n    finishing cleanup: yes"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			diagnostic, err := (&PartialFinishError{Result: test.result, Cause: errors.New("mechanism failed"), Actions: []RecoveryAction{{Text: "retry"}}}).Diagnostic()
+			if err != nil {
+				t.Fatal(err)
+			}
+			document, err := diagnostic.Document()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out bytes.Buffer
+			if err := presentation.Render(&out, document); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(out.String(), test.want) {
+				t.Fatalf("diagnostic=%q missing axes=%q", out.String(), test.want)
+			}
+			mutation, err := test.result.FinishMutation("demo")
+			if err != nil {
+				t.Fatal(err)
+			}
+			gotChanges := 0
+			for _, change := range mutation.Changes {
+				gotChanges += len(change.Values)
+			}
+			wantChanges := 0
+			if test.result.Renamed {
+				wantChanges++
+			}
+			if test.result.Cleaned {
+				wantChanges++
+			}
+			if gotChanges != wantChanges {
+				t.Fatalf("finish changes=%d, want %d", gotChanges, wantChanges)
+			}
+		})
 	}
 }
 

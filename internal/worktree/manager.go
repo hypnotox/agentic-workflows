@@ -246,7 +246,7 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 	}
 	if err := m.git.WorktreeAdd(ctx, path, branch(slug), full); err != nil {
 		changed := m.topologyPresent(ctx, slug, path)
-		return Result{}, refusalCause("add", "git worktree add failed", changed, "inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git", err)
+		return Result{}, refusalCause("operation", "git worktree add failed", changed, "inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git", err)
 	}
 	if err := exactRegistration(ctx, m.git, path, wantBranch); err != nil {
 		return Result{}, refusalCause("repository-identity", "Git add returned without exact managed registration", true, "inspect actual Git topology and perform safe native-Git cleanup before retrying", err)
@@ -281,26 +281,26 @@ func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr err
 	switch {
 	case finishErr == nil:
 		return &CreationError{
-			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rolled back; next action: fix the reported cause and retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title),
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rolled back; next action: retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title),
 			Condition: "managed worktree creation failed and the effort was rolled back", Cause: addErr,
-			Steps: []string{fmt.Sprintf("fix the reported cause and retry `awf effort new --slug %q %q`", record.Slug, record.Title)},
+			Steps: []string{"fix the reported cause", fmt.Sprintf("retry `awf effort new --slug %q %q`", record.Slug, record.Title)},
 		}
 	case errors.Is(finishErr, effort.ErrManagedTopologyPresent):
 		return &CreationError{
-			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`, clean up with native Git or `awf effort worktree remove %s`, then retry `awf effort worktree add %s` or finish the effort", addErr, slug, slug, slug),
-			Condition: "managed worktree creation failed and topology remains", ChangedEffort: true, ChangedTopology: true, Cause: addErr,
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`", addErr, slug),
+			Condition: "managed worktree creation failed and topology remains", ChangedEffort: true, ChangedTopology: true, Cause: addErr, RollbackCause: finishErr,
 			Steps: []string{"inspect `git worktree list --porcelain`", fmt.Sprintf("clean up with native Git or `awf effort worktree remove %s`", slug), fmt.Sprintf("retry `awf effort worktree add %s` or finish the effort", slug)},
 		}
 	case finishResult.Renamed:
 		return &CreationError{
 			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rollback interrupted after rename: %v; next action: retry `awf effort finish %s`", addErr, slug, finishErr, slug),
-			Condition: "managed worktree creation failed and effort rollback was interrupted", ChangedEffort: true, Cause: addErr,
+			Condition: "managed worktree creation failed and effort rollback was interrupted", ChangedEffort: true, Cause: addErr, RollbackCause: finishErr,
 			Steps: []string{fmt.Sprintf("retry `awf effort finish %s`", slug)},
 		}
 	default:
 		return &CreationError{
-			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: rollback failed: %v; next action: resolve the rollback failure, then retry `awf effort worktree add %s` or `awf effort finish %s`", addErr, slug, finishErr, slug, slug),
-			Condition: "managed worktree creation failed and effort rollback failed", ChangedEffort: finishResult.Renamed, Cause: addErr,
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: rollback failed: %v; next action: retry `awf effort worktree add %s` or `awf effort finish %s`", addErr, slug, finishErr, slug, slug),
+			Condition: "managed worktree creation failed and effort rollback failed", ChangedEffort: true, Cause: addErr, RollbackCause: finishErr,
 			Steps: []string{"resolve the rollback failure", fmt.Sprintf("retry `awf effort worktree add %s` or `awf effort finish %s`", slug, slug)},
 		}
 	}
@@ -379,7 +379,7 @@ func (m *Manager) Integrate(ctx context.Context, slug, gateCommand string) (Resu
 	}
 	if fastForward {
 		if err := m.git.MergeFastForward(ctx, branch(slug)); err != nil {
-			return Result{}, refusalCause("integration", "fast-forward failed", m.targetChanged(ctx, target), "inspect the receiving checkout and retry only from clean verified topology", err)
+			return Result{}, refusalCause("operation", "fast-forward failed", m.targetChanged(ctx, target), "inspect the receiving checkout and retry only from clean verified topology", err)
 		}
 		return Result{Condition: "target fast-forwarded to effort tip", ChangedTopology: true, NextAction: "settle terminal review, then remove the managed worktree"}, nil
 	}
@@ -509,11 +509,11 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 			}
 			if exact != nil {
 				if err := m.git.WorktreeRemove(ctx, path); err != nil {
-					return Result{}, refusalCause("removal", "native Git worktree removal failed", changed, "inspect actual topology and retry ordinary removal", err)
+					return Result{}, refusalCause("operation", "native Git worktree removal failed", changed, "inspect actual topology and retry ordinary removal", err)
 				}
 			} else {
 				if err := os.RemoveAll(path); err != nil { // coverage-ignore: path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault
-					return Result{}, refusalCause("removal", "proven unregistered managed path cleanup failed", changed, "inspect the path and retry ordinary removal", err)
+					return Result{}, refusalCause("operation", "proven unregistered managed path cleanup failed", changed, "inspect the path and retry ordinary removal", err)
 				}
 			}
 			changed = true
@@ -521,14 +521,14 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		}
 		if exact != nil {
 			if err := m.git.WorktreePrune(ctx); err != nil {
-				return Result{}, refusalCause("removal", "prunable registration cleanup failed", changed, "inspect `git worktree list --porcelain` and retry", err)
+				return Result{}, refusalCause("operation", "prunable registration cleanup failed", changed, "inspect `git worktree list --porcelain` and retry", err)
 			}
 			changed = true
 			continue
 		}
 		if branchPresent {
 			if err := m.git.BranchDelete(ctx, branch(slug)); err != nil {
-				return Result{}, refusalCause("removal", "safe managed branch deletion failed", changed, "inspect branch ancestry and retry without force", err)
+				return Result{}, refusalCause("operation", "safe managed branch deletion failed", changed, "inspect branch ancestry and retry without force", err)
 			}
 			changed = true
 		}

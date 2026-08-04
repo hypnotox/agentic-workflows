@@ -59,5 +59,9 @@ func SyncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 			notes = append(notes, value)
 		}
 	}
-	return presentation.Mutation{Status: "completed", Changes: groups, Notes: notes}, nil
+	next, err := presentation.Prose("continue with the rendered project state")
+	if err != nil { // coverage-ignore: fixed nonempty completion action always validates as prose
+		return presentation.Mutation{}, err
+	}
+	return presentation.Mutation{Status: "completed", Changes: groups, Notes: notes, NextActions: []presentation.Value{next}}, nil
 }

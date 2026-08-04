@@ -10,7 +10,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 type RefusalError struct {
@@ -36,32 +35,6 @@ func (e *RefusalError) Unwrap() error {
 	return e.Err
 }
 
-// Diagnostic maps this topology-owned refusal without parsing its Error text.
-func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
-	changed, err := presentation.Prose(yesNo(e.ChangedTopology))
-	if err != nil { // coverage-ignore: yesNo always supplies a nonempty topology fact
-		return presentation.Diagnostic{}, err
-	}
-	axis, err := presentation.NewField("managed topology", changed)
-	if err != nil { // coverage-ignore: fixed grammar-valid diagnostic label and validated value
-		return presentation.Diagnostic{}, err
-	}
-	step, err := presentation.Prose(e.NextAction)
-	if err != nil { // coverage-ignore: every refusal constructor supplies a nonempty next action
-		return presentation.Diagnostic{}, err
-	}
-	diagnostic := presentation.Diagnostic{
-		Condition: e.Condition,
-		State:     e.Category,
-		Changed:   []presentation.Field{axis},
-		Steps:     []presentation.Value{step},
-	}
-	if e.Err != nil {
-		diagnostic.Cause = e.Err.Error()
-	}
-	return diagnostic, nil
-}
-
 // CreationError describes a failed managed creation after its compensating
 // finish attempt. It retains the legacy error text while exposing every changed
 // axis and recovery sequence to the command presentation boundary.
@@ -71,37 +44,19 @@ type CreationError struct {
 	ChangedEffort   bool
 	ChangedTopology bool
 	Cause           error
+	RollbackCause   error
 	Steps           []string
 }
 
 func (e *CreationError) Error() string { return e.Message }
-func (e *CreationError) Unwrap() error { return e.Cause }
-
-func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
-	changed := make([]presentation.Field, 0, 2)
-	for _, fact := range []struct {
-		label string
-		value bool
-	}{{"effort resident", e.ChangedEffort}, {"managed topology", e.ChangedTopology}} {
-		value, err := presentation.Prose(yesNo(fact.value))
-		if err != nil { // coverage-ignore: yesNo always supplies a nonempty changed-axis value
-			return presentation.Diagnostic{}, err
-		}
-		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: fixed grammar-valid diagnostic label and validated value
-			return presentation.Diagnostic{}, err
-		}
-		changed = append(changed, field)
+func (e *CreationError) Unwrap() []error {
+	if e.Cause == nil && e.RollbackCause == nil {
+		return nil
 	}
-	steps := make([]presentation.Value, 0, len(e.Steps))
-	for _, text := range e.Steps {
-		step, err := presentation.Prose(text)
-		if err != nil { // coverage-ignore: manager-owned recovery sequences contain fixed nonempty steps
-			return presentation.Diagnostic{}, err
-		}
-		steps = append(steps, step)
+	if e.RollbackCause == nil {
+		return []error{e.Cause}
 	}
-	return presentation.Diagnostic{Condition: e.Condition, State: "creation", Changed: changed, Cause: e.Cause.Error(), Steps: steps}, nil
+	return []error{e.Cause, e.RollbackCause}
 }
 
 func refusal(category, condition string, changed bool, next string) error {

@@ -14,27 +14,53 @@ import (
 )
 
 func TestTopologyDiagnostics(t *testing.T) {
-	for _, err := range []interface {
-		Diagnostic() (presentation.Diagnostic, error)
+	for _, test := range []struct {
+		name string
+		err  interface {
+			Diagnostic() (presentation.Diagnostic, error)
+		}
+		want string
 	}{
-		&RefusalError{Category: "topology", Condition: "path exists", ChangedTopology: true, NextAction: "inspect", Err: errors.New("probe failed")},
-		&CreationError{Message: "creation", Condition: "creation failed", ChangedEffort: true, ChangedTopology: true, Cause: errors.New("add failed"), Steps: []string{"inspect", "retry"}},
+		{
+			name: "refusal",
+			err:  &RefusalError{Category: "topology", Condition: "path exists", ChangedTopology: true, NextAction: "inspect", Err: errors.New("probe failed")},
+			want: "condition: path exists\nstate: topology\ncause: probe failed\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: inspect\n",
+		},
+		{
+			name: "creation with rollback cause",
+			err:  &CreationError{Message: "creation", Condition: "creation failed", ChangedEffort: true, ChangedTopology: true, Cause: errors.New("add failed"), RollbackCause: errors.New("rollback failed"), Steps: []string{"inspect", "retry"}},
+			want: "condition: creation failed\nstate: operation\ncause: add failed | rollback failed\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect\n    step 2: retry\n",
+		},
 	} {
-		diagnostic, diagnosticErr := err.Diagnostic()
-		if diagnosticErr != nil {
-			t.Fatal(diagnosticErr)
-		}
-		document, documentErr := diagnostic.Document()
-		if documentErr != nil {
-			t.Fatal(documentErr)
-		}
-		var out bytes.Buffer
-		if renderErr := presentation.Render(&out, document); renderErr != nil || out.Len() == 0 {
-			t.Fatalf("render=%v output=%q", renderErr, out.String())
-		}
+		t.Run(test.name, func(t *testing.T) {
+			diagnostic, diagnosticErr := test.err.Diagnostic()
+			if diagnosticErr != nil {
+				t.Fatal(diagnosticErr)
+			}
+			document, documentErr := diagnostic.Document()
+			if documentErr != nil {
+				t.Fatal(documentErr)
+			}
+			var out bytes.Buffer
+			if renderErr := presentation.Render(&out, document); renderErr != nil {
+				t.Fatal(renderErr)
+			}
+			if out.String() != test.want {
+				t.Fatalf("diagnostic = %q, want %q", out.String(), test.want)
+			}
+		})
 	}
 	if (&CreationError{}).Unwrap() != nil {
 		t.Fatal("nil creation cause unwrap was non-nil")
+	}
+	addCause := errors.New("add failed")
+	rollbackCause := errors.New("rollback failed")
+	creation := &CreationError{Cause: addCause, RollbackCause: rollbackCause}
+	if !errors.Is(creation, addCause) || !errors.Is(creation, rollbackCause) {
+		t.Fatalf("creation error lost mechanism identity: %v", creation)
+	}
+	if !errors.Is(&CreationError{Cause: addCause}, addCause) {
+		t.Fatal("creation error lost its sole add mechanism identity")
 	}
 }
 

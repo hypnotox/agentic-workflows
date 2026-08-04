@@ -2,6 +2,55 @@ package effort
 
 import "github.com/hypnotox/agentic-workflows/internal/presentation"
 
+// Diagnostic maps typed effort failures into the common readable diagnostic.
+func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
+	changed := make([]presentation.Field, 0, 2)
+	for _, fact := range []struct{ label, value string }{{"active resident", "no"}, {"managed topology", "no"}} {
+		value, err := presentation.Prose(fact.value)
+		if err != nil { // coverage-ignore: fixed nonempty refusal facts always validate as prose
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField(fact.label, value)
+		if err != nil { // coverage-ignore: fixed grammar-valid refusal labels always validate
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
+	step, err := presentation.Prose("remove the managed worktree, then retry finish")
+	if err != nil { // coverage-ignore: fixed nonempty recovery action always validates as prose
+		return presentation.Diagnostic{}, err
+	}
+	return presentation.Diagnostic{Condition: "managed topology remains", State: "topology", Changed: changed, Steps: []presentation.Value{step}}, nil
+}
+
+// Diagnostic maps a partial finish without embedding recovery prose in Cause.
+func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
+	changed := make([]presentation.Field, 0, 2)
+	for _, fact := range []struct {
+		label string
+		value bool
+	}{{"active resident", e.Result.Renamed}, {"finishing cleanup", e.Result.Cleaned}} {
+		value, err := presentation.Prose(yesNo(fact.value))
+		if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField(fact.label, value)
+		if err != nil { // coverage-ignore: fixed grammar-valid finish labels always validate
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
+	steps := make([]presentation.Value, 0, len(e.Actions))
+	for _, action := range e.Actions {
+		step, err := presentation.Prose(action.Text)
+		if err != nil { // coverage-ignore: model-owned recovery actions are validated nonempty text
+			return presentation.Diagnostic{}, err
+		}
+		steps = append(steps, step)
+	}
+	return presentation.Diagnostic{Condition: "effort finish was interrupted", State: "operation", Changed: changed, Cause: e.Cause.Error(), Steps: steps}, nil
+}
+
 // Detail maps one resident record into its ordered readable facts.
 func (r Record) Detail() (presentation.Detail, error) {
 	fields := make([]presentation.Field, 0, 3)
@@ -84,7 +133,7 @@ func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error)
 		label string
 		value bool
 	}{{"active resident", r.Renamed}, {"finishing cleanup", r.Cleaned}} {
-		if !axis.value { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		if !axis.value {
 			continue
 		}
 		item, err := presentation.Prose(axis.label)

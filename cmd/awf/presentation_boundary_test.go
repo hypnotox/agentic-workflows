@@ -36,7 +36,7 @@ func TestDiagnosticOutcomeUsesTypedDiagnostic(t *testing.T) {
 		t.Fatal(err)
 	}
 	outcome := diagnosticOutcome(typedDiagnosticError{diagnostic: presentation.Diagnostic{
-		Condition: "operation refused", State: "add", Steps: []presentation.Value{value},
+		Condition: "operation refused", State: "operation", Steps: []presentation.Value{value},
 	}})
 	if outcome.stream != commandStderr || outcome.exit != 1 || outcome.err == nil {
 		t.Fatalf("typed outcome = %#v", outcome)
@@ -45,7 +45,7 @@ func TestDiagnosticOutcomeUsesTypedDiagnostic(t *testing.T) {
 	if code := writeOutcome(&stdout, &stderr, outcome); code != 1 || stdout.Len() != 0 {
 		t.Fatalf("typed diagnostic streams: code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
-	const want = "condition: operation refused\nstate: add\n\ndiagnostic:\n  steps:\n    step 1: retry\n"
+	const want = "condition: operation refused\nstate: operation\n\ndiagnostic:\n  steps:\n    step 1: retry\n"
 	if stderr.String() != want {
 		t.Fatalf("typed diagnostic stderr = %q, want %q", stderr.String(), want)
 	}

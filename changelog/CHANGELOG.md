@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Render, effort, and managed-worktree commands now use readable typed output. Convenience JSON for `awf effort new`, `list`, and `show` is retired; activity JSON remains the byte-exact protocol.
+
 - CLI help now derives from structured command specifications, command diagnostics use the typed output boundary, commit authorization uses actionable steps, and init prompts validate completely before their single flushed prompt tail.
 
 - `awf context` and `awf topic` now present structured readable text through the shared presentation grammar; context authority categories retain fixed-schema records, and `awf topic --json` is removed.

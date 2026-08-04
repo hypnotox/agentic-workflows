@@ -113,8 +113,38 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 			t.Fatalf("%q code=%d stdout=%q stderr=%q, want %q", test.args, code, stdout, stderr, test.want)
 		}
 	}
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"effort", "new", "--json", "--slug", "json-new", "JSON new", "--no-worktree"}, "condition: awf: awf new: unknown flag \"--json\"\n"},
+		{[]string{"effort", "list", "--json"}, "condition: awf: awf list: unknown flag \"--json\"\n"},
+		{[]string{"effort", "show", "ordered-input", "--json"}, "condition: awf: awf show: unknown flag \"--json\"\n"},
+	} {
+		code, stdout, stderr := runEffortCLI(t, root, test.args...)
+		if code != 2 || stdout != "" || stderr != test.want {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q want=%q", test.args, code, stdout, stderr, test.want)
+		}
+	}
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "readable", "Readable contract", "--no-worktree")
+	newWant := "status: no managed worktree\n\nmutation:\n  identity:\n    effort: readable\n    title: Readable contract\n    memory: .awf/efforts/readable/memory.md\n  next actions:\n    step 1: continue the effort in " + root + "\n"
+	if code != 0 || stderr != "" || stdout != newWant {
+		t.Fatalf("readable new code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"effort", "list"}, "efforts:\n  items:\n    readable: Readable contract\n"},
+		{[]string{"effort", "show", "readable"}, "slug: readable\ntitle: Readable contract\nmemory: .awf/efforts/readable/memory.md\n"},
+	} {
+		code, stdout, stderr = runEffortCLI(t, root, test.args...)
+		if code != 0 || stderr != "" || stdout != test.want {
+			t.Fatalf("readable %q code=%d stdout=%q stderr=%q", test.args, code, stdout, stderr)
+		}
+	}
 	overlong := strings.Repeat("s", 33)
-	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
 	if code == 0 || stdout != "" || !strings.Contains(stderr, "1-32 bytes") || !strings.Contains(stderr, "changed bytes: no") || !strings.Contains(stderr, "--slug") {
 		t.Fatalf("33-byte slug code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}

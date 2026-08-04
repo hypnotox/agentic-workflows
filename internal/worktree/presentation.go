@@ -2,6 +2,59 @@ package worktree
 
 import "github.com/hypnotox/agentic-workflows/internal/presentation"
 
+// Diagnostic maps a typed refusal into the common readable diagnostic.
+func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
+	value, err := presentation.Prose(yesNo(e.ChangedTopology))
+	if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
+		return presentation.Diagnostic{}, err
+	}
+	axis, err := presentation.NewField("managed topology", value)
+	if err != nil { // coverage-ignore: fixed grammar-valid topology label always validates
+		return presentation.Diagnostic{}, err
+	}
+	step, err := presentation.Prose(e.NextAction)
+	if err != nil { // coverage-ignore: constructors require nonempty recovery action
+		return presentation.Diagnostic{}, err
+	}
+	diagnostic := presentation.Diagnostic{Condition: e.Condition, State: e.Category, Changed: []presentation.Field{axis}, Steps: []presentation.Value{step}}
+	if e.Err != nil {
+		diagnostic.Cause = e.Err.Error()
+	}
+	return diagnostic, nil
+}
+
+// Diagnostic maps failed creation while retaining both mechanism identities.
+func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
+	changed := make([]presentation.Field, 0, 2)
+	for _, fact := range []struct {
+		label string
+		value bool
+	}{{"effort resident", e.ChangedEffort}, {"managed topology", e.ChangedTopology}} {
+		value, err := presentation.Prose(yesNo(fact.value))
+		if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField(fact.label, value)
+		if err != nil { // coverage-ignore: fixed grammar-valid changed-axis labels always validate
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
+	steps := make([]presentation.Value, 0, len(e.Steps))
+	for _, text := range e.Steps {
+		step, err := presentation.Prose(text)
+		if err != nil { // coverage-ignore: manager-owned recovery steps are nonempty text
+			return presentation.Diagnostic{}, err
+		}
+		steps = append(steps, step)
+	}
+	cause := e.Cause.Error()
+	if e.RollbackCause != nil {
+		cause += " | " + e.RollbackCause.Error()
+	}
+	return presentation.Diagnostic{Condition: e.Condition, State: "operation", Changed: changed, Cause: cause, Steps: steps}, nil
+}
+
 // Mutation maps managed-topology facts into the common readable mutation.
 func (r Result) Mutation() (presentation.Mutation, error) {
 	identity := []presentation.Field{}

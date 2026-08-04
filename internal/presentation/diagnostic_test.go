@@ -22,6 +22,17 @@ func TestMutationDocument(t *testing.T) {
 			t.Fatalf("invalid mutation accepted: %#v", mutation)
 		}
 	}
+	empty, err := (Mutation{Status: "completed"}).Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var emptyOut bytes.Buffer
+	if err := Render(&emptyOut, empty); err != nil {
+		t.Fatal(err)
+	}
+	if emptyOut.String() != "status: completed\n" {
+		t.Fatalf("empty mutation output = %q", emptyOut.String())
+	}
 	identityValue, _ := Prose("demo")
 	identity, _ := NewField("effort", identityValue)
 	note, _ := Prose("ownership note")

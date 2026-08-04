@@ -496,7 +496,7 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const pruned = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n    pruned:\n      .claude/skills/example-tdd/SKILL.md\n"
+	const pruned = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n    pruned:\n      .claude/skills/example-tdd/SKILL.md\n  next actions:\n    step 1: continue with the rendered project state\n"
 	if out.String() != pruned {
 		t.Errorf("pruned sync bytes = %q, want %q", out.String(), pruned)
 	}
@@ -505,7 +505,7 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if got := out.String(); got != "status: completed\n" {
+	if got := out.String(); got != "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n" {
 		t.Errorf("empty sync bytes = %q", got)
 	}
 }
@@ -520,7 +520,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const changed = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed .claude/skills/example-tdd/SKILL.md (config)\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      changed docs/plans/template.md (config)\n      changed docs/workflow.md (config)\n"
+	const changed = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed .claude/skills/example-tdd/SKILL.md (config)\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      changed docs/plans/template.md (config)\n      changed docs/workflow.md (config)\n  next actions:\n    step 1: continue with the rendered project state\n"
 	if out.String() != changed {
 		t.Errorf("changed sync bytes = %q, want %q", out.String(), changed)
 	}
@@ -529,7 +529,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if got := out.String(); got != "status: completed\n" {
+	if got := out.String(); got != "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n" {
 		t.Errorf("empty sync bytes = %q", got)
 	}
 	// Enabling an artifact reports its files as added.
@@ -538,7 +538,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	const added = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      added docs/pitfalls.md\n"
+	const added = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      added docs/pitfalls.md\n  next actions:\n    step 1: continue with the rendered project state\n"
 	if out.String() != added {
 		t.Errorf("added sync bytes = %q, want %q", out.String(), added)
 	}
@@ -1024,8 +1024,11 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
 		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
 	}
-	if !strings.Contains(out.String(), "      CLAUDE.md to CLAUDE.md.awf-bak") {
-		t.Errorf("expected backup report on stdout, got %q", out.String())
+	const initForceMutation = "status: completed\n\nmutation:\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  next actions:\n    step 1: continue with the rendered project state\n"
+	mutationStart := strings.Index(out.String(), "status: completed\n")
+	mutationEnd := strings.Index(out.String()[mutationStart:], "note: ")
+	if got := out.String()[mutationStart : mutationStart+mutationEnd]; got != initForceMutation {
+		t.Errorf("init --force mutation = %q, want %q", got, initForceMutation)
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
 	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.
@@ -1174,11 +1177,9 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())
 	}
-	if !strings.Contains(out.String(), "      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak") {
-		t.Errorf("missing backup line: %q", out.String())
-	}
-	if !strings.Contains(out.String(), "  notes:\n    awf now generates") {
-		t.Errorf("missing ownership-takeover note: %q", out.String())
+	const indexTakeoverOutput = "status: completed\n\nmutation:\n  changes:\n    backups:\n      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak\n    outputs:\n      added .awf/efforts/.gitignore\n      added .awf/worktrees/.gitignore\n      added .claude/skills/example-tdd/SKILL.md\n      added AGENTS.md\n      added CLAUDE.md\n      added docs/agents-md-standard.md\n      added docs/config-reference.md\n      added docs/decisions/INDEX.md\n      added docs/decisions/README.md\n      added docs/decisions/template.md\n      added docs/doc-standard.md\n      added docs/maintainable-code-design.md\n      added docs/plans/README.md\n      added docs/plans/template.md\n      added docs/workflow.md\n      added docs/working-with-awf.md\n  notes:\n    awf now generates docs/decisions/INDEX.md; retire any external generator for it\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != indexTakeoverOutput {
+		t.Errorf("index takeover stdout = %q, want %q", out.String(), indexTakeoverOutput)
 	}
 }
 
