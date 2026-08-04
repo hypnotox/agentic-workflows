@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-04
 adrs: [proportional-simplicity-boundaries]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Proportional Simplicity Boundaries
 
