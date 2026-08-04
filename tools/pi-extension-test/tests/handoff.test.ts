@@ -15,6 +15,8 @@ function make(options: any = {}) {
   const emitted: any[] = [];
   const notice: any[] = [];
   const editor: string[] = [];
+  const replacementNotice: any[] = [];
+  const replacementEditor: string[] = [];
   const sessions: any[] = [];
   const entries: any[] = [];
   const components: any[] = [];
@@ -95,6 +97,16 @@ function make(options: any = {}) {
         components.push(component);
       }),
   };
+  const replacementUI: any = options.distinctReplacementUI ? {
+    notify: (...args: any[]) => {
+      if (options.replacementNotifyFail) throw Error("replacement notify");
+      replacementNotice.push(args);
+    },
+    setEditorText: (value: string) => {
+      if (options.replacementEditorFail) throw Error("replacement editor");
+      replacementEditor.push(value);
+    },
+  } : ui;
   const ctx: any = {
     mode: options.mode ?? "tui",
     ui,
@@ -114,7 +126,7 @@ function make(options: any = {}) {
       await request.setup(manager);
       if (options.newFail) throw Error("new");
       await request.withSession({
-        ui,
+        ui: replacementUI,
         sendUserMessage: async (value: string) => {
           sends.push(value);
           if (sendFails) throw Error("send");
@@ -136,6 +148,8 @@ function make(options: any = {}) {
     emitted,
     notice,
     editor,
+    replacementNotice,
+    replacementEditor,
     sessions,
     entries,
     components,
@@ -264,6 +278,19 @@ test("handoff preserves exact kickoff through submission and editor fallback", a
     ["Automatic kickoff failed; submit the prepared editor text.", "warning"],
   ]);
   assert.equal(fallback.sessions.length, 1);
+});
+
+test("replacement editor failure never reuses the old session context", async () => {
+  const h = make({ distinctReplacementUI: true, replacementEditorFail: true, replacementNotifyFail: true });
+  h.sendFails();
+  await execute(h);
+  const pending = continueHandoff(h);
+  h.complete();
+  await pending;
+  assert.deepEqual(h.editor, []);
+  assert.deepEqual(h.notice, []);
+  assert.deepEqual(h.replacementEditor, []);
+  assert.deepEqual(h.replacementNotice, []);
 });
 
 test("handoff preserves exact kickoff through replacement failure recovery", async () => {

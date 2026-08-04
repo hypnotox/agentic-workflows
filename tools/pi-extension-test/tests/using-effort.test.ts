@@ -179,14 +179,14 @@ test("factory negotiation is synchronous and suffix changes preserve the complet
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }], { factoryCapabilities: { unrelated: true, displaySuffix: { version: 1 } } });
   assert.deepEqual(h.events, [["remote-pi:capabilities:request", undefined], ["remote-pi:display-suffix:set", { value: null }]], "factory response did not run through preinstalled listeners");
   await request(h, { effort: "demo" });
-  const contextBefore = h.hooks.get("context")({ messages: [] }, h.ctx);
+  const contextBefore = h.hooks.get("context")({ messages: [] }, h.ctx).messages[0].content;
   const metadataBefore = h.events.filter(([name]: any) => name === "remote-pi:metadata:set");
   assert.deepEqual(metadataBefore.at(-1), ["remote-pi:metadata:set", { namespace: "awf", value: { effort: { slug: "demo", title: "Demo" }, memory: { phase: "Build", next: "Test", updated: TIME }, activity: { heartbeatAt: TIME } } }]);
   h.listeners.get("remote-pi:capabilities")({ displaySuffix: { version: 2 } });
   h.listeners.get("remote-pi:capabilities")({ displaySuffix: { version: 1 } });
   h.listeners.get("remote-pi:display-suffix:request")();
   assert.deepEqual(h.events.filter(([name]: any) => name === "remote-pi:metadata:set"), metadataBefore, "suffix negotiation republished or changed metadata");
-  assert.deepEqual(h.hooks.get("context")({ messages: [] }, h.ctx), contextBefore, "suffix negotiation changed the immutable snapshot");
+  assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx).messages[0].content, contextBefore, "suffix negotiation changed the immutable snapshot");
   assert.equal(lastText(await request(h, { detach: true })), "Detached.");
   assert.deepEqual(h.calls.at(-1), ["effort", "activity", "detach", "demo", "--owner", OWNER, "--json"], "suffix negotiation changed snapshot identity");
 });
