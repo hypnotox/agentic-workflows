@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -21,6 +23,34 @@ func TestPerCommandHelp(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestPublicHelpGoldens(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		file string
+	}{
+		{"global", []string{"awf", "help"}, "global.txt"},
+		{"group", []string{"awf", "help", "check"}, "group-check.txt"},
+		{"leaf", []string{"awf", "help", "render"}, "leaf-render.txt"},
+		{"deep leaf", []string{"awf", "help", "check", "repo", "drift"}, "deep-check-repo-drift.txt"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			want, err := os.ReadFile(filepath.Join("testdata", "help", tc.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out, errb bytes.Buffer
+			if code := run(tc.args, &out, &errb); code != 0 || errb.Len() != 0 {
+				t.Fatalf("exit=%d stderr=%q", code, errb.String())
+			}
+			if out.String() != string(want) {
+				t.Fatalf("help output differs from %s\n--- got ---\n%s--- want ---\n%s", tc.file, out.String(), want)
+			}
+		})
 	}
 }
 
@@ -50,15 +80,58 @@ func TestGlobalHelpListsAllCommands(t *testing.T) {
 // invariant: tooling/cli:help-lists-group-children (TestHelpListsGroupChildren)
 func TestHelpListsGroupChildren(t *testing.T) {
 	var out, errb bytes.Buffer
-	run([]string{"awf", "help"}, &out, &errb)
+	if code := run([]string{"awf", "help"}, &out, &errb); code != 0 {
+		t.Fatal(code)
+	}
 	got := out.String()
-	for _, parent := range clispec.Commands {
-		for _, child := range parent.Children {
-			if !strings.Contains(got, parent.Name+" "+child.Name+" | "+child.Summary) {
-				t.Errorf("global help omits %s %s", parent.Name, child.Name)
+	var walk func([]clispec.Command, string)
+	walk = func(commands []clispec.Command, parent string) {
+		last := -1
+		for _, command := range commands {
+			needle := command.Name + " | " + command.Summary
+			at := strings.Index(got, needle)
+			if at < 0 {
+				t.Errorf("%s omits direct child %q", parent, command.Name)
+				continue
+			}
+			if at < last {
+				t.Errorf("%s reorders child %q", parent, command.Name)
+			}
+			last = at
+			if len(command.Children) > 0 {
+				walk(command.Children, command.Name)
 			}
 		}
 	}
+	walk(clispec.Commands, "root")
+	for _, want := range []string{"    check:\n", "      repo:\n", "        drift | Report stale or hand-edited rendered output"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("hierarchy missing %q", want)
+		}
+	}
+	if strings.Contains(got, "check repo drift |") {
+		t.Error("deep child was flattened into a path record")
+	}
+}
+
+func TestHelpPathsResolveRecursively(t *testing.T) {
+	var walk func(path []string, commands []clispec.Command)
+	walk = func(path []string, commands []clispec.Command) {
+		for _, command := range commands {
+			commandPath := append(append([]string{}, path...), command.Name)
+			args := append([]string{"awf", "help"}, commandPath...)
+			var out, errb bytes.Buffer
+			if code := run(args, &out, &errb); code != 0 || errb.Len() != 0 {
+				t.Fatalf("help %s: exit=%d stderr=%q", strings.Join(commandPath, " "), code, errb.String())
+			}
+			want := "command: awf " + strings.Join(commandPath, " ") + "\n"
+			if !strings.HasPrefix(out.String(), want) {
+				t.Errorf("help %s begins %q, want %q", strings.Join(commandPath, " "), out.String(), want)
+			}
+			walk(commandPath, command.Children)
+		}
+	}
+	walk(nil, clispec.Commands)
 }
 
 func TestHelpSubcommandDispatch(t *testing.T) {
@@ -80,7 +153,7 @@ func TestHelpSubcommandDispatch(t *testing.T) {
 	if code := run([]string{"awf", "help", "new", "adr"}, &out, &errb); code != 0 {
 		t.Fatal(code)
 	}
-	if !strings.Contains(out.String(), "command: awf adr") {
+	if !strings.Contains(out.String(), "command: awf new adr") {
 		t.Errorf("child help: %s", out.String())
 	}
 }

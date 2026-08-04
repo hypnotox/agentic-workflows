@@ -422,8 +422,8 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 		if code := runAt(t, root, []string{"awf", "check", "staged"}, &out, &errOut); code != 1 {
 			t.Fatalf("staged drift exit = %d, want 1; stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if !strings.Contains(out.String(), "stale") || !strings.Contains(errOut.String(), "awf check staged drift") {
-			t.Fatalf("staged drift did not report stale rendered output; stdout=%q stderr=%q", out.String(), errOut.String())
+		if !strings.Contains(out.String(), "stale") || errOut.Len() != 0 {
+			t.Fatalf("staged drift report streams stdout=%q stderr=%q", out.String(), errOut.String())
 		}
 	})
 

@@ -255,7 +255,7 @@ func printDrift(stdout io.Writer, drift []manifest.Drift) error {
 		fmt.Fprintln(stdout, "awf check repo drift: clean")
 		return nil
 	}
-	return fmt.Errorf("awf check repo drift: %d drift(s)", len(drift))
+	return &producedReportError{fmt.Errorf("awf check repo drift: %d drift(s)", len(drift))}
 }
 func printCurrentState(stdout io.Writer, report project.CurrentStateReport) error {
 	for _, n := range report.Notes() {
@@ -269,7 +269,7 @@ func printCurrentState(stdout io.Writer, report project.CurrentStateReport) erro
 		fmt.Fprintln(stdout, "awf check repo state: clean")
 		return nil
 	}
-	return fmt.Errorf("awf check repo state: %d current-state issue(s)", len(current))
+	return &producedReportError{fmt.Errorf("awf check repo state: %d current-state issue(s)", len(current))}
 }
 func checkLockVsBinary(root string) (lockV, binV string, ok bool, err error) {
 	return lockVsBinary(root)

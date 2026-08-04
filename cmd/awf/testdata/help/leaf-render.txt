@@ -1,0 +1,7 @@
+command: awf render
+summary: Re-render after a template or config change
+
+help:
+  usage:
+    awf render
+  description: Re-render every enabled target after a template or config change and update .awf/awf.lock.

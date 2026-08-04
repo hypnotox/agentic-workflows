@@ -229,8 +229,8 @@ func TestIntegrationGateCommandUsesOnlyAConfiguredString(t *testing.T) {
 func TestEffortHandlerComposesTheProductionWiring(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
-	if err := handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); err != nil {
-		t.Fatal(err)
+	if result := handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); result.err != nil {
+		t.Fatal(result.err)
 	}
 	if out.Len() != 0 {
 		t.Fatalf("empty list wrote %q", out.String())

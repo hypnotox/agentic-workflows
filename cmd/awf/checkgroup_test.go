@@ -317,8 +317,8 @@ func TestCheckChildrenReportFindings(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("exit = %d, want 1; stdout=%q", code, out.String())
 		}
-		if !strings.Contains(errb.String(), "awf check repo drift:") || !strings.Contains(errb.String(), "drift(s)") {
-			t.Errorf("diagnostic = %q, want a drift count", errb.String())
+		if !strings.Contains(out.String(), "hand-edited") || errb.Len() != 0 {
+			t.Errorf("produced drift report stdout=%q stderr=%q", out.String(), errb.String())
 		}
 	})
 
@@ -330,8 +330,8 @@ func TestCheckChildrenReportFindings(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("exit = %d, want 1; stdout=%q", code, out.String())
 		}
-		if !strings.Contains(errb.String(), "awf check repo state:") || !strings.Contains(errb.String(), "current-state issue(s)") {
-			t.Errorf("diagnostic = %q, want a current-state count", errb.String())
+		if !strings.Contains(out.String(), "uncovered") || errb.Len() != 0 {
+			t.Errorf("produced state report stdout=%q stderr=%q", out.String(), errb.String())
 		}
 	})
 }
@@ -431,7 +431,7 @@ func TestHelpListsCheckChildren(t *testing.T) {
 	run([]string{"awf", "help"}, &out, &errb)
 	got := out.String()
 	for _, sub := range []string{"repo", "staged"} {
-		if !strings.Contains(got, "check "+sub+" |") {
+		if !strings.Contains(got, "    "+sub+" |") {
 			t.Errorf("awf help omits the check child %q:\n%s", sub, got)
 		}
 	}

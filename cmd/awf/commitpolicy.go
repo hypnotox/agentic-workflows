@@ -27,7 +27,7 @@ func runCommitPolicy(ctx context.Context, root string, targets []string, stdout 
 		return nil
 	}
 	if outcome.Refusal != nil {
-		return &renderedCommitPolicyError{kind: commitPolicyRefusalExit}
+		return &producedReportError{&renderedCommitPolicyError{kind: commitPolicyRefusalExit}}
 	}
-	return &renderedCommitPolicyError{kind: commitPolicyViolationExit}
+	return &producedReportError{&renderedCommitPolicyError{kind: commitPolicyViolationExit}}
 }

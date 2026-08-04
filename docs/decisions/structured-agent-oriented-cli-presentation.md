@@ -138,3 +138,4 @@ test transactions rather than becoming authority before the converted surfaces e
 - 2026-08-04: Applied; operations: update `code-design/presentation-ownership:model-owner-renders`, add `code-design/presentation-package:presentation-package-boundary`
 - 2026-08-04: Applied; operations: update `tooling/context-and-topic:context-query-boundary`
 - 2026-08-04: Applied; operations: add `code-design/presentation-ownership:closed-presentation-tree`, update `code-design/outcome-modeling:actionable-outcome-protocol`, update `tooling/cli:cli-command-spec-single-source`
+- 2026-08-04: Reapplied; operations: update `code-design/outcome-modeling:actionable-outcome-protocol`

@@ -281,7 +281,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader.Open"}:                  1,
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository"}:      1,
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository.Open"}: 1,
-		{file: "commitgate.go", owner: "runCommitGate", name: "project.Open"}:                                             1,
+		{file: "commitgate.go", owner: "openCommitGateProjectFromDisk", name: "project.Open"}:                             1,
 		{file: "commitpolicy.go", owner: "runCommitPolicy", name: "project.VerifyCommitPolicyAt"}:                         1,
 		{file: "config.go", owner: "runConfig", name: "project.Open"}:                                                     1,
 		{file: "context.go", owner: "runContext", name: "project.Open"}:                                                   1,
@@ -620,8 +620,8 @@ func TestRunDispatchError(t *testing.T) {
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on dispatch error, got %d", code)
 	}
-	if !strings.HasPrefix(errb.String(), "awf:") {
-		t.Errorf("expected awf-prefixed error, got %q", errb.String())
+	if !strings.HasPrefix(errb.String(), "condition: awf:") {
+		t.Errorf("expected typed diagnostic, got %q", errb.String())
 	}
 }
 

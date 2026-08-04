@@ -595,8 +595,8 @@
     "docs/topics/code-design/outcome-modeling.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:827fbf1f5447db4b500cf2632505454e14467af2e1f22e1bdb02d3db825fc8d3",
-      "outputHash": "sha256:133398bec4f317bd08b856ed2d8c9f8a41d454a17658f6c96a4463cf88bc6aa7"
+      "configHash": "sha256:5aea51b0f0a6aff65f72675e84f88c74254dc2d90566a79fcba14c0e2a8a020d",
+      "outputHash": "sha256:61c1d97676bc50619141f74718da82dae669e173980af56d3eda4f70f534d62e"
     },
     "docs/topics/code-design/package-composition.md": {
       "templateId": "topics/topic.md.tmpl",

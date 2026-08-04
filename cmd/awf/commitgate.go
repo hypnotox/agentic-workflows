@@ -12,8 +12,27 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
+
+var (
+	readCommitGateFile    = os.ReadFile
+	readCommitGateStdin   = io.ReadAll
+	openCommitGateProject = openCommitGateProjectFromDisk
+	authorizeCommitGate   = func(ctx context.Context, p *project.Project, msg commitmsg.Message) (project.CommitAuthorizationResult, error) {
+		return p.CheckCommitAuthorization(ctx, msg)
+	}
+	commitGateDiagnostic = func(result project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
+		return result.Diagnostic()
+	}
+	commitGateDocument     = func(diagnostic presentation.Diagnostic) (presentation.Document, error) { return diagnostic.Document() }
+	renderCommitGateOutput = presentation.Render
+)
+
+func openCommitGateProjectFromDisk(ctx context.Context, root string) (*project.Project, error) {
+	return project.Open(ctx, root)
+}
 
 // runCommitGate validates one commit message and returns an error (mapped to a
 // non-zero exit) on any violation, so a commit-msg hook calling it blocks the
@@ -30,15 +49,15 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 	var raw []byte
 	var err error
 	if msgPath != "" {
-		raw, err = os.ReadFile(msgPath)
+		raw, err = readCommitGateFile(msgPath)
 	} else {
-		raw, err = io.ReadAll(stdin)
+		raw, err = readCommitGateStdin(stdin)
 	}
 	if err != nil {
 		return fmt.Errorf("check staged commit: read message: %w", err)
 	}
 	msg := commitmsg.Clean(raw)
-	p, err := project.Open(ctx, root)
+	p, err := openCommitGateProject(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check staged commit: %w", err)
 	}
@@ -68,9 +87,19 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 			}
 		}
 	}
-	result, authErr := p.CheckCommitAuthorization(ctx, msg)
+	result, authErr := authorizeCommitGate(ctx, p, msg)
 	if result.Category != "" {
-		fmt.Fprintln(stdout, result.String())
+		diagnostic, diagnosticErr := commitGateDiagnostic(result)
+		if diagnosticErr != nil {
+			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
+		}
+		document, diagnosticErr := commitGateDocument(diagnostic)
+		if diagnosticErr != nil {
+			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
+		}
+		if diagnosticErr := renderCommitGateOutput(stdout, document); diagnosticErr != nil {
+			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
+		}
 	}
 	if authErr != nil {
 		var syntax *commitmsg.SyntaxError

@@ -6,7 +6,14 @@ import (
 )
 
 func helpText(c Command) string {
-	return strings.Join(append(append([]string{}, c.Help.Usage...), append([]string{c.Help.Description}, c.Help.Details...)...), " ")
+	parts := append(append([]string{}, c.Help.Usage...), c.Help.Description)
+	parts = append(parts, c.Help.Details...)
+	parts = append(parts, c.Help.Examples...)
+	parts = append(parts, c.Help.Related...)
+	for _, item := range append(append([]HelpItem{}, c.Help.Positionals...), c.Help.Options...) {
+		parts = append(parts, item.Name, item.Description)
+	}
+	return strings.Join(parts, " ")
 }
 
 func TestCheckCommitSpecIncludesStaleMergeAuthorization(t *testing.T) {
@@ -89,6 +96,45 @@ func TestCommandsWellFormed(t *testing.T) {
 		}
 		walk(c.Name, c.Children)
 	}
+}
+
+// TestCommandHelpSemantics audits the sole registry recursively. Each public
+// datum must identify a real command form and explain its own input rather than
+// relying on a shared placeholder sentence.
+func TestCommandHelpSemantics(t *testing.T) {
+	var walk func(path string, commands []Command)
+	walk = func(path string, commands []Command) {
+		for _, command := range commands {
+			fullPath := strings.TrimSpace(path + " " + command.Name)
+			help := command.Help
+			if help.Description == "" {
+				t.Errorf("%s has no semantic help description", fullPath)
+			}
+			for _, item := range append(append([]HelpItem{}, help.Positionals...), help.Options...) {
+				if item.Name == "" || item.Description == "" {
+					t.Errorf("%s has incomplete help item %#v", fullPath, item)
+				}
+				if strings.Contains(item.Description, "input required by this command") || strings.Contains(item.Description, "command positional argument") {
+					t.Errorf("%s has placeholder help for %s", fullPath, item.Name)
+				}
+				if !strings.Contains(strings.Join(help.Usage, " "), item.Name) && !strings.HasPrefix(item.Name, "--") {
+					t.Errorf("%s documents positional %s outside its usage", fullPath, item.Name)
+				}
+			}
+			for _, example := range help.Examples {
+				if !strings.HasPrefix(example, "awf "+fullPath) {
+					t.Errorf("%s example %q is not an invocation of that command", fullPath, example)
+				}
+			}
+			for _, related := range help.Related {
+				if !strings.HasPrefix(related, "awf ") {
+					t.Errorf("%s related command %q is not public CLI syntax", fullPath, related)
+				}
+			}
+			walk(fullPath, command.Children)
+		}
+	}
+	walk("", Commands)
 }
 
 func TestLookup(t *testing.T) {

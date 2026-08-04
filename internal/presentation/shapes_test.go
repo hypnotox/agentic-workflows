@@ -20,6 +20,14 @@ func TestPresentationTreeContract(t *testing.T) {
 	}
 	f, _ := NewField("field", v("value"))
 	f.presentationNode()
+	mustReject := func(name string, construct func() error) {
+		t.Helper()
+		t.Run(name, func(t *testing.T) {
+			if err := construct(); err == nil {
+				t.Fatal("invalid grammar transition accepted")
+			}
+		})
+	}
 	r1, _ := NewRecord(v(`left|right`), v(`slash\\`))
 	r2, _ := NewRecord(v("two"), v("three"))
 	group, _ := NewRecordGroup("records", []string{"first", "second"}, r1, r2)
@@ -45,6 +53,29 @@ func TestPresentationTreeContract(t *testing.T) {
 	if out.String() != wantGolden {
 		t.Fatalf("presentation grammar:\n--- got ---\n%s--- want ---\n%s", out.String(), wantGolden)
 	}
+
+	// Document admits only ordered root Fields then Sections. Section admits
+	// every non-Record node, including another Section, and rejects the lone
+	// leaf node that has no label. These are the complete node-child matrix;
+	// the remaining constructors below prove each leaf's scalar arity.
+	t.Run("admitted node matrix", func(t *testing.T) {
+		if _, err := NewDocument(f, outer); err != nil {
+			t.Fatalf("document Field/Section matrix: %v", err)
+		}
+		if _, err := NewSection("matrix", f, inner, list, group, steps); err != nil {
+			t.Fatalf("section Field/Section/List/RecordGroup/Steps matrix: %v", err)
+		}
+	})
+	mustReject("document rejects list", func() error { _, err := NewDocument(list); return err })
+	mustReject("document rejects record group", func() error { _, err := NewDocument(group); return err })
+	mustReject("document rejects record", func() error { _, err := NewDocument(r1); return err })
+	mustReject("document rejects steps", func() error { _, err := NewDocument(steps); return err })
+	mustReject("section rejects record", func() error { _, err := NewSection("matrix", r1); return err })
+	mustReject("section rejects unknown node", func() error { _, err := NewSection("matrix", badNode{}); return err })
+	mustReject("list requires scalar leaf", func() error { _, err := NewList("items", value{}); return err })
+	mustReject("steps requires scalar leaf", func() error { _, err := NewSteps("steps", value{}); return err })
+	mustReject("record requires scalar fields", func() error { _, err := NewRecord(value{}); return err })
+	mustReject("record group requires matching record arity", func() error { _, err := NewRecordGroup("records", []string{"one"}, r1); return err })
 	for _, want := range []string{"field: value\n\nouter:", "items:\n        one", `left\|right | slash\\\\`} {
 		if !bytes.Contains(out.Bytes(), []byte(want)) {
 			t.Errorf("output missing %q: %s", want, out.String())

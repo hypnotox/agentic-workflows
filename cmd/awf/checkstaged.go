@@ -77,7 +77,7 @@ func writeStagedState(ctx context.Context, root string, stdout io.Writer, printC
 		}
 		return nil
 	}
-	return fmt.Errorf("awf check staged state: %d current-state issue(s)", len(current))
+	return &producedReportError{fmt.Errorf("awf check staged state: %d current-state issue(s)", len(current))}
 }
 
 func writeStagedDrift(ctx context.Context, root string, stdout io.Writer, printClean bool) error {
@@ -94,5 +94,5 @@ func writeStagedDrift(ctx context.Context, root string, stdout io.Writer, printC
 		}
 		return nil
 	}
-	return fmt.Errorf("awf check staged drift: %d drift(s)", len(drift))
+	return &producedReportError{fmt.Errorf("awf check staged drift: %d drift(s)", len(drift))}
 }
