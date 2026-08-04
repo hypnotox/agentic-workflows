@@ -4,7 +4,7 @@ slug: remove-the-sundial-example-adopter
 status: Implementing
 date: 2026-08-04
 ---
-# ADR-remove-the-sundial-example-adopter: Remove the Sundial Example Adopter
+# ADR-0230: Remove the Sundial Example Adopter
 
 
 ## Context

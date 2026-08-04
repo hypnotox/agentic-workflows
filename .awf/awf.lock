@@ -433,7 +433,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:24161d0940d63c5947668486265291c078b7f438d495ec8a5ac3df0581744f3a",
+      "outputHash": "sha256:a78e91c106a4f6b3c8191767fe69e75143962a0d7fce84febe832265a04ff36b",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -613,8 +613,8 @@
     "docs/topics/code-design/single-home.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:c224571dea46731552dbf7c9dbb8f1c79c7ac060a35302b68d0a7a34402e6a08",
-      "outputHash": "sha256:44e1e9395b3cea28444d954bde450e986045ef392d25560f19f0d69bed7f15ec"
+      "configHash": "sha256:ea34310c356f956939825edad76b4013ac2cd69bc95481338840b249a92cfd36",
+      "outputHash": "sha256:2b0adcc523e7f085be84384b9caaa715bb4ae821ae84649b22941ca58b3ab7d5"
     },
     "docs/topics/code-design/state-ownership.md": {
       "templateId": "topics/topic.md.tmpl",
