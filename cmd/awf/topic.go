@@ -13,13 +13,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-const topicStaticReference = `topic: static not inside an awf project
-
-reference:
-  Query active current-state topics and claims. Use history for direct ADR history,
-  references for direct claim IDs, and coverage for scope and marker sites.
-`
-
 // runTopic validates the selector before inspecting project state, then mirrors
 // config/context's static-fallback and in-handler version-gate boundary.
 func runTopic(ctx context.Context, cwd, selector string, history, references, coverage bool, stdout io.Writer) error {
@@ -30,8 +23,7 @@ func runTopic(ctx context.Context, cwd, selector string, history, references, co
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		_, err = io.WriteString(stdout, topicStaticReference)
-		return err
+		return printTopicDetail(stdout, topic.StaticReferenceDetail())
 	}
 	if err := gate(ctx, cwd); err != nil {
 		return err
@@ -48,7 +40,10 @@ func runTopic(ctx context.Context, cwd, selector string, history, references, co
 }
 
 func printTopic(stdout io.Writer, result topic.QueryResult) error {
-	detail := result.Detail()
+	return printTopicDetail(stdout, result.Detail())
+}
+
+func printTopicDetail(stdout io.Writer, detail presentation.Detail) error {
 	document, err := detail.Document()
 	if err != nil { // coverage-ignore: topic.Detail assembles a nonempty tree only through validated constructors
 		return err

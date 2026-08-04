@@ -159,6 +159,10 @@ func TestPrintTopicHistoryText(t *testing.T) {
 	if err := printTopic(&out, result); err != nil {
 		t.Fatal(err)
 	}
+	const historyGolden = "identity: topic d/t\n\nhistory:\n  claim:\n    identity: d/t:x\n    origin: ADR-0001 | Implemented | Origin\n    revised-by: ADR-0002 | Implementing | Revision\n    removed-by: ADR-0003 | Abandoned | Removal\n"
+	if out.String() != historyGolden {
+		t.Fatalf("history output = %q, want %q", out.String(), historyGolden)
+	}
 	for _, want := range []string{"history:", "origin: ADR-0001 | Implemented | Origin", "revised-by: ADR-0002 | Implementing | Revision", "removed-by: ADR-0003 | Abandoned | Removal"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q:\n%s", want, out.String())
@@ -239,8 +243,12 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 		t.Fatalf("syntax error = %v", err)
 	}
 	var out bytes.Buffer
-	if err := runTopic(ctx, t.TempDir(), "schedule/contracts", false, false, false, &out); err != nil || !strings.Contains(out.String(), "static not inside") {
-		t.Fatalf("static = %v, %s", err, out.String())
+	if err := runTopic(ctx, t.TempDir(), "schedule/contracts", false, false, false, &out); err != nil {
+		t.Fatalf("static = %v", err)
+	}
+	const staticGolden = "topic: static not inside an awf project\n\nreference:\n  description: Query active current-state topics and claims. Use history for direct ADR history, references for direct claim IDs, and coverage for scope and marker sites.\n"
+	if out.String() != staticGolden {
+		t.Fatalf("static output = %q, want %q", out.String(), staticGolden)
 	}
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("file"), 0o644); err != nil {

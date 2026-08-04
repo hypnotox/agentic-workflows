@@ -126,7 +126,11 @@ func TestRenderContextGrammar(t *testing.T) {
 		Topics:   []topicImpact{{ID: "tooling/example", Title: "Example", Summary: "Summary.", Counts: contextAuthorityCounts{Invariants: 1, Rules: 2}, Direct: []contextClaimImpact{{ID: "tooling/example:r", Type: "rule", Summary: "Rule.", Sources: []contextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}}, Incoming: []string{"a"}, Outgoing: []string{"b"}}}}},
 	}
 	out := RenderContextText(res, "header", []ContextFacet{FacetArtifacts})
-	for _, want := range []string{"selection: range a..b", "file: x", "symlink-target-inside-repository: false", "source: templates/x", "state: tooling/example:r", "invariants=1", "request 1 State", "warning: globs", "incoming a", "outgoing b"} {
+	const contextGolden = "context: header\nselection: range a..b\n\nrequests:\n  request-1:\n    argument: x\n    file: x\n    classification: symlink\n    symlink-target-inside-repository: false\n    provenance: template | skills/example/SKILL.md.tmpl\n    source: templates/x | template source\n    domains: tooling\n    topics: tooling/example\n    warning: globs are not expanded; pass a directory or an exact file\n    state: tooling/example:r\n\nauthority:\n  topics:\n    tooling/example | Example | Summary. | 1 | 2\n  direct-claims:\n    tooling/example | tooling/example:r | rule | Rule. | none | none\n  claim-sources:\n    tooling/example | tooling/example:r | 1 | State\n  claim-references:\n    tooling/example | tooling/example:r | a | b\n"
+	if out != contextGolden {
+		t.Fatalf("context grammar:\n--- got ---\n%s--- want ---\n%s", out, contextGolden)
+	}
+	for _, want := range []string{"selection: range a..b", "file: x", "symlink-target-inside-repository: false", "source: templates/x", "state: tooling/example:r", "topics:\n    tooling/example | Example | Summary. | 1 | 2", "claim-sources:\n    tooling/example | tooling/example:r | 1 | State", "warning: globs", "claim-references:\n    tooling/example | tooling/example:r | a | b"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)
 		}
@@ -136,16 +140,16 @@ func TestRenderContextGrammar(t *testing.T) {
 func TestRenderAllContextBranches(t *testing.T) {
 	t.Parallel()
 	uncovered := RenderUncoveredText(UncoveredResult{ScanRoots: []string{"internal"}, Uncovered: []uncoveredTopic{{Path: "internal/x", Domain: "d"}}, Unowned: []unownedEntry{{Path: "file", UnownedCount: 1}, {Path: "dir/", UnownedCount: 1, ExcludedCount: 2}, {Path: ".", UnownedCount: 2}}}, "header")
-	for _, want := range []string{"scan-roots", "uncovered:", "unowned:", "1 unowned file", "2 files excluded"} {
+	for _, want := range []string{"scan-roots", "uncovered:", "unowned:", "file | 1 | 0", "dir/ | 1 | 2"} {
 		if !strings.Contains(uncovered, want) {
 			t.Errorf("uncovered missing %q: %s", want, uncovered)
 		}
 	}
-	current := contextClaimImpact{ID: "d/t:i", Type: "invariant", Summary: "Invariant.", Backing: "unbacked", Verify: "inspect", Evidence: []contextEvidence{{Kind: "state", Count: 4}, {Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "x_test.go", Line: 3}}}}}
+	current := contextClaimImpact{ID: "d/t:i", Type: "invariant", Summary: "Invariant.", Backing: "unbacked", Verify: "inspect", Sources: []contextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}}, Evidence: []contextEvidence{{Kind: "state", Count: 4}, {Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "x_test.go", Line: 3}}}}}
 	impact := contextPathImpact{Classification: pathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []contextProvenance{{Role: "template", Identity: "x", Sources: []artifactLink{}, Outputs: []artifactLink{{Path: "out", Label: "managed output"}}, Navigation: []artifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: contextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}, Warnings: []contextWarning{warningEligibleUnowned}, ADR: &adrArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", Detail: &adrOperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &adrOperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002"}}}}}}}
 	res := ContextResult{Selection: SelectionStaged, Requests: []contextRequestReport{{Index: 1, Argument: "empty", Directory: &contextDirectory{Included: 0, Excluded: []contextClassificationCount{{Classification: pathGeneratedOutput, Count: 2}}, Groups: []contextGroup{{Count: 2, Members: []string{"a", "b"}, Context: impact}}}}}, Topics: []topicImpact{{ID: "d/t", Title: "T", Summary: "S", Selectors: &contextSelectorImpact{DomainPaths: []string{}, TopicPaths: []string{}, DeclaredGlobal: false}, Invariants: []contextClaimImpact{current}, Pending: contextPendingImpact{OperationCount: 4, ADRs: []string{"0001", "0002", "0003"}, AdditionalADRCount: 1}}}}
 	out := RenderContextText(res, "header", []ContextFacet{FacetArtifacts})
-	for _, want := range []string{"selection: staged", "excluded: generated-output=2", "members: a, b", "nested-root:", "output: out", "navigate: nav", "adr: ADR-2", "claim: d/t:i", "removal-history:", "inspect", "state 4 sites", "4 operations", "domain=none | topic=none"} {
+	for _, want := range []string{"selection: staged", "excluded: generated-output=2", "members: a, b", "nested-root:", "output: out", "navigate: nav", "adr: ADR-2", "claim:\n      d/t:i", "removal-history:", "inspect", "state | 4 | none", "pending-summary:\n    d/t | 4 | 0001, 0002, 0003 | 1", "selectors:\n    d/t | none | none | both domain and topic selectors must match"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)
 		}
@@ -153,7 +157,7 @@ func TestRenderAllContextBranches(t *testing.T) {
 	res.Topics[0].Pending.Operations = []pendingChange{{ADR: "0002", Op: "add", Claim: "d/t:r", Progress: "remaining"}}
 	res.Topics[0].Selectors.DeclaredGlobal = true
 	out = RenderContextText(res, "header", nil)
-	if !strings.Contains(out, "ADR-0002 add d/t:r remaining") || !strings.Contains(out, "topic=global") {
+	if !strings.Contains(out, "d/t | 0002 | add | d/t:r | remaining") || !strings.Contains(out, "d/t | none | global | both domain and topic selectors must match") {
 		t.Fatal(out)
 	}
 	// A report with neither a request nor an applicable topic renders both

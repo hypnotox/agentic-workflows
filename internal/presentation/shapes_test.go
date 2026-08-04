@@ -38,6 +38,10 @@ func TestPresentationTreeShapes(t *testing.T) {
 	if err := Render(&out, doc); err != nil {
 		t.Fatal(err)
 	}
+	const wantGolden = "field: value\n\nouter:\n  middle:\n    inner:\n      field: value\n      items:\n        one\n        two\n      records:\n        left\\|right | slash\\\\\\\\\n        two | three\n"
+	if out.String() != wantGolden {
+		t.Fatalf("presentation grammar:\n--- got ---\n%s--- want ---\n%s", out.String(), wantGolden)
+	}
 	for _, want := range []string{"field: value\n\nouter:", "items:\n        one", `left\|right | slash\\\\`} {
 		if !bytes.Contains(out.Bytes(), []byte(want)) {
 			t.Errorf("output missing %q: %s", want, out.String())
@@ -50,6 +54,8 @@ func TestPresentationTreeShapes(t *testing.T) {
 		func() error { _, e := NewRecordGroup("Bad", []string{"one", "two"}, r1); return e }(),
 		func() error { _, e := NewRecord(value{}); return e }(),
 		func() error { _, e := NewDocument(badNode{}); return e }(),
+		func() error { _, e := NewDocument(nil); return e }(),
+		func() error { _, e := NewSection("section", nil); return e }(),
 		func() error { _, e := NewSection("section", badNode{}); return e }(),
 		func() error { _, e := NewDocument(Section{label: "section", nodes: []Node{badNode{}}}); return e }(),
 		func() error { _, e := NewDocument(Field{label: "field", value: value{}}, outer); return e }(),

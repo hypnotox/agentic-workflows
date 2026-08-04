@@ -106,7 +106,7 @@ func TestRunContextHumanAndFacets(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	for _, want := range []string{"selection: explicit", "request-1:", "directory: 3 included", "authority:", "alpha/one | One", "test", "invariant internal/foo/y_test.go"} {
+	for _, want := range []string{"selection: explicit", "request-1:", "directory: 3 included", "authority:", "alpha/one | One", "test", "alpha/one | alpha/one:tested | invariant | 1 | internal/foo/y_test.go:2"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
 		}
@@ -143,9 +143,9 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"request 1 State | request 2 State",
-		"request 1 Touches | request 2 Touches",
-		"request 1 Proofs | request 2 Proofs",
+		"alpha/one | alpha/one:order | 1 | State",
+		"alpha/one | alpha/one:stable | 2 | Touches",
+		"alpha/one | alpha/one:tested | 2 | Proofs",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q:\n%s", want, out.String())

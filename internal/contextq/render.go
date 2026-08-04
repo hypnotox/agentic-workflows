@@ -47,17 +47,7 @@ func RenderContextText(res ContextResult, header string, facets []ContextFacet) 
 		requestNodes = append(requestNodes, section(fmt.Sprintf("request-%d", request.Index), nodes...))
 	}
 	sections := []presentation.Section{section("requests", requestNodes...)}
-	authority := make([]presentation.Node, 0, 1)
-	if len(res.Topics) == 0 {
-		authority = append(authority, field("topics", "none"))
-	} else {
-		values := make([]presentation.Value, 0, len(res.Topics))
-		for _, topic := range res.Topics {
-			values = append(values, prose(topicText(topic)))
-		}
-		authority = append(authority, list("topics", values...))
-	}
-	sections = append(sections, section("authority", authority...))
+	sections = append(sections, section("authority", authorityNodes(res.Topics)...))
 	return renderDetail(presentation.Detail{Fields: fields, Sections: sections})
 }
 
@@ -79,18 +69,11 @@ func RenderUncoveredText(res UncoveredResult, header string) string {
 		nodes = append(nodes, recordGroup("uncovered", []string{"path", "domain"}, records...))
 	}
 	if len(res.Unowned) > 0 {
-		values := make([]presentation.Value, 0, len(res.Unowned))
+		records := make([]presentation.Record, 0, len(res.Unowned))
 		for _, entry := range res.Unowned {
-			text := entry.Path
-			if entry.Path == "." || strings.HasSuffix(entry.Path, "/") {
-				text += " | " + countNoun(entry.UnownedCount, "unowned file")
-				if entry.ExcludedCount > 0 {
-					text += fmt.Sprintf(" | %s excluded from coverage beneath", countNoun(entry.ExcludedCount, "file"))
-				}
-			}
-			values = append(values, prose(text))
+			records = append(records, record(prose(entry.Path), prose(strconv.Itoa(entry.UnownedCount)), prose(strconv.Itoa(entry.ExcludedCount))))
 		}
-		nodes = append(nodes, list("unowned", values...))
+		nodes = append(nodes, recordGroup("unowned", []string{"path", "unowned-files", "excluded-files"}, records...))
 	}
 	return renderDetail(presentation.Detail{Fields: fields, Sections: []presentation.Section{section("coverage", nodes...)}})
 }
@@ -155,51 +138,82 @@ func impactFields(impact contextPathImpact, facets []ContextFacet) []presentatio
 	return nodes
 }
 
-func topicText(topic topicImpact) string {
-	parts := []string{topic.ID, topic.Title, topic.Summary, fmt.Sprintf("invariants=%d", topic.Counts.Invariants), fmt.Sprintf("rules=%d", topic.Counts.Rules)}
-	if topic.Selectors != nil {
-		selectors := topic.Selectors
-		topicPaths := listText(selectors.TopicPaths)
-		if selectors.DeclaredGlobal {
-			topicPaths = "global"
+func authorityNodes(topics []topicImpact) []presentation.Node {
+	if len(topics) == 0 {
+		return []presentation.Node{field("topics", "none")}
+	}
+	nodes := []presentation.Node{}
+	topicRecords := make([]presentation.Record, 0, len(topics))
+	selectorRecords := []presentation.Record{}
+	claimGroups := []struct {
+		label  string
+		claims func(topicImpact) []contextClaimImpact
+	}{
+		{"direct-claims", func(topic topicImpact) []contextClaimImpact { return topic.Direct }},
+		{"invariants", func(topic topicImpact) []contextClaimImpact { return topic.Invariants }},
+		{"additional-claims", func(topic topicImpact) []contextClaimImpact { return topic.Additional }},
+		{"referenced-claims", func(topic topicImpact) []contextClaimImpact { return topic.Referenced }},
+	}
+	claimRecords := make([][]presentation.Record, len(claimGroups))
+	sourceRecords, evidenceRecords, referenceRecords := []presentation.Record{}, []presentation.Record{}, []presentation.Record{}
+	pendingRecords, pendingSummaryRecords := []presentation.Record{}, []presentation.Record{}
+	for _, topic := range topics {
+		topicRecords = append(topicRecords, record(prose(topic.ID), prose(topic.Title), prose(topic.Summary), prose(strconv.Itoa(topic.Counts.Invariants)), prose(strconv.Itoa(topic.Counts.Rules))))
+		if selectors := topic.Selectors; selectors != nil {
+			topicPaths := listText(selectors.TopicPaths)
+			if selectors.DeclaredGlobal {
+				topicPaths = "global"
+			}
+			selectorRecords = append(selectorRecords, record(prose(topic.ID), prose(listText(selectors.DomainPaths)), prose(topicPaths), prose("both domain and topic selectors must match")))
 		}
-		parts = append(parts, "domain="+listText(selectors.DomainPaths), "topic="+topicPaths)
-	}
-	for _, claims := range [][]contextClaimImpact{topic.Direct, topic.Invariants, topic.Additional, topic.Referenced} {
-		for _, claim := range claims {
-			parts = append(parts, claimText(claim))
-		}
-	}
-	for _, pending := range topic.Pending.Operations {
-		parts = append(parts, fmt.Sprintf("ADR-%s %s %s %s", pending.ADR, pending.Op, pending.Claim, pending.Progress))
-	}
-	if len(topic.Pending.Operations) == 0 && topic.Pending.OperationCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d operations from %s", topic.Pending.OperationCount, strings.Join(topic.Pending.ADRs, ", ")))
-	}
-	return strings.Join(parts, " | ")
-}
-
-func claimText(claim contextClaimImpact) string {
-	parts := []string{claim.ID, claim.Type, claim.Summary, claim.Backing, claim.Verify}
-	for _, source := range claim.Sources {
-		parts = append(parts, fmt.Sprintf("request %d %s", source.RequestIndex, strings.Join(source.Kinds, ", ")))
-	}
-	for _, evidence := range claim.Evidence {
-		if len(evidence.Sites) == 0 {
-			parts = append(parts, fmt.Sprintf("%s %d sites", evidence.Kind, evidence.Count))
-		} else {
-			for _, site := range evidence.Sites {
-				parts = append(parts, fmt.Sprintf("%s %s:%d", evidence.Kind, site.Path, site.Line))
+		for i, group := range claimGroups {
+			for _, claim := range group.claims(topic) {
+				claimRecords[i] = append(claimRecords[i], record(prose(topic.ID), prose(claim.ID), prose(claim.Type), prose(claim.Summary), prose(claim.Backing), prose(orNone(claim.Verify))))
+				for _, source := range claim.Sources {
+					sourceRecords = append(sourceRecords, record(prose(topic.ID), prose(claim.ID), prose(strconv.Itoa(source.RequestIndex)), prose(strings.Join(source.Kinds, ", "))))
+				}
+				for _, evidence := range claim.Evidence {
+					sites := make([]string, 0, len(evidence.Sites))
+					for _, site := range evidence.Sites {
+						sites = append(sites, fmt.Sprintf("%s:%d", site.Path, site.Line))
+					}
+					evidenceRecords = append(evidenceRecords, record(prose(topic.ID), prose(claim.ID), prose(evidence.Kind), prose(strconv.Itoa(evidence.Count)), prose(listText(sites))))
+				}
+				referenceRecords = append(referenceRecords, record(prose(topic.ID), prose(claim.ID), prose(listText(claim.Incoming)), prose(listText(claim.Outgoing))))
 			}
 		}
+		for _, pending := range topic.Pending.Operations {
+			pendingRecords = append(pendingRecords, record(prose(topic.ID), prose(pending.ADR), prose(pending.Op), prose(pending.Claim), prose(pending.Progress)))
+		}
+		if len(topic.Pending.Operations) == 0 && topic.Pending.OperationCount > 0 {
+			pendingSummaryRecords = append(pendingSummaryRecords, record(prose(topic.ID), prose(strconv.Itoa(topic.Pending.OperationCount)), prose(strings.Join(topic.Pending.ADRs, ", ")), prose(strconv.Itoa(topic.Pending.AdditionalADRCount))))
+		}
 	}
-	if len(claim.Incoming) > 0 {
-		parts = append(parts, "incoming "+strings.Join(claim.Incoming, ", "))
+	nodes = append(nodes, recordGroup("topics", []string{"identity", "title", "summary", "invariants", "rules"}, topicRecords...))
+	if len(selectorRecords) > 0 {
+		nodes = append(nodes, recordGroup("selectors", []string{"topic", "domain-paths", "topic-paths", "rule"}, selectorRecords...))
 	}
-	if len(claim.Outgoing) > 0 {
-		parts = append(parts, "outgoing "+strings.Join(claim.Outgoing, ", "))
+	for i, group := range claimGroups {
+		if len(claimRecords[i]) > 0 {
+			nodes = append(nodes, recordGroup(group.label, []string{"topic", "identity", "type", "summary", "backing", "verify"}, claimRecords[i]...))
+		}
 	}
-	return strings.Join(parts, " | ")
+	if len(sourceRecords) > 0 {
+		nodes = append(nodes, recordGroup("claim-sources", []string{"topic", "claim", "request", "kinds"}, sourceRecords...))
+	}
+	if len(evidenceRecords) > 0 {
+		nodes = append(nodes, recordGroup("claim-evidence", []string{"topic", "claim", "kind", "count", "sites"}, evidenceRecords...))
+	}
+	if len(referenceRecords) > 0 {
+		nodes = append(nodes, recordGroup("claim-references", []string{"topic", "claim", "incoming", "outgoing"}, referenceRecords...))
+	}
+	if len(pendingRecords) > 0 {
+		nodes = append(nodes, recordGroup("pending-operations", []string{"topic", "adr", "operation", "claim", "progress"}, pendingRecords...))
+	}
+	if len(pendingSummaryRecords) > 0 {
+		nodes = append(nodes, recordGroup("pending-summary", []string{"topic", "operation-count", "adrs", "additional-adrs"}, pendingSummaryRecords...))
+	}
+	return nodes
 }
 func containsFacet(facets []ContextFacet, want ContextFacet) bool {
 	for _, facet := range facets {
@@ -211,7 +225,27 @@ func containsFacet(facets []ContextFacet, want ContextFacet) bool {
 }
 
 func claimFields(claim contextClaimImpact) []presentation.Node {
-	return []presentation.Node{field("claim", claimText(claim))}
+	nodes := []presentation.Node{recordGroup("claim", []string{"identity", "type", "summary", "backing", "verify"}, record(prose(claim.ID), prose(claim.Type), prose(claim.Summary), prose(claim.Backing), prose(orNone(claim.Verify))))}
+	if len(claim.Sources) > 0 {
+		records := make([]presentation.Record, 0, len(claim.Sources))
+		for _, source := range claim.Sources {
+			records = append(records, record(prose(strconv.Itoa(source.RequestIndex)), prose(strings.Join(source.Kinds, ", "))))
+		}
+		nodes = append(nodes, recordGroup("claim-sources", []string{"request", "kinds"}, records...))
+	}
+	if len(claim.Evidence) > 0 {
+		records := make([]presentation.Record, 0, len(claim.Evidence))
+		for _, evidence := range claim.Evidence {
+			sites := make([]string, 0, len(evidence.Sites))
+			for _, site := range evidence.Sites {
+				sites = append(sites, fmt.Sprintf("%s:%d", site.Path, site.Line))
+			}
+			records = append(records, record(prose(evidence.Kind), prose(strconv.Itoa(evidence.Count)), prose(listText(sites))))
+		}
+		nodes = append(nodes, recordGroup("claim-evidence", []string{"kind", "count", "sites"}, records...))
+	}
+	nodes = append(nodes, recordGroup("claim-references", []string{"incoming", "outgoing"}, record(prose(listText(claim.Incoming)), prose(listText(claim.Outgoing)))))
+	return nodes
 }
 
 func relationshipFields(relationships contextRelationships) []presentation.Node {
@@ -227,20 +261,21 @@ func relationshipFields(relationships contextRelationships) []presentation.Node 
 	}
 	return nodes
 }
-func countNoun(n int, noun string) string {
-	if n == 1 {
-		return "1 " + noun
-	}
-	return fmt.Sprintf("%d %ss", n, noun)
-}
 func listText(values []string) string {
 	if len(values) == 0 {
 		return "none"
 	}
 	return strings.Join(values, ", ")
 }
+
+func orNone(text string) string {
+	if text == "" {
+		return "none"
+	}
+	return text
+}
 func prose(text string) presentation.Value {
-	value, err := presentation.Prose(text)
+	value, err := presentation.Prose(orNone(text))
 	if err != nil { // coverage-ignore: every mapper input is normalized from parsed context semantics
 		panic(err)
 	}
@@ -250,13 +285,6 @@ func field(label, text string) presentation.Field {
 	value := prose(text)
 	result, err := presentation.NewField(label, value)
 	if err != nil { // coverage-ignore: this mapper owns each literal label and uses a validated value
-		panic(err)
-	}
-	return result
-}
-func list(label string, values ...presentation.Value) presentation.List {
-	result, err := presentation.NewList(label, values...)
-	if err != nil { // coverage-ignore: callers construct nonempty lists from typed result slices
 		panic(err)
 	}
 	return result

@@ -191,6 +191,52 @@ func seamBreachFindings(pkgs []*packages.Package) []string {
 // package's Render entries or to a JSON encoder; a function that receives a
 // result type and calls a fmt print/format helper or strings.Builder is
 // rendering it in the wrong home.
+// contextqPresentationFindings requires both semantic entry points to lower
+// through the local Detail mapper, and that mapper to delegate final syntax to
+// presentation.Render. This keeps result interpretation in contextq without
+// letting a future convenience formatter reclaim presentation grammar here.
+func contextqPresentationFindings(pkgs []*packages.Package) []string {
+	calls := map[string]map[string]bool{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil {
+					continue
+				}
+				if calls[fn.Name.Name] == nil {
+					calls[fn.Name.Name] = map[string]bool{}
+				}
+				ast.Inspect(fn.Body, func(n ast.Node) bool {
+					call, ok := n.(*ast.CallExpr)
+					if !ok {
+						return true
+					}
+					switch fun := call.Fun.(type) {
+					case *ast.Ident:
+						calls[fn.Name.Name][fun.Name] = true
+					case *ast.SelectorExpr:
+						if ident, ok := fun.X.(*ast.Ident); ok && ident.Name == "presentation" {
+							calls[fn.Name.Name]["presentation."+fun.Sel.Name] = true
+						}
+					}
+					return true
+				})
+			}
+		}
+	}
+	var findings []string
+	for _, name := range []string{"RenderContextText", "RenderUncoveredText"} {
+		if !calls[name]["renderDetail"] {
+			findings = append(findings, "contextq semantic mapper "+name+" does not lower through renderDetail")
+		}
+	}
+	if !calls["renderDetail"]["presentation.Render"] {
+		findings = append(findings, "contextq renderDetail does not delegate syntax to presentation.Render")
+	}
+	return findings
+}
+
 func cmdRenderFindings(pkgs []*packages.Package) []string {
 	resultTypes := map[string]bool{"ContextResult": true, "UncoveredResult": true}
 	takesResult := func(fn *ast.FuncDecl) bool {
@@ -275,6 +321,9 @@ func TestContextQueryBoundary(t *testing.T) {
 	if findings := seamBreachFindings(query); len(findings) != 0 {
 		t.Errorf("contextq reaches into the core outside the ContextState seam:\n\t%s",
 			strings.Join(findings, "\n\t"))
+	}
+	if findings := contextqPresentationFindings(query); len(findings) != 0 {
+		t.Errorf("contextq no longer owns semantic lowering through presentation:\n\t%s", strings.Join(findings, "\n\t"))
 	}
 	command := loadBoundaryPackages(t, cmdPattern, nil)
 	if findings := cmdRenderFindings(command); len(findings) != 0 {

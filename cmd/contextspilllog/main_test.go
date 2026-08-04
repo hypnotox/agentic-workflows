@@ -68,7 +68,10 @@ func TestRunSafeLogAdvisory(t *testing.T) {
 
 func TestRunUnrecognizedIsSilent(t *testing.T) {
 	capture := filepath.Join(t.TempDir(), "capture")
-	if err := os.WriteFile(capture, []byte("ordinary context\n"), 0o600); err != nil {
+	// This is ordinary presentation output, not a protocol sentinel. The x
+	// consumer must leave it alone even though it starts with the context label.
+	const ordinaryContext = "context: static not inside an awf project\n\nrequests:\n  status: none\n"
+	if err := os.WriteFile(capture, []byte(ordinaryContext), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer

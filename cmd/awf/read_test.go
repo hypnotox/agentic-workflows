@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -174,6 +175,17 @@ func TestReadPlanCommand(t *testing.T) {
 		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
 	}
 	got := stdout.String()
+	parsed, err := plan.Resolve(filepath.Dir(path), filepath.Base(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPayload, err := plan.RenderProjection(parsed, "1.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(stdout.Bytes(), wantPayload) {
+		t.Fatalf("read plan changed payload bytes with a presentation prefix, suffix, or normalization:\n--- got ---\n%s--- want ---\n%s", stdout.Bytes(), wantPayload)
+	}
 	for _, want := range []string{"format: plan-v1", "# Plan: Read command", "## Goal", "## Architecture summary", "## Phase 1: Read", "**Execution mode: inline.**", "### Task 1.1: Return bytes", "### Phase close", "## Definition of done", "## Notes"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("projection lacks %q", want)

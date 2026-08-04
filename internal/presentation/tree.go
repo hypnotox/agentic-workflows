@@ -81,7 +81,6 @@ func NewDocument(nodes ...Node) (Document, error) {
 	}
 	document := Document{nodes: append([]Node(nil), nodes...)}
 	for _, node := range nodes {
-		node.presentationNode()
 		if field, ok := node.(Field); ok {
 			document.fields = append(document.fields, field)
 		}
@@ -157,6 +156,9 @@ func validateDocument(document Document) error {
 	}
 	seenSection := false
 	for _, node := range nodes {
+		if node == nil {
+			return errors.New("presentation document contains a nil node")
+		}
 		switch n := node.(type) {
 		case Field:
 			if seenSection {
@@ -190,6 +192,9 @@ func validateSection(section Section, depth int) error {
 		return errors.New("presentation section requires children")
 	}
 	for _, node := range section.nodes {
+		if node == nil {
+			return errors.New("presentation section contains a nil node")
+		}
 		switch n := node.(type) {
 		case Field:
 			if err := validateField(n); err != nil {

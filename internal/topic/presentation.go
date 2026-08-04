@@ -66,7 +66,7 @@ func (result QueryResult) Detail() presentation.Detail {
 		if a.DeclaredGlobal {
 			nodes = append(nodes, topicField("declared", "global"))
 		}
-		nodes = append(nodes, topicField("domain-paths", topicList(a.DomainPaths)), topicField("topic-paths", topicList(a.TopicPaths)), topicField("selector-rule", "both domain and topic selectors must match"), topicField("matched-paths", topicList(a.MatchedPaths)))
+		nodes = append(nodes, presentationTopicItems("domain-paths", a.DomainPaths), presentationTopicItems("topic-paths", a.TopicPaths), topicField("selector-rule", "both domain and topic selectors must match"), presentationTopicItems("matched-paths", a.MatchedPaths))
 		for _, site := range a.MarkerSites {
 			text := fmt.Sprintf("%s:%d | %s | %s", site.Path, site.Line, site.Kind, site.ClaimID)
 			if site.Note != "" {
@@ -79,6 +79,15 @@ func (result QueryResult) Detail() presentation.Detail {
 	return presentation.Detail{Fields: fields, Sections: sections}
 }
 
+// StaticReferenceDetail maps the unadopted-project topic reference into the
+// same presentation tree as ordinary topic output.
+func StaticReferenceDetail() presentation.Detail {
+	return presentation.Detail{
+		Fields:   []presentation.Field{topicField("topic", "static not inside an awf project")},
+		Sections: []presentation.Section{topicSection("reference", topicField("description", "Query active current-state topics and claims. Use history for direct ADR history, references for direct claim IDs, and coverage for scope and marker sites."))},
+	}
+}
+
 func historyText(history ADRHistory) string {
 	return fmt.Sprintf("ADR-%s | %s | %s", history.Number, history.Status, history.Title)
 }
@@ -87,6 +96,24 @@ func topicList(items []string) string {
 		return "none"
 	}
 	return strings.Join(items, ", ")
+}
+func presentationTopicItems(label string, items []string) presentation.Node {
+	if len(items) == 0 {
+		return topicField(label, "none")
+	}
+	values := make([]presentation.Value, 0, len(items))
+	for _, item := range items {
+		value, err := topicValue(item)
+		if err != nil { // coverage-ignore: topic query items are parsed single-line values
+			panic(err)
+		}
+		values = append(values, value)
+	}
+	list, err := presentation.NewList(label, values...)
+	if err != nil { // coverage-ignore: this mapper owns the literal label and supplies nonempty validated values
+		panic(err)
+	}
+	return list
 }
 func topicValue(text string) (presentation.Value, error) { return presentation.Prose(text) }
 func topicField(label, text string) presentation.Field {

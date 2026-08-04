@@ -133,6 +133,11 @@ func TestPlanExecutableProjection(t *testing.T) {
 	if want := projectionPreamble + projectionTask11 + projectionTail; !bytes.Equal(task, []byte(want)) {
 		t.Fatalf("task projection:\n%s\nwant:\n%s", task, want)
 	}
+	for name, payload := range map[string][]byte{"phase": phase, "task": task} {
+		if !bytes.HasPrefix(payload, []byte(projectionPreamble)) || !bytes.HasSuffix(payload, []byte(projectionTail)) {
+			t.Fatalf("%s projection gained a presentation prefix or suffix: %q", name, payload)
+		}
+	}
 	if bytes.Contains(task, []byte("### Task 1.2")) || bytes.Contains(task, []byte("## Phase 2")) {
 		t.Fatalf("task projection contains unselected content:\n%s", task)
 	}
