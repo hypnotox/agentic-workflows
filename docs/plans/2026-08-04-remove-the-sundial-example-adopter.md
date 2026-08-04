@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-04
 adrs: [remove-the-sundial-example-adopter]
-status: Proposed
+status: Implemented
 ---
 # Plan: Remove the Sundial Example Adopter
 
