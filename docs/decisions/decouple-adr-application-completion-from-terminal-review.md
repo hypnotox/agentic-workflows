@@ -61,10 +61,10 @@ application completion exactly.
    `Implemented`; undeclared and duplicate first applications remain invalid.
 
 3. `decision: event-chronology-remains-authoritative` Status history remains date-nondecreasing and
-   prefix-append-only. Retained event bytes remain exact history, and batch chronology across an
-   ADR's history occurrences and across ADRs remains authoritative for merge reconciliation. Applied
-   and Reapplied operation lists are unordered membership within one occurrence; their list position
-   creates no additional chronology, dependency, or provenance meaning.
+   prefix-append-only. Retained event bytes remain exact history, and merge reconciliation preserves
+   distinct batches in ascending ADR-identity and intra-ADR history order. Applied and Reapplied
+   operation lists are unordered membership within one occurrence; their list position creates no
+   additional chronology, dependency, or provenance meaning.
 
 4. `decision: final-application-precedes-terminal-status` Entering `Implementing` continues to
    append its status event and first nonempty Applied batch in one checked transaction. A
