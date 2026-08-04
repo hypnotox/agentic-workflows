@@ -2,57 +2,230 @@ package contextq
 
 import (
 	"fmt"
-	"io"
+	"strconv"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-// RenderContextText renders a context report as the human text the command
-// prints. The package that owns the result model owns its rendering; the
-// command binary keeps argument parsing, renderer selection, and exit mapping
-// (code-design/presentation-ownership).
+// RenderContextText maps the typed context result into the shared Detail shape.
+// Contextq owns this semantic mapping; presentation owns syntax and rendering.
 func RenderContextText(res ContextResult, header string, facets []ContextFacet) string {
-	var out strings.Builder
-	renderContext(&out, res, header, facets)
-	return out.String()
+	fields := []presentation.Field{field("context", header), field("selection", selectionText(res))}
+	requestNodes := make([]presentation.Node, 0, len(res.Requests))
+	if len(res.Requests) == 0 {
+		requestNodes = append(requestNodes, field("status", "none"))
+	}
+	for _, request := range res.Requests {
+		nodes := []presentation.Node{field("argument", request.Argument)}
+		if request.Exact != nil {
+			nodes = append(nodes, field("file", request.Exact.Path))
+			nodes = append(nodes, impactFields(request.Exact.Context, facets)...)
+			nodes = append(nodes, relationshipFields(request.Exact.Context.Relationships)...)
+		}
+		if request.Directory != nil {
+			d := request.Directory
+			excluded := 0
+			for _, c := range d.Excluded {
+				excluded += c.Count
+			}
+			nodes = append(nodes, field("directory", fmt.Sprintf("%d included | %d excluded", d.Included, excluded)))
+			for _, c := range d.Excluded {
+				nodes = append(nodes, field("excluded", fmt.Sprintf("%s=%d", c.Classification, c.Count)))
+			}
+			for i, group := range d.Groups {
+				nodes = append(nodes, field("group", fmt.Sprintf("%d | %d files", i+1, group.Count)))
+				if len(group.Members) > 0 {
+					nodes = append(nodes, field("members", strings.Join(group.Members, ", ")))
+				}
+				nodes = append(nodes, impactFields(group.Context, facets)...)
+			}
+			if containsFacet(facets, FacetRelationships) {
+				nodes = append(nodes, relationshipFields(d.Relationships)...)
+			}
+		}
+		requestNodes = append(requestNodes, section(fmt.Sprintf("request-%d", request.Index), nodes...))
+	}
+	sections := []presentation.Section{section("requests", requestNodes...)}
+	authority := make([]presentation.Node, 0, 1)
+	if len(res.Topics) == 0 {
+		authority = append(authority, field("topics", "none"))
+	} else {
+		values := make([]presentation.Value, 0, len(res.Topics))
+		for _, topic := range res.Topics {
+			values = append(values, prose(topicText(topic)))
+		}
+		authority = append(authority, list("topics", values...))
+	}
+	sections = append(sections, section("authority", authority...))
+	return renderDetail(presentation.Detail{Fields: fields, Sections: sections})
 }
 
-// RenderUncoveredText renders a coverage report as the human text the command
-// prints.
+// RenderUncoveredText maps coverage result semantics into the shared Detail shape.
 func RenderUncoveredText(res UncoveredResult, header string) string {
-	var out strings.Builder
-	renderUncovered(&out, res, header)
-	return out.String()
-}
-
-func renderUncovered(out io.Writer, res UncoveredResult, header string) {
-	fmt.Fprintln(out, header)
+	fields := []presentation.Field{field("context", header)}
+	nodes := []presentation.Node{}
 	if len(res.ScanRoots) > 0 {
-		fmt.Fprintf(out, "\nscan roots: %v\n", res.ScanRoots)
+		nodes = append(nodes, field("scan-roots", strings.Join(res.ScanRoots, ", ")))
 	}
 	if len(res.Uncovered) == 0 && len(res.Unowned) == 0 {
-		fmt.Fprintln(out, "\nall scanned paths are owned and covered by a scoped topic")
-		return
+		nodes = append(nodes, field("result", "all scanned paths are owned and covered by a scoped topic"))
 	}
 	if len(res.Uncovered) > 0 {
-		fmt.Fprintln(out, "\n## Uncovered (owned by a domain, no scoped topic)")
-		for _, u := range res.Uncovered {
-			fmt.Fprintf(out, "  %s (%s)\n", u.Path, u.Domain)
+		records := make([]presentation.Record, 0, len(res.Uncovered))
+		for _, entry := range res.Uncovered {
+			records = append(records, record(prose(entry.Path), prose(entry.Domain)))
 		}
+		nodes = append(nodes, recordGroup("uncovered", []string{"path", "domain"}, records...))
 	}
 	if len(res.Unowned) > 0 {
-		fmt.Fprintln(out, "\n## Unowned (configure a domain to own these)")
-		for _, u := range res.Unowned {
-			if u.Path != "." && !strings.HasSuffix(u.Path, "/") {
-				fmt.Fprintf(out, "  %s\n", u.Path)
-				continue
+		values := make([]presentation.Value, 0, len(res.Unowned))
+		for _, entry := range res.Unowned {
+			text := entry.Path
+			if entry.Path == "." || strings.HasSuffix(entry.Path, "/") {
+				text += " | " + countNoun(entry.UnownedCount, "unowned file")
+				if entry.ExcludedCount > 0 {
+					text += fmt.Sprintf(" | %s excluded from coverage beneath", countNoun(entry.ExcludedCount, "file"))
+				}
 			}
-			fmt.Fprintf(out, "  %s (%s", u.Path, countNoun(u.UnownedCount, "unowned file"))
-			if u.ExcludedCount > 0 {
-				fmt.Fprintf(out, "; %s excluded from coverage beneath", countNoun(u.ExcludedCount, "file"))
+			values = append(values, prose(text))
+		}
+		nodes = append(nodes, list("unowned", values...))
+	}
+	return renderDetail(presentation.Detail{Fields: fields, Sections: []presentation.Section{section("coverage", nodes...)}})
+}
+
+func selectionText(res ContextResult) string {
+	if res.Selection == SelectionRange {
+		return "range " + res.Range
+	}
+	return string(res.Selection)
+}
+
+func impactFields(impact contextPathImpact, facets []ContextFacet) []presentation.Node {
+	nodes := []presentation.Node{field("classification", string(impact.Classification))}
+	if impact.NestedRoot != "" {
+		nodes = append(nodes, field("nested-root", impact.NestedRoot))
+	}
+	if impact.TargetInsideRepository != nil {
+		nodes = append(nodes, field("symlink-target-inside-repository", strconv.FormatBool(*impact.TargetInsideRepository)))
+	}
+	if len(impact.Provenance) == 0 {
+		nodes = append(nodes, field("provenance", "none"))
+	}
+	for _, provenance := range impact.Provenance {
+		nodes = append(nodes, field("provenance", provenance.Role+" | "+provenance.Identity))
+		if containsFacet(facets, FacetArtifacts) {
+			for _, item := range provenance.Sources {
+				nodes = append(nodes, field("source", item.Path+" | "+item.Label))
 			}
-			fmt.Fprintln(out, ")")
+			for _, item := range provenance.Outputs {
+				nodes = append(nodes, field("output", item.Path+" | "+item.Label))
+			}
+			for _, item := range provenance.Navigation {
+				nodes = append(nodes, field("navigate", item.Path+" | "+item.Label))
+			}
 		}
 	}
+	domains := []string{}
+	for _, domain := range impact.Domains {
+		domains = append(domains, domain.Name)
+	}
+	topics := []string{}
+	for _, topic := range impact.Topics {
+		topics = append(topics, topic.ID)
+	}
+	nodes = append(nodes, field("domains", listText(domains)), field("topics", listText(topics)))
+	for _, warning := range impact.Warnings {
+		nodes = append(nodes, field("warning", string(warning)))
+	}
+	if impact.ADR != nil {
+		adr := impact.ADR
+		nodes = append(nodes, field("adr", fmt.Sprintf("ADR-%s | %s | %s | %s", adr.Number, adr.Title, adr.Status, adr.Mutability)), field("authority-role", adr.AuthorityRole))
+		for _, operation := range adr.Operations {
+			nodes = append(nodes, field("operation", fmt.Sprintf("%s | %s | %s | %s", operation.Operation, operation.Claim, operation.Progress, operation.ClaimState)))
+			if operation.Detail != nil && operation.Detail.Current != nil {
+				nodes = append(nodes, claimFields(*operation.Detail.Current)...)
+			}
+			if operation.Detail != nil && operation.Detail.History != nil && operation.Detail.History.RemovedBy != nil {
+				nodes = append(nodes, field("removal-history", "removed by ADR-"+operation.Detail.History.RemovedBy.Number))
+			}
+		}
+	}
+	return nodes
+}
+
+func topicText(topic topicImpact) string {
+	parts := []string{topic.ID, topic.Title, topic.Summary, fmt.Sprintf("invariants=%d", topic.Counts.Invariants), fmt.Sprintf("rules=%d", topic.Counts.Rules)}
+	if topic.Selectors != nil {
+		selectors := topic.Selectors
+		topicPaths := listText(selectors.TopicPaths)
+		if selectors.DeclaredGlobal {
+			topicPaths = "global"
+		}
+		parts = append(parts, "domain="+listText(selectors.DomainPaths), "topic="+topicPaths)
+	}
+	for _, claims := range [][]contextClaimImpact{topic.Direct, topic.Invariants, topic.Additional, topic.Referenced} {
+		for _, claim := range claims {
+			parts = append(parts, claimText(claim))
+		}
+	}
+	for _, pending := range topic.Pending.Operations {
+		parts = append(parts, fmt.Sprintf("ADR-%s %s %s %s", pending.ADR, pending.Op, pending.Claim, pending.Progress))
+	}
+	if len(topic.Pending.Operations) == 0 && topic.Pending.OperationCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d operations from %s", topic.Pending.OperationCount, strings.Join(topic.Pending.ADRs, ", ")))
+	}
+	return strings.Join(parts, " | ")
+}
+
+func claimText(claim contextClaimImpact) string {
+	parts := []string{claim.ID, claim.Type, claim.Summary, claim.Backing, claim.Verify}
+	for _, source := range claim.Sources {
+		parts = append(parts, fmt.Sprintf("request %d %s", source.RequestIndex, strings.Join(source.Kinds, ", ")))
+	}
+	for _, evidence := range claim.Evidence {
+		if len(evidence.Sites) == 0 {
+			parts = append(parts, fmt.Sprintf("%s %d sites", evidence.Kind, evidence.Count))
+		} else {
+			for _, site := range evidence.Sites {
+				parts = append(parts, fmt.Sprintf("%s %s:%d", evidence.Kind, site.Path, site.Line))
+			}
+		}
+	}
+	if len(claim.Incoming) > 0 {
+		parts = append(parts, "incoming "+strings.Join(claim.Incoming, ", "))
+	}
+	if len(claim.Outgoing) > 0 {
+		parts = append(parts, "outgoing "+strings.Join(claim.Outgoing, ", "))
+	}
+	return strings.Join(parts, " | ")
+}
+func containsFacet(facets []ContextFacet, want ContextFacet) bool {
+	for _, facet := range facets {
+		if facet == want {
+			return true
+		}
+	}
+	return false
+}
+
+func claimFields(claim contextClaimImpact) []presentation.Node {
+	return []presentation.Node{field("claim", claimText(claim))}
+}
+
+func relationshipFields(relationships contextRelationships) []presentation.Node {
+	nodes := []presentation.Node{}
+	if len(relationships.State) > 0 {
+		nodes = append(nodes, field("state", strings.Join(relationships.State, ", ")))
+	}
+	if len(relationships.Touches) > 0 {
+		nodes = append(nodes, field("touches", strings.Join(relationships.Touches, ", ")))
+	}
+	if len(relationships.Proofs) > 0 {
+		nodes = append(nodes, field("proofs", strings.Join(relationships.Proofs, ", ")))
+	}
+	return nodes
 }
 func countNoun(n int, noun string) string {
 	if n == 1 {
@@ -60,223 +233,63 @@ func countNoun(n int, noun string) string {
 	}
 	return fmt.Sprintf("%d %ss", n, noun)
 }
-
-func renderContext(out io.Writer, res ContextResult, header string, facets []ContextFacet) {
-	fmt.Fprintln(out, header)
-	if res.Selection == SelectionRange {
-		fmt.Fprintf(out, "Selection: range %s\n", res.Range)
-	} else {
-		fmt.Fprintf(out, "Selection: %s\n", res.Selection)
-	}
-	fmt.Fprintln(out, "\n## Requests")
-	if len(res.Requests) == 0 {
-		fmt.Fprintln(out, "  none")
-	}
-	for _, request := range res.Requests {
-		fmt.Fprintf(out, "[%d] %s\n", request.Index, request.Argument)
-		if request.Directory != nil {
-			excluded := 0
-			for _, c := range request.Directory.Excluded {
-				excluded += c.Count
-			}
-			fmt.Fprintf(out, "  Directory: %d included; %d excluded\n", request.Directory.Included, excluded)
-			if len(request.Directory.Excluded) > 0 {
-				parts := []string{}
-				for _, c := range request.Directory.Excluded {
-					parts = append(parts, fmt.Sprintf("%s=%d", c.Classification, c.Count))
-				}
-				fmt.Fprintf(out, "  Excluded: %s\n", strings.Join(parts, ", "))
-			}
-			for i, g := range request.Directory.Groups {
-				fmt.Fprintf(out, "  Group %d: %d files\n", i+1, g.Count)
-				if len(g.Members) > 0 {
-					fmt.Fprintf(out, "    Members: %s\n", strings.Join(g.Members, ", "))
-				}
-				renderPathImpact(out, g.Context, "    ", facets)
-			}
-			if containsFacet(facets, FacetRelationships) {
-				renderRelationships(out, request.Directory.Relationships, "  ")
-			}
-		} else if request.Exact != nil {
-			fmt.Fprintf(out, "  File: %s\n", request.Exact.Path)
-			renderPathImpact(out, request.Exact.Context, "  ", facets)
-			renderRelationships(out, request.Exact.Context.Relationships, "  ")
-		}
-	}
-	fmt.Fprintln(out, "\n## Authority")
-	if len(res.Topics) == 0 {
-		fmt.Fprintln(out, "  none")
-	}
-	for _, impact := range res.Topics {
-		renderTopicImpact(out, impact)
-	}
-}
-
-func renderPathImpact(out io.Writer, impact contextPathImpact, indent string, facets []ContextFacet) {
-	fmt.Fprintf(out, "%sClassification: %s\n", indent, impact.Classification)
-	if impact.NestedRoot != "" {
-		fmt.Fprintf(out, "%sNested root: %s\n", indent, impact.NestedRoot)
-	}
-	if impact.TargetInsideRepository != nil {
-		fmt.Fprintf(out, "%sSymlink target inside repository: %t\n", indent, *impact.TargetInsideRepository)
-	}
-	if len(impact.Provenance) == 0 {
-		fmt.Fprintf(out, "%sProvenance: none\n", indent)
-	} else {
-		for _, p := range impact.Provenance {
-			fmt.Fprintf(out, "%sProvenance: %s %s\n", indent, p.Role, p.Identity)
-			if containsFacet(facets, FacetArtifacts) {
-				for _, e := range p.Sources {
-					fmt.Fprintf(out, "%s  Source: %s (%s)\n", indent, e.Path, e.Label)
-				}
-				for _, e := range p.Outputs {
-					fmt.Fprintf(out, "%s  Output: %s (%s)\n", indent, e.Path, e.Label)
-				}
-				for _, e := range p.Navigation {
-					fmt.Fprintf(out, "%s  Navigate: %s (%s)\n", indent, e.Path, e.Label)
-				}
-			}
-		}
-	}
-	domains := []string{}
-	for _, d := range impact.Domains {
-		domains = append(domains, d.Name)
-	}
-	topics := []string{}
-	for _, t := range impact.Topics {
-		topics = append(topics, t.ID)
-	}
-	fmt.Fprintf(out, "%sDomains: %s\n", indent, renderList(domains))
-	fmt.Fprintf(out, "%sTopics: %s\n", indent, renderList(topics))
-	for _, w := range impact.Warnings {
-		fmt.Fprintf(out, "%sWarning: %s\n", indent, w)
-	}
-	if impact.ADR != nil {
-		a := impact.ADR
-		fmt.Fprintf(out, "%sADR: ADR-%s %s [%s, %s]\n", indent, a.Number, a.Title, a.Status, a.Mutability)
-		fmt.Fprintf(out, "%sAuthority role: %s\n", indent, a.AuthorityRole)
-		for _, op := range a.Operations {
-			fmt.Fprintf(out, "%sOperation: %s %s [%s, %s]\n", indent, op.Operation, op.Claim, op.Progress, op.ClaimState)
-			if op.Detail != nil {
-				if op.Detail.Current != nil {
-					fmt.Fprintf(out, "%s  Current claim: %s [%s] %s\n", indent, op.Detail.Current.ID, op.Detail.Current.Type, op.Detail.Current.Summary)
-				}
-				if op.Detail.History != nil && op.Detail.History.RemovedBy != nil {
-					fmt.Fprintf(out, "%s  Removal history: removed by ADR-%s\n", indent, op.Detail.History.RemovedBy.Number)
-				}
-				renderEvidence(out, op.Detail.Current, op.Detail.Evidence, indent+"  ")
-			}
-		}
-	}
-}
-
-func renderRelationships(out io.Writer, relationships contextRelationships, indent string) {
-	for _, relationship := range []struct {
-		label string
-		ids   []string
-	}{
-		{label: "State", ids: relationships.State},
-		{label: "Touches", ids: relationships.Touches},
-		{label: "Proofs", ids: relationships.Proofs},
-	} {
-		if len(relationship.ids) > 0 {
-			fmt.Fprintf(out, "%s%s: %s\n", indent, relationship.label, strings.Join(relationship.ids, ", "))
-		}
-	}
-}
-
-func renderTopicImpact(out io.Writer, t topicImpact) {
-	fmt.Fprintf(out, "%s - %s\n  Summary: %s\n", t.ID, t.Title, t.Summary)
-	fmt.Fprintf(out, "  Authority counts: invariants=%d, rules=%d\n", t.Counts.Invariants, t.Counts.Rules)
-	if t.Selectors != nil {
-		domain := strings.Join(t.Selectors.DomainPaths, " ")
-		topicPaths := strings.Join(t.Selectors.TopicPaths, " ")
-		if t.Selectors.DeclaredGlobal {
-			topicPaths = "global"
-		}
-		fmt.Fprintf(out, "  Selectors: domain=[%s]; topic=%s; both must match\n", domain, func() string {
-			if topicPaths == "global" {
-				return topicPaths
-			}
-			return "[" + topicPaths + "]"
-		}())
-	}
-	renderClaimCategory(out, "Directly related", t.Direct)
-	renderClaimCategory(out, "Applicable invariants", t.Invariants)
-	renderClaimCategory(out, "Additional topic rules", t.Additional)
-	renderClaimCategory(out, "Referenced context", t.Referenced)
-	if len(t.Pending.Operations) > 0 {
-		for _, p := range t.Pending.Operations {
-			fmt.Fprintf(out, "  Pending operation: ADR-%s %s %s [%s]\n", p.ADR, p.Op, p.Claim, p.Progress)
-		}
-	} else if t.Pending.OperationCount > 0 {
-		noun := "operations"
-		if t.Pending.OperationCount == 1 {
-			noun = "operation"
-		}
-		ids := []string{}
-		for _, id := range t.Pending.ADRs {
-			ids = append(ids, "ADR-"+id)
-		}
-		suffix := ""
-		if t.Pending.AdditionalADRCount > 0 {
-			suffix = fmt.Sprintf(" +%d ADRs", t.Pending.AdditionalADRCount)
-		}
-		fmt.Fprintf(out, "  Pending: %d %s from %s%s\n", t.Pending.OperationCount, noun, strings.Join(ids, ", "), suffix)
-	}
-}
-func renderClaimCategory(out io.Writer, label string, claims []contextClaimImpact) {
-	if len(claims) == 0 {
-		return
-	}
-	fmt.Fprintf(out, "  %s:\n", label)
-	for _, claim := range claims {
-		fmt.Fprintf(out, "    %s [%s] %s\n", claim.ID, claim.Type, claim.Summary)
-		if len(claim.Sources) > 0 {
-			entries := make([]string, 0, len(claim.Sources))
-			for _, source := range claim.Sources {
-				entries = append(entries, fmt.Sprintf("request %d [%s]", source.RequestIndex, strings.Join(source.Kinds, ", ")))
-			}
-			fmt.Fprintf(out, "      Sources: %s\n", strings.Join(entries, "; "))
-		}
-		if claim.Backing != "" {
-			fmt.Fprintf(out, "      Backing: %s\n", claim.Backing)
-		}
-		if claim.Verify != "" {
-			fmt.Fprintf(out, "      Verify: %s\n", claim.Verify)
-		}
-		renderEvidence(out, &claim, claim.Evidence, "      ")
-		if len(claim.Incoming) > 0 {
-			fmt.Fprintf(out, "      Incoming: %s\n", strings.Join(claim.Incoming, ", "))
-		}
-		if len(claim.Outgoing) > 0 {
-			fmt.Fprintf(out, "      Outgoing: %s\n", strings.Join(claim.Outgoing, ", "))
-		}
-	}
-}
-func renderEvidence(out io.Writer, claim *contextClaimImpact, evidence []contextEvidence, indent string) {
-	_ = claim
-	for _, e := range evidence {
-		if len(e.Sites) == 0 {
-			fmt.Fprintf(out, "%sEvidence %s: %d sites\n", indent, e.Kind, e.Count)
-		} else {
-			for _, site := range e.Sites {
-				fmt.Fprintf(out, "%sEvidence %s: %s:%d\n", indent, e.Kind, site.Path, site.Line)
-			}
-		}
-	}
-}
-func renderList(values []string) string {
+func listText(values []string) string {
 	if len(values) == 0 {
 		return "none"
 	}
 	return strings.Join(values, ", ")
 }
-func containsFacet(facets []ContextFacet, want ContextFacet) bool {
-	for _, f := range facets {
-		if f == want {
-			return true
-		}
+func prose(text string) presentation.Value {
+	value, err := presentation.Prose(text)
+	if err != nil { // coverage-ignore: every mapper input is normalized from parsed context semantics
+		panic(err)
 	}
-	return false
+	return value
+}
+func field(label, text string) presentation.Field {
+	value := prose(text)
+	result, err := presentation.NewField(label, value)
+	if err != nil { // coverage-ignore: this mapper owns each literal label and uses a validated value
+		panic(err)
+	}
+	return result
+}
+func list(label string, values ...presentation.Value) presentation.List {
+	result, err := presentation.NewList(label, values...)
+	if err != nil { // coverage-ignore: callers construct nonempty lists from typed result slices
+		panic(err)
+	}
+	return result
+}
+func section(label string, nodes ...presentation.Node) presentation.Section {
+	result, err := presentation.NewSection(label, nodes...)
+	if err != nil { // coverage-ignore: callers construct sections with at least one mapped node
+		panic(err)
+	}
+	return result
+}
+func record(values ...presentation.Value) presentation.Record {
+	result, err := presentation.NewRecord(values...)
+	if err != nil { // coverage-ignore: callers provide nonempty validated semantic fields
+		panic(err)
+	}
+	return result
+}
+func recordGroup(label string, schema []string, records ...presentation.Record) presentation.RecordGroup {
+	result, err := presentation.NewRecordGroup(label, schema, records...)
+	if err != nil { // coverage-ignore: callers provide a fixed schema and matching nonempty records
+		panic(err)
+	}
+	return result
+}
+func renderDetail(detail presentation.Detail) string {
+	document, err := detail.Document()
+	if err != nil { // coverage-ignore: Detail is assembled only through the validated helpers above
+		return ""
+	}
+	var out strings.Builder
+	if presentation.Render(&out, document) != nil { // coverage-ignore: a validated document cannot fail buffer rendering
+		return ""
+	}
+	return out.String()
 }

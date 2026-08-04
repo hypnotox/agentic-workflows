@@ -106,7 +106,7 @@ func TestRunContextHumanAndFacets(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	for _, want := range []string{"Selection: explicit", "[1] internal/foo", "Directory: 3 included", "## Authority", "Directly related:", "Additional topic rules:", "Backing: test", "Evidence invariant:"} {
+	for _, want := range []string{"selection: explicit", "request-1:", "directory: 3 included", "authority:", "alpha/one | One", "test", "invariant internal/foo/y_test.go"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
 		}
@@ -125,8 +125,7 @@ func TestRunContextRendersMarkerRelationships(t *testing.T) {
 	if err := runContext(ctx, root, []string{"internal/foo/x_test.go"}, false, "", false, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
-	want := "  State: alpha/one:order\n  Touches: alpha/one:stable\n  Proofs: alpha/one:tested\n"
-	if !strings.Contains(out.String(), want) || strings.Contains(out.String(), "Direct rules:") || strings.Contains(out.String(), "Invariants:") {
+	if !strings.Contains(out.String(), "state: alpha/one:order") || !strings.Contains(out.String(), "touches: alpha/one:stable") || !strings.Contains(out.String(), "proofs: alpha/one:tested") || strings.Contains(out.String(), "Direct rules:") || strings.Contains(out.String(), "Invariants:") {
 		t.Fatalf("marker relationship projection missing:\n%s", out.String())
 	}
 }
@@ -144,9 +143,9 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"Sources: request 1 [State]; request 2 [State]",
-		"Sources: request 1 [Touches]; request 2 [Touches]",
-		"Sources: request 1 [Proofs]; request 2 [Proofs]",
+		"request 1 State | request 2 State",
+		"request 1 Touches | request 2 Touches",
+		"request 1 Proofs | request 2 Proofs",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q:\n%s", want, out.String())
@@ -200,7 +199,7 @@ func TestRunContextStaticAndUsage(t *testing.T) {
 	if err := runContext(ctx, root, []string{"x"}, false, "", false, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
-	const want = "context (static: not inside an awf project; live classification and authority require an adopted project)\nSelection: explicit\n\n## Requests\n  none\n\n## Authority\n  none\n"
+	const want = "context: context (static: not inside an awf project; live classification and authority require an adopted project)\nselection: explicit\n\nrequests:\n  status: none\n\nauthority:\n  topics: none\n"
 	if out.String() != want {
 		t.Fatalf("static:\n%s", out.String())
 	}

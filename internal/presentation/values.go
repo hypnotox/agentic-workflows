@@ -11,6 +11,9 @@ type value struct {
 	text string
 }
 
+// Value is a validated scalar used by presentation nodes.
+type Value = value
+
 // Prose constructs a Value after trimming and collapsing Unicode whitespace to
 // one ASCII space.
 func Prose(text string) (value, error) {

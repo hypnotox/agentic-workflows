@@ -59,8 +59,9 @@ Backing: test
 
 ### `invariant: context-query-boundary`
 
-Context assembly, classification, projection, and result rendering live in internal/contextq; internal/project's exported surface carries no context result vocabulary, and contextq reaches core state only through the assembled context-state value and its two core-side constructors.
+Context query assembly, classification, projection, and semantic mapping into presentation nodes live in internal/contextq; internal/presentation alone validates nodes and renders syntax. internal/project's exported surface carries no context result vocabulary, and contextq reaches core state only through the assembled context-state value and its two core-side constructors.
 Origin: ADR-0195
+Revised-by: ADR-structured-agent-oriented-cli-presentation
 Backing: test
 
 ### `invariant: context-read-only`

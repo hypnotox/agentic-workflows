@@ -312,7 +312,7 @@ Flags:
 	},
 	{
 		Name: "topic", Summary: "Query current claims, history, references, and applicability",
-		BoolFlags: []string{"--history", "--references", "--coverage", "--json"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
+		BoolFlags: []string{"--history", "--references", "--coverage"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf topic <domain>/<topic>[:<claim>] [flags]
 
 Query one current-state topic or claim, active by default. Default output includes
@@ -325,7 +325,6 @@ Flags:
   --history       add direct Origin, Revised-by, and Removed-by ADR details
   --references    add sorted direct incoming and outgoing claim IDs
   --coverage      add separate domain/topic scopes, current matches, and marker sites
-  --json          emit the same query result as deterministic JSON
 `,
 	},
 	{

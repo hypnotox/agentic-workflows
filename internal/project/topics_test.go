@@ -1,7 +1,6 @@
 package project
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -602,14 +601,9 @@ Backing: test
 		return string(output)
 	}
 	human := runQuery("schedule/contracts", "--history", "--references", "--coverage")
-	encoded := runQuery("schedule/contracts", "--history", "--references", "--coverage", "--json")
-	var result topic.QueryResult
-	if err := json.Unmarshal([]byte(encoded), &result); err != nil {
-		t.Fatalf("query JSON: %v: %s", err, encoded)
-	}
-	for _, value := range []string{result.Title, result.Summary, result.Claims[0].ID, result.Claims[1].Prose, result.History[0].Origin.Title, result.Coverage.Applicability.MarkerSites[0].Path} {
+	for _, value := range []string{"title: Scheduling", "summary: Current scheduling contracts.", "identity: schedule/contracts:deterministic-order", "prose: Scheduling output is stable.", "origin: ADR-0001 | Implemented | Scheduling contracts", "marker: internal/schedule_test.go:2"} {
 		if !strings.Contains(human, value) {
-			t.Errorf("human/JSON query parity missing %q:\n%s", value, human)
+			t.Errorf("topic text missing %q:\n%s", value, human)
 		}
 	}
 

@@ -2,9 +2,9 @@ package presentation
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // Render validates document, renders it completely, then writes it once to dst.
@@ -22,19 +22,53 @@ func Render(dst io.Writer, document Document) error {
 	}
 	return nil
 }
-
 func writeDocument(dst *bytes.Buffer, document Document) error {
-	if len(document.fields) == 0 {
-		return errors.New("presentation document requires at least one field")
+	if err := validateDocument(document); err != nil {
+		return err
 	}
-	for _, field := range document.fields {
-		if err := validateLabel(field.label); err != nil {
-			return err
+	leadingFields := 0
+	for leadingFields < len(document.nodes) {
+		if _, ok := document.nodes[leadingFields].(Field); !ok {
+			break
 		}
-		if err := field.value.validate(); err != nil {
-			return err
+		leadingFields++
+	}
+	for i, node := range document.nodes {
+		if i == leadingFields && leadingFields > 0 {
+			dst.WriteByte('\n')
+		} else if i > leadingFields {
+			dst.WriteByte('\n')
 		}
-		fmt.Fprintf(dst, "%s: %s\n", field.label, field.value.text)
+		writeNode(dst, node, 0)
 	}
 	return nil
+}
+func writeNode(dst *bytes.Buffer, node Node, depth int) {
+	indent := strings.Repeat("  ", depth)
+	switch n := node.(type) {
+	case Field:
+		fmt.Fprintf(dst, "%s%s: %s\n", indent, n.label, n.value.text)
+	case Section:
+		fmt.Fprintf(dst, "%s%s:\n", indent, n.label)
+		for _, child := range n.nodes {
+			writeNode(dst, child, depth+1)
+		}
+	case List:
+		fmt.Fprintf(dst, "%s%s:\n", indent, n.label)
+		for _, value := range n.values {
+			fmt.Fprintf(dst, "%s  %s\n", indent, value.text)
+		}
+	case RecordGroup:
+		fmt.Fprintf(dst, "%s%s:\n", indent, n.label)
+		for _, record := range n.records {
+			fields := make([]string, len(record.values))
+			for i, v := range record.values {
+				fields[i] = escapeRecord(v.text)
+			}
+			fmt.Fprintf(dst, "%s  %s\n", indent, strings.Join(fields, " | "))
+		}
+	}
+}
+func escapeRecord(text string) string {
+	return strings.NewReplacer("\\", "\\\\", "|", "\\|").Replace(text)
 }

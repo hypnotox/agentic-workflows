@@ -119,7 +119,7 @@ func TestLookup(t *testing.T) {
 	if !ok || topic.MinPos != 1 || topic.MaxPos != 1 || topic.Gating != GatedInHandler {
 		t.Fatalf("topic spec = %#v, found %v", topic, ok)
 	}
-	if got := strings.Join(topic.BoolFlags, ","); got != "--history,--references,--coverage,--json" {
+	if got := strings.Join(topic.BoolFlags, ","); got != "--history,--references,--coverage" {
 		t.Errorf("topic flags = %q", got)
 	}
 	effort, ok := Lookup("effort")

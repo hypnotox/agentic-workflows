@@ -123,7 +123,7 @@ var handlers = map[string]handler{
 		return runContext(c.ctx, c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout)
 	},
 	"topic": func(c *cmdCtx) error {
-		return runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.inv.bools["--json"], c.stdout)
+		return runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout)
 	},
 	"new": func(c *cmdCtx) error {
 		// For a recognized child, sub is the kind and positionals are the child's
