@@ -144,33 +144,33 @@ func TestPresentationTreeContract(t *testing.T) {
 func assertPresentationSourceContract(t *testing.T) {
 	t.Helper()
 	files, fileSet := presentationSourceFiles(t, "")
-	nodeTypes, boundary, err := presentationContract(fileSet, files)
-	if err != nil {
+	wantNodes := []string{"Field", "List", "Record", "RecordGroup", "Section", "Steps", "nodeMarker"}
+	wantBoundary := []string{"NewDocument", "NewSection", "Prompt", "Render", "validateDocument", "writeDocument", "writeNode"}
+	if err := presentationContract(fileSet, files, wantNodes, wantBoundary); err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"Field", "List", "Record", "RecordGroup", "Section", "Steps", "nodeMarker"}; !equalStrings(nodeTypes, want) {
-		t.Fatalf("presentation Node implementations = %v, want %v", nodeTypes, want)
-	}
-	if want := []string{"NewDocument", "NewSection", "Prompt", "Render", "validateDocument", "writeDocument", "writeNode"}; !equalStrings(boundary, want) {
-		t.Fatalf("presentation boundary functions = %v, want %v", boundary, want)
-	}
 
-	// This fixture is deliberately name-opaque. Semantic type checking must find
-	// both the promoted marker method from pointer embedding and a new Document
-	// consumer without relying on a declaration or function name convention.
+	// This fixture is deliberately name-opaque. The exact contract must reject
+	// a promoted marker method, an opaque consumer, and both package-level and
+	// non-marker-method attempts to hide behind the marker method's name.
 	files, fileSet = presentationSourceFiles(t, `
 package presentation
 
 type escapedNode struct{ *nodeMarker }
+type alternateConsumer struct{}
 
 func FormatPresentation(document Document) {}
+func presentationNode(document Document) {}
+func (alternateConsumer) presentationNode(document Document) {}
 `)
-	nodeTypes, boundary, err = presentationContract(fileSet, files)
-	if err != nil {
-		t.Fatal(err)
+	err := presentationContract(fileSet, files, wantNodes, wantBoundary)
+	if err == nil {
+		t.Fatal("rogue presentation types satisfied the exact contract")
 	}
-	if !containsString(nodeTypes, "escapedNode") || !containsString(boundary, "FormatPresentation") {
-		t.Fatalf("semantic fixture escaped detection: nodes=%v boundary=%v", nodeTypes, boundary)
+	for _, want := range []string{"unexpected node implementations: escapedNode", "unexpected boundary functions:", "FormatPresentation", "presentationNode"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("contract error %q missing %q", err, want)
+		}
 	}
 }
 
@@ -206,18 +206,18 @@ func presentationSourceFiles(t *testing.T, fixture string) ([]*ast.File, *token.
 	return files, fileSet
 }
 
-func presentationContract(fileSet *token.FileSet, files []*ast.File) ([]string, []string, error) {
+func presentationContract(fileSet *token.FileSet, files []*ast.File, wantNodes, wantBoundary []string) error {
 	info := &types.Info{Defs: make(map[*ast.Ident]types.Object)}
 	config := types.Config{Importer: importer.Default()}
 	pkg, err := config.Check("github.com/hypnotox/agentic-workflows/internal/presentation", fileSet, files, info)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	document := pkg.Scope().Lookup("Document").Type()
 	nodeType := pkg.Scope().Lookup("Node").Type()
 	node, ok := nodeType.Underlying().(*types.Interface)
 	if !ok {
-		return nil, nil, errors.New("Node is not an interface")
+		return errors.New("Node is not an interface")
 	}
 	node.Complete()
 	var nodeTypes, boundary []string
@@ -237,22 +237,52 @@ func presentationContract(fileSet *token.FileSet, files []*ast.File) ([]string, 
 	for _, source := range files {
 		for _, declaration := range source.Decls {
 			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Name.Name == "presentationNode" {
+			if !ok {
 				continue
 			}
 			object, ok := info.Defs[function.Name].(*types.Func)
 			if !ok {
-				return nil, nil, fmt.Errorf("resolve function %s", function.Name.Name)
+				return fmt.Errorf("resolve function %s", function.Name.Name)
 			}
 			signature := object.Type().(*types.Signature)
-			if signatureConsumesPresentation(signature, document, nodeType, node) {
+			if !isPresentationNodeMarker(function, signature) && signatureConsumesPresentation(signature, document, nodeType, node) {
 				boundary = append(boundary, object.Name())
 			}
 		}
 	}
 	sort.Strings(nodeTypes)
 	sort.Strings(boundary)
-	return nodeTypes, boundary, nil
+	var differences []string
+	if unexpected := difference(nodeTypes, wantNodes); len(unexpected) > 0 {
+		differences = append(differences, "unexpected node implementations: "+strings.Join(unexpected, ", "))
+	}
+	if missing := difference(wantNodes, nodeTypes); len(missing) > 0 {
+		differences = append(differences, "missing node implementations: "+strings.Join(missing, ", "))
+	}
+	if unexpected := difference(boundary, wantBoundary); len(unexpected) > 0 {
+		differences = append(differences, "unexpected boundary functions: "+strings.Join(unexpected, ", "))
+	}
+	if missing := difference(wantBoundary, boundary); len(missing) > 0 {
+		differences = append(differences, "missing boundary functions: "+strings.Join(missing, ", "))
+	}
+	if len(differences) > 0 {
+		return errors.New(strings.Join(differences, "; "))
+	}
+	return nil
+}
+
+func isPresentationNodeMarker(function *ast.FuncDecl, signature *types.Signature) bool {
+	return function.Name.Name == "presentationNode" && signature.Recv() != nil && signature.Params().Len() == 0
+}
+
+func difference(got, want []string) []string {
+	var result []string
+	for _, value := range got {
+		if !containsString(want, value) {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func signatureConsumesPresentation(signature *types.Signature, document, nodeType types.Type, node *types.Interface) bool {
@@ -291,16 +321,4 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
-}
-
-func equalStrings(got, want []string) bool {
-	if len(got) != len(want) {
-		return false
-	}
-	for index := range want {
-		if got[index] != want[index] {
-			return false
-		}
-	}
-	return true
 }

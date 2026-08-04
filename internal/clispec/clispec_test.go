@@ -2,6 +2,7 @@ package clispec
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -182,47 +183,78 @@ func TestCommandHelpSemantics(t *testing.T) {
 	walk("", Commands)
 }
 
-// assertPositionalSemantics compares the documented grammar with the parser's
-// bounds. A usage token is one parser operand even when it contains alternatives
-// (for example <base>|<a>..<b>), and a documented <add|remove> names one literal
-// operand slot. Value-flag operands are skipped, so --owner <uuid> is not treated
-// as a command positional.
+// assertPositionalSemantics compares every documented usage form with the
+// parser's bounds. A union such as <base>|<a>..<b> is one parser slot, while
+// each named identity in it witnesses its HelpItem. Value-flag operands are
+// skipped, so --owner <uuid> is never counted as a command positional.
 func assertPositionalSemantics(t *testing.T, path string, command Command) {
+	t.Helper()
+	for _, problem := range positionalSemanticsProblems(path, command) {
+		t.Error(problem)
+	}
+}
+
+type usageCardinality struct {
+	min, max   int // max is -1 when the usage form is variadic.
+	identities map[string]bool
+}
+
+func positionalSemanticsProblems(path string, command Command) []string {
 	documented := make(map[string]bool, len(command.Help.Positionals))
+	var problems []string
 	for _, positional := range command.Help.Positionals {
-		if documented[positional.Name] {
-			t.Errorf("%s repeats positional %s", path, positional.Name)
+		if _, duplicate := documented[positional.Name]; duplicate {
+			problems = append(problems, fmt.Sprintf("%s repeats positional %s", path, positional.Name))
 		}
 		documented[positional.Name] = false
 	}
-	maxSlots := 0
+
+	aggregateMin, aggregateMax := -1, -1
 	for _, usage := range command.Help.Usage {
-		slots, found := usagePositionalSlots(usage, "awf "+path, command.ValueFlags, command.Help.Positionals)
-		if slots > maxSlots {
-			maxSlots = slots
+		cardinality, err := usagePositionalCardinality(usage, "awf "+path, command.ValueFlags, command.Help.Positionals)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s usage %q: %v", path, usage, err))
+			continue
 		}
-		for name := range found {
+		if cardinality.min < command.MinPos || (command.MaxPos >= 0 && (cardinality.max < 0 || cardinality.max > command.MaxPos)) {
+			problems = append(problems, fmt.Sprintf("%s usage %q has positional cardinality %d..%d outside parser bounds %d..%d", path, usage, cardinality.min, cardinality.max, command.MinPos, command.MaxPos))
+		}
+		if aggregateMin < 0 {
+			aggregateMin, aggregateMax = cardinality.min, cardinality.max
+		} else {
+			if cardinality.min < aggregateMin {
+				aggregateMin = cardinality.min
+			}
+			if aggregateMax < 0 || cardinality.max < 0 {
+				aggregateMax = -1
+			} else if cardinality.max > aggregateMax {
+				aggregateMax = cardinality.max
+			}
+		}
+		for name := range cardinality.identities {
 			documented[name] = true
 		}
 	}
 	for name, found := range documented {
 		if !found {
-			t.Errorf("%s documents positional %s outside its parser grammar", path, name)
+			problems = append(problems, fmt.Sprintf("%s documents positional %s outside its parser grammar", path, name))
 		}
 	}
-	if command.MaxPos >= 0 && maxSlots != command.MaxPos {
-		t.Errorf("%s documents %d positional slots, parser maximum is %d", path, maxSlots, command.MaxPos)
+	if aggregateMin != command.MinPos {
+		problems = append(problems, fmt.Sprintf("%s documented minimum positional cardinality is %d, parser minimum is %d", path, aggregateMin, command.MinPos))
 	}
-	if maxSlots < command.MinPos {
-		t.Errorf("%s documents %d positional slots, parser minimum is %d", path, maxSlots, command.MinPos)
+	if aggregateMax != command.MaxPos {
+		problems = append(problems, fmt.Sprintf("%s documented maximum positional cardinality is %d, parser maximum is %d", path, aggregateMax, command.MaxPos))
 	}
+	return problems
 }
 
-func usagePositionalSlots(usage, prefix string, valueFlags []string, documented []HelpItem) (int, map[string]bool) {
-	found := make(map[string]bool, len(documented))
-	rest := strings.TrimSpace(strings.TrimPrefix(usage, prefix))
-	tokens := strings.Fields(rest)
-	slots := 0
+func usagePositionalCardinality(usage, prefix string, valueFlags []string, documented []HelpItem) (usageCardinality, error) {
+	if !strings.HasPrefix(usage, prefix) || (len(usage) > len(prefix) && usage[len(prefix)] != ' ') {
+		return usageCardinality{}, fmt.Errorf("does not start with exact command prefix %q", prefix)
+	}
+	cardinality := usageCardinality{identities: make(map[string]bool, len(documented))}
+	tokens := strings.Fields(strings.TrimSpace(strings.TrimPrefix(usage, prefix)))
 	for i := 0; i < len(tokens); i++ {
 		raw := tokens[i]
 		token := strings.Trim(raw, "[]")
@@ -232,18 +264,77 @@ func usagePositionalSlots(usage, prefix string, valueFlags []string, documented 
 			}
 			continue
 		}
-		matched := false
+		isPositional := strings.Contains(raw, "<") || hasLiteralAlternative(documented, raw)
+		if !isPositional {
+			continue
+		}
 		for _, item := range documented {
 			if positionalTokenMatches(item.Name, raw) {
-				found[item.Name] = true
-				matched = true
+				cardinality.identities[item.Name] = true
 			}
 		}
-		if matched || strings.Contains(raw, "<") || hasLiteralAlternative(documented, raw) {
-			slots++
+		if !strings.HasPrefix(raw, "[") {
+			cardinality.min++
+		}
+		if strings.HasSuffix(strings.Trim(raw, "[]"), "...") {
+			cardinality.max = -1
+		} else if cardinality.max >= 0 {
+			cardinality.max++
 		}
 	}
-	return slots, found
+	return cardinality, nil
+}
+
+func TestUsagePositionalCardinality(t *testing.T) {
+	items := []HelpItem{{Name: "<base>"}, {Name: "<a>"}, {Name: "<b>"}, {Name: "<slug>"}, {Name: "<uuid>"}}
+	for _, test := range []struct {
+		name, usage, prefix string
+		min, max            int
+		identities          []string
+	}{
+		{"union is one slot", "awf audit <base>|<a>..<b>", "awf audit", 1, 1, []string{"<base>", "<a>", "<b>"}},
+		{"optional positional", "awf adr number [<slug>]", "awf adr number", 0, 1, []string{"<slug>"}},
+		{"variadic positional", "awf adr number <slug>...", "awf adr number", 1, -1, []string{"<slug>"}},
+		{"optional variadic positional", "awf adr number [<slug>...]", "awf adr number", 0, -1, []string{"<slug>"}},
+		{"value option operand is skipped", "awf effort activity attach <slug> --owner <uuid>", "awf effort activity attach", 1, 1, []string{"<slug>"}},
+		{"exact command prefix", "awf test <slug>", "awf tests", 0, 0, nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := usagePositionalCardinality(test.usage, test.prefix, []string{"--owner"}, items)
+			if test.name == "exact command prefix" {
+				if err == nil {
+					t.Fatal("accepted a non-exact command prefix")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.min != test.min || got.max != test.max {
+				t.Fatalf("cardinality = %d..%d, want %d..%d", got.min, got.max, test.min, test.max)
+			}
+			for _, identity := range test.identities {
+				if !got.identities[identity] {
+					t.Errorf("identity %s not represented", identity)
+				}
+			}
+		})
+	}
+}
+
+func TestPositionalSemanticsCatchesBoundChanges(t *testing.T) {
+	command := Command{MinPos: 1, MaxPos: 1, Help: Help{Usage: []string{"awf test <thing>"}, Positionals: []HelpItem{{Name: "<thing>"}}}}
+	if problems := positionalSemanticsProblems("test", command); len(problems) != 0 {
+		t.Fatalf("valid grammar problems = %v", problems)
+	}
+	command.MinPos = 0
+	if problems := positionalSemanticsProblems("test", command); !strings.Contains(strings.Join(problems, "\n"), "minimum positional cardinality") {
+		t.Fatalf("MinPos 1 -> 0 problems = %v", problems)
+	}
+	command.MinPos, command.MaxPos = 1, -1
+	if problems := positionalSemanticsProblems("test", command); !strings.Contains(strings.Join(problems, "\n"), "maximum positional cardinality") {
+		t.Fatalf("MaxPos 1 -> -1 problems = %v", problems)
+	}
 }
 
 func positionalTokenMatches(name, token string) bool {

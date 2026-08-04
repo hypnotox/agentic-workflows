@@ -103,7 +103,11 @@ func TestGatedCommandsRefuseCorruptLock(t *testing.T) {
 			t.Run(variant+"/"+cmd, func(t *testing.T) {
 				root, want := corruptLock(t, variant)
 				var out, errb bytes.Buffer
-				code := runAt(t, root, []string{"awf", cmd}, &out, &errb)
+				args := []string{"awf", cmd}
+				if cmd == "audit" {
+					args = append(args, "HEAD")
+				}
+				code := runAt(t, root, args, &out, &errb)
 				assertRefused(t, root, want, code, out.String()+errb.String())
 			})
 		}

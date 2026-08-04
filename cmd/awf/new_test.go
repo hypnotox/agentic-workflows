@@ -42,6 +42,9 @@ func TestRunNewADRError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := scaffoldProject(t)
+	if err := newADR(ctx, root, nil, io.Discard); err == nil {
+		t.Fatal("expected missing-title usage error")
+	}
 	if err := runNew(ctx, root, "adr", []string{"!!!"}, os.Stdout); err == nil {
 		t.Fatal("expected NewADR error for an all-punctuation title")
 	}
@@ -631,7 +634,7 @@ func TestRunNewTopicDispatchAndHelp(t *testing.T) {
 		t.Errorf("dispatch output = %q", out.String())
 	}
 	out.Reset()
-	if code := run([]string{"awf", "new", "topic", "--help"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "awf new topic <domain> <title>") {
+	if code := run([]string{"awf", "new", "topic", "--help"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "awf new topic <domain> <title>...") {
 		t.Fatalf("help exit = %d, output = %q, error = %q", code, out.String(), errb.String())
 	}
 }
