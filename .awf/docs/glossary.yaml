@@ -69,7 +69,7 @@ data:
       meaning: "An applied update whose claim an applied remove already absorbed. It is retained as history, establishes no current claim, requires no claim mutation, and provides no authority."
       domains: [adr-system]
     - term: application batch
-      meaning: "One implicit terminal application, or one explicit Applied event carrying a nonempty declaration-ordered set of not-yet-applied operations. Its identity is its position in the owning ADR's history."
+      meaning: "One implicit terminal application, or one explicit Applied event carrying a nonempty, duplicate-free unordered membership set of not-yet-applied operations. Its identity is its position in the owning ADR's ordered history occurrence."
       domains: [adr-system]
     - term: decision index
       meaning: "The generated decisions index: in-flight ADRs by number, title, and status, and terminal ones under a compact history. It infers no currentness and renders no supersession chains, because current authority is read from topic claims."

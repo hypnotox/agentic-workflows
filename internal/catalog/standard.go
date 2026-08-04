@@ -80,7 +80,7 @@ var Standard = &Catalog{
 				"adrStates": []any{
 					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable; body and status may both change"},
 					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet started", "mutability": "Status and append-only Status history; the body stays amendable, each amendment appending an Amended event; a schema retrofit may migrate the encoding"},
-					map[string]any{"name": "Implementing", "meaning": "A nonempty strict subset of declared operations is applied", "mutability": "Status and append-only Status history; Applied events append while operations remain, and the body stays amendable via Amended events"},
+					map[string]any{"name": "Implementing", "meaning": "A nonempty set of declared operations is applied; Remaining may be empty", "mutability": "Status and append-only Status history; every explicit Applied batch belongs to implementation, and the body stays amendable via Amended events"},
 					map[string]any{"name": "Implemented", "meaning": "All declared claim operations are applied", "mutability": "Terminal; status and append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
 					map[string]any{"name": "Abandoned", "meaning": "Execution stopped; applied operations remain historical and unapplied operations are canceled", "mutability": "Terminal; status and append-only Status history only; the final entry carries a rationale; the body is frozen"},
 				},

@@ -6,7 +6,7 @@ import (
 )
 
 // ApplicationBatch is one implicit or explicit application of declared state
-// operations. Operations are retained in declaration/event order.
+// operations. Operations retain their authored event order.
 type ApplicationBatch struct {
 	Operations   []Operation
 	Kind         HistoryEventKind
@@ -120,8 +120,8 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 		}
 		progress.Remaining = slices.Clone(a.Operations)
 	case statusImplementing:
-		if len(progress.Applied) == 0 || len(complement) == 0 {
-			return OperationProgress{}, fmt.Errorf("ADR-%s Implementing status requires applied and remaining operations", a.Identity())
+		if len(progress.Applied) == 0 {
+			return OperationProgress{}, fmt.Errorf("ADR-%s Implementing status requires applied operations", a.Identity())
 		}
 		progress.Remaining = slices.Clone(complement)
 	case statusImplemented:

@@ -342,12 +342,19 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 		t.Fatalf("middle batch pair rejected:\n%s", messages(f))
 	}
 
-	done := middle
-	done.Status = "Implemented"
-	done.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2batch(addB), v2status("Implemented"))
-	doneAfter := uni([]adr.ADR{base, done}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
-	if f := currentstate.CheckPair(middleAfter, doneAfter, currentstate.AuthoredCommit); len(f) != 0 {
+	finished := middle
+	finished.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2batch(addB))
+	finishedAfter := uni([]adr.ADR{base, finished}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
+	if f := currentstate.CheckPair(middleAfter, finishedAfter, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("final batch pair rejected:\n%s", messages(f))
+	}
+
+	done := finished
+	done.Status = "Implemented"
+	done.History = append(append([]adr.HistoryEvent(nil), finished.History...), v2status("Implemented"))
+	doneAfter := uni([]adr.ADR{base, done}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
+	if f := currentstate.CheckPair(finishedAfter, doneAfter, currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("status-only terminal pair rejected:\n%s", messages(f))
 	}
 
 	assertSplit := func(name string, before, after currentstate.Universe) {
@@ -363,7 +370,7 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	}
 	assertSplit("first", before, after)
 	assertSplit("middle", after, middleAfter)
-	assertSplit("final", middleAfter, doneAfter)
+	assertSplit("final", middleAfter, finishedAfter)
 
 	removeD := op(adr.OpRemove, "d/t:d")
 	baseD := rec("0140", "Implemented", op(adr.OpAdd, "d/t:d"))

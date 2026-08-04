@@ -388,6 +388,8 @@ func TestParseV2LifecycleAndApplications(t *testing.T) {
 		{"accepted direct implemented", "Implemented", p + "\n" + a + "\n- 2026-07-22: Implemented; content-sha256: " + digest, 3},
 		{"accepted abandoned", "Abandoned", p + "\n" + a + "\n" + abandoned, 3},
 		{"implementing implemented", "Implemented", p + "\n" + i + "\n" + first + "\n" + middle + "\n" + final + "\n" + implemented, 6},
+		{"all applied implementing", "Implementing", p + "\n" + i + "\n- 2026-07-22: Applied; operations: remove `a/b:third`, add `a/b:first`, update `a/b:second`", 3},
+		{"status-only implemented", "Implemented", p + "\n" + i + "\n- 2026-07-22: Applied; operations: remove `a/b:third`, add `a/b:first`, update `a/b:second`\n" + implemented, 4},
 		{"partial abandoned", "Abandoned", p + "\n" + i + "\n" + first + "\n" + abandoned, 4},
 	}
 	for _, tc := range cases {
@@ -445,15 +447,12 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 		{"implemented rationale", "Implemented", changes, p + "\n- 2026-07-21: Implemented; content-sha256: " + digest + "; rationale: no", "must not carry a rationale"},
 		{"abandoned missing rationale", "Abandoned", changes, p + "\n- 2026-07-21: Abandoned; content-sha256: " + digest, "nonempty rationale"},
 		{"implementing none", "Implementing", "None.", p + "\n" + i + "\n" + first, "not declared"},
-		{"implementing one op", "Implementing", "- add `a/b:first`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`") + "\n" + first, "at least two"},
 		{"missing first application", "Implementing", changes, p + "\n" + i, "followed by"},
-		{"all applied while implementing", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`, update `a/b:second`", "one remaining"},
 		{"applied before implementing", "Proposed", changes, p + "\n" + first, "only while Implementing"},
 		{"undeclared verb", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: remove `a/b:first`", "not declared"},
 		{"undeclared id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:other`", "not declared"},
 		{"duplicate in batch", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`, add `a/b:first`", "duplicated"},
 		{"duplicate across batches", "Implementing", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; operations: add `a/b:first`", "already applied"},
-		{"declaration order", "Implementing", "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`") + "\n- 2026-07-21: Applied; operations: update `a/b:second`, add `a/b:first`", "declaration order"},
 		{"bad separator", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`,update `a/b:second`", "malformed Applied operation"},
 		{"bad code span", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add a/b:first", "malformed Applied operation"},
 		{"bad id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `A/b:first`", "malformed Applied operation"},
@@ -486,6 +485,30 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 				t.Fatalf("err = %v, want containing %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseV2RejectsIncompleteImplemented(t *testing.T) {
+	changes := "- add `a/b:first`\n- update `a/b:second`"
+	digest := v2DigestFor(t, changes)
+	history := "- 2026-07-20: Proposed\n" +
+		"- 2026-07-21: Implementing; content-sha256: " + digest + "\n" +
+		"- 2026-07-21: Applied; operations: add `a/b:first`\n" +
+		"- 2026-07-22: Implemented; content-sha256: " + digest
+	if _, err := adr.ParseV2("0137-test.md", []byte(buildV2("Implemented", changes, history))); err == nil || !strings.Contains(err.Error(), "every declared operation") {
+		t.Fatalf("incomplete Implemented error = %v", err)
+	}
+}
+
+func TestParseV2RejectsAllAppliedAbandonment(t *testing.T) {
+	changes := "- add `a/b:first`\n- update `a/b:second`"
+	digest := v2DigestFor(t, changes)
+	history := "- 2026-07-20: Proposed\n" +
+		"- 2026-07-21: Implementing; content-sha256: " + digest + "\n" +
+		"- 2026-07-21: Applied; operations: add `a/b:first`, update `a/b:second`\n" +
+		"- 2026-07-22: Abandoned; content-sha256: " + digest + "; rationale: stopped"
+	if _, err := adr.ParseV2("0137-test.md", []byte(buildV2("Abandoned", changes, history))); err == nil || !strings.Contains(err.Error(), "canceled operation") {
+		t.Fatalf("all-Applied abandonment error = %v", err)
 	}
 }
 
@@ -539,9 +562,7 @@ func TestCorrectiveReapplication(t *testing.T) {
 		{"before first Applied", "Implementing", "- 2026-07-20: Proposed\n- 2026-07-21: Implementing; content-sha256: " + digest + "\n- 2026-07-21: Applied; operations: update `a/b:second`\n- 2026-07-22: Reapplied; operations: add `a/b:first`", "earlier Applied"},
 		{"remove", "Implementing", prefix + "\n- 2026-07-22: Applied; operations: remove `a/b:third`\n- 2026-07-23: Reapplied; operations: remove `a/b:third`", "only add or update"},
 		{"outside Implementing", "Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: " + digest + "\n- 2026-07-22: Reapplied; operations: add `a/b:first`", "only while Implementing"},
-		{"between final Applied and Implemented", "Implemented", prefix + "\n- 2026-07-22: Applied; operations: remove `a/b:third`, add `a/b:pending`\n- 2026-07-23: Reapplied; operations: add `a/b:first`\n- 2026-07-23: Implemented; content-sha256: " + digest, "final Applied event immediately before"},
 		{"duplicate within event", "Implementing", prefix + "\n- 2026-07-22: Reapplied; operations: add `a/b:first`, add `a/b:first`", "duplicated"},
-		{"declaration order", "Implementing", prefix + "\n- 2026-07-22: Reapplied; operations: update `a/b:second`, add `a/b:first`", "declaration order"},
 		{"second Applied", "Implementing", prefix + "\n- 2026-07-22: Applied; operations: add `a/b:first`", "already applied"},
 		{"malformed grammar", "Implementing", prefix + "\n- 2026-07-22: Reapplied operations: add `a/b:first`", "malformed Status history"},
 	}
@@ -613,7 +634,7 @@ func TestParseV2StampChain(t *testing.T) {
 		{"amended before first applied", "Implementing", changes,
 			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n" + amend("2026-07-22", d) + "\n- 2026-07-23: Applied; operations: add `a/b:first`", "followed by the first Applied"},
 		{"amended before explicit implemented", "Implemented", changes,
-			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; operations: add `a/b:first`\n- 2026-07-22: Applied; operations: update `a/b:second`\n" + amend("2026-07-23", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d, "final Applied event immediately before it"},
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; operations: add `a/b:first`\n- 2026-07-22: Applied; operations: update `a/b:second`\n" + amend("2026-07-23", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d, ""},
 		{"latest stamp mismatch", "Accepted", changes,
 			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", other), "does not match the computed digest"},
 		{"status event missing stamp", "Accepted", changes,
@@ -699,7 +720,7 @@ func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 		{"middle batch", record("Implementing", p, i, applied), record("Implementing", p, i, applied, appliedNext), true},
 		{"finish", record("Implementing", p, i, applied), record("Implemented", p, i, applied, appliedNext, done), true},
 		{"direct implementation with crossed applied shape", record("Accepted", p, accepted), record("Implemented", p, accepted, applied, done), false},
-		{"implementing finish with crossed terminal-only shape", record("Implementing", p, i, applied), record("Implemented", p, i, applied, done), false},
+		{"implementing finish with terminal-only shape", record("Implementing", p, i, applied), record("Implemented", p, i, applied, done), true},
 		{"abandon", record("Implementing", p, i, applied), record("Abandoned", p, i, applied, abandoned), true},
 		{"prefix deletion", record("Implementing", p, i, applied), record("Implemented", p, i, done), false},
 		{"prefix mutation", record("Implementing", p, i, applied), record("Abandoned", status("Accepted"), i, applied, abandoned), false},

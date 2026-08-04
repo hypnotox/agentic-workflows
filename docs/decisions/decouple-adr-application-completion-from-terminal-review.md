@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: decouple-adr-application-completion-from-terminal-review
-status: Proposed
+status: Implementing
 date: 2026-08-04
 ---
 # ADR-decouple-adr-application-completion-from-terminal-review: Decouple ADR Application Completion from Terminal Review
@@ -154,3 +154,5 @@ application completion exactly.
 ## Status history
 
 - 2026-08-04: Proposed
+- 2026-08-04: Implementing; content-sha256: 388dbee7d13cb3fdf6cbddaadb4092a7b65f4344816a3cfb85642eb83f4b3d08
+- 2026-08-04: Applied; operations: update `adr-system/adr-lifecycle:applied-history-events-append-only`, update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`, update `adr-system/adr-lifecycle:corrective-reapplication`

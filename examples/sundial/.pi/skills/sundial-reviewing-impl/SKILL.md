@@ -66,7 +66,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
    - If no managed `.awf/worktrees/<slug>` path, registration, or `awf/<slug>` branch exists, skip integration and continue to the deferred flip below.
    - If managed topology exists, change to the intended clean target checkout and run `awf effort integrate <slug>`. Integration never implies review, removal, retrospective, or finish.
    - An already-integrated or fast-forward result continues after confirming the settled review still covers the effort tip. A divergent merge runs `awf check staged`, the project gate, and a merge commit, then invokes this terminal implementation review again over the combined target history. Conflicts remain visible until explicitly resolved or aborted.
-   - Only after the applicable terminal review has zero findings, land the deferred flip transaction: apply any final application batch with exactly its claim mutations and flip the linked ADR(s) and plan to `Implemented` per `sundial-adr-lifecycle`.
+   - Only after the applicable terminal review has zero findings, land the deferred status-only transaction: flip the linked ADR(s) and plan to `Implemented` per `sundial-adr-lifecycle`; implementation has already applied every explicit batch with its claim mutations.
    - If managed topology exists, run `awf effort worktree remove <slug>` without force and verify path, registration, and branch are absent.
    - Invoke `sundial-retrospective`.
 
@@ -79,5 +79,5 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
-- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for ADR-number and intra-ADR position order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
+- ADR status and explicit Applied events are written by the execution skill. Review every first, later, final, or abandonment pair for unordered operation membership, ADR-number and intra-ADR history order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns only the Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

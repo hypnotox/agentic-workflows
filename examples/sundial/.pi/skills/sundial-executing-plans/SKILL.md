@@ -40,7 +40,7 @@ If an implementer stops dirty, first inventory `git status --short`, diff, compl
 <!-- awf:edit gate-tier-detail: default; create .awf/skills/parts/executing-plans/gate-tier-detail.md to override -->
 
 <!-- awf:edit procedure-adr-final-commit: default; create .awf/skills/parts/executing-plans/procedure-adr-final-commit.md to override -->
-4. Apply non-final batches of the ADR's declared State changes operations (V2) atomically with their matching claims and lifecycle event in the owning phase. The final batch and the Implemented flip are owned by the terminal-review flow and land only after the applicable terminal review settles.
+4. Apply every explicit batch of the ADR's declared State changes operations (V2), including the final batch, atomically with its matching claims and lifecycle event in the owning phase. Terminal review owns only the status-only Implemented flip after the applicable review settles.
 <!-- awf:edit procedure-non-adr-final-commit: default; create .awf/skills/parts/executing-plans/procedure-non-adr-final-commit.md to override -->
 5. Freeze a plan only in its declared final transaction after review settlement.
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->

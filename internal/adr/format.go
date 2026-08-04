@@ -234,7 +234,8 @@ func HistoryTransitionValid(before, after ADR) bool {
 		return len(added) == 2 && added[0].Kind == HistoryStatus && added[1].Kind == HistoryApplied
 	case statusImplemented:
 		if before.Status == statusImplementing {
-			return len(added) == 2 && added[0].Kind == HistoryApplied && added[1].Kind == HistoryStatus
+			return (len(added) == 1 && added[0].Kind == HistoryStatus) ||
+				(len(added) == 2 && added[0].Kind == HistoryApplied && added[1].Kind == HistoryStatus)
 		}
 		return len(added) == 1 && added[0].Kind == HistoryStatus
 	}
@@ -578,16 +579,8 @@ func validateV2History(a ADR) error {
 		}
 		current, lastStatus = event.Status, event.Status
 		if event.Status == statusImplementing {
-			if len(a.Operations) < 2 {
-				return errors.New("implementing requires at least two declared operations")
-			}
 			if i+1 >= len(h) || h[i+1].Kind != HistoryApplied {
 				return errors.New("implementing status event must be followed by the first Applied event")
-			}
-		}
-		if event.Status == statusImplemented && explicit {
-			if i == 0 || h[i-1].Kind != HistoryApplied {
-				return errors.New("explicit Implemented transition requires a final Applied event immediately before it")
 			}
 		}
 	}
@@ -599,8 +592,8 @@ func validateV2History(a ADR) error {
 	}
 	switch a.Status {
 	case statusImplementing:
-		if len(applied) == 0 || len(applied) >= len(a.Operations) {
-			return errors.New("implementing requires at least one applied and one remaining operation")
+		if len(applied) == 0 {
+			return errors.New("implementing requires at least one applied operation")
 		}
 	case statusImplemented:
 		if explicit && len(applied) != len(a.Operations) {

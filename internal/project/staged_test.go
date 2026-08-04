@@ -928,11 +928,17 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "x"),
 	})
 
-	final3 := publicV2ADR(t, "0003", "Incremental", "Implemented", ops3,
-		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`\n- 2026-07-22: Applied; operations: add `alpha/one:b`\n- 2026-07-23: Applied; operations: add `alpha/one:c`\n- 2026-07-23: Implemented; content-sha256: %s")
+	final3 := publicV2ADR(t, "0003", "Incremental", "Implementing", ops3,
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`\n- 2026-07-22: Applied; operations: add `alpha/one:b`\n- 2026-07-23: Applied; operations: add `alpha/one:c`")
 	checkAndCommit("feat(invariants): apply final batch", map[string]string{
 		"docs/decisions/0003-incremental.md":           final3,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "x"),
+	})
+
+	implemented3 := publicV2ADR(t, "0003", "Incremental", "Implemented", ops3,
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`\n- 2026-07-22: Applied; operations: add `alpha/one:b`\n- 2026-07-23: Applied; operations: add `alpha/one:c`\n- 2026-07-24: Implemented; content-sha256: %s")
+	checkAndCommit("docs(adr): record settled terminal review", map[string]string{
+		"docs/decisions/0003-incremental.md": implemented3,
 	})
 
 	ops5 := "- add `alpha/one:y`\n- add `alpha/one:z`"

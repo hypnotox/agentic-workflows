@@ -56,7 +56,7 @@ Apply all lenses to every ADR:
 
 1. **consequences-honesty**: tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
 
-1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; batches preserve declaration order and ascending ADR-number, intra-ADR position order; each batch and its current-claim truth are one checked pair.
+1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; operation lists are unordered membership within each batch while distinct batches preserve ascending ADR-number and intra-ADR history order; each batch and its current-claim truth are one checked pair.
 
 1. **structural-design**: consult `docs/maintainable-code-design.md` only when a Decision changes a semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract. When active, check cohesion, representation isolation, dependency direction, enabling-refactor disposition, testable seams, and justification for indirection. When no trigger is present, skip this lens rather than manufacturing structural requirements.
 

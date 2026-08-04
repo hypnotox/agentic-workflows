@@ -322,12 +322,11 @@ ADR-0147 plan scheduled exactly that standalone phase and it survived the full p
 the verify pass, and the plan-ADR resync; only the parser caught it at execution time. When
 authoring or reviewing a plan for a V2 ADR with incremental batches, check that no phase
 commits an Implementing event without its paired first Applied event. The terminal edge
-mirrors this: Implemented requires zero remaining operations while Implementing requires
-both applied and remaining ones, so the Implemented status event must land in the same
-staged transaction as the final Applied batch, and it carries the frozen digest. The
-ADR-0148 grounding check caught a
-design that would have scheduled the Implemented flip as its own commit; plans must pin
-both ends of the batch choreography, not just the first.
+differs: Implementing permits all declarations Applied, so the final explicit batch lands
+atomically with its claims and remains Implementing. After review settles, the Implemented
+status event is a later status-only transaction carrying the frozen digest. Plans must pin
+the first atomic pair and keep every later batch with its claims, rather than coupling the
+final batch to terminal review.
 
 Within that one transaction the batch also has to land before the render, not after it:
 `awf render` refuses a claim citing an ADR with no applied operation ("cites ADR-NNNN
@@ -965,9 +964,8 @@ _Domains: adr-system, tooling_
 
 Building a current-state-v2 ADR fixture in a Go test hits two parser rules that are easy to
 miss because the failure names the rule rather than the fixture. First, a record left
-`Implementing` needs BOTH applied and remaining operations, so a fixture that applies every
-operation it declares fails with "implementing requires at least one applied and one remaining
-operation"; declare one extra operation and leave it unapplied. Second, ADR numbering must be
+`Implementing` needs at least one Applied operation, but it may have no Remaining operation,
+so a fully applied fixture is a valid nonterminal state. Second, ADR numbering must be
 contiguous from 1, so a fixture that jumps to ADR-0003 to avoid colliding with an existing
 ADR-0001 fails with "ADR numbers are not contiguous from 1: missing [2]"; add a filler ADR at
 the skipped number. Both bit twice in the 2026-07-30 merge-aggregate effort, in two different
@@ -1951,16 +1949,13 @@ _Related: ADR-0186, ADR-0187_
 so flipping early forecloses the amendment window exactly when a late design question wants
 it. Correcting forward is not available. Two independent guards see to that: the staged
 check refuses a claim that disappears without a matching `remove` operation, so the applied
-claims cannot be withdrawn, and `Implementing` requires at least one operation to remain
-pending, so there is no all-applied non-terminal state to retreat into. The only mechanism
-left is rewriting history, which is acceptable only while the flip is unpublished. ADR-0187
-needed exactly that: its tip was rewritten back to the pre-flip phase, and Phase 4 re-ran
-after integration as two batches, five operations moving it to `Implementing` and the sixth
-landing with the flip once terminal review settled. Treat the flip as the last thing that
-happens, after terminal review, and prefer an incremental batch whenever any question about
-the decision's content is still open. (The original note about a terminal event not
-repeating a `state-sequence` retired with the global sequence itself in ADR-0191; Applied
-events carry operations only.)
+claims cannot be withdrawn, but an all-Applied Implementing state remains available for
+correction until terminal review settles. The only mechanism that is closed is undoing an
+already Applied claim: that still requires a forward decision, while a material add or update
+correction may use Reapplied throughout Implementing. Treat the flip as the last thing that
+happens after terminal review, and keep every explicit batch with its matching claims.
+(The original note about a terminal event not repeating a `state-sequence` retired with the
+global sequence itself in ADR-0191; Applied events carry operations only.)
 
 This recurred on 2026-08-03 when ADR review requested one direct Implemented transaction
 containing implementation, documentation, claims, and the terminal flip. Plan authoring

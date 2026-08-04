@@ -413,11 +413,11 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 	}
 }
 
-func TestCheckRejectsInvalidV2Projection(t *testing.T) {
+func TestCheckAcceptsAllAppliedImplementingProjection(t *testing.T) {
 	operation := op(adr.OpAdd, "d/t:x")
-	invalid := v2rec("0137", "Implementing", []adr.Operation{operation}, v2status("Proposed"), v2status("Implementing"), v2batch(operation))
-	if got := messages(currentstate.Check([]adr.ADR{invalid}, topics(claim("d/t:x", "0137")))); !strings.Contains(got, "requires applied and remaining operations") {
-		t.Fatalf("invalid projection not reported:\n%s", got)
+	complete := v2rec("0137", "Implementing", []adr.Operation{operation}, v2status("Proposed"), v2status("Implementing"), v2batch(operation))
+	if got := messages(currentstate.Check([]adr.ADR{complete}, topics(claim("d/t:x", "0137")))); got != "" {
+		t.Fatalf("all-Applied Implementing projection rejected:\n%s", got)
 	}
 }
 

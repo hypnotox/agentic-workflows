@@ -54,7 +54,7 @@ This skill operates only inside an existing confirmed effort and never creates a
 <!-- awf:end -->
 
 <!-- awf:section status-flip -->
-7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition that begins incremental work, while the flip to `Implemented` is owned by the terminal-review flow: after the applicable terminal review settles, `{{ .prefix }}-reviewing-impl` lands the final Applied batch and the status flip immediately before managed-worktree removal and retrospective, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
+7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition and every explicit Applied batch, while the status-only flip to `Implemented` is owned by the terminal-review flow after the applicable review settles, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-resync -->
@@ -68,6 +68,6 @@ This skill operates only inside an existing confirmed effort and never creates a
 <!-- awf:section notes -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `{{ .layout.workflowRef }}` for full ADR lifecycle rules and the canonical workflow chain.
-- Review the declared operation set and the legal Applied, Remaining, and Canceled partitions; every planned batch must preserve declaration order and pair atomicity.
+- Review the declared operation set and the legal Applied, Remaining, and Canceled partitions; operation positions within one batch are unordered membership, while every planned batch preserves pair atomicity and retained history order.
 - The `adr-reviewer` is one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.
 <!-- awf:end -->

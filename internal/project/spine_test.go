@@ -1040,6 +1040,8 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"generated task scope notice",
 		"phase-owner context only",
 		"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
+		"every explicit batch of the ADR's declared State changes operations",
+		"Terminal review owns only the status-only Implemented flip",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1076,6 +1078,8 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"example-reviewing-impl",
 		"example-executing-plans",
 		"dirty-state inventory",
+		"every explicit V2 batch, including the final batch",
+		"Terminal review owns only the status-only Implemented flip",
 		"generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
 		"never transfer commit, review, checkpoint, handoff, helper, or outcome authority",
 	}
@@ -2244,7 +2248,7 @@ var unsetFallbackCases = []fallbackCase{
 	// invariant: rendering/workflow-skill-templates:reviewers-report-only (agents/adr-reviewer.md.tmpl)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
-		want: []string{"post-implementation", "counterfactual", "reasoned finding"},
+		want: []string{"post-implementation", "counterfactual", "reasoned finding", "unordered membership within each batch"},
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
@@ -2262,7 +2266,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/adr-lifecycle/SKILL.md.tmpl",
-		want: []string{"the multi-state lifecycle", "Run `awf render` to regenerate"},
+		want: []string{"the multi-state lifecycle", "Run `awf render` to regenerate", "whose members may appear in any order", "settled review later appends only Implemented"},
 	},
 	{
 		tmpl: "skills/brainstorming/SKILL.md.tmpl",

@@ -18,7 +18,7 @@ A support skill for mechanical ADR lifecycle transitions: status transitions, th
 |---|---|---|
 | `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable; body and status may both change |
 | `Accepted` | Design is finalised; implementation authorised but not yet started | Status and append-only Status history; the body stays amendable, each amendment appending an Amended event; a schema retrofit may migrate the encoding |
-| `Implementing` | A nonempty strict subset of declared operations is applied | Status and append-only Status history; Applied events append while operations remain, and the body stays amendable via Amended events |
+| `Implementing` | A nonempty set of declared operations is applied; Remaining may be empty | Status and append-only Status history; every explicit Applied batch belongs to implementation, and the body stays amendable via Amended events |
 | `Implemented` | All declared claim operations are applied | Terminal; status and append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding |
 | `Abandoned` | Execution stopped; applied operations remain historical and unapplied operations are canceled | Terminal; status and append-only Status history only; the final entry carries a rationale; the body is frozen |
 
@@ -28,8 +28,8 @@ A support skill for mechanical ADR lifecycle transitions: status transitions, th
 <!-- awf:edit transitions: default; create .awf/skills/parts/adr-lifecycle/transitions.md to override -->
 - `Proposed → Accepted` establishes the first content stamp without applying operations; the body stays amendable via Amended events.
 - `Proposed|Accepted → Implementing` appends the status event then a first Applied batch, together with its claim mutations.
-- `Implementing → Implementing` appends exactly one middle Applied batch with its mutations, or one Reapplied batch correcting an already-applied add or update while another operation remains.
-- `Implementing → Implemented` appends the final Applied batch then the terminal status event with its mutations.
+- `Implementing → Implementing` appends exactly one Applied batch with its mutations, including the final batch, or one Reapplied batch correcting an already-applied add or update.
+- `Implementing → Implemented` appends only the terminal status event after implementation has applied every declaration.
 - `Proposed|Accepted → Implemented` remains the direct one-transaction path for all operations; `None.` and one-operation ADRs use it.
 - `Proposed|Accepted|Implementing → Abandoned` appends only the terminal status and rationale. Already Applied operations remain authoritative; Remaining operations become Canceled.
 
@@ -43,7 +43,7 @@ An ADR's `## State changes` section is the authoritative link to the topics it g
 - **At `Accepted`** the operations are settled instruction, amendable under the amendment-until-terminal rules until an Applied event references them. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; inspect lifecycle detail where needed with `awf context --show pending <affected paths>`.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 - **At `Implementing`** each Applied or Reapplied event and exactly its matching claim mutations form one checked Git pair. An initial `add` appears with this ADR as Origin; an initial `update` preserves Origin and the prior Revised-by prefix, then appends this ADR; a `remove` disappears. A Reapplied add or update makes a further material correction while preserving the provenance written by its first application. Remaining operations continue to appear as pending progress.
-- **At `Implemented`** all declarations are Applied. A direct transition uses one implicit batch; an incremental transition appends its final batch before the status event.
+- **At `Implemented`** all declarations are Applied. A direct transition uses one implicit batch; an incremental transition has already applied its final batch before the status-only event.
 - **At `Abandoned`** Applied operations and their provenance remain historical facts, while Remaining operations become Canceled and authorize nothing.
 
 ## Procedure
@@ -51,7 +51,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 This skill requires the one existing already-confirmed effort and its exact owned memory path before durable authoring or lifecycle mutation. It never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Pick the status transition, validate the fixed identity, then carry the same verified effort slug and exact `.awf/efforts/<slug>/memory.md` path. A lifecycle child or reviewer never edits shared memory; repository and current-state authority outrank it, one user-managed writer remains responsible, and standalone memory is forbidden.
 
 <!-- awf:edit procedure-status-edit: default; create .awf/skills/parts/adr-lifecycle/procedure-status-edit.md to override -->
-1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; for a middle batch append one Applied event without changing status; for the final batch append Applied then Implemented status; for abandonment append only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; operations: <operation-list>`. If an already-applied add or update needs another material correction while a different operation remains, append `- YYYY-MM-DD: Reapplied; operations: <operation-list>` without changing status. Reapplied operations must have an earlier Applied occurrence, may repeat, and do not change progress; removes and events after the final Applied batch are refused. Repeat the latest stamp on status events; an amendment instead appends its own `- YYYY-MM-DD: Amended; content-sha256: <digest of the amended content>` event in its own commit.
+1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; each later batch, including the final one, appends one Applied event without changing status; settled review later appends only Implemented; abandonment appends only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; operations: <operation-list>`, whose members may appear in any order. If an already-applied add or update needs another material correction, append `- YYYY-MM-DD: Reapplied; operations: <operation-list>` without changing status. Reapplied operations must have an earlier Applied occurrence, may repeat, and do not change progress; removes and events after terminal status are refused. Repeat the latest stamp on status events; an amendment instead appends its own `- YYYY-MM-DD: Amended; content-sha256: <digest of the amended content>` event in its own commit.
 
 <!-- awf:edit procedure-claim-mutation: default; create .awf/skills/parts/adr-lifecycle/procedure-claim-mutation.md to override -->
 2. **Apply exactly the batch's State changes.** Stage the matching add/update/remove edits under `.awf/topics/parts/<domain>/<topic>/current-state.md` in the same commit as the Applied event. A Reapplied update preserves its existing canonical Revised-by entry; a Reapplied add preserves Origin naming the ADR and Revised-by byte-for-byte. Never apply Remaining or Canceled operations. On abandonment preserve claims authorized by earlier Applied events.
@@ -86,8 +86,8 @@ schema retrofit may migrate its machine-readable encoding.
 
 - An amendment must not alter or remove a State-changes operation already referenced by an
   Applied event; adding new operations and rewording operations not yet applied stay legal. If
-  the declaration is already applied, use Reapplied for an add or update while operations remain;
-  after that window use a follow-up ADR or remove plus add rather than declaring it twice.
+  the declaration is already applied, use Reapplied for an add or update throughout Implementing;
+  after terminal status use a follow-up ADR or remove plus add rather than declaring it twice.
 - An amendment that changes a Decision item, the State changes operation set, or the meaning
   of an invariant claim is raised as a user-decision before landing, unless it corrects a
   clear defect with a no-brainer fix; prose-only clarification stays autonomous. A
