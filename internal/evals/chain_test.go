@@ -490,7 +490,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			"awf effort integrate <slug>",
 			"Integration never implies review, removal, retrospective, or finish",
 			"divergent merge", "awf check staged", "project gate", "merge commit",
-			"terminal implementation review again", "deferred status-only transaction",
+			"terminal implementation review again", "deferred terminal transaction",
 			"If managed topology exists", "awf effort worktree remove <slug>", "retrospective",
 		})
 		retro := read(t, pathFor("retrospective"))

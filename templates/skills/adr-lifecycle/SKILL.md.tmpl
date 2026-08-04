@@ -75,8 +75,9 @@ This skill requires the one existing already-confirmed effort and its exact owne
 Use these subjects for each transition type:
 
 - `docs(adr): accept NNNN <short title>` for `Proposed → Accepted`
-- `<feat|fix|refactor>(<scope>): <subject> (applies NNNN batch)` for first or middle Applied batches
-- `<feat|fix|refactor>(<scope>): <subject> (implements NNNN)` for a direct or final batch
+- `<feat|fix|refactor>(<scope>): <subject> (applies NNNN batch)` for every explicit Applied batch, including the final batch
+- `<feat|fix|refactor>(<scope>): <subject> (implements NNNN)` for direct implicit completion with its matching claim mutations
+- `docs(adr): implement NNNN <short title>` for the status-only terminal transaction after explicit application
 - `docs(adr): abandon NNNN <short title>` for any legal transition to Abandoned
 <!-- awf:end -->
 

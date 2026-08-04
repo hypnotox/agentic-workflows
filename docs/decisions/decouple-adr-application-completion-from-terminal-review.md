@@ -157,3 +157,4 @@ application completion exactly.
 - 2026-08-04: Implementing; content-sha256: 388dbee7d13cb3fdf6cbddaadb4092a7b65f4344816a3cfb85642eb83f4b3d08
 - 2026-08-04: Applied; operations: update `adr-system/adr-lifecycle:applied-history-events-append-only`, update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`, update `adr-system/adr-lifecycle:corrective-reapplication`
 - 2026-08-04: Applied; operations: update `invariants/current-state-authority:merge-transition-ordered-aggregate`
+- 2026-08-04: Reapplied; operations: update `adr-system/adr-lifecycle:applied-history-events-append-only`

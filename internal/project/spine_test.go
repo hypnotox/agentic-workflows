@@ -1420,6 +1420,9 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"status transition",
 		"regenerate",
 		"Append-only",
+		"every explicit Applied batch, including the final batch",
+		"direct implicit completion with its matching claim mutations",
+		"status-only terminal transaction after explicit application",
 		"V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker",
 		"use canonical `#N` only after their authored-format lifecycle freezes the record",
 	}
@@ -1597,6 +1600,9 @@ func TestReviewingImplTemplate(t *testing.T) {
 		"user-decision",
 		"SHA range",
 		"docs/decisions/",
+		"explicit history has already applied every batch",
+		"direct `Proposed`-to-`Implemented` or `Accepted`-to-`Implemented` transition",
+		"atomic implicit batch, matching claim mutations, and Implemented event",
 		"example-retrospective",
 	}
 	for _, phrase := range loadBearing {

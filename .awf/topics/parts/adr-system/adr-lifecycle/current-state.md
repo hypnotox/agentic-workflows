@@ -97,7 +97,7 @@ Backing: test
 
 ### `invariant: applied-history-events-append-only`
 
-Stable Status history in either governed digest format, V2, V3, and V4, is prefix-append-only: each Applied event records a nonempty, duplicate-free subset in any authored order of declared not-yet-applied operations, each declaration is first-applied exactly once, and a checked pair refuses deletion or mutation of any prior event. Numbering a pending record is no exception; it touches no history event.
+Stable Status history in either governed digest format, V2, V3, and V4, is prefix-append-only: each Applied event records a nonempty, duplicate-free subset in any authored order of declared not-yet-applied operations, no declaration is first-applied more than once, every declaration is first-applied before Implemented, and a checked pair refuses deletion or mutation of any prior event. Numbering a pending record is no exception; it touches no history event.
 Origin: ADR-0143
 Revised-by: ADR-0191, ADR-0202, ADR-0217, ADR-decouple-adr-application-completion-from-terminal-review
 Backing: test

@@ -36,7 +36,7 @@ query a single version or a range.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
 
-- Implementing V2 and V3 ADRs can now correct an already-applied add or update through explicit `Reapplied` history events while another operation remains. Each correction is material and atomic, preserves first-application provenance, retains its own occurrence in merge ordering, and leaves declaration progress counted once.
+- V2, V3, and V4 ADR State changes now form an unordered exact-once completion set: explicit batches may exhaust Remaining while status stays Implementing, `Reapplied` corrections remain available throughout Implementing, and settled review later appends only the terminal status event. Direct implicit completion remains atomic with all matching claim mutations.
 
 - Plan authoring now treats qualifying implementation-ready instructions as the default, marks contract-bearing tasks with `Latitude: exact`, supports explicit spike and batch fields with affected-path and post-check contracts, and retires the duplicated whole-plan File structure section.
 
