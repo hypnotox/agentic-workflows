@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Pi effort association now keeps complete metadata independent while capability-gated display suffix publication sends only the canonical slug or null. It never overrides, reads, or composes routing identity, and degrades to metadata-only behavior.
+
 - Pi fresh-session handoff now persists accepted kickoff as one visible default-rendered `agent-handoff` custom message with an explicit agent-authored envelope and replacement-bound turn trigger. The public bounded `{kickoff}` input remains unchanged; Pi's current provider adapter still receives the custom content as a user-role message.
 
 - Release verification now pins the root project to the canonical AGPL-3.0-only license bytes, matching README references, and license inclusion in every GoReleaser archive, without recategorizing dependency metadata or retained third-party notices as project-license inputs.

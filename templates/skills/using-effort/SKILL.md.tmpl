@@ -7,4 +7,4 @@ description: Explicitly associate this Pi session with one awf effort.
 
 Use `using_effort` explicitly as `{ effort: "<canonical-slug>" }` to attach or `{ detach: true }` to detach. Pi remains at repository root; use the supplied relative memory path `.awf/efforts/<slug>/memory.md` and, when present, managed-worktree path `.awf/worktrees/<slug>` for effort work.
 
-A takeover is advisory and proceeds. Heartbeat, metadata, and temporary peer-name information are advisory only: activity is neither authority nor a lock. Restart begins detached.
+A takeover is advisory and proceeds. Heartbeat and complete metadata are advisory only. When available, awf publishes the effort slug as a display-only suffix; it never reads or composes a base name and the suffix is never routing input. Activity is neither authority nor a lock. Restart begins detached.

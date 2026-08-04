@@ -129,3 +129,4 @@ package dependency, provider implementation, or cross-repository completion obli
 - 2026-08-04: Implementing; content-sha256: 72b472a2ed203f20eb3aac4e9a1927574f05c3f9fb269b4c8637734ce1c54434
 - 2026-08-04: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - 2026-08-04: Amended; content-sha256: 5590e155c7272cf2ebddcdd497e318de145f875dd9edc42c8ff49595df5ab836
+- 2026-08-04: Applied; operations: update `rendering/pi-workflows:pi-effort-session-association`, update `rendering/pi-workflows:using-effort-skill`

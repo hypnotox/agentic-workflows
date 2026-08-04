@@ -119,6 +119,18 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			t.Errorf("unexpected Pi extension rendered: %s", path)
 		}
 	}
+	// The optional presentation boundary is awf-owned and independent of metadata.
+	effort := extensions[".pi/extensions/awf-effort/index.ts"]
+	for _, required := range []string{"remote-pi:capabilities:request", "remote-pi:capabilities", "remote-pi:display-suffix:set", "remote-pi:display-suffix:request", "displaySuffix", "{value:string|null}"} {
+		if !strings.Contains(effort, required) {
+			t.Errorf("awf effort extension lacks display-suffix contract %q", required)
+		}
+	}
+	for _, forbidden := range []string{"name-override", "nameOverride", "NameOverride", "_displayName"} {
+		if strings.Contains(effort, forbidden) {
+			t.Errorf("awf effort extension retains routing-name contract %q", forbidden)
+		}
+	}
 	for _, banned := range []string{"awf-telemetry", "awf-workflow", "awf-workflows"} {
 		for path := range extensions {
 			if strings.Contains(path, banned) {
@@ -156,7 +168,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			usingEffort = file.Content
 		}
 	}
-	for _, want := range []string{"{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "`.awf/efforts/<slug>/memory.md`", "`.awf/worktrees/<slug>`", "Restart begins detached", "temporary peer-name information are advisory only", "activity is neither authority nor a lock"} {
+	for _, want := range []string{"{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "`.awf/efforts/<slug>/memory.md`", "`.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock"} {
 		if !strings.Contains(usingEffort, want) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}
