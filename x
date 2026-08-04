@@ -118,33 +118,12 @@ case "$cmd" in
     # The rendered ./awf wrapper runs awf from source (awfInvokeCmd) so the
     # dogfooded render always matches the tree.
     ./awf render "$@"
-    # ADR-0090: re-render the example adopter with the same source. The example
-    # is its own Go module, so build once and run with the example as cwd.
-    bindir="$(mktemp -d)"
-    cleanup_paths+=("$bindir")
-    go build -o "$bindir/awf" ./cmd/awf
-    (cd examples/sundial && "$bindir/awf" render)
     ;;
   check)
     ./awf check "$@"
     if ! go run ./cmd/contextspilllog --check-log --root "$PWD"; then
       echo "check: warning: context spill advisory inspection failed; resolve or promote the issue before removing the log" >&2
     fi
-    # ADR-0090: the example adopter must be drift-free, authority-clean, free of
-    # advisory notes (the model adopter has zero smells), and its scenery green.
-    bindir="$(mktemp -d)"
-    cleanup_paths+=("$bindir")
-    go build -o "$bindir/awf" ./cmd/awf
-    if ! out="$(cd examples/sundial && "$bindir/awf" check repo)"; then
-      printf '%s\n' "$out"
-      exit 1
-    fi
-    printf '%s\n' "$out"
-    if grep -q '^note: ' <<<"$out"; then
-      echo "check: the example adopter has advisory notes - author the missing content or clear the smell (ADR-0090)" >&2
-      exit 1
-    fi
-    (cd examples/sundial && go test ./...)
     ;;
   context)
     capture="$(mktemp)"

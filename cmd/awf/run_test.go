@@ -792,7 +792,7 @@ func TestRunInitSyncError(t *testing.T) {
 	}
 }
 
-func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
+func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	ctx := testContext(t)
 	// A legacy single-file project migrates to the tree layout, covering the
 	// applied-migrations loop and the terminal sync.
@@ -814,6 +814,21 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "applied") {
 		t.Errorf("expected an applied migration, got %q", out.String())
+	}
+	for _, path := range []string{".awf/config.yaml", ".awf/awf.lock"} {
+		if _, err := os.Stat(filepath.Join(root, path)); err != nil {
+			t.Errorf("upgraded project missing %s: %v", path, err)
+		}
+	}
+	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read rendered AGENTS.md: %v", err)
+	}
+	if !strings.Contains(string(agents), "# example Agent Guide") {
+		t.Errorf("rendered AGENTS.md missing stable heading: %q", agents)
+	}
+	if err := runCheckRepo(ctx, root, io.Discard); err != nil {
+		t.Fatalf("repository check after upgrade: %v", err)
 	}
 }
 

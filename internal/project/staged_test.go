@@ -255,19 +255,19 @@ func TestCheckStagedNestedAdopter(t *testing.T) {
 	dir := repo.Root()
 	files := map[string]string{}
 	for path, body := range stagedHeadFiles() {
-		files["examples/sundial/"+path] = body
+		files["fixtures/nested-adopter/"+path] = body
 	}
 	lockBytes, err := attestedLock().Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	files["examples/sundial/.awf/awf.lock"] = string(lockBytes)
+	files["fixtures/nested-adopter/.awf/awf.lock"] = string(lockBytes)
 	gitfixture.Stage(t, repo, files)
 	gitfixture.Commit(t, repo, "nested head", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		"examples/sundial/.awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
+		"fixtures/nested-adopter/.awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
 	})
-	p := openStaged(t, filepath.Join(dir, "examples", "sundial"))
+	p := openStaged(t, filepath.Join(dir, "fixtures", "nested-adopter"))
 	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("nested CheckStaged: %v", err)

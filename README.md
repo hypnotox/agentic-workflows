@@ -68,8 +68,7 @@ instead of rotting.
 - **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
   script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
   is marked edit-in-place, so the verbs you add there survive every `awf render` while awf
-  keeps the rest current. awf itself keeps a from-source runner instead; the
-  [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
+  keeps the rest current. awf itself keeps a from-source runner instead.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
@@ -253,14 +252,6 @@ files are drift-checked; use `awf render` to restore missing or modified copies.
 `adr-lifecycle`, and `exploring`) and every catalog agent. The workflow, documentation, and agent-guide standards sit outside
 the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
-
-## Worked example
-
-A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
-a small fictional Go CLI with every catalog artifact enabled (authored parts,
-domains, ADRs, a plan) and every rendered file committed, kept in sync by this
-repository's own checks. Browse it to see exactly what an adoption looks like on
-disk.
 
 ## Commands
 

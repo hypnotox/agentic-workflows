@@ -33,13 +33,6 @@ Origin: ADR-0148
 Revised-by: ADR-0156, ADR-0158, ADR-0210
 Backing: test
 
-### `invariant: runner-example-adopted`
-
-The bundled sundial example enables the runner singleton, and its rendered `awf` wrapper is drift-free, invariant-clean, and free of advisory notes; its project verbs live in a hand-written `./x` outside the render set, and its config carries no awf-verb command vars, so it dogfoods the rendered defaults.
-Origin: ADR-0148
-Revised-by: ADR-0156
-Backing: test
-
 ### `invariant: runner-prune-backup`
 
 A lock prune that removes a co-owned runner output (an outgoing lock entry whose template id is `runner/x.tmpl`) backs the file up through the standard backup path (`x.awf-bak`, collision-suffixed) instead of deleting it, and still records the path as pruned.

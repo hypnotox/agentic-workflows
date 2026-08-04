@@ -41,25 +41,6 @@ No file in the embedded templates FS, no file in the embedded changelog FS, and 
 Origin: ADR-0115
 Backing: test
 
-### `invariant: example-adopter-checked`
-
-The ./x render step re-renders examples/sundial with the from-source binary, and ./x check runs awf check repo inside that example with proseGate.enabled and memoryCite.enabled, so example drift, current-state, prose, or memory findings fail ./x check.
-Origin: ADR-0090
-Revised-by: ADR-0159, ADR-0210
-Backing: test
-
-### `invariant: example-module-isolated`
-
-examples/sundial is its own Go module, so no enclosing ./... sweep (test, coverage, vet, lint, or deadcode) includes its packages.
-Origin: ADR-0090
-Backing: test
-
-### `invariant: example-zero-notes`
-
-The example check step fails on any note: line present in the example's awf check output.
-Origin: ADR-0090
-Backing: test
-
 ### `invariant: memory-citation-gate`
 
 With memoryCite.enabled true, the check repo memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision and plan text and exits non-zero on any finding outside memoryCite.exemptions; check staged commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.

@@ -101,9 +101,6 @@ data:
     - term: domain paths
       meaning: "A domain's file territory: anchored globs under `paths:` in its domain sidecar. Input to the `domain-code-staleness` audit rule, which warns on territory churn without a current-state co-change; a domain without `paths` opts out."
       domains: [config]
-    - term: example adopter
-      meaning: "The committed full-surface adoption at `examples/sundial/`: a fictional Go CLI in its own module with a complete `.awf/` tree, everything enabled, and all rendered output checked in. Re-rendered by `./x render` and held note-free by `./x check`."
-      domains: [tooling]
     - term: dormant doc-gated skill
       meaning: "A skill enabled while its required doc is disabled, a legacy state that silently rendered nothing. The `close-enabled-set` migration drops it, preserving observed output; the state is now refused at open."
       domains: [rendering]
@@ -120,9 +117,6 @@ data:
     - term: prose knob
       meaning: "A catalog var descriptor whose only effect is tuning the wording of rendered prose, the category the catalog bans. Contrast a functional value: a command, an enforced identifier set, or a path the tooling executes. Prose customization uses convention parts."
       domains: [config]
-    - term: quality oracle
-      meaning: "The example adopter's second role: because `./x render` re-renders it on every template change, rendered-output quality regressions land as reviewable diffs over a realistic adoption in the commit that caused them."
-      domains: [rendering]
     - term: resync
       meaning: "The plan and ADR reconciliation pass that runs before implementation when both exist; it re-runs the scope-completeness and doc-currency lenses to catch plan-versus-finalised-ADR drift and loops until they converge."
     - term: seed-on-introduction
