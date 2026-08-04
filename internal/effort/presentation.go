@@ -57,19 +57,37 @@ func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
 
 // Detail maps one resident record into its ordered readable facts.
 func (r Record) Detail() (presentation.Detail, error) {
+	fields, err := r.presentationFields("slug")
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	return presentation.Detail{Fields: fields}, nil
+}
+
+func (r Record) presentationFields(slugLabel string) ([]presentation.Field, error) {
 	fields := make([]presentation.Field, 0, 3)
-	for _, fact := range []struct{ label, value string }{{"slug", r.Slug}, {"title", r.Title}, {"memory", r.MemoryPath}} {
-		value, err := presentation.Prose(fact.value)
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
-			return presentation.Detail{}, err
+	for _, fact := range []struct {
+		label   string
+		value   string
+		literal bool
+	}{{slugLabel, r.Slug, false}, {"title", r.Title, false}, {"memory", r.MemoryPath, true}} {
+		var value presentation.Value
+		var err error
+		if fact.literal {
+			value, err = presentation.Literal(fact.value)
+		} else {
+			value, err = presentation.Prose(fact.value)
+		}
+		if err != nil {
+			return nil, err
 		}
 		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
-			return presentation.Detail{}, err
+		if err != nil { // coverage-ignore: fixed grammar-valid labels and validated values form valid fields
+			return nil, err
 		}
 		fields = append(fields, field)
 	}
-	return presentation.Detail{Fields: fields}, nil
+	return fields, nil
 }
 
 // ListDocument maps active efforts in their store-defined slug order.
@@ -107,17 +125,9 @@ func ListDocument(records []Record) (presentation.Document, error) {
 // NewEffortMutation composes effort-owned identity with worktree-owned
 // creation facts. The caller supplies a mutation already mapped by worktree.
 func (r Record) NewEffortMutation(mutation presentation.Mutation) (presentation.Mutation, error) {
-	identity := make([]presentation.Field, 0, 3)
-	for _, fact := range []struct{ label, value string }{{"effort", r.Slug}, {"title", r.Title}, {"memory", r.MemoryPath}} {
-		value, err := presentation.Prose(fact.value)
-		if err != nil {
-			return presentation.Mutation{}, err
-		}
-		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: NewEffortMutation owns fixed grammar-valid labels and Prose returned a validated value
-			return presentation.Mutation{}, err
-		}
-		identity = append(identity, field)
+	identity, err := r.presentationFields("effort")
+	if err != nil {
+		return presentation.Mutation{}, err
 	}
 	mutation.Identity = append(identity, mutation.Identity...)
 	return mutation, nil
