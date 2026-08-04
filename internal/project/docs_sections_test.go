@@ -145,9 +145,19 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 	if !strings.Contains(out, "resync (when both)") {
 		t.Errorf("workflow chain must surface the resync step:\n%s", out)
 	}
-	for _, want := range []string{"sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work"} {
+	planSelection := []string{"sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work"}
+	for _, want := range planSelection {
 		if !strings.Contains(out, want) {
 			t.Errorf("workflow plan selection missing %q:\n%s", want, out)
+		}
+	}
+	override, err := os.ReadFile(filepath.Join(repoRootDir(t), ".awf", "parts", "workflow", "chain.md"))
+	if err != nil {
+		t.Fatalf("read project workflow override: %v", err)
+	}
+	for _, want := range planSelection {
+		if !strings.Contains(string(override), want) {
+			t.Errorf("project workflow override missing plan selection %q:\n%s", want, override)
 		}
 	}
 }
