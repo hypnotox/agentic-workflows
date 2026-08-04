@@ -13,13 +13,15 @@ REPO="hypnotox/agentic-workflows"
 # any download.
 if command -v awf >/dev/null 2>&1; then
   local_version="$(awf version 2>/dev/null | awk '
-    /^version: [^[:space:]]/ {
-      if (found++) exit 1
+    /^version: [^[:space:]()]+( \([^[:cntrl:]]+\))?$/ {
+      if (found) { bad = 1; exit }
+      found = 1
       value = substr($0, 10)
+      sub(/ \(.*/, "", value)
       next
     }
-    { exit 1 }
-    END { if (!found) exit 1; print value }
+    { bad = 1; exit }
+    END { if (!bad && found == 1) print value; else exit 1 }
   ' || true)"
   if [ "${local_version}" = "${AWF_VERSION}" ]; then
     command -v awf

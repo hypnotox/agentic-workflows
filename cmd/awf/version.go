@@ -20,7 +20,7 @@ func writeVersion(stdout io.Writer, info *debug.BuildInfo, ok bool) {
 	line := versionLine(info, ok)
 	if ok && formatProvenance(info) != "" {
 		value, err := presentation.Literal(line)
-		if err != nil { // coverage-ignore: versionLine cannot produce an empty or line-broken value
+		if err != nil { // coverage-ignore: normalized provenance and the fixed version prefix cannot produce an invalid literal
 			return
 		}
 		field, err := presentation.NewField("version", value)
@@ -35,7 +35,7 @@ func writeVersion(stdout io.Writer, info *debug.BuildInfo, ok bool) {
 		return
 	}
 	value, err := presentation.Prose(line)
-	if err != nil { // coverage-ignore: versionLine cannot produce an empty or line-broken value
+	if err != nil { // coverage-ignore: the fixed version prefix remains nonempty after normalization
 		return
 	}
 	field, err := presentation.NewField("version", value)
@@ -77,12 +77,15 @@ func awfVersion() string {
 // (ADR-0049 Decision 2).
 func formatProvenance(info *debug.BuildInfo) string {
 	var parts []string
-	if v := info.Main.Version; v != "" && v != "(devel)" && v != "v"+project.Version {
+	if v := normalizeProvenance(info.Main.Version); v != "" && v != "(devel)" && v != "v"+project.Version {
 		parts = append(parts, v)
 	}
 	for _, s := range info.Settings {
-		if s.Key == "vcs.revision" && s.Value != "" {
-			rev := s.Value
+		if s.Key == "vcs.revision" {
+			rev := normalizeProvenance(s.Value)
+			if rev == "" {
+				continue
+			}
 			if len(rev) > 12 {
 				rev = rev[:12]
 			}
@@ -91,4 +94,8 @@ func formatProvenance(info *debug.BuildInfo) string {
 		}
 	}
 	return strings.Join(parts, ", ")
+}
+
+func normalizeProvenance(value string) string {
+	return strings.Join(strings.Fields(value), " ")
 }

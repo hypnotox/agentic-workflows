@@ -471,7 +471,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:7b5af35aeabc365fe0f164bf288239bea2e724f392a2c3414d232d9f999d5d14",
+      "outputHash": "sha256:b7fc2bb6b8637e3bbcb2c0d51e33d176d4250de2b5b1b580df33c5d45e3c3a5a",
       "regenChecked": true
     },
     "docs/domains/config.md": {

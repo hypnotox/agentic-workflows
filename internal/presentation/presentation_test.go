@@ -42,6 +42,14 @@ func TestPresentationCore(t *testing.T) {
 		t.Errorf("Render() = %q, want %q", got.String(), want)
 	}
 
+	for _, label := range []string{"version2", "build version", "build-version", "build 2-version"} {
+		t.Run("valid label "+label, func(t *testing.T) {
+			if _, err := NewField(label, prose); err != nil {
+				t.Fatalf("NewField(%q) failed: %v", label, err)
+			}
+		})
+	}
+
 	for _, tc := range []struct {
 		name string
 		fn   func() error
@@ -49,7 +57,9 @@ func TestPresentationCore(t *testing.T) {
 		{"empty document", func() error { _, err := NewDocument(); return err }},
 		{"empty label", func() error { _, err := NewField("", prose); return err }},
 		{"uppercase label", func() error { _, err := NewField("Version", prose); return err }},
-		{"repeated label separator", func() error { _, err := NewField("build  version", prose); return err }},
+		{"repeated space separator", func() error { _, err := NewField("build  version", prose); return err }},
+		{"repeated hyphen separator", func() error { _, err := NewField("build--version", prose); return err }},
+		{"mixed separator gap", func() error { _, err := NewField("build- version", prose); return err }},
 		{"leading label separator", func() error { _, err := NewField(" version", prose); return err }},
 		{"trailing label separator", func() error { _, err := NewField("version-", prose); return err }},
 		{"empty prose", func() error { _, err := Prose(" \t\n"); return err }},

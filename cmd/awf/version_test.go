@@ -29,6 +29,7 @@ func TestWriteVersion(t *testing.T) {
 	}{
 		{"version only", nil, false, "version: " + project.Version + "\n"},
 		{"with provenance", &debug.BuildInfo{Main: debug.Module{Version: "v9.9.9-pre"}}, true, "version: " + project.Version + " (v9.9.9-pre)\n"},
+		{"line-broken provenance normalized", &debug.BuildInfo{Main: debug.Module{Version: "v9.9.9-pre\ninjected"}}, true, "version: " + project.Version + " (v9.9.9-pre injected)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
@@ -81,6 +82,10 @@ func TestFormatProvenance(t *testing.T) {
 			Main:     debug.Module{Version: "v9.9.9-pre"},
 			Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "abc123"}},
 		}, "v9.9.9-pre, rev abc123"},
+		{"whitespace normalized", debug.BuildInfo{
+			Main:     debug.Module{Version: "v9.9.9-pre\ninjected"},
+			Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "abc\t123"}},
+		}, "v9.9.9-pre injected, rev abc 123"},
 		{"empty revision skipped", debug.BuildInfo{
 			Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: ""}},
 		}, ""},

@@ -1,6 +1,9 @@
 package project
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -115,10 +118,74 @@ func TestBootstrapLocalFirstResolution(t *testing.T) {
 	if strings.Contains(rf.Content, "awk '{print $2}'") {
 		t.Errorf("local probe must not parse a positional version field:\n%s", rf.Content)
 	}
-	for _, contract := range []string{"/^version: [^[:space:]]/", "if (found++) exit 1", "substr($0, 10)", "if (!found) exit 1"} {
+	for _, contract := range []string{"/^version: [^[:space:]()]+", "if (found) { bad = 1; exit }", "substr($0, 10)", "sub(/ \\(.*/", "if (!bad && found == 1)"} {
 		if !strings.Contains(rf.Content, contract) {
 			t.Errorf("local probe must validate the version label contract %q:\n%s", contract, rf.Content)
 		}
+	}
+}
+
+func TestBootstrapVersionProbeContract(t *testing.T) {
+	rf := bootstrapFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	if rf == nil {
+		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
+	}
+	for _, tc := range []struct {
+		name      string
+		output    string
+		usesLocal bool
+	}{
+		{"core version", "version: " + Version + "\n", true},
+		{"display provenance", "version: " + Version + " (v9.9.9-pre, rev abc123)\n", true},
+		{"missing", "", false},
+		{"duplicate", "version: " + Version + "\nversion: " + Version + "\n", false},
+		{"malformed label", "version : " + Version + "\n", false},
+		{"legacy unlabeled", "awf " + Version + "\n", false},
+		{"malformed provenance", "version: " + Version + " provenance\n", false},
+		{"different version", "version: 0.0.0\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			bin := filepath.Join(root, "bin")
+			if err := os.MkdirAll(bin, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			local := filepath.Join(bin, "awf")
+			if err := os.WriteFile(local, []byte("#!/bin/sh\nprintf '%s' \"$AWF_TEST_VERSION_OUTPUT\"\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			cache := filepath.Join(root, "cache", "awf", Version, "awf")
+			if err := os.MkdirAll(filepath.Dir(cache), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(cache, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			script := filepath.Join(root, "bootstrap.sh")
+			if err := os.WriteFile(script, []byte(rf.Content), 0o755); err != nil {
+				t.Fatal(err)
+			}
+
+			cmd := exec.Command("bash", script)
+			cmd.Env = append(os.Environ(),
+				"PATH="+bin+":"+os.Getenv("PATH"),
+				"HOME="+root,
+				"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
+				"AWF_VERSION="+Version,
+				"AWF_TEST_VERSION_OUTPUT="+tc.output,
+			)
+			got, err := cmd.Output()
+			if err != nil {
+				t.Fatalf("bootstrap failed: %v", err)
+			}
+			want := cache + "\n"
+			if tc.usesLocal {
+				want = local + "\n"
+			}
+			if string(got) != want {
+				t.Errorf("bootstrap output = %q, want %q", got, want)
+			}
+		})
 	}
 }
 
