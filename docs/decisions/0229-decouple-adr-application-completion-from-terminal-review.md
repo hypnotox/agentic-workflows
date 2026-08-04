@@ -4,7 +4,7 @@ slug: decouple-adr-application-completion-from-terminal-review
 status: Implementing
 date: 2026-08-04
 ---
-# ADR-decouple-adr-application-completion-from-terminal-review: Decouple ADR Application Completion from Terminal Review
+# ADR-0229: Decouple ADR Application Completion from Terminal Review
 
 
 ## Context

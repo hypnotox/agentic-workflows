@@ -25,7 +25,7 @@ Verify: A fixture with an Accepted update conflicting with its current claim kee
 
 A merge transition is validated as an ordered aggregate rather than one authoring step: distinct application and re-application batches remain in ascending ADR-identity and intra-ADR history order, while operation positions inside one Applied or Reapplied event are unordered membership and create no chronology; a claim's operations across the pair form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates; and appended Status history preserves the prior history as an exact prefix. Repeated updates from one ADR contribute that updater once and require a material endpoint; repeated adds by their originating ADR fold into the chain's first absent-to-present net add; a canceling update endpoint is refused. Per-occurrence materiality is proven by each authored commit, while aggregate validation checks the observable ordered net effect without inventing intermediate claim bytes. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation occurrence per claim, and the fixed status-event shape. A newly introduced ADR in an older intrinsic format is provisional at the staged boundary that lacks merge-parent and message evidence; every other derivable transition check remains blocking, and definitive admission requires exact incoming-parent qualification at commit-msg.
 Origin: ADR-0182
-Revised-by: ADR-0191, ADR-0206, ADR-0212, ADR-decouple-adr-application-completion-from-terminal-review
+Revised-by: ADR-0191, ADR-0206, ADR-0212, ADR-0229
 Backing: test
 
 ### `invariant: current-state-sole-active-authority`

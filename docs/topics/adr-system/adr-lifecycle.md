@@ -92,21 +92,21 @@ Backing: test
 
 A current-state-v2, current-state-v3, or current-state-v4 ADR in Implementing may append any number of `Reapplied; operations:` events for an add or update operation already named by an earlier Applied event, including after every declaration is first-applied. Each event is an unordered, duplicate-free membership list retained in its authored order as one chronological application occurrence, and reconciles one further material authored correction while operation progress continues to count the declaration once. A re-applied update preserves Origin and its existing canonical Revised-by entry; a re-applied add preserves its Origin naming the ADR and leaves Revised-by byte-identical. Remove operations, events before the first Applied occurrence, and events outside Implementing are refused.
 Origin: ADR-0212
-Revised-by: ADR-0217, ADR-decouple-adr-application-completion-from-terminal-review
+Revised-by: ADR-0217, ADR-0229
 Backing: test
 
 ### `invariant: adr-status-enum-and-matrix`
 
 Every governed ADR is routed by its intrinsic declared format: V1 retains its four statuses and five legal edges, while V2, V3, and V4 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, Reapplied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, application-cardinality, and corrective-reapplication transitions. Implementing requires a nonempty Applied set and may have no Remaining operation; Implemented requires complete application, accepts a status-only terminal event after a complete Implementing history and the legacy adjacent final-Applied shape, while direct implicit completion and incomplete abandonment rules remain unchanged. A retained in-flight V3 pending record satisfies its authored marker's pending-identity rules; after generation 33, a newly introduced pending record must declare current V4.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0212, ADR-0217, ADR-decouple-adr-application-completion-from-terminal-review
+Revised-by: ADR-0143, ADR-0188, ADR-0202, ADR-0206, ADR-0212, ADR-0217, ADR-0229
 Backing: test
 
 ### `invariant: applied-history-events-append-only`
 
 Stable Status history in either governed digest format, V2, V3, and V4, is prefix-append-only: each Applied event records a nonempty, duplicate-free subset in any authored order of declared not-yet-applied operations, no declaration is first-applied more than once, every declaration is first-applied before Implemented, and a checked pair refuses deletion or mutation of any prior event. Numbering a pending record is no exception; it touches no history event.
 Origin: ADR-0143
-Revised-by: ADR-0191, ADR-0202, ADR-0217, ADR-decouple-adr-application-completion-from-terminal-review
+Revised-by: ADR-0191, ADR-0202, ADR-0217, ADR-0229
 Backing: test
 
 ### `invariant: audit-shares-adr-parser`
