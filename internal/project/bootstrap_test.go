@@ -112,6 +112,14 @@ func TestBootstrapLocalFirstResolution(t *testing.T) {
 	if !strings.Contains(rf.Content, `[ "${local_version}" = "${AWF_VERSION}" ]`) {
 		t.Errorf("local probe must require an exact pinned-version match:\n%s", rf.Content)
 	}
+	if strings.Contains(rf.Content, "awk '{print $2}'") {
+		t.Errorf("local probe must not parse a positional version field:\n%s", rf.Content)
+	}
+	for _, contract := range []string{"/^version: [^[:space:]]/", "if (found++) exit 1", "substr($0, 10)", "if (!found) exit 1"} {
+		if !strings.Contains(rf.Content, contract) {
+			t.Errorf("local probe must validate the version label contract %q:\n%s", contract, rf.Content)
+		}
+	}
 }
 
 // TestBootstrapUnsupportedPlatformPointsAtManualInstall pins the pointer added

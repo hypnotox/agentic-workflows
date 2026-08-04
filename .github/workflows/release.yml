@@ -21,7 +21,15 @@ jobs:
       - name: Verify tag matches project.Version
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          want="$(go run ./cmd/awf version | awk '{print $2}')"
+          want="$(go run ./cmd/awf version | awk '
+            /^version: [^[:space:]]/ {
+              if (found++) exit 1
+              value = substr($0, 10)
+              next
+            }
+            { exit 1 }
+            END { if (!found) exit 1; print value }
+          ')"
           if [ "$tag" != "$want" ]; then
             echo "tag v${tag} does not match project.Version ${want}" >&2
             exit 1

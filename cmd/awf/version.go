@@ -1,26 +1,60 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"runtime/debug"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// runVersion prints the awf version plus display-only build provenance.
+// runVersion renders the awf version plus display-only build provenance.
 func runVersion(stdout io.Writer) {
 	info, ok := debug.ReadBuildInfo()
-	fmt.Fprintln(stdout, versionLine(info, ok))
+	writeVersion(stdout, info, ok)
 }
 
-// versionLine renders the "awf <version>" line, appending display-only build
+// writeVersion selects the value mode for the complete version presentation.
+func writeVersion(stdout io.Writer, info *debug.BuildInfo, ok bool) {
+	line := versionLine(info, ok)
+	if ok && formatProvenance(info) != "" {
+		value, err := presentation.Literal(line)
+		if err != nil { // coverage-ignore: versionLine cannot produce an empty or line-broken value
+			return
+		}
+		field, err := presentation.NewField("version", value)
+		if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
+			return
+		}
+		document, err := presentation.NewDocument(field)
+		if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
+			return
+		}
+		_ = presentation.Render(stdout, document)
+		return
+	}
+	value, err := presentation.Prose(line)
+	if err != nil { // coverage-ignore: versionLine cannot produce an empty or line-broken value
+		return
+	}
+	field, err := presentation.NewField("version", value)
+	if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
+		return
+	}
+	document, err := presentation.NewDocument(field)
+	if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
+		return
+	}
+	_ = presentation.Render(stdout, document)
+}
+
+// versionLine renders the version value, appending display-only build
 // provenance when present (ADR-0049 Decision 2). Split from runVersion so
 // every branch is reachable from tests regardless of what the test binary's
 // own build info carries.
 func versionLine(info *debug.BuildInfo, ok bool) string {
-	line := "awf " + awfVersion()
+	line := awfVersion()
 	if !ok {
 		return line
 	}

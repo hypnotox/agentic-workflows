@@ -3,8 +3,13 @@
 
 What the central presentation package owns and excludes.
 
-**Applicability:** Owning domain selectors: `internal/execution/**`. Topic selectors: `internal/presentation/**`. Both domain and topic selectors must match. Run `awf topic code-design/presentation-package --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/execution/**`, `internal/presentation/**`. Topic selectors: `internal/presentation/**`. Both domain and topic selectors must match. Run `awf topic code-design/presentation-package --coverage` for current matched paths and marker sites.
 
 The presentation package is the code-design-owned representation boundary for ordinary CLI output. Its local package contract complements the repository-wide grammar and semantic-mapping authority in the global presentation-ownership topic.
 
 ## Claims
+
+### `rule: presentation-package-boundary`
+
+`internal/presentation` depends only on the Go standard library and owns presentation representation, syntax validation, and rendering without domain result semantics.
+Origin: ADR-structured-agent-oriented-cli-presentation

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: structured-agent-oriented-cli-presentation
-status: Proposed
+status: Implementing
 date: 2026-08-04
 ---
 # ADR-structured-agent-oriented-cli-presentation: Structured Agent-Oriented CLI Presentation
@@ -134,3 +134,5 @@ test transactions rather than becoming authority before the converted surfaces e
 ## Status history
 
 - 2026-08-04: Proposed
+- 2026-08-04: Implementing; content-sha256: 83d3b46e7e9cff7e94b21a4a0436305249838c0de8403e2ea84196d1d3d5e7dd
+- 2026-08-04: Applied; operations: update `code-design/presentation-ownership:model-owner-renders`, add `code-design/presentation-package:presentation-package-boundary`

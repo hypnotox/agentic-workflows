@@ -14,8 +14,29 @@ func TestRunVersion(t *testing.T) {
 	if code := run([]string{"awf", "version"}, &out, &errb); code != 0 {
 		t.Fatalf("version exited %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "awf ") || !strings.Contains(out.String(), project.Version) {
-		t.Errorf("version output = %q, want it to contain %q", out.String(), project.Version)
+	want := "version: " + project.Version
+	if !strings.HasPrefix(out.String(), want) || !strings.HasSuffix(out.String(), "\n") {
+		t.Errorf("version output = %q, want labeled version beginning %q and one newline", out.String(), want)
+	}
+}
+
+func TestWriteVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		info *debug.BuildInfo
+		ok   bool
+		want string
+	}{
+		{"version only", nil, false, "version: " + project.Version + "\n"},
+		{"with provenance", &debug.BuildInfo{Main: debug.Module{Version: "v9.9.9-pre"}}, true, "version: " + project.Version + " (v9.9.9-pre)\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			writeVersion(&out, tc.info, tc.ok)
+			if got := out.String(); got != tc.want {
+				t.Errorf("writeVersion() = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -27,14 +48,14 @@ func TestAwfVersionSingleAuthority(t *testing.T) {
 }
 
 func TestVersionLine(t *testing.T) {
-	if got, want := versionLine(nil, false), "awf "+project.Version; got != want {
+	if got, want := versionLine(nil, false), project.Version; got != want {
 		t.Errorf("versionLine(no build info) = %q, want %q", got, want)
 	}
-	if got, want := versionLine(&debug.BuildInfo{}, true), "awf "+project.Version; got != want {
+	if got, want := versionLine(&debug.BuildInfo{}, true), project.Version; got != want {
 		t.Errorf("versionLine(empty provenance) = %q, want %q", got, want)
 	}
 	info := debug.BuildInfo{Main: debug.Module{Version: "v9.9.9-pre"}}
-	if got, want := versionLine(&info, true), "awf "+project.Version+" (v9.9.9-pre)"; got != want {
+	if got, want := versionLine(&info, true), project.Version+" (v9.9.9-pre)"; got != want {
 		t.Errorf("versionLine(with provenance) = %q, want %q", got, want)
 	}
 }

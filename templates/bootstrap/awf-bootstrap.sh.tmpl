@@ -12,7 +12,15 @@ REPO="hypnotox/agentic-workflows"
 # Local-first: an awf on PATH reporting exactly the pinned version wins over
 # any download.
 if command -v awf >/dev/null 2>&1; then
-  local_version="$(awf version 2>/dev/null | awk '{print $2}' || true)"
+  local_version="$(awf version 2>/dev/null | awk '
+    /^version: [^[:space:]]/ {
+      if (found++) exit 1
+      value = substr($0, 10)
+      next
+    }
+    { exit 1 }
+    END { if (!found) exit 1; print value }
+  ' || true)"
   if [ "${local_version}" = "${AWF_VERSION}" ]; then
     command -v awf
     exit 0

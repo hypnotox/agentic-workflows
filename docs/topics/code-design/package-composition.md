@@ -3,7 +3,7 @@
 
 What a package owns and states, what earns an export, and how exported surface stays documented.
 
-**Applicability:** Global topic within owning domain selectors `internal/execution/**`. Run `awf topic code-design/package-composition --coverage` for current matched paths and marker sites.
+**Applicability:** Global topic within owning domain selectors `internal/execution/**`, `internal/presentation/**`. Run `awf topic code-design/package-composition --coverage` for current matched paths and marker sites.
 
 This topic governs packages and exported surface introduced by new work and sites
 deliberately converted under its authority. Existing undocumented exported declarations,
