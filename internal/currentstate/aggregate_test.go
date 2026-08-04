@@ -16,9 +16,9 @@ import (
 func TestMergeAggregateAcceptsSeveralBatchesFromOneADR(t *testing.T) {
 	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
 	x, y, z := op(adr.OpAdd, "d/t:x"), op(adr.OpAdd, "d/t:y"), op(adr.OpAdd, "d/t:z")
-	// A fourth declared operation stays unapplied so the record is legally
-	// Implementing at both ends of the pair, which requires applied AND
-	// remaining operations.
+	// A fourth declared operation stays unapplied so this fixture focuses on
+	// several batches rather than the separately valid all-Applied Implementing
+	// state.
 	pending := op(adr.OpAdd, "d/t:pending")
 	partial := v2rec("0141", "Implementing", []adr.Operation{x, y, z, pending}, v2status("Proposed"), v2status("Implementing"), v2batch(x))
 	three := partial
@@ -33,6 +33,30 @@ func TestMergeAggregateAcceptsSeveralBatchesFromOneADR(t *testing.T) {
 	}
 	if got := messages(currentstate.CheckPair(before, after, currentstate.AuthoredCommit)); !strings.Contains(got, "at most one new batch") {
 		t.Fatalf("an authored commit must still cap batches:\n%s", got)
+	}
+}
+
+// TestMergeAggregateKeepsOccurrenceChronologyWithUnorderedBatchMembership
+// proves that an Applied event's authored operation positions do not sequence
+// distinct occurrences. The reverse membership order is retained within the
+// first occurrence; the later update remains after it in ADR history and folds
+// with the preexisting claim independently of that membership order.
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestMergeAggregateKeepsOccurrenceChronologyWithUnorderedBatchMembership)
+func TestMergeAggregateKeepsOccurrenceChronologyWithUnorderedBatchMembership(t *testing.T) {
+	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))
+	updateX := op(adr.OpUpdate, "d/t:x")
+	addY := op(adr.OpAdd, "d/t:y")
+	addZ := op(adr.OpAdd, "d/t:z")
+	partial := v2rec("0141", "Implementing", []adr.Operation{updateX, addY, addZ},
+		v2status("Proposed"), v2status("Implementing"), v2batch(addZ, addY))
+	complete := partial
+	complete.History = append(append([]adr.HistoryEvent(nil), partial.History...), v2batch(updateX))
+
+	before := uni([]adr.ADR{base, partial}, prosed(claim("d/t:x", "0137"), "old"), claim("d/t:y", "0141"), claim("d/t:z", "0141"))
+	after := uni([]adr.ADR{base, complete},
+		prosed(claim("d/t:x", "0137", "0141"), "revised"), claim("d/t:y", "0141"), claim("d/t:z", "0141"))
+	if f := currentstate.CheckPair(before, after, currentstate.MergeAggregate); len(f) != 0 {
+		t.Fatalf("unordered batch membership must preserve aggregate occurrence chronology and claim chains:\n%s", messages(f))
 	}
 }
 

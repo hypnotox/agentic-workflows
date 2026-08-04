@@ -661,8 +661,8 @@
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:e2547296ec5774378071ad227531a9e66c78284b18ea06eb2d68f85e8717ffc8",
-      "outputHash": "sha256:3c008a89443787df630f56a8090c4081c741212a56e53b0dd6f4383c4546e4ed"
+      "configHash": "sha256:0f567318d164d0a8a216b4f63a643d0e5857c304d64c8de480165dd319caa42b",
+      "outputHash": "sha256:88698ca5548ba60f435fa0faf20946344a9a9d4e978684ef4b8833b17fb2be53"
     },
     "docs/topics/invariants/index.md": {
       "templateId": "topics/index.md.tmpl",

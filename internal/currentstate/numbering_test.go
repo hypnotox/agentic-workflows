@@ -161,8 +161,8 @@ func TestCheckPairNumberingComposesWithADeclaredUpdate(t *testing.T) {
 		return v3record(number, "beta", "Implemented", op(adr.OpAdd, "d/t:y"), op(adr.OpUpdate, "d/t:z"))
 	}
 	// Gamma applies its second batch at an unchanged status, so its own history
-	// grows by exactly one Applied event and the pair stays a legal prefix. It
-	// keeps one declared operation unapplied, which is what Implementing means.
+	// grows by exactly one Applied event and the pair stays a legal prefix. The
+	// remaining declaration keeps this fixture focused on numbering composition.
 	gammaBefore := v3record("0400", "gamma", "Implementing", op(adr.OpUpdate, "d/t:w"))
 	gammaBefore.Operations = append(gammaBefore.Operations, op(adr.OpUpdate, "d/t:v"))
 	gammaAfter := gammaBefore
