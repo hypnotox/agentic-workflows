@@ -73,7 +73,10 @@ function make(options: any = {}) {
   registerHandoff(pi, deps);
   const ui: any = {
     notify: (...args: any[]) => notice.push(args),
-    setEditorText: (value: string) => editor.push(value),
+    setEditorText: (value: string) => {
+      if (options.editorFail) throw Error("editor");
+      editor.push(value);
+    },
     custom: async (factory: any) =>
       new Promise((resolve) => {
         done = resolve;
@@ -440,7 +443,22 @@ test("countdown timer, key, and cleanup faults retain the original boundary", as
   cleanupFailure.complete();
   await assert.rejects(cleanupPending, /new/);
   assert.deepEqual(cleanupFailure.entries, [["cleanup"]]);
+  assert.deepEqual(cleanupFailure.editor, [
+    "Agent-authored handoff context; this is not user input:\n\ngo",
+  ]);
+  assert.deepEqual(cleanupFailure.notice, [
+    ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
+  ]);
   assert.equal(cleanupFailure.sessions.length, 1);
+
+  const editorFailure = make({ newFail: true, editorFail: true });
+  await execute(editorFailure);
+  const editorPending = continueHandoff(editorFailure);
+  editorFailure.complete();
+  await assert.rejects(editorPending, /new/);
+  assert.deepEqual(editorFailure.entries, [["cleanup"]]);
+  assert.deepEqual(editorFailure.editor, []);
+  assert.deepEqual(editorFailure.notice, []);
 });
 
 test("handoff exercises runtime guard and generated entrypoint", async () => {
