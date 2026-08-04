@@ -89,7 +89,7 @@ domains are derived from the `## State changes` operations. Any other key fails 
 V2, V3, and V4 recognize `Proposed`, `Accepted`, `Implementing`, `Implemented`, and `Abandoned`.
 Proposed may move to any later state; Accepted may move to Implementing, Implemented, or
 Abandoned; Implementing may move only to Implemented or Abandoned. Implemented and Abandoned
-are terminal. Implementing means a nonempty Applied set and permits no Remaining operations.
+are terminal. Implementing means a nonempty Applied set and permits zero or more Remaining operations.
 Implemented requires every declaration Applied. Abandonment keeps applied operations historical and
 cancels the remainder; its terminal event carries a rationale.
 

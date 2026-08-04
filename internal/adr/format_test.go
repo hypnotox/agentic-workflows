@@ -518,9 +518,9 @@ func TestCorrectiveReapplication(t *testing.T) {
 	digest := v2DigestFor(t, changes)
 	prefix := "- 2026-07-20: Proposed" +
 		"\n- 2026-07-21: Implementing; content-sha256: " + digest +
-		"\n- 2026-07-21: Applied; operations: add `a/b:first`, update `a/b:second`"
+		"\n- 2026-07-21: Applied; operations: add `a/b:pending`, remove `a/b:third`, update `a/b:second`, add `a/b:first`"
 	valid := prefix +
-		"\n- 2026-07-22: Reapplied; operations: add `a/b:first`, update `a/b:second`" +
+		"\n- 2026-07-22: Reapplied; operations: update `a/b:second`, add `a/b:first`" +
 		"\n- 2026-07-23: Reapplied; operations: update `a/b:second`"
 
 	for _, tc := range []struct {
@@ -545,6 +545,10 @@ func TestCorrectiveReapplication(t *testing.T) {
 			if len(record.History) != 5 || record.History[3].Kind != adr.HistoryReapplied || record.History[4].Kind != adr.HistoryReapplied {
 				t.Fatalf("corrective events = %#v", record.History)
 			}
+			progress, err := record.OperationProgress()
+			if err != nil || len(progress.Applied) != 4 || len(progress.Remaining) != 0 {
+				t.Fatalf("all-applied corrective progress = %#v, err = %v", progress, err)
+			}
 		})
 	}
 	v4Scaffold := strings.Replace(strings.Replace(buildV3Governed("corrective-v4", "corrective-v4", "Proposed", changes, "- 2026-07-20: Proposed"), adr.V3FormatMarker, adr.V4FormatMarker, 1), oneDecision, "1. `decision: corrective` The only decision.", 1)
@@ -560,7 +564,7 @@ func TestCorrectiveReapplication(t *testing.T) {
 
 	cases := []struct{ name, status, history, want string }{
 		{"before first Applied", "Implementing", "- 2026-07-20: Proposed\n- 2026-07-21: Implementing; content-sha256: " + digest + "\n- 2026-07-21: Applied; operations: update `a/b:second`\n- 2026-07-22: Reapplied; operations: add `a/b:first`", "earlier Applied"},
-		{"remove", "Implementing", prefix + "\n- 2026-07-22: Applied; operations: remove `a/b:third`\n- 2026-07-23: Reapplied; operations: remove `a/b:third`", "only add or update"},
+		{"remove", "Implementing", prefix + "\n- 2026-07-22: Reapplied; operations: remove `a/b:third`", "only add or update"},
 		{"outside Implementing", "Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: " + digest + "\n- 2026-07-22: Reapplied; operations: add `a/b:first`", "only while Implementing"},
 		{"duplicate within event", "Implementing", prefix + "\n- 2026-07-22: Reapplied; operations: add `a/b:first`, add `a/b:first`", "duplicated"},
 		{"second Applied", "Implementing", prefix + "\n- 2026-07-22: Applied; operations: add `a/b:first`", "already applied"},

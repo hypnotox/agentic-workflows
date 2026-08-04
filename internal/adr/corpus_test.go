@@ -624,27 +624,26 @@ func TestOperationProgressReapplied(t *testing.T) {
 		Operations: []adr.Operation{add, update},
 		History: []adr.HistoryEvent{
 			status("Proposed"), status("Implementing"),
-			batch(adr.HistoryApplied, add),
-			batch(adr.HistoryReapplied, add),
-			batch(adr.HistoryReapplied, add),
+			batch(adr.HistoryApplied, update, add),
+			batch(adr.HistoryReapplied, update, add),
 		},
 	}
 	batches, err := record.ApplicationBatches()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(batches) != 3 || batches[0].Kind != adr.HistoryApplied || batches[1].Kind != adr.HistoryReapplied || batches[2].Kind != adr.HistoryReapplied {
+	if len(batches) != 2 || batches[0].Kind != adr.HistoryApplied || batches[1].Kind != adr.HistoryReapplied {
 		t.Fatalf("application batches = %#v", batches)
 	}
-	if batches[0].HistoryIndex == batches[1].HistoryIndex || batches[1].HistoryIndex == batches[2].HistoryIndex {
+	if batches[0].HistoryIndex == batches[1].HistoryIndex {
 		t.Fatalf("corrective occurrences lost identity: %#v", batches)
 	}
 	progress, err := record.OperationProgress()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(progress.Applied) != 1 || progress.Applied[0].Operation != add || len(progress.Remaining) != 1 || progress.Remaining[0] != update {
-		t.Fatalf("progress = %#v", progress)
+	if len(progress.Applied) != 2 || progress.Applied[0].Operation != add || progress.Applied[1].Operation != update || len(progress.Remaining) != 0 {
+		t.Fatalf("all-applied corrective progress = %#v", progress)
 	}
 
 	duplicateApplied := record

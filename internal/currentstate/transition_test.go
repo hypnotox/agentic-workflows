@@ -328,25 +328,18 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	proposed := v2rec("0138", "Proposed", []adr.Operation{updateX, addA, addB}, v2status("Proposed"))
 	first := proposed
 	first.Status = "Implementing"
-	first.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(updateX))
+	first.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(addB, addA))
 	before := uni([]adr.ADR{base, proposed}, prosed(claim("d/t:x", "0137"), "old"))
-	after := uni([]adr.ADR{base, first}, prosed(claim("d/t:x", "0137", "0138"), "new"))
+	after := uni([]adr.ADR{base, first}, prosed(claim("d/t:x", "0137"), "old"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
-		t.Fatalf("first batch pair rejected:\n%s", messages(f))
+		t.Fatalf("out-of-order first batch pair rejected:\n%s", messages(f))
 	}
 
-	middle := first
-	middle.History = append(append([]adr.HistoryEvent(nil), first.History...), v2batch(addA))
-	middleAfter := uni([]adr.ADR{base, middle}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"))
-	if f := currentstate.CheckPair(after, middleAfter, currentstate.AuthoredCommit); len(f) != 0 {
-		t.Fatalf("middle batch pair rejected:\n%s", messages(f))
-	}
-
-	finished := middle
-	finished.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2batch(addB))
+	finished := first
+	finished.History = append(append([]adr.HistoryEvent(nil), first.History...), v2batch(updateX))
 	finishedAfter := uni([]adr.ADR{base, finished}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
-	if f := currentstate.CheckPair(middleAfter, finishedAfter, currentstate.AuthoredCommit); len(f) != 0 {
-		t.Fatalf("final batch pair rejected:\n%s", messages(f))
+	if f := currentstate.CheckPair(after, finishedAfter, currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("earlier-declared final batch pair rejected:\n%s", messages(f))
 	}
 
 	done := finished
@@ -369,8 +362,7 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 		}
 	}
 	assertSplit("first", before, after)
-	assertSplit("middle", after, middleAfter)
-	assertSplit("final", middleAfter, finishedAfter)
+	assertSplit("final", after, finishedAfter)
 
 	removeD := op(adr.OpRemove, "d/t:d")
 	baseD := rec("0140", "Implemented", op(adr.OpAdd, "d/t:d"))
@@ -385,10 +377,10 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	}
 	assertSplit("direct", directBefore, directAfter)
 
-	abandoned := middle
+	abandoned := first
 	abandoned.Status = "Abandoned"
-	abandoned.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2status("Abandoned"))
-	if f := currentstate.CheckPair(middleAfter, uni([]adr.ADR{base, abandoned}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138")), currentstate.AuthoredCommit); len(f) != 0 {
+	abandoned.History = append(append([]adr.HistoryEvent(nil), first.History...), v2status("Abandoned"))
+	if f := currentstate.CheckPair(after, uni([]adr.ADR{base, abandoned}, prosed(claim("d/t:x", "0137"), "old"), claim("d/t:a", "0138"), claim("d/t:b", "0138")), currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("terminal abandonment pair rejected:\n%s", messages(f))
 	}
 
