@@ -499,6 +499,10 @@ query a single version or a range.
   asked only `filepath.IsAbs`, which answers false there for a slash-rooted path, so such a request
   was reported as merely not found. Unix behaviour is unchanged.
 
+### Others
+
+- The repository no longer carries the committed `examples/sundial` adopter or its fixed-path runner and hook orchestration. Focused temporary fixtures now preserve catalog-derived Claude and Pi rendering and drift checks, representative authored-adoption repair, governed Pi output directives, legacy upgrade-through-check composition, and generic nested-adopter behavior without maintaining a second generated tree.
+
 ## [0.22.0] - 2026-07-24
 
 ### Features
