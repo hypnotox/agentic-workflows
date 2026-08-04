@@ -494,7 +494,13 @@ catalog's own lens prose is governed text and drifts like any other doc.
 
 _Domains: config, tooling_
 
-Registering a migration puts the repository's one adopted `.awf/` tree behind its freshly-built binary. Run the source-built upgrade before render and check.
+Registering a migration raises `migrate.Current()`, which immediately puts the repo's own
+`.awf/` tree one generation behind its freshly-built binary. `awf render` and `awf check` then
+*refuse* with "config schema is behind (generation N-1 < N); run awf upgrade" rather than
+re-rendering, so a plan step that says "run `./x render` and stage the result" cannot work at
+that point. Run `go run ./cmd/awf upgrade`, which applies the new migration to this repo's one
+adopted tree and re-syncs it before render and check. This bit the ADR-0127 plan, which named
+the wrong command at that point.
 
 ## `awf audit` and `extensions.worktreeConfig`
 
@@ -678,7 +684,28 @@ the advisory as intended signal.
 
 _Domains: config_
 
-A `data:` list override replaces the catalog defaults rather than appending. Copy the defaults still needed, then read every affected enabled target output.
+Setting a list key in an artifact's `.awf/<kind>/<name>.yaml` `data:` block (e.g. the
+plan-reviewer's `focusItems`) replaces the catalog's default list; it does not append. Adding
+one project-local focus item this way silently dropped the two default items
+(`step-exactness`, `dependency-order`) from this repo's rendered reviewer for a day, and
+nothing flagged it: the render is drift-clean because the config said exactly that. When adding
+a project-local list entry, copy the catalog defaults you still want into the override
+alongside it (they live in `internal/catalog/standard.go`), and eyeball the rendered diff for
+deleted default lines before committing.
+
+**The reverse direction is worse, and this entry did not state it until it bit (ADR-0116,
+2026-07-15).** Adding a *new catalog default* to a list is invisible to every project that
+overrides that list: the default ships to adopters and is silently dropped for the
+overriding project. ADR-0116 added a `docCurrencyItems` entry to the `adr-reviewer` catalog
+default and cited *this pitfall* as the reason to edit the catalog rather than an override,
+without noticing `.awf/agents/adr-reviewer.yaml` already overrode that very list. The rule
+would have reached every adopter except awf itself, the one project meant to dogfood it,
+with a green gate and a clean `awf check` throughout; the ADR reviewer caught it. So the
+rule is bidirectional: **a `data:` list has as many sites as there are overrides of it.**
+Before adding a catalog default, `grep -rn '<listKey>' .awf/` and mirror it into every
+override found (restate it deliberately, as `.awf/agents/code-reviewer.yaml` does in a
+comment); before adding a local entry, copy the defaults you still want. Verify by reading
+every affected enabled-target output, not the config.
 
 ## Registry-relative constants in migration code drift
 
@@ -1319,15 +1346,70 @@ reads nothing beyond what `Open` validates (2026-07-13).
 
 ## A token or convention rename must sweep every rendered doc surface
 
-_Domains: rendering_
+_Domains: invariants, rendering_
 
-A leading-path pathspec never reaches a separately rooted nested adoption. Name such a root explicitly when it exists in another repository.
+Renaming a token or changing a convention breaks in more places than the authoring
+template. When `inv:`→`invariant:` landed, the doc-currency lens flagged stale `inv:`
+spellings three separate times (plan review, verify pass, resync) because the reword
+touched only the ADR template and the "Backed invariants" rule and missed sibling
+surfaces. Before committing a rename, sweep ALL rendered surfaces that mention the token
+or convention: `.awf/agents-doc.yaml` (AGENTS.md rules AND the `(inv: <slug>)` prose
+citations on every invariant bullet), `.awf/docs/glossary.yaml`, the domain
+`current-state.md` narratives and their citations, `.awf/docs/pitfalls.yaml`, the
+adr-readme part, and the architecture/working-with-awf guide sources, not just the one
+authoring template. A post-rename `grep -rnE '\b<oldtoken>' .awf/` reaching zero is the
+cheap catch (2026-07-13).
+
+Grep the BARE TOKEN, never the phrase. ADR-0159 renamed five commands and wrote its
+discovery greps as phrases (`awf sync`, `awf prose-gate`), which missed the same two
+shapes three separate times across three phases even after the first phase recorded
+them. A verb list names the command as a bare token in prose that never says `awf`
+("the awf verbs `render`, `check`, `invariants`, `audit`"), and an unset-var template
+fallback splits the phrase across a template action (`{{ end }} sync{{ end }}`), so no
+phrase grep can see either. Both are invisible to review too, because the rendered
+output looks right wherever the var IS set. Pair every phrase grep with
+`git grep -nE '\b<oldtoken>\b'` and a `\}\} *<oldtoken>\b` grep, and treat
+`go test ./...` as the real oracle: bare-token argv fixtures
+(`resolve([]string{"sync"})`, `clispec.Lookup("sync")`) are reached by no prose grep at
+all. A leading-path pathspec never reaches a separately rooted nested adoption; name
+any such root explicitly when it exists in another repository.
+
+A shape change must sweep `templates/` too, not only `.awf/`. ADR-0175 reduced the resident
+roots to two, updated every authored `.awf/` part, and still left three sentences in
+`templates/docs/working-with-awf.md.tmpl` naming three roots, which shipped across enabled
+outputs (2026-07-29). Only one of the three was masked locally: a full-replacement section
+override replaces its generic default, while a sectionDefault override appends to that
+default and an un-overridden section renders it verbatim. So this repo's own guide asserted
+three roots on one line and exactly two seventeen lines later, and the contradiction still
+went unread until terminal review. Two cheap catches: put `templates/` in the sweep grep,
+and read the rendered guide end to end after a shape change instead of only diffing the
+parts you edited.
 
 ## Registering a migration has fallout the plan never lists
 
-_Domains: config, tooling_
+_Domains: config_
 
-Derive affected tests from failures rather than a stale inventory, then run the source-built upgrade for the one root lock before render and check.
+Adding one line to the migration registry moves `migrate.Current()`, and everything
+pinned to the old tip fails at once. ADR-0159's plan specified the migration and its
+test and named none of the rest; assertions in `internal/project/version_test.go` and
+focused `internal/migrate` and `cmd/awf` tests broke. Most want a new number, but two
+need judgment: a fixture asserting the schema is AHEAD must move to tip+1 to stay ahead,
+and each migration's own `TestXIsCurrent` asserts a premise ("this migration is the tip")
+that the next migration falsifies, so it is deleted rather than renumbered while the new
+migration's file adds its own.
+
+The version floor is the part that is easy to get wrong quietly. `minVersionBySchema`
+needs an entry for the new generation at or below `project.Version` (ADR-0049
+Decision 4), and reusing the previous generation's version is only correct while that
+version is UNRELEASED. Generations 17 and 18 both map to 0.22.0 because both landed
+during its cycle; generation 19 landed after 0.22.0 shipped, so mapping it there would
+claim a published binary can render a tree it has no migration for. It maps to 0.23.0
+and the const moves with it, the mid-cycle bump `docs/releasing.md` already prescribes.
+Check the changelog for a released heading before reusing a version.
+
+Finally, registering the migration trips the version gate in the repo's own adopted tree:
+`./x render` and `./x check` refuse until the one root `.awf/awf.lock` is upgraded with
+the source-built binary before render and check.
 
 ## A new config field needs a config-reference live-state projection case
 
