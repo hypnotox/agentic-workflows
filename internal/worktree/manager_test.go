@@ -24,7 +24,7 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !added.ChangedTopology || !strings.Contains(added.String(), "changed topology: yes") {
+	if !added.ChangedTopology || !strings.Contains(added.Condition, "managed worktree added") {
 		t.Fatalf("add result = %#v", added)
 	}
 	managed := filepath.Join(root, ".awf", "worktrees", "managed-result")

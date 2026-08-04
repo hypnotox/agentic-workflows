@@ -496,7 +496,7 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf render: pruned .claude/skills/example-tdd/SKILL.md\n") {
+	if !strings.Contains(out.String(), "      .claude/skills/example-tdd/SKILL.md\n") {
 		t.Errorf("missing prune line:\n%s", out.String())
 	}
 	// A drift-clean re-sync prints no prune lines.
@@ -519,7 +519,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf render: changed .claude/skills/example-tdd/SKILL.md (config)\n") {
+	if !strings.Contains(out.String(), "      changed .claude/skills/example-tdd/SKILL.md (config)\n") {
 		t.Errorf("missing config-cause change line:\n%s", out.String())
 	}
 	// A drift-clean re-sync prints no change lines.
@@ -536,7 +536,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf render: added docs/pitfalls.md\n") {
+	if !strings.Contains(out.String(), "      added docs/pitfalls.md\n") {
 		t.Errorf("missing added line:\n%s", out.String())
 	}
 }
@@ -979,7 +979,7 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	}
 	// The zero-migrations path must still sync: a same-schema binary bump
 	// re-renders every managed file and re-pins the bootstrap (ADR-0085).
-	if !strings.Contains(out.String(), "awf render: done") {
+	if !strings.Contains(out.String(), "status: completed") {
 		t.Errorf("expected the no-op upgrade to run a sync, got %q", out.String())
 	}
 }
@@ -1021,7 +1021,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
 		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
 	}
-	if !strings.Contains(out.String(), "backed up CLAUDE.md") {
+	if !strings.Contains(out.String(), "      CLAUDE.md to CLAUDE.md.awf-bak") {
 		t.Errorf("expected backup report on stdout, got %q", out.String())
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
@@ -1171,10 +1171,10 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())
 	}
-	if !strings.Contains(out.String(), "backed up docs/decisions/INDEX.md") {
+	if !strings.Contains(out.String(), "      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak") {
 		t.Errorf("missing backup line: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "note: awf now generates") {
+	if !strings.Contains(out.String(), "  notes:\n    awf now generates") {
 		t.Errorf("missing ownership-takeover note: %q", out.String())
 	}
 }

@@ -40,18 +40,13 @@ type Runner interface {
 // of holding a single handle.
 type OpenCheckout func(root string) (Runner, error)
 
-// Result is the line-oriented mutation protocol plus structured facts
-// for orchestration; String() remains the only text surface.
+// Result carries structured managed-topology facts for orchestration and presentation mapping.
 type Result struct {
 	Condition       string
 	ChangedTopology bool
 	NextAction      string
 	Path            string
 	Branch          string
-}
-
-func (r Result) String() string {
-	return fmt.Sprintf("%s; changed topology: %s; next action: %s", r.Condition, yesNo(r.ChangedTopology), r.NextAction)
 }
 
 type Manager struct {
@@ -383,6 +378,13 @@ func (m *Manager) Integrate(ctx context.Context, slug, gateCommand string) (Resu
 	return Result{Condition: "divergent integration is staged without a commit", ChangedTopology: true, NextAction: "run `./awf check staged`, " + gateStep + ", commit the merge, and renew terminal implementation review"}, nil
 }
 
+func yesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
+}
+
 func integrationGateStep(command string) string {
 	command = strings.TrimSpace(command)
 	if command == "" {
@@ -515,11 +517,4 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 			changed = true
 		}
 	}
-}
-
-func yesNo(value bool) string {
-	if value {
-		return "yes"
-	}
-	return "no"
 }
