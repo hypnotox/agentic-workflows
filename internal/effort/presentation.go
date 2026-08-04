@@ -123,6 +123,8 @@ func (r Record) NewEffortMutation(mutation presentation.Mutation) (presentation.
 	return mutation, nil
 }
 
+// FinishMutation maps a completed restartable finish into its effort-owned
+// mutation identity, changed axes, and continuation action.
 func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error) {
 	value, err := presentation.Prose(slug)
 	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping

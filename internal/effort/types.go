@@ -64,5 +64,8 @@ type PartialFinishError struct {
 	Actions []RecoveryAction
 }
 
+// Error preserves the failed mechanism's message for legacy error callers.
 func (e *PartialFinishError) Error() string { return e.Cause.Error() }
+
+// Unwrap exposes the failed mechanism for identity-aware callers.
 func (e *PartialFinishError) Unwrap() error { return e.Cause }

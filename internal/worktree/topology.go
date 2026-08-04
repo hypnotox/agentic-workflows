@@ -49,7 +49,10 @@ type CreationError struct {
 	Steps           []string
 }
 
+// Error preserves the legacy managed-creation failure message.
 func (e *CreationError) Error() string { return e.Message }
+
+// Unwrap exposes both the creation and compensating-rollback mechanism causes.
 func (e *CreationError) Unwrap() []error {
 	if e.Cause == nil && e.RollbackCause == nil {
 		return nil
