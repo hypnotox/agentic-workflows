@@ -123,12 +123,6 @@ recorded the trap earlier the same day. Run `./x gate > /tmp/gate.log 2>&1; echo
 grep the log. The same applies to any long verification command whose exit code decides
 whether work continues.
 
-The gate is not the only place a false green comes from a shell habit. `sed` with `|` as
-its delimiter silently fails to apply a substitution whose pattern contains `||`, which
-is how a mutation test can report "mutation survived" when the mutation was never
-written to the file. Confirm a mutation actually landed, by grepping the file, before
-trusting a green run to mean anything about it.
-
 ## Retiring a concept needs paraphrase sweeps, not just identifier greps
 
 _Domains: rendering, adr-system_
@@ -366,18 +360,6 @@ The backing checker proves that a named test-scoped marker exists, not that the 
 exercises every clause of the claim. Read the claim as a conjunction, identify each status,
 direction, artifact, and failure branch it names, and confirm each clause has a refuting case.
 For rendered prose claims, delete each named clause in turn and watch the suite fail.
-
-## A Proposed ADR's same-commit state-doc update must not speak in present tense
-
-_Domains: adr-system_
-
-The proposing step updates the shifted domain's current-state doc in the ADR's own commit,
-but the ADR is still `Proposed` there; writing "the four prose knobs are removed" while the
-catalog still carries all four makes the state doc false until implementation lands, and
-permanently false if the ADR is rejected (ADR-0084 review, 2026-07-09). Write the
-propose-commit sentence in decision tense anchored to the status, "ADR-NNNN (Proposed)
-narrows the policy ... and will remove ...", and flip it to present tense in the
-implementation commit that makes it true, alongside the status flip.
 
 ## An unescaped consumable placeholder in a part is silently rewritten, check-clean
 
