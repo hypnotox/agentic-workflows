@@ -4,32 +4,8 @@
 <!-- awf:edit prepend: from .awf/docs/parts/pitfalls/prepend.md -->
 ## Current pitfalls
 
-Treat one concrete non-minimal outcome as one immutable slugged effort with one user-managed memory writer. Repository sources and current-state documentation outrank `.awf/efforts/<slug>/memory.md`. Never infer managed-worktree integration or removal from effort state: inspect native Git topology on every retry, never use awf to force-discard dirty or unmerged work, and finish only after path, registration, and branch are absent.
+This guide contains only current hazards that require human judgment or action beyond what a deterministic guard and its diagnostic reliably provide. Remove an entry once the system prevents the failure or explains its complete recovery; preserve historical rationale in the owning test, implementation, current-state documentation, ADR, or Git history instead.
 
-## go-git status can expose files below an ignored managed-worktree root
-
-_Domains: tooling_
-
-`git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
-
-
-## Applying every state operation does not mean terminal review has settled
-
-_Domains: adr-system_
-
-While planning Sundial removal, the agent read the lifecycle's strict-subset rule as
-requiring one unrelated operation to remain unapplied until terminal review. It proposed
-broadening an evaluation claim solely so the four truthful removal operations could land
-before the final status flip. That confuses two independent facts: State changes record
-which current-state mutations have landed, while `Implemented` also says implementation is
-complete and terminal review has settled. Applying every declared operation during
-implementation therefore must not force the terminal status before review.
-
-Do not pad an ADR with a synthetic update, defer a truthful claim mutation, or preserve a
-false claim merely to reserve work for the reviewer. Let all real operations become Applied,
-keep the ADR nonterminal while review runs, and append `Implemented` only after review
-settles. If instructions or validation reject an all-applied nonterminal ADR, surface that as
-a lifecycle-model defect rather than distorting the decision or plan to satisfy it.
 
 ## An intermediate search expectation must respect deferred claim operations
 
@@ -50,201 +26,25 @@ additional match; never demand a clean search state before the batch authorized 
 
 _Domains: adr-system_
 
-Twice in one session an authored census understated reality because the measurement was a
-narrow pattern match presented as a population count: a global-test-seam census of "3"
-came from a column-zero `var X = func(` grep that missed var blocks (an AST census found
-31 across 11 packages), and an outcome-category vocabulary was "confirmed" against one
-refusal family's constructor literals while a second refusal type in the same packages
-carried eleven category kinds the vocabulary never saw. Both survived authoring and were
-caught only when a reviewer re-measured. When a durable record cites a count or a closed
-vocabulary, state the query that produced it next to the number (what population, what
-tool, what exclusions) so a reviewer can re-run it, and prefer parsed syntax over textual
-pattern matches for anything shaped like "all X in production".
+When a durable record cites a count or closed vocabulary, state the query that produced it:
+population, tool, and exclusions. Prefer parsed syntax to textual patterns for an "all X"
+claim, and corroborate an empty or narrow-pattern result against a differently shaped query.
 
-## Claim prose is right in its Applied batch or it waits for a successor ADR
-
-_Domains: adr-system_
-
-Every line of a claim's canonical block is claim content, the `Verify:` line included:
-`awf check staged` rejects any edit to an applied claim that does not travel with a
-matching `update` operation, and one ADR cannot declare both `add` and `update` for the
-same id, so an ADR cannot patch its own already-applied claim. Two Verify-line
-tightenings suggested by a terminal review had to be reverted and deferred to a future
-successor ADR for exactly this reason. Treat the first Applied batch as the one shot at
-the claim's wording: review the Verify: line with the same weight as the claim sentence
-before applying, because afterwards even a comma costs a new decision record.
-
-## A renumber cannot follow a rebase or merge as its own commit; it must land inside the transition
-
-_Domains: adr-system_
-
-When main has taken a number a branch's ADR also declares, rebasing or merging first and
-renumbering after does not work: every intermediate commit AND the resulting HEAD declare the
-number twice, and `awf check staged` refuses to evaluate any transition from a
-duplicate-number HEAD, which blocks every commit including the renumber itself. The rename
-has to land inside the transition that first combines the two histories - during a rebase,
-fold it into the first replayed commit's conflict resolution (git rename detection carries
-the later commits' edits onto the new path); during a merge, rename and update references
-before the merge commit. The decompose effort hit this twice in one day (0191 to 0194 at
-rebase, 0194 to 0195 at integration); the first attempt as a post-rebase commit was
-structurally refused and forced a redo of the whole rebase. The workflow-friction effort
-hit the same double renumber the same day (0194/0195 to 0195/0196 at rebase, then to
-0196/0197 at integration when main took 0195 in between). One fact makes the fold cheap:
-the content digest excludes frontmatter and the H1 title, so a renumber that edits only
-the heading leaves every Implementing/Implemented stamp valid with no Amended event owed.
-
-## A renumber substitution must be scoped to the citations the effort owns
-
-_Domains: adr-system_
-
-Renumbering inside the merge, as the entry above requires, puts the substitution in the one
-place where both histories' text is present at once. A blanket
-`sed 's/ADR-OLD/ADR-NEW/g'` over the files carrying the effort's references will then also
-rewrite the OTHER side's citations of that same number, if the merge happened to bring them
-into one of those files. ADR-0198 renumbered from 0195 and corrupted two sentences in
-`.awf/docs/parts/roadmap/deferred.md` that main had just added about ITS ADR-0195, the
-`internal/project` decomposition: the roadmap then told a reader that the decomposition was
-decided by the Pi-extension container decision.
-Nothing mechanical caught it, and nothing will. Every gate stayed green through the merge
-commit, the render, the staged check, and the full gate, because no check reads a prose ADR
-citation for meaning; only the post-merge review found it. Treat the number as ambiguous
-rather than unique for the duration of the merge: substitute per known reference site, or
-substitute blindly and then diff every touched file against the merge source, confirming
-that nothing differs except the effort's own additions. The second form is the cheap one
-and it is what proved the repair. Note the asymmetry with the sibling entry above, "An ADR
-citation in a Go comment survives a renumber": one hazard is a citation the sweep misses,
-the other is a citation the sweep should never have touched, and a sweep tuned to avoid one
-walks straight into the other.
-
-## An applied claim's prose only changes beside an update operation, so prose findings rewrite the phase commit
-
-_Domains: adr-system_
-
-The transition validator refuses a claim body edit with no ADR update operation for that
-claim in the same HEAD-to-index step ("changed with no ADR update operation"). A review
-finding against claim prose therefore cannot land as a normal settlement commit once the
-phase that applied the claim has committed: the only legal homes are the transition that
-carries the claim's own operation, or a later ADR's update operation. While the phase-close
-commit is still branch-local, the practical response is soft-reset, fold the reword in, and
-recommit the phase (recompute the Implementing digest if the ADR body also changed; no
-Amended event is needed for changes landing before the stamp's commit). The decompose effort
-did this three times - review reworded a plan-prescribed claim body at Phases 1, 5, and 6 -
-so settle prose-touching findings BEFORE the phase-close commit when the review can run
-earlier.
-
-## An ADR citation in a Go comment survives a renumber, because nothing validates it
-
-_Domains: adr-system_
-
-A branch that authors an ADR while main takes the same number renumbers it at integration.
-Every rendered surface is covered: `checkDeadRefs` scans rendered files, and the ADR checks in
-`internal/project/check.go` cover frontmatter tags and related arrays. A citation inside a Go
-comment is covered by none of them, so a stale `ADR-NNNN` in production source stays green
-forever while pointing at an unrelated decision.
-
-Derive the site list with a grep at integration time rather than from a list written earlier.
-An enumeration ages badly: the ADR-0183 effort enumerated four Go citations across three files
-in its plan, and by the end of its review chain there were twelve across seven, two of them
-added by the very commit that froze the plan. Its own review chain then produced a SECOND ADR,
-which needed its own separately-derived number and which no grep in the plan mentioned.
-
-So: grep for every ADR number the branch authored, not just the first one; do not assume two
-such numbers end up consecutive; and include test files, since a citation there is equally
-stale and equally unvalidated. The `Revised-by:` lines in claim parts are the one part that is
-caught mechanically, because `internal/currentstate` rejects a `Revised-by` naming an ADR with
-no matching applied update operation.
-
-## Dropping a config key needs a ConfigForCurrentSchema branch, or the staged check cannot parse HEAD
+## When retiring a config key, handle historical writers
 
 _Domains: config_
 
-`migrate.ConfigForCurrentSchema` forward-ports a historical committed config so the current
-strict parser can read it, and it does that through one explicit per-migration branch, not
-by replaying the registry. A migration that removes a config key must add its own branch
-there as well as its `apply` function. Miss it and `awf check staged` fails to parse HEAD
-the moment the key leaves the config model, because HEAD still carries it: the before side
-of the transition handshake loads the committed config, not the index one.
+Add the retired key to the forward-port proof. If an older migration writes the key,
+strip it while loading historical migration input as well; a current-schema forward-port
+branch alone does not protect that adopter path.
 
-This did not surface until ADR-0183, even though four drop-a-key migrations preceded it,
-because none of those keys was actually set in this repo's own tree, so the before side
-never had one to choke on. Reading those precedents is therefore not enough. The failure
-appears at the phase-closing staged check, never in the migration's own test, which
-operates on fixture bytes and passes regardless.
-
-This prose did not prevent a recurrence: ADR-0194 repeated it, and a plan reviewer
-caught it rather than the gate. `TestConfigForCurrentSchemaParsesEveryRetiredKey` in
-`internal/migrate/forwardport_test.go` is now the deterministic backstop. Its
-`retiredConfigKeys` table carries the maintenance obligation: a migration that retires
-a config key adds the key and its generation there, and the test then fails inside the
-migrate package the moment a forward-port branch is missing, rather than at the
-phase-closing staged check.
-
-A third trap fires only when the retired key was written by a migration rather than set
-by hand. Historical migrations are never edited, so the migration that ADDED the key
-keeps writing it, and any later migration that parses config through
-`loadForMigration` then meets a key the current schema no longer declares. A tree
-upgrading from before the adding generation hard-fails mid-ladder, which is an adopter
-bug, not a fixture artifact. ADR-0194 hit exactly this: generation 16 writes
-`maxClaimsPerTopic`, generation 23 parses, generation 28 removes. The fix is to strip
-the retired key in `loadForMigration` beside the `invariants` block it already strips,
-because a migration reads a config at its historical shape, not the current schema's.
-Before retiring a key, grep the migration set for one that writes it; the severity-key
-removal had no such problem only because nothing wrote those keys.
-
-Two related traps in the same area. `RemoveMappingKey` drops the parent key when the
-removal empties it, so removing the last children of a block deletes the block; when a
-feature is gated on the block being present, that silently disables it. And
-`SetMappingInteger` appends an absent parent at the end of the document, so repairing a
-collapsed block afterwards relocates it: seed the surviving key before the removals
-instead.
-
-## Three pi-extension lane flakes that ADR-0198 removed, and what they mean now
-
-_Domains: tooling_
-
-Until ADR-0198 the lane copied the whole repository root into its container and reused one
-long-lived container per checkout path, which produced three flake classes that a shared
-checkout hit repeatedly. All three are now structurally impossible, so this entry is kept
-inverted: if you see one of these signatures today, it is NOT the old race and rerunning
-will not clear it.
-
-Missing-file TS6053 errors under /workspace/repo came from `cp -a /source/. /workspace/repo/`
-racing a concurrent session's `.git/index.lock`, leaving the compiler a file list whose
-members had vanished. The copy no longer includes `.git` or anything else the suite does
-not compile.
-
-`Cannot find module` failures out of a nested node_modules were misattributed to that same
-race for a long time. They were a different defect: the copy dragged in the untracked host
-`tools/pi-extension-test/node_modules`, which landed nearer the test files than the
-repository-root symlink and so won module resolution against the image's pinned tree. The
-lane no longer copies it, and dependencies now resolve from the image only.
-
-Assertion-shaped failures came from `TestPiRealRuntimeSmoke` (`internal/project/target_test.go`),
-which shells out to `./x pi-test run`, contending with a concurrent gate over one shared
-container: `generated Pi runtime smoke failed: exit status 1`, a run reporting 0% TypeScript
-coverage against a 100% threshold, and `find: .pi/extensions: No such file or directory`
-during a concurrent render. Each run now gets its own container, so there is nothing to
-contend over.
-
-What remains legal under concurrency is two cold gates building the same image tag at once.
-Docker tolerates it: both succeed, the last tag write wins, and the layer cache makes the
-second cheap.
-
-## A claim must not out-claim the filter its own command applies
+## Scope a claim to the command's actual input
 
 _Domains: invariants_
 
-ADR-0158's memory-citation claim was authored as reporting every concrete working-memory
-file reference in the staged decisions and plans directories. The command deliberately
-drops non-Scannable blobs, and the claim's own backing suite pins that exclusion with a
-symlink whose target is exactly the flagged shape, so the backing test contradicts a
-literal reading of the claim it backs. Terminal review escalated it only after the add
-operation had Applied under an Implemented ADR, the point where the text can change only
-through a successor update operation from a new decision. The sibling prose-gate claim in
-the same topic had already solved this by scoping itself to a text file. When authoring a
-claim for a command that filters its input before scanning, scope the sentence to what the
-command actually reads, and read the sibling claims in the destination topic first: the
-wording that survives review is usually already there.
+When a check filters its population before scanning, write the claim over that filtered
+population and make its backing test exercise the same input set. Marker validity does not
+compare a claim's natural-language scope with the command's filter.
 
 ## A staged-symlink fixture needs a real blob, a gitlink does not
 
@@ -280,179 +80,34 @@ that resolves both offsets and compares them. The general form: before claiming 
 ordered-list entry covers a site, check where that site renders relative to the list's
 first phrase.
 
-## A test's name is not its assertions
-
-_Domains: invariants_
-
-The ADR-0153 plan directed a doctor-command-contract proof marker onto
-TestMetricsAndDoctorCommandContract, justifying it with the claim that the test asserts
-doctor's read-only behavior and findings-do-not-change-exit-status. It does not: those
-clauses are asserted by TestDoctorUsesConfiguredHeuristicsAndIsReadOnly and
-TestMetricsAndDoctorExitMappingAndBinaryGating in the same file. The statement was inferred
-from the test's name, and it survived the full plan review AND the plan-ADR resync; only
-the implementation review's clause-by-clause check (the invariant-proof-exercises-its-claim
-focus item) caught it, in four parallel instances across the split claims. When a plan or
-ADR asserts what a test covers - especially when repointing proof markers or splitting a
-claim - open the test body and enumerate its assertions against the claim's clauses; after
-any claim split, re-check every clause of every successor against its proof sites, because
-the predecessor's single marker almost certainly proved only a subset.
-
-## Sync-then-partial-stage strands the lock update
+## Stage the lock with every render output
 
 _Domains: rendering_
 
-Two ADR-0153 proposal-phase commits staged a regenerated docs/decisions/INDEX.md without
-the .awf/awf.lock outputHash update that the same `./x render` had written to the working
-tree, and `awf check staged` passed both times: the generated index is
-regeneration-checked, not hash-checked, so the staged INDEX/lock mismatch is invisible to
-the staged view while the fresh lock sits dirty on disk. The stranded lock change then
-pollutes the next unrelated commit or surfaces as confusing drift. After any `./x render`,
-stage the lock together with every regenerated output in the same transaction - and if
-`git status` shows a lone modified .awf/awf.lock, a previous commit almost certainly
-dropped it.
+After rendering, stage `.awf/awf.lock` with every regenerated output in the same
+transaction. Staged drift validation can miss a fresh lock update left dirty only in the
+working tree.
 
-## Concurrent efforts collide on the next ADR number
-
-_Domains: adr-system_
-
-ADR identity is allocated from the highest number visible on the current branch, with no
-cross-branch reservation: parallel efforts forked from the same tip therefore scaffold
-their own ADR-NNNN with the same NNNN (three separate 0151s existed at once on 2026-07-23).
-The later-merging efforts must
-renumber at merge time, and the cost grows sharply once the ADR has left Proposed: the
-filename, H1, INDEX.md, changelog mentions, and every Origin/Revised-by provenance line in
-the topic parts name the number, and the Status-history digest must still validate after
-the rename. Renumber while the ADR is still Proposed whenever merge order is foreseeable,
-and at merge time run `./x render && ./x check` immediately after the rename to let the
-digest and provenance validators enumerate what the renumber missed.
-
-## A V2 ADR's Implementing flip cannot commit alone
-
-_Domains: adr-system_
-
-The current-state-v2 parser rejects an ADR whose Status history ends on an Implementing
-event: "implementing status event must be followed by the first Applied event". A plan that
-schedules a standalone begin-implementation commit (flip to Implementing, sync, commit) is
-therefore structurally unexecutable - every `./x render`, `./x check`, and gate run fails to
-parse the ADR until the first Applied event exists, so the Implementing flip must travel in
-the same staged transaction as the first Applied batch and its claim mutations. The
-ADR-0147 plan scheduled exactly that standalone phase and it survived the full plan review,
-the verify pass, and the plan-ADR resync; only the parser caught it at execution time. When
-authoring or reviewing a plan for a V2 ADR with incremental batches, check that no phase
-commits an Implementing event without its paired first Applied event. The terminal edge
-differs: Implementing permits all declarations Applied, so the final explicit batch lands
-atomically with its claims and remains Implementing. After review settles, the Implemented
-status event is a later status-only transaction carrying the frozen digest. Plans must pin
-the first atomic pair and keep every later batch with its claims, rather than coupling the
-final batch to terminal review.
-
-Within that one transaction the batch also has to land before the render, not after it:
-`awf render` refuses a claim citing an ADR with no applied operation ("cites ADR-NNNN
-without an applied update operation"), so a phase whose task order renders first is
-blocked until the Applied line exists. `awf check` reports that claim-provenance error
-ahead of any drift, which also means the documented digest probe only becomes reachable
-once the batch line is present, even with a placeholder digest.
-
-## Retired ADR routing keys are compatibility input, not lock authority
-
-Schema-30 lock snapshots may carry historical ADR cutoff and gap keys. Parse them only to
-read old snapshots, then let generation 31 write a current lock without those keys. Do not
-reintroduce fields on manifest.Lock or promote bridge-attestation payload into final state.
-
-## Parallel efforts collide on ADR numbers and schema generations at integration
+## Parallel efforts can collide on schema generations at integration
 
 _Domains: adr-system, config_
 
 _Related: ADR-0191_
 
-Slug-identified pending ADRs removed the ADR-number half of this: a record authored off
-the integration branch carries no number until `awf adr number` assigns one at
-integration. Schema migration generations and the permanent lock cutoffs still collide
-exactly the same way, and neither has a command. Both are allocated optimistically as
-highest-plus-one in a worktree, so two branches take the same one while apart; the 0191
-integration hit the ADR and the generation at once (its ADR authored as 0189 collided
-with the target's 0189, and both sides registered generation 26), and the 0202
-integration hit the generation and the cutoff after its own mechanism had retired the
-ADR case. Resolve inside the merge, where both sides are visible. For a record predating
-the slug format, which has no slug to be numbered by: rename the file to the next free
-number, rewrite the heading and every branch-owned reference (topic Origin and Revised-by
-lines, plan frontmatter and prose, glossary, changelog, code comments), and, because
-in-body self-references are digest-covered, record that edit as an Amended event with the
-recomputed digest in its own later commit while the ADR is still nonterminal. For the
-migration: move the registry entry to the next generation, and carry the minimum-version
-map and every generation-pinning test, comment, and doc sentence with it. For the lock,
-keep the BRANCH side's generation and hand-apply the effect of any migration that stamp
-now skips as applied, and re-derive a stale cutoff so it equals the merged corpus's next
-identity. The advice here used to be the reverse, taking the target's generation so `awf
-upgrade` re-runs the moved migration; that discards the branch's own migrations, and it
-is unnecessary now that the port-forward strips every retired key from a historical
-config unconditionally rather than by generation range, so only the live config tree
-needs the hand edit. Grep for the old number afterwards and sort surviving hits into the
-other effort's legitimate references versus your leftovers.
+Schema migration generations and permanent lock cutoffs are allocated optimistically in
+each branch and have no reconciliation command. Resolve collisions inside the integration
+merge: move the branch migration above the target generation, carry every version pin, keep
+the branch's higher schema stamp, and hand-apply any migration effect that stamp now skips.
 
-Resolving inside the merge stops working once your ADR has an Applied batch. On
-2026-07-31 the 0192 integration tried it and `awf check staged` refused with "ADR-0190
-violates the history-prefix rule", plus both claim updates reading as provenance-only
-mutations with no operation behind them: the number is occupied by the other side's ADR
-with different applied history, so renaming yours inside the merge rewrites committed
-provenance. Renumbering on the branch and then merging fails differently, on contiguity,
-because the before-side corpus then holds your new number with the target's numbers
-absent. For an unpublished branch the remedy is to rewrite its history so the ADR carries
-the free number from its first commit, then REBASE onto the target rather than merge, so
-your ADR is created above theirs and both the prefix and contiguity rules hold. Two traps
-in that rewrite: pick the number only after the target is quiet, since a second effort
-took the next one mid-diagnosis, and note that `git filter-branch --tree-filter` has no
-usable index, so a filter built on `git ls-files` silently does nothing while the renames
-it also performs appear to succeed; drive the sweep with `find` and verify afterwards.
-
-Merge DIRECTION looks like a remedy and is not the one to reach for. `awf check
---staged` validates HEAD to index as ONE transition, so whichever side is HEAD supplies
-the before-corpus, and building the merge with the TARGET as HEAD does make a renumber
-resolve that the branch-side direction refuses with the identical tree; on 2026-07-31
-that is how the git-seam effort renumbered its already-Implemented ADR. But the settled
-integration flow runs the other way and deliberately: the effort branch merges the
-integration branch in, numbers, and is then fast-forwarded, so the integration branch
-only ever fast-forwards and every check runs on the merge commit whose first parent is
-the effort branch. `awf effort integrate` enforces that direction, refusing to run from
-the managed worktree. Under it a renumber must be resolvable in the branch-side
-direction, which is what digest pairing provides for a slugless record. Reach for the
-target-as-HEAD trick only to diagnose, never as the integration itself.
-
-Two facts make a renumber safe for a terminal ADR: the content digest covers Context,
-Decision, State changes, Consequences, and Alternatives Considered but never the heading
-or the Status history, so a rename is digest-neutral unless the body self-references, and
-stripping a retired status segment is an encoding migration the append-only rule
-explicitly permits. Confirm both by recomputation rather than by assuming.
-
-## A staged-slice validation repository lands on the default branch
+## Make custom staged-slice hooks explicit about branch and cleanup
 
 _Domains: tooling, adr-system_
 
 _Related: ADR-0202_
 
-A pre-commit hook that validates the staged slice by materializing it in a throwaway
-`git init` gets a repository on whatever branch `git init` defaults to, which is not the
-branch the real commit is on. Every branch-conditional check then evaluates against the
-wrong branch. This repository's stub refused a legal commit with
-`pending-adr-on-integration-branch`, because the slice repository looked like it sat on
-the integration branch while the real work was in a managed worktree. Name a branch
-explicitly, `git init -b awf-staged-slice`, so the slice can never be mistaken for the
-integration branch. The trap waits for any adopter wiring their own staged-slice
-validation, and the symptom accuses the content rather than the harness.
-
-Two adjacent facts about hooks, both discovered the same way. `core.hooksPath` is an
-absolute path, so the hook that actually runs is the PRIMARY checkout's copy: the same
-edit has to reach that checkout before it takes effect, no matter which worktree the
-commit is made from. And a `pre-commit` hook DOES run when a conflicted merge is
-finished with `git commit`; only a merge that Git resolves and commits by itself skips
-it, which is exactly the hole `pre-merge-commit` exists to cover.
-
-An `EXIT` trap does not survive `exec`: replacing the hook shell with the rendered payload
-bypasses the creator shell's cleanup entirely. Delete a staged slice after its last
-consumer and before `exec`, keep the trap armed until that deletion succeeds, then disarm
-it. A real-hook regression should make the payload observe an empty isolated `TMPDIR` so
-the lifecycle is proved across the replacement boundary rather than inferred from script
-text.
+A custom staged-slice hook must name its temporary branch, resolve the invoking checkout's
+hook path, and delete temporary state before an `exec` replacement. Otherwise branch-aware
+checks can inspect the wrong branch or cleanup can be skipped.
 
 ## A piped gate run reports the pipe's exit code, not the gate's
 
@@ -490,108 +145,13 @@ paraphrase list from how the docs actually describe its behavior and sweep templ
 agent configs, glossary, domain parts, and pitfalls with those terms too; the review
 catalog's own lens prose is governed text and drifts like any other doc.
 
-## A schema-generation bump needs `awf upgrade`, not `awf render`
-
-_Domains: config, tooling_
-
-Registering a migration raises `migrate.Current()`, which immediately puts the repo's own
-`.awf/` tree one generation behind its freshly-built binary. `awf render` and `awf check` then
-*refuse* with "config schema is behind (generation N-1 < N); run awf upgrade" rather than
-re-rendering, so a plan step that says "run `./x render` and stage the result" cannot work at
-that point. Run `go run ./cmd/awf upgrade`, which applies the new migration to this repo's one
-adopted tree and re-syncs it before render and check. This bit the ADR-0127 plan, which named
-the wrong command at that point.
-
-## `awf audit` and `extensions.worktreeConfig`
-
-_Domains: tooling_
-
-`git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git.Open` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. This is no longer a rule anyone has to remember: `internal/git` is the only package that may reach a Git library or the git binary at all, `Open` and `OpenContaining` are the only ways in, and `TestNoProductionGitAccessOutsideTheSeam` fails on any bypass. The incident is retained because it is one of the named regression cases the open path's contract suite pins, and because it is evidence for why the backend stays an internal detail of the seam.
-
-## go-git status ignores the global and system gitignore
-
-_Domains: tooling_
-
-go-git's `Worktree().Status()` consults only the repository's own `.gitignore` chain and
-`.git/info/exclude`; it never reads `core.excludesfile` from `~/.gitconfig` or
-`/etc/gitconfig`, so untracked files real git treats as ignored show up in the status. Any
-status-derived path universe that consumes untracked entries has to reconcile the two
-ignore universes. The seam now owns that in one place rather than at each call site:
-`Repo.WorkingPaths` composes the global excludes into the go-git status it reads, and
-`Repo.ChangeCounts` replays the effective `core.excludesFile` into its native
-invocation, so both cleanliness answers see the ignore universe real git sees
-(`ChangedPaths`' staged branch is exempt: staged-only filtering never sees untracked or
-ignored files). This bit twice before the seam existed: `awf audit`'s
-uncommitted-changes rule fixed it locally, but `WorkingPaths` kept the raw semantics and
-reported globally-ignored files as eligible-unowned - the same defect fixed once and
-missed once, which is the shape single-home ownership exists to prevent. The
-composition is close to but not exactly `git status`: go-git composes `Excludes` after
-the repo's `.gitignore` chain, so a repo-level negation cannot re-include a
-globally-ignored file - an accepted narrow divergence. Note the deliberate asymmetry
-with fixtures: `internal/testsupport/gitfixture` does NOT replay the excludes file,
-because it builds state rather than rendering an oracle. Tests that exercise status-based code run under
-`testsupport.RunIsolated`, which points HOME at a temp dir, so fixtures never inherit the
-developer's real global gitignore.
-
-## Stdout is API in command-substitution scripts
+## Recheck closure assertions after changing catalog edges
 
 _Domains: rendering_
 
-`.awf/bootstrap.sh` is consumed as `"$(bash .awf/bootstrap.sh)" <args>`, so its stdout is the
-binary path and nothing else; a checksum tool's `<asset>: OK` line on stdout execs as part of
-the command and fails only on cache-miss runs, which presents as flaky CI. Every diagnostic in
-rendered shell must carry `>&2`; `TestBootstrapStdoutPathOnly` pins this (`invariant:
-bootstrap-stdout-path-only`, ADR-0049).
-
-## Adding a catalog skill: what the guards force
-
-_Domains: rendering_
-
-A new `SkillSpec` in `internal/catalog/standard.go` is covered automatically by the
-catalog-derived eval fixture (ADR-0053) and by ADR-0080's derived guards, which fail
-loudly and name the missing piece:
-
-- `TestCatalogTemplatesDegradeLeakFree` sweeps the template under empty data; an
-  unconditional reference to another skill must be declared in `RequiresSkills`
-  (exact both ways: undeclared references and stale declarations each fail).
-- `TestConditionalTemplatesHaveFallbackCases` requires a hand-authored
-  `unsetFallbackCases` entry when the template carries conditional fallback prose;
-  the degraded phrases themselves stay human-authored.
-- `TestEveryCatalogArtifactHasGoldenTest` requires a `Test<Skill>Template` golden in
-  `internal/project/spine_test.go`.
-- Chain-enabling fixtures derive from the catalog (`chainClosureConfig`), so a new
-  chain skill joins them without a hand edit.
-
-Exemptions follow default-inclusion semantics (ADR-0080 Decision 7): every exception
-is an explicit entry that itself fails when stale.
-
-## Adding a `RequiresAgent` pairing: what the guards force
-
-_Domains: rendering_
-
-Pairing a skill to its dispatched agent falsifies two disjoint families of test, and a plan
-that enumerates only the first will be wrong. ADR-0179's plan enumerated the first family
-across two review rounds and a verify pass and was still incomplete at execution.
-
-The first family is fixtures that fail `Open`: `checkNodeRequirements` errors when an
-enabled non-local skill's paired agent is missing, so every fixture config enabling that
-skill needs the agent in its `agents:` list. These name themselves loudly
-("skill X requires agent Y"), and a site that upgrades rather than opens needs no edit
-because the migration path self-heals. A `local: true` sidecar is exempt, since
-`checkKindAgainstCatalog` skips both the pool and closure checks for one.
-
-The second family is assertions over a closure or trim result, and these do not mention
-the pairing at all. `RequiresAgent` is a structural closure edge where a profiled skill's
-advisory `RequiresSkills` is not, so any assertion that a skill closes to nothing becomes
-false. In ADR-0179 that was `TestWorkflowProfileNeighborsDoNotCloseRequirements`,
-`TestScaffoldCatalogTrim`, and `TestCloseEnabledSetAddsExploringFromShippedCatalog`. Each
-is legitimately falsified and must be re-expressed to expect the agent while still proving
-the advisory edges stay out; relaxing them instead would discard what they exist to prove.
-
-So the discriminator for a candidate site is two questions, not one: does it reach `Open`
-with the skill, and does it assert over a closure or trim result. Derive the set from the
-failures rather than an enumeration: `go test ./internal/project/ ./internal/migrate/
-./internal/catalog/` names every site in both families.
+After adding a structural catalog edge such as `RequiresAgent`, follow every fixture and
+closure-test failure and re-express the affected expectation without weakening what the test
+was meant to prove. A passing open-path fixture does not settle closure semantics.
 
 ## Hard-coded counts in domain narratives drift
 
@@ -614,71 +174,21 @@ feature claims drift silently when the CLI grows (`awf new` and `awf check stage
 README rows). Adding or changing a CLI command means updating the README table in the same
 change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
 
-## `//go:embed` silently skips `_`- and `.`-prefixed paths
+## Add every new template directory to the embed allowlist
 
 _Domains: rendering_
 
-The project-local base templates live at `templates/skills/_base/SKILL.md.tmpl` and
-`templates/agents/_base.md.tmpl` (ADR-0068). Go's `//go:embed` walk **excludes** every file or
-directory whose name begins with `_` or `.` unless the pattern is `all:`-prefixed; so the bare
-`//go:embed skills agents ...` form embeds neither `_base`, and `fs.ReadFile(templates.FS, ...)` fails
-at render with a bare `file does not exist`. `templates/embed.go` therefore uses
-`all:skills all:agents`. Do not "simplify" it back: dropping `all:` silently drops the base
-templates. `TestUnsetFallbackRenders` reads both base templates from `templates.FS`, so a
-regression fails the gate, but the failure is a confusing missing-file error, not an obvious embed
-bug, hence this note.
+The existing base-template tests cover known embedded files but cannot infer a new top-level
+template directory. Add every new rendered template directory to `templates/embed.go`, using
+`all:` when underscore- or dot-prefixed paths must be included.
 
-The same directive is an **explicit directory allowlist**, not a glob, so it has a second edge: a
-brand-new top-level template directory (a new singleton's `templates/<name>/`) is silently *not*
-embedded until its name is added to the `//go:embed` line. The symptom is identical; `awf render`
-fails with `read template <name>/...: file does not exist` even though the file is on disk, because
-the source tree has it but the embedded FS does not. When adding a rendered artifact backed by a new
-`templates/` subdirectory, add the directory to `templates/embed.go` in the same change.
-
-## Concurrent agents in one worktree share the git index
-
-Two agents working in the same checkout share one staging area: `git commit` commits the
-**whole index**, so another agent's `git add` between your `git add` and `git commit` sweeps
-their files into your commit (this bit the ADR-0069 session; a foreign 526-line plan file
-landed in a feat commit). Always pathspec-limit the commit itself (`git add <paths> && git
-commit -m ... -- <paths>`), so only your named paths land regardless of index state; note an
-untracked file must still be `git add`-ed first, a bare pathspec commit rejects it. Two more
-shared-tree symptoms: `awf audit`'s `uncommitted-changes` error fires on the *other* agent's
-dirty files (a false positive for your session; never commit or discard their work to appease
-it), and a pre-commit drift-gate failure may be their stale generated file; `./x render`
-freshens the disk, then still commit only your paths. Recurred harder in the ADR-0088/0089
-dual session: pathspec discipline alone cannot make a commit *hermetic*; the gate validates
-the worktree, but the commit is a slice of the index, so a foreign hunk staged in a shared
-file (or a slice cut while the other session's symbol is unstaged) can land a commit that does
-not build on its own, breaking bisect (4ef80e0 carries a call to a function a later commit
-defines). The deterministic backstop is the `.githooks/pre-commit` staged-slice build: it
-checks out the index into a throwaway directory and runs `go build ./...` there, so a
-non-building slice refuses at commit time. The real prevention is one git worktree per
-concurrent session; when a shared tree is unavoidable, stage HEAD-plus-only-your-hunks
-versions of mixed files (write the merged file back to the worktree after `git add`) and
-verify the staged slice deliberately.
-
-A read-only subagent is not automatically safe in the shared tree: a plan reviewer in
-the ADR-0131 retrofit used the live repo as scratch and ran `git checkout` when it
-finished, discarding the main thread's uncommitted work along with its own. Index
-discipline does not help here, because nothing was staged. State the constraint in the
-dispatch prompt itself: the subagent works in its own `git worktree` and never runs
-`checkout`, `restore`, `stash`, or `reset` in the main repo. Ten dispatches across the
-2026-07-19 triage carried that mandate explicitly and all ten behaved, but repeating it
-per prompt is the weak link, since one forgotten dispatch is one destroyed working tree.
-
-## A new var reference in a previously var-free template is adopter-visible
+## Adding a template var changes adopter behavior and consumer projections
 
 _Domains: rendering_
 
-Referencing a `{{ .vars.* }}` value in a template that referenced none before changes more than
-the prose: every adopter without that var set starts seeing an ADR-0045 unset-var advisory for
-the artifact on `awf check`/`awf init`. awf's own repo sets the common vars (`gateCmd` etc.), so
-the edit looks silent here and the new advisory only surfaces downstream. Before adding a var
-reference, decide whether the sentence really needs it; generic wording avoids the advisory
-entirely (this kept `gateCmd` out of the plans README when the self-contained-phases rule
-landed), and if it does, keep the `{{ with }}...{{ else }}` fallback publication-safe and accept
-the advisory as intended signal.
+When a template first consumes a variable, inspect its unset rendering and adopter-facing
+advisory, then update config-reference consumer projections and unused-variable isolation
+fixtures. A coherent fallback does not make the new consumer relationship invisible.
 
 ## A `data:` list override replaces the catalog defaults wholesale
 
@@ -707,21 +217,13 @@ override found (restate it deliberately, as `.awf/agents/code-reviewer.yaml` doe
 comment); before adding a local entry, copy the defaults you still want. Verify by reading
 every affected enabled-target output, not the config.
 
-## Registry-relative constants in migration code drift
+## Use absolute generations for historical migration shapes
 
 _Domains: config_
 
-`migrate.Generation` returned `Current()-1` for a lockless pre-relocation tree, correct when
-the To:3 relocation was the newest migration, silently wrong once To:4..6 registered: the tree
-gated forever while `awf upgrade` applied only post-relocation no-ops (fixed 2026-07-07). A
-generation pinned relative to the *growing* registry moves with every new migration, but a
-layout detected by shape sits at a *fixed* point in history; pin the absolute generation (a
-lockless `.claude/awf/` tree is the tree-layout port's output, so 1). Treat any `Current()±k`
-in migration or versioning code as a red flag unless k describes the current head by
-definition. Since ADR-0076 the sentinel generations apply only to genuinely *absent* locks:
-a present-but-unreadable lock is a hard error from `Generation` (and every other lock
-reader), never `Current()`/`1`; so a corrupt lock can no longer silently bypass the schema
-gate the way a mispinned sentinel once mis-gated a healthy tree.
+A tree layout detected by historical shape belongs to a fixed generation, not
+`Current() +/- k`. Verify the absolute mapping against the migration registry whenever the
+registry grows.
 
 ## Binary-side render changes do not reflag rendered outputs
 
@@ -738,37 +240,19 @@ output for unchanged config/templates must run `./x render` *after the final cod
 commit the refreshed outputs; verify by grepping the rendered file for the change, not by
 trusting a clean check.
 
-## Documenting a literal `{{=awf:key}}` token in the agent guide trips the render-guide brace check
+## Keep literal placeholder syntax out of guide prose
 
 _Domains: rendering_
 
-`internal/project/guide_scopes_test.go`'s `renderGuide` helper rejects any `{{` or `}}` in the
-rendered agent guide as an unrendered template action. A guide default that documents a literal
-awf placeholder token renders real braces into the guide (e.g. a bullet mentioning
-`{{=awf:sectionDefault}}`), which trips that guard even though the braces are intentional
-content, and it surfaces as a `TestGuideScopesDerived` failure, not an obvious match for a doc
-edit. This bit ADR-0072, whose plan specified embedding the full token in the override bullet.
-The honest fix is to reference the placeholder by its bare key name in the guide
-(`` `sectionDefault` ``) and leave the full token syntax to `working-with-awf.md`, whose render
-path tolerates it; the guide is a pointer, that doc is the reference. If the guide must show the
-full token, strip `awfPlaceholderRE` matches before the brace check rather than deleting the
-guard. (This very entry backslash-escapes its tokens because the pitfalls doc is itself a raw
-convention part run through the same substitution.)
+Refer to a placeholder by key name in the agent guide and reserve literal token syntax for
+the reference documentation, unless the guide's brace guard is deliberately extended to
+recognize that syntax.
 
-## A dispatched fix-applying subagent sometimes commits on a new branch, not `main`
+## Verify checkout identity after a commit-capable child
 
-A dispatched subagent that applies fixes as commits, the implementer subagents in
-`<prefix>-subagent-driven-development` (as of ADR-0074 the review subagents are report-only and no
-longer commit), occasionally creates a `resync/...` or `review/...` branch and commits there instead
-of on the working branch (`main`), leaving the main-thread session behind by those commits (seen
-with a resync agent's `89a80c9` on 2026-07-07, and earlier during the ADR-0064 effort). It surfaces as
-`git branch --show-current` returning an unexpected branch after a subagent returns, or the
-reviewer reporting a commit SHA that `git log` on `main` does not show. Reconcile before
-continuing: `git checkout main && git merge --ff-only <branch> && git branch -d <branch>` (the
-branch is normally `main` plus the fix commits, so the fast-forward is clean; if it is not, the
-subagent also diverged and you must inspect). Prevention is partial; the dispatch brief can say
-"commit on the current branch; never create a branch", so always verify the branch after a
-fix-applying subagent returns rather than trusting it stayed put.
+After a commit-capable child returns, inspect the explicitly intended worktree and branch
+before accepting its reported commit. Never infer the parent checkout's state from the child
+report.
 
 ## Enabled linters constrain API shape, sketch signatures against them
 
@@ -783,20 +267,6 @@ had survived two reviews. `errorlint` (wrap with `%w`, no `!=` on errors) and `p
 artifact pins an exact signature or error string, check it against `.golangci.yml`'s enabled
 set before the plan freezes; the plan-reviewer's gate-clean-embedded focus covers what it
 enumerates, not novel linter/API interactions.
-
-## Growing a pinned set breaks exact-assertion tests the change forgot to enumerate
-
-_Domains: config_
-
-Several gate tests deliberately pin a *complete current state*: `TestCurrentIsSeven` pins the
-migration registry head, `TestUpgradeAppliesInOrderIdempotent`/`TestUpgradeStampsTreeLock` pin
-the exact applied-migration list (assertion string **and** the `t.Errorf` want-list message;
-the ADR-0077 session fixed the strings and still shipped stale messages), and the config
-validation tests pin what the validators accept. Adding a migration, changing a default
-set, or bumping the version therefore reds the gate in places far from the edit. When planning
-such a change, grep for the pinned tests up front (`Current()`, the applied-list literal, the
-version const) and enumerate each update as a plan task; the ADR-0077 plan review found four
-of these as blockers precisely because the plan hadn't.
 
 ## A milestone-time check must not double as an every-commit test
 
@@ -823,12 +293,6 @@ wrong typography, and restoring the backticks verbatim just re-triggers the rewr
 twice on 2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the
 construct out in words ("a double-backtick quoting span"); literal backtick pairs are only
 safe inside non-doc comments or raw strings.
-
-## Topic and decision edits regenerate navigation outside the authored file
-
-_Domains: rendering, adr-system_
-
-Run render after topic and decision edits, inspect generated navigation, and stage it with its authored causes.
 
 ## The atomic `.awf/awf.lock` forces multi-scope rendering work into one commit
 
@@ -871,116 +335,13 @@ is not verified absence: run verification probes as separate invocations (or wit
 explicit sentinel/exit-code check), and treat any scan whose success path you did not
 observe as unrun, not clean.
 
-## A narrow pattern is a silent undercount, not a clean scan
+## Re-prove every touched coverage ignore
 
 _Domains: tooling_
 
-_Related: ADR-0116_
-
-The sibling entry above covers a probe that never ran. This is the variant where the probe
-runs perfectly and still lies: the pattern is narrower than the thing it is looking for, so
-it returns a real number that is simply too low, and a low number reads exactly like a
-thorough scan. It bit three times in one session (ADR-0116, 2026-07-15). A
-`grep "only allowed edit"` missed `only allowed **in-place** edit`, so an ADR claimed five
-surfaces contradicted it when seven did, and shipped that count through two review passes.
-A `grep "related..names this ADR"` (two dots where the text needed three) returned `0` for
-files that visibly contained the string, nearly concluding a just-rendered rule had not
-rendered. And three independent corpus sweeps for partial amendments each returned a
-different, each-time-too-low count (16, then 19), because all three were verb-anchored and
-prose does not agree on the verb.
-
-The trap is that a narrow pattern fails *safe-looking*: nothing errors, the output is
-plausible, and the number becomes load-bearing (a Decision item's enumeration, a measured
-compliance rate). The cheap defences, in order: make the pattern **wider than you think you
-need** and discard by eye rather than narrowing up front (`grep -iE "only.*edit"` beats
-guessing the adjective); **corroborate a zero or a suspiciously round count with a second
-probe of a different shape** before it becomes a claim; and when a count reaches a document,
-**write it as a floor** ("at least N"), because the next sweep will find more. If a
-quantity is load-bearing, the enumeration is the work: iterate the whole population and
-route each element to an asserted bucket, the same discipline the attribute-filtered
-pinned-set entry demands of tests. Reviewers are the backstop that actually caught all
-three here, so state counts in a form a reviewer can re-derive.
-
-## A coverage-ignore justification is stale the moment its line is refactored
-
-_Domains: tooling_
-
-A `coverage-ignore` comment asserts a reachability claim about the code shape it was written
-against; a refactor that merges call sites, changes a signature, or widens who runs the code
-invalidates the claim silently while the comment rides along verbatim. The schema-6 migration
-rework (2026-07-09) carried three pre-existing ignores through exactly such a refactor; the
-"fresh trees" justification was already false for a partial-prior-migration adopter tree, and
-ENOTDIR/EISDIR reached the "permission fault only" branches with no permissions involved; the
-impl review refuted all three (plus a fourth on a directed probe) by staging the state each
-declared impossible. When an edit touches a line carrying an ignore, the ignore is part of
-the edit: re-probe the claim (try to stage the "impossible" state, a leftover destination
-file, a path component as a regular file, a config path as a directory) or drop it and cover
-the branch; `./x audit-local`'s `coverage-ignore-added` warning flags every touched ignore in
-the range for exactly this re-evaluation. A fourth recurrence (ADR-0088) sharpened the
-heuristic: an ignore claiming "X already exercised this, so it cannot fail here" is false
-whenever the guarded call consumes an input X never touched; five "cannot fail after
-RenderAll succeeded" ignores guarded the generated config reference, whose intro convention
-part RenderAll never reads because the reference renders outside it; a directory staged at
-the part path reached every one. A fifth recurrence (the 2026-07-10 worktree fix) refuted an
-"only a delete race loses it" claim on a read-after-stat: file *permissions* are the standard
-refuting move for any "stat just succeeded, so the read cannot fail" shape; a `chmod 0o000`
-file stats fine and fails the read deterministically (guard the test with a
-`os.Geteuid() == 0` skip, since root bypasses it). A sixth recurrence (the 2026-07-20 bridge
-Phase 3) shipped a "a journaled path reads cleanly unless a concurrent removal races" ignore on
-the journal rollback read; the branch is reached deterministically by a directory sitting at
-the lock path during a halted rollback (EISDIR, no race), and an existing failure-injection
-test already executed it - so the ignore was not merely stale but false over a line the profile
-counted as covered. That the impl-review focus item still did not stop it at write time is the
-signal to climb a rung: a mechanical "a `coverage-ignore` line the coverage profile records as
-executed is a false ignore" check in `cmd/covercheck` would catch this whole ignored-but-covered
-class deterministically (deferred follow-up). A seventh recurrence (the 2026-07-30 merge-aggregate
-effort) added a shape the earlier six do not cover: the ignore was not merely false, the guarded
-call was a REGRESSION. A new `MERGE_HEAD` probe was added to the staged check with an ignore
-claiming the containing-checkout walk could not fail, because the index read above had already
-resolved the repository. go-git's index read follows a symlinked `.git`; the control-root rules
-refuse one, so a layout that worked before the probe existed began erroring. The caller now
-degrades to the stricter contract instead of propagating. The same function carried a second
-false ignore in the same commit, that `lstat` reports only an inode or `os.ErrNotExist` absent a
-fault: a gitdir pointer naming a regular file yields ENOTDIR with nothing racing. So when adding
-a probe to an existing path, ask what the path tolerated before the probe, not only whether the
-new branch is reachable; and enumerate a syscall's error surface rather than reasoning about it,
-since two of this session's three wrong ignores were errno claims.
-
-An eighth recurrence (the 2026-07-30 state-ownership conversion) is the one that should settle
-the deferral above, because it finally measures its cost. Terminal review refuted five of that
-session's justifications BY EXECUTION, and the verify pass then refuted a sixth that the fix
-commit had itself introduced while removing the other five. Two shapes are worth naming. First,
-three ignores asserted "tested elsewhere" rather than unreachability, which this entry and the
-review focus item both already forbid in as many words, so prose failed at the exact sentence
-that describes the mistake. Second, a refactor that moves a derivation EARLIER relocates every
-fault it can raise in BOTH directions: three new ignores were needed because deriving at
-operation entry pre-empted faults that used to surface deeper, while an inherited ignore became
-reachable and had to go. Re-derive every ignore in the blast radius rather than assuming a
-conversion only deletes them.
-
-THE COST ESTIMATE THE DEFERRAL LACKED: a reviewer sweep for excluded-but-covered guarded bodies
-found EIGHT in the repository, of which seven predate that session. So the `cmd/covercheck` rule
-is implementable and would have caught the worst finding of that review automatically, but
-landing it means fixing eight existing sites across several efforts' territory, which is why it
-stays deferred rather than cheap. It is now carried as a roadmap item instead of only as this
-sentence.
-
-## Two V2-ADR fixture traps in Go tests, each hit twice in one session
-
-_Domains: adr-system, tooling_
-
-Building a current-state-v2 ADR fixture in a Go test hits two parser rules that are easy to
-miss because the failure names the rule rather than the fixture. First, a record left
-`Implementing` needs at least one Applied operation, but it may have no Remaining operation,
-so a fully applied fixture is a valid nonterminal state. Second, ADR numbering must be
-contiguous from 1, so a fixture that jumps to ADR-0003 to avoid colliding with an existing
-ADR-0001 fails with "ADR numbers are not contiguous from 1: missing [2]"; add a filler ADR at
-the skipped number. Both bit twice in the 2026-07-30 merge-aggregate effort, in two different
-packages, because the second author of a fixture rediscovers them from the error text.
-Use `publicV2ADR` and `publicTopicClaims` in `internal/project` rather than hand-rolling the
-markdown: they compute the `content-sha256` for you, which is the third trap in the same area.
-The lifecycle rules these fixtures trip over are documented separately under the plan-authoring
-entry on V2 batch choreography; this entry is about reproducing them in test data.
+When refactoring a line carrying `coverage-ignore`, re-run its reachability argument against
+the new state space and delete or cover it if the profile now executes the branch. The local
+audit warning is advisory, not proof that the exclusion remains true.
 
 ## An attribute-filtered pinned-set test exempts every other attribute value
 
@@ -1001,27 +362,10 @@ filtering to the bucket you thought of first.
 
 _Domains: invariants_
 
-The backing checker proves that a test-scoped marker exists, not that the marked test
-exercises every clause of the claim. ADR-0143's first implementation had markers for all
-nine changed invariants, yet several tests covered only one lifecycle status or direction;
-one append-only test even repeated an operation in cases labeled valid. Per-task review had
-already asked for stronger proof coverage, but the terminal Phase 4 review still found the
-same pattern across cutoff routing, abandonment, bidirectionality, atomicity, and sequence
-ordering. When adding or moving a proof marker, read the claim as a conjunction and enumerate
-each status, direction, and failure branch it names. Include at least one refuting case per
-clause; marker presence and a green suite are not evidence of semantic completeness.
-
-It recurred in ADR-0179 Part B despite this entry, so treat the prose rule as insufficient
-on its own and verify mechanically. A combined claim covering two rendered agent bodies
-enumerated roughly twenty clauses while its two golden tests pinned eleven; nine clauses
-could be deleted from the templates with the whole suite still green. The failure mode is
-specific to authoring a claim by *moving* existing prose: the clause count grows with the
-sentence while the proof stays at one representative literal per section. The check is
-cheap and deterministic, so run it rather than reasoning about it: delete each clause the
-sentence names, one at a time, and confirm the suite goes red. A clause that survives
-deletion is unbacked no matter how many markers the claim carries. Note also that a claim
-quantifying over several artifacts ("neither rendered body carries...") needs its negative
-assertion on every artifact it quantifies over, not just the first.
+The backing checker proves that a named test-scoped marker exists, not that the test
+exercises every clause of the claim. Read the claim as a conjunction, identify each status,
+direction, artifact, and failure branch it names, and confirm each clause has a refuting case.
+For rendered prose claims, delete each named clause in turn and watch the suite fail.
 
 ## A Proposed ADR's same-commit state-doc update must not speak in present tense
 
@@ -1034,21 +378,6 @@ permanently false if the ADR is rejected (ADR-0084 review, 2026-07-09). Write th
 propose-commit sentence in decision tense anchored to the status, "ADR-NNNN (Proposed)
 narrows the policy ... and will remove ...", and flip it to present tense in the
 implementation commit that makes it true, alongside the status flip.
-
-## Retiring an invariant claim couples the marker edit to the ADR's Implemented flip
-
-_Domains: invariants_
-
-A `Backing: test` invariant claim must stay backed by its proof marker until the ADR's
-`remove` (or backing-changing `update`) operation applies, and that happens only in the
-transaction that flips the ADR to `Implemented` (`awf check staged` verifies the claim
-mutation and the ADR flip together). So a commit that removes or renames the proof marker
-cannot land while its ADR is still Proposed, and the green-gate-per-commit rule then forces
-the marker edit and the ADR's `Implemented` flip into one commit. The ADR-0085 implementation
-(2026-07-10) planned "feature commit, then flip commit" and hit the legacy form of this at the
-first `./x check`. When an effort removes or retargets an invariant claim, plan the final
-implementation commit to include both the claim mutation and the ADR status flip from the
-start.
 
 ## An unescaped consumable placeholder in a part is silently rewritten, check-clean
 
@@ -1082,99 +411,11 @@ an earlier check, grep the tests for fixtures corrupting the state it newly read
 
 ## Parallel sessions share one git index
 
-Two agent sessions (or an agent and a human) working in the same checkout share the staging
-area: a bare `git commit` after `git add <own files>` commits the *whole index*, silently
-sweeping whatever the other session had staged; it happened between the ADR-0087 and
-ADR-0088 efforts (2026-07-10), folding one effort's staged review fixes into the other's
-feature commit. Repair: `git reset --soft HEAD~1`, then re-commit with an explicit pathspec
-(`git commit -m ... -- <paths>`), which also leaves the foreign entries staged exactly as
-found. Prevention: when a `git status` shows staged entries you did not stage, commit with a
-pathspec (tracked files only; stage a brand-new file first) or move one effort to a
-worktree; also prefer targeted reverts over `git checkout <file>` while your own edits are
-uncommitted, which is how a verify-mutation revert erased a just-written test the same day.
-
-**This recurred within hours of being recorded** (same day, opposite direction: the
-ADR-0088 session's feature commit swept the ADR-0089 effort's `render.go` hunks, leaving a
-commit that does not compile standalone; green-gate-per-commit is unenforceable across a
-shared tree because the hook validates the *tree*, not the commit). Pathspec discipline
-cannot separate two efforts' hunks inside one file, and prose did not prevent the second
-occurrence. The real rule: **parallel sessions get separate git worktrees, full stop.** A
-shared checkout is single-writer; the moment a second effort starts, move it
-(`git worktree add`) or serialize.
-
-**Third occurrence, 2026-07-19, in a direction the first two did not cover.** A concurrent
-session did not merely add to the index, it reverted an uncommitted edit off disk between
-one commit's gate run and the next. The result was a commit whose message described an ADR
-amendment the commit did not contain: only the test half landed, leaving a proof marker
-asserting the opposite of the invariant sentence it was marked as proving. The gate could
-not see it, because prose is not gated and the *tree* was green both times. The same
-session's in-progress ADR was swept in by a `git add -A`, which AGENTS.md forbids in as
-many words and which is what let the mismatch pass unnoticed.
-
-So the rule has a second half: **stage named paths, and verify what the commit CONTAINS,
-not just that the gate was green.** `git show --stat HEAD` after committing costs nothing
-and is the only thing that catches an edit lost to another writer. A green gate before the
-commit proves the tree was good at that instant; it says nothing about what got captured.
-
-**Fourth occurrence, 2026-07-23, with a new enabler: the stale session-start snapshot.**
-A tag-advisory bugfix session staged its two named files and committed, sweeping the
-concurrent ADR-0155 effort's staged review amendments into a `fix(tooling)` commit. The
-session had "verified" a clean tree only from its harness's start-of-conversation status
-snapshot, taken before the other effort staged; it ran no fresh `git status` before
-committing and no `git show --stat HEAD` after, so the fresh-context impl review, not the
-committer, caught the sweep. Every prior prevention line existed in this file and none
-fired. The check that costs nothing and is always current: run `git status` in the same
-breath as `git add`, and read `git show --stat HEAD` before calling the commit done.
-Fourth prose failure is the promotion signal; the deterministic follow-up (an advisory
-audit rule flagging a code-scoped commit that also mutates an ADR body) is on the roadmap.
-
-**Fifth occurrence, 2026-07-23, hours after the fourth, from the opposite seat.** The
-ADR-0155 effort's own final commit was a bare `git commit` (no pathspec) that swept the
-concurrent ADR-0156 effort's staged plan file into the 0155 claims commit. The victim
-session had followed every rule above (fresh status, staged its one file, pathspec
-commit); pathspec discipline on one side is powerless against a bare commit on the
-other, and the victim sees only "nothing to commit" afterwards. Detection from the
-victim seat: when a staged file vanishes, `git log --oneline -- <file>` names the commit
-that captured it. The rule gains its converse: **every commit in a shared checkout is a
-pathspec commit, including your effort's final one** - and the audit-rule follow-up on
-the roadmap now has five occurrences behind it.
-
-**Scope after ADR-0189 (recorded 2026-07-31).** Managed worktrees are now the default
-execution location: `awf effort new --slug <slug> "<outcome>"` creates one and directs execution there, so
-cross-effort work is separated by default and every occurrence above predates that
-cutover. The discipline in this entry still binds the residual shared-tree cases:
-non-effort work in the primary checkout, two sessions inside one checkout or worktree,
-and the effort-owned memory files that always live under the primary `.awf/efforts/`.
-The live hazard shape under the worktree-default topology is different - a
-primary-checkout path silently splitting a worktree transaction - and has its own entry.
-
-**Sixth occurrence, 2026-07-31, and the first where the sweep rode a `git checkout`.**
-`git checkout -- <path>` restores from the INDEX, not from HEAD, and in a shared checkout
-the index is another writer's mutable state. A two-file doc edit (dropping two
-`proseGate.exemptions` entries and the glyph they covered) was left uncommitted in the
-primary checkout while a merge was open there; the index absorbed the working-tree edits,
-so the intended `git checkout -- <paths>` revert restored that same content back onto disk
-instead of dropping it, and it landed in the merge commit. The result is an evil merge:
-`git show <merge>:<path>` carries the change while neither `^1` nor `^2` does, so the
-change was never independently gated and is attributed to an unrelated merge subject.
-Detection is its own trap - `git log -S<string> -- <path>` reports NOTHING, because
-`git log -S` skips merge commits by default; diff the merge against both parents, or pass
-`--diff-merges=first-parent`. The tell at the time was in plain sight and read backwards:
-the file went from ` M` to `M ` across the checkout, i.e. it became STAGED rather than
-clean, which is proof the revert restored rather than discarded. Rule: before reverting
-your own uncommitted hunks in a shared checkout, run `git diff --cached -- <paths>` first;
-if the index already holds your content, `git checkout --` is a no-op that re-lands it, and
-the only safe revert is reverse-applying your own patch (`git apply -R`). Exposure here is
-proportional to how long a merge stays open in a shared checkout, so anything that
-shortens that window shrinks this hazard without removing the underlying rule.
-
-**Sixth occurrence, 2026-07-31, hours after the scope note above was written, inside one
-of its named residual cases.** Integration runs in the primary checkout, and resolving the
-divergent merge with `git add -A` swept a concurrent session's uncommitted prose-exemption
-edit into the merge commit undisclosed; the renewed terminal review caught it. Merge
-resolution is not exempt from the pathspec rule: stage the resolved conflict paths and
-your own renumber edits by name, and run a fresh `git status` first, because integration
-is precisely the moment two sessions' work meets in one index.
+A checkout is single-writer: every session in it shares the worktree and index, so one
+session can stage, revert, or commit another session's changes. Use separate worktrees for
+parallel work. In a residual shared-checkout case, stage and commit named paths, inspect fresh
+status immediately before committing, and verify the resulting commit rather than relying on
+a gate run over the earlier working tree.
 
 ## Link ADRs by their on-disk filename, never by constructing one from the title
 
@@ -1198,24 +439,6 @@ number (`ADR-0092 ... ADR-0092: Title`); plan review caught it. Strip the prefix
 `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
 so the gotcha only surfaces as awf grows ADR-aware tooling.
 
-## Repo opens must resolve the `.git` gitfile (use `internal/git.Open`)
-
-_Domains: tooling_
-
-In a linked worktree (`git worktree add`), and the submodule layout, `.git` is a
-`gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
-`open repo: ... .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
-ADR-0090 impl review in a session worktree; every parallel session uses one). Fixed the
-same day: the open path's `dotGitFs` resolves the pointer and routes shared state through
-the `commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
-`EnableDotGitCommonDir`; regression tests build the worktree layout through the fixture's
-native lane, since go-git cannot create one. The standing rule from the first entry above
-still governs and is now mechanical: awf code opens a repository through
-`internal/git.Open` or `OpenContaining`, never `git.PlainOpen`, which gets neither the
-extensions workaround nor the gitfile resolution. (The helper lived in `internal/audit`
-until ADR-0092's stage-a extracted it into `internal/git`, which ADR-0193 then made the
-single home for every form of Git access.)
-
 ## Section parts carry their own heading
 
 _Domains: rendering_
@@ -1236,41 +459,13 @@ that mattered (an `invariants:` config append vanished this way in the ADR-0090 
 only `tail`-ing the file exposed it). After any compound chain that edits state, verify the
 target's content, not the block's exit status.
 
-## Hand-rolled repo enumeration crosses repository boundaries
+## Reuse the repository boundary for new filesystem walks
 
 _Domains: tooling_
 
-Anything that walks or opens the repo tree itself must define its repository boundary;
-the Go toolchain gets this free (dot-dirs and nested modules are invisible to `./...`),
-hand-rolled walkers and repo opens do not. Three independent instances bit on 2026-07-10
-alone: `awf audit` could not open a linked-worktree checkout (`.git` gitfile, the entry
-above), `TestLoadReadsTreeRoot`'s legacy-ref sweep flagged `internal/migrate` copies
-inside `.claude/worktrees/` session checkouts, and the invariants scanner let markers in
-nested checkouts silently back this project's slugs; the worst shape, a false green in
-both directions. The rule: a filesystem walk prunes any subdirectory carrying its own
-`.git` entry (directory in a primary clone, gitdir-pointer file in a worktree or
-submodule) and takes a deliberate stance on hidden directories; a repo open resolves the
-gitfile layout; enumeration derived from git history (commit diffs, `git ls-files`) is
-immune by construction and preferred where it fits.
-
-## An `invariant:` backing marker must open its own line, not trail a statement
-
-_Domains: invariants_
-
-The current-state marker scanner (`internal/topic`) matches a claim id only when the marker
-opens its line after indentation; `strings.TrimLeft(line, " \t")` must start with the
-configured marker, then `invariant: <domain>/<topic>:<slug> (<name>)`. This is deliberate: a
-mid-line match could sit inside a string literal (a test fixture's source-code string) and
-falsely back a claim. The consequence is a natural-looking backing that silently does not
-count: a trailing
-`clone.Docs = maps.Clone(...) // invariant: <domain>/<topic>:<slug> (<name>)` reads as
-*unbacked*, and the gap hides until the claim is loaded or the ADR's `remove`/`update`
-operation is staged, exactly when the effort is trying to conclude. Put the
-`// invariant: <domain>/<topic>:<slug> (<name>)` on its own line directly above the statement
-it describes. The same line-opening rule is what makes the name requirement work: the
-occurrence search ignores every line that opens with the marker token, so a neighbouring
-marker naming the same unit cannot satisfy it and neither can a doc comment that merely
-mentions the test.
+A new repository walk must use the established nested-Git-root boundary or a Git-derived
+file set. Add cases for linked worktrees and nested repositories; a plain recursive walk can
+silently include another repository's files.
 
 ## Relocating a cross-cutting guard out of a shared helper drops it for internal callers
 
@@ -1328,21 +523,15 @@ stayed clean (the output is exactly what the data says), so only diffing the ren
 the deleted part exposed it. When converting a part-based doc to the sidecar model, strip the
 `\{{=awf:` escapes; verify by rendering and reading the output, not by trusting a clean check.
 
-## A CLI command that re-Opens can't reach an assembly error Open already re-validates
+## Check the Open boundary before ignoring an assembly error
 
 _Domains: tooling_
 
 _Related: ADR-0012, ADR-0092, ADR-0102_
 
-An `awf` command handler that calls `project.Open` and then a project assembly method (e.g.
-`runUncovered` → `Uncovered`) cannot reach an assembly error whose only source is state `Open`
-re-validates. `Open` runs `validateAgainstCatalog`, which reads every domain sidecar; so a
-malformed sidecar faults at `Open`, never at the later assembly call, making that assembly's
-`if err != nil { return err }` branch unreachable from the CLI and a legitimate `// coverage-ignore`
-(the assembly's own error stays covered at the project layer, where the test reuses one `Open`ed
-project). The escape hatch is an error source `Open` does NOT touch: `ContextFor` stays reachable
-because it also parses ADRs and plans. Before coverage-ignoring such a branch, confirm the assembly
-reads nothing beyond what `Open` validates (2026-07-13).
+Before adding `coverage-ignore` to an assembly error, verify whether `Open` already validates
+every input that assembly reads. Retain the branch only when a later-only error source remains
+reachable.
 
 ## A token or convention rename must sweep every rendered doc surface
 
@@ -1385,32 +574,6 @@ went unread until terminal review. Two cheap catches: put `templates/` in the sw
 and read the rendered guide end to end after a shape change instead of only diffing the
 parts you edited.
 
-## Registering a migration has fallout the plan never lists
-
-_Domains: config_
-
-Adding one line to the migration registry moves `migrate.Current()`, and everything
-pinned to the old tip fails at once. ADR-0159's plan specified the migration and its
-test and named none of the rest; assertions in `internal/project/version_test.go` and
-focused `internal/migrate` and `cmd/awf` tests broke. Most want a new number, but two
-need judgment: a fixture asserting the schema is AHEAD must move to tip+1 to stay ahead,
-and each migration's own `TestXIsCurrent` asserts a premise ("this migration is the tip")
-that the next migration falsifies, so it is deleted rather than renumbered while the new
-migration's file adds its own.
-
-The version floor is the part that is easy to get wrong quietly. `minVersionBySchema`
-needs an entry for the new generation at or below `project.Version` (ADR-0049
-Decision 4), and reusing the previous generation's version is only correct while that
-version is UNRELEASED. Generations 17 and 18 both map to 0.22.0 because both landed
-during its cycle; generation 19 landed after 0.22.0 shipped, so mapping it there would
-claim a published binary can render a tree it has no migration for. It maps to 0.23.0
-and the const moves with it, the mid-cycle bump `docs/releasing.md` already prescribes.
-Check the changelog for a released heading before reusing a version.
-
-Finally, registering the migration trips the version gate in the repo's own adopted tree:
-`./x render` and `./x check` refuse until the one root `.awf/awf.lock` is upgraded with
-the source-built binary before render and check.
-
 ## A new config field needs a config-reference live-state projection case
 
 _Domains: config_
@@ -1424,26 +587,6 @@ wrong-but-stable cell never drifts. The impl review caught it only by eye (2026-
 adding a config field that carries a meaningful live value, add its `liveState` case (mirror the
 sibling, `currentState.testGlobs` mirrors `currentState.sources`) and assert the rendered value in a
 `configreference_test.go` case; an `n/a` placeholder for a set top-level field is the smell.
-
-## Referencing a new var in an always-on template shifts that var's consumer set
-
-_Domains: rendering, config_
-
-_Related: ADR-0086, ADR-0088, ADR-0108_
-
-Making a template interpolate `.vars.<x>` for the first time changes which artifacts *consume*
-that var, and if the template is a mandatory always-on singleton, the var is now consumed in
-every project, which two consumer-coupled surfaces encode: the config-reference "Consumed by:"
-golden line (`internal/project/configreference_test.go`) and the unused-var isolation test
-(`internal/project/unused_test.go` `TestPartPlaceholderConsumesVar`, whose premise that a var is
-otherwise-unused in its fixture breaks). ADR-0108 made the `plans-template` singleton reference
-`.vars.gateCmd`, and both tests failed at the gate; the grounding check, the ADR fan-out, the
-plan, plan-review, AND the resync all missed them; only `./x gate` caught it (2026-07-13). The
-render-fan-out sweep is about doc *outputs*; this is a distinct var-*consumer* fan-out. When a
-template starts referencing a var it did not before, grep the tests for that var
-(`grep -rn '"gateCmd"' internal/project/*_test.go`) and update the config-reference "Consumed by"
-golden; if an isolation test used that var precisely because it was unconsumed, switch it to a var
-still not consumed by any mandatory singleton (e.g. `checkCmd`).
 
 ## A code-fence info string chosen as a marker can collide with a Linguist alias
 
@@ -1503,28 +646,6 @@ unknown-kind message; five sites, no central list). Lesson: when adding a config
 list (embed, render block, sweep claim, configspec/reference, enable CLI, example adoption)
 rather than trusting the render to surface the gaps (ADR-0101, ADR-0086, ADR-0088; 2026-07-15).
 
-## `awf new adr` computes the next number from one tree, so parallel worktrees collide
-
-_Domains: adr-system, tooling_
-
-_Related: ADR-0042_
-
-`awf new adr` derives the next sequential number by scanning the *current* tree's
-`docs/decisions/`, so it cannot see a sibling worktree that has already claimed it. Two
-efforts running in parallel worktrees both get the same number and neither command fails:
-the collision only surfaces at merge, as two unrelated ADRs with one number. Hit
-2026-07-15: an `effort/adr-backpointer` worktree branched and took 0116, and a
-concurrent session's `awf new adr` minted 0116 again; the second was renumbered to 0117 by
-amending, which was only cheap because it was unpushed and provably exclusive to `main`
-(`git merge-base --is-ancestor`). Renumbering after a push is not cheap: the number is
-already cited by claim `Origin`/`Revised-by` metadata, `State changes` operations, and INDEX.md.
-
-Before scaffolding an ADR in a parallel-worktree session, check every branch, not just
-yours: `git branch --format='%(refname:short)' | while read b; do git ls-tree -r
---name-only "$b" docs/decisions; done`. The command is the fallible half here; a
-cross-branch check is the reliable half. Fixing this inside `awf new adr` (scan refs, not
-just the worktree) is an open follow-up, deliberately not done as a drive-by.
-
 ## A post-check whose scope is wider than the change's scope is unsatisfiable
 
 _Domains: tooling_
@@ -1552,30 +673,6 @@ resync, all of which independently re-derived the em-dash *counts* and none of w
 executed the command. Grep at the granularity the rule governs (line, literal, heading), and
 when a task's scope is narrower than a file, say so in the probe rather than the prose
 around it.
-
-## Source that is about the banned glyphs must type them as escapes, not literals
-
-_Domains: tooling_
-
-_Related: ADR-0119_
-
-A file whose subject is the banned typographic substitutes (the scanner's rune map, a test
-fixture that plants an em-dash to prove the gate fires, an ADR example) is itself a tracked
-text file the `awf check repo prose` scan reads, so a literal glyph in it is a finding against the
-file that defines or tests the rule. Write the glyph as its Go escape (a backslash-u rune
-or string literal, which compiles to the real rune while the source stays ASCII), exactly as
-`internal/project/residue_scan_test.go`'s `bannedRunes` map and `internal/prosegate`'s
-`Banned` map both do; name it as `U+2014` in prose, config, or YAML.
-
-The trap is that an editor or a Write tool renders a `\u`-escape back as the glyph on screen,
-so a draft typed with real glyphs looks identical to the escaped version and the mistake is
-invisible until a codepoint probe (or the gate) flags it. This bit repeatedly across the
-ADR-0119 implementation: the scanner map and three separate test files were each first
-drafted with literal glyphs. The gate catches it on a tracked file at commit, but a
-work-in-progress file wastes a draft-then-convert cycle. Before writing a file that is about
-the glyphs, reach for the escape first; after, run
-`python3 -c "import sys;print(sum(c in chr(0x2014)+chr(0x2013)+chr(0x2026)+chr(0x2018)+chr(0x2019)+chr(0x201c)+chr(0x201d) for c in open(sys.argv[1]).read()))" <file>`
-and expect `0`.
 
 ## Raw-byte ADR surgery must bound every scan to the frontmatter window
 
@@ -1640,51 +737,6 @@ compare each ADR's Decision item list before and after (identical), and compare 
 whitespace-normalised prose from BOTH sides (identical). A one-sided strip reports every
 pre-existing construct as a change and buries the real finding in false positives.
 
-## Within an Applied batch phase, claim mutations land before `awf render`
-
-_Domains: adr-system_
-
-`awf render` scans current-state markers and hard-refuses a proof marker naming a claim
-that does not exist yet. In an incremental batch phase everything commits as one staged
-transaction, but the working tree still has an order: the ADR-0151 phase-1 implementation
-wrote the marked render tests first and `./x render` refused with "unknown claim ID" until
-the topic-part claim mutations were applied. Within each batch phase, edit the claims and
-the ADR status history, then sync, then run the tests; the commit boundary is unchanged.
-
-## A plan must not pre-compute check-named lifecycle values
-
-_Domains: adr-system_
-
-The frozen content digest is computed over the ADR body and named exactly by
-`awf check staged` on mismatch. A plan writes the event shape and the instruction
-"use exactly the value the staged check names", never a digest, the same way it already
-avoids hard-coded counts.
-
-## A pinned template contract string is usually pinned in more than one test
-
-_Domains: rendering_
-
-Render-contract tests pin exact template strings, and the same string is often pinned by
-several tests with different names: the ADR-0151 `resolveChildModel` signature change was
-swept through the two obvious model tests, passed them, and still failed the gate on
-`TestPiStructuredExplorationContract`, which pinned the old `executionMetadata` call
-shape for its own lens. Before refactoring a pinned string, grep the exact old text
-across all of `internal/`, not just the tests whose names match the feature, and treat
-every hit as part of the sweep.
-
-## Skill prose near a skill name must not use invocation verbs it does not mean
-
-_Domains: rendering_
-
-The evals chain checker classifies a rendered skill line as a handoff when it carries
-both a prefixed skill name and an invocation verb (invoke, call, dispatch, hands off,
-chains through). A guidance sentence appended to the executing-plans companion line used
-"the subagent-dispatch companion" and flipped the pinned non-handoff pair
-`executing-plans->subagent-driven-development` into an invocation line, failing
-`TestWorkflowChainHandoffs`. When extending prose on or near a line naming another
-skill, pick verbs outside the checker's list ("run a long plan through the
-subagent-per-task companion") or move the sentence to its own line away from the name.
-
 ## Record implementation deviations before the terminal artifact transaction
 
 _Domains: adr-system_
@@ -1700,36 +752,13 @@ the plan one last time, update Notes while the plan is still active, then freeze
 finds an omission afterward, preserve history and record the miss in the retrospective rather
 than making the completed plan falsely look prescient.
 
-## A concurrent-number ADR renumber must fold into the rebase replay
-
-_Domains: adr-system_
-
-When a concurrent effort merges an ADR that takes your number, a later standalone
-renumber commit does not make the replay safe: the ADR's introducing commit is replayed
-first and collides with the number already on the new base. `awf check staged` also loads
-the HEAD snapshot, so every intermediate rebased commit must avoid the duplicate identity.
-The working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
-into the conflict resolution of the ADR's introducing commit during the replay; rename
-detection then carries later ADR-editing commits onto the new path. The residue is one
-advisory `adr-status-cochange` audit error (regenerating INDEX.md mid-replay is impossible
-while duplicates exist, so the introducing commit lands without it) and stale numbers in
-the replayed subjects; either rewrite the unmerged branch again to polish them or accept
-and record the audit error before merge.
-
-## Pi extension failure paths must guard old-session UI calls
+## Keep recovery UI writes non-fatal after session disposal
 
 _Domains: rendering_
 
-After Pi begins disposing the old session, `ctx.ui` calls on it can throw. An unguarded
-`ctx.ui.notify` added to the awf-handoff catch block masked the rethrown original error,
-and only the pinned-fork container lane caught it ("post-teardown replacement failure was
-not reported through the extension"); the fake harness models a healthy UI and passed.
-In an extension failure path, wrap recovery UI writes in a swallowing try/catch so the
-rethrow stays the single failure report, order the editor content before any notice that
-claims it exists, and run the full gate tier before concluding any extension
-failure-path change: only the real-Pi lane exercises the disposal boundary. Same session,
-related trap: sanity-check template mutations on file copies, not `git checkout --`,
-which silently reverts a working tree full of unstaged sibling edits.
+In extension failure recovery, swallow UI-write failures so the original error remains
+authoritative, and run the real-Pi lane for changes that cross session teardown. The fake
+harness does not model disposed-session UI behavior.
 
 ## A Decision amendment discovered mid-implementation must be reviewed before the freeze commit
 
@@ -1803,73 +832,13 @@ Then mutate the production order and watch the new test go red. A proof for a ti
 ordering clause is not finished until you have seen it fail; this one was proposed during
 review, built as proposed, and only mutation revealed it was inert.
 
-## handoff_session carries only bounded kickoff prose
-
-_Domains: rendering_
-
-_Related: ADR-0145, ADR-0175_
-
-`handoff_session` accepts only exact bounded `{kickoff}` prose. Checkpoint persistence and
-reorientation belong to workflow guidance, so callers must not supply memory paths or add
-filesystem, ownership, encoding, or effort validation to replacement mechanics.
-
-## A pathspec commit takes the worktree copy of a shared generated file
+## Inspect shared generated files before pathspec commits
 
 _Domains: rendering, tooling_
 
-`git commit <pathspec>` commits the WORKING TREE content of those paths, not the index
-content. When a concurrent session in the same checkout has staged part of a shared
-generated file, the pathspec form silently folds their part into your commit. `.awf/awf.lock`
-is the dangerous case, because every session's `awf render` writes it: on 2026-07-30 another
-session had staged an ADR status flip plus its regenerated `docs/decisions/INDEX.md` plus the
-lock's new `INDEX.md` outputHash, so committing the lock by pathspec without their
-`INDEX.md` would have landed a lock whose recorded hash no file in that commit matched.
-The pre-commit hook does NOT catch this: `awf check staged` validates the staged UNION,
-which is internally consistent, so the broken commit passes the gate and only the next
-person's `awf check` fails. Neither including their `INDEX.md` (splitting their transaction)
-nor including their ADR (committing their work under your message) is acceptable either.
-Before staging a `MM` lock, diff `git show HEAD:.awf/awf.lock` against the worktree copy
-key-by-key and confirm every changed entry is yours; if it is not, the work has to wait for
-their commit or move to a worktree. The same reasoning covers any generated file two
-sessions both regenerate.
-
-## An ADR's frozen digest cannot be read directly
-
-_Domains: adr-system_
-
-_Related: ADR-0134, ADR-0177_
-
-Applying a V2 claim operation needs the frozen `content-sha256` for the status event,
-which `awf check` computes but no command prints on demand, and the obvious way to ask is
-blocked, because claim provenance is enforced in BOTH directions. With the claim authored
-and no matching Applied operation yet, every `awf check` form fails with "cites ADR-NNNN
-without an applied add operation"; remove the claim to get past that and the proof marker
-you already placed becomes a dangling "unknown claim ID". The working method is to write
-the status lines with a deliberately wrong digest (64 zeros) and let `awf check state`
-report the computed one, then fix the line. The digest excludes the Status history, so it
-is stable across the `Implementing` and `Implemented` events and the same value is
-repeated on both.
-
-## A new catalog agent and a generation bump each trip guards the ADR will not list
-
-_Domains: rendering, config_
-
-_Related: ADR-0177_
-
-ADR-0177 enumerated five machine-forced obligations for adding an `AgentSpec` and a plan
-review added a sixth; the gate then found three more that neither had listed. Budget for the
-full set. `TestConditionalTemplatesHaveFallbackCases` walks EVERY catalog agent template, so
-any template with a conditional needs an `unsetFallbackCases` entry in
-`internal/project/spine_test.go`; a second render with empty data inside your own golden test
-does not satisfy it, because the guard reads the case table, not the test body.
-`TestTemplateSourceResidue` forbids ADR citations in shipped templates (ADR-0082), so a
-comment explaining a change must carry the reasoning without the number. A schema-generation
-bump additionally needs a `minVersionBySchema` entry or EVERY gated command refuses before
-rendering, including the upgrade and gate meant to prove the change, and three literals pin
-the old generation: a `Current() != N` assertion, the joined applied-migration list, and
-`version_test.go`'s highest-generation-equals-Version assertion plus its unmapped-generation
-case. Run `./x gate` early rather than at the phase close, since these fail fast and cost a
-round trip each.
+In a shared checkout, compare the worktree and staged copies of any shared generated file,
+especially `.awf/awf.lock`, before committing it by pathspec. Git can take the worktree copy
+and fold another session's generated changes into the commit.
 
 ## A long-lived branch's prose goes stale against the other side with no merge conflict
 
@@ -1895,32 +864,6 @@ status events, required steps) rather than referring to it by name, because an e
 silently becomes exhaustive-and-wrong while a reference stays correct. Expect to find more
 than one instance: correcting the plan's Goal, Architecture summary, Task 4.3, and Notes
 still left the phase header contradicting the task directly below it.
-
-## An Implemented flip cannot be walked back; two guards force a history rewrite
-
-_Domains: adr-system_
-
-_Related: ADR-0186, ADR-0187_
-
-`Implemented` and `Abandoned` are terminal, and ADR-0186 freezes a V2 body's meaning there,
-so flipping early forecloses the amendment window exactly when a late design question wants
-it. Correcting forward is not available. Two independent guards see to that: the staged
-check refuses a claim that disappears without a matching `remove` operation, so the applied
-claims cannot be withdrawn, but an all-Applied Implementing state remains available for
-correction until terminal review settles. The only mechanism that is closed is undoing an
-already Applied claim: that still requires a forward decision, while a material add or update
-correction may use Reapplied throughout Implementing. Treat the flip as the last thing that
-happens after terminal review, and keep every explicit batch with its matching claims.
-(The original note about a terminal event not repeating a `state-sequence` retired with the
-global sequence itself in ADR-0191; Applied events carry operations only.)
-
-This recurred on 2026-08-03 when ADR review requested one direct Implemented transaction
-containing implementation, documentation, claims, and the terminal flip. Plan authoring
-caught that such a commit cannot be independently reviewed before it freezes the ADR. ADR
-and plan authors must model two boundaries explicitly: pre-review implementation commits
-carry their matching tests and behavior documentation, then the settled terminal review
-authorizes the deferred claim/status flip. Never satisfy same-commit documentation advice
-by moving the terminal flip ahead of review.
 
 ## In a managed worktree, a primary-checkout path silently splits the transaction
 
@@ -2003,66 +946,15 @@ with an `assert pattern in source` before the replace. One more trap in the same
 undoing a mutation with `git checkout -- <file>` also discards any UNCOMMITTED real edit
 to that file, so a comment written minutes earlier vanishes with the mutation.
 
-## An unstamped stale-ADR merge is recoverable at commit-msg
-
-_Domains: adr-system, tooling_
-
-A conflict-free merge can assemble an older-format ADR before Git exposes its final
-message and `MERGE_HEAD` parents to awf. The earlier `pre-merge-commit` hook therefore
-cannot decide the exception. `commit-msg` is definitive: the result must match a paired
-incoming-parent record except for sanctioned numbering substitutions, and the final
-trailer block must carry adjacent `AWF-Allow-Version: <marker-or-legacy>` and
-`AWF-Allow-Reason: <nonempty reason>` lines. If that check refuses, do not repeat the
-merge or retrofit the ADR. Git preserves the index and `MERGE_HEAD`; correct the message
-trailers and run `git commit` to finish the existing merge. Malformed `AWF-Allow-`
-syntax refuses rather than becoming inert prose. A proactive agent may use
-`git merge --no-commit --no-ff`, while a true fast-forward has no merge commit and needs
-no authorization.
-
-## An applied claim operation is corrected by Reapplied, not a second declaration
-
-_Domains: adr-system_
-
-_Related: ADR-0134, ADR-0188, ADR-0191, ADR-0212_
-
-An Amended event changes a non-terminal ADR's decision content but authorizes no claim
-mutation. If an operation has not been Applied, amend that declaration directly. If an add
-or update has already been Applied and the ADR remains Implementing, append a
-`Reapplied; operations:` event in the same commit as one further material correction,
-including after every declared operation is Applied. The declaration remains unique,
-progress still counts it once, and
-provenance stays exactly as its first application wrote it: an update preserves the
-existing canonical Revised-by entry, while an add preserves its Origin and byte-identical
-Revised-by list. The same operation may be Reapplied again while the window remains open.
-Do not declare the operation twice or encode the correction as a second Applied event; both
-forms are refused and hide whether the repeat is intentional. Reapplied also refuses remove
-operations, an operation with no earlier Applied occurrence, and events after a terminal
-status. Those cases require a follow-up ADR or, when the claim
-identity itself must change, remove plus add. Remember that bare `awf check` examines the
-current tree, while `awf check staged` proves the Reapplied event and its immediate claim
-mutation are one authored transaction.
-
-## A stale merge first parent must parse under the result checker's marker grammar
+## Port a stale branch before merging a breaking marker grammar
 
 _Domains: invariants, adr-system, tooling_
 
 _Related: ADR-0205, ADR-0206_
 
-A long-lived effort can predate a breaking proof-marker grammar while main already enforces
-it. Merging main into that effort does not make the old first parent disappear: staged
-transition validation loads both universes with the merged binary, so it can reject the
-branch-side tree before examining the correctly migrated result. The glossary integration
-hit this when ADR-0205 required every `invariant:` marker to name its proving unit. Main's
-merge result had named markers, but the branch parent still carried the old spelling, and
-`awf check --staged` stopped on that parent.
-
-Port the compatibility half before merging: first land the parser that accepts both old and
-named markers, then land the mechanical marker-name migration while the branch's own gate
-can still validate each commit. Name branch-only markers in the same preparation. Only then
-merge the enforcing side. Do not bypass the hook or reverse the settled merge direction;
-both hide the invalid first-parent transition rather than making it replayable. This is a
-general stale-branch rule: when a new checker grammar is not backward-readable, inspect what
-the merged checker must load from HEAD, not only whether the result tree has migrated.
+Before merging a checker that cannot read the old marker grammar, land compatibility parsing
+and migrate branch-only markers first. Staged validation reads the stale first parent as well
+as the result, so a correct merged tree alone is insufficient.
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

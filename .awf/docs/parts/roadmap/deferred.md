@@ -102,7 +102,7 @@ to carry.
 ## Mechanically catching a commit that does not contain what it claims
 
 Three times now a concurrent session in one checkout has produced a commit
-whose contents do not match its message (the pitfalls entry records all three).
+whose contents do not match its message.
 The 2026-07-19 instance was the worst shape: an ADR amendment the message
 described in detail was absent from the commit, leaving a proof marker
 asserting the opposite of the sentence it was marked as proving. No gate can
@@ -133,7 +133,7 @@ mutates digest-covered content, establishing the first stamp over unreviewed con
 transaction. A direct terminal flip also freezes that content immediately. The 0154 effort did exactly this when its direct Implemented flip also landed
 the forward-only resolution clause, and only reviewer diligence caught it afterwards. Candidate
 `awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
-their own decision; the pitfalls entry recording the occurrence is the interim memory.
+their own decision; the active pitfalls rule still depends on manual review.
 
 ## Decomposing the `internal/project` god object
 
@@ -157,7 +157,7 @@ territory rather than silent scope; this entry is that record.
 
 ## A `coverage-ignore` the profile records as executed is a false ignore
 
-The `coverage-ignore-reachability` review item and the pitfalls entry behind it have now failed
+The `coverage-ignore-reachability` review item and the manual pitfalls rule have now failed
 to prevent eight recurrences of a false exclusion. Both are rung-3 and rung-4 controls:
 probabilistic, and applied only when a reviewer runs. One whole subclass is mechanically
 decidable and needs no judgement at all: an exclusion sitting on a guarded body that the
