@@ -13,6 +13,24 @@ _Domains: tooling_
 `git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
 
 
+## Applying every state operation does not mean terminal review has settled
+
+_Domains: adr-system_
+
+While planning Sundial removal, the agent read the lifecycle's strict-subset rule as
+requiring one unrelated operation to remain unapplied until terminal review. It proposed
+broadening an evaluation claim solely so the four truthful removal operations could land
+before the final status flip. That confuses two independent facts: State changes record
+which current-state mutations have landed, while `Implemented` also says implementation is
+complete and terminal review has settled. Applying every declared operation during
+implementation therefore must not force the terminal status before review.
+
+Do not pad an ADR with a synthetic update, defer a truthful claim mutation, or preserve a
+false claim merely to reserve work for the reviewer. Let all real operations become Applied,
+keep the ADR nonterminal while review runs, and append `Implemented` only after review
+settles. If instructions or validation reject an all-applied nonterminal ADR, surface that as
+a lifecycle-model defect rather than distorting the decision or plan to satisfy it.
+
 ## An intermediate search expectation must respect deferred claim operations
 
 _Domains: adr-system, rendering_
