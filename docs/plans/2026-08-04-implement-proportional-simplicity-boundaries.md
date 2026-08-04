@@ -14,12 +14,15 @@ Render a proportional-simplicity boundary that settles material design choices b
 
 One canonical rule remains in the maintainable-code guide and projects a concise global instruction through the agent guide. Existing workflow, implementation, and reviewer templates receive stage-local obligations; existing rendering tests back the changed current-state claims. One coherent implementation transaction applies all five ADR operations because the template prose, proof assertions, rendered outputs, and claims describe one indivisible workflow contract.
 
+Every repository path below is relative to the managed worktree `/home/hypno/Projects/agentic-workflows/.awf/worktrees/simplicity-guardrails`.
+
 ## Phase 1: Render and apply the simplicity boundary
 
 **Execution mode: subagent-driven.**
 Completes: ["simplicity-guidance", "approval-boundary", "review-restraint", "authority-backed", "render-green"]
 
 ### Task 1.1: Establish the canonical rule and proportionate plan selection
+Latitude: exact
 Applying: ["proportional-simplicity-boundaries:simplest-sufficient-default", "proportional-simplicity-boundaries:proportionate-planning", "proportional-simplicity-boundaries:judgment-not-mechanism"]
 
 Before dispatch, confirm the phase starts clean and green: `git status --short` prints no output, `./x check` reports clean, and `./x gate` passes.
@@ -31,24 +34,26 @@ Update the Workflow section of `templates/agents-doc/AGENTS.md.tmpl` with one co
 Update the planning paragraph in `templates/docs/workflow.md.tmpl` and When to invoke in `templates/skills/writing-plans/SKILL.md.tmpl`: a plan is warranted when sequencing, coordination, or resumability materially helps; remove "When in doubt, write the plan." State that a plan records and operationalizes approved choices rather than inventing speculative structure, checks, or work. Keep the established complex examples only where they satisfy this criterion.
 
 ### Task 1.2: Enforce the approved boundary at design and implementation stages
+Latitude: exact
 Applying: ["proportional-simplicity-boundaries:pre-implementation-simplicity-contract", "proportional-simplicity-boundaries:material-deviation-approval", "proportional-simplicity-boundaries:stage-local-enforcement", "proportional-simplicity-boundaries:judgment-not-mechanism"]
 
 Update `templates/skills/brainstorming/SKILL.md.tmpl` so its scaled design sections settle a proportionate simplicity contract before approval: scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. A straightforward change may settle these in a few sentences; do not add a separate stage or fixed form. The final approved design becomes the implementation boundary.
 
 Add concise, context-specific preservation language to `templates/skills/executing-direct/SKILL.md.tmpl`, `templates/skills/executing-plans/SKILL.md.tmpl`, `templates/skills/subagent-driven-development/SKILL.md.tmpl`, and `templates/skills/bugfix/SKILL.md.tmpl`. A newly discovered need affecting behavior, scope, structure, dependencies, patterns, checks, or testing strategy stops further mutation and returns to the user with the changed fact, why the approved approach no longer fits, affected approved categories, and simplest viable options. Equivalent mechanical choices remain autonomous. Preserve each skill's existing ownership and escalation structure rather than introducing a shared partial.
 
-Update `templates/skills/tdd/SKILL.md.tmpl` so tests, checks, seams, and harness work are grounded only in changed behavior, a demonstrated regression, an existing contract, or an applicable invariant. Reject speculative test or policy machinery while retaining the mandatory red-green discipline and project gate.
+Update `templates/skills/tdd/SKILL.md.tmpl` so tests, checks, seams, and harness work are grounded only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant. Reject speculative test or policy machinery while retaining the mandatory red-green discipline and project gate. Apply the same material-deviation boundary as the other implementation paths: a newly discovered need affecting behavior, scope, structure, dependencies, patterns, checks, or testing strategy stops further mutation and returns to the user, while equivalent mechanical choices remain autonomous.
 
 Update `templates/agents/implementer.md.tmpl` to preserve the same material boundary in a no-user child. When an invalidating source fact requires user approval, the implementer stops before the affected mutation and reports the fact, affected categories, and simplest viable options. Adjust the closed stopped outcome so it accepts either a named failing check with actual output or an approval-requiring invalidating source fact; retain status, completed work, remaining work, and attempts in both cases. Do not create a third outcome or require a fabricated failing check.
 
 ### Task 1.3: Add proportionate review restraint and focused semantic proofs
+Latitude: exact
 Applying: ["proportional-simplicity-boundaries:stage-local-enforcement", "proportional-simplicity-boundaries:judgment-not-mechanism"]
 
 Update the universal maintainable-design lens in `templates/agents/plan-reviewer.md.tmpl` to flag unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. It must not demand additions merely because more structure, testing, cleanup, or validation is imaginable. Apply the equivalent rule to `templates/agents/code-reviewer.md.tmpl`, preserving report-only review and existing correctness obligations.
 
 Extend existing tests rather than adding a framework or prose-wide scanner:
 
-- In `internal/project/docs_sections_test.go`, extend `TestMaintainableCodeDesignGuide` to assert the canonical simplest-sufficient rule and its four grounds without freezing full sentences.
+- In `internal/project/docs_sections_test.go`, extend `TestMaintainableCodeDesignGuide` to assert the canonical simplest-sufficient rule and its four grounds without freezing full sentences. Add the `rendering/guide-and-doc-templates:maintainable-code-design-guide (TestWorkflowDocChainOrder)` proof marker to `TestWorkflowDocChainOrder` and extend it to assert the proportionate workflow plan-selection semantics.
 - In `internal/project/spine_test.go`, add the `rendering/guide-and-doc-templates:maintainable-code-design-guide (TestAgentsDocGuide)` proof marker and extend `TestAgentsDocGuide` to assert the concise global projection.
 - Add the `rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMaintainableCodeStageCoverage)` proof marker to `TestMaintainableCodeStageCoverage`; extend that test's per-skill expectations for the approved contract, plan-selection rule, all four implementation paths, TDD restraint, and the material-deviation categories. Assert equivalent mechanical autonomy where implementation paths render it.
 - Extend `TestImplementerAgent` for the approval-requiring stopped shape and confirm no failing check is required for that alternative.
@@ -57,8 +62,13 @@ Extend existing tests rather than adding a framework or prose-wide scanner:
 Assertions pin essential semantics and the complete named surface set, not exact paragraphs or formatting. Do not add source-substring checks, a new linter, or a standalone test helper for this change.
 
 ### Task 1.4: Apply authority, render adopters, and close green
+Kind: batch
 Latitude: exact
 Applying: ["proportional-simplicity-boundaries:simplest-sufficient-default", "proportional-simplicity-boundaries:pre-implementation-simplicity-contract", "proportional-simplicity-boundaries:material-deviation-approval", "proportional-simplicity-boundaries:proportionate-planning", "proportional-simplicity-boundaries:stage-local-enforcement", "proportional-simplicity-boundaries:judgment-not-mechanism"]
+Paths: [".awf/topics/parts/rendering/guide-and-doc-templates/current-state.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", "changelog/CHANGELOG.md", "docs/decisions/proportional-simplicity-boundaries.md", ".awf/awf.lock", "docs/decisions/INDEX.md", "docs/topics/rendering/guide-and-doc-templates.md", "docs/topics/rendering/workflow-skill-templates.md", "AGENTS.md", "docs/maintainable-code-design.md", "docs/workflow.md", "glob:.pi/agents/*.md", "glob:.claude/agents/*.md", "glob:.pi/skills/awf-*/SKILL.md", "glob:.claude/skills/awf-*/SKILL.md", "examples/sundial/.awf/awf.lock", "examples/sundial/AGENTS.md", "examples/sundial/docs/maintainable-code-design.md", "examples/sundial/docs/workflow.md", "glob:examples/sundial/.pi/agents/*.md", "glob:examples/sundial/.claude/agents/*.md", "glob:examples/sundial/.pi/skills/sundial-*/SKILL.md", "glob:examples/sundial/.claude/skills/sundial-*/SKILL.md"]
+Representative: `templates/skills/brainstorming/SKILL.md.tmpl` renders the approved simplicity contract into both root runtime skill families, and the two current-state parts render their updated claims into the named topic documents.
+Edge: `templates/agents/implementer.md.tmpl` renders the approval-requiring stopped alternative for both runtimes, while Sundial receives the same generic semantics under its own prefix and lock without project-specific prose.
+Post-check: After `./x render`, run `bash -c 'git diff --name-only | while IFS= read -r p; do case "$p" in .awf/awf.lock|.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md|.awf/topics/parts/rendering/workflow-skill-templates/current-state.md|changelog/CHANGELOG.md|docs/decisions/proportional-simplicity-boundaries.md|docs/decisions/INDEX.md|docs/plans/2026-08-04-implement-proportional-simplicity-boundaries.md|docs/topics/rendering/guide-and-doc-templates.md|docs/topics/rendering/workflow-skill-templates.md|AGENTS.md|docs/maintainable-code-design.md|docs/workflow.md|templates/docs/maintainable-code-design.md.tmpl|templates/docs/workflow.md.tmpl|templates/agents-doc/AGENTS.md.tmpl|templates/skills/brainstorming/SKILL.md.tmpl|templates/skills/writing-plans/SKILL.md.tmpl|templates/skills/executing-direct/SKILL.md.tmpl|templates/skills/executing-plans/SKILL.md.tmpl|templates/skills/subagent-driven-development/SKILL.md.tmpl|templates/skills/bugfix/SKILL.md.tmpl|templates/skills/tdd/SKILL.md.tmpl|templates/agents/implementer.md.tmpl|templates/agents/plan-reviewer.md.tmpl|templates/agents/code-reviewer.md.tmpl|internal/project/docs_sections_test.go|internal/project/spine_test.go|.pi/agents/*.md|.claude/agents/*.md|.pi/skills/awf-*/SKILL.md|.claude/skills/awf-*/SKILL.md|examples/sundial/.awf/awf.lock|examples/sundial/AGENTS.md|examples/sundial/docs/maintainable-code-design.md|examples/sundial/docs/workflow.md|examples/sundial/.pi/agents/*.md|examples/sundial/.claude/agents/*.md|examples/sundial/.pi/skills/sundial-*/SKILL.md|examples/sundial/.claude/skills/sundial-*/SKILL.md) ;; *) printf "%s\n" "$p";; esac; done'`; it prints no output.
 
 In `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`, update `maintainable-code-design-guide` to own the canonical simplest-sufficient semantics, its valid grounds, the concise agent-guide projection, proportionate workflow plan selection, and coherent adopter-neutral rendering. Preserve Origin, append `ADR-proportional-simplicity-boundaries` to Revised-by, and retain `Backing: test`.
 
@@ -77,7 +87,7 @@ Run `./x render`. It must regenerate root outputs, both runtime targets, the Sun
 
 ### Phase close
 
-Stage the complete transaction explicitly, including templates, tests, topic parts, ADR lifecycle files, changelog, lock, and every rendered output. Run `awf check staged` and `./x gate`; both pass. Create the single phase-closing commit:
+Record any implementation finding in Notes but leave plan frontmatter `status: Proposed`; the governed terminal-review transaction freezes it only after review settles. Stage the complete transaction explicitly, including templates, tests, topic parts, ADR lifecycle files, changelog, lock, and every rendered output. Run `./awf check staged` and `./x gate`; both pass. Create the single phase-closing commit:
 
 ```commit
 feat(rendering): add proportional simplicity guardrails
@@ -94,3 +104,5 @@ feat(rendering): add proportional simplicity guardrails
 ## Notes
 
 Record deviations, review findings, and any exact rendered-output surprise before the plan freezes. The settled design prohibits a new simplicity checker, schema, shared enforcement engine, or test framework.
+
+Plan-review settlement: the plan remains Proposed through implementation and freezes only in the deferred terminal-review transaction, per the active plan lifecycle contract. Repository-relative `Paths:` are intentional because plan-v2 scope entries are root-confined repository selectors; the absolute managed-worktree root above supplies execution location without encoding invalid absolute scope entries.
