@@ -106,3 +106,5 @@ feat(rendering): add proportional simplicity guardrails
 Record deviations, review findings, and any exact rendered-output surprise before the plan freezes. The settled design prohibits a new simplicity checker, schema, shared enforcement engine, or test framework.
 
 Plan-review settlement: the plan remains Proposed through implementation and freezes only in the deferred terminal-review transaction, per the active plan lifecycle contract. Repository-relative `Paths:` are intentional because plan-v2 scope entries are root-confined repository selectors; the absolute managed-worktree root above supplies execution location without encoding invalid absolute scope entries.
+
+Phase-review settlement: the project-authored `.awf/parts/workflow/chain.md` fully replaces the changed workflow template section, so the initial render omitted the root workflow's proportionate-planning semantics. The user approved adding the concise equivalent to that existing override, rerendering, and strengthening the two incomplete semantic proofs; no new mechanism or output surface was introduced.
