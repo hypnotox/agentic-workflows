@@ -24,16 +24,16 @@ closes structural adoption and exact public-contract coverage. Current-state ope
 with their matching implementation; the three whole-interface claims remain deferred until settled
 terminal implementation review.
 
-## Phase 1: Establish the closed presentation tree
+## Phase 1: Establish the presentation core
 
 **Execution mode: subagent-driven.**
 
-Advances: ["ordinary-output-contract", "typed-output-boundary"]
-Completes: ["closed-presentation-tree"]
+Advances: ["closed-presentation-tree", "ordinary-output-contract", "typed-output-boundary"]
+Completes: ["presentation-core"]
 
-### Task 1.1: Specify and implement the presentation grammar
+### Task 1.1: Specify and implement the live presentation core
 Latitude: exact
-Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:closed-presentation-tree", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:package-and-authority-home", "structured-agent-oriented-cli-presentation:claim-backing"]
+Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:package-and-authority-home"]
 Paths: ["internal/presentation/tree.go", "internal/presentation/values.go", "internal/presentation/render.go", "internal/presentation/presentation_test.go", "internal/presentation/testdata/"]
 
 Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
@@ -41,30 +41,24 @@ Before editing, require `git status --short` to print nothing, `./x check` to ex
 
 Create `internal/presentation` with no dependency outside the Go standard library. Add a one-sentence
 package comment stating that it owns the closed CLI presentation grammar, and document every exported
-type, constructor, and function. Export only the constructors and representation types needed by
-real consumers in this phase and later phases. Model `Document`,
-`Field`, `Section`, `List`, `RecordGroup`, fixed-arity `Record`, and `Steps` as a closed tree; do not
-expose a raw node, alternate renderer, visitor, domain field, or generic map. Enforce the ADR's exact
-root child ordering, section child matrix, three-level section bound, lowercase label grammar,
-nonempty shapes, newline rejection, prose whitespace normalization, literal horizontal-space
-preservation, compact-record escaping, deterministic order, blank-line matrix, and one terminal
-newline. Validate the complete tree into a buffer before exactly one destination write.
+type, constructor, and function. Export only `Document`, `Field`, their value constructors, and the
+renderer APIs exercised by the version consumer in this phase. Enforce lowercase label grammar,
+nonempty scalar values, CR/LF rejection, prose whitespace normalization, literal horizontal-space
+preservation, root Field ordering, no leading or inter-field blank line, one terminal newline, and
+complete validation into a buffer before exactly one destination write. Do not add Section, List,
+RecordGroup, Record, Steps, a standard shape, or the prompt operation before its first production
+consumer in a later phase; do not expose a raw node, alternate renderer, visitor, domain field, or
+generic map.
 
-Do not add any standard shape or prompt operation in this phase. Each arrives with its first live
-production consumer in Phases 2-6 so every phase remains dead-code clean.
-
-Drive implementation through table tests covering every admitted and rejected child transition,
-root ordering permutation, depth boundary, label/value failure, whitespace mode, record arity,
-escaping, atomic-write failure, blank-line combination, tree rendering through the live version consumer.
-Long successful examples belong in checked-in `testdata`; no update flag or snapshot generator may
-rewrite them. Put this exact marker on the named proof unit:
-
-```go
-// invariant: code-design/presentation-ownership:closed-presentation-tree (TestPresentationTreeContract)
-```
+Drive implementation through table tests covering every admitted and rejected core transition,
+label/value failures, both whitespace modes, atomic-write failure, root Field ordering, blank-line
+behavior, and tree rendering through the live version consumer. Long successful examples belong in
+checked-in `testdata`; no update flag or snapshot generator may rewrite them. Name the core unit
+`TestPresentationCore`; the complete `TestPresentationTreeContract` proof arrives with the remaining
+live node APIs and its claim in Phase 3.
 
 Run `gofmt -w internal/presentation/*.go` and
-`go test ./internal/presentation -run TestPresentationTreeContract`; both must succeed.
+`go test ./internal/presentation -run TestPresentationCore`; both must succeed.
 
 ### Task 1.2: Convert version output as the first production consumer
 Kind: batch
@@ -86,16 +80,15 @@ Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:package-and-authority-home", "structured-agent-oriented-cli-presentation:claim-backing"]
 Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/domains/code-design.yaml", ".awf/topics/parts/code-design/presentation-ownership/current-state.md", "docs/topics/code-design/presentation-ownership.md", "docs/domains/code-design.md", "docs/decisions/INDEX.md", ".awf/awf.lock", "examples/sundial/.awf/awf.lock"]
 Representative: "Revise `model-owner-renders` so result owners map semantics into the central representation while `internal/presentation` alone validates and renders syntax, preserving its existing Origin/Revised-by chain before appending this ADR."
-Edge: "Add `closed-presentation-tree` with this ADR as Origin and `Backing: test`; do not apply any tooling claim or describe unconverted command output as current reality."
-Post-check: "After `./x render`, `./x check` is clean and `./awf context docs/decisions/structured-agent-oriented-cli-presentation.md` reports exactly the first two declared operations Applied and every later operation Remaining."
+Edge: "Do not add `closed-presentation-tree` or any tooling claim before its complete live API and proof exist; preserve unrelated code-design claims byte-for-byte."
+Post-check: "After `./x render`, `./x check` is clean and `./awf context docs/decisions/structured-agent-oriented-cli-presentation.md` reports only `model-owner-renders` Applied and the other nine operations Remaining."
 
 Add `internal/presentation/**` to `.awf/domains/code-design.yaml` so the new production package has
 its ADR-assigned domain owner before render and the staged ownership check. Use `awf-adr-lifecycle`:
-move the ADR from Proposed to Implementing, append the Implementing content
-stamp, then one Applied event listing the first two State changes in declaration order. Mutate exactly
-`model-owner-renders` and the new `closed-presentation-tree` claim in the authoring topic. Preserve
-the former claim's unbacked verification contract; add the new claim with the proof marker from Task
-1.1. Run `./x render`; never hand-edit generated topic, domain, index, or lock output.
+move the ADR from Proposed to Implementing, append the Implementing content stamp, then one Applied
+event for only the first State change. Mutate exactly `model-owner-renders` in the authoring topic,
+preserve its unbacked verification contract, and leave `closed-presentation-tree` absent. Run
+`./x render`; never hand-edit generated topic, domain, index, or lock output.
 
 ### Phase close
 
@@ -103,14 +96,14 @@ Stage the complete Phase 1 transaction explicitly. Run `awf check staged` and `.
 pass with clean render drift, no dead code, and full coverage. Create one commit:
 
 ```commit
-feat(code-design): add presentation tree (applies presentation)
+feat(code-design): add presentation core (applies presentation)
 ```
 
 ## Phase 2: Convert context detail and preserve protocols
 
 **Execution mode: subagent-driven.**
 
-Advances: ["ordinary-output-contract", "explicit-bypass-contract"]
+Advances: ["closed-presentation-tree", "ordinary-output-contract", "explicit-bypass-contract", "standard-presentation-shapes"]
 Completes: ["context-presentation-boundary"]
 
 ### Task 2.1: Map context and topic results into the common tree
@@ -126,8 +119,10 @@ Before editing, require `git status --short` to print nothing, `./x check` to ex
 `go test ./internal/presentation ./internal/contextq ./internal/topic ./cmd/awf` to exit zero at the
 Phase 1 commit.
 
-Introduce `presentation.Detail` in `internal/presentation/shapes.go` with this first production
-consumer; do not add the other standard shapes yet. Keep query assembly and semantic mapping in
+Introduce the Section, List, RecordGroup, and fixed-arity Record APIs plus `presentation.Detail` with
+these first production consumers. Enforce their admitted children, record arity, compact-field
+escaping, nested indentation, deterministic grouping, root Field-to-Section blank line, root Section
+separation, and the three-level section bound. Do not add Steps or the other standard shapes yet. Keep query assembly and semantic mapping in
 `internal/contextq`; replace only its syntax renderer with a mapping into `presentation.Detail`. Map topic query results in their model-owning package rather
 than constructing presentation records in `cmd/awf`. Update public labels, grouping, order, and
 escaping through exact tests. Remove the topic convenience JSON flag from parser specification,
@@ -171,8 +166,8 @@ feat(tooling): migrate context output (applies presentation)
 
 **Execution mode: subagent-driven.**
 
-Advances: ["ordinary-output-contract", "typed-output-boundary"]
-Completes: ["structured-help-and-prompts"]
+Advances: ["ordinary-output-contract", "standard-presentation-shapes", "typed-output-boundary"]
+Completes: ["closed-presentation-tree", "structured-help-and-prompts"]
 
 ### Task 3.1: Make help specifications structured model data
 Kind: batch
@@ -202,22 +197,29 @@ Representative: "Map commit-policy and current-state refusals into `Diagnostic` 
 Edge: "A partial mutation lists every safety-relevant changed axis before recovery steps; init writes and flushes exactly one validated non-newline `prompt:` tail only after a complete prelude, while collision refusal emits no prompt bytes and performs no mutation."
 Post-check: "`go test ./internal/commitpolicy ./internal/project ./internal/initspec ./cmd/awf -run 'Test.*(Commit|Outcome|Prompt|Init)'` exits zero and tests prove renderer failure cannot leak partial presentation bytes."
 
-Introduce `presentation.Diagnostic` and the governed prompt operation with these first consumers.
-Create the named `TestCommandOutputBoundary` proof unit now, but do not add its invariant marker while
-the matching current-state claim remains absent. The post-review lifecycle transaction adds the
-marker atomically with that claim.
+Introduce Steps, `presentation.Diagnostic`, and the governed prompt operation with these first
+consumers. Complete the declared child matrix and add the named `TestPresentationTreeContract` unit
+with this exact marker, now that every tree node API has a live production consumer:
+
+```go
+// invariant: code-design/presentation-ownership:closed-presentation-tree (TestPresentationTreeContract)
+```
+
+Create the named `TestCommandOutputBoundary` proof unit without its invariant marker while the
+matching tooling claim remains absent. The post-review lifecycle transaction adds that marker
+atomically with its claim.
 
 ### Task 3.3: Apply outcome modeling and structured command-spec updates
 Kind: batch
 Latitude: exact
-Applying: ["structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:interactive-presentation"]
-Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/code-design/outcome-modeling/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/code-design/outcome-modeling.md", "docs/topics/tooling/cli.md", "docs/domains/code-design.md", "docs/domains/tooling.md", "docs/decisions/INDEX.md", ".awf/awf.lock", "examples/sundial/.awf/awf.lock"]
-Representative: "Revise `actionable-outcome-protocol` so independently executable remedies render as central `Steps` while retaining condition, cause, changed-axis, and retry-safety semantics."
-Edge: "Revise `cli-command-spec-single-source` so structured help model data remains single-source; preserve each claim's existing Origin, backing mode, and proof marker while appending this ADR to provenance."
-Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through five Applied in declaration order while operations six through ten remain pending."
+Applying: ["structured-agent-oriented-cli-presentation:closed-presentation-tree", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:interactive-presentation", "structured-agent-oriented-cli-presentation:claim-backing"]
+Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/code-design/presentation-ownership/current-state.md", ".awf/topics/parts/code-design/outcome-modeling/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/code-design/presentation-ownership.md", "docs/topics/code-design/outcome-modeling.md", "docs/topics/tooling/cli.md", "docs/domains/code-design.md", "docs/domains/tooling.md", "docs/decisions/INDEX.md", ".awf/awf.lock", "examples/sundial/.awf/awf.lock"]
+Representative: "Add `closed-presentation-tree` with this ADR as Origin and the live `TestPresentationTreeContract` proof, and revise `actionable-outcome-protocol` so independently executable remedies render as central `Steps`."
+Edge: "Revise `cli-command-spec-single-source` so structured help model data remains single-source; preserve updated claims' existing Origin, backing mode, and proof markers while appending this ADR to provenance."
+Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through five Applied, regardless of event order, while operations six through ten remain pending."
 
-Append one middle Applied event listing exactly operations four and five, mutate both claims in the
-same transaction, and render all generated output.
+Append one middle Applied event listing operations two, four, and five in declaration order, mutate
+all three claims in the same transaction, and render all generated output.
 
 ### Phase close
 
@@ -232,7 +234,7 @@ feat(tooling): add typed output boundary (applies presentation)
 
 **Execution mode: subagent-driven.**
 
-Advances: ["ordinary-output-contract", "explicit-bypass-contract"]
+Advances: ["ordinary-output-contract", "explicit-bypass-contract", "standard-presentation-shapes"]
 Completes: ["effort-presentation-contract"]
 
 ### Task 4.1: Map effort and managed-worktree results into typed presentations
@@ -240,7 +242,7 @@ Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:standard-result-shapes", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:explicit-bypasses"]
 Paths: ["internal/effort/", "internal/worktree/", "cmd/awf/effort.go", "cmd/awf/effort_test.go", "cmd/awf/effort_worktree_test.go", "cmd/awf/presentation_boundary_test.go", "internal/clispec/clispec.go", "internal/clispec/clispec_test.go"]
-Representative: "Replace `worktree.Result.String`, semicolon-compressed effort mutations, and command-owned effort detail/list formatting with model-owner mappings into `Mutation`, `Detail`, and `Collection`."
+Representative: "Replace `worktree.Result.String`, semicolon-compressed effort mutations, and command-owned effort detail/list formatting with model-owner mappings into `Mutation`, `Detail`, and the core List tree."
 Edge: "Remove JSON only from effort new/list/show, retain byte-exact activity JSON protocol, preserve schema-2 records and all rollback/finish changed-axis diagnostics, and render explicit empty collections as labeled scalar `none`."
 Post-check: "`go test ./internal/effort ./internal/worktree ./cmd/awf -run 'Test.*(Effort|Worktree|Activity)'` exits zero; `git grep -n -- '--json' internal/clispec cmd/awf/effort.go cmd/awf/effort_test.go` finds only activity-protocol support; no production `Result.String` remains."
 
@@ -279,7 +281,7 @@ feat(tooling): migrate effort output (applies presentation)
 
 **Execution mode: subagent-driven.**
 
-Advances: ["ordinary-output-contract"]
+Advances: ["ordinary-output-contract", "standard-presentation-shapes"]
 Completes: ["typed-output-boundary", "collected-report-contract"]
 
 ### Task 5.1: Collect check and audit outcomes into categorized reports
@@ -337,7 +339,7 @@ feat(tooling): collect report output (applies presentation)
 **Execution mode: subagent-driven.**
 
 Advances: ["explicit-bypass-contract"]
-Completes: ["ordinary-output-contract", "repository-consumer-contract"]
+Completes: ["deterministic-adoption-gate", "ordinary-output-contract", "repository-consumer-contract", "standard-presentation-shapes"]
 
 ### Task 6.1: Convert low-volume mutations, details, and collections
 Kind: batch
@@ -346,7 +348,7 @@ Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", 
 Paths: ["internal/presentation/shapes.go", "internal/project/", "internal/config/", "internal/adr/", "cmd/awf/sync.go", "cmd/awf/list_add.go", "cmd/awf/init.go", "cmd/awf/new.go", "cmd/awf/adr.go", "cmd/awf/uninstall.go", "cmd/awf/config.go", "internal/project/configreference_print.go", "cmd/awf/changelog.go", "glob:cmd/awf/*_test.go", "cmd/awf/testdata/"]
 Representative: "Map sync/render, enable/disable, init, new, ADR numbering, uninstall, and config-reference results in their model-owning packages into `Mutation`, `Detail`, or `Collection`, with one stable label or record per semantic fact."
 Edge: "Preserve init descriptor JSON and selected changelog bytes as isolated protocols/payloads; keep a no-release changelog diagnostic ordinary; forbid Markdown headings, tables, alignment padding, and semicolon-compressed result lines."
-Post-check: "`go test ./internal/project ./internal/config ./internal/adr ./cmd/awf` exits zero; exact command goldens cover success, emptiness, refusal, partial mutation, and renderer failure; a deterministic repository search reports direct output only in the named plan-projection, changelog-payload, effort-activity-JSON, init-descriptor-JSON, and context-spill protocol functions, and fails on every other finding."
+Post-check: "`go test ./internal/project ./internal/config ./internal/adr ./cmd/awf` exits zero and exact command goldens cover success, emptiness, refusal, partial mutation, and renderer failure; record every remaining direct-output candidate for the structural detector in Task 6.3 rather than manually classifying it as accepted."
 
 Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
 `go test ./internal/... ./cmd/awf` to exit zero at the Phase 5 commit.
@@ -375,28 +377,10 @@ retained protocols/payloads. Update config reference and working guidance only w
 examples changed. Render all generated adopters and inspect representative root, Pi, Claude, and
 Sundial outputs.
 
-### Phase close
-
-Stage the complete Phase 6 transaction explicitly, including generated output and repository
-consumer changes. Run `awf check staged` and `./x gate`; both must pass. Create one commit:
-
-```commit
-feat(tooling): migrate ordinary CLI presentation
-```
-
-## Phase 7: Enforce whole-interface adoption and bypass isolation
-
-**Execution mode: subagent-driven.**
-
-Completes: ["explicit-bypass-contract", "deterministic-adoption-gate"]
-
-### Task 7.1: Add a structural ordinary-output gate
+### Task 6.3: Add a structural ordinary-output gate
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:enforced-adoption", "structured-agent-oriented-cli-presentation:claim-backing"]
 Paths: ["cmd/awf/presentation_boundary_test.go", "cmd/awf/testdata/presentation-boundary/", "internal/presentation/presentation_test.go"]
-
-Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
-`go test ./internal/... ./cmd/awf ./cmd/contextspilllog` to exit zero at the Phase 6 commit.
 
 Build the structural test with `go/packages` and AST inspection, following the repository's existing
 context-boundary detector pattern. Scan production `cmd/awf` plus model-owner mapping packages and
@@ -404,24 +388,50 @@ reject direct formatted ordinary output, ad hoc builders, padded formatting, Mar
 presentation strings, and renderer implementations outside `internal/presentation`. The allowlist is
 closed to `runReadPlan`, `writeChangelogPayload`, `writeEffortActivityProtocol`,
 `writeInitDescriptorProtocol`, and `contextdelivery.Deliver`; template rendering in
-`internal/render` and non-user-facing serialization are not presentation bypasses. Match symbols and call paths, not merely file names.
+`internal/render` and non-user-facing serialization are not presentation bypasses. Match symbols and
+call paths, not merely file names.
 
 Use negative fixtures to prove every detector branch and a positive fixture for each allowlisted
-bypass. Keep diagnostics deterministic and path/line attributed. Create the named `TestOrdinaryCommandOutputUsesPresentation` and `TestExplicitOutputBypasses` proof
-units without invariant markers because their claims are still absent. The post-review flip adds all
-three pending markers, including the marker for the earlier live `TestCommandOutputBoundary` unit,
-atomically with their current-state claims. Run
-`go test ./internal/presentation ./cmd/awf -run 'Test(PresentationTreeContract|OrdinaryCommandOutputUsesPresentation|CommandOutputBoundary|ExplicitOutputBypasses)'`;
-it must succeed and exercise positive and negative branches.
+bypass. Keep diagnostics deterministic and path/line attributed. Create the named
+`TestOrdinaryCommandOutputUsesPresentation` and `TestExplicitOutputBypasses` proof units without
+invariant markers because their claims are still absent. The post-review flip adds all three pending
+markers, including the marker for the earlier live `TestCommandOutputBoundary` unit, atomically with
+their current-state claims. Run:
 
-### Task 7.2: Pin exact streams, exits, public labels, and protocol bytes
+```sh
+go test ./internal/presentation ./cmd/awf -run 'Test(PresentationTreeContract|OrdinaryCommandOutputUsesPresentation|CommandOutputBoundary|ExplicitOutputBypasses)'
+```
+
+The command must succeed, exercise positive and negative branches, and report zero production
+findings. This is the Phase 6 executable closure check; no later-phase allowlist is required.
+
+### Phase close
+
+Stage the complete Phase 6 transaction explicitly, including generated output and repository
+consumer changes and the structural detector. Run the focused structural proof command from Task 6.3,
+then `awf check staged` and `./x gate`; all must pass. Create one commit:
+
+```commit
+feat(tooling): migrate ordinary CLI presentation
+```
+
+## Phase 7: Pin exhaustive interface and bypass coverage
+
+**Execution mode: subagent-driven.**
+
+Completes: ["exhaustive-contract-coverage", "explicit-bypass-contract"]
+
+### Task 7.1: Pin exact streams, exits, public labels, and protocol bytes
 Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:explicit-bypasses", "structured-agent-oriented-cli-presentation:enforced-adoption", "structured-agent-oriented-cli-presentation:claim-backing"]
 Paths: ["glob:cmd/awf/*_test.go", "cmd/awf/testdata/", "internal/presentation/", "internal/contextq/", "internal/commitpolicy/", "internal/project/", "internal/audit/", "internal/effort/", "internal/worktree/", "internal/migrate/", "cmd/contextspilllog/", ".github/workflows/release.yml", "x", "examples/sundial/x"]
 Representative: "For each ordinary top-level command family, assert a complete representative success or produced-report presentation plus usage/operational failure stream and exit behavior, with stable labels, semantic category order, record schemas, escaping, and exactly one terminal newline."
 Edge: "Assert byte-for-byte authored plan/changelog payloads and spill/activity/descriptor protocols, prompt non-newline flush, renderer atomicity, no duplicate stderr after a produced failing report, no convenience JSON option, and contract-aware `x` and release consumers."
-Post-check: "`go test ./internal/... ./cmd/awf ./cmd/contextspilllog` exits zero; the four invariant proof units run and pass; `./x render && ./x check` is a no-op and clean; the structural gate reports zero production findings."
+Post-check: "`go test ./internal/... ./cmd/awf ./cmd/contextspilllog` exits zero; the four named proof units run and pass; `./x render && ./x check` is a no-op and clean; the structural gate reports zero production findings."
+
+Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
+`go test ./internal/... ./cmd/awf ./cmd/contextspilllog` to exit zero at the Phase 6 commit.
 
 Use checked-in golden data for long public output and direct literals for short contracts. Do not add
 an update-golden command. Assert methods and terminal states rather than freezing corpus counts.
@@ -439,7 +449,9 @@ test(tooling): enforce CLI presentation adoption
 
 ## Definition of done
 
-- `dod: closed-presentation-tree` One standard-library-only package enforces the closed bounded tree, exact grammar, standard shapes, atomic rendering, escaping, and governed prompt mode with complete coverage.
+- `dod: presentation-core` The standard-library-only package exposes only the live Document/Field core, validates values and labels, renders atomically, and serves labeled version output plus its repository consumers.
+- `dod: closed-presentation-tree` The core grows only with live consumers into the complete bounded Document/Field/Section/List/RecordGroup/Record/Steps tree, exact child matrix, escaping, depth, spacing, and atomic-rendering contract with its named proof.
+- `dod: standard-presentation-shapes` Detail, Diagnostic, Mutation, Report, and Collection each land with their first whole-capability consumer, remain presentation-only vocabulary, and lower through the same closed tree.
 - `dod: context-presentation-boundary` Context and topic owners map semantics into the common tree, topic convenience JSON is absent, and context spill plus plan projection bytes remain isolated and exact.
 - `dod: typed-output-boundary` Produced reports, usage failures, operational failures, partial mutations, stdout/stderr selection, and exit status are typed and never double-rendered.
 - `dod: structured-help-and-prompts` Help is structured model data lowered through the common tree, and interactive init uses the sole validated flushed non-newline prompt mode.
@@ -448,14 +460,16 @@ test(tooling): enforce CLI presentation adoption
 - `dod: ordinary-output-contract` Every ordinary command result, help surface, advisory, refusal, progress replacement, and partial outcome uses deterministic labeled text with stable grouping, schemas, order, escaping, and newline behavior.
 - `dod: repository-consumer-contract` Active docs, help, runners, release automation, generated targets, and adopters consume declared labels or named protocols rather than incidental whitespace or legacy prefixes.
 - `dod: explicit-bypass-contract` Only plan/changelog payloads and effort-activity/init-descriptor/context-spill protocols bypass the tree, and each remains byte-for-byte tested without mixed presentation text.
-- `dod: deterministic-adoption-gate` AST enforcement, exact-output fixtures, the four named invariant proof units, render/check, and the full gate reject any ungoverned ordinary output and pass on the implemented interface.
+- `dod: deterministic-adoption-gate` AST enforcement with a closed symbol allowlist rejects any ungoverned ordinary output and reaches zero production findings before Phase 6 closes.
+- `dod: exhaustive-contract-coverage` Exact-output fixtures, the four named proof units, render/check, and the full gate pin public streams, exits, labels, protocol bytes, and bypass isolation.
 
 ## Notes
 
-- ADR application partition: Phase 1 moves the ADR directly from Proposed to Implementing and applies
-  operations 1-2; Phase 2 applies operation 3; Phase 3 applies operations 4-5; Phase 4 applies
-  operation 6; and Phase 5 applies operation 7. Phases 6-7 complete implementation and proofs without
-  claiming whole-interface authority early.
+- ADR application partition follows complete live implementation rather than declaration position:
+  Phase 1 moves the ADR directly from Proposed to Implementing and applies operation 1; Phase 2
+  applies operation 3; Phase 3 applies operations 2, 4, and 5 in declaration order within its batch;
+  Phase 4 applies operation 6; and Phase 5 applies operation 7. Phases 6-7 complete implementation
+  and proofs without claiming whole-interface authority early.
 - After settled terminal implementation review, the deferred flip transaction adds
   `tooling/cli:readable-text-output`, `tooling/cli:typed-command-output-boundary`, and
   `tooling/cli:explicit-output-bypasses` in their `.awf/topics/parts/tooling/cli/current-state.md`
