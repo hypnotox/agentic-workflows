@@ -66,6 +66,7 @@ append-only records of the repository state in which they were written.
 - remove `tooling/quality-gates:example-module-isolated`
 - remove `tooling/quality-gates:example-zero-notes`
 - remove `rendering/companion-scripts:runner-example-adopted`
+- update `code-design/single-home:single-implementation`
 
 ## Consequences
 
@@ -108,3 +109,4 @@ and the claims whose truth depended on that fixture.
 
 - 2026-08-04: Proposed
 - 2026-08-04: Accepted; content-sha256: 1eee9119e4cc9e1056375bdcfd26a076de131e397afe43af3d610714ffadf60d
+- 2026-08-04: Amended; content-sha256: b86f475007f0e0395d284180c1d2c5451aaed97f2bcf3465ab594af5566079f3
