@@ -79,7 +79,7 @@
   entry.
 - Publish the standard as an artifact. No versioned spec exists (the standard is implied
   by the renderer and its templates), there is no discoverability surface beyond the
-  GitHub README, and no examples gallery beyond `examples/sundial`.
+  GitHub README, and no examples gallery.
 - Audit this repo's own overrides for dogfooding. The principle (user, 2026-07-26): only
   overwrite what is really needed, otherwise dogfood the shipped defaults, and use
   template defaults inside overrides so they keep rendering. A survey that day found 7
@@ -218,6 +218,24 @@ whatever decision next touches pending provenance order, and worth deciding ther
 the authored order should instead be something the tree records explicitly, since nothing
 today declares the intended numbering order until the command is invoked. Surfaced by the
 Phase 5 review of ADR-0202 on 2026-08-01.
+
+## Implementation commit verification assumes the parent checkout
+
+A commit-capable Pi implementation child can be directed through its brief to work in an existing
+managed worktree while the parent Pi session remains at the repository root. The child can commit
+successfully there, but the subagent runner snapshots and verifies `HEAD` in the parent process's
+checkout. The result is contradictory: the child's report names the real managed-worktree commit,
+then the runner says the commit-capable child left `HEAD` unchanged and demands a stopped inventory.
+The parent must inspect the intended worktree to distinguish a valid commit from a true no-commit
+failure.
+
+A follow-up should make commit verification use an explicit invocation-owned checkout identity, or
+else prohibit a child from changing checkout relative to the runner and move managed-worktree
+selection into the tool call. The test must cover a parent rooted in the primary checkout and a
+child commit in a distinct existing managed worktree; checking only one checkout preserves the
+false failure. This needs design before implementation because the current public tool schema has
+no checkout field and the rendered workflow deliberately lets explicit-path runtimes remain at the
+repository root.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->

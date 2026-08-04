@@ -96,6 +96,20 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	}
 }
 
+func TestEligiblePathsExcludeNestedAdopter(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "nested/.awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: nested\nintegrationBranch: main\n")},
+		{Path: "nested/internal/x.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
+		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := eligiblePaths(tree, nil, nil), []string{"internal/owned.go"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("eligible paths=%v, want %v", got, want)
+	}
+}
+
 func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 	const adversarial = ".awf/efforts/e/.awf/config.yaml"
 	tree, err := snapshot.NewTree([]snapshot.File{

@@ -165,9 +165,8 @@ func walkGitAccess(t *testing.T, testFiles bool, allowed []string) ([]gitAccessF
 	root := moduleRoot(t)
 	findings, seen := []gitAccessFinding{}, 0
 	testsupport.WalkRepoFiles(t, root, func(rel string) bool {
-		// examples/sundial is a separate module with its own dependencies, and
-		// a testdata tree holds fixture sources that are never compiled.
-		if strings.HasPrefix(rel, "examples/") || rel == "testdata" || strings.HasPrefix(rel, "testdata/") || strings.Contains(rel, "/testdata/") {
+		// A testdata tree holds fixture sources that are never compiled.
+		if rel == "testdata" || strings.HasPrefix(rel, "testdata/") || strings.Contains(rel, "/testdata/") {
 			return false
 		}
 		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") != testFiles {

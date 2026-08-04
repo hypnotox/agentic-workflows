@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -665,7 +664,7 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 		t.Fatal("pre-commit still carries preparation-only bridge behavior")
 	}
 	last := -1
-	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "check_slice \"$tmp/examples/sundial\"", "bash \"$staged_helper\"", "rm -rf -- \"$tmp\"", "trap - EXIT", "exec bash .awf/hooks/pre-commit.sh"} {
+	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "rm -rf -- \"$tmp\"", "trap - EXIT", "exec bash .awf/hooks/pre-commit.sh"} {
 		index := strings.Index(body, required)
 		if index == -1 {
 			t.Errorf("pre-commit missing permanent step %q", required)
@@ -678,44 +677,13 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 	}
 }
 
-func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	gitfixture.Stage(t, repo, map[string]string{"README.md": "staged\n"})
-	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("bash", hook)
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		t.Fatalf("pre-commit accepted a staged slice missing its nested helper: %s", out)
-	}
-	if !strings.Contains(string(out), "staged slice is missing .githooks/check-nested-staged") {
-		t.Fatalf("missing-helper diagnostic = %q", out)
-	}
-}
-
 func TestRepositoryPreCommitRemovesSliceBeforePayload(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	helperPath, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "check-nested-staged"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	helper, err := os.ReadFile(helperPath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	marker := filepath.Join(t.TempDir(), "payload-ran")
-	gitfixture.StageFile(t, repo, ".githooks/check-nested-staged", string(helper), 0o755)
 	gitfixture.Stage(t, repo, map[string]string{
-		"examples/sundial/.keep":   "\n",
 		".awf/hooks/pre-commit.sh": "#!/bin/sh\nif [ -n \"$(find \"$TMPDIR\" -mindepth 1 -maxdepth 1 -print -quit)\" ]; then\n  echo \"payload inherited staged slice\" >&2\n  exit 1\nfi\ntouch \"$AWF_PAYLOAD_MARKER\"\n",
 	})
 
@@ -760,100 +728,6 @@ chmod +x "$out"
 	if len(entries) != 0 {
 		t.Fatalf("TMPDIR entries after payload handoff = %v", entries)
 	}
-}
-
-func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-	lockBytes, err := lock.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	prefix := "examples/sundial/"
-	helperPath, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "check-nested-staged"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	helperBody, err := os.ReadFile(helperPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files := map[string]string{
-		".githooks/check-nested-staged":                         string(helperBody),
-		prefix + ".awf/awf.lock":                                string(lockBytes),
-		prefix + ".awf/config.yaml":                             "prefix: sundial\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [alpha]\n",
-		prefix + ".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
-		prefix + ".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
-		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
-		prefix + "docs/decisions/0001-first.md":                 testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First")),
-	}
-	gitfixture.Stage(t, repo, files)
-	gitfixture.Commit(t, repo, "nested head", nil)
-	gitfixture.Stage(t, repo, map[string]string{
-		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n",
-	})
-
-	testBinary, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	tools := t.TempDir()
-	wrapper := filepath.Join(tools, "awf-helper")
-	wrapperBody := "#!/bin/sh\nif [ \"$#\" -eq 1 ] && [ \"$1\" = check ]; then exit 0; fi\nAWF_HOOK_COMMAND_HELPER=1 exec \"" + testBinary + "\" -test.run=TestHookCommandHelper -- \"$@\"\n"
-	if err := os.WriteFile(wrapper, []byte(wrapperBody), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	fakeGo := filepath.Join(tools, "go")
-	fakeGoBody := `#!/bin/sh
-out=
-while [ "$#" -gt 0 ]; do
-	if [ "$1" = -o ]; then out="$2"; shift 2; continue; fi
-	shift
-done
-if [ -z "$out" ]; then exit 0; fi
-cp "$AWF_HOOK_WRAPPER" "$out"
-chmod +x "$out"
-`
-	if err := os.WriteFile(fakeGo, []byte(fakeGoBody), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("bash", hook)
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "AWF_HOOK_WRAPPER="+wrapper, "AWF_PREP_BRIDGE=/removed", "AWF_PREP_BRIDGE_SHA256=removed", "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		t.Fatalf("pre-commit accepted an unmatched nested claim removal: %s", out)
-	}
-	text := string(out)
-	if !strings.Contains(text, "was removed with no ADR remove operation") ||
-		!strings.Contains(text, "pre-commit: the staged slice fails examples/sundial's HEAD-to-index current-state transition check") {
-		t.Fatalf("pre-commit nested staged diagnostic = %q", text)
-	}
-}
-
-func TestHookCommandHelper(t *testing.T) {
-	ctx := testContext(t)
-	if os.Getenv("AWF_HOOK_COMMAND_HELPER") == "" {
-		return
-	}
-	var err error
-	if len(os.Args) < 3 || os.Args[len(os.Args)-2] != "check" || os.Args[len(os.Args)-1] != "staged" {
-		err = fmt.Errorf("unexpected helper arguments: %v", os.Args)
-	} else if err = gateStaged(ctx, "."); err == nil {
-		err = runCheckStaged(ctx, ".", os.Stdout)
-	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "awf:", err)
-		os.Exit(1)
-	}
-	os.Exit(0)
 }
 
 // TestRunCheckStagedError covers the error return of the staged route: the index

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -60,14 +61,15 @@ func fullCatalogConfigForTarget(cat *catalog.Catalog, target string) string {
 	return b.String()
 }
 
-// syncFullCatalog scaffolds a temp project with the full-catalog config, runs a
-// real Project.SyncReport, and returns the project root. It reuses the exported
-// testsupport primitives rather than internal/project's package-private
-// scaffold helper (ADR-0053 Decision item 5).
+// syncFullCatalog scaffolds the Claude full-catalog fixture for focused evals.
 func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
 	return syncFullCatalogForTarget(t, cat, "claude")
 }
 
+// syncFullCatalogForTarget scaffolds a temp project with the full-catalog
+// config and initializes it. It reuses the exported testsupport primitives
+// rather than internal/project's package-private scaffold helper (ADR-0053
+// Decision item 5).
 func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -77,17 +79,17 @@ func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string)
 		t.Fatalf("open: %v", err)
 	}
 	if _, _, _, err := p.InitializeReport(testsupport.Context(t), project.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
-		t.Fatalf("sync: %v", err)
+		t.Fatalf("initialize: %v", err)
 	}
 	return root
 }
 
-// skillPath returns the rendered claude-target SKILL.md path for a skill name.
+// skillPath returns the rendered Claude SKILL.md path for existing focused evals.
 func skillPath(root, name string) string {
 	return filepath.Join(root, ".claude", "skills", evalPrefix+"-"+name, "SKILL.md")
 }
 
-// agentPath returns the rendered claude-target agent path for an agent name.
+// agentPath returns the rendered Claude agent path for existing focused evals.
 func agentPath(root, name string) string {
 	return filepath.Join(root, ".claude", "agents", name+".md")
 }
@@ -100,15 +102,95 @@ func agentPath(root, name string) string {
 // invariant: tooling/evaluations:evals-full-catalog-coverage (TestFullCatalogCoverage)
 func TestFullCatalogCoverage(t *testing.T) {
 	cat := loadCatalog(t)
-	root := syncFullCatalog(t, cat)
-	for _, s := range sortedKeys(cat.Skills) {
-		if _, err := os.Stat(skillPath(root, s)); err != nil {
-			t.Errorf("catalog skill %q not rendered: %v", s, err)
+	for _, targetName := range []string{"claude", "pi"} {
+		t.Run(targetName, func(t *testing.T) {
+			root := syncFullCatalogForTarget(t, cat, targetName)
+			p, err := project.Open(testsupport.Context(t), root)
+			if err != nil {
+				t.Fatalf("open initialized project: %v", err)
+			}
+			if len(p.Targets) != 1 {
+				t.Fatalf("targets = %d, want one", len(p.Targets))
+			}
+			target := p.Targets[0]
+			for _, s := range sortedKeys(cat.Skills) {
+				path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
+				if _, err := os.Stat(path); err != nil {
+					t.Errorf("catalog skill %q not rendered: %v", s, err)
+				}
+			}
+			for _, a := range sortedKeys(cat.Agents) {
+				path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
+				if _, err := os.Stat(path); err != nil {
+					t.Errorf("catalog agent %q not rendered: %v", a, err)
+				}
+			}
+			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {
+				t.Fatalf("initial check: drift=%v err=%v", drift, err)
+			}
+
+			missing := target.SkillPath(evalPrefix, sortedKeys(cat.Skills)[0])
+			if err := os.Remove(filepath.Join(root, filepath.FromSlash(missing))); err != nil {
+				t.Fatalf("remove %s: %v", missing, err)
+			}
+			drift, err := p.Check(testsupport.Context(t))
+			if err != nil {
+				t.Fatalf("check missing output: %v", err)
+			}
+			if !hasDrift(drift, missing, "missing") {
+				t.Errorf("missing output drift = %v, want %q missing", drift, missing)
+			}
+			if _, _, _, err := p.SyncReport(testsupport.Context(t)); err != nil {
+				t.Fatalf("repair missing output: %v", err)
+			}
+			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {
+				t.Fatalf("check repaired missing output: drift=%v err=%v", drift, err)
+			}
+
+			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("tampered\n"), 0o644); err != nil {
+				t.Fatalf("tamper AGENTS.md: %v", err)
+			}
+			drift, err = p.Check(testsupport.Context(t))
+			if err != nil {
+				t.Fatalf("check stale output: %v", err)
+			}
+			if !hasDrift(drift, "AGENTS.md", "hand-edited") {
+				t.Errorf("edited output drift = %v, want AGENTS.md hand-edited", drift)
+			}
+			if _, _, _, err := p.SyncReport(testsupport.Context(t)); err != nil {
+				t.Fatalf("repair stale output: %v", err)
+			}
+			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {
+				t.Fatalf("final check: drift=%v err=%v", drift, err)
+			}
+
+			if err := filepath.WalkDir(filepath.Join(root, filepath.FromSlash(filepath.Dir(target.SkillDir))), func(path string, d os.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if d.IsDir() {
+					return nil
+				}
+				raw, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				if strings.Contains(string(raw), "<no value>") {
+					t.Errorf("%s contains unresolved-value token", path)
+				}
+				return nil
+			}); err != nil {
+				t.Fatalf("walk target tree: %v", err)
+			}
+		})
+	}
+}
+
+func hasDrift(drift []manifest.Drift, path, kind string) bool {
+	for _, item := range drift {
+		if item.Path == path && item.Kind == kind {
+			return true
 		}
 	}
-	for _, a := range sortedKeys(cat.Agents) {
-		if _, err := os.Stat(agentPath(root, a)); err != nil {
-			t.Errorf("catalog agent %q not rendered: %v", a, err)
-		}
-	}
+	return false
 }

@@ -68,8 +68,7 @@ instead of rotting.
 - **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
   script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
   is marked edit-in-place, so the verbs you add there survive every `awf render` while awf
-  keeps the rest current. awf itself keeps a from-source runner instead; the
-  [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
+  keeps the rest current. awf itself keeps a from-source runner instead.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
@@ -87,9 +86,9 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. Selecting core `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes advisory Remote Pi metadata plus a negotiated temporary effort name. No checkout validation, CWD replacement, queue, or local TUI presentation is involved; detach and restart restore base identity. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree. Existing adopters opt in with `awf enable skill effort-workflow`.
+activity stays outside parent model content. Selecting core `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes complete advisory Remote Pi metadata independently from a capability-gated display-only effort suffix, answers replay requests, and clears the suffix on lifecycle boundaries without reading or changing routing identity. Missing or withdrawn suffix support degrades to metadata-only behavior. No checkout validation, CWD replacement, queue, or local TUI presentation is involved. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree. Existing adopters opt in with `awf enable skill effort-workflow`.
 
-A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose for a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history, and submits the kickoff unchanged through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
+A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose for a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history, and submits one visible default-rendered `agent-handoff` custom message whose content is `Agent-authored handoff context; this is not user input:` followed by two newlines and the unchanged kickoff. Replacement-bound `sendMessage` triggers the turn; Pi's current provider adapter still converts custom content to a user-role request. Unsupported modes reject, cleanup is manual, and automatic or replacement failure leaves that same envelope in the editor.
 
 ## The workflow it renders
 
@@ -253,14 +252,6 @@ files are drift-checked; use `awf render` to restore missing or modified copies.
 `adr-lifecycle`, and `exploring`) and every catalog agent. The workflow, documentation, and agent-guide standards sit outside
 the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
-
-## Worked example
-
-A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
-a small fictional Go CLI with every catalog artifact enabled (authored parts,
-domains, ADRs, a plan) and every rendered file committed, kept in sync by this
-repository's own checks. Browse it to see exactly what an adoption looks like on
-disk.
 
 ## Commands
 
