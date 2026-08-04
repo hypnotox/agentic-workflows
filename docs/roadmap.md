@@ -237,6 +237,24 @@ false failure. This needs design before implementation because the current publi
 no checkout field and the rendered workflow deliberately lets explicit-path runtimes remain at the
 repository root.
 
+## Bind effort mutations to an explicit checkout identity
+
+A Pi session associated with a managed effort deliberately remains rooted in the primary checkout
+and receives the managed-worktree path as context. That keeps integration possible, but every
+ordinary mutating tool call depends on the agent spelling the worktree prefix correctly. During the
+active-pitfalls effort, the parent ran `./x render` from the primary checkout instead of the managed
+worktree; the primary tree happened to be current, so the mistake produced no diff, but the same
+command can rewrite generated outputs and `.awf/awf.lock` in the wrong transaction. The retained
+managed-worktree pitfall had already described this failure shape, so another prose reminder is not
+a sufficient response.
+
+A follow-up should bind pre-integration mutation commands to an invocation-owned checkout identity
+or provide an effort-aware execution seam that refuses an ambiguous primary-checkout mutation while
+a managed worktree owns the active outcome. It must preserve the intentional switch back to the
+primary checkout for integration, worktree removal, retrospective, and finish. This needs design
+because Pi effort association is runtime metadata rather than awf CLI authority, and read-only
+commands must remain usable from either checkout.
+
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
 ## Historical stale-branch seal-crossing incident
