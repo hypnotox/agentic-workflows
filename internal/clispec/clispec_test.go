@@ -149,8 +149,8 @@ func TestCommandHelpSemantics(t *testing.T) {
 					t.Errorf("%s documents positional %s outside its usage", fullPath, item.Name)
 				}
 			}
-			if command.MaxPos == 0 && len(help.Positionals) != 0 {
-				t.Errorf("%s documents positionals although its parser accepts none", fullPath)
+			if len(command.Children) == 0 {
+				assertPositionalSemantics(t, fullPath, command)
 			}
 			for _, example := range help.Examples {
 				if !strings.HasPrefix(example, "awf "+fullPath) {
@@ -180,6 +180,98 @@ func TestCommandHelpSemantics(t *testing.T) {
 		}
 	}
 	walk("", Commands)
+}
+
+// assertPositionalSemantics compares the documented grammar with the parser's
+// bounds. A usage token is one parser operand even when it contains alternatives
+// (for example <base>|<a>..<b>), and a documented <add|remove> names one literal
+// operand slot. Value-flag operands are skipped, so --owner <uuid> is not treated
+// as a command positional.
+func assertPositionalSemantics(t *testing.T, path string, command Command) {
+	documented := make(map[string]bool, len(command.Help.Positionals))
+	for _, positional := range command.Help.Positionals {
+		if documented[positional.Name] {
+			t.Errorf("%s repeats positional %s", path, positional.Name)
+		}
+		documented[positional.Name] = false
+	}
+	maxSlots := 0
+	for _, usage := range command.Help.Usage {
+		slots, found := usagePositionalSlots(usage, "awf "+path, command.ValueFlags, command.Help.Positionals)
+		if slots > maxSlots {
+			maxSlots = slots
+		}
+		for name := range found {
+			documented[name] = true
+		}
+	}
+	for name, found := range documented {
+		if !found {
+			t.Errorf("%s documents positional %s outside its parser grammar", path, name)
+		}
+	}
+	if command.MaxPos >= 0 && maxSlots != command.MaxPos {
+		t.Errorf("%s documents %d positional slots, parser maximum is %d", path, maxSlots, command.MaxPos)
+	}
+	if maxSlots < command.MinPos {
+		t.Errorf("%s documents %d positional slots, parser minimum is %d", path, maxSlots, command.MinPos)
+	}
+}
+
+func usagePositionalSlots(usage, prefix string, valueFlags []string, documented []HelpItem) (int, map[string]bool) {
+	found := make(map[string]bool, len(documented))
+	rest := strings.TrimSpace(strings.TrimPrefix(usage, prefix))
+	tokens := strings.Fields(rest)
+	slots := 0
+	for i := 0; i < len(tokens); i++ {
+		raw := tokens[i]
+		token := strings.Trim(raw, "[]")
+		if strings.HasPrefix(token, "--") {
+			if contains(valueFlags, token) && i+1 < len(tokens) {
+				i++
+			}
+			continue
+		}
+		matched := false
+		for _, item := range documented {
+			if positionalTokenMatches(item.Name, raw) {
+				found[item.Name] = true
+				matched = true
+			}
+		}
+		if matched || strings.Contains(raw, "<") || hasLiteralAlternative(documented, raw) {
+			slots++
+		}
+	}
+	return slots, found
+}
+
+func positionalTokenMatches(name, token string) bool {
+	if strings.Contains(token, name) {
+		return true
+	}
+	if !strings.HasPrefix(name, "<") || !strings.HasSuffix(name, ">") || !strings.Contains(name, "|") {
+		return false
+	}
+	for _, alternative := range strings.Split(name[1:len(name)-1], "|") {
+		if token == alternative {
+			return true
+		}
+	}
+	return false
+}
+
+func hasLiteralAlternative(documented []HelpItem, token string) bool {
+	for _, item := range documented {
+		if strings.HasPrefix(item.Name, "<") && strings.HasSuffix(item.Name, ">") && strings.Contains(item.Name, "|") {
+			for _, alternative := range strings.Split(item.Name[1:len(item.Name)-1], "|") {
+				if token == alternative {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func contains(values []string, want string) bool {

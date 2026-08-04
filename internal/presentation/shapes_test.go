@@ -2,9 +2,13 @@ package presentation
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -139,83 +143,154 @@ func TestPresentationTreeContract(t *testing.T) {
 
 func assertPresentationSourceContract(t *testing.T) {
 	t.Helper()
+	files, fileSet := presentationSourceFiles(t, "")
+	nodeTypes, boundary, err := presentationContract(fileSet, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"Field", "List", "Record", "RecordGroup", "Section", "Steps", "nodeMarker"}; !equalStrings(nodeTypes, want) {
+		t.Fatalf("presentation Node implementations = %v, want %v", nodeTypes, want)
+	}
+	if want := []string{"NewDocument", "NewSection", "Prompt", "Render", "validateDocument", "writeDocument", "writeNode"}; !equalStrings(boundary, want) {
+		t.Fatalf("presentation boundary functions = %v, want %v", boundary, want)
+	}
+
+	// This fixture is deliberately name-opaque. Semantic type checking must find
+	// both the promoted marker method from pointer embedding and a new Document
+	// consumer without relying on a declaration or function name convention.
+	files, fileSet = presentationSourceFiles(t, `
+package presentation
+
+type escapedNode struct{ *nodeMarker }
+
+func FormatPresentation(document Document) {}
+`)
+	nodeTypes, boundary, err = presentationContract(fileSet, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(nodeTypes, "escapedNode") || !containsString(boundary, "FormatPresentation") {
+		t.Fatalf("semantic fixture escaped detection: nodes=%v boundary=%v", nodeTypes, boundary)
+	}
+}
+
+func presentationSourceFiles(t *testing.T, fixture string) ([]*ast.File, *token.FileSet) {
+	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("locate presentation source")
 	}
-	directory := filepath.Dir(file)
-	paths, err := filepath.Glob(filepath.Join(directory, "*.go"))
+	paths, err := filepath.Glob(filepath.Join(filepath.Dir(file), "*.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var production []*ast.File
+	fileSet := token.NewFileSet()
+	var files []*ast.File
 	for _, path := range paths {
-		if filepath.Ext(path) != ".go" || strings.HasSuffix(filepath.Base(path), "_test.go") {
+		if strings.HasSuffix(path, "_test.go") {
 			continue
 		}
-		parsed, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		parsed, err := parser.ParseFile(fileSet, path, nil, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
-		production = append(production, parsed)
+		files = append(files, parsed)
 	}
-	var nodeTypes, markerMethods []string
-	for _, source := range production {
-		for _, declaration := range source.Decls {
-			decl, ok := declaration.(*ast.GenDecl)
-			if !ok || decl.Tok != token.TYPE {
-				continue
-			}
-			for _, specification := range decl.Specs {
-				typeSpec, ok := specification.(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
-				structType, ok := typeSpec.Type.(*ast.StructType)
-				if !ok {
-					continue
-				}
-				for _, field := range structType.Fields.List {
-					if identifier, ok := field.Type.(*ast.Ident); ok && identifier.Name == "nodeMarker" {
-						nodeTypes = append(nodeTypes, typeSpec.Name.Name)
-					}
-				}
-			}
+	if fixture != "" {
+		parsed, err := parser.ParseFile(fileSet, "contract_fixture.go", fixture, 0)
+		if err != nil {
+			t.Fatal(err)
 		}
+		files = append(files, parsed)
+	}
+	return files, fileSet
+}
+
+func presentationContract(fileSet *token.FileSet, files []*ast.File) ([]string, []string, error) {
+	info := &types.Info{Defs: make(map[*ast.Ident]types.Object)}
+	config := types.Config{Importer: importer.Default()}
+	pkg, err := config.Check("github.com/hypnotox/agentic-workflows/internal/presentation", fileSet, files, info)
+	if err != nil {
+		return nil, nil, err
+	}
+	document := pkg.Scope().Lookup("Document").Type()
+	nodeType := pkg.Scope().Lookup("Node").Type()
+	node, ok := nodeType.Underlying().(*types.Interface)
+	if !ok {
+		return nil, nil, errors.New("Node is not an interface")
+	}
+	node.Complete()
+	var nodeTypes, boundary []string
+	for _, name := range pkg.Scope().Names() {
+		object, ok := pkg.Scope().Lookup(name).(*types.TypeName)
+		if !ok || object.IsAlias() {
+			continue
+		}
+		named, ok := object.Type().(*types.Named)
+		if !ok {
+			continue
+		}
+		if _, isInterface := named.Underlying().(*types.Interface); !isInterface && (types.Implements(named, node) || types.Implements(types.NewPointer(named), node)) {
+			nodeTypes = append(nodeTypes, object.Name())
+		}
+	}
+	for _, source := range files {
 		for _, declaration := range source.Decls {
 			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Name.Name != "presentationNode" || function.Recv == nil || len(function.Recv.List) != 1 {
+			if !ok || function.Name.Name == "presentationNode" {
 				continue
 			}
-			receiver := function.Recv.List[0].Type
-			if pointer, ok := receiver.(*ast.StarExpr); ok {
-				receiver = pointer.X
+			object, ok := info.Defs[function.Name].(*types.Func)
+			if !ok {
+				return nil, nil, fmt.Errorf("resolve function %s", function.Name.Name)
 			}
-			if identifier, ok := receiver.(*ast.Ident); ok {
-				markerMethods = append(markerMethods, identifier.Name)
+			signature := object.Type().(*types.Signature)
+			if signatureConsumesPresentation(signature, document, nodeType, node) {
+				boundary = append(boundary, object.Name())
 			}
 		}
 	}
 	sort.Strings(nodeTypes)
-	sort.Strings(markerMethods)
-	if got, want := nodeTypes, []string{"Field", "List", "Record", "RecordGroup", "Section", "Steps"}; !equalStrings(got, want) {
-		t.Fatalf("presentation Node implementations = %v, want %v", got, want)
+	sort.Strings(boundary)
+	return nodeTypes, boundary, nil
+}
+
+func signatureConsumesPresentation(signature *types.Signature, document, nodeType types.Type, node *types.Interface) bool {
+	if receiver := signature.Recv(); receiver != nil && (presentationOperand(receiver.Type(), document, nodeType) || types.Implements(receiver.Type(), node)) {
+		return true
 	}
-	if got, want := markerMethods, []string{"nodeMarker"}; !equalStrings(got, want) {
-		t.Fatalf("presentationNode methods = %v, want %v", got, want)
-	}
-	var functions []string
-	for _, source := range production {
-		for _, declaration := range source.Decls {
-			if function, ok := declaration.(*ast.FuncDecl); ok && strings.Contains(strings.ToLower(function.Name.Name), "render") {
-				functions = append(functions, function.Name.Name)
-			}
+	for i := range signature.Params().Len() {
+		if presentationOperand(signature.Params().At(i).Type(), document, nodeType) {
+			return true
 		}
 	}
-	sort.Strings(functions)
-	if want := []string{"Render"}; !equalStrings(functions, want) {
-		t.Fatalf("presentation renderer functions = %v, want %v", functions, want)
+	return false
+}
+
+// presentationOperand recognizes the boundary's generic Document and Node
+// operands, not concrete node internals such as []Field used by validators.
+func presentationOperand(typ, document, nodeType types.Type) bool {
+	if types.Identical(typ, document) || types.Identical(typ, nodeType) {
+		return true
 	}
+	switch typ := typ.(type) {
+	case *types.Pointer:
+		return presentationOperand(typ.Elem(), document, nodeType)
+	case *types.Slice:
+		return presentationOperand(typ.Elem(), document, nodeType)
+	case *types.Array:
+		return presentationOperand(typ.Elem(), document, nodeType)
+	}
+	return false
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func equalStrings(got, want []string) bool {
