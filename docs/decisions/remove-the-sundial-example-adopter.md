@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: remove-the-sundial-example-adopter
-status: Proposed
+status: Accepted
 date: 2026-08-04
 ---
 # ADR-remove-the-sundial-example-adopter: Remove the Sundial Example Adopter
@@ -107,3 +107,4 @@ and the claims whose truth depended on that fixture.
 ## Status history
 
 - 2026-08-04: Proposed
+- 2026-08-04: Accepted; content-sha256: 1eee9119e4cc9e1056375bdcfd26a076de131e397afe43af3d610714ffadf60d
