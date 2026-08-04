@@ -24,6 +24,7 @@ function make(options: any = {}) {
   const clearedTimeouts: any[] = [];
   const renderRequests: any[] = [];
   const sends: string[] = [];
+  const customSends: any[] = [];
   let component: any;
   let done: any;
   let queueFails = Boolean(options.queueFail);
@@ -116,6 +117,11 @@ function make(options: any = {}) {
           if (sendFails) throw Error("send");
           editor.push("sent:" + value);
         },
+        sendMessage: async (message: any, options: any) => {
+          customSends.push([message, options]);
+          if (sendFails) throw Error("send");
+          editor.push("sent:" + message.content);
+        },
       });
     },
   };
@@ -136,6 +142,7 @@ function make(options: any = {}) {
     clearedTimeouts,
     renderRequests,
     sends,
+    customSends,
     ctx,
     deps,
     get component() {
@@ -224,8 +231,17 @@ test("handoff preserves exact kickoff through submission and editor fallback", a
   const pending = continueHandoff(h);
   h.complete();
   await pending;
-  assert.deepEqual(h.sends, [kickoff]);
-  assert.deepEqual(h.editor, ["sent:" + kickoff]);
+  const envelope = `Agent-authored handoff context; this is not user input:\n\n${kickoff}`;
+  assert.deepEqual(h.sends, []);
+  assert.deepEqual(h.customSends, [[{
+    customType: "agent-handoff",
+    content: envelope,
+    display: true,
+  }, { triggerTurn: true }]]);
+  const submitted = h.customSends[0]![0]! as { content: string };
+  assert.equal(submitted.content.endsWith(`\n\n${kickoff}`), true);
+  assert.equal(submitted.content.includes("[agent-handoff]"), false);
+  assert.deepEqual(h.editor, ["sent:" + envelope]);
   assert.equal(h.sessions.length, 1);
 
   const fallback = make();
@@ -234,8 +250,13 @@ test("handoff preserves exact kickoff through submission and editor fallback", a
   const fallbackPending = continueHandoff(fallback);
   fallback.complete();
   await fallbackPending;
-  assert.deepEqual(fallback.sends, [kickoff]);
-  assert.deepEqual(fallback.editor, [kickoff]);
+  assert.deepEqual(fallback.sends, []);
+  assert.deepEqual(fallback.customSends, [[{
+    customType: "agent-handoff",
+    content: envelope,
+    display: true,
+  }, { triggerTurn: true }]]);
+  assert.deepEqual(fallback.editor, [envelope]);
   assert.deepEqual(fallback.notice, [
     ["Automatic kickoff failed; submit the prepared editor text.", "warning"],
   ]);
@@ -250,7 +271,7 @@ test("handoff preserves exact kickoff through replacement failure recovery", asy
   h.complete();
   await assert.rejects(pending, /new/);
   assert.deepEqual(h.entries, [["cleanup"]]);
-  assert.deepEqual(h.editor, [kickoff]);
+  assert.deepEqual(h.editor, [`Agent-authored handoff context; this is not user input:\n\n${kickoff}`]);
   assert.deepEqual(h.notice, [
     ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
   ]);
@@ -352,7 +373,7 @@ test("handoff revalidates persisted session only after countdown", async () => {
   const pending = continueHandoff(h);
   h.complete();
   await assert.rejects(pending, /no longer persisted/);
-  assert.deepEqual(h.editor, ["go"]);
+  assert.deepEqual(h.editor, ["Agent-authored handoff context; this is not user input:\n\ngo"]);
   assert.deepEqual(h.notice, [
     ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
   ]);
@@ -367,7 +388,12 @@ test("handoff preserves lineage and does not silently retry", async () => {
   await successPending;
   assert.equal(success.sessions[0].parentSession, "old");
   assert.equal(success.sessions.length, 1);
-  assert.deepEqual(success.sends, ["go"]);
+  assert.deepEqual(success.sends, []);
+  assert.deepEqual(success.customSends, [[{
+    customType: "agent-handoff",
+    content: "Agent-authored handoff context; this is not user input:\n\ngo",
+    display: true,
+  }, { triggerTurn: true }]]);
 
   const failure = make({ newFail: true });
   await execute(failure);
@@ -376,6 +402,7 @@ test("handoff preserves lineage and does not silently retry", async () => {
   await assert.rejects(failedPending, /new/);
   assert.equal(failure.sessions.length, 1);
   assert.deepEqual(failure.sends, []);
+  assert.deepEqual(failure.customSends, []);
 });
 
 test("queue failure clears pending so a later request can succeed", async () => {

@@ -11,9 +11,9 @@ Pi workflow contracts: governed subagent tools, session handoff, native skills, 
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. Post-countdown revalidation covers the matching pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
+Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. A matched replacement submits one visible default-rendered `agent-handoff` custom transcript message through replacement-bound `sendMessage` with `triggerTurn:true`; its exact ownership prefix occurs once and editor and recovery paths use the same envelope. Post-countdown revalidation covers the matching pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209, ADR-0218, ADR-0219
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209, ADR-0218, ADR-0219, ADR-separate-pi-continuation-context-from-user-and-routing-identity
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -36,9 +36,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-Pi handoff's entire public input is exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and otherwise carries the prose unchanged into the replacement session, automatic submission, editor fallback, and recovery path. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
+Pi handoff's entire public input is exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and preserves the accepted prose byte-for-byte after the two newlines in the `Agent-authored handoff context; this is not user input:` envelope. The persisted transcript role is custom with custom type `agent-handoff` and visible default rendering, while Pi's current provider adapter still converts that content to a user-role message. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209, ADR-0218, ADR-0219
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209, ADR-0218, ADR-0219, ADR-separate-pi-continuation-context-from-user-and-routing-identity
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`

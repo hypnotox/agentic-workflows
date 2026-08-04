@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Pi fresh-session handoff now persists accepted kickoff as one visible default-rendered `agent-handoff` custom message with an explicit agent-authored envelope and replacement-bound turn trigger. The public bounded `{kickoff}` input remains unchanged; Pi's current provider adapter still receives the custom content as a user-role message.
+
 - Release verification now pins the root project to the canonical AGPL-3.0-only license bytes, matching README references, and license inclusion in every GoReleaser archive, without recategorizing dependency metadata or retained third-party notices as project-license inputs.
 
 - `awf check commit-policy <revision-or-range>...` previews configured exact author, committer, and optional SSH-signature provenance for explicit commits after a full baseline. Ranges use the shared exact two-sided grammar, so three-dot, empty-sided, and multi-range forms are refused rather than treated as clean history. Disabled policy succeeds with one note; complete violations and operational refusals are actionable. The hooks singleton now renders a fifth inert payload, `reference-transaction.sh`, which rejects nonconforming introduced branch commits before refs move; pre-push expands branch and recursively peeled tag targets through the same verifier before its gate. Adopter-owned stubs resolve the invoking worktree, and awf never activates hooks or replaces remote branch policy.

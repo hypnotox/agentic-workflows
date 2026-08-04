@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-pi-continuation-context-from-user-and-routing-identity
-status: Proposed
+status: Implementing
 date: 2026-08-04
 ---
 # ADR-separate-pi-continuation-context-from-user-and-routing-identity: Separate Pi continuation context from user and routing identity
@@ -173,3 +173,5 @@ boundary without claiming authority over Remote Pi internals.
 ## Status history
 
 - 2026-08-04: Proposed
+- 2026-08-04: Implementing; content-sha256: 72b472a2ed203f20eb3aac4e9a1927574f05c3f9fb269b4c8637734ce1c54434
+- 2026-08-04: Applied; operations: update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`
