@@ -17,6 +17,7 @@ type RefusalError struct {
 	Condition       string
 	ChangedTopology bool
 	NextAction      string
+	NextActions     []string
 	Err             error
 }
 

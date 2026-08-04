@@ -12,11 +12,19 @@ func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
 	if err != nil { // coverage-ignore: fixed grammar-valid topology label always validates
 		return presentation.Diagnostic{}, err
 	}
-	step, err := presentation.Prose(e.NextAction)
-	if err != nil { // coverage-ignore: constructors require nonempty recovery action
-		return presentation.Diagnostic{}, err
+	actions := e.NextActions
+	if len(actions) == 0 {
+		actions = []string{e.NextAction}
 	}
-	diagnostic := presentation.Diagnostic{Condition: e.Condition, State: e.Category, Changed: []presentation.Field{axis}, Steps: []presentation.Value{step}}
+	steps := make([]presentation.Value, 0, len(actions))
+	for _, action := range actions {
+		step, err := presentation.Literal(action)
+		if err != nil { // coverage-ignore: constructors require nonempty recovery actions
+			return presentation.Diagnostic{}, err
+		}
+		steps = append(steps, step)
+	}
+	diagnostic := presentation.Diagnostic{Condition: e.Condition, State: e.Category, Changed: []presentation.Field{axis}, Steps: steps}
 	if e.Err != nil {
 		diagnostic.Cause = e.Err.Error()
 	}
@@ -58,11 +66,21 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 // Mutation maps managed-topology facts into the common readable mutation.
 func (r Result) Mutation() (presentation.Mutation, error) {
 	identity := []presentation.Field{}
-	for _, fact := range []struct{ label, value string }{{"worktree", r.Path}, {"branch", r.Branch}} {
+	for _, fact := range []struct {
+		label   string
+		value   string
+		literal bool
+	}{{"worktree", r.Path, true}, {"branch", r.Branch, false}} {
 		if fact.value == "" {
 			continue
 		}
-		value, err := presentation.Prose(fact.value)
+		var value presentation.Value
+		var err error
+		if fact.literal {
+			value, err = presentation.Literal(fact.value)
+		} else {
+			value, err = presentation.Prose(fact.value)
+		}
 		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
 			return presentation.Mutation{}, err
 		}
@@ -80,7 +98,7 @@ func (r Result) Mutation() (presentation.Mutation, error) {
 		}
 		changes = append(changes, presentation.MutationChange{Label: "completed", Values: []presentation.Value{value}})
 	}
-	next, err := presentation.Prose(r.NextAction)
+	next, err := presentation.Literal(r.NextAction)
 	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
 		return presentation.Mutation{}, err
 	}

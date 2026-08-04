@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -159,6 +160,42 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 
 // invariant: tooling/cli:effort-command-contract (TestEffortMemoryAndActivityCLIContract)
 func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
+	// The protocol writer, rather than a decoded map, owns these bytes. Fixed
+	// values prove its field order, all transport values, JSON escaping, and
+	// newline framing independently of clock-backed CLI activity mutations.
+	at := time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)
+	for name, reply := range map[string]struct {
+		reply effort.ActivityReply
+		want  string
+	}{
+		"attach": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityAttached, Effort: &effort.ActivityEffort{Slug: "demo", Title: "Demo \\\"quoted\\\" <tag>"}, Memory: &effort.MemoryMetadata{Effort: "demo", Phase: "Phase  4", Next: "Next\tstep", Updated: "2024-01-02T03:04:05Z"}, Activity: &effort.Activity{SchemaVersion: 2, Owner: "00000000-0000-4000-8000-000000000001", AttachedAt: at, HeartbeatAt: at}},
+			want:  "{\"schemaVersion\":2,\"condition\":\"attached\",\"effort\":{\"slug\":\"demo\",\"title\":\"Demo \\\\\\\"quoted\\\\\\\" \\u003ctag\\u003e\"},\"memory\":{\"effort\":\"demo\",\"phase\":\"Phase  4\",\"next\":\"Next\\tstep\",\"updated\":\"2024-01-02T03:04:05Z\"},\"activity\":{\"schemaVersion\":2,\"owner\":\"00000000-0000-4000-8000-000000000001\",\"attachedAt\":\"2024-01-02T03:04:05Z\",\"heartbeatAt\":\"2024-01-02T03:04:05Z\"}}\n",
+		},
+		"heartbeat": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityHeartbeat, Effort: &effort.ActivityEffort{Slug: "demo", Title: "Demo"}, Memory: &effort.MemoryMetadata{Effort: "demo", Phase: "Phase", Next: "Next", Updated: "2024-01-02T03:04:05Z"}, Activity: &effort.Activity{SchemaVersion: 2, Owner: "00000000-0000-4000-8000-000000000001", AttachedAt: at, HeartbeatAt: at.Add(time.Second)}},
+			want:  "{\"schemaVersion\":2,\"condition\":\"heartbeat\",\"effort\":{\"slug\":\"demo\",\"title\":\"Demo\"},\"memory\":{\"effort\":\"demo\",\"phase\":\"Phase\",\"next\":\"Next\",\"updated\":\"2024-01-02T03:04:05Z\"},\"activity\":{\"schemaVersion\":2,\"owner\":\"00000000-0000-4000-8000-000000000001\",\"attachedAt\":\"2024-01-02T03:04:05Z\",\"heartbeatAt\":\"2024-01-02T03:04:06Z\"}}\n",
+		},
+		"detach": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityDetached},
+			want:  "{\"schemaVersion\":2,\"condition\":\"detached\"}\n",
+		},
+		"refusal": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityInvalidMemory, Outcome: &effort.ActionableOutcome{Category: "operation", Condition: "memory cannot be \\\"read\\\"", ChangedActivity: false, NextActions: []string{"inspect <resident>", "repair\\now"}, Cause: "read <failure>"}},
+			want:  "{\"schemaVersion\":2,\"condition\":\"invalid-memory\",\"outcome\":{\"category\":\"operation\",\"condition\":\"memory cannot be \\\\\\\"read\\\\\\\"\",\"changedActivity\":false,\"nextActions\":[\"inspect \\u003cresident\\u003e\",\"repair\\\\now\"],\"cause\":\"read \\u003cfailure\\u003e\"}}\n",
+		},
+	} {
+		t.Run("protocol bytes/"+name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := writeActivityReply(&out, reply.reply); err != nil {
+				t.Fatal(err)
+			}
+			if got := out.String(); got != reply.want {
+				t.Fatalf("reply bytes = %q, want %q", got, reply.want)
+			}
+		})
+	}
+
 	root := commandRepo(t)
 	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "demo", "Demo", "--no-worktree")
 	if code != 0 {

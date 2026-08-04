@@ -36,6 +36,39 @@ func renderedTopologyDiagnostic(t *testing.T, err interface {
 	return out.String()
 }
 
+func TestWorktreeMutationPreservesRepeatedPathSpacesThroughEffortComposition(t *testing.T) {
+	repositoryRoot := filepath.Join(t.TempDir(), "repository  root")
+	gitfixture.InitNativeObjectFormat(t, repositoryRoot, "sha1")
+	worktreePath := filepath.Join(repositoryRoot, ".awf", "worktrees", "worktree  root")
+	result := Result{
+		Condition:       "managed worktree added",
+		ChangedTopology: true,
+		Path:            worktreePath,
+		Branch:          "awf/worktree-root",
+		NextAction:      "continue the effort in " + worktreePath,
+	}
+	mutation, err := result.Mutation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutation, err = (effort.Record{Slug: "worktree-root", Title: "Worktree root", MemoryPath: ".awf/efforts/worktree-root/memory.md"}).NewEffortMutation(mutation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := mutation.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	want := "status: managed worktree added\n\nmutation:\n  identity:\n    effort: worktree-root\n    title: Worktree root\n    memory: .awf/efforts/worktree-root/memory.md\n    worktree: " + worktreePath + "\n    branch: awf/worktree-root\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in " + worktreePath + "\n"
+	if got := out.String(); got != want {
+		t.Fatalf("composed worktree mutation = %q, want %q", got, want)
+	}
+}
+
 func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	// invariant: tooling/effort-management:managed-worktree-lifecycle (TestManagedWorktreeAddIntegrateAndRestartableRemove)
 	root := initWorktreeRepo(t, "sha1")
@@ -1075,6 +1108,56 @@ func TestIntegrationFactDriftBranches(t *testing.T) {
 	}))
 	if err := tipFault.validateIntegrationFacts(testContext(t), path, "fact-drift", target, tip); err == nil || !strings.Contains(err.Error(), "effort branch changed") {
 		t.Fatalf("tip resolve error = %v", err)
+	}
+}
+
+func TestRemovalPostMutationProbeFailureIsActionable(t *testing.T) {
+	cause := failing("worktree list after removal")
+	if got := removalProbeFailure(false, "managed topology probe failed during removal", cause); !errors.Is(got, cause) {
+		t.Fatalf("pre-mutation probe error = %v, want original cause", got)
+	}
+	prior := refusal("ancestry", "managed branch is not merged", false, "integrate first")
+	wrapped := removalProbeFailure(true, "managed checkout operation probe failed during removal", prior)
+	var semantic *RefusalError
+	if !errors.As(wrapped, &semantic) || semantic.Category != "ancestry" || !semantic.ChangedTopology || !errors.Is(wrapped, prior) {
+		t.Fatalf("semantic post-mutation probe error = %#v", wrapped)
+	}
+	safety := &awfgit.HardSafetyError{Category: "repository-identity", Path: "/managed", Err: failing("identity")}
+	wrapped = removalProbeFailure(true, "managed target validation failed during removal", safety)
+	if !errors.As(wrapped, &semantic) || semantic.Category != "repository-identity" || !semantic.ChangedTopology || !errors.Is(wrapped, safety) {
+		t.Fatalf("safety post-mutation probe error = %#v", wrapped)
+	}
+
+	root := initWorktreeRepo(t, "sha1")
+	const slug = "post-mutation-probe"
+	createEffort(t, root, slug, "Post mutation probe")
+	if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	m := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
+		stub.worktreeList = func(ctx context.Context) ([]awfgit.WorktreeRegistration, error) {
+			calls++
+			if calls == 2 {
+				return nil, cause
+			}
+			return stub.Runner.WorktreeList(ctx)
+		}
+	}))
+	_, err := m.Remove(testContext(t), slug)
+	var refused *RefusalError
+	if !errors.As(err, &refused) || refused.Category != "operation" || !refused.ChangedTopology || !errors.Is(err, cause) {
+		t.Fatalf("post-mutation worktree-list error = %#v", err)
+	}
+	const want = "condition: managed topology probe failed during removal\nstate: operation\ncause: injected worktree list after removal\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: run `git worktree list --porcelain`\n    step 2: inspect the managed path and branch\n    step 3: resolve the reported probe failure\n    step 4: retry ordinary removal\n"
+	if got := renderedTopologyDiagnostic(t, refused); got != want {
+		t.Fatalf("post-mutation worktree-list diagnostic = %q, want %q", got, want)
+	}
+	if calls != 2 {
+		t.Fatalf("worktree-list calls = %d, want failure after first topology mutation", calls)
+	}
+	if _, statErr := os.Lstat(filepath.Join(root, ".awf", "worktrees", slug)); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("first topology mutation did not remove managed path: %v", statErr)
 	}
 }
 

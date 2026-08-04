@@ -435,6 +435,37 @@ func (m *Manager) targetChanged(ctx context.Context, before string) bool {
 	return err != nil || after != before
 }
 
+const removalProbeRecovery = "run `git worktree list --porcelain`"
+
+var removalProbeRecoveryActions = []string{
+	removalProbeRecovery,
+	"inspect the managed path and branch",
+	"resolve the reported probe failure",
+	"retry ordinary removal",
+}
+
+// removalProbeFailure preserves a mechanism error before any mutation, but
+// after one converts it to the actionable topology outcome that a caller needs
+// to recover safely from the residue before retrying.
+func removalProbeFailure(changed bool, condition string, err error) error {
+	if !changed {
+		return err
+	}
+	category := "operation"
+	var prior *RefusalError
+	if errors.As(err, &prior) {
+		category = prior.Category
+	}
+	var safety *awfgit.HardSafetyError
+	if errors.As(err, &safety) {
+		category = safety.Category
+	}
+	return &RefusalError{
+		Category: category, Condition: condition, ChangedTopology: true,
+		NextAction: removalProbeRecovery, NextActions: removalProbeRecoveryActions, Err: err,
+	}
+}
+
 func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 	if _, err := m.efforts.Show(slug); err != nil {
 		return Result{}, err
@@ -458,11 +489,11 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		if _, statErr := managedLstat(path); statErr == nil {
 			pathPresent = true
 		} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
-			return Result{}, statErr
+			return Result{}, removalProbeFailure(changed, "managed path probe failed during removal", statErr)
 		}
 		regs, regsErr := m.git.WorktreeList(ctx)
 		if regsErr != nil {
-			return Result{}, regsErr
+			return Result{}, removalProbeFailure(changed, "managed topology probe failed during removal", regsErr)
 		}
 		var exact *awfgit.WorktreeRegistration
 		for index := range regs {
@@ -479,7 +510,7 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		}
 		branchPresent, branchErr := m.git.BranchExists(ctx, branch(slug))
 		if branchErr != nil {
-			return Result{}, branchErr
+			return Result{}, removalProbeFailure(changed, "managed branch probe failed during removal", branchErr)
 		}
 		if !pathPresent && exact == nil && !branchPresent {
 			return Result{Condition: "managed worktree topology is absent", ChangedTopology: changed, NextAction: "continue to retrospective, then finish the effort"}, nil
@@ -487,7 +518,7 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		if branchPresent {
 			merged, ancestryErr := m.git.Ancestor(ctx, branch(slug), "HEAD")
 			if ancestryErr != nil {
-				return Result{}, ancestryErr
+				return Result{}, removalProbeFailure(changed, "managed branch ancestry probe failed during removal", ancestryErr)
 			}
 			if !merged {
 				return Result{}, refusal("ancestry", "managed branch is not merged into the target", changed, "integrate and settle terminal review, or inspect and discard explicitly with native Git")
@@ -495,14 +526,14 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		}
 		if pathPresent {
 			if err := m.validateManagedTarget(ctx, path); err != nil {
-				return Result{}, err
+				return Result{}, removalProbeFailure(changed, "managed target validation failed during removal", err)
 			}
 			managedCheckout, openErr := m.open(path)
 			if openErr != nil {
-				return Result{}, openErr
+				return Result{}, removalProbeFailure(changed, "managed checkout open failed during removal", openErr)
 			}
 			if err := operationFree(ctx, managedCheckout); err != nil {
-				return Result{}, err
+				return Result{}, removalProbeFailure(changed, "managed checkout operation probe failed during removal", err)
 			}
 			if err := requireClean(ctx, managedCheckout); err != nil {
 				return Result{}, refusalCause("cleanliness", "managed worktree is dirty", changed, "commit or explicitly inspect and discard changes with native Git, then retry ordinary removal", err)
