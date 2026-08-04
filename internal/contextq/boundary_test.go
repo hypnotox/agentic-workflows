@@ -2,6 +2,7 @@ package contextq
 
 import (
 	"go/ast"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -237,29 +238,98 @@ func contextqPresentationFindings(pkgs []*packages.Package) []string {
 	return findings
 }
 
-func cmdRenderFindings(pkgs []*packages.Package) []string {
-	resultTypes := map[string]bool{"ContextResult": true, "UncoveredResult": true}
-	takesResult := func(fn *ast.FuncDecl) bool {
-		fields := []*ast.Field{}
-		if fn.Recv != nil {
-			fields = append(fields, fn.Recv.List...)
-		}
-		if fn.Type.Params != nil {
-			fields = append(fields, fn.Type.Params.List...)
-		}
-		for _, field := range fields {
-			expr := field.Type
-			if star, ok := expr.(*ast.StarExpr); ok {
-				expr = star.X
-			}
-			if sel, ok := expr.(*ast.SelectorExpr); ok {
-				if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "contextq" && resultTypes[sel.Sel.Name] {
-					return true
+// cmdPresentationFindings rejects presentation construction in the command
+// package. Contextq owns mapping result semantics into presentation nodes; cmd
+// may select its exported render entry points but may not create or map those
+// nodes itself.
+func cmdPresentationFindings(pkgs []*packages.Package) []string {
+	var findings []string
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil || !takesContextResult(fn) {
+					continue
 				}
+				ast.Inspect(fn.Body, func(n ast.Node) bool {
+					sel, ok := n.(*ast.SelectorExpr)
+					if !ok {
+						return true
+					}
+					if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "presentation" {
+						p := pkg.Fset.Position(sel.Pos())
+						findings = append(findings, "cmd/awf maps a contextq result through presentation."+sel.Sel.Name+" at "+filepath.ToSlash(filepath.Base(p.Filename))+":"+strconv.Itoa(p.Line))
+					}
+					return true
+				})
 			}
 		}
-		return false
 	}
+	sort.Strings(findings)
+	return findings
+}
+
+func takesContextResult(fn *ast.FuncDecl) bool {
+	fields := []*ast.Field{}
+	if fn.Recv != nil {
+		fields = append(fields, fn.Recv.List...)
+	}
+	if fn.Type.Params != nil {
+		fields = append(fields, fn.Type.Params.List...)
+	}
+	for _, field := range fields {
+		expr := field.Type
+		if star, ok := expr.(*ast.StarExpr); ok {
+			expr = star.X
+		}
+		if sel, ok := expr.(*ast.SelectorExpr); ok {
+			if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "contextq" && (sel.Sel.Name == "ContextResult" || sel.Sel.Name == "UncoveredResult") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// cmdContextEntryFindings proves both production command paths hand their
+// result to contextq's semantic render entries instead of mapping it locally.
+func cmdContextEntryFindings(pkgs []*packages.Package) []string {
+	calls := map[string]map[string]bool{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil {
+					continue
+				}
+				if calls[fn.Name.Name] == nil {
+					calls[fn.Name.Name] = map[string]bool{}
+				}
+				ast.Inspect(fn.Body, func(n ast.Node) bool {
+					call, ok := n.(*ast.CallExpr)
+					if !ok {
+						return true
+					}
+					if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
+						if ident, ok := selector.X.(*ast.Ident); ok && ident.Name == "contextq" {
+							calls[fn.Name.Name][selector.Sel.Name] = true
+						}
+					}
+					return true
+				})
+			}
+		}
+	}
+	var findings []string
+	for _, want := range []struct{ function, entry string }{{"runContext", "RenderContextText"}, {"runUncovered", "RenderUncoveredText"}} {
+		if !calls[want.function][want.entry] {
+			findings = append(findings, "cmd/awf "+want.function+" does not reach contextq."+want.entry)
+		}
+	}
+	return findings
+}
+
+func cmdRenderFindings(pkgs []*packages.Package) []string {
 	buildsText := func(fn *ast.FuncDecl) bool {
 		found := false
 		ast.Inspect(fn.Body, func(n ast.Node) bool {
@@ -285,7 +355,7 @@ func cmdRenderFindings(pkgs []*packages.Package) []string {
 		for _, file := range pkg.Syntax {
 			for _, decl := range file.Decls {
 				fn, ok := decl.(*ast.FuncDecl)
-				if !ok || fn.Body == nil || !takesResult(fn) || !buildsText(fn) {
+				if !ok || fn.Body == nil || !takesContextResult(fn) || !buildsText(fn) {
 					continue
 				}
 				p := pkg.Fset.Position(fn.Pos())
@@ -329,6 +399,12 @@ func TestContextQueryBoundary(t *testing.T) {
 	if findings := cmdRenderFindings(command); len(findings) != 0 {
 		t.Errorf("cmd/awf renders contextq results itself:\n\t%s", strings.Join(findings, "\n\t"))
 	}
+	if findings := cmdPresentationFindings(command); len(findings) != 0 {
+		t.Errorf("cmd/awf maps context results through presentation:\n\t%s", strings.Join(findings, "\n\t"))
+	}
+	if findings := cmdContextEntryFindings(command); len(findings) != 0 {
+		t.Errorf("cmd/awf no longer reaches contextq render entries:\n\t%s", strings.Join(findings, "\n\t"))
+	}
 
 	// Committed negative cases: each half must flag its own violation, so the
 	// detector cannot silently stop detecting.
@@ -371,6 +447,16 @@ func fixtureStaysInsideSeam(state project.ContextState) *Query { return New(stat
 		t.Errorf("seam breaches flagged = %d, want 1 (project.Loader only): %#v", breaches, queryFindings)
 	}
 
+	renderFile := filepath.Join(root, filepath.FromSlash("internal/contextq/render.go"))
+	renderSource, err := os.ReadFile(renderFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unloweredQuery := loadBoundaryPackages(t, queryPattern, map[string][]byte{renderFile: []byte(strings.ReplaceAll(string(renderSource), "return renderDetail(", "return \"\" // removed renderDetail\n\t// renderDetail("))})
+	if findings := contextqPresentationFindings(unloweredQuery); len(findings) != 2 {
+		t.Errorf("unlowered contextq entry findings = %#v, want both render entries", findings)
+	}
+
 	// The cmd half: a function that takes a result and prints it must be
 	// flagged; one that hands the result to a JSON encoder must not, so the
 	// rule turns on building text, not on touching the type.
@@ -383,10 +469,20 @@ import (
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/contextq"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 func fixtureRendersResult(w io.Writer, result contextq.ContextResult) {
 	fmt.Fprintln(w, "rendered", result)
+}
+
+func fixtureMapsResult(result contextq.ContextResult) {
+	_, _ = presentation.NewField("result", mustPresentationValue(result.Selection))
+}
+
+func mustPresentationValue(value contextq.ContextSelection) presentation.Value {
+	result, _ := presentation.Literal(string(value))
+	return result
 }
 
 func fixtureEncodesResult(w io.Writer, result contextq.ContextResult) error {
@@ -394,6 +490,7 @@ func fixtureEncodesResult(w io.Writer, result contextq.ContextResult) error {
 }
 `)})
 	cmdFindings := cmdRenderFindings(violatingCmd)
+	presentationFindings := cmdPresentationFindings(violatingCmd)
 	var rendered, encoded bool
 	for _, f := range cmdFindings {
 		if strings.Contains(f, "fixtureRendersResult") {
@@ -408,5 +505,19 @@ func fixtureEncodesResult(w io.Writer, result contextq.ContextResult) error {
 	}
 	if encoded {
 		t.Errorf("a conforming JSON encode was flagged as rendering: %#v", cmdFindings)
+	}
+	if len(presentationFindings) != 1 {
+		t.Errorf("cmd-side presentation mapping findings = %#v, want one mapping", presentationFindings)
+	}
+
+	contextFile := filepath.Join(root, filepath.FromSlash("cmd/awf/context.go"))
+	contextSource, err := os.ReadFile(contextFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	missingEntries := loadBoundaryPackages(t, cmdPattern, map[string][]byte{contextFile: []byte(strings.ReplaceAll(strings.ReplaceAll(string(contextSource), "RenderContextText", "NoContextRender"), "RenderUncoveredText", "NoUncoveredRender"))})
+	entryFindings := cmdContextEntryFindings(missingEntries)
+	if len(entryFindings) != 2 {
+		t.Errorf("missing context render entry findings = %#v, want both command paths", entryFindings)
 	}
 }

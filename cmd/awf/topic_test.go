@@ -153,6 +153,42 @@ func TestRunTopicHumanTextAndFlags(t *testing.T) {
 	}
 }
 
+func TestPrintTopicPreservesLiteralIdentities(t *testing.T) {
+	const identity = "domain/topic  name\tpart"
+	result := topic.QueryResult{
+		Kind: "topic",
+		ID:   identity,
+		References: []topic.ClaimReferences{{
+			ClaimID:  identity + ":claim",
+			Incoming: []string{"source/with  spaces"},
+			Outgoing: []string{"target/with\ttab"},
+		}},
+		Coverage: &topic.QueryCoverage{Applicability: topic.TopicApplicability{
+			DomainPaths:  []string{"internal/a  b/**"},
+			TopicPaths:   []string{"internal/a\tb/**"},
+			MatchedPaths: []string{"internal/a  b/file.go"},
+			MarkerSites:  []topic.MarkerSite{{Path: "internal/a  b/file_test.go", Line: 7, Kind: topic.ProofMarker, ClaimID: identity + ":claim"}},
+		}},
+	}
+	var out bytes.Buffer
+	if err := printTopic(&out, result); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"identity: topic " + identity,
+		"identity: " + identity + ":claim",
+		"incoming: source/with  spaces",
+		"outgoing: target/with\ttab",
+		"    internal/a  b/**",
+		"    internal/a\tb/**",
+		"marker: internal/a  b/file_test.go:7 | invariant | " + identity + ":claim",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("literal topic identity collapsed in %q:\n%s", want, out.String())
+		}
+	}
+}
+
 func TestPrintTopicHistoryText(t *testing.T) {
 	result := topic.QueryResult{Kind: "topic", ID: "d/t", Claims: []topic.QueryClaim{}, History: []topic.ClaimHistory{{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing"}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned"}}}}
 	var out bytes.Buffer

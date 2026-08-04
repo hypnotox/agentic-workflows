@@ -113,6 +113,38 @@ func TestRunContextHumanAndFacets(t *testing.T) {
 	}
 }
 
+func TestContextHeadingsPassSemanticValuesOnly(t *testing.T) {
+	ctx := testContext(t)
+	root := ctxCmdFixture(t)
+	cases := []struct {
+		name string
+		run  func(*bytes.Buffer) error
+		want string
+	}{
+		{"normal", func(out *bytes.Buffer) error {
+			return runContext(ctx, root, []string{"internal/foo/x.go"}, false, "", false, false, nil, out)
+		}, "context: live state for this project\n"},
+		{"uncovered", func(out *bytes.Buffer) error { return runContext(ctx, root, nil, false, "", true, false, nil, out) }, "context: coverage gaps for this project\n"},
+	}
+	gitfixture.AddAll(t, gitfixture.At(root))
+	cases = append(cases, struct {
+		name string
+		run  func(*bytes.Buffer) error
+		want string
+	}{"staged", func(out *bytes.Buffer) error {
+		return runContext(ctx, root, []string{"internal/foo/x.go"}, true, "", false, false, nil, out)
+	}, "context: staged state for this project\n"})
+	for _, tc := range cases {
+		var out bytes.Buffer
+		if err := tc.run(&out); err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if !strings.HasPrefix(out.String(), tc.want) {
+			t.Errorf("%s heading:\n%s", tc.name, out.String())
+		}
+	}
+}
+
 func TestRunContextRendersMarkerRelationships(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -142,14 +174,15 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 	if err := runContext(ctx, root, []string{"internal/foo", "internal/foo/x_test.go"}, false, "", false, false, []string{"relationships"}, &out); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{
-		"alpha/one | alpha/one:order | 1 | State",
-		"alpha/one | alpha/one:stable | 2 | Touches",
-		"alpha/one | alpha/one:tested | 2 | Proofs",
-	} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("missing %q:\n%s", want, out.String())
-		}
+	const sourceBlock = "claim-sources:\n" +
+		"    alpha/one | alpha/one:order | 1 | State\n" +
+		"    alpha/one | alpha/one:order | 2 | State\n" +
+		"    alpha/one | alpha/one:stable | 1 | Touches\n" +
+		"    alpha/one | alpha/one:stable | 2 | Touches\n" +
+		"    alpha/one | alpha/one:tested | 1 | Proofs\n" +
+		"    alpha/one | alpha/one:tested | 2 | Proofs\n"
+	if got := out.String(); strings.Count(got, sourceBlock) != 1 {
+		t.Fatalf("source attribution rows:\n%s", got)
 	}
 }
 
@@ -199,7 +232,7 @@ func TestRunContextStaticAndUsage(t *testing.T) {
 	if err := runContext(ctx, root, []string{"x"}, false, "", false, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
-	const want = "context: context (static: not inside an awf project; live classification and authority require an adopted project)\nselection: explicit\n\nrequests:\n  status: none\n\nauthority:\n  topics: none\n"
+	const want = "context: static: not inside an awf project; live classification and authority require an adopted project\nselection: explicit\n\nrequests:\n  status: none\n\nauthority:\n  topics: none\n"
 	if out.String() != want {
 		t.Fatalf("static:\n%s", out.String())
 	}
@@ -347,8 +380,9 @@ func TestRunUncoveredStaticAndFilesystemErrors(t *testing.T) {
 	if err := runContext(ctx, root, nil, false, "", true, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "all scanned paths") {
-		t.Fatal(out.String())
+	const staticUncoveredGolden = "context: static: not inside an awf project; live coverage appears inside one\n\ncoverage:\n  result: all scanned paths are owned and covered by a scoped topic\n"
+	if out.String() != staticUncoveredGolden {
+		t.Fatalf("static uncovered:\n%s", out.String())
 	}
 	bad := filepath.Join(t.TempDir(), "root")
 	if err := os.WriteFile(bad, []byte("x"), 0o600); err != nil {

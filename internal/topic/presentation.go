@@ -11,7 +11,7 @@ import (
 // presentation tree. Topic owns this semantic mapping; presentation owns
 // validation and text rendering.
 func (result QueryResult) Detail() presentation.Detail {
-	fields := []presentation.Field{topicField("identity", result.Kind+" "+result.ID)}
+	fields := []presentation.Field{topicLiteralField("identity", result.Kind+" "+result.ID)}
 	if result.HistoricalOnly {
 		fields = append(fields, topicField("historical-only", "no active claim"))
 	}
@@ -26,14 +26,14 @@ func (result QueryResult) Detail() presentation.Detail {
 			if claim.Verify != "" {
 				claimNodes = append(claimNodes, topicField("verify", claim.Verify))
 			}
-			nodes = append(nodes, topicSection("claim", append([]presentation.Node{topicField("identity", claim.ID)}, claimNodes...)...))
+			nodes = append(nodes, topicSection("claim", append([]presentation.Node{topicLiteralField("identity", claim.ID)}, claimNodes...)...))
 		}
 		sections = append(sections, topicSection("claims", nodes...))
 	}
 	if result.History != nil {
 		nodes := make([]presentation.Node, 0, len(result.History))
 		for _, history := range result.History {
-			historyNodes := []presentation.Node{topicField("identity", history.ClaimID)}
+			historyNodes := []presentation.Node{topicLiteralField("identity", history.ClaimID)}
 			if history.LegacyBaseline {
 				historyNodes = append(historyNodes, topicField("origin", "legacy baseline not retained in active authority"))
 			} else if history.Origin != nil {
@@ -54,7 +54,7 @@ func (result QueryResult) Detail() presentation.Detail {
 	if result.References != nil {
 		nodes := make([]presentation.Node, 0, len(result.References))
 		for _, refs := range result.References {
-			nodes = append(nodes, topicSection("claim", topicField("identity", refs.ClaimID), topicField("incoming", topicList(refs.Incoming)), topicField("outgoing", topicList(refs.Outgoing))))
+			nodes = append(nodes, topicSection("claim", topicLiteralField("identity", refs.ClaimID), topicLiteralField("incoming", topicList(refs.Incoming)), topicLiteralField("outgoing", topicList(refs.Outgoing))))
 		}
 		if len(nodes) > 0 {
 			sections = append(sections, topicSection("references", nodes...))
@@ -72,7 +72,7 @@ func (result QueryResult) Detail() presentation.Detail {
 			if site.Note != "" {
 				text += " | " + site.Note
 			}
-			nodes = append(nodes, topicField("marker", text))
+			nodes = append(nodes, topicLiteralField("marker", text))
 		}
 		sections = append(sections, topicSection("coverage", nodes...))
 	}
@@ -103,8 +103,8 @@ func presentationTopicItems(label string, items []string) presentation.Node {
 	}
 	values := make([]presentation.Value, 0, len(items))
 	for _, item := range items {
-		value, err := topicValue(item)
-		if err != nil { // coverage-ignore: topic query items are parsed single-line values
+		value, err := topicLiteral(item)
+		if err != nil { // coverage-ignore: topic query items are parsed single-line identities
 			panic(err)
 		}
 		values = append(values, value)
@@ -115,10 +115,22 @@ func presentationTopicItems(label string, items []string) presentation.Node {
 	}
 	return list
 }
-func topicValue(text string) (presentation.Value, error) { return presentation.Prose(text) }
+func topicValue(text string) (presentation.Value, error)   { return presentation.Prose(text) }
+func topicLiteral(text string) (presentation.Value, error) { return presentation.Literal(text) }
 func topicField(label, text string) presentation.Field {
 	value, err := topicValue(text)
 	if err != nil { // coverage-ignore: topic parser values cannot contain invalid presentation whitespace
+		panic(err)
+	}
+	field, err := presentation.NewField(label, value)
+	if err != nil { // coverage-ignore: this mapper owns each literal label
+		panic(err)
+	}
+	return field
+}
+func topicLiteralField(label, text string) presentation.Field {
+	value, err := topicLiteral(text)
+	if err != nil { // coverage-ignore: topic query identities are parsed single-line values
 		panic(err)
 	}
 	field, err := presentation.NewField(label, value)
