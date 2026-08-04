@@ -471,7 +471,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:5fcfa5af0cc411be35950a8cc22f4b36a60948c62b9f8113ae91c31ee7659f3d",
+      "outputHash": "sha256:7b5af35aeabc365fe0f164bf288239bea2e724f392a2c3414d232d9f999d5d14",
       "regenChecked": true
     },
     "docs/domains/config.md": {
@@ -517,8 +517,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:ccde3aa135645ef354fa650ed9d54d767afad1fb3aab52b375132a0839faf0aa",
-      "outputHash": "sha256:4e6c1e501f0875b9cfd6ab27f4a105bad88a18b69297f8fdbdf1fa9ebbf03404"
+      "configHash": "sha256:b11ed807cf9fd2d0722165a8ba39c45e306d364898b6024d688def982e5a8856",
+      "outputHash": "sha256:c6b709e162a0281de56287cf5263c15c5cb36fe2ae7021aad121d7e72978036b"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
@@ -589,8 +589,8 @@
     "docs/topics/code-design/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:932242cd31c9f09bbe02533f8e318eb4ee9b560fc4048bdb15aad6e451fd9c45",
-      "outputHash": "sha256:b89c9b728526a17a33a04484a5293bf2ddc82a185b9571a6a5c0df742a71e91d"
+      "configHash": "sha256:b4eb89e1f4c299529d17173233fe6097eaed03bb64b66ecfc71e93a14bddad02",
+      "outputHash": "sha256:fbc991b54c1c7dce904a1a0c4da4ada7c22eccc5f83fea96af80778e91ad1bcc"
     },
     "docs/topics/code-design/outcome-modeling.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -609,6 +609,12 @@
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
       "configHash": "sha256:f135a3514d5e6953782c552d1ad014c38e144037e088be8db9a0d2a0691bf2ed",
       "outputHash": "sha256:84796c55115397884cdbec58c9164b3fabea8354a0858b3bf83442897842bcb4"
+    },
+    "docs/topics/code-design/presentation-package.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:9791db8b9cc71dffc5ccfc85a51231ab88f482b9756b53ca979b44d1b0f430f6",
+      "outputHash": "sha256:9a73d7bccb7abed9800213a215a70494482da7ef2ed968825758c1e59085c8bc"
     },
     "docs/topics/code-design/single-home.md": {
       "templateId": "topics/topic.md.tmpl",

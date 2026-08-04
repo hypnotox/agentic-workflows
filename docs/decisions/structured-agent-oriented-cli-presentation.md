@@ -63,13 +63,14 @@ both terminal tables and a JSON-first contract.
 
 8. `decision: enforced-adoption` Every ordinary command surface, including help, prompts, successful results, advisories, reports, refusals, and partial outcomes, converts to the central presentation contract. A structural gate rejects direct formatted command output outside the explicit payload and protocol boundary. Exact presentation tests own public labels, schemas, grouping, order, escaping, stream selection, and exit behavior; long expected outputs are checked-in reviewable test data rather than silently regenerated snapshots. Every repository consumer of ordinary output validates the public labels and field boundaries it reads instead of relying on incidental whitespace positions.
 
-9. `decision: package-and-authority-home` The new presentation package belongs to the code-design domain because it owns a repository-wide representation pattern rather than tooling command semantics. The global presentation-ownership topic owns the node grammar, closed standard result-shape set, and semantic-mapping boundary. The tooling CLI topic owns the public text grammar, typed command boundary, explicit bypass set, structured help contract, and command-specific JSON retirement. The context-query boundary continues to assign query and semantic mapping ownership to `internal/contextq`, while the presentation package owns syntax rendering. Outcome modeling continues to own diagnostic meaning and retry safety, with its flattened remedy rendering revised to use the central Steps shape.
+9. `decision: package-and-authority-home` The new presentation package belongs to the code-design domain because it owns a repository-wide representation pattern rather than tooling command semantics. The global presentation-ownership topic owns the cross-cutting node grammar, closed standard result-shape set, and semantic-mapping boundary. The path-scoped presentation-package topic covers `internal/presentation/**` and owns its package-local dependency and representation-only boundary without duplicating the global syntax contract. The tooling CLI topic owns the public text grammar, typed command boundary, explicit bypass set, structured help contract, and command-specific JSON retirement. The context-query boundary continues to assign query and semantic mapping ownership to `internal/contextq`, while the presentation package owns syntax rendering. Outcome modeling continues to own diagnostic meaning and retry safety, with its flattened remedy rendering revised to use the central Steps shape.
 
 10. `decision: claim-backing` The four added invariants are mechanically backed. `closed-presentation-tree` is proven by `TestPresentationTreeContract`; `readable-text-output` by `TestOrdinaryCommandOutputUsesPresentation`; `typed-command-output-boundary` by `TestCommandOutputBoundary`; and `explicit-output-bypasses` by `TestExplicitOutputBypasses`. Each proof unit carries its matching current-state marker when the claim is applied.
 
 ## State changes
 
 - update `code-design/presentation-ownership:model-owner-renders`
+- add `code-design/presentation-package:presentation-package-boundary`
 - add `code-design/presentation-ownership:closed-presentation-tree`
 - update `tooling/context-and-topic:context-query-boundary`
 - update `code-design/outcome-modeling:actionable-outcome-protocol`
@@ -97,7 +98,9 @@ presentation and command boundaries.
 
 The central package becomes a dependency of many model-owning packages. That dependency is
 accepted because it contains representation vocabulary only; allowing packages to recreate the
-grammar would defeat the decision. The package must remain closed and small. Adding a renderer,
+grammar would defeat the decision. Its path-scoped package topic owns that local dependency and
+representation boundary, while the global presentation topic remains the one syntax authority.
+The package must remain closed and small. Adding a renderer,
 raw node, unbounded nesting, or domain fields to it requires a later decision rather than local
 convenience.
 

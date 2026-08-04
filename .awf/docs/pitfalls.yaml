@@ -1,5 +1,24 @@
 data:
   pitfalls:
+    - title: "A global topic cannot cover its own domain-owned package"
+      domains: [code-design, invariants]
+      tags: [plan-artifact, verification-discipline]
+      body: |
+        A reviewed rollout assigned `internal/presentation/**` to the code-design domain while
+        keeping its natural presentation-ownership topic global. The implementation reached its
+        phase-closing check before exposing the contradiction: scoped coverage deliberately skips
+        global topics, even when the topic's owning domain matches the new path, so every file in
+        the package was uncovered. The plan simultaneously required immediate domain ownership and
+        deferred the first path-covering claim until a later phase. Each instruction was plausible
+        alone, but no intermediate repository state could satisfy all three.
+
+        When a plan introduces a domain-owned path, test the prospective domain selector against
+        the exact claims active in that same transaction. A global topic supplies cross-cutting
+        authority but never path coverage; the new path needs at least one truthful active claim in
+        a path-scoped topic when ownership lands. Do not widen an unrelated topic merely to silence
+        coverage, and do not defer ownership without making that authority gap explicit. If the
+        global topic is also the natural package authority, add a complementary scoped package
+        boundary or separately decide the coverage semantics before implementation.
     - title: "Applying every state operation does not mean terminal review has settled"
       domains: [adr-system]
       tags: [adr-lifecycle, plan-artifact, review-agents]

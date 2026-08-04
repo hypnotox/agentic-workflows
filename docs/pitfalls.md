@@ -13,6 +13,26 @@ _Domains: tooling_
 `git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
 
 
+## A global topic cannot cover its own domain-owned package
+
+_Domains: code-design, invariants_
+
+A reviewed rollout assigned `internal/presentation/**` to the code-design domain while
+keeping its natural presentation-ownership topic global. The implementation reached its
+phase-closing check before exposing the contradiction: scoped coverage deliberately skips
+global topics, even when the topic's owning domain matches the new path, so every file in
+the package was uncovered. The plan simultaneously required immediate domain ownership and
+deferred the first path-covering claim until a later phase. Each instruction was plausible
+alone, but no intermediate repository state could satisfy all three.
+
+When a plan introduces a domain-owned path, test the prospective domain selector against
+the exact claims active in that same transaction. A global topic supplies cross-cutting
+authority but never path coverage; the new path needs at least one truthful active claim in
+a path-scoped topic when ownership lands. Do not widen an unrelated topic merely to silence
+coverage, and do not defer ownership without making that authority gap explicit. If the
+global topic is also the natural package authority, add a complementary scoped package
+boundary or separately decide the coverage semantics before implementation.
+
 ## Applying every state operation does not mean terminal review has settled
 
 _Domains: adr-system_
