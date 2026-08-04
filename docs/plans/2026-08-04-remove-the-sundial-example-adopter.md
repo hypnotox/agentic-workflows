@@ -146,18 +146,20 @@ Run `./x render` after Tasks 3.1 and 3.2 have removed every fixed-path invocatio
 rg -l 'Sundial|sundial|examples/sundial|committed example adopter|example adopter' \
   README.md x .awf .githooks internal cmd tools .github \
   --glob '!docs/decisions/**' --glob '!docs/plans/**' --glob '!docs/research/**' --glob '!changelog/**' \
-  | grep -vE '^(\.awf/docs/pitfalls\.yaml|\.awf/config\.yaml)$'
+  | grep -vE '^(\.awf/docs/pitfalls\.yaml|\.awf/config\.yaml|\.awf/topics/parts/code-design/single-home/current-state\.md)$'
 ```
 
-The command must return no output. Then verify the two excluded authored files rather than trusting the exclusion:
+The command must return no output. Then verify the three excluded authored files rather than trusting the exclusion:
 
 ```bash
 grep -Fxq '  example-adopter: Historical tag for the former committed example adopter' .awf/config.yaml
 if grep -vFx '  example-adopter: Historical tag for the former committed example adopter' .awf/config.yaml | rg -n 'Sundial|sundial|examples/sundial|committed example adopter|example adopter'; then exit 1; fi
 if awk '$0 == "    - title: \"Applying every state operation does not mean terminal review has settled\"" {skip=1; next} skip && /^    - title:/ {skip=0} !skip {print}' .awf/docs/pitfalls.yaml | rg -n 'Sundial|sundial|examples/sundial|committed example adopter|example adopter'; then exit 1; fi
+grep -Fxq 'Revised-by: ADR-remove-the-sundial-example-adopter' .awf/topics/parts/code-design/single-home/current-state.md
+if grep -vFx 'Revised-by: ADR-remove-the-sundial-example-adopter' .awf/topics/parts/code-design/single-home/current-state.md | rg -n 'Sundial|sundial|examples/sundial|committed example adopter|example adopter'; then exit 1; fi
 ```
 
-The exact historical tag line and the one skipped lifecycle-pitfall block are the only allowed authored occurrences; generated `docs/pitfalls.md` may mirror that incident. Generic fixture paths such as `examples/nested` remain legal where they test product behavior and do not name the removed tree.
+The exact historical tag line, the one skipped lifecycle-pitfall block, and the exact required `Revised-by` provenance line are the only allowed authored occurrences; generated `docs/pitfalls.md` may mirror the incident and the generated single-home topic may mirror the provenance. Generic fixture paths such as `examples/nested` remain legal where they test product behavior and do not name the removed tree.
 
 ### Phase close
 
