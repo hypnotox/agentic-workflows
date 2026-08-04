@@ -2,7 +2,9 @@ package worktree
 
 import (
 	"errors"
+	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
@@ -27,11 +29,10 @@ func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		steps = append(steps, step)
 	}
-	diagnostic := presentation.Diagnostic{Condition: e.Condition, State: e.Category, Changed: []presentation.Field{axis}, Steps: steps}
-	if e.Err != nil {
-		diagnostic.Cause = e.Err.Error()
-	}
-	return diagnostic, nil
+	return presentation.Diagnostic{
+		Condition: e.Condition, State: e.Category, Changed: []presentation.Field{axis},
+		Cause: mechanismCauseText(e), Steps: steps,
+	}, nil
 }
 
 // Diagnostic maps failed creation while retaining both mechanism identities.
@@ -59,11 +60,42 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		steps = append(steps, step)
 	}
-	cause := e.Cause.Error()
-	if e.RollbackCause != nil {
-		cause += " | " + e.RollbackCause.Error()
+	return presentation.Diagnostic{Condition: e.Condition, State: "operation", Changed: changed, Cause: mechanismCauseText(e), Steps: steps}, nil
+}
+
+// mechanismCauseText exposes only failed-call mechanisms, never a typed
+// outcome's legacy Error envelope or its modeled recovery prose.
+func mechanismCauseText(err error) string {
+	causes := mechanismCauses(err)
+	texts := make([]string, 0, len(causes))
+	for _, cause := range causes {
+		if cause != nil {
+			texts = append(texts, cause.Error())
+		}
 	}
-	return presentation.Diagnostic{Condition: e.Condition, State: "operation", Changed: changed, Cause: cause, Steps: steps}, nil
+	return strings.Join(texts, " | ")
+}
+
+func mechanismCauses(err error) []error {
+	if err == nil {
+		return nil
+	}
+	var creation *CreationError
+	if errors.As(err, &creation) {
+		return append(mechanismCauses(creation.Cause), mechanismCauses(creation.RollbackCause)...)
+	}
+	var refusal *RefusalError
+	if errors.As(err, &refusal) {
+		return mechanismCauses(refusal.Err)
+	}
+	var partial *effort.PartialFinishError
+	if errors.As(err, &partial) {
+		return mechanismCauses(partial.Cause)
+	}
+	if errors.Is(err, effort.ErrManagedTopologyPresent) {
+		return nil
+	}
+	return []error{err}
 }
 
 // Mutation maps managed-topology facts into the common readable mutation.
@@ -84,7 +116,7 @@ func (r Result) Mutation() (presentation.Mutation, error) {
 		} else {
 			value, err = presentation.Prose(fact.value)
 		}
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+		if err != nil {
 			return presentation.Mutation{}, err
 		}
 		field, err := presentation.NewField(fact.label, value)
@@ -102,7 +134,7 @@ func (r Result) Mutation() (presentation.Mutation, error) {
 		changes = append(changes, presentation.MutationChange{Label: "completed", Values: []presentation.Value{value}})
 	}
 	next, err := presentation.Literal(r.NextAction)
-	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
 	return presentation.Mutation{Status: r.Condition, Identity: identity, Changes: changes, NextActions: []presentation.Value{next}}, nil

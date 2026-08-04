@@ -246,7 +246,15 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 	}
 	if err := m.git.WorktreeAdd(ctx, path, branch(slug), full); err != nil {
 		changed := m.topologyPresent(ctx, slug, path)
-		return Result{}, refusalCause("operation", "git worktree add failed", changed, err, "inspect actual Git topology", "retry add, or clean only the named path, registration, and branch with native Git")
+		if changed {
+			return Result{}, refusalCause("operation", "git worktree add failed", true, err,
+				"inspect actual Git topology",
+				"clean only the named managed path, registration, and branch with native Git",
+				"retry add")
+		}
+		return Result{}, refusalCause("operation", "git worktree add failed", false, err,
+			"address or resolve the reported failed Git call",
+			"retry add")
 	}
 	if err := exactRegistration(ctx, m.git, path, wantBranch); err != nil {
 		return Result{}, refusalCause("repository-identity", "Git add returned without exact managed registration", true, err, "inspect actual Git topology", "perform safe native-Git cleanup", "retry")
@@ -458,7 +466,7 @@ func removalProbeFailure(changed bool, condition string, err error) error {
 	}
 	var safety *awfgit.HardSafetyError
 	if errors.As(err, &safety) {
-		category = safety.Category
+		category = "repository-identity"
 	}
 	return &RefusalError{
 		Category: category, Condition: condition, ChangedTopology: true,

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
@@ -66,6 +67,23 @@ func TestTopologyDiagnostics(t *testing.T) {
 	}
 	if !errors.Is(&CreationError{Cause: addCause}, addCause) {
 		t.Fatal("creation error lost its sole add mechanism identity")
+	}
+}
+
+func TestDiagnosticsExposeOnlyTypedMechanismCauses(t *testing.T) {
+	mechanism := errors.New("failed Git call")
+	inner := &RefusalError{Category: "operation", Condition: "inner", Err: mechanism}
+	outer := &RefusalError{Category: "operation", Condition: "outer", Err: inner}
+	creation := &CreationError{
+		Message: "legacy creation envelope", Condition: "creation failed", Cause: outer,
+		RollbackCause: &effort.PartialFinishError{Cause: errors.New("failed rollback mechanism")},
+		Steps:         []string{"retry"},
+	}
+	if got, want := mechanismCauseText(creation), "failed Git call | failed rollback mechanism"; got != want {
+		t.Fatalf("mechanism causes = %q, want %q", got, want)
+	}
+	if got := mechanismCauseText(effort.ErrManagedTopologyPresent); got != "" {
+		t.Fatalf("managed topology cause = %q, want empty", got)
 	}
 }
 
