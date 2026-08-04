@@ -81,7 +81,9 @@ become capability authority.
    generated workflow semantics. Remote Pi specifies stable identity and room behavior plus the
    user-facing projection. Each repository proves its side and pins matching contract fixtures;
    neither treats the other repository's internal identity, reconnect, collision, notification, or
-   rendering mechanisms as local authority.
+   rendering mechanisms as local authority. Changed generated templates preserve coherent generic
+   output under missingkey=zero when variables are empty and never emit `<no value>` or an equivalent
+   unresolved-value token.
 
 ## State changes
 
