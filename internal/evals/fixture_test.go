@@ -143,6 +143,9 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if _, _, _, err := p.SyncReport(testsupport.Context(t)); err != nil {
 				t.Fatalf("repair missing output: %v", err)
 			}
+			if drift, err := p.Check(testsupport.Context(t)); err != nil || len(drift) != 0 {
+				t.Fatalf("check repaired missing output: drift=%v err=%v", drift, err)
+			}
 
 			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("tampered\n"), 0o644); err != nil {
 				t.Fatalf("tamper AGENTS.md: %v", err)

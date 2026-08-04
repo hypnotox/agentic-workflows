@@ -536,21 +536,22 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	// Enumerate from the target descriptor, not from a directory walk. A walk
 	// cannot notice a governed file that stopped being rendered. The temporary
 	// authored adopter keeps this assertion independent of a committed example.
-	governed := map[string]bool{}
+	governed := map[string]TargetOutput{}
 	for _, out := range piTarget.Outputs {
 		if strings.HasSuffix(out.Path, ".ts") {
-			governed[out.Path] = true
+			governed[out.Path] = out
 		}
 	}
 	if len(governed) == 0 {
 		t.Fatal("the Pi target declares no governed TypeScript extension output")
 	}
 	root := temporaryAuthoredAdopter(t)
-	for rel := range governed {
+	selectedSkills := map[string]bool{"tdd": true, "exploring": true}
+	for rel, out := range governed {
 		path := filepath.Join(root, filepath.FromSlash(rel))
 		raw, err := os.ReadFile(path)
-		if errors.Is(err, fs.ErrNotExist) {
-			continue // output requires a skill not selected by this fixture
+		if errors.Is(err, fs.ErrNotExist) && out.RequiresSkill != "" && !selectedSkills[out.RequiresSkill] {
+			continue
 		}
 		if err != nil {
 			t.Fatalf("read governed extension %s: %v", path, err)
@@ -581,7 +582,7 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 		if relErr != nil {
 			return relErr
 		}
-		if !governed[filepath.ToSlash(rel)] {
+		if _, ok := governed[filepath.ToSlash(rel)]; !ok {
 			t.Errorf("%s is stripped by the harness but is not a declared Pi target output", path)
 		}
 		return nil
