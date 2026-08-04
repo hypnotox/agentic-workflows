@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-04
 adrs: [decouple-adr-application-completion-from-terminal-review]
-status: Proposed
+status: Implemented
 ---
 # Plan: Decouple ADR Application Completion from Terminal Review
 
