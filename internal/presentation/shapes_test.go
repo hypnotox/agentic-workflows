@@ -162,7 +162,6 @@ type alternateConsumer struct{}
 func FormatPresentation(document Document) {}
 func presentationNode(document Document) {}
 func (alternateConsumer) presentationNode(document Document) {}
-func (Document) presentationNode() bool { return false }
 `)
 	err := presentationContract(fileSet, files, wantNodes, wantBoundary)
 	if err == nil {
@@ -172,6 +171,18 @@ func (Document) presentationNode() bool { return false }
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("contract error %q missing %q", err, want)
 		}
+	}
+
+	// Keep the result-bearing same-name method isolated: if marker detection
+	// stops checking result arity, no other rogue declaration can mask the gap.
+	files, fileSet = presentationSourceFiles(t, `
+package presentation
+
+func (Document) presentationNode() bool { return false }
+`)
+	err = presentationContract(fileSet, files, wantNodes, wantBoundary)
+	if err == nil || !strings.Contains(err.Error(), "unexpected boundary functions: presentationNode") {
+		t.Fatalf("result-bearing marker lookalike escaped exact contract: %v", err)
 	}
 }
 
