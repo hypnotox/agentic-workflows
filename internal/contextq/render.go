@@ -173,10 +173,8 @@ func authorityNodes(topics []topicImpact, facets []ContextFacet) []presentation.
 					claimValues = append(claimValues, prose(claim.Backing), prose(orNone(claim.Verify)))
 				}
 				claimRecords[i] = append(claimRecords[i], record(claimValues...))
-				if containsFacet(facets, FacetRelationships) {
-					for _, source := range claim.Sources {
-						sourceRecords = append(sourceRecords, record(literal(topic.ID), literal(claim.ID), prose(strconv.Itoa(source.RequestIndex)), prose(strings.Join(source.Kinds, ", "))))
-					}
+				for _, source := range claim.Sources {
+					sourceRecords = append(sourceRecords, record(literal(topic.ID), literal(claim.ID), prose(strconv.Itoa(source.RequestIndex)), prose(strings.Join(source.Kinds, ", "))))
 				}
 				if containsFacet(facets, FacetEvidence) {
 					for _, evidence := range claim.Evidence {
@@ -246,7 +244,7 @@ func claimFields(claim contextClaimImpact, facets []ContextFacet) []presentation
 		schema = append(schema, "backing", "verify")
 	}
 	nodes := []presentation.Node{recordGroup("claim", schema, record(values...))}
-	if containsFacet(facets, FacetRelationships) && len(claim.Sources) > 0 {
+	if len(claim.Sources) > 0 {
 		records := make([]presentation.Record, 0, len(claim.Sources))
 		for _, source := range claim.Sources {
 			records = append(records, record(prose(strconv.Itoa(source.RequestIndex)), prose(strings.Join(source.Kinds, ", "))))

@@ -126,7 +126,7 @@ func TestRenderContextGrammar(t *testing.T) {
 		Topics:   []topicImpact{{ID: "tooling/example", Title: "Example", Summary: "Summary.", Counts: contextAuthorityCounts{Invariants: 1, Rules: 2}, Direct: []contextClaimImpact{{ID: "tooling/example:r", Type: "rule", Summary: "Rule.", Sources: []contextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}}, Incoming: []string{"a"}, Outgoing: []string{"b"}}}}},
 	}
 	out := RenderContextText(res, "header", []ContextFacet{FacetArtifacts})
-	const contextGolden = "context: header\nselection: range a..b\n\nrequests:\n  request-1:\n    argument: x\n    file: x\n    classification: symlink\n    symlink-target-inside-repository: false\n    provenance: template | skills/example/SKILL.md.tmpl\n    source: templates/x | template source\n    domains: tooling\n    topics: tooling/example\n    warning: globs are not expanded; pass a directory or an exact file\n    state: tooling/example:r\n\nauthority:\n  topics:\n    tooling/example | Example | Summary. | 1 | 2\n  direct-claims:\n    tooling/example | tooling/example:r | rule | Rule.\n"
+	const contextGolden = "context: header\nselection: range a..b\n\nrequests:\n  request-1:\n    argument: x\n    file: x\n    classification: symlink\n    symlink-target-inside-repository: false\n    provenance: template | skills/example/SKILL.md.tmpl\n    source: templates/x | template source\n    domains: tooling\n    topics: tooling/example\n    warning: globs are not expanded; pass a directory or an exact file\n    state: tooling/example:r\n\nauthority:\n  topics:\n    tooling/example | Example | Summary. | 1 | 2\n  direct-claims:\n    tooling/example | tooling/example:r | rule | Rule.\n  claim-sources:\n    tooling/example | tooling/example:r | 1 | State\n"
 	if out != contextGolden {
 		t.Fatalf("context grammar:\n--- got ---\n%s--- want ---\n%s", out, contextGolden)
 	}
@@ -155,10 +155,13 @@ func TestRenderContextFacetOwnedAuthorityOmitsAbsentData(t *testing.T) {
 	}
 	res := ContextResult{Selection: SelectionExplicit, Topics: []topicImpact{{ID: "alpha/one", Title: "One", Summary: "Summary.", Direct: []contextClaimImpact{claim}}}}
 	bare := RenderContextText(res, "header", nil)
-	for _, forbidden := range []string{"claim-sources:", "claim-evidence:", "claim-references:", "| test | run focused test"} {
+	for _, forbidden := range []string{"claim-evidence:", "claim-references:", "| test | run focused test"} {
 		if strings.Contains(bare, forbidden) {
 			t.Errorf("bare authority asserted facet-owned data: %q in:\n%s", forbidden, bare)
 		}
+	}
+	if !strings.Contains(bare, "claim-sources:\n    alpha/one | alpha/one:tested | 1 | State") {
+		t.Errorf("bare exact-file authority omitted direct source attribution:\n%s", bare)
 	}
 	faceted := RenderContextText(res, "header", []ContextFacet{FacetRelationships, FacetEvidence, FacetReferences})
 	for _, want := range []string{"alpha/one | alpha/one:tested | invariant | Test-backed claim. | test | run focused test", "claim-sources:\n    alpha/one | alpha/one:tested | 1 | State", "internal/a  b_test.go:7", "claim-references:\n    alpha/one | alpha/one:tested | alpha/one:incoming | alpha/one:outgoing"} {
