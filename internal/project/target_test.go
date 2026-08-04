@@ -121,10 +121,25 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	}
 	// The optional presentation boundary is awf-owned and independent of metadata.
 	effort := extensions[".pi/extensions/awf-effort/index.ts"]
-	for _, required := range []string{"remote-pi:capabilities:request", "remote-pi:capabilities", "remote-pi:display-suffix:set", "remote-pi:display-suffix:request", "displaySuffix", "{value:string|null}"} {
+	for _, required := range []string{
+		"remote-pi:capabilities:request",
+		"remote-pi:capabilities",
+		"remote-pi:display-suffix:set",
+		"remote-pi:display-suffix:request",
+		"displaySuffix",
+		"{value:string|null}",
+		`suffixSupported&&current?current.slug:null`,
+		`pi.on?.("session_start",(_event:any)=>{current=undefined;publish();requestCapabilities()})`,
+		`pi.events?.on?.("remote-pi:display-suffix:request",()=>publishSuffix())`,
+		`pi.events?.on?.("remote-pi:capabilities",(caps:RemotePiCapabilitiesReplyPayload)=>{suffixSupported=supportsDisplaySuffix(caps);publishSuffix()})`,
+		`emit("remote-pi:metadata:set",{namespace:"awf",value:x?`,
+	} {
 		if !strings.Contains(effort, required) {
-			t.Errorf("awf effort extension lacks display-suffix contract %q", required)
+			t.Errorf("awf effort extension lacks display-suffix behavior %q", required)
 		}
+	}
+	if got := strings.Count(effort, "requestCapabilities()"); got != 2 {
+		t.Errorf("awf effort extension capability request count = %d, want factory plus session start", got)
 	}
 	for _, forbidden := range []string{"name-override", "nameOverride", "NameOverride", "_displayName"} {
 		if strings.Contains(effort, forbidden) {
