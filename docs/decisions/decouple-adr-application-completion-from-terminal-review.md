@@ -97,6 +97,10 @@ because an empty Remaining partition already represents application completion e
    Every previously valid V2, V3, and V4 history remains valid. The operation partition and existing
    event stream remain the single stored representation of progress.
 
+10. `decision: publication-safe-template-rendering` Every affected template preserves coherent
+    missing-key-zero rendering. An unset or empty variable produces generic usable prose and never
+    emits an unresolved-value or no-value token in any rendered target or adopter output.
+
 ## State changes
 
 - update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`
