@@ -27,6 +27,12 @@ independent peers. That conflicts with the advisory nature of effort metadata: m
 identifies the associated effort, while the temporary effort text exists only to help a person see
 what the peer is doing.
 
+A replacement must not turn Remote Pi into an awf-specific provider. Display suffix is a generic
+extension-to-extension presentation register: Remote Pi knows no producer namespace, effort slug,
+producer grammar, ordering policy, or value bound. One process-local register is shared by all
+producers, every string write replaces it, and explicit null clears it. This intentionally chooses
+last-writer-wins behavior rather than multi-producer aggregation.
+
 Capability discovery also has a lifecycle race. The effort extension requests Remote Pi
 capabilities during factory evaluation. If that request precedes Remote Pi listener registration,
 the response is lost. A fresh handoff session can then attach to an effort while retaining no
@@ -56,27 +62,34 @@ become capability authority.
 2. `decision: presentation-not-routing-identity` Keep Remote Pi effort presentation separate from
    routable identity. Effort attachment never changes the configured or broker-assigned peer name,
    opaque mesh address, lock identity, or relay room identity. Remote Pi alone composes the stable
-   assigned base and advisory effort suffix for human-facing surfaces. Effort metadata remains the
-   machine-readable association fact, and neither the suffix nor its composed label becomes routing
-   authority, lifecycle authority, or a lock.
+   assigned base and current advisory display suffix for human-facing surfaces. Effort metadata
+   remains the machine-readable association fact, and neither the suffix nor its composed label
+   becomes routing authority, lifecycle authority, or a lock.
 
 3. `decision: display-suffix-capability` Replace awf's use of the routing-affecting name override
-   with a distinct capability-gated display-suffix interface. Remote Pi is the normative owner of
-   version 1, including the supported `awf` namespace, set and explicit-null clear payloads, replay
-   request, bounded validation, composition, and presentation projection. awf publishes only its
-   canonical effort slug and pins the exact structural interface with Remote Pi owner-commit
-   provenance; it does not import or version-gate a Remote Pi package. Unsupported, malformed, or
-   failing integration degrades silently to metadata without falling back to name replacement.
+   with a distinct generic capability-gated display-suffix interface. Remote Pi is the normative
+   owner of version 1 and advertises only `displaySuffix: {version: 1}`. Its set event accepts exactly
+   an object carrying `value`, where any string replaces one process-local register and null clears
+   it unconditionally; malformed non-object or non-string/non-null input is ignored only to protect
+   the runtime. The contract carries no namespace, producer identity, producer-specific validation,
+   slug grammar, ordering, or value bound. Last writer wins across extensions. Remote Pi composes
+   `<assigned name> - <latest suffix>` only for human-facing projection. awf publishes its canonical
+   effort slug as an ordinary producer and pins the exact structural interface with Remote Pi
+   owner-commit provenance; it does not import or version-gate a Remote Pi package. Unsupported,
+   malformed, or failing integration degrades silently to metadata without falling back to name
+   replacement.
 
 4. `decision: authoritative-capability-replay` Treat each received Remote Pi capabilities event as
    a complete authoritative singleton-provider snapshot. No response leaves the consumer in its
    initial unsupported state; an actual snapshot with absent or malformed display-suffix support
    withdraws that support and clears active presentation. Request capabilities during factory load
    and again at `session_start`, publish current state when support arrives late, accept idempotent
-   explicit-null clears, clear unconditionally at session lifecycle boundaries, and request
-   synchronous producer replay after Remote Pi starts a replacement session. These mechanics are
-   load-bearing because either side may be reused or loaded first and process-local publication
-   flags cannot prove that foreign presentation state is clear.
+   `{value: null}` clears, clear unconditionally at session lifecycle boundaries, and let Remote Pi
+   synchronously emit a payload-free replay request after it clears the register at replacement
+   `session_start`. Every loaded producer may answer synchronously; event-listener order and
+   last-writer-wins semantics determine the final register. These mechanics are load-bearing because
+   either side may be reused or loaded first and process-local publication flags cannot prove that
+   foreign presentation state is clear.
 
 5. `decision: independently-owned-delivery` Keep dependency direction explicit across the two
    repositories. awf specifies only the consumed event shapes, replay and degradation behavior, and
@@ -108,11 +121,12 @@ ending in `@awf#5`. Suffix changes can update presentation in place. Older Remot
 lose the former temporary rename rather than retaining a behavior that destabilizes routing;
 metadata continues to expose the effort association.
 
-The capability protocol gains snapshot semantics, a new event family, replay behavior, and
-cross-repository provenance. Both extension lifecycles must clear and replay advisory state, and
-Remote Pi must separate presentation helpers from identity helpers. These additions are more
-explicit than the old override but remove hidden coupling between a human label and operational
-identity.
+The capability protocol gains snapshot semantics, one generic last-writer-wins display register, a
+new event family, payload-free replay, and cross-repository provenance. Both extension lifecycles
+must clear and replay advisory state, and Remote Pi must separate presentation helpers from identity
+helpers. The generic contract permits other extensions to use the same presentation facility without
+Remote Pi knowing their identity or policy. Concurrent producers do not aggregate: any write,
+including null, replaces the prior register according to event order.
 
 Delivery requires coordinated but independently governed changes. Either consumer or provider can
 land first because absence degrades to metadata-only behavior, but complete presentation appears
@@ -128,6 +142,8 @@ boundary without claiming authority over Remote Pi internals.
 | Send the effort slug as a complete name override | It replaces the assigned base and changes mesh and relay identity, making optional presentation affect routing. |
 | Let awf read the current assigned name and append the slug | The assigned name is mutable Remote Pi state; reconstructing it in awf races startup, collision assignment, rename, reconnect, and failover and can double-apply decoration. |
 | Extend name override with a suffix mode | It overloads an identity contract with presentation-only semantics and preserves coupling that this decision removes. |
+| Give Remote Pi an awf namespace or slug validator | It makes a generic presentation provider know one producer's identity and policy. |
+| Keep a namespace-to-suffix map and aggregate producers | It preserves simultaneous annotations but adds ordering, collision, composition, and total-bound policy that the required single glanceable suffix does not need. |
 | Fall back to the old name override when display suffix is unsupported | Stable routing is more important than retaining optional effort presentation on an older integration. |
 | Use effort metadata alone with no visible suffix | It preserves routing but removes the user-facing glanceable association that motivated temporary presentation. |
 
