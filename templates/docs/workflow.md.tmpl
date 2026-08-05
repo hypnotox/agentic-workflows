@@ -68,7 +68,7 @@ The gate is one command{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} that must b
 - **As the project grows:** add what your stack makes cheap: a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
 - **Keep it fast.** The per-commit gate should run in seconds{{ with .vars.gateCmdFull }}; move anything slower (end-to-end suites, broad integration runs) to the fuller tier (`{{ . }}`) that runs before merging or releasing rather than on every commit{{ end }}.
 
-A script or task-runner alias makes the gate one word to run and one place to grow. To preserve long gate output, use a direct log redirect and capture the command status separately; do not rely on a status-losing pipeline.
+A script or task-runner alias makes the gate one word to run and one place to grow. To preserve long gate output, use a direct log redirect and capture the command status separately. Run `project-gate >gate.log 2>&1; gate_status=$?` before inspecting the log, then finish with `exit "$gate_status"`; do not rely on a status-losing pipeline. Substitute the project's actual gate command for `project-gate`.
 <!-- awf:end -->
 
 <!-- awf:section local-hooks -->

@@ -2502,51 +2502,63 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 
 func TestExecutionBoundaryGuidanceSurfaces(t *testing.T) {
 	root := testsupport.RepoRoot(t)
-	expandTemplate := func(path string) string {
-		t.Helper()
-		source, err := fs.ReadFile(templates.FS, path)
-		if err != nil {
-			t.Fatalf("read template %s: %v", path, err)
-		}
-		expanded, err := render.ExpandIncludes(string(source), templates.FS)
-		if err != nil {
-			t.Fatalf("expand template %s: %v", path, err)
-		}
-		return expanded
-	}
 	data := map[string]any{
 		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
 		"layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{},
 	}
+	genericRoot := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n")
+	genericProject, err := Open(testContext(t), genericRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	genericFiles, err := genericProject.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	genericWorkingWithAwf := renderedByPath(t, genericFiles, "docs/working-with-awf.md")
+	for _, unresolved := range []string{"<no value>", "{{ if ", "{{ with ", "{{ range ", "{{ ."} {
+		if strings.Contains(genericWorkingWithAwf, unresolved) {
+			t.Errorf("generic working-with-awf render retains unresolved action %q", unresolved)
+		}
+	}
+
 	type contract struct {
-		generic string
-		paths   []string
-		clauses []string
+		generic    string
+		paths      []string
+		start, end string
+		clauses    []string
+		ordered    []string
 	}
 	contracts := []contract{
 		{
 			generic: renderSkillGolden(t, "subagent-driven-development", data),
 			paths:   []string{".claude/skills/awf-subagent-driven-development/SKILL.md", ".pi/skills/awf-subagent-driven-development/SKILL.md"},
+			start:   "5. Before review", end: "If an owner stops dirty",
 			clauses: []string{"explicitly intended worktree", "confirm its branch", "reported commit", "branch tip", "`git status --short`", "Before review"},
 		},
 		{
 			generic: renderSkillGolden(t, "reviewing-impl", data),
 			paths:   []string{".claude/skills/awf-reviewing-impl/SKILL.md", ".pi/skills/awf-reviewing-impl/SKILL.md"},
+			start:   "8. **Route settled terminal review", end: "## Notes",
 			clauses: []string{"implemented public shapes", "execution deviations", "mutable plan Notes", "Before the deferred terminal transaction", "After a divergent integration", "re-read enumerative workflow prose", "contracts changed on the other side", "renewed review can settle"},
+			ordered: []string{"After a divergent integration", "Before the deferred terminal transaction", "Only after the applicable terminal review"},
 		},
 		{
 			generic: renderSkillGolden(t, "effort-workflow", data),
 			paths:   []string{".claude/skills/awf-effort-workflow/SKILL.md", ".pi/skills/awf-effort-workflow/SKILL.md"},
+			start:   "Use ordinary `awf effort` commands", end: "Update checkpoints",
 			clauses: []string{"Treat one checkout as one writer boundary", "parallel work uses separate worktrees", "Before the first mutation", "exact managed-worktree prefix", "suspected path slip", "inspect the primary checkout", "residual shared-checkout commit", "fresh status", "staged and worktree copies", "shared generated files"},
 		},
 		{
 			generic: renderGolden(t, "docs/workflow.md.tmpl", data),
 			paths:   []string{"docs/workflow.md"},
-			clauses: []string{"To preserve long gate output", "direct log redirect", "capture the command status separately", "status-losing pipeline"},
+			start:   "## Composing the gate", end: "## Local git hooks",
+			clauses: []string{"To preserve long gate output", "direct log redirect", "capture the command status separately", "gate_status=$?", "before inspecting the log", "exit \"$gate_status\"", "status-losing pipeline"},
 		},
 		{
-			generic: expandTemplate("docs/working-with-awf.md.tmpl"),
+			generic: genericWorkingWithAwf,
 			paths:   []string{"docs/working-with-awf.md"},
+			start:   "## Keeping in sync", end: "## Upgrading awf",
 			clauses: []string{"stage `.awf/awf.lock` with every regenerated output", "atomic manifest", "one render transaction", "independent commits"},
 		},
 	}
@@ -2560,13 +2572,31 @@ func TestExecutionBoundaryGuidanceSurfaces(t *testing.T) {
 			surfaces[path] = string(body)
 		}
 		for surface, body := range surfaces {
-			body = strings.Join(strings.Fields(body), " ")
+			start := strings.Index(body, contract.start)
+			if start < 0 {
+				t.Errorf("%s missing owning-section start %q", surface, contract.start)
+				continue
+			}
+			endOffset := strings.Index(body[start+len(contract.start):], contract.end)
+			if endOffset < 0 {
+				t.Errorf("%s missing owning-section end %q", surface, contract.end)
+				continue
+			}
+			section := strings.Join(strings.Fields(body[start:start+len(contract.start)+endOffset]), " ")
 			for _, clause := range contract.clauses {
-				if !strings.Contains(body, clause) {
-					t.Errorf("%s missing execution-boundary clause %q", surface, clause)
+				if !strings.Contains(section, clause) {
+					t.Errorf("%s owning section missing execution-boundary clause %q", surface, clause)
 				}
 			}
-			if strings.Contains(body, "<no value>") {
+			position := -1
+			for _, anchor := range contract.ordered {
+				next := strings.Index(section, anchor)
+				if next < 0 || next <= position {
+					t.Errorf("%s owning section does not order %q after its predecessor", surface, anchor)
+				}
+				position = next
+			}
+			if strings.Contains(section, "<no value>") {
 				t.Errorf("%s leaked unresolved render data", surface)
 			}
 		}
