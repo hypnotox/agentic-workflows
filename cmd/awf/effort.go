@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/effort"
@@ -78,6 +82,14 @@ func openCheckout(root string) (worktree.Runner, error) { return awfgit.Open(roo
 func runEffort(c *cmdCtx, compose composeEffort) error {
 	if err := validateEffortGrammar(c); err != nil {
 		return err
+	}
+	var editRequest *memoryEditRequest
+	if c.sub == "memory edit" {
+		request, err := decodeMemoryEditRequest(c.stdin)
+		if err != nil {
+			return boundedMemoryCommandError(err)
+		}
+		editRequest = &request
 	}
 	composed, err := compose(c.ctx, c.root)
 	if err != nil {
@@ -151,8 +163,8 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 		}
 		result, err := manager.Integrate(c.ctx, selected, gateCommand)
 		return writeWorktreeResult(c.stdout, result, err)
-	case "memory update":
-		return service.UpdateMemory(selected, effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")})
+	case "memory read", "memory edit", "memory update":
+		return runEffortMemory(c, service, editRequest)
 	case "activity attach", "activity heartbeat", "activity detach":
 		return writeActivityReply(c.stdout, runEffortActivity(c, service))
 	default:
@@ -202,18 +214,13 @@ func integrationGateCommand(root string) (string, error) {
 
 func validateEffortGrammar(c *cmdCtx) error {
 	if c.sub == "memory" {
-		return &usageErr{"usage: awf effort memory update <slug> [--phase <text>] [--next <text>]"}
+		return &usageErr{"usage: awf effort memory <read|edit|update>"}
 	}
 	if c.sub == "activity" {
 		return &usageErr{"usage: awf effort activity <attach|heartbeat|detach>"}
 	}
-	if c.sub == "memory update" {
-		if _, phase := c.inv.values["--phase"]; !phase {
-			if _, next := c.inv.values["--next"]; !next {
-				return &usageErr{"usage: awf effort memory update <slug> [--phase <text>] [--next <text>]"}
-			}
-		}
-		return nil
+	if strings.HasPrefix(c.sub, "memory ") {
+		return validateEffortMemoryGrammar(c)
 	}
 	if strings.HasPrefix(c.sub, "activity ") {
 		return validateEffortActivityGrammar(c)
@@ -244,6 +251,145 @@ func validateEffortGrammar(c *cmdCtx) error {
 	default:
 		return &usageErr{"usage: awf effort worktree <add|remove> <slug>"}
 	}
+}
+
+func validateEffortMemoryGrammar(c *cmdCtx) error {
+	usage := "usage: awf effort " + c.sub
+	slug := firstPos(c.inv.positionals)
+	if len(c.inv.positionals) != 1 || !activitySlugPattern.MatchString(slug) || len(slug) > 63 {
+		return &usageErr{usage + " requires a canonical 1-63-byte slug"}
+	}
+	owner, hasOwner := c.inv.values["--owner"]
+	hasJSON := c.inv.bools["--json"]
+	if hasOwner != hasJSON {
+		return &usageErr{usage + " requires --owner and --json together"}
+	}
+	if hasOwner && !activityOwnerPattern.MatchString(owner) {
+		return &usageErr{usage + " requires a lowercase UUIDv4 owner"}
+	}
+	if c.sub == "memory read" {
+		for _, flag := range []string{"--offset", "--limit"} {
+			if value, ok := c.inv.values[flag]; ok {
+				parsed, err := strconv.Atoi(value)
+				if err != nil || parsed < 1 {
+					return &usageErr{usage + " requires " + flag + " to be a positive integer"}
+				}
+			}
+		}
+	}
+	if c.sub == "memory update" {
+		if _, phase := c.inv.values["--phase"]; !phase {
+			if _, next := c.inv.values["--next"]; !next {
+				return &usageErr{usage + " requires --phase or --next"}
+			}
+		}
+	}
+	return nil
+}
+
+const (
+	maxMemoryEditRequestBytes       = 16 << 20
+	maxMemoryCommandDiagnosticBytes = 50 << 10
+)
+
+func boundedMemoryCommandError(err error) error {
+	const framing = "condition: awf: "
+	limit := maxMemoryCommandDiagnosticBytes - len(framing) - len("\n")
+	raw := []byte(strings.ToValidUTF8(err.Error(), "?"))
+	if len(raw) > limit {
+		raw = raw[:limit]
+		for !utf8.Valid(raw) {
+			raw = raw[:len(raw)-1]
+		}
+	}
+	return errors.New(string(raw))
+}
+
+type memoryEditRequest struct {
+	Edits []memoryEditItem `json:"edits"`
+}
+
+type memoryEditItem struct {
+	OldText string `json:"oldText"`
+	NewText string `json:"newText"`
+}
+
+func decodeMemoryEditRequest(input io.Reader) (memoryEditRequest, error) {
+	limited := io.LimitReader(input, maxMemoryEditRequestBytes+1)
+	raw, err := io.ReadAll(limited)
+	if err != nil {
+		return memoryEditRequest{}, fmt.Errorf("read memory edit request: %w", err)
+	}
+	if len(raw) > maxMemoryEditRequestBytes {
+		return memoryEditRequest{}, errors.New("memory edit request exceeds 16 MiB")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	var request memoryEditRequest
+	if err := decoder.Decode(&request); err != nil {
+		return memoryEditRequest{}, fmt.Errorf("decode memory edit request: %w", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return memoryEditRequest{}, errors.New("memory edit request contains a trailing JSON value")
+		}
+		return memoryEditRequest{}, fmt.Errorf("decode memory edit request: %w", err)
+	}
+	if len(request.Edits) < 1 || len(request.Edits) > 128 {
+		return memoryEditRequest{}, errors.New("memory edit request requires 1 through 128 edits")
+	}
+	for i, edit := range request.Edits {
+		if edit.OldText == "" || len(edit.OldText) > 1<<20 || len(edit.NewText) > 1<<20 || !utf8.ValidString(edit.OldText) || !utf8.ValidString(edit.NewText) {
+			return memoryEditRequest{}, fmt.Errorf("memory edit %d strings must be valid UTF-8, oldText must be nonempty, and each string must be at most 1 MiB", i)
+		}
+	}
+	return request, nil
+}
+
+func runEffortMemory(c *cmdCtx, service *effort.Service, request *memoryEditRequest) error {
+	slug := firstPos(c.inv.positionals)
+	owner := c.inv.values["--owner"]
+	var input effort.MemoryOperationInput
+	switch c.sub {
+	case "memory read":
+		offset, limit := 0, 0
+		if value, ok := c.inv.values["--offset"]; ok {
+			offset, _ = strconv.Atoi(value)
+		}
+		if value, ok := c.inv.values["--limit"]; ok {
+			limit, _ = strconv.Atoi(value)
+		}
+		input = effort.MemoryReadInput{Slug: slug, Owner: owner, Offset: offset, Limit: limit}
+	case "memory edit":
+		edits := make([]effort.MemoryReplacement, len(request.Edits))
+		for i, edit := range request.Edits {
+			edits[i] = effort.MemoryReplacement{OldText: edit.OldText, NewText: edit.NewText}
+		}
+		input = effort.MemoryEditInput{Slug: slug, Owner: owner, Edits: edits}
+	case "memory update":
+		input = effort.MemoryUpdateInput{Slug: slug, Owner: owner, Update: effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")}}
+	default: // coverage-ignore: validateEffortGrammar and closed command dispatch admit only the three memory leaves
+		return errors.New("unsupported memory command")
+	}
+	var result effort.MemoryOperationResult
+	var err error
+	if update, ok := input.(effort.MemoryUpdateInput); ok {
+		result, err = service.UpdateMemory(update)
+	} else {
+		result, err = service.Memory(input)
+	}
+	if err != nil {
+		return err
+	}
+	if c.inv.bools["--json"] {
+		return writeEffortMemoryProtocol(c.stdout, result)
+	}
+	document, err := result.MemoryDocument()
+	if err != nil { // coverage-ignore: service results satisfy the effort-owned presentation model
+		return err
+	}
+	return presentation.Render(c.stdout, document)
 }
 
 func validateEffortActivityGrammar(c *cmdCtx) error {
@@ -317,6 +463,140 @@ func writeEffortNew(out io.Writer, record effort.Record, result worktree.Result)
 		return err
 	}
 	return presentation.Render(out, document)
+}
+
+type memoryProtocolMetadata struct {
+	Effort  string `json:"effort"`
+	Phase   string `json:"phase"`
+	Next    string `json:"next"`
+	Updated string `json:"updated"`
+}
+
+type memoryProtocolOutcome struct {
+	Category      string   `json:"category"`
+	Condition     string   `json:"condition"`
+	ChangedMemory bool     `json:"changedMemory"`
+	NextActions   []string `json:"nextActions"`
+	Cause         string   `json:"cause,omitempty"`
+}
+
+type memoryProtocolRange struct {
+	StartLine   int    `json:"startLine"`
+	EndLine     int    `json:"endLine"`
+	TotalLines  int    `json:"totalLines"`
+	NextOffset  *int   `json:"nextOffset"`
+	TruncatedBy string `json:"truncatedBy"`
+}
+
+type memoryProtocolDiff struct {
+	Text             string `json:"text"`
+	FirstChangedLine *int   `json:"firstChangedLine"`
+	Truncated        bool   `json:"truncated"`
+}
+
+// writeEffortMemoryProtocol writes exactly one bounded protocol-1 envelope.
+func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResult) error {
+	metadata := func(value *effort.MemoryMetadata) memoryProtocolMetadata {
+		return memoryProtocolMetadata{Effort: value.Effort, Phase: value.Phase, Next: value.Next, Updated: value.Updated}
+	}
+	var envelope any
+	switch result.Condition {
+	case effort.MemoryRead:
+		envelope = struct {
+			SchemaVersion int                    `json:"schemaVersion"`
+			Condition     effort.MemoryCondition `json:"condition"`
+			Memory        memoryProtocolMetadata `json:"memory"`
+			Content       string                 `json:"content"`
+			Range         memoryProtocolRange    `json:"range"`
+		}{1, result.Condition, metadata(result.Memory), result.Content, memoryProtocolRange{result.Range.StartLine, result.Range.EndLine, result.Range.TotalLines, result.Range.NextOffset, result.Range.TruncatedBy}}
+	case effort.MemoryEdited:
+		envelope = struct {
+			SchemaVersion    int                    `json:"schemaVersion"`
+			Condition        effort.MemoryCondition `json:"condition"`
+			Memory           memoryProtocolMetadata `json:"memory"`
+			ReplacementCount int                    `json:"replacementCount"`
+			Diff             memoryProtocolDiff     `json:"diff"`
+		}{1, result.Condition, metadata(result.Memory), result.ReplacementCount, memoryProtocolDiff{result.Diff.Text, result.Diff.FirstChangedLine, result.Diff.Truncated}}
+	case effort.MemoryUpdated:
+		envelope = struct {
+			SchemaVersion int                    `json:"schemaVersion"`
+			Condition     effort.MemoryCondition `json:"condition"`
+			Memory        memoryProtocolMetadata `json:"memory"`
+		}{1, result.Condition, metadata(result.Memory)}
+	default:
+		actions := make([]string, len(result.Outcome.NextActions))
+		for i, action := range result.Outcome.NextActions {
+			actions[i] = action.Text
+		}
+		outcome := memoryProtocolOutcome{Category: result.Outcome.Category, Condition: result.Outcome.Condition, ChangedMemory: result.Outcome.ChangedMemory, NextActions: actions}
+		if result.Condition == effort.MemoryFailure {
+			outcome.Cause = result.Outcome.Cause
+		}
+		switch result.Condition {
+		case effort.MemoryOffsetOutOfRange:
+			rangeFact := struct {
+				Offset     int `json:"offset"`
+				TotalLines int `json:"totalLines"`
+			}{result.Offset.Offset, result.Offset.TotalLines}
+			envelope = struct {
+				SchemaVersion int                    `json:"schemaVersion"`
+				Condition     effort.MemoryCondition `json:"condition"`
+				Outcome       memoryProtocolOutcome  `json:"outcome"`
+				Range         any                    `json:"range"`
+			}{1, result.Condition, outcome, rangeFact}
+		case effort.MemoryNoMatch, effort.MemoryAmbiguousMatch:
+			editFact := struct {
+				Index       int `json:"index"`
+				Occurrences int `json:"occurrences,omitempty"`
+			}{result.Edit.Index, result.Edit.Occurrences}
+			envelope = struct {
+				SchemaVersion int                    `json:"schemaVersion"`
+				Condition     effort.MemoryCondition `json:"condition"`
+				Outcome       memoryProtocolOutcome  `json:"outcome"`
+				Edit          any                    `json:"edit"`
+			}{1, result.Condition, outcome, editFact}
+		case effort.MemoryOverlappingEdits:
+			editsFact := struct {
+				FirstIndex  int `json:"firstIndex"`
+				SecondIndex int `json:"secondIndex"`
+			}{result.Overlap.FirstIndex, result.Overlap.SecondIndex}
+			envelope = struct {
+				SchemaVersion int                    `json:"schemaVersion"`
+				Condition     effort.MemoryCondition `json:"condition"`
+				Outcome       memoryProtocolOutcome  `json:"outcome"`
+				Edits         any                    `json:"edits"`
+			}{1, result.Condition, outcome, editsFact}
+		case effort.MemoryResultTooLarge:
+			sizeFact := struct {
+				Bytes    int `json:"bytes"`
+				MaxBytes int `json:"maxBytes"`
+			}{result.Size.Bytes, result.Size.MaxBytes}
+			envelope = struct {
+				SchemaVersion int                    `json:"schemaVersion"`
+				Condition     effort.MemoryCondition `json:"condition"`
+				Outcome       memoryProtocolOutcome  `json:"outcome"`
+				Size          any                    `json:"size"`
+			}{1, result.Condition, outcome, sizeFact}
+		case effort.MemoryNotOwner, effort.MemoryMissing, effort.MemoryUnsafeActivity, effort.MemoryInvalid, effort.MemoryUnsafe, effort.MemoryFailure:
+			envelope = struct {
+				SchemaVersion int                    `json:"schemaVersion"`
+				Condition     effort.MemoryCondition `json:"condition"`
+				Outcome       memoryProtocolOutcome  `json:"outcome"`
+			}{1, result.Condition, outcome}
+		default:
+			return fmt.Errorf("unsupported memory result condition %q", result.Condition)
+		}
+	}
+	raw, err := json.Marshal(envelope)
+	if err != nil { // coverage-ignore: the closed protocol structs contain only JSON-supported values
+		return err
+	}
+	raw = append(raw, '\n')
+	if len(raw) > 1<<20 {
+		return errors.New("memory protocol reply exceeds 1 MiB")
+	}
+	_, err = out.Write(raw)
+	return err
 }
 
 // writeEffortActivityProtocol writes the documented activity JSON protocol.

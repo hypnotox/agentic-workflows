@@ -62,8 +62,8 @@ func TestUpdateMemoryRejectsOversizedResidentWithoutChangingBytes(t *testing.T) 
 		t.Fatal(err)
 	}
 	phase := "replacement"
-	if err := service.UpdateMemory("oversized-update", MemoryUpdate{Phase: &phase}); err == nil {
-		t.Fatal("accepted oversized memory resident")
+	if result, err := updateMemoryForTest(service, "oversized-update", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryInvalid {
+		t.Fatalf("oversized resident result=%#v err=%v", result, err)
 	}
 	after, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(after, before) {
@@ -86,8 +86,8 @@ func TestUpdateMemoryMigratesLegacyAndPreservesBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	phase := "  punctuation: [] {} #  "
-	if err := service.UpdateMemory("migration", MemoryUpdate{Phase: &phase}); err != nil {
-		t.Fatal(err)
+	if result, err := updateMemoryForTest(service, "migration", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("migration result=%#v err=%v", result, err)
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -120,14 +120,13 @@ func TestUpdateMemoryRepairsOnlySuppliedInvalidMutableFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	phase := "fixed"
-	err := service.UpdateMemory("repair", MemoryUpdate{Phase: &phase})
-	var invalid *InvalidMemoryError
-	if !errors.As(err, &invalid) || !strings.Contains(invalid.NextAction, "--next <replacement-next>") || !strings.Contains(invalid.NextAction, "--phase <replacement-phase>") {
-		t.Fatalf("error=%v", err)
+	result, err := updateMemoryForTest(service, "repair", MemoryUpdate{Phase: &phase})
+	if err != nil || result.Condition != MemoryInvalid || result.Outcome == nil || len(result.Outcome.NextActions) < 2 || !strings.Contains(result.Outcome.NextActions[1].Text, "--next <replacement-next>") || !strings.Contains(result.Outcome.NextActions[1].Text, "--phase <replacement-phase>") {
+		t.Fatalf("result=%#v err=%v", result, err)
 	}
 	next := "fixed next"
-	if err := service.UpdateMemory("repair", MemoryUpdate{Phase: &phase, Next: &next}); err != nil {
-		t.Fatal(err)
+	if result, err := updateMemoryForTest(service, "repair", MemoryUpdate{Phase: &phase, Next: &next}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("repair result=%#v err=%v", result, err)
 	}
 }
 
@@ -143,8 +142,8 @@ func TestUpdateMemoryRepairsNonScalarMutableField(t *testing.T) {
 		t.Fatal(err)
 	}
 	phase := "repaired"
-	if err := service.UpdateMemory("non-scalar", MemoryUpdate{Phase: &phase}); err != nil {
-		t.Fatal(err)
+	if result, err := updateMemoryForTest(service, "non-scalar", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("non-scalar repair result=%#v err=%v", result, err)
 	}
 }
 
@@ -187,10 +186,6 @@ func TestMemoryMetadataGrammarAndErrorContracts(t *testing.T) {
 	if _, err := encodeMemory(MemoryMetadata{Effort: "sample", Phase: "[]", Next: "#", Updated: "2026-08-02T12:00:00Z"}, []byte("body")); err != nil {
 		t.Fatal(err)
 	}
-	err := &InvalidMemoryError{Slug: "sample", NextAction: "repair", Err: errors.New("broken")}
-	if !errors.Is(err, err.Err) || !strings.Contains(err.Error(), "changed bytes: no") {
-		t.Fatalf("invalid error = %v", err)
-	}
 }
 
 func TestUpdateMemoryRejectsEveryUnsafeRepairBoundary(t *testing.T) {
@@ -201,7 +196,7 @@ func TestUpdateMemoryRejectsEveryUnsafeRepairBoundary(t *testing.T) {
 	}
 	value := "ok"
 	for _, update := range []MemoryUpdate{{}, {Phase: ptr("\n")}, {Next: ptr(" ")}} {
-		if err := service.UpdateMemory("unsafe-update", update); err == nil {
+		if _, err := updateMemoryForTest(service, "unsafe-update", update); err == nil {
 			t.Fatalf("accepted update %#v", update)
 		}
 	}
@@ -214,17 +209,16 @@ func TestUpdateMemoryRejectsEveryUnsafeRepairBoundary(t *testing.T) {
 		if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		err := service.UpdateMemory("unsafe-update", MemoryUpdate{Next: &value})
-		var invalid *InvalidMemoryError
-		if !errors.As(err, &invalid) {
-			t.Fatalf("unsafe repair %q = %v", raw, err)
+		result, err := updateMemoryForTest(service, "unsafe-update", MemoryUpdate{Next: &value})
+		if err != nil || result.Condition != MemoryInvalid || result.Outcome == nil {
+			t.Fatalf("unsafe repair %q result=%#v err=%v", raw, result, err)
 		}
 	}
 	if err := os.WriteFile(path, []byte("---\neffort: unsafe-update\nphase: \"\"\nnext: \"\"\nupdated: x\n---\nbody"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.UpdateMemory("unsafe-update", MemoryUpdate{Phase: &value, Next: &value}); err != nil {
-		t.Fatal(err)
+	if result, err := updateMemoryForTest(service, "unsafe-update", MemoryUpdate{Phase: &value, Next: &value}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("complete repair result=%#v err=%v", result, err)
 	}
 }
 
@@ -328,8 +322,8 @@ func TestUpdateMemoryPreRenameFaultPreservesBytes(t *testing.T) {
 				t.Fatal(err)
 			}
 			phase := "changed"
-			if err := service.UpdateMemory("atomic", MemoryUpdate{Phase: &phase}); err == nil {
-				t.Fatal("fault did not stop update")
+			if result, err := updateMemoryForTest(service, "atomic", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryFailure || result.Outcome.ChangedMemory {
+				t.Fatalf("fault result=%#v err=%v", result, err)
 			}
 			after, err := os.ReadFile(path)
 			if err != nil {

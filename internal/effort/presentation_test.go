@@ -52,6 +52,83 @@ func TestRecordPresentationPreservesMemoryPath(t *testing.T) {
 	}
 }
 
+func TestMemoryDocumentMapsSuccessesAndRefusals(t *testing.T) {
+	metadata := &MemoryMetadata{Effort: "demo", Phase: "phase", Next: "next", Updated: "2026-08-05T12:00:00Z"}
+	next := 3
+	line := 7
+	for _, result := range []MemoryOperationResult{
+		{Condition: MemoryRead, Memory: metadata, Content: "one\n", Range: &MemoryRange{StartLine: 2, EndLine: 2, TotalLines: 3, NextOffset: &next, TruncatedBy: "limit"}},
+		{Condition: MemoryEdited, Memory: metadata, ReplacementCount: 1, Diff: &MemoryDiff{Text: "diff", FirstChangedLine: &line}},
+		{Condition: MemoryUpdated, Memory: metadata},
+		{Condition: MemoryNotOwner, Outcome: &MemoryOutcome{Category: "operation", Condition: "another owner is active", NextActions: []RecoveryAction{{Text: "attach again"}}}},
+		{Condition: MemoryFailure, Outcome: &MemoryOutcome{Category: "operation", Condition: "publication uncertain", Cause: "disk failure", NextActions: []RecoveryAction{{Text: "read first"}}}},
+	} {
+		document, err := result.MemoryDocument()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		if err := presentation.Render(&out, document); err != nil {
+			t.Fatal(err)
+		}
+		if out.Len() == 0 {
+			t.Fatal("memory document rendered empty")
+		}
+	}
+	for _, result := range []MemoryOperationResult{
+		{},
+		{Condition: MemoryUpdated},
+		{Condition: MemoryRead, Memory: metadata},
+		{Condition: MemoryEdited, Memory: metadata},
+		{Condition: MemoryUpdated, Memory: &MemoryMetadata{Effort: "bad\nvalue", Phase: "phase", Next: "next", Updated: "time"}},
+		{Condition: MemoryNotOwner, Outcome: &MemoryOutcome{Category: "operation", Condition: "", NextActions: []RecoveryAction{{Text: "recover"}}}},
+		{Condition: MemoryNotOwner, Outcome: &MemoryOutcome{Category: "", Condition: "owner", NextActions: []RecoveryAction{{Text: "recover"}}}},
+		{Condition: MemoryNotOwner, Outcome: &MemoryOutcome{Category: "operation", Condition: "owner", NextActions: []RecoveryAction{{Text: "bad\naction"}}}},
+	} {
+		if _, err := result.MemoryDocument(); err == nil {
+			t.Fatalf("malformed memory result accepted: %#v", result)
+		}
+	}
+}
+
+func TestMemoryDocumentRetainsEveryTypedPresentationFact(t *testing.T) {
+	metadata := &MemoryMetadata{Effort: "demo", Phase: "phase", Next: "next", Updated: "Not yet updated."}
+	next := 8
+	line := 7
+	cases := []struct {
+		name   string
+		result MemoryOperationResult
+		facts  []string
+	}{
+		{"read", MemoryOperationResult{Condition: MemoryRead, Memory: metadata, Content: "body\n", Range: &MemoryRange{StartLine: 7, EndLine: 7, TotalLines: 9, NextOffset: &next, TruncatedBy: "bytes"}}, []string{"start line: 7", "end line: 7", "total lines: 9", "next offset: 8", "truncated by: bytes", `content: "body\n"`}},
+		{"read-null", MemoryOperationResult{Condition: MemoryRead, Memory: metadata, Content: "body", Range: &MemoryRange{StartLine: 7, EndLine: 7, TotalLines: 7, TruncatedBy: "none"}}, []string{"next offset: null"}},
+		{"edit", MemoryOperationResult{Condition: MemoryEdited, Memory: metadata, ReplacementCount: 2, Diff: &MemoryDiff{Text: "before/after", FirstChangedLine: &line, Truncated: true}}, []string{"replacements: 2", `diff: "before/after"`, "first changed line: 7", "diff truncated: yes"}},
+		{"edit-null", MemoryOperationResult{Condition: MemoryEdited, Memory: metadata, ReplacementCount: 1, Diff: &MemoryDiff{}}, []string{"first changed line: null"}},
+		{"offset", MemoryOperationResult{Condition: MemoryOffsetOutOfRange, Outcome: &MemoryOutcome{Category: "operation", Condition: "outside", NextActions: []RecoveryAction{{Text: "retry"}}}, Offset: &MemoryOffsetFact{Offset: 10, TotalLines: 9}}, []string{"changed memory: no", "offset: 10", "total lines: 9"}},
+		{"no-match", MemoryOperationResult{Condition: MemoryNoMatch, Outcome: &MemoryOutcome{Category: "operation", Condition: "absent", NextActions: []RecoveryAction{{Text: "retry"}}}, Edit: &MemoryEditFact{Index: 3}}, []string{"edit index: 3"}},
+		{"ambiguous", MemoryOperationResult{Condition: MemoryAmbiguousMatch, Outcome: &MemoryOutcome{Category: "operation", Condition: "repeated", NextActions: []RecoveryAction{{Text: "retry"}}}, Edit: &MemoryEditFact{Index: 4, Occurrences: 2}}, []string{"edit index: 4", "occurrences: 2"}},
+		{"overlap", MemoryOperationResult{Condition: MemoryOverlappingEdits, Outcome: &MemoryOutcome{Category: "operation", Condition: "overlap", NextActions: []RecoveryAction{{Text: "retry"}}}, Overlap: &MemoryOverlapFact{FirstIndex: 2, SecondIndex: 5}}, []string{"first edit index: 2", "second edit index: 5"}},
+		{"size", MemoryOperationResult{Condition: MemoryResultTooLarge, Outcome: &MemoryOutcome{Category: "operation", Condition: "large", NextActions: []RecoveryAction{{Text: "retry"}}}, Size: &MemorySizeFact{Bytes: 51201, MaxBytes: 51200}}, []string{"bytes: 51201", "maximum bytes: 51200"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			document, err := tc.result.MemoryDocument()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out bytes.Buffer
+			if err := presentation.Render(&out, document); err != nil {
+				t.Fatal(err)
+			}
+			for _, fact := range tc.facts {
+				if !bytes.Contains(out.Bytes(), []byte(fact)) {
+					t.Fatalf("output %q omitted %q", out.String(), fact)
+				}
+			}
+		})
+	}
+}
+
 func TestListDocumentUsesSemanticEffortsList(t *testing.T) {
 	for _, test := range []struct {
 		name    string

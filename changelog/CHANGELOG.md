@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- `awf effort memory read`, `edit`, and `update` now provide owner-free readable commands plus owner-scoped protocol forms. Reads paginate on complete lines with handled refusals, exact body-only edit batches update timestamps automatically, and advisory owner loss is reported without treating activity as authorization.
+
 - Ordinary CLI mutations, details, collections, refusals, and commit-policy reports now use the deterministic readable-text presentation contract. Convenience JSON remains removed from effort and topic commands; authored plan and changelog payloads plus effort activity, init descriptor, and context spill protocols retain their exact bytes.
 
 - Checks and audits now collect complete structured reports before rendering, grouping errors before warnings while preserving source order within each category and separating produced failures from operational diagnostics. Upgrade mutations now identify every applied migration and report proven changed axes with recovery steps if terminal sync fails.

@@ -433,7 +433,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:f82bc73cf8d4198629f53ea0a2d512b3b5e0dc140b9a47ab0b5b2f8e65e36474",
+      "outputHash": "sha256:8478fa04b481e419df0668a021abaf98363ac40442de2d842d2e3ab2175b4fc7",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -799,8 +799,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:cd8e514e84dfa2dc7c24124c664c6b3604f3988a9703e073b9991ff07d26b13d",
-      "outputHash": "sha256:f751fde758bb3e94f2ea864392ff13b731520f110495130ca0e8346f514f5922"
+      "configHash": "sha256:5e1049782028b736e210396be1b299d456f6e68341211330cb3a2c75f448aebf",
+      "outputHash": "sha256:8fea362e908f0a2a419b7653ac1fec28cf9e48e117f818df3c38dfce2dd05dab"
     },
     "docs/topics/tooling/commit-policy.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -817,8 +817,8 @@
     "docs/topics/tooling/effort-management.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:66bdd9e3668367d491cc5b96039fb441ad29455252f32d933b4e8f6f5ed0842d",
-      "outputHash": "sha256:c64742e830f59cb405137dd206623d786dab0cacf095495b4c39c693bb2099ed"
+      "configHash": "sha256:2f8e2c287da77d227fed036911c199ed8aa4679681676c9bb3f2e127abc4942e",
+      "outputHash": "sha256:81824117550b1a24d2aecca721094ecce9f1567835376add7ea52feefc84d659"
     },
     "docs/topics/tooling/evaluations.md": {
       "templateId": "topics/topic.md.tmpl",

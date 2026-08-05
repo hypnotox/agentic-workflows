@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: add-associated-pi-effort-memory-tools
-status: Proposed
+status: Implementing
 date: 2026-08-04
 ---
 # ADR-add-associated-pi-effort-memory-tools: Add associated Pi effort memory tools
@@ -263,3 +263,5 @@ avoids a second locking system.
 ## Status history
 
 - 2026-08-04: Proposed
+- 2026-08-05: Implementing; content-sha256: a4263a1323591448c62c8bf4b64c8b469822218f123bd3d8c4a5ac6bfc33fbe9
+- 2026-08-05: Applied; operations: update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:memory-skeleton-purpose-partition`, update `tooling/cli:explicit-output-bypasses`, update `tooling/cli:effort-command-contract`

@@ -44,8 +44,8 @@ func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
 		t.Fatal(err)
 	}
 	phase := "new phase"
-	if err := service.UpdateMemory("coherent-effort", MemoryUpdate{Phase: &phase}); err != nil {
-		t.Fatal(err)
+	if result, err := updateMemoryForTest(service, "coherent-effort", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("canonical update result=%#v err=%v", result, err)
 	}
 	updated, err := os.ReadFile(path)
 	if err != nil || !bytes.HasPrefix(updated, []byte("---\neffort: coherent-effort\nphase: new phase\nnext: old next\nupdated: \"2026-08-02T13:00:00Z\"\n---\n")) || !bytes.HasSuffix(updated, body) {
@@ -57,8 +57,8 @@ func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
 		t.Fatal(err)
 	}
 	next := "new next"
-	if err := service.UpdateMemory("coherent-effort", MemoryUpdate{Next: &next}); err != nil {
-		t.Fatal(err)
+	if result, err := updateMemoryForTest(service, "coherent-effort", MemoryUpdate{Next: &next}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("legacy update result=%#v err=%v", result, err)
 	}
 	updated, err = os.ReadFile(path)
 	if err != nil || !bytes.HasPrefix(updated, []byte("---\neffort: coherent-effort\nphase: legacy phase\nnext: new next\nupdated: \"2026-08-02T13:00:00Z\"\n---\n")) || !bytes.HasSuffix(updated, legacyBody) {
@@ -68,11 +68,12 @@ func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
 	if err := os.WriteFile(path, invalid, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.UpdateMemory("coherent-effort", MemoryUpdate{Phase: &phase}); err == nil || !strings.Contains(err.Error(), "./awf effort memory update coherent-effort --phase <replacement-phase> --next <replacement-next>") {
-		t.Fatalf("partial invalid-metadata repair = %v", err)
+	result, err := updateMemoryForTest(service, "coherent-effort", MemoryUpdate{Phase: &phase})
+	if err != nil || result.Condition != MemoryInvalid || result.Outcome == nil || len(result.Outcome.NextActions) < 2 || !strings.Contains(result.Outcome.NextActions[1].Text, "./awf effort memory update coherent-effort --phase <replacement-phase> --next <replacement-next>") {
+		t.Fatalf("partial repair result=%#v err=%v", result, err)
 	}
-	if err := service.UpdateMemory("coherent-effort", MemoryUpdate{Phase: &phase, Next: &next}); err != nil {
-		t.Fatal(err)
+	if result, err := updateMemoryForTest(service, "coherent-effort", MemoryUpdate{Phase: &phase, Next: &next}); err != nil || result.Condition != MemoryUpdated {
+		t.Fatalf("safe repair result=%#v err=%v", result, err)
 	}
 	updated, err = os.ReadFile(path)
 	if err != nil || !bytes.HasSuffix(updated, body) {

@@ -48,9 +48,11 @@ help:
         finish | Finish and delete one effort
         worktree | Add or remove a managed worktree
         integrate | Integrate a managed worktree
-        memory | Update bounded effort memory metadata
+        memory | Read and update bounded effort memory
         activity | Mutate advisory Pi session activity
       memory:
+        read | Read complete memory lines
+        edit | Apply exact body replacements
         update | Update memory phase or next action
       activity:
         attach | Attach or take over an advisory activity claim
