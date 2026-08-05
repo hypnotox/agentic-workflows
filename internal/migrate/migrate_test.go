@@ -593,8 +593,18 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	if mustGateState(t, root) != "gate" {
 		t.Fatalf("expected gate state, got %q", mustGateState(t, root))
 	}
-	if _, _, err := Upgrade(testContext(t), root); err != nil {
+	_, changes, err := Upgrade(testContext(t), root)
+	if err != nil {
 		t.Fatal(err)
+	}
+	wantChanges := []string{
+		"awf-dir-relocation: moved .claude/awf to .awf",
+		"awf-dir-relocation: moved authority lock .claude/awf/awf.lock to .awf/awf.lock",
+	}
+	for i, want := range wantChanges {
+		if i >= len(changes) || changes[i].Text != want {
+			t.Fatalf("changes = %#v, want relocation facts in order", changes)
+		}
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 		t.Fatalf("config not relocated: %v", err)
@@ -610,6 +620,25 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 func TestAwfRelocationNoopWhenAbsent(t *testing.T) {
 	if err := applyAwfRelocation(t.TempDir(), &Changes{}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAwfRelocationRenameFailurePublishesNoChanges(t *testing.T) {
+	root := t.TempDir()
+	old := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(old, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	failure := errors.New("rename failed")
+	prior := relocationRename
+	relocationRename = func(string, string) error { return failure }
+	t.Cleanup(func() { relocationRename = prior })
+	var changes Changes
+	if err := applyAwfRelocation(root, &changes); !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if got := changes.String(); got != "" {
+		t.Fatalf("changes = %q, want no facts before rename succeeds", got)
 	}
 }
 

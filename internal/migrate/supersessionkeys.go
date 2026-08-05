@@ -65,6 +65,8 @@ var (
 // by diff. Idempotency rests on the generation gate: appending an item is not
 // naturally idempotent the way stripping a key is.
 // touches-state: config/migrations-and-locks:upgrade-migrates-supersession-keys - the migration itself; proof in supersessionkeys_test.go
+var supersessionKeysWriteFile = os.WriteFile
+
 func applySupersessionKeys(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
@@ -83,7 +85,16 @@ func applySupersessionKeys(root string, out *Changes) error {
 	}
 	adrs := corpus.All()
 
-	edited := map[string][]byte{} // path -> pending content
+	edited := map[string][]byte{}    // path -> pending content
+	planned := map[string][]string{} // path -> facts published only after its write
+	var editOrder []string
+	remember := func(path string, content []byte) {
+		if _, exists := edited[path]; !exists {
+			editOrder = append(editOrder, path)
+		}
+		edited[path] = content
+	}
+	plan := func(path, fact string) { planned[path] = append(planned[path], fact) }
 	// shift tracks pass 1's net byte delta per file. The parsed DecisionEnd
 	// offsets come from the pre-edit bytes, and the token rewrite shortens the
 	// body by three bytes per token ("supersedes" -> "refines"), so pass 2 must
@@ -117,8 +128,8 @@ func applySupersessionKeys(root string, out *Changes) error {
 		}
 		n := strings.Count(body, "`supersedes: ADR-") - strings.Count(rewritten, "`supersedes: ADR-")
 		shift[a.Path] = len(rewritten) - len(body)
-		edited[a.Path] = []byte(raw[:start] + rewritten + raw[end:])
-		out.Add(fmt.Sprintf("supersession-keys: %s: %d item token(s) downgraded to refines:\n", a.Filename, n))
+		remember(a.Path, []byte(raw[:start]+rewritten+raw[end:]))
+		plan(a.Path, fmt.Sprintf("supersession-keys: %s: %d item token(s) downgraded to refines:", a.Filename, n))
 	}
 
 	type edge struct{ target, carrier string }
@@ -204,7 +215,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 		raw = stripKeyLine(raw, supersededByLineRe)
 		removed := before - len(raw)
 		if removed > 0 {
-			out.Add(fmt.Sprintf("supersession-keys: %s: stripped supersedes:/superseded_by:\n", a.Filename))
+			plan(a.Path, fmt.Sprintf("supersession-keys: %s: stripped supersedes:/superseded_by:", a.Filename))
 		}
 
 		if len(predecessors) > 0 {
@@ -248,9 +259,9 @@ func applySupersessionKeys(root string, out *Changes) error {
 			} else {
 				raw = raw[:at] + item + "\n" + raw[at:]
 			}
-			out.Add(fmt.Sprintf("supersession-keys: %s: appended Decision item %d (retires ADR-%s)\n", a.Filename, n, strings.Join(predecessors, ", ADR-")))
+			plan(a.Path, fmt.Sprintf("supersession-keys: %s: appended Decision item %d (retires ADR-%s)", a.Filename, n, strings.Join(predecessors, ", ADR-")))
 		}
-		edited[a.Path] = []byte(raw)
+		remember(a.Path, []byte(raw))
 	}
 
 	// Pass 3: back-pointers, then the predecessors' status rewrite. Both are
@@ -280,7 +291,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 				entry = existing + ", " + entry
 			}
 			raw = raw[:m[2]] + entry + raw[m[3]:]
-			out.Add(fmt.Sprintf("supersession-keys: %s: related: gains %d (back-pointer for ADR-%s)\n", target.Filename, carrier, e.carrier))
+			plan(target.Path, fmt.Sprintf("supersession-keys: %s: related: gains %d (back-pointer for ADR-%s)", target.Filename, carrier, e.carrier))
 			fmEnd = strings.Index(raw[3:], "\n---") + 3 + 1
 		}
 
@@ -289,14 +300,17 @@ func applySupersessionKeys(root string, out *Changes) error {
 		// recoverable from the related: back-pointers written above.
 		if loc := suffixedStatusRe.FindStringIndex(raw[:fmEnd]); loc != nil {
 			raw = raw[:loc[0]] + "status: Superseded" + raw[loc[1]:]
-			out.Add(fmt.Sprintf("supersession-keys: %s: status rewritten to bare Superseded\n", target.Filename))
+			plan(target.Path, fmt.Sprintf("supersession-keys: %s: status rewritten to bare Superseded", target.Filename))
 		}
-		edited[target.Path] = []byte(raw)
+		remember(target.Path, []byte(raw))
 	}
 
-	for path, content := range edited {
-		if err := os.WriteFile(path, content, 0o644); err != nil { // coverage-ignore: the path was just read successfully
+	for _, path := range editOrder {
+		if err := supersessionKeysWriteFile(path, edited[path], 0o644); err != nil {
 			return err
+		}
+		for _, fact := range planned[path] {
+			out.Add(fact)
 		}
 	}
 	return nil

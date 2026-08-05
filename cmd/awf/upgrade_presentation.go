@@ -102,18 +102,7 @@ func (e upgradeFailure) Error() string { return e.cause.Error() }
 func (e upgradeFailure) Unwrap() error { return e.cause }
 
 func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
-	changed := make([]presentation.Field, 0, len(e.applied)+len(e.changes))
-	for _, name := range e.applied {
-		value, err := presentation.Prose("applied: " + name)
-		if err != nil { // coverage-ignore: the fixed applied prefix keeps this diagnostic field nonempty
-			return presentation.Diagnostic{}, err
-		}
-		field, err := presentation.NewField("migration", value)
-		if err != nil { // coverage-ignore: the fixed grammar-valid migration label receives the validated Prose value
-			return presentation.Diagnostic{}, err
-		}
-		changed = append(changed, field)
-	}
+	changed := make([]presentation.Field, 0, len(e.changes))
 	for _, change := range e.changes {
 		if _, err := presentation.Prose(change.Text); err != nil {
 			return presentation.Diagnostic{}, err

@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -366,6 +367,48 @@ func TestSupersessionKeysChainedSupersession(t *testing.T) {
 // orphaned inside the frontmatter: invalid YAML, a dropped supersession claim,
 // and a corpus that no longer parses at all.
 // invariant: config/migrations-and-locks:upgrade-migrates-supersession-keys (TestSupersessionKeysRefusesBlockList)
+func TestSupersessionKeysPublishesOnlyWrittenArtifacts(t *testing.T) {
+	root := writeSupersessionFixture(t, map[string]string{
+		"0001-target.md":  "---\nstatus: Superseded by ADR-0002\ndate: 2026-01-01\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: []\nsuperseded_by: \"0002\"\n---\n# ADR-0001: Target\n\n## Decision\n\n1. old.\n",
+		"0002-carrier.md": "---\nstatus: Implemented\ndate: 2026-01-02\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: [1]\nsuperseded_by: \"\"\n---\n# ADR-0002: Carrier\n\n## Decision\n\n1. new.\n",
+	})
+	failure := errors.New("write failed")
+	writes := 0
+	prior := supersessionKeysWriteFile
+	supersessionKeysWriteFile = func(path string, b []byte, mode os.FileMode) error {
+		writes++
+		if writes == 2 {
+			return failure
+		}
+		return prior(path, b, mode)
+	}
+	t.Cleanup(func() { supersessionKeysWriteFile = prior })
+	var changes Changes
+	if err := applySupersessionKeys(root, &changes); !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	want := "supersession-keys: 0001-target.md: stripped supersedes:/superseded_by:\n" +
+		"supersession-keys: 0001-target.md: related: gains 2 (back-pointer for ADR-0002)\n" +
+		"supersession-keys: 0001-target.md: status rewritten to bare Superseded\n"
+	if got := changes.String(); got != want {
+		t.Fatalf("changes = %q, want %q", got, want)
+	}
+}
+
+func TestSupersessionKeysRefusalPublishesNoUnwrittenArtifacts(t *testing.T) {
+	root := writeSupersessionFixture(t, map[string]string{
+		"0001-carrier.md": "---\nstatus: Implemented\ndate: 2026-01-01\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: [2]\nsuperseded_by: \"\"\n---\n# ADR-0001: Carrier\n\n## Decision\n\n1. new.\n",
+		"0002-target.md":  "---\nstatus: Implemented\ndate: 2026-01-02\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: []\nsuperseded_by: \"\"\n---\n# ADR-0002: Target\n",
+	})
+	var changes Changes
+	if err := applySupersessionKeys(root, &changes); err == nil {
+		t.Fatal("missing target Decision section accepted")
+	}
+	if got := changes.String(); got != "" {
+		t.Fatalf("changes = %q, want no facts before any write", got)
+	}
+}
+
 func TestSupersessionKeysRefusesBlockList(t *testing.T) {
 	root := writeSupersessionFixture(t, map[string]string{
 		"0001-a.md": "---\nstatus: Implemented\ndate: 2026-01-01\ntags: [x]\nrelated: []\ndomains: []\nsupersedes:\n  - 2\nsuperseded_by: \"\"\n---\n" +
@@ -373,12 +416,16 @@ func TestSupersessionKeysRefusesBlockList(t *testing.T) {
 		"0002-b.md": "---\nstatus: Implemented\ndate: 2026-01-02\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: []\nsuperseded_by: \"\"\n---\n" +
 			"# ADR-0002: B\n\n## Decision\n\n1. b.\n",
 	})
-	err := applySupersessionKeys(root, &Changes{})
+	var changes Changes
+	err := applySupersessionKeys(root, &changes)
 	if err == nil {
 		t.Fatal("expected a refusal for a block-style supersedes: list, not a silent corruption")
 	}
 	if !strings.Contains(err.Error(), "0001-a.md") {
 		t.Errorf("the refusal must name the offending file, got %v", err)
+	}
+	if got := changes.String(); got != "" {
+		t.Fatalf("changes = %q, want no facts before any write", got)
 	}
 	// The corpus must still parse: nothing was written.
 	if _, lerr := adr.LoadCorpus(filepath.Join(root, "docs", "decisions")); lerr != nil {

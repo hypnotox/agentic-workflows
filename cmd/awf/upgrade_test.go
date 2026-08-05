@@ -64,7 +64,7 @@ func TestUpgradeFailureDiagnosticCarriesChangedAxisRecovery(t *testing.T) {
 	if err := presentation.Render(&out, document); err != nil {
 		t.Fatal(err)
 	}
-	want := "condition: upgrade has not reached terminal sync\nstate: operation\ncause: terminal sync failed\n\ndiagnostic:\n  changed:\n    migration: applied: first\n    migration: applied: second\n    migration: change: first: changed config\n    migration: change: second: wrote lock\n  steps:\n    step 1: run awf upgrade --recover if an upgrade journal exists\n    step 2: inspect the listed changed axes\n    step 3: restore the project from version control if recovery cannot complete\n"
+	want := "condition: upgrade has not reached terminal sync\nstate: operation\ncause: terminal sync failed\n\ndiagnostic:\n  changed:\n    migration: change: first: changed config\n    migration: change: second: wrote lock\n  steps:\n    step 1: run awf upgrade --recover if an upgrade journal exists\n    step 2: inspect the listed changed axes\n    step 3: restore the project from version control if recovery cannot complete\n"
 	if out.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
 	}
@@ -138,6 +138,26 @@ func TestRunUpgradeFailuresBeforeChangesUseOperationState(t *testing.T) {
 				t.Fatalf("diagnostic = %#v, want operation state, no changed axes, and one retry remedy", diagnostic)
 			}
 		})
+	}
+}
+
+func TestRunUpgradeNoOpMigrationFailureUsesRetryOnlyDiagnostic(t *testing.T) {
+	failure := errors.New("gate failed after no-op migration")
+	testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
+		return []string{"no-op"}, nil, nil
+	})
+	testsupport.SwapVar(t, &upgradeGate, func(context.Context, string) error { return failure })
+	err := runUpgrade(testContext(t), scaffoldProject(t), io.Discard)
+	var upgradeErr upgradeFailure
+	if !errors.As(err, &upgradeErr) {
+		t.Fatalf("runUpgrade error = %T, want upgradeFailure", err)
+	}
+	diagnostic, diagnosticErr := upgradeErr.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	if diagnostic.State != "operation" || len(diagnostic.Changed) != 0 || len(diagnostic.Steps) != 1 {
+		t.Fatalf("diagnostic = %#v, want operation state, no changed axes, and retry only", diagnostic)
 	}
 }
 
@@ -290,19 +310,21 @@ func TestRunUpgradeRelocatedLockFailuresRetainMigrationDiagnostics(t *testing.T)
 			if err := os.RemoveAll(filepath.Join(root, ".awf")); err != nil {
 				t.Fatal(err)
 			}
-			testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.yaml"), minimalYAML)
-			testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.lock"), string(lockBytes))
+			testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "config.yaml"), minimalYAML)
+			oldLock, err := manifest.Parse(lockBytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			oldLock.SchemaVersion = 2
+			if err := oldLock.Save(filepath.Join(root, ".claude", "awf", "awf.lock")); err != nil {
+				t.Fatal(err)
+			}
 			failure := errors.New(tc.name + " relocated lock failed")
-			testsupport.SwapVar(t, &upgradeMigrate, func(_ context.Context, gotRoot string) ([]string, []migrate.Change, error) {
-				if err := os.MkdirAll(config.RootDir(gotRoot), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				return []string{"relocate"}, []migrate.Change{{Text: "relocate: moved config"}}, nil
-			})
 			switch tc.name {
 			case "load":
 				testsupport.SwapVar(t, &upgradeLoadOptional, func(string) (*manifest.Lock, bool, error) { return nil, false, failure })
 			case "save":
+				testsupport.SwapVar(t, &upgradeLoadOptional, func(string) (*manifest.Lock, bool, error) { return nil, false, nil })
 				testsupport.SwapVar(t, &upgradeSaveLock, func(*manifest.Lock, string) error { return failure })
 			}
 			err = runUpgrade(testContext(t), root, io.Discard)
@@ -310,8 +332,11 @@ func TestRunUpgradeRelocatedLockFailuresRetainMigrationDiagnostics(t *testing.T)
 				t.Fatalf("upgrade error = %v, want %v", err, failure)
 			}
 			var partial upgradeFailure
-			if !errors.As(err, &partial) || len(partial.changes) != 1 || partial.changes[0].Text != "relocate: moved config" {
-				t.Fatalf("upgrade failure = %#v, want retained migration fact", err)
+			if !errors.As(err, &partial) {
+				t.Fatalf("upgrade failure = %T, want upgradeFailure", err)
+			}
+			if len(partial.changes) < 2 || partial.changes[0].Text != "awf-dir-relocation: moved .claude/awf to .awf" || partial.changes[1].Text != "awf-dir-relocation: moved authority lock .claude/awf/awf.lock to .awf/awf.lock" {
+				t.Fatalf("changes = %#v, want production relocation evidence", partial.changes)
 			}
 		})
 	}
@@ -359,8 +384,8 @@ func TestRunUpgradeCompletionMigrationFailureRetainsCreatedLockAxis(t *testing.T
 	if diagnosticErr != nil {
 		t.Fatal(diagnosticErr)
 	}
-	if len(diagnostic.Changed) != 3 {
-		t.Fatalf("diagnostic changed = %#v, want the proven created lock axis", diagnostic.Changed)
+	if len(diagnostic.Changed) != 2 {
+		t.Fatalf("diagnostic changed = %#v, want only the proven changed axes", diagnostic.Changed)
 	}
 	document, err := diagnostic.Document()
 	if err != nil {

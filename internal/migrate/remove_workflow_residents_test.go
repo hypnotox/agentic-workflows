@@ -101,8 +101,8 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
-		if got, want := out.String(), "remove-workflow-residents: metrics already absent\nremove-workflow-residents: assignments already absent\n"; got != want {
-			t.Fatalf("output = %q, want %q", got, want)
+		if got := out.String(); got != "" {
+			t.Fatalf("changes = %q, want no changes", got)
 		}
 	})
 	t.Run("nested-roots", func(t *testing.T) {
@@ -152,6 +152,23 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 			}
 		})
 	}
+	t.Run("absent-metrics-then-unsafe-assignments-reports-no-change", func(t *testing.T) {
+		root := newRoot(t)
+		path := filepath.Join(root, ".awf", "assignments")
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("unsafe"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var out Changes
+		if err := removeWorkflowResidents(root, &out, os.Lstat, os.RemoveAll); err == nil {
+			t.Fatal("unsafe assignments root accepted")
+		}
+		if got := out.String(); got != "" {
+			t.Fatalf("changes = %q, want no changed axis", got)
+		}
+	})
 	t.Run("partial-failure-then-retry", func(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
@@ -176,8 +193,8 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(out.String(), "metrics already absent\nremove-workflow-residents: assignments removed\n") {
-			t.Fatalf("retry output = %q", out.String())
+		if !strings.Contains(out.String(), "remove-workflow-residents: metrics removed\nremove-workflow-residents: assignments removed\n") {
+			t.Fatalf("retry changes = %q", out.String())
 		}
 		assertRetained(t, root)
 	})

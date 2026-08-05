@@ -37,7 +37,6 @@ func removeWorkflowResidents(primary string, out *Changes, lstat func(string) (f
 		path := filepath.Join(primary, ".awf", name)
 		info, err := lstat(path)
 		if os.IsNotExist(err) {
-			out.Add(fmt.Sprintf("remove-workflow-residents: %s already absent\n", name))
 			continue
 		}
 		if err != nil {
