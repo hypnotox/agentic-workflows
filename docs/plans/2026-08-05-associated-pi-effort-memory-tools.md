@@ -286,13 +286,25 @@ Update every listed authoring source and render its generated document in the sa
 extends the runtime feature floor and introduces its first functional consumer. Read back every
 source and output; never hand-edit generated documents or the lock.
 
+### Task 2.7: Apply the runtime-floor authority with its live behavior and docs
+Kind: batch
+Latitude: exact
+Applying: ["add-associated-pi-effort-memory-tools:compatible-runtime-floor"]
+Paths: ["docs/decisions/add-associated-pi-effort-memory-tools.md", ".awf/topics/parts/rendering/pi-runtime/current-state.md", "docs/topics/rendering/pi-runtime.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
+Representative: "Apply `pi-minimum-runtime` in the same authored transaction as the guarded active-tool/file-queue feature floor and its complete durable documentation set, preserving the claim's Origin and Revised-by prefix before appending this ADR."
+Edge: "Apply no other rendering claim; leave `pi-extension-target-render`, both `pi-workflows` updates, and the new backed invariant Remaining for Phase 3."
+Post-check: "After `./x render`, `./x check` exits zero and `./awf context --show pending docs/decisions/add-associated-pi-effort-memory-tools.md templates/partials/pi-minimum-runtime.md` reports `pi-minimum-runtime` Applied while the other rendering operations remain pending."
+
+Append one Applied event for the runtime-floor operation and mutate its source claim in the same
+transaction. Never hand-edit the rendered topic, decision index, or lock.
+
 ### Phase close
 
 Stage the complete Phase 2 transaction explicitly. Run `awf check staged` and `./x gate`; both must
 pass. Create one commit:
 
 ```commit
-feat(rendering): activate associated Pi memory tools
+feat(rendering): activate memory tools (applies memory tools batch)
 ```
 
 ## Phase 3: Apply rendering authority and close generated documentation
@@ -322,16 +334,16 @@ coverage; do not exclude reachable branches.
 ### Task 3.2: Apply all remaining rendering claims
 Kind: batch
 Latitude: exact
-Applying: ["add-associated-pi-effort-memory-tools:associated-memory-tool-surface", "add-associated-pi-effort-memory-tools:contextual-tool-activation", "add-associated-pi-effort-memory-tools:active-memory-guidance", "add-associated-pi-effort-memory-tools:compatible-runtime-floor", "add-associated-pi-effort-memory-tools:memory-tool-claim-backing", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
+Applying: ["add-associated-pi-effort-memory-tools:associated-memory-tool-surface", "add-associated-pi-effort-memory-tools:contextual-tool-activation", "add-associated-pi-effort-memory-tools:active-memory-guidance", "add-associated-pi-effort-memory-tools:memory-tool-claim-backing", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
 Paths: ["docs/decisions/add-associated-pi-effort-memory-tools.md", ".awf/topics/parts/rendering/pi-runtime/current-state.md", ".awf/topics/parts/rendering/pi-workflows/current-state.md", "docs/topics/rendering/pi-runtime.md", "docs/topics/rendering/pi-workflows.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
-Representative: "Apply both `pi-runtime` updates, both existing `pi-workflows` updates, and the new backed `pi-effort-memory-tools` invariant in one final distinct-claim batch, preserving existing provenance before appending this ADR and giving the new invariant this ADR as Origin."
+Representative: "Apply `pi-extension-target-render`, both existing `pi-workflows` updates, and the new backed `pi-effort-memory-tools` invariant in one final distinct-claim batch, preserving existing provenance before appending this ADR and giving the new invariant this ADR as Origin."
 Edge: "Keep the ADR Implementing after every operation is Applied so settled implementation review owns the later status-only Implemented flip; do not add authority for direct-file prohibition, activity locking, automatic checkpointing, or non-Pi rendering."
 Post-check: "After `./x render`, `./x check` exits zero; `./awf context --show pending docs/decisions/add-associated-pi-effort-memory-tools.md` reports every declared operation Applied and none Remaining; `./awf topic rendering/pi-workflows --coverage` then finds the proof marker on `TestPiEffortMemoryToolContract` with no stale or duplicate marker."
 
-Append the final Applied event and mutate all five remaining source claims in the same authored
+Append the final Applied event and mutate all four remaining source claims in the same authored
 transaction. Update `pi-extension-target-render` with the client/index responsibilities,
-`pi-minimum-runtime` with the guarded active-tool/queue floor, `pi-effort-session-association` and
-`using-effort-skill` with dynamic activation and guidance, and add the exact backed invariant
+`pi-effort-session-association` and `using-effort-skill` with dynamic activation and guidance, and
+add the exact backed invariant
 `pi-effort-memory-tools`. Never hand-edit generated topics, index, or lock.
 
 ### Task 3.3: Update durable architecture and workflow prose
