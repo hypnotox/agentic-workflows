@@ -878,6 +878,83 @@ func TestSyncReportRetainsWrittenOutputWhenChmodFails(t *testing.T) {
 	}
 }
 
+func TestSyncReportRetainsModeCorrectionWhenLaterWriteFails(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Chmod(agents, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	operation := productionSyncOperation()
+	priorWrite := operation.writeFile
+	failure := errors.New("later write failed")
+	operation.writeFile = func(path string, content []byte, mode os.FileMode) error {
+		if filepath.Base(path) == "CLAUDE.md" {
+			return failure
+		}
+		return priorWrite(path, content, mode)
+	}
+	corpus, topics, eff, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if want := []Change{{Path: "AGENTS.md", Cause: "internal"}}; !reflect.DeepEqual(changes, want) {
+		t.Fatalf("changes = %v, want %v", changes, want)
+	}
+	assertPerm(t, agents, 0o644)
+}
+
+func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Chmod(agents, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(agents, []byte("hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	_, changes, _, err := p.SyncReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []Change{{Path: "AGENTS.md", Cause: "internal"}}; !reflect.DeepEqual(changes, want) {
+		t.Fatalf("changes = %v, want one record for both corrections: %v", changes, want)
+	}
+	assertPerm(t, agents, 0o644)
+}
+
+func TestSyncReportStopsOnOutputStatFailure(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Remove(agents); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("AGENTS.md", agents); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	p, _ = Open(testContext(t), root)
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil {
+		t.Fatal("SyncReport succeeded with an unreadable output path")
+	}
+}
+
 func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)

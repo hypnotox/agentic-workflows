@@ -21,12 +21,13 @@ import (
 // absent part is a no-op - so a re-run after a prior split (the part gone, the
 // sidecar present) does nothing.
 type pitfallsOperation struct {
+	render      func([]pitfallSplit) ([]byte, error)
 	writeAtomic func(string, []byte) error
 	remove      func(string) error
 }
 
 func productionPitfallsOperation() pitfallsOperation {
-	return pitfallsOperation{writeAtomic: manifest.WriteFileAtomic, remove: os.Remove}
+	return pitfallsOperation{render: renderPitfallsSidecar, writeAtomic: manifest.WriteFileAtomic, remove: os.Remove}
 }
 
 func applyPitfallsData(root string, out *Changes) error {
@@ -47,7 +48,7 @@ func applyPitfallsDataWith(root string, out *Changes, operation pitfallsOperatio
 	if len(entries) == 0 {
 		return errors.New("pitfalls-data: no top-level entries to migrate")
 	}
-	sidecar, err := renderPitfalls(entries)
+	sidecar, err := operation.render(entries)
 	if err != nil {
 		return fmt.Errorf("pitfalls-data: render pitfalls sidecar: %w", err)
 	}
@@ -131,8 +132,6 @@ type pitfallBody string
 func (b pitfallBody) MarshalYAML() (interface{}, error) {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: string(b), Style: yaml.DoubleQuotedStyle}, nil
 }
-
-var renderPitfalls = renderPitfallsSidecar
 
 // renderPitfallsSidecar serializes the data.pitfalls YAML and decodes it again
 // before destructive cleanup can proceed.

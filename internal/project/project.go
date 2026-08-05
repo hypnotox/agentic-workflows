@@ -252,8 +252,9 @@ type Backup struct {
 	Index bool   // the file is the generated ADR/domain index (ownership-takeover note)
 }
 
-// Change records a sync-written file whose rendered output differs from the
-// prior lock's, with the cause the lock's hashes can attribute: "template"
+// Change records a sync-written file whose rendered bytes differ from the
+// prior lock's or whose required mode was corrected, with the cause the lock's
+// hashes able to attribute: "template"
 // (the upstream template source moved), "config" (the project's effective
 // inputs - vars, sidecar, parts - moved), "template+config" (both),
 // "internal" (hashes unmoved: a non-hashed input such as the binary's version
@@ -407,38 +408,54 @@ func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, opera
 		if strings.HasPrefix(f.Content, "#!") {
 			perm = 0o755
 		}
+		info, statErr := os.Stat(abs)
+		if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+			return backups, changes, pruned, statErr
+		}
+		modeChanged := statErr == nil && info.Mode().Perm() != perm
 		before, readErr := os.ReadFile(abs)
 		if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
 			return backups, changes, pruned, readErr
 		}
 		changedOutput := errors.Is(readErr, os.ErrNotExist) || !bytes.Equal(before, []byte(f.Content))
+		recordChange := func() {
+			if old == nil {
+				return
+			}
+			oldE, ok := old.Files[f.Path]
+			if !ok {
+				changes = append(changes, Change{Path: f.Path, Cause: "added"})
+				return
+			}
+			tMoved, cMoved := f.TemplateHash != oldE.TemplateHash, f.ConfigHash != oldE.ConfigHash
+			cause := "internal"
+			switch {
+			case tMoved && cMoved:
+				cause = "template+config"
+			case tMoved:
+				cause = "template"
+			case cMoved:
+				cause = "config"
+			case f.RegenChecked:
+				cause = "regenerated"
+			}
+			changes = append(changes, Change{Path: f.Path, Cause: cause})
+		}
 		if err := operation.writeFile(abs, []byte(f.Content), perm); err != nil {
 			return backups, changes, pruned, err
 		}
 		// The content write is already a proven output axis, even when the
 		// subsequent mode correction fails.
-		if changedOutput && old != nil {
-			oldE, ok := old.Files[f.Path]
-			if !ok {
-				changes = append(changes, Change{Path: f.Path, Cause: "added"})
-			} else {
-				tMoved, cMoved := f.TemplateHash != oldE.TemplateHash, f.ConfigHash != oldE.ConfigHash
-				cause := "internal"
-				switch {
-				case tMoved && cMoved:
-					cause = "template+config"
-				case tMoved:
-					cause = "template"
-				case cMoved:
-					cause = "config"
-				case f.RegenChecked:
-					cause = "regenerated"
-				}
-				changes = append(changes, Change{Path: f.Path, Cause: cause})
-			}
+		if changedOutput {
+			recordChange()
 		}
 		if err := operation.chmod(abs, perm); err != nil {
 			return backups, changes, pruned, err
+		}
+		// A mode-only correction is proven only after chmod succeeds. A content
+		// change already has evidence, so it must not receive a duplicate record.
+		if modeChanged && !changedOutput {
+			recordChange()
 		}
 		lock.Files[f.Path] = manifest.Entry{
 			TemplateID: f.TemplateID, TemplateHash: f.TemplateHash,

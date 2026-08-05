@@ -870,7 +870,7 @@ func TestDropReplaceWithConverts(t *testing.T) {
 	}
 }
 
-func TestDropReplaceWithRetainsMovedEvidenceWhenSidecarRewriteFails(t *testing.T) {
+func TestDropReplaceWithRetainsCopiedEvidenceWhenSidecarRewriteFails(t *testing.T) {
 	root := t.TempDir()
 	awfFile(t, root, "config.yaml", "prefix: ex\n")
 	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
@@ -883,7 +883,7 @@ func TestDropReplaceWithRetainsMovedEvidenceWhenSidecarRewriteFails(t *testing.T
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
-	if got, want := changes.String(), "drop-replacewith: moved skills/parts/x/legacy.md to .claude/awf/skills/parts/x/s.md\n"; got != want {
+	if got, want := changes.String(), "drop-replacewith: copied skills/parts/x/legacy.md to .claude/awf/skills/parts/x/s.md\n"; got != want {
 		t.Fatalf("changes = %q, want %q", got, want)
 	}
 	if got := readFile(t, filepath.Join(root, ".claude", "awf", "skills", "parts", "x", "s.md")); got != "BODY\n" {
@@ -897,11 +897,34 @@ func TestDropReplaceWithIdempotent(t *testing.T) {
 	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
 	awfFile(t, root, "skills/parts/x/legacy.md", "BODY\n")
 	awfFile(t, root, "skills/parts/x/s.md", "BODY\n") // dst already present, identical
-	if err := applyDropReplaceWith(root, &Changes{}); err != nil {
+	var changes Changes
+	if err := applyDropReplaceWith(root, &changes); err != nil {
 		t.Fatalf("applyDropReplaceWith: %v", err)
+	}
+	if got := changes.Items(); len(got) != 1 || got[0].Text != "drop-replacewith: rewrote .claude/awf/skills/x.yaml" {
+		t.Fatalf("changes = %v, want only the sidecar rewrite", got)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude", "awf", "skills", "x.yaml")); !os.IsNotExist(err) {
 		t.Errorf("emptied sidecar should be removed, stat err = %v", err)
+	}
+}
+
+func TestRelocatePartReportsNoCopyOnDestinationFailure(t *testing.T) {
+	root := t.TempDir()
+	src := filepath.Join(root, "src.md")
+	testsupport.WriteFile(t, src, "BODY\n")
+
+	destinationDir := filepath.Join(root, "destination")
+	if err := os.Mkdir(destinationDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if copied, err := relocatePart(src, destinationDir, writeFile); err == nil || copied {
+		t.Fatalf("relocatePart directory destination = (copied=%v, err=%v), want (false, error)", copied, err)
+	}
+
+	failure := errors.New("write destination")
+	if copied, err := relocatePart(src, filepath.Join(root, "missing", "destination.md"), func(string, []byte) error { return failure }); !errors.Is(err, failure) || copied {
+		t.Fatalf("relocatePart failed write = (copied=%v, err=%v), want (false, %v)", copied, err, failure)
 	}
 }
 

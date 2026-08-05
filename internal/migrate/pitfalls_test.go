@@ -157,11 +157,12 @@ func TestPitfallsDataRejectsInvalidSerializationBeforeDeletion(t *testing.T) {
 	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
 	original := []byte("## Retained\n\nbody\n")
 	testsupport.WriteFile(t, part, string(original))
-	testsupport.SwapVar(t, &renderPitfalls, func([]pitfallSplit) ([]byte, error) {
+	operation := productionPitfallsOperation()
+	operation.render = func([]pitfallSplit) ([]byte, error) {
 		return []byte("not: [valid"), nil
-	})
+	}
 
-	err := applyPitfallsData(root, &Changes{})
+	err := applyPitfallsDataWith(root, &Changes{}, operation)
 	if err == nil {
 		t.Fatal("applyPitfallsData succeeded after invalid serialization")
 	}
@@ -182,11 +183,12 @@ func TestPitfallsDataRetainsSourceOnRenderError(t *testing.T) {
 	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
 	original := []byte("## Retained\n\nbody\n")
 	testsupport.WriteFile(t, part, string(original))
-	testsupport.SwapVar(t, &renderPitfalls, func([]pitfallSplit) ([]byte, error) {
+	operation := productionPitfallsOperation()
+	operation.render = func([]pitfallSplit) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
-	})
+	}
 
-	err := applyPitfallsData(root, &Changes{})
+	err := applyPitfallsDataWith(root, &Changes{}, operation)
 	if err == nil {
 		t.Fatal("applyPitfallsData succeeded after render error")
 	}

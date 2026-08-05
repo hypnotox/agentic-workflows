@@ -99,10 +99,13 @@ func convertSidecar(awfDir, kind, target, path string, out *Changes, writeSideca
 			continue
 		}
 		dst := conventionPartPath(awfDir, kind, target, sec)
-		if err := relocatePart(filepath.Join(awfDir, ov.ReplaceWith), dst); err != nil {
+		copied, err := relocatePart(filepath.Join(awfDir, ov.ReplaceWith), dst, writeFile)
+		if err != nil {
 			return err
 		}
-		out.Add(fmt.Sprintf("drop-replacewith: moved %s to %s", ov.ReplaceWith, treeRelativePath(awfDir, dst)))
+		if copied {
+			out.Add(fmt.Sprintf("drop-replacewith: copied %s to %s", ov.ReplaceWith, treeRelativePath(awfDir, dst)))
+		}
 		changed = true
 	}
 	if !changed {
@@ -127,18 +130,24 @@ func conventionPartPath(awfDir, kind, target, section string) string {
 	return filepath.Join(awfDir, kind, "parts", target, section+".md")
 }
 
-// relocatePart copies src to dst. A missing src or a dst already holding different
-// content fails; a dst identical to src is a no-op (idempotent re-runs).
-func relocatePart(src, dst string) error {
+// relocatePart copies src to dst and reports whether it wrote the destination.
+// A missing src or a dst already holding different content fails; a dst identical
+// to src is left untouched for idempotent re-runs.
+func relocatePart(src, dst string, write func(string, []byte) error) (bool, error) {
 	in, err := os.ReadFile(src)
 	if err != nil {
-		return fmt.Errorf("replaceWith part %s: %w", src, err)
+		return false, fmt.Errorf("replaceWith part %s: %w", src, err)
 	}
 	if existing, err := os.ReadFile(dst); err == nil {
 		if bytes.Equal(existing, in) {
-			return nil
+			return false, nil
 		}
-		return fmt.Errorf("convention part %s already exists with different content", dst)
+		return false, fmt.Errorf("convention part %s already exists with different content", dst)
+	} else if !os.IsNotExist(err) {
+		return false, err
 	}
-	return writeFile(dst, in)
+	if err := write(dst, in); err != nil {
+		return false, err
+	}
+	return true, nil
 }
