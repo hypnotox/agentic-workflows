@@ -129,6 +129,7 @@ func runUpgradeWith(ctx context.Context, root string, stdout io.Writer, dependen
 	if err != nil {
 		return newUpgradeFailure(applied, changes, err)
 	}
+	schemaCurrent := state == "ok"
 	_ = gen
 	if authorityPath != config.LockPath(root) {
 		if _, found, err := dependencies.loadOptional(config.LockPath(root)); err != nil {
@@ -157,6 +158,9 @@ func runUpgradeWith(ctx context.Context, root string, stdout io.Writer, dependen
 	sync, err := dependencies.sync(ctx, root)
 	if err != nil {
 		return newUpgradeFailureWithSync(applied, changes, sync.mutation, err)
+	}
+	if schemaCurrent {
+		changes = append(changes, migrate.CurrentSchemaChange())
 	}
 	mutation, err := upgradeMutation(sync.mutation, applied, changes)
 	if err != nil { // coverage-ignore: registered migration descriptions are validated fixed prose

@@ -978,13 +978,13 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade: %v", err)
 	}
-	if strings.Contains(out.String(), "already at schema") || !strings.Contains(out.String(), "mutation:") {
-		t.Errorf("expected structured no-op mutation, got %q", out.String())
+	if !strings.Contains(out.String(), "migration changes:\n      config schema already current") {
+		t.Errorf("expected the schema-current fact, got %q", out.String())
 	}
 	// The zero-migrations path must still sync: a same-schema binary bump
 	// re-renders every managed file and re-pins the bootstrap (ADR-0085).
-	if !strings.Contains(out.String(), "status: completed") {
-		t.Errorf("expected the no-op upgrade to run a sync, got %q", out.String())
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "continue with the rendered project state") {
+		t.Errorf("expected the schema-current upgrade to run a sync, got %q", out.String())
 	}
 }
 

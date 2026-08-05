@@ -10,6 +10,12 @@ type Change struct {
 	Text string
 }
 
+// CurrentSchemaChange reports the migration domain's proven no-migration state
+// to its terminal owner.
+func CurrentSchemaChange() Change {
+	return Change{Text: "config schema already current"}
+}
+
 // Changes collects typed migration facts in mutation order; no command writer
 // reaches a migration.
 type Changes struct {
