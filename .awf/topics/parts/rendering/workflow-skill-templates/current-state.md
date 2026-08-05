@@ -149,3 +149,9 @@ Backing: test
 The orienting support skill is the single home of the orientation procedure: its rendered body defines the four invocation moments, the guide-first grounding ladder shared as a partial with the grounding-checker contract, multi-child report-only exploration dispatch with one information need per child, the managed context discipline, and effort-resume revalidation that reads the memory file whole and resolves discrepancies in favor of the repository; the skill is single-pass, never a chain gate, never creates an effort, and never commits. Brainstorming's first step invokes it, and proposing-adr and writing-plans carry advisory pointers.
 Origin: ADR-0187
 Backing: test
+
+### `invariant: semantic-rendering-review`
+
+Every enabled target that renders the planning skill or plan/code reviewer receives instructions that schedule or inspect a focused human check of affected generated prose for contradictory fragments, concept-preserving paraphrase, and intentional literal placeholder syntax. The focused target-render and empty-data tests prove those instructions render without an unresolved no-value token while missingkey=zero and coherent generic empty fallbacks remain unchanged; the instructions add no synonym, contradiction, or placeholder-intent inference and no universal output-language validator.
+Origin: ADR-derive-render-completeness-from-output-authority
+Backing: test

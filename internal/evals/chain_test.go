@@ -118,6 +118,34 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 	}
 }
 
+func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
+	cat := loadCatalog(t)
+	for _, target := range []string{"claude", "pi"} {
+		t.Run(target, func(t *testing.T) {
+			root := syncFullCatalogForTarget(t, cat, target)
+			base := filepath.Join(root, "."+target)
+			for _, tc := range []struct {
+				path string
+				want []string
+			}{
+				{filepath.Join(base, "skills", evalPrefix+"-writing-plans", "SKILL.md"), []string{"Semantic rendering review", "contradictory fragments", "concept-preserving paraphrase", "<literal-placeholder>"}},
+				{filepath.Join(base, "agents", "plan-reviewer.md"), []string{"semantic-rendering-review", "contradictory fragments", "concept-preserving paraphrase", "<literal-placeholder>"}},
+				{filepath.Join(base, "agents", "code-reviewer.md"), []string{"semantic-rendering-review", "produced outputs", "focused tests", "literal-placeholder-intent"}},
+			} {
+				out := read(t, tc.path)
+				for _, want := range tc.want {
+					if !strings.Contains(out, want) {
+						t.Errorf("%s missing semantic rendering instruction %q:\n%s", tc.path, want, out)
+					}
+				}
+				if strings.Contains(out, "<no value>") {
+					t.Errorf("%s contains unresolved no-value token:\n%s", tc.path, out)
+				}
+			}
+		})
+	}
+}
+
 // chainNodes is the pinned forward-chain progression node set (ADR-0054 item 3).
 // chainTerminal is the sole terminal (exempt from the outgoing-edge requirement).
 // Task skills bugfix/debugging are deliberately NOT nodes - their handoffs are

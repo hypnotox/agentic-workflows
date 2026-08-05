@@ -256,6 +256,31 @@ func assertV3ADRTemplatePublicationSafe(t *testing.T) {
 	}
 }
 
+func TestSemanticRenderingReviewEmptyDataAndLiteralPlaceholder(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
+	}
+	for _, tc := range []struct {
+		name string
+		path string
+		want string
+	}{
+		{"planning", "skills/writing-plans/SKILL.md.tmpl", "<literal-placeholder>"},
+		{"plan reviewer", "agents/plan-reviewer.md.tmpl", "<literal-placeholder>"},
+		{"code reviewer", "agents/code-reviewer.md.tmpl", "literal-placeholder-intent"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := renderGolden(t, tc.path, data)
+			if !strings.Contains(out, tc.want) {
+				t.Errorf("empty-data render missing %q:\n%s", tc.want, out)
+			}
+			if strings.Contains(out, "<no value>") {
+				t.Errorf("empty-data render contains unresolved no-value token:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestTemplateHashCoversExpandedSource(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)

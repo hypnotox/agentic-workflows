@@ -60,6 +60,8 @@ Apply all lenses to every plan:
 
 1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
 
+1. **semantic-rendering-review**: when generated prose changes, require the plan to schedule a focused human check at each affected output boundary for contradictory fragments, concept-preserving paraphrase, and intentional literal placeholder syntax such as `<literal-placeholder>`, with concrete examples and expected reading. This is a meaning review, not a general output validator.
+
 1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check that the relevant model, ownership, representations, translation boundaries, dependency direction, and test seams are explicit; necessary enabling refactors are ordered before dependent behavior, bounded to the failure they prevent, and deterministically verifiable; larger refactors have an explicit approved, deferred, or declined disposition; flag needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 
 ## Project-specific focus items

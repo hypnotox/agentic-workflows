@@ -772,6 +772,50 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:semantic-rendering-review (TestSemanticRenderingReviewMultiTargetAuthority)
+func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [writing-plans, reviewing-impl, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer, code-reviewer]\ndocs: []\ntargets: [claude, pi]\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]string{}
+	counts := map[string]int{}
+	for _, file := range files {
+		byPath[file.Path] = file.Content
+		counts[file.Path]++
+	}
+	for _, target := range []string{".claude", ".pi"} {
+		for _, artifact := range []struct {
+			path string
+			want []string
+		}{
+			{target + "/skills/example-writing-plans/SKILL.md", []string{"Semantic rendering review", "contradictory fragments", "concept-preserving paraphrase", "<literal-placeholder>"}},
+			{target + "/agents/plan-reviewer.md", []string{"semantic-rendering-review", "contradictory fragments", "concept-preserving paraphrase", "<literal-placeholder>"}},
+			{target + "/agents/code-reviewer.md", []string{"semantic-rendering-review", "produced outputs", "focused tests", "literal-placeholder-intent"}},
+		} {
+			out := byPath[artifact.path]
+			if counts[artifact.path] != 1 || out == "" {
+				t.Fatalf("%s rendered %d times with %d bytes", artifact.path, counts[artifact.path], len(out))
+			}
+			for _, want := range artifact.want {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s missing semantic rendering instruction %q:\n%s", artifact.path, want, out)
+				}
+			}
+			for _, forbidden := range []string{"synonym detection", "contradiction inference", "placeholder-intent inference", "universal output-language validator"} {
+				if strings.Contains(out, forbidden) {
+					t.Errorf("%s claims unsupported semantic validation %q:\n%s", artifact.path, forbidden, out)
+				}
+			}
+		}
+	}
+}
+
 // invariant: config/configuration:targets-default-claude (TestResolveTargetsRejectsUnknown)
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ntargets:\n  - nope\n")
