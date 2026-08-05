@@ -43,7 +43,10 @@ Add effort-owned input, success, range, diff, and refusal types for read, edit, 
 protocol-neutral model closed over the ADR's condition set and facts: memory metadata,
 `changedMemory`, recovery actions, optional mechanism cause, edit indexes and occurrence facts,
 overlap indexes, and result-size facts. Do not put JSON tags, command grammar, presentation nodes,
-or Pi concepts into matching and storage helpers except the advisory owner UUID input.
+or Pi concepts into matching and storage helpers except the advisory owner UUID input. Document every
+retained exported declaration, keep condition constants unexported when no outside-package caller
+needs them, and require the command composition in Task 1.3 to meaningfully consume the complete
+exported result surface in this same transaction.
 
 Add service entrypoints for bounded complete-document read, exact body edit, and structured update.
 An owner-free call skips activity inspection. An owner-scoped call validates the lowercase UUIDv4,
@@ -74,7 +77,8 @@ Refactor `UpdateMemory` only as needed to share the proven load/parse/publish pa
 updated memory fact. Preserve partial repair of invalid mutable fields, exact legacy migration,
 immutable identity checks, and existing owner-free behavior. Model publication-stage uncertainty as
 `memory-failure`, setting `changedMemory` true only after the atomic replacement boundary and giving
-the caller a read-first recovery action.
+the caller a read-first recovery action. Do not retain a production-only compatibility or error field
+solely to preserve old tests; migrate those tests to the closed result and wrapped production errors.
 
 ### Task 1.2: Prove matching, pagination, safety, and durability
 Kind: batch
@@ -92,9 +96,12 @@ line refusal, 2,000-line boundaries, repeated replacement text, replacements tha
 text, no-op replacements, CRLF body preservation where admitted, one-MiB result rejection, and
 stable index ordering. Pin independent literal acceptance/rejection pairs for the 50-KiB read and
 diff caps, one-MiB bounds, and 128-edit maximum so changing a production constant fails a test. Add
-correctly anchored proof markers on named new units that exercise the new clauses of both Applied
-effort-management claims. Keep genuine kernel-impossible paths under the existing coverage-ignore
-policy rather than weakening the 100% gate.
+correctly anchored proof markers on named proof units that exercise every newly added clause of both
+Applied effort-management claims, including pagination/refusal bounds, matching/overlap/result-size
+rules, owner inspection, publication uncertainty, and the command consumer where the claim spans it;
+mutation-confirm each clause. Also reconstruct a document through sequential read pages without lost
+bytes. Keep genuine kernel-impossible paths under the existing coverage-ignore policy rather than
+weakening the 100% gate.
 
 ### Task 1.3: Add exact memory command grammar and dispatch
 Latitude: exact
@@ -112,8 +119,10 @@ composition, write empty stdout, use bounded actionable stderr, and exit nonzero
 
 Decode one closed edit JSON object from stdin with no additional properties, 1 through 128 closed
 edit objects, per-string bounds, and a 16-MiB total request cap. Reject trailing JSON values and
-malformed or oversized input before managed state is observed. Dispatch all forms through the typed
-effort service. Owner-free forms map success and handled refusal models through effort-owned semantic
+malformed or oversized input before managed state is observed. Bound the complete presented command
+diagnostic, including wrapping and newline overhead, to 50 KiB with a valid UTF-8 prefix; test an
+oversized unknown-property key end to end and pin literal 128-edit acceptance plus 129-edit refusal.
+Dispatch all forms through the typed effort service. Owner-free forms map success and handled refusal models through effort-owned semantic
 mappings and `internal/presentation`; owner-scoped forms select the protocol writer. Do not add a
 convenience JSON mode, local Markdown renderer, generic map, or new process-exit seam.
 
@@ -131,17 +140,32 @@ Post-check: "`go test ./internal/effort ./cmd/awf -run 'Test.*(Memory|Presentati
 
 Implement the literal protocol-1 schemas and bounds from the ADR, including condition-specific extra
 facts and exact omission rules. Ensure success stdout never exceeds one MiB and stderr never exceeds
-50 KiB. Preserve writer failures through the shared typed command boundary. For human reads, make
-truncation and continuation visible without altering the selected content bytes; for edits, expose
-replacement and diff facts through existing presentation shapes rather than reproducing Pi's TUI.
+50 KiB. Preserve writer failures through the shared typed command boundary. Owner-free presentation
+must render every applicable typed offset/range, size, failed-edit index/occurrence, overlap pair,
+replacement, diff, and nullable `firstChangedLine` fact through the central presentation tree. Pin
+base-refusal cause omission, every condition-specific refusal family, no-op
+`firstChangedLine:null`, and other nullable/omitted protocol fields byte-exactly. For human reads,
+make truncation and continuation visible without altering selected content bytes; do not reproduce
+Pi's TUI.
 
-### Task 1.5: Enter Implementing and apply effort and CLI authority
+### Task 1.5: Document the public memory CLI in Unreleased
+Kind: batch
+Latitude: exact
+Applying: ["add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:presentation-protocol-composition"]
+Paths: ["changelog/CHANGELOG.md"]
+Representative: "Add one Unreleased entry describing owner-free memory read/edit/update commands, owner-scoped protocol forms, line-safe pagination and handled refusals, exact body-only batches, automatic timestamps, and advisory owner loss."
+Edge: "Describe user-visible behavior and compatibility, not implementation procedure; do not claim activity authorization, fuzzy edits, forbidden direct file access, or a released version."
+Post-check: "`./x check` exits zero and the Unreleased section names all three command families plus the owner-scoped protocol without duplicating an existing entry."
+
+Keep the entry concise and adopter-facing; it travels in the same phase commit as the public CLI.
+
+### Task 1.6: Enter Implementing and apply effort and CLI authority
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:binary-owned-memory-operations", "add-associated-pi-effort-memory-tools:advisory-owner-scoped-memory-calls", "add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:presentation-protocol-composition", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
 Paths: ["docs/decisions/add-associated-pi-effort-memory-tools.md", ".awf/topics/parts/tooling/effort-management/current-state.md", "docs/topics/tooling/effort-management.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/tooling/cli.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
 Representative: "Move the ADR from Proposed to Implementing and apply `effort-record-authority`, `memory-skeleton-purpose-partition`, `explicit-output-bypasses`, and `effort-command-contract` in the same authored transaction as their live binary and CLI behavior, preserving each existing Origin and Revised-by prefix before appending this ADR."
-Edge: "Keep effort activity JSON, authored plan and changelog bytes, init descriptor JSON, and context spill unchanged; do not classify memory JSON as optional convenience output, describe activity as authorization or locking, or apply rendering claims."
+Edge: "Keep effort activity JSON, authored plan bytes, init descriptor JSON, and context spill unchanged; do not classify memory JSON as optional convenience output, describe activity as authorization or locking, or apply rendering claims."
 Post-check: "After `./x render`, `./x check` exits zero and `./awf context --show pending docs/decisions/add-associated-pi-effort-memory-tools.md cmd/awf/effort.go` reports exactly the two effort-management and two CLI operations Applied while all rendering operations remain pending."
 
 Use `awf-adr-lifecycle` to append the Implementing status event and one Applied event naming all four
