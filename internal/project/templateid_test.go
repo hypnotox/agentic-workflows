@@ -282,6 +282,14 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	ids := p.liveTemplateIDs()
+	for _, descriptor := range kindDescriptors {
+		if descriptor.baseTID != "" && !ids[descriptor.baseTID] {
+			t.Errorf("kind-derived base template %q is not live", descriptor.baseTID)
+		}
+		if descriptor.freeformDomain && !ids[descriptor.tid("")] {
+			t.Errorf("kind-derived domain template %q is not live", descriptor.tid(""))
+		}
+	}
 	if ids[coOwnedRunnerTID] {
 		t.Error("recognition-only runner is live")
 	}
@@ -290,6 +298,39 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 			t.Errorf("live template %q does not resolve: %v", tid, err)
 		}
 	}
+
+	originalBase := kindDescriptors[0].baseTID
+	kindDescriptors[0].baseTID = "missing/kind-base.tmpl"
+	baseIDs := p.liveTemplateIDs()
+	kindDescriptors[0].baseTID = originalBase
+	if !baseIDs["missing/kind-base.tmpl"] {
+		t.Error("a missing kind-derived base identity escaped the live population")
+	}
+	if _, err := fs.ReadFile(templates.FS, "missing/kind-base.tmpl"); err == nil {
+		t.Error("missing kind-derived base fixture unexpectedly resolves")
+	}
+
+	domainIndex := -1
+	for i := range kindDescriptors {
+		if kindDescriptors[i].freeformDomain {
+			domainIndex = i
+			break
+		}
+	}
+	if domainIndex < 0 {
+		t.Fatal("no freeform domain descriptor")
+	}
+	originalDomainTID := kindDescriptors[domainIndex].tid
+	kindDescriptors[domainIndex].tid = func(string) string { return "missing/domain.tmpl" }
+	domainIDs := p.liveTemplateIDs()
+	kindDescriptors[domainIndex].tid = originalDomainTID
+	if !domainIDs["missing/domain.tmpl"] {
+		t.Error("a missing kind-derived domain identity escaped the live population")
+	}
+	if _, err := fs.ReadFile(templates.FS, "missing/domain.tmpl"); err == nil {
+		t.Error("missing kind-derived domain fixture unexpectedly resolves")
+	}
+
 	missing := p.Cat.Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
 	p.Cat.Docs["missing-live-fixture"] = missing

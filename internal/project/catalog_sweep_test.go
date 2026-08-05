@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -341,6 +343,8 @@ func inspectSingletonConditionals(src, name string) (singletonInspection, error)
 		}
 		for _, node := range list.Nodes {
 			switch node := node.(type) {
+			case *parse.TextNode, *parse.CommentNode, *parse.BreakNode, *parse.ContinueNode:
+				continue
 			case *parse.ActionNode:
 				paths, pathErr := conditionalNodePaths(node.Pipe, scope, vars)
 				if pathErr != nil {
@@ -395,9 +399,14 @@ func inspectSingletonConditionals(src, name string) (singletonInspection, error)
 				if err := walkList(node.ElseList, scope, append(ancestors, conditionalState{condition: condition, truth: false})); err != nil {
 					return err
 				}
+			default:
+				return fmt.Errorf("unsupported template list node %T", node)
 			}
 		}
 		return nil
+	}
+	if len(tmpl.Templates()) != 1 {
+		return singletonInspection{}, fmt.Errorf("inspect %s: named templates are unsupported", name)
 	}
 	if err := walkList(tmpl.Root, nil, nil); err != nil {
 		return singletonInspection{}, fmt.Errorf("inspect %s: %w", name, err)
@@ -409,12 +418,82 @@ func inspectSingletonConditionals(src, name string) (singletonInspection, error)
 	return singletonInspection{template: instrumented, conditions: found}, nil
 }
 
-func conditionalPathRootExists(data map[string]any, path []string) bool {
+func conditionalPathExists(value any, path []string) bool {
 	if len(path) == 0 {
+		return true
+	}
+	if path[0] == "*" {
+		reflected := reflect.ValueOf(value)
+		for reflected.IsValid() && (reflected.Kind() == reflect.Interface || reflected.Kind() == reflect.Pointer) {
+			if reflected.IsNil() {
+				return false
+			}
+			reflected = reflected.Elem()
+		}
+		if !reflected.IsValid() || (reflected.Kind() != reflect.Slice && reflected.Kind() != reflect.Array) {
+			return false
+		}
+		if reflected.Len() == 0 {
+			return true
+		}
+		for i := range reflected.Len() {
+			if conditionalPathExists(reflected.Index(i).Interface(), path[1:]) {
+				return true
+			}
+		}
 		return false
 	}
-	_, ok := data[path[0]]
-	return ok
+	reflected := reflect.ValueOf(value)
+	for reflected.IsValid() && (reflected.Kind() == reflect.Interface || reflected.Kind() == reflect.Pointer) {
+		if reflected.IsNil() {
+			return false
+		}
+		reflected = reflected.Elem()
+	}
+	if !reflected.IsValid() {
+		return false
+	}
+	switch reflected.Kind() {
+	case reflect.Map:
+		key := reflect.ValueOf(path[0])
+		if !key.Type().AssignableTo(reflected.Type().Key()) {
+			return false
+		}
+		next := reflected.MapIndex(key)
+		return next.IsValid() && conditionalPathExists(next.Interface(), path[1:])
+	case reflect.Struct:
+		for i := range reflected.NumField() {
+			field := reflected.Type().Field(i)
+			if strings.EqualFold(field.Name, path[0]) {
+				return conditionalPathExists(reflected.Field(i).Interface(), path[1:])
+			}
+		}
+	default:
+		return false
+	}
+	return false
+}
+
+func conditionalPathUsesLiveContext(data map[string]any, path []string) bool {
+	if conditionalPathExists(data, path) {
+		return true
+	}
+	if len(path) > 1 && path[0] == "vars" {
+		for _, descriptor := range catalog.Standard.Vars {
+			if descriptor.Key == path[1] {
+				return len(path) == 2
+			}
+		}
+		return false
+	}
+	if len(path) > 1 && path[0] == "data" {
+		for _, descriptor := range configspec.DataKeys() {
+			if descriptor.Key == path[1] {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func setConditionalPath(value any, path []string, kind string, set bool, literal string) any {
@@ -558,7 +637,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 			}
 			seenConditions++
 			for _, path := range condition.paths {
-				if !conditionalPathRootExists(context.data, path) {
+				if !conditionalPathUsesLiveContext(context.data, path) {
 					t.Errorf("%s %s conditional path %s has no root on its real render context", context.tid, condition.kind, strings.Join(path, "."))
 					continue
 				}
@@ -612,10 +691,32 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	}
 }
 
-func TestSingletonConditionalInspectionRejectsUnsupportedWrappedCondition(t *testing.T) {
-	const fixture = `{{ if print .vars.gateCmd }}configured{{ else }}fallback{{ end }}`
-	if _, err := inspectSingletonConditionals(fixture, "wrapped-unsupported"); err == nil || !strings.Contains(err.Error(), `unsupported conditional function "print"`) {
-		t.Fatalf("unsupported wrapped conditional was not rejected: %v", err)
+func TestSingletonConditionalInspectionRejectsUnsupportedForms(t *testing.T) {
+	fixtures := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{"wrapped-function", `{{ if print .vars.gateCmd }}configured{{ else }}fallback{{ end }}`, `unsupported conditional function "print"`},
+		{"named-template", `{{ define "wrapped" }}{{ if .vars.gateCmd }}configured{{ end }}{{ end }}{{ template "wrapped" . }}`, "named templates are unsupported"},
+	}
+	for _, fixture := range fixtures {
+		t.Run(fixture.name, func(t *testing.T) {
+			if _, err := inspectSingletonConditionals(fixture.src, fixture.name); err == nil || !strings.Contains(err.Error(), fixture.want) {
+				t.Fatalf("unsupported conditional form was not rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestSingletonConditionalInspectionRejectsMissingContextDescendant(t *testing.T) {
+	inspection, err := inspectSingletonConditionals(`{{ if .vars.reviewMissingKey }}configured{{ else }}fallback{{ end }}`, "missing-descendant")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := inspection.conditions[0].paths[0]
+	if conditionalPathUsesLiveContext(map[string]any{"vars": map[string]any{}}, path) {
+		t.Fatalf("missing render-context descendant was accepted: %s", strings.Join(path, "."))
 	}
 }
 

@@ -107,6 +107,14 @@ type conditionalUnit struct {
 // retained only to recognize an outgoing historical lock entry.
 func (p *Project) liveTemplateIDs() map[string]bool {
 	ids := map[string]bool{topicTID: true, topicIndexTID: true}
+	for _, descriptor := range kindDescriptors {
+		if descriptor.baseTID != "" {
+			ids[descriptor.baseTID] = true
+		}
+		if descriptor.freeformDomain {
+			ids[descriptor.tid("")] = true
+		}
+	}
 	for name := range p.Cat.Skills {
 		ids[p.skillTID(name)] = true
 	}
