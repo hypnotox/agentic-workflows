@@ -65,25 +65,6 @@ that resolves both offsets and compares them. The general form: before claiming 
 ordered-list entry covers a site, check where that site renders relative to the list's
 first phrase.
 
-## Stage the lock with every render output
-
-_Domains: rendering_
-
-After rendering, stage `.awf/awf.lock` with every regenerated output in the same
-transaction. Staged drift validation can miss a fresh lock update left dirty only in the
-working tree.
-
-## Parallel efforts can collide on schema generations at integration
-
-_Domains: adr-system, config_
-
-_Related: ADR-0191_
-
-Schema migration generations and permanent lock cutoffs are allocated optimistically in
-each branch and have no reconciliation command. Resolve collisions inside the integration
-merge: move the branch migration above the target generation, carry every version pin, keep
-the branch's higher schema stamp, and hand-apply any migration effect that stamp now skips.
-
 ## Make custom staged-slice hooks explicit about branch and cleanup
 
 _Domains: tooling, adr-system_
@@ -93,20 +74,6 @@ _Related: ADR-0202_
 A custom staged-slice hook must name its temporary branch, resolve the invoking checkout's
 hook path, and delete temporary state before an `exec` replacement. Otherwise branch-aware
 checks can inspect the wrong branch or cleanup can be skipped.
-
-## A piped gate run reports the pipe's exit code, not the gate's
-
-_Domains: tooling_
-
-_Related: ADR-0202_
-
-`./x gate 2>&1 | tail -60` exits with `tail`'s status, which is 0 whatever the gate did,
-and the failing line is usually far enough up the output to have scrolled past the
-window anyway. Both halves fail in the same direction: the run reads as green. This has
-bitten more than once, in different sessions, including one where the same agent had
-recorded the trap earlier the same day. Run `./x gate > /tmp/gate.log 2>&1; echo $?` and
-grep the log. The same applies to any long verification command whose exit code decides
-whether work continues.
 
 ## Retiring a concept needs paraphrase sweeps, not just identifier greps
 
@@ -227,12 +194,6 @@ Refer to a placeholder by key name in the agent guide and reserve literal token 
 the reference documentation, unless the guide's brace guard is deliberately extended to
 recognize that syntax.
 
-## Verify checkout identity after a commit-capable child
-
-After a commit-capable child returns, inspect the explicitly intended worktree and branch
-before accepting its reported commit. Never infer the parent checkout's state from the child
-report.
-
 ## Enabled linters constrain API shape, sketch signatures against them
 
 _Domains: tooling_
@@ -272,22 +233,6 @@ wrong typography, and restoring the backticks verbatim just re-triggers the rewr
 twice on 2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the
 construct out in words ("a double-backtick quoting span"); literal backtick pairs are only
 safe inside non-doc comments or raw strings.
-
-## The atomic `.awf/awf.lock` forces multi-scope rendering work into one commit
-
-_Domains: rendering_
-
-`.awf/awf.lock` is a single JSON manifest of every rendered file's hashes, so a change that
-regenerates outputs across several commit *scopes*, skill templates (`rendering`), an ADR flip's
-domain indexes (`adr`), an `agents-doc.yaml` invariant promotion (`invariants`), produces one
-lock diff whose hunks cannot be sliced by pathspec: `git add <path>` is all-or-nothing on a file
-and interactive `git add -p` is unavailable here. Don't fight it into per-scope commits; the
-coupled regeneration *is* the concern. Bundle the source edits, their rendered outputs, and the
-whole lock into one commit; "one concern per commit" is satisfied because the concern is the
-coupled change, not each scope it happens to touch (ADR-0092 stage b, 2026-07-11: skill adoption
-+ ADR flip + invariant promotion landed as one `feat(rendering)` commit; the impl review
-confirmed the boundary was reasoned, not a scope violation). A genuinely independent, non-rendered
-file (a `./x` arm, a lockless script) still commits on its own.
 
 ## Obsoleting rendered prose: sweep parts and whole narratives, not just templates
 
@@ -375,14 +320,6 @@ domain-sidecar validation did this to `TestAuditPropagatesDomainSidecarReadError
 tree. The repair pattern: corrupt *after* the earlier stage has run (post-`Open`
 mutation), so each stage's own error branch keeps a test that reaches it; and when adding
 an earlier check, grep the tests for fixtures corrupting the state it newly reads.
-
-## Parallel sessions share one git index
-
-A checkout is single-writer: every session in it shares the worktree and index, so one
-session can stage, revert, or commit another session's changes. Use separate worktrees for
-parallel work. In a residual shared-checkout case, stage and commit named paths, inspect fresh
-status immediately before committing, and verify the resulting commit rather than relying on
-a gate run over the earlier working tree.
 
 ## Link ADRs by their on-disk filename, never by constructing one from the title
 
@@ -704,21 +641,6 @@ compare each ADR's Decision item list before and after (identical), and compare 
 whitespace-normalised prose from BOTH sides (identical). A one-sided strip reports every
 pre-existing construct as a change and buries the real finding in false positives.
 
-## Record implementation deviations before the terminal artifact transaction
-
-_Domains: adr-system_
-
-A plan's Notes section is the last honest place to record an implementation deviation, but
-it becomes frozen history when the plan moves to Implemented. The topic-authority hardening
-effort added `LegacyBaseline` to an exact planned API after user approval and correctly
-implemented it, yet omitted the deviation from Notes before the terminal plan and ADR
-transaction. Terminal review caught the documentary gap only after the plan had frozen, when
-editing Notes or rewriting commits would have violated immutable-history rules. Before staging
-the final status transition, compare the implemented public shapes and named deviations against
-the plan one last time, update Notes while the plan is still active, then freeze it. If review
-finds an omission afterward, preserve history and record the miss in the retrospective rather
-than making the completed plan falsely look prescient.
-
 ## Keep recovery UI writes non-fatal after session disposal
 
 _Domains: rendering_
@@ -726,25 +648,6 @@ _Domains: rendering_
 In extension failure recovery, swallow UI-write failures so the original error remains
 authoritative, and run the real-Pi lane for changes that cross session teardown. The fake
 harness does not model disposed-session UI behavior.
-
-## A Decision amendment discovered mid-implementation must be reviewed before the freeze commit
-
-_Domains: adr-system_
-
-The 0154 effort discovered mid-implementation that anchor references need causally
-forward-only resolution, substantive protocol semantics beyond the reviewed Decision. The
-amendment was correctly authored while the ADR was still Proposed, but it landed in the
-same commit that flipped the ADR to Implemented, so the clause froze without a
-fresh-context ADR review; the implementation review later verified it sound by diligence,
-not by process. This recurs the "record deviations before the terminal artifact
-transaction" family: prose memory did not prevent it. Land a mid-implementation amendment
-as its own docs(adr) commit, re-dispatch the ADR reviewer over the amended section when
-the change is load-bearing, and only then stage the freeze transaction. A deterministic
-catch is deferred to the roadmap: an audit rule flagging a direct status flip out of
-Proposed whose commit also mutates the ADR's digest-covered sections. Since ADR-0188 the
-amendment window extends to any non-terminal status and each post-Accepted amendment
-appends its own Amended event, so the reviewer re-dispatch travels with the amendment
-commit rather than racing a freeze (ADR-0154, ADR-0188; 2026-07-23, 2026-07-30).
 
 ## A consumer of a filtered shared map can depend on the filter's accidents
 
@@ -798,59 +701,6 @@ require that state to hold its prior value until the step that is allowed to cha
 Then mutate the production order and watch the new test go red. A proof for a timing or
 ordering clause is not finished until you have seen it fail; this one was proposed during
 review, built as proposed, and only mutation revealed it was inert.
-
-## Inspect shared generated files before pathspec commits
-
-_Domains: rendering, tooling_
-
-In a shared checkout, compare the worktree and staged copies of any shared generated file,
-especially `.awf/awf.lock`, before committing it by pathspec. Git can take the worktree copy
-and fold another session's generated changes into the commit.
-
-## A long-lived branch's prose goes stale against the other side with no merge conflict
-
-_Domains: rendering, adr-system_
-
-_Related: ADR-0186, ADR-0187_
-
-A branch that predates a contract change keeps describing the shape in force at its base,
-and git merges that description cleanly because the other side edited different lines. Both
-halves of ADR-0187 hit this after 32 commits of divergence. The orienting skill's
-resume-revalidation told a resuming session to read the effort memory's header and handoff
-log, which was the whole skeleton at the branch point; main had meanwhile added the decision
-log carrying verbatim user `Record:` blocks, so the merged instruction steered every
-resuming session straight past the consensus record it exists to honour. Separately the
-plan's phase 4 still prescribed a one-transaction Implemented flip that the narrowed
-executing-plans contract had replaced, and since a plan is the standing instruction for
-whatever work remains, that was a live trap rather than stale prose. Neither was visible to
-`awf check`, the gate, or a per-phase review: every artifact was internally consistent and
-derived from its own template. Only reading both sides of the merge found them. After
-integrating a long-lived branch, re-read its authored prose against what the other side
-changed underneath it, especially any passage that ENUMERATES a structure (file sections,
-status events, required steps) rather than referring to it by name, because an enumeration
-silently becomes exhaustive-and-wrong while a reference stays correct. Expect to find more
-than one instance: correcting the plan's Goal, Architecture summary, Task 4.3, and Notes
-still left the phase header contradicting the task directly below it.
-
-## In a managed worktree, a primary-checkout path silently splits the transaction
-
-_Domains: tooling_
-
-_Related: ADR-0189, ADR-0190_
-
-When an effort executes in a managed `.awf/worktrees/<slug>` checkout, every file
-mutation must use the worktree-prefixed absolute path. A path spelled from the primary
-checkout root looks identical apart from its prefix and applies cleanly there, where a
-concurrent session's `./x render` can sweep the stray edit into the primary checkout's
-rendered files and lock before anyone notices; the effort's own transaction is then
-split across two working trees. The 2026-07-31 prose-audit effort hit this once: a
-convention-part edit landed in the primary checkout, a concurrent render propagated it,
-and three files had to be restored from HEAD. Verify the prefix before the first
-mutating call of a session, and after any suspected slip check `git status` in the
-primary checkout, not only the worktree. Relatedly for planners: a shared-prose
-extraction into `templates/partials/` may not reference `.vars` (the config-reference
-dormancy scan reads raw template bytes; `TestConfigReferenceNoBareVars` enforces it),
-so a sentence carrying a command interpolation cannot move into a partial.
 
 ## A hanging test is often the fixture lane, which has no deadline
 

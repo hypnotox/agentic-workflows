@@ -14,6 +14,8 @@ query a single version or a range.
 
 - Plan authoring and review now scope material verification to its actual lifecycle snapshot, require demonstrated negative cases for mechanical checks, and distinguish authority, state, and choreography constraints so durable properties are preserved without enforcing unnecessary process shape.
 
+- Execution and integration guidance now verifies checkout identity after commit-capable work, reconciles plan deviations before freeze, revalidates workflow prose after divergent integration, keeps one writer per checkout, preserves gate status while logging, and stages each render manifest atomically with its outputs.
+
 - Rendered workflow guidance now makes the simplest sufficient solution the default: brainstorming approves a proportionate scope and design boundary before implementation, material deviations stop for user approval, planning is used only when it materially helps, and reviewers reject speculative additions.
 
 - Pi effort association now keeps complete metadata independent while capability-gated display suffix publication sends only the canonical slug or null. It never overrides, reads, or composes routing identity, and degrades to metadata-only behavior.

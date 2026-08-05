@@ -116,7 +116,7 @@ To write the placeholder syntax literally in a part (for documentation), put a b
 ## Keeping in sync
 
 After any edit to `.awf/`, run `awf render` to re-render, then `awf check` to confirm no drift, and
-commit the rendered files alongside the config change. `awf check` compares each rendered file's
+commit the rendered files alongside the config change. Always stage `.awf/awf.lock` with every regenerated output: its atomic manifest is part of one render transaction, not material to slice across independent commits. `awf check` compares each rendered file's
 template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
 gate into CI so drift and rule violations block a merge.
 

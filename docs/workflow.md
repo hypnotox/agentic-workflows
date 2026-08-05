@@ -67,7 +67,8 @@ backstop (ADR-0196).
 Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
 hook payload (see the local-hooks section below). There is no slower tier. `./x gate timings`
 runs the identical sequential gate while reporting each stage's elapsed wall time (see
-[docs/testing.md](testing.md)).
+[docs/testing.md](testing.md)). To preserve long gate output, use a direct log redirect and capture
+the command status separately; do not rely on a status-losing pipeline.
 
 The current-state cutover deliberately sits outside this gate. The preceding bridge release sealed the
 prepared tree, and this binary's plain `awf upgrade` consumes that seal through a recoverable journal;
