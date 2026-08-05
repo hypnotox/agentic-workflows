@@ -75,7 +75,7 @@ Backing: test
 ### `invariant: sidecar-data-defaults-control`
 
 A sidecar dataDefaults map accepts only boolean controls whose keys name same-key list defaults declared by that catalog artifact. Absence or true keeps the default and false suppresses it; unknown, non-list, local-only, differently keyed specialized, and non-boolean entries are rejected, and a present catalog-backed project list value must be a list rather than null or another type.
-Origin: ADR-layer-catalog-list-defaults-and-project-entries
+Origin: ADR-0236
 Backing: test
 
 ### `invariant: tag-coverage-note`

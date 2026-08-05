@@ -25,7 +25,7 @@ Backing: test
 Every conditional in a live singleton template is supplied by that artifact's real render context and
 is exercised with both outcomes. The population derives from catalog and singleton declarations;
 recognition-only templates are excluded, and missingkey=zero retains generic empty fallbacks.
-Origin: ADR-derive-render-completeness-from-output-authority
+Origin: ADR-0235
 Backing: test
 
 ### `invariant: empty-init-coherent-render`

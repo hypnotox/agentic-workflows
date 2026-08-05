@@ -54,7 +54,7 @@ Backing: test
 
 The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
 Origin: ADR-0124
-Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-derive-render-completeness-from-output-authority
+Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-0235
 Backing: test
 
 ### `invariant: check-report-single-plan`
@@ -103,13 +103,13 @@ Backing: test
 
 When merging an artifact's catalog default data with its sidecar, a non-list top-level key present in the sidecar - even when set to null or empty - fully replaces the catalog default for that key, while a key absent from the sidecar falls through to the catalog default; there is no deep merge.
 Origin: ADR-0045
-Revised-by: ADR-layer-catalog-list-defaults-and-project-entries
+Revised-by: ADR-0236
 Backing: test
 
 ### `invariant: catalog-list-data-layering`
 
 A same-key catalog list and project list compose shallowly as catalog entries followed by authored entries, preserving both orders without generic deduplication or identity merging. An absent or empty project list keeps the catalog list; dataDefaults false suppresses that default and yields only authored entries or an empty list, while differently keyed specialized transforms such as glossary standardTerms and terms stay outside this generic path.
-Origin: ADR-layer-catalog-list-defaults-and-project-entries
+Origin: ADR-0236
 Backing: test
 
 ### `invariant: skills-context-effective-set`
@@ -128,7 +128,7 @@ Backing: test
 
 Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree. Live identity resolution derives from those same authorities, while the co-owned runner remains recognition-only.
 Origin: ADR-0195
-Revised-by: ADR-derive-render-completeness-from-output-authority
+Revised-by: ADR-0235
 Backing: test
 
 ### `invariant: conditional-unit-single-source`
@@ -137,5 +137,5 @@ Each enabled config-tree render unit derives its enablement, path, template iden
 and fixed sections from one bounded descriptor consumed by output declarations and render dispatch.
 Unit-specific data construction, policy, encoding, and lifecycle behavior remain at their owning
 render seams.
-Origin: ADR-derive-render-completeness-from-output-authority
+Origin: ADR-0235
 Backing: test

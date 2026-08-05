@@ -4,7 +4,7 @@ slug: layer-catalog-list-defaults-and-project-entries
 status: Implementing
 date: 2026-08-05
 ---
-# ADR-layer-catalog-list-defaults-and-project-entries: Layer catalog list defaults and project entries
+# ADR-0236: Layer catalog list defaults and project entries
 
 
 ## Context

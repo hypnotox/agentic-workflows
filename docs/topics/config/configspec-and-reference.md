@@ -21,7 +21,7 @@ Every config-reference key has an exhaustive typed classification: a live-state 
 explicitly static not-applicable row. The generated reference and CLI consume that classification,
 so omitted or wrongly classified fields fail parity while absent, default, and current presentation
 remain unchanged.
-Origin: ADR-derive-render-completeness-from-output-authority
+Origin: ADR-0235
 Backing: test
 
 ### `invariant: config-reference-no-bare-vars`

@@ -4,7 +4,7 @@ slug: separate-structural-markdown-headings-from-section-bodies
 status: Implementing
 date: 2026-08-05
 ---
-# ADR-separate-structural-markdown-headings-from-section-bodies: Separate structural Markdown headings from section bodies
+# ADR-0237: Separate structural Markdown headings from section bodies
 
 
 ## Context

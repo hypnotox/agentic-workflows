@@ -48,7 +48,7 @@ Backing: test
 ### `invariant: list-replacement-fixed-snapshot`
 
 Schema generation 35 classifies only its frozen kind, artifact, and list-key snapshot, preflights every matching sidecar before writing, and refuses any non-null non-list replacement with all changed axes false and an actionable repair. A list is retained with matching dataDefaults false, null is removed with that suppression, each changed sidecar is atomically replaced and announced, unrelated mappings, comments, key order, and modes are preserved, retry after a later write failure completes safely, rerun is a silent no-op, and future catalog list keys are excluded.
-Origin: ADR-layer-catalog-list-defaults-and-project-entries
+Origin: ADR-0236
 Backing: test
 
 ### `invariant: legacy-read-isolation`
@@ -111,7 +111,7 @@ Backing: test
 ### `invariant: structural-heading-part-migration`
 
 Schema generation 36 uses a frozen part-path and heading snapshot, preflights every matching part, removes only an exact leading legacy heading after authoring comments while preserving every other byte and mode, and refuses custom or multiple leading headings before any mutation with an actionable operation outcome. Changed parts are atomically written and announced; no-heading parts are untouched, retry is safe, and later headings remain out of scope.
-Origin: ADR-separate-structural-markdown-headings-from-section-bodies
+Origin: ADR-0237
 Backing: test
 
 ### `invariant: unified-effort-resident-migration`

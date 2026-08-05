@@ -49,7 +49,7 @@ Backing: test
 ### `invariant: ordinary-render-freshness`
 
 After an ordinary frozen output's template and config hashes match, awf check compares its current planned render bytes to the locked output hash before observing the worktree or staged bytes. A changed fresh render reports stale output, while an unchanged fresh render attributes only a differing observed output as hand-edited. Regenerated and in-place outputs retain their declared regeneration policy.
-Origin: ADR-derive-render-completeness-from-output-authority
+Origin: ADR-0235
 Backing: test
 
 ### `invariant: part-scopes-in-confighash`

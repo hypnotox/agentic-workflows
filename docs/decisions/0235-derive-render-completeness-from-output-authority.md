@@ -4,7 +4,7 @@ slug: derive-render-completeness-from-output-authority
 status: Implementing
 date: 2026-08-05
 ---
-# ADR-derive-render-completeness-from-output-authority: Derive render completeness from output authority
+# ADR-0235: Derive render completeness from output authority
 
 
 ## Context
