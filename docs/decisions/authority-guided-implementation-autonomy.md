@@ -59,12 +59,12 @@ execution consumes stale instructions.
    equivalent mechanical choice, is autonomous inside those limits.
 
 4. `decision: truthful-plan-reconciliation` Keep a mutable plan truthful according to ownership. An
-   inline plan owner corrects a stale instruction and records the implementation finding before
-   continuing. A delegated implementer may finish without editing the plan but reports every
-   deviation with its rationale, governing authority, and verification. The parent supplies that
-   report to phase review, then reconciles the plan with review findings before checkpointing or
-   later execution. This preserves one delegated phase-closing commit while preventing subsequent
-   work from relying on stale instructions.
+   inline plan owner corrects a stale instruction, records the reasoned deviation in the plan's
+   Notes section, and continues. A delegated implementer may finish without editing the plan but
+   reports every deviation with its rationale, governing authority, and verification. The parent
+   supplies that report to phase review, then reconciles the plan and review findings in a focused
+   settlement commit before checkpointing or later execution. This preserves one delegated
+   phase-closing commit while preventing subsequent work from relying on stale instructions.
 
 5. `decision: issue-resolution-before-escalation` Treat correctness, safety, review, recovery, and
    verification findings as implementation work whenever existing authority determines a compliant
@@ -72,11 +72,15 @@ execution consumes stale instructions.
    severity. Dirty-state recovery remains explicit and safe. User attention is required only when
    remediation reaches the narrow escalation boundary.
 
-6. `decision: judgment-without-policy-schema` Keep the classification a prose judgment shared by
-   implementation guidance, not a new policy schema, deviation ledger, approval artifact, command,
-   linter, or automated semantic classifier. Retain the existing mandatory approvals for effort
-   creation, grounded design, and settled ADR review, as well as plan freezing, phase ownership,
-   report-only review, and required verification.
+6. `decision: judgment-without-policy-schema` Keep the classification in one shared prose partial
+   included directly by each applicable implementation consumer, so one semantic home prevents
+   cross-path drift without introducing nested composition. Do not add a policy schema, deviation
+   ledger, approval artifact, command, linter, or automated semantic classifier. Retain the existing
+   mandatory approvals for effort creation, grounded design, and settled ADR review, as well as plan
+   freezing, phase ownership, report-only review, and required verification. Back the shared rule
+   with an invariant proof in the existing template-contract test suite that verifies projection to
+   every intended consumer. Affected templates retain missingkey=zero behavior and coherent generic
+   rendering with empty variables, without unresolved no-value tokens.
 
 ## State changes
 
@@ -95,7 +99,9 @@ material scope rather than becoming an approval queue for ordinary implementatio
 Plans become more truthful during execution. Inline correction happens before dependent work.
 Delegated correction remains compatible with a fresh-context owner's narrow artifact authority: the
 child reports deviations, phase review sees them, and the parent reconciles the plan in settlement
-before the checkpoint or next phase.
+before the checkpoint or next phase. This accepts additional ceremony for delegated deviations:
+the child's structured report becomes review input, and the parent must land a focused settlement
+transaction before continuing.
 
 The boundary remains judgment-based. An agent may misclassify a material design change as a detail,
 or escalate too cautiously. Explicit preservation criteria, structured deviation reports,
@@ -111,10 +117,11 @@ non-negotiable. The decision changes when user input is needed, not what correct
 
 | Alternative | Why not chosen |
 |---|---|
-| Keep approval for every affected design category | It treats stale implementation detail and material authority drift alike, causing check-ins where the user has no new meaningful choice. |
+| Keep approval for every affected design category | It is more conservative against an agent misclassifying material drift, but treats stale implementation detail and authority changes alike. Explicit authority criteria, deviation reporting, review, and verification provide proportionate control with fewer meaningless interruptions. |
 | Permit only equivalent mechanical deviations | It remains too narrow for source-backed corrections that require judgment while preserving every approved boundary. |
 | Let delegated implementers amend the parent plan directly | It expands fresh-context ownership and couples the phase transaction to a parent-owned durable artifact unnecessarily. |
 | Formal deviation taxonomy or machine classifier | Semantic materiality is contextual; a schema adds ceremony and false precision without deciding the hard cases. |
+| Reconcile delegated deviations in a separate parent commit before review | It keeps the plan current for review, but splits reconciliation from review findings and makes the reviewer inspect a parent interpretation instead of the child's original deviation report. One post-review settlement handles both coherently. |
 | Reconcile delegated deviations before review by rewriting the child commit | It preserves one commit but obscures delegated ownership and discards the useful review-before-settlement sequence. |
 
 ## Status history
