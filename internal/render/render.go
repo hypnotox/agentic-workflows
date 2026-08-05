@@ -2,7 +2,11 @@
 package render
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -270,8 +274,13 @@ func StructuralHeadingCapture(segs []Segment) (string, map[string][2]string) {
 			continue
 		}
 		if s.Heading != "" {
-			start := "\x00awf:heading:" + s.Name + ":start\x00"
-			end := "\x00awf:heading:" + s.Name + ":end\x00"
+			// A per-section digest makes framing practically unique to this exact
+			// skeleton. Extraction still rejects every duplicate or malformed
+			// occurrence rather than trusting that uniqueness.
+			digest := sha256.Sum256([]byte(s.Name + "\x00" + s.Heading))
+			prefix := "\x00awf:heading:" + hex.EncodeToString(digest[:])
+			start := prefix + ":start\x00"
+			end := prefix + ":end\x00"
 			tokens[s.Name] = [2]string{start, end}
 			b.WriteString(start)
 			b.WriteString(s.Heading)
@@ -285,17 +294,22 @@ func StructuralHeadingCapture(segs []Segment) (string, map[string][2]string) {
 // ExtractStructuralHeadings recovers each heading captured during execution.
 func ExtractStructuralHeadings(output string, tokens map[string][2]string) (map[string]string, error) {
 	headings := make(map[string]string, len(tokens))
-	for name, pair := range tokens {
-		start := strings.Index(output, pair[0])
-		if start < 0 {
+	for _, name := range slices.Sorted(maps.Keys(tokens)) {
+		pair := tokens[name]
+		starts := strings.Count(output, pair[0])
+		ends := strings.Count(output, pair[1])
+		if starts == 0 && ends == 0 {
 			continue
 		}
-		bodyStart := start + len(pair[0])
-		end := strings.Index(output[bodyStart:], pair[1])
-		if end < 0 {
-			return nil, fmt.Errorf("structural heading %q capture is incomplete", name)
+		if starts != 1 || ends != 1 {
+			return nil, fmt.Errorf("structural heading %q capture has ambiguous framing: found %d start token(s) and %d end token(s)", name, starts, ends)
 		}
-		headings[name] = output[bodyStart : bodyStart+end]
+		start := strings.Index(output, pair[0])
+		end := strings.Index(output, pair[1])
+		if end < start+len(pair[0]) {
+			return nil, fmt.Errorf("structural heading %q capture framing is out of order", name)
+		}
+		headings[name] = output[start+len(pair[0]) : end]
 	}
 	return headings, nil
 }

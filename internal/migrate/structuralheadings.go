@@ -242,13 +242,19 @@ func applyStructuralHeadingsWithWriterAndOpen(root string, out io.Writer, write 
 			}
 			source, err := io.ReadAll(file)
 			if err != nil {
-				_ = file.Close()
-				return fmt.Errorf("read structural-heading part %s: %w", path, err)
+				primary := fmt.Errorf("read structural-heading part %s: %w", path, err)
+				if closeErr := file.Close(); closeErr != nil {
+					return errors.Join(primary, fmt.Errorf("close structural-heading part %s: %w", path, closeErr))
+				}
+				return primary
 			}
 			info, err := file.Stat()
 			if err != nil {
-				_ = file.Close()
-				return fmt.Errorf("stat structural-heading part %s: %w", path, err)
+				primary := fmt.Errorf("stat structural-heading part %s: %w", path, err)
+				if closeErr := file.Close(); closeErr != nil {
+					return errors.Join(primary, fmt.Errorf("close structural-heading part %s: %w", path, closeErr))
+				}
+				return primary
 			}
 			if err := file.Close(); err != nil {
 				return fmt.Errorf("close structural-heading part %s: %w", path, err)

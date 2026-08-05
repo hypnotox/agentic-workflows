@@ -277,6 +277,50 @@ func TestLayerCatalogListsRetryAfterLaterWriteFailure(t *testing.T) {
 	}
 }
 
+func TestLayerCatalogListsReportsWriteAndAnnouncementFailures(t *testing.T) {
+	root := closeFixture(t, "prefix: ex\n", map[string]string{"skills/tdd.yaml": "data:\n  testSurfaces: []\n"})
+	writeFailure := errors.New("write failed")
+	err := applyLayerCatalogListsWithWriter(root, io.Discard, func(string, []byte, os.FileMode) error { return writeFailure })
+	path := filepath.Join(root, ".awf", "skills", "tdd.yaml")
+	if !errors.Is(err, writeFailure) || !strings.Contains(err.Error(), "write sidecar "+filepath.ToSlash(path)) {
+		t.Fatalf("write failure = %v", err)
+	}
+
+	root = closeFixture(t, "prefix: ex\n", map[string]string{"skills/tdd.yaml": "data:\n  testSurfaces: []\n"})
+	announcementFailure := errors.New("announcement failed")
+	err = applyLayerCatalogLists(root, structuralHeadingFailWriter{err: announcementFailure})
+	if !errors.Is(err, announcementFailure) || !strings.Contains(err.Error(), "announce layer-catalog-lists update") {
+		t.Fatalf("announcement failure = %v", err)
+	}
+}
+
+func TestLayerCatalogListsRetainsPrimaryAndCleanupFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		reader  io.Reader
+		statErr error
+		context string
+	}{
+		{"read", migrationFailedReader{errors.New("read failed")}, nil, "read sidecar"},
+		{"stat", strings.NewReader(""), errors.New("stat failed"), "stat sidecar"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			primary := tc.statErr
+			if primary == nil {
+				primary = tc.reader.(migrationFailedReader).err
+			}
+			closeErr := errors.New("close failed")
+			root := closeFixture(t, "prefix: ex\n", nil)
+			err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+				return migrationFaultFile{reader: tc.reader, stat: tc.statErr, close: closeErr}, nil
+			})
+			if !errors.Is(err, primary) || !errors.Is(err, closeErr) || !strings.Contains(err.Error(), tc.context) || !strings.Contains(err.Error(), "close sidecar") {
+				t.Fatalf("joined failures = %v", err)
+			}
+		})
+	}
+}
+
 func snapshotTree(t *testing.T, root string) map[string][]byte {
 	t.Helper()
 	out := map[string][]byte{}

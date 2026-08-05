@@ -77,13 +77,19 @@ func applyLayerCatalogListsWithWriterAndOpen(root string, out io.Writer, write a
 		}
 		source, err := io.ReadAll(file)
 		if err != nil {
-			_ = file.Close()
-			return fmt.Errorf("read sidecar %s: %w", filepath.ToSlash(path), err)
+			primary := fmt.Errorf("read sidecar %s: %w", filepath.ToSlash(path), err)
+			if closeErr := file.Close(); closeErr != nil {
+				return errors.Join(primary, fmt.Errorf("close sidecar %s: %w", filepath.ToSlash(path), closeErr))
+			}
+			return primary
 		}
 		info, err := file.Stat()
 		if err != nil {
-			_ = file.Close()
-			return fmt.Errorf("stat sidecar %s: %w", filepath.ToSlash(path), err)
+			primary := fmt.Errorf("stat sidecar %s: %w", filepath.ToSlash(path), err)
+			if closeErr := file.Close(); closeErr != nil {
+				return errors.Join(primary, fmt.Errorf("close sidecar %s: %w", filepath.ToSlash(path), closeErr))
+			}
+			return primary
 		}
 		if err := file.Close(); err != nil {
 			return fmt.Errorf("close sidecar %s: %w", filepath.ToSlash(path), err)
@@ -142,10 +148,15 @@ func applyLayerCatalogListsWithWriterAndOpen(root string, out io.Writer, write a
 			continue
 		}
 		if err := write(edit.path, updated, edit.mode); err != nil {
-			return err
+			return fmt.Errorf("write sidecar %s: %w", filepath.ToSlash(edit.path), err)
 		}
-		rel, _ := filepath.Rel(root, edit.path)
-		fmt.Fprintf(out, "layer-catalog-lists: updated %s\n", filepath.ToSlash(rel))
+		rel, err := filepath.Rel(root, edit.path)
+		if err != nil { // coverage-ignore: edit paths are constructed below root from the frozen snapshot
+			return fmt.Errorf("relativize sidecar %s: %w", filepath.ToSlash(edit.path), err)
+		}
+		if _, err := fmt.Fprintf(out, "layer-catalog-lists: updated %s\n", filepath.ToSlash(rel)); err != nil {
+			return fmt.Errorf("announce layer-catalog-lists update for %s: %w", filepath.ToSlash(edit.path), err)
+		}
 	}
 	return nil
 }

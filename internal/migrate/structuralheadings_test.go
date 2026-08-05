@@ -244,3 +244,30 @@ func TestStructuralHeadingsReportsAnnouncementFailure(t *testing.T) {
 		t.Fatalf("announcement failure = %v", err)
 	}
 }
+
+func TestStructuralHeadingsRetainsPrimaryAndCleanupFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		reader  io.Reader
+		statErr error
+		context string
+	}{
+		{"read", migrationFailedReader{errors.New("read failed")}, nil, "read structural-heading part"},
+		{"stat", strings.NewReader(""), errors.New("stat failed"), "stat structural-heading part"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			primary := tc.statErr
+			if primary == nil {
+				primary = tc.reader.(migrationFailedReader).err
+			}
+			closeErr := errors.New("close failed")
+			root := closeFixture(t, "prefix: ex\n", nil)
+			err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+				return migrationFaultFile{reader: tc.reader, stat: tc.statErr, close: closeErr}, nil
+			})
+			if !errors.Is(err, primary) || !errors.Is(err, closeErr) || !strings.Contains(err.Error(), tc.context) || !strings.Contains(err.Error(), "close structural-heading part") {
+				t.Fatalf("joined failures = %v", err)
+			}
+		})
+	}
+}

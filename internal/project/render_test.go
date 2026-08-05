@@ -204,6 +204,46 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 // TestRenderProducerCallsitesForwardEncoder is the mutation-sensitive wiring
 // complement to the behavior test above: every actual producer family must pass
 // its declaration into the shared renderTarget seam.
+func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *testing.T) {
+	// Capture executes the complete template skeleton before assembly, so this
+	// invalid default expression is observable even though the convention-part
+	// override below would omit it from the final output.
+	segs := render.ParseSections("<!-- awf:section body -->\n## Heading\n{{ .missing.field }}\n<!-- awf:end -->", true)
+	_, err := captureStructuralHeadings(segs, map[string]any{}, "test template")
+	if err == nil || !strings.Contains(err.Error(), "render test template headings: execute template") || !strings.Contains(err.Error(), "nil pointer evaluating") {
+		t.Fatalf("contextual capture error = %v", err)
+	}
+	assembled, parts := render.Assemble(segs, map[string]render.SectionPlan{"body": {HasPart: true, PartBody: "override"}}, render.HTMLComment)
+	if output, assembleErr := render.Execute(assembled, map[string]any{}, parts, "test final assembly"); assembleErr != nil || !strings.Contains(output, "override") {
+		t.Fatalf("override final assembly = %q, %v", output, assembleErr)
+	}
+
+	// Exercise the renderTarget contextual return path with an embedded template:
+	// the capture sees this invalid data before section assembly can substitute a
+	// convention part.
+	root := scaffold(t, sampleYAML)
+	p, openErr := Open(testContext(t), root)
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
+	sc, sidecarErr := p.Cfg.Sidecar("docs", "workflow")
+	if sidecarErr != nil {
+		t.Fatal(sidecarErr)
+	}
+	data := p.data(sc, map[string]bool{})
+	data["layout"] = nil
+	entry := p.Cat.Docs["workflow"]
+	if _, targetErr := p.renderTarget("docs", "workflow", entry.TID, entry.Sections, sc, data, "out.md", map[string]bool{}); targetErr == nil || !strings.Contains(targetErr.Error(), "render "+entry.TID+" headings: execute template") {
+		t.Fatalf("renderTarget capture error = %v", targetErr)
+	}
+
+	collisionSegs := render.ParseSections("<!-- awf:section body -->\n## {{ .heading }}\ndefault\n<!-- awf:end -->", true)
+	_, tokens := render.StructuralHeadingCapture(collisionSegs)
+	if _, collisionErr := captureStructuralHeadings(collisionSegs, map[string]any{"heading": tokens["body"][1]}, "collision template"); collisionErr == nil || !strings.Contains(collisionErr.Error(), "ambiguous framing") {
+		t.Fatalf("contextual collision error = %v", collisionErr)
+	}
+}
+
 func TestRenderProducerCallsitesForwardEncoder(t *testing.T) {
 	renderSource, err := os.ReadFile("render.go")
 	if err != nil {

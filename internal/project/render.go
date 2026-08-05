@@ -685,18 +685,9 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	}
 	segs := render.ParseSections(stripped, encoder == MarkdownAgentDialect)
 	style := render.CommentStyleForSource(stripped)
-	// Capture headings by executing a marker-free copy of the complete skeleton,
-	// not each heading as an independent template. This retains surrounding dot,
-	// variables, and control context while producing the expected line needed for
-	// in-place read-back before the final assembled execution.
-	headingSkeleton, headingTokens := render.StructuralHeadingCapture(segs)
-	headingOutput, err := render.Execute(headingSkeleton, data, nil, tid+" headings")
-	if err != nil { // coverage-ignore: embedded skeleton parse and execute errors are covered by the final execution and render-layer tests
-		return RenderedFile{}, fmt.Errorf("render %s headings: %w", tid, err)
-	}
-	headings, err := render.ExtractStructuralHeadings(headingOutput, headingTokens)
-	if err != nil { // coverage-ignore: capture tokens are assembled from parsed sections and can only be incomplete if the embedded skeleton execution already failed
-		return RenderedFile{}, fmt.Errorf("render %s headings: %w", tid, err)
+	headings, err := captureStructuralHeadings(segs, data, tid)
+	if err != nil {
+		return RenderedFile{}, err
 	}
 	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style, headings)
 	if err != nil {
@@ -762,6 +753,23 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 		ConsumedInputs: consumedInputs, ObservedTemplateID: tid,
 	}, nil
+}
+
+// captureStructuralHeadings executes a marker-free copy of the complete
+// skeleton, rather than each heading as an independent template. This retains
+// surrounding dot, variables, and control context while producing the expected
+// line needed for in-place read-back before final assembly.
+func captureStructuralHeadings(segs []render.Segment, data map[string]any, tid string) (map[string]string, error) {
+	headingSkeleton, headingTokens := render.StructuralHeadingCapture(segs)
+	headingOutput, err := render.Execute(headingSkeleton, data, nil, tid+" headings")
+	if err != nil {
+		return nil, fmt.Errorf("render %s headings: %w", tid, err)
+	}
+	headings, err := render.ExtractStructuralHeadings(headingOutput, headingTokens)
+	if err != nil {
+		return nil, fmt.Errorf("render %s headings: %w", tid, err)
+	}
+	return headings, nil
 }
 
 func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan map[string]render.SectionPlan) ([]OutputInput, error) {
