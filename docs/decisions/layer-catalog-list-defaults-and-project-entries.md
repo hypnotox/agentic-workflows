@@ -36,9 +36,9 @@ contract must stay limited to a catalog list and project list sharing one data k
 ## Decision
 
 1. `decision: list-data-layers` For a data key whose catalog default is a list, the effective value is the catalog list followed by the project sidecar list in authored order. An absent or empty project list keeps the complete catalog list. List composition is shallow and performs no generic deduplication, identity matching, or record merge. Non-list catalog data retains top-level sidecar replacement semantics.
-2. `decision: explicit-default-suppression` Sidecars expose `dataDefaults` as a per-data-key boolean map. An absent key or `true` keeps that catalog list default; `false` suppresses it, making the effective value the project list alone, or an empty list when no project list is authored. Suppression is legal only for a declared catalog-backed list key, and `dataDefaults.<key>: false` is the sole generic way to reject that default. The control remains part of the effective sidecar and therefore of the artifact's existing config-hash and drift boundary.
+2. `decision: explicit-default-suppression` Sidecars expose `dataDefaults` as a per-data-key boolean map. An absent key or `true` keeps that catalog list default; `false` suppresses it, making the effective value the project list alone, or an empty list when no project list is authored. Every map entry, whether `true` or `false`, must name a declared catalog-backed list key for that artifact; an unknown or non-list key is rejected with the sidecar and key named. `dataDefaults.<key>: false` is the sole generic way to reject that default. The control remains part of the effective sidecar and therefore of the artifact's existing config-hash and drift boundary.
 3. `decision: null-list-refusal` A project value for a catalog-backed list key must be an actual list when present; null is rejected with an error naming the sidecar and key. An empty list remains valid and means "add no project entries," not suppression. This preserves an explicit distinction between absence, empty customization, and rejection of the standard.
-4. `decision: fixed-snapshot-migration` The config-schema migration classifies replacements against the exact catalog list-key snapshot shipped with that migration, never against a future catalog population. For every existing sidecar value that replaced one of those defaults, it records `dataDefaults.<key>: false` so the established replacement output remains unchanged after the semantic cutover. A null replacement becomes suppression without a null custom value. The rewrite is atomic and idempotent, preserves unrelated sidecar content, and does not preemptively suppress a list default introduced by a later binary.
+4. `decision: fixed-snapshot-migration` The config-schema migration classifies replacements against the exact catalog list-key snapshot shipped with that migration, never against a future catalog population. Before mutation it reads every affected sidecar and refuses a non-null, non-list replacement with the sidecar and key named. For every valid existing replacement, it records `dataDefaults.<key>: false` so the established replacement output remains unchanged after the semantic cutover; a null replacement becomes suppression without a null custom value. After complete preflight, each changed sidecar is replaced atomically. The rewrite is idempotent and safely retryable after an I/O failure, preserves unrelated sidecar content, and does not promise transaction-wide atomicity across files or preemptively suppress a list default introduced by a later binary.
 5. `decision: specialized-list-transforms` Differently keyed or identity-aware list layers retain their owning transforms and contracts. In particular, glossary `standardTerms` and project `terms` continue their case-insensitive term override behavior and are not exposed as a generic `dataDefaults` key. The generated configuration reference distinguishes catalog defaults, project entries, suppression, and specialized list behavior rather than describing every sidecar key as a whole-value override.
 
 ## State changes
@@ -56,9 +56,14 @@ to customized adopters by default, and the existing render/hash seam keeps both 
 suppression choice drift-visible.
 
 The schema grows by one narrowly typed sidecar field and upgrade must inspect artifact identity plus
-the migration's fixed catalog snapshot. Existing replacements gain explicit suppression entries,
-which adds configuration bytes but preserves their rendered output. After migration, adopters may
-remove a suppression entry deliberately to adopt the layered result.
+the migration's fixed catalog snapshot. The strict sidecar decoder and project validation own the
+new field, the effective-data merge owns its render meaning, and the existing config-hash
+serialization carries both the field and the merged result without changing the lock-manifest shape.
+A new schema generation gates render and check until upgrade rewrites affected sidecars and stamps
+the lock; afterward a binary too old for that generation refuses rather than ignoring the field.
+Existing replacements gain explicit suppression entries, which adds configuration bytes but
+preserves their rendered output. After migration, adopters may remove a suppression entry
+deliberately to adopt the layered result.
 
 Generic concatenation can produce semantically repetitive entries because awf does not infer record
 identity. Catalog authors and projects remain responsible for content quality, while artifacts that
