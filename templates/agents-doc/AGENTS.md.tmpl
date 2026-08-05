@@ -78,11 +78,10 @@ Discovery creates no effort. Before first creation for a concrete non-minimal ou
 <!-- awf:section commands -->
 ## Commands
 
-{{ if .data.commands -}}
-```
-{{ range .data.commands }}{{ .cmd }}: {{ .desc }}
-{{ end -}}
-```
+{{ $commandPrefix := "```\n" -}}
+{{ $commandSuffix := "" -}}
+{{ range .data.commands }}{{ $commandPrefix }}{{ $commandPrefix = "" }}{{ .cmd }}: {{ .desc }}
+{{ $commandSuffix = "```" -}}
 {{- else -}}
 {{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := .vars.checkCmd }}{{ if not $check }}{{ if .runnerEnabled }}{{ $check = "./awf check" }}{{ else }}{{ $check = "awf check" }}{{ end }}{{ end -}}
 {{ with $test }}- `{{ . }}`: run the test suite
@@ -90,6 +89,7 @@ Discovery creates no effort. Before first creation for a concrete non-minimal ou
 {{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}`: check rendered files for drift
 {{ end -}}
 {{- end }}
+{{- $commandSuffix }}
 <!-- awf:end -->
 
 <!-- awf:section document-map -->

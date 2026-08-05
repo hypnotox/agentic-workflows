@@ -664,17 +664,6 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 					marker := fmt.Sprintf("AWF_CONDITION_%d_%s", condition.id, outcome)
 					outcomes[marker] = outcomes[marker] || strings.Contains(out, marker)
 				}
-				if condition.kind == "range" {
-					for _, ancestor := range condition.ancestors {
-						if !ancestor.truth || fmt.Sprint(ancestor.condition.paths) != fmt.Sprint(condition.paths) {
-							continue
-						}
-						ancestorFalse := fmt.Sprintf("AWF_CONDITION_%d_FALSE", ancestor.condition.id)
-						if strings.Contains(out, ancestorFalse) {
-							outcomes[fmt.Sprintf("AWF_CONDITION_%d_FALSE", condition.id)] = true
-						}
-					}
-				}
 			}
 		}
 		for _, condition := range inspection.conditions {
