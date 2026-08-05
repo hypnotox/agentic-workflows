@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: validate-authored-transactions-by-observable-operations
-status: Implementing
+status: Implemented
 date: 2026-08-05
 ---
 # ADR-0233: Validate Authored Transactions by Observable Operations
@@ -90,3 +90,4 @@ required intermediate bytes are observable.
 - 2026-08-05: Proposed
 - 2026-08-05: Implementing; content-sha256: 3e0b319a49115e0473e9083ddc49249e8e65532b9cdc45d0e21034f275427853
 - 2026-08-05: Applied; operations: update `invariants/current-state-authority:merge-transition-ordered-aggregate`
+- 2026-08-05: Implemented; content-sha256: 3e0b319a49115e0473e9083ddc49249e8e65532b9cdc45d0e21034f275427853

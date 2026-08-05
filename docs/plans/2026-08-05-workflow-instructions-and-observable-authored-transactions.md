@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-05
 adrs: [validate-authored-transactions-by-observable-operations]
-status: Proposed
+status: Implemented
 ---
 # Plan: Workflow Instructions and Observable Authored Transactions
 
