@@ -2,7 +2,9 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,20 +136,24 @@ func conventionPartPath(awfDir, kind, target, section string) string {
 // A missing src or a dst already holding different content fails; a dst identical
 // to src is left untouched for idempotent re-runs.
 func relocatePart(src, dst string, write func(string, []byte) error) (bool, error) {
-	in, err := os.ReadFile(src)
+	return relocatePartWithRead(src, dst, os.ReadFile, write)
+}
+
+func relocatePartWithRead(src, dst string, read func(string) ([]byte, error), write func(string, []byte) error) (bool, error) {
+	in, err := read(src)
 	if err != nil {
 		return false, fmt.Errorf("replaceWith part %s: %w", src, err)
 	}
-	if existing, err := os.ReadFile(dst); err == nil {
+	if existing, err := read(dst); err == nil {
 		if bytes.Equal(existing, in) {
 			return false, nil
 		}
 		return false, fmt.Errorf("convention part %s already exists with different content", dst)
-	} else if !os.IsNotExist(err) {
-		return false, err
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return false, fmt.Errorf("read destination %s: %w", dst, err)
 	}
 	if err := write(dst, in); err != nil {
-		return false, err
+		return false, fmt.Errorf("write destination %s: %w", dst, err)
 	}
 	return true, nil
 }

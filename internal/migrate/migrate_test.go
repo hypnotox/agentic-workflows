@@ -3,6 +3,8 @@ package migrate
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -918,14 +920,51 @@ func TestRelocatePartReportsNoCopyOnDestinationFailure(t *testing.T) {
 	if err := os.Mkdir(destinationDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if copied, err := relocatePart(src, destinationDir, writeFile); err == nil || copied {
-		t.Fatalf("relocatePart directory destination = (copied=%v, err=%v), want (false, error)", copied, err)
+	if copied, err := relocatePart(src, destinationDir, writeFile); err == nil || copied || !strings.Contains(err.Error(), "read destination "+destinationDir) {
+		t.Fatalf("relocatePart directory destination = (copied=%v, err=%v), want contextual error", copied, err)
 	}
 
-	failure := errors.New("write destination")
-	if copied, err := relocatePart(src, filepath.Join(root, "missing", "destination.md"), func(string, []byte) error { return failure }); !errors.Is(err, failure) || copied {
-		t.Fatalf("relocatePart failed write = (copied=%v, err=%v), want (false, %v)", copied, err, failure)
-	}
+	t.Run("faulting-read", func(t *testing.T) {
+		failure := errors.New("read failure")
+		dst := filepath.Join(root, "destination.md")
+		read := func(path string) ([]byte, error) {
+			if path == src {
+				return []byte("BODY\n"), nil
+			}
+			return nil, failure
+		}
+		if copied, err := relocatePartWithRead(src, dst, read, writeFile); !errors.Is(err, failure) || copied || !strings.Contains(err.Error(), "read destination "+dst) {
+			t.Fatalf("relocatePartWithRead failed read = (copied=%v, err=%v), want contextual wrapped failure", copied, err)
+		}
+	})
+
+	t.Run("wrapped-absence", func(t *testing.T) {
+		dst := filepath.Join(root, "destination.md")
+		var wrote []byte
+		read := func(path string) ([]byte, error) {
+			if path == src {
+				return []byte("BODY\n"), nil
+			}
+			return nil, fmt.Errorf("destination absent: %w", fs.ErrNotExist)
+		}
+		if copied, err := relocatePartWithRead(src, dst, read, func(path string, content []byte) error {
+			if path != dst {
+				t.Fatalf("write path = %q, want %q", path, dst)
+			}
+			wrote = append([]byte(nil), content...)
+			return nil
+		}); err != nil || !copied || string(wrote) != "BODY\n" {
+			t.Fatalf("relocatePartWithRead wrapped absence = (copied=%v, wrote=%q, err=%v), want copied body", copied, wrote, err)
+		}
+	})
+
+	t.Run("faulting-write", func(t *testing.T) {
+		failure := errors.New("write failure")
+		dst := filepath.Join(root, "missing", "destination.md")
+		if copied, err := relocatePart(src, dst, func(string, []byte) error { return failure }); !errors.Is(err, failure) || copied || !strings.Contains(err.Error(), "write destination "+dst) {
+			t.Fatalf("relocatePart failed write = (copied=%v, err=%v), want contextual wrapped failure", copied, err)
+		}
+	})
 }
 
 func TestDropReplaceWithConflict(t *testing.T) {
