@@ -83,6 +83,7 @@ func LiveStateClassifications() map[string]LiveStateClass {
 		"memoryCite.exemptions[].path":            StaticNotApplicable,
 		"memoryCite.exemptions[].count":           StaticNotApplicable,
 		"sidecar.data":                            StaticNotApplicable,
+		"sidecar.dataDefaults":                    StaticNotApplicable,
 		"sidecar.sections":                        StaticNotApplicable,
 		"sidecar.sections.<name>.drop":            StaticNotApplicable,
 		"sidecar.local":                           StaticNotApplicable,
@@ -394,8 +395,13 @@ var keys = []Entry{
 	},
 	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",
-		Description:  "Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does.",
+		Description:  "Per-artifact structured render data. A same-key catalog-backed list layers the catalog default followed by project entries; an empty project list keeps the complete default, and null or a non-list value is invalid. Non-list catalog data retains shallow top-level project replacement. Project-only and specialized data retain their owning behavior; see the per-artifact list below.",
 		Availability: "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",
+	},
+	{
+		Path: "sidecar.dataDefaults", Type: "data-key → bool map", Default: "empty: catalog-backed list defaults remain enabled",
+		Description:  "Controls same-key catalog-backed list defaults. An absent key or true keeps the catalog default; false suppresses it so effective content is only the authored project list, or an empty list when none is authored. Explicit true differs from absence only as configuration presence, not effective content.",
+		Availability: "Every entry must name a same-key list default declared by that catalog artifact. Unknown, non-list, local-only, and differently keyed specialized values are invalid.",
 	},
 	{
 		Path: "sidecar.sections", Type: "section-name → override map", Default: "empty",

@@ -101,8 +101,15 @@ Backing: test
 
 ### `invariant: sidecar-key-overrides-default`
 
-When merging an artifact's catalog default data with its sidecar, a top-level key present in the sidecar - even when set to null or empty - fully replaces the catalog default for that key, while a key absent from the sidecar falls through to the catalog default; there is no deep merge.
+When merging an artifact's catalog default data with its sidecar, a non-list top-level key present in the sidecar - even when set to null or empty - fully replaces the catalog default for that key, while a key absent from the sidecar falls through to the catalog default; there is no deep merge.
 Origin: ADR-0045
+Revised-by: ADR-layer-catalog-list-defaults-and-project-entries
+Backing: test
+
+### `invariant: catalog-list-data-layering`
+
+A same-key catalog list and project list compose shallowly as catalog entries followed by authored entries, preserving both orders without generic deduplication or identity merging. An absent or empty project list keeps the catalog list; dataDefaults false suppresses that default and yields only authored entries or an empty list, while differently keyed specialized transforms such as glossary standardTerms and terms stay outside this generic path.
+Origin: ADR-layer-catalog-list-defaults-and-project-entries
 Backing: test
 
 ### `invariant: skills-context-effective-set`

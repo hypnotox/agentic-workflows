@@ -7,6 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
+// invariant: rendering/project-output-plan:catalog-list-data-layering (TestWithDefaultData)
 func TestWithDefaultData(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -33,16 +34,28 @@ func TestWithDefaultData(t *testing.T) {
 			want:     map[string]any{"a": "sidecar", "b": "default"},
 		},
 		{
-			name:     "present nil sidecar key suppresses the default",
+			name:     "present nil non-list key replaces the default",
 			sidecar:  map[string]any{"a": nil},
 			defaults: map[string]any{"a": "default"},
 			want:     map[string]any{"a": nil},
 		},
 		{
-			name:     "present empty-list sidecar key suppresses the default",
+			name:     "empty authored list keeps catalog list",
 			sidecar:  map[string]any{"a": []any{}},
 			defaults: map[string]any{"a": []any{"default"}},
-			want:     map[string]any{"a": []any{}},
+			want:     map[string]any{"a": []any{"default"}},
+		},
+		{
+			name:     "authored list follows catalog list in order",
+			sidecar:  map[string]any{"a": []any{"project"}},
+			defaults: map[string]any{"a": []any{"default"}},
+			want:     map[string]any{"a": []any{"default", "project"}},
+		},
+		{
+			name:     "explicit false suppresses catalog list",
+			sidecar:  map[string]any{"a": []any{"project"}},
+			defaults: map[string]any{"a": []any{"default"}},
+			want:     map[string]any{"a": []any{"project"}},
 		},
 		{
 			name:     "nil sidecar data with defaults yields the defaults",
@@ -53,7 +66,11 @@ func TestWithDefaultData(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := withDefaultData(config.Sidecar{Data: tc.sidecar}, tc.defaults)
+			sc := config.Sidecar{Data: tc.sidecar}
+			if tc.name == "explicit false suppresses catalog list" {
+				sc.DataDefaults = map[string]bool{"a": false}
+			}
+			got := withDefaultData(sc, tc.defaults)
 			if tc.defaults == nil {
 				if !reflect.DeepEqual(got.Data, tc.sidecar) {
 					t.Fatalf("nil defaults: got %v, want sidecar %v", got.Data, tc.sidecar)
@@ -65,6 +82,24 @@ func TestWithDefaultData(t *testing.T) {
 				t.Fatalf("got %v, want %v", got.Data, tc.want)
 			}
 		})
+	}
+
+	defaults := []any{map[string]any{"name": "default"}}
+	authored := []any{map[string]any{"name": "project"}}
+	got := withDefaultData(config.Sidecar{Data: map[string]any{"a": authored}}, map[string]any{"a": defaults})
+	merged := got.Data["a"].([]any)
+	merged[0].(map[string]any)["name"] = "changed"
+	if defaults[0].(map[string]any)["name"] != "default" || authored[0].(map[string]any)["name"] != "project" {
+		t.Fatal("effective list aliases catalog or authored input")
+	}
+
+	specialized := withDefaultData(
+		config.Sidecar{Data: map[string]any{"standardTerms": []any{"project"}}},
+		map[string]any{"standardTerms": []any{"catalog"}},
+		specializedListDataKeys("docs", "glossary")...,
+	)
+	if !reflect.DeepEqual(specialized.Data["standardTerms"], []any{"project"}) {
+		t.Fatalf("specialized glossary list entered generic composition: %v", specialized.Data)
 	}
 }
 

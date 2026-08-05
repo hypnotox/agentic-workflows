@@ -262,8 +262,8 @@ type VarRow struct {
 	Key, Description, Availability, State, Consumers string
 }
 
-// DataKeyRow renders one per-artifact data key. State notes an override or
-// catalog-default source; it is empty when neither applies.
+// DataKeyRow renders one per-artifact data key. State reports its observable
+// catalog/project layering state.
 type DataKeyRow struct {
 	Artifact, Key, Description, State string
 }
@@ -426,9 +426,26 @@ func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 			if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
 				return nil, err
 			}
-			if _, ok := sc.Data[d.Key]; ok {
-				state = " (overridden)"
-			} else if _, ok := declared[d.Key]; ok {
+			_, hasAuthored := sc.Data[d.Key]
+			defaultValue, hasDefault := declared[d.Key]
+			_, catalogList := defaultValue.([]any)
+			catalogList = catalogList && !slices.Contains(specializedListDataKeys(sidecarKind, sidecarName), d.Key)
+			switch {
+			case catalogList:
+				keep, configured := sc.DataDefaults[d.Key]
+				switch {
+				case configured && !keep:
+					state = " (explicitly suppressed default; project entries only)"
+				case hasAuthored:
+					state = " (catalog default + project entries)"
+				case configured:
+					state = " (catalog default; dataDefaults explicitly true)"
+				default:
+					state = " (catalog default)"
+				}
+			case hasAuthored:
+				state = " (project-only/specialized)"
+			case hasDefault:
 				state = " (catalog default)"
 			}
 		}

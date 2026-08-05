@@ -96,6 +96,76 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 	}
 }
 
+func TestConfigReferenceListLayerStates(t *testing.T) {
+	base := "prefix: example\nintegrationBranch: main\nskills: [tdd]\n"
+	for _, tc := range []struct {
+		name, sidecar, want string
+	}{
+		{"catalog default", "", "catalog default"},
+		{"explicit true is presence only", "dataDefaults:\n  testSurfaces: true\n", "catalog default; dataDefaults explicitly true"},
+		{"layered project entries", "data:\n  testSurfaces:\n    - {name: Local, kind: unit, location: here}\n", "catalog default + project entries"},
+		{"suppressed default", "dataDefaults:\n  testSurfaces: false\ndata:\n  testSurfaces: []\n", "explicitly suppressed default; project entries only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := map[string]string(nil)
+			if tc.sidecar != "" {
+				files = map[string]string{"skills/tdd.yaml": tc.sidecar}
+			}
+			_, p := syncedProject(t, base, files)
+			model, err := p.ConfigReferenceModel(testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, row := range model.DataKeys {
+				if row.Artifact == "skill tdd" && row.Key == "testSurfaces" {
+					found = true
+					if !strings.Contains(row.State, tc.want) {
+						t.Errorf("typed state = %q, want %q", row.State, tc.want)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("tdd data row missing")
+			}
+		})
+	}
+
+	_, glossaryProject := syncedProject(t, "prefix: example\nintegrationBranch: main\ndocs: [glossary]\n", map[string]string{
+		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: Project-specific term.}\n",
+	})
+	glossaryModel, err := glossaryProject.ConfigReferenceModel(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundSpecialized := false
+	for _, row := range glossaryModel.DataKeys {
+		if row.Artifact == "doc glossary" && row.Key == "terms" {
+			foundSpecialized = true
+			if !strings.Contains(row.State, "project-only/specialized") {
+				t.Errorf("specialized glossary state = %q", row.State)
+			}
+		}
+	}
+	if !foundSpecialized {
+		t.Fatal("specialized glossary data row missing")
+	}
+
+	ref, err := StaticConfigReference()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := PrintConfigReference(&out, "sidecar.data", &ref, ""); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"catalog-backed list", "null or a non-list value is invalid", "Project-only and specialized"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("shared CLI row missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
 // Regeneration is the drift oracle: a hand-edit reports stale, a deletion
 // missing, and a local: opt-out with a leftover lock entry orphaned.
 // invariant: config/configspec-and-reference:config-reference-regen-drift (TestConfigReferenceRegenDrift)
@@ -193,7 +263,8 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 	for _, tc := range []struct {
 		name, sidecar, wantErr string
 	}{
-		{"data rejected", "data:\n  k: v\n", "data: has no effect"},
+		{"data rejected", "data:\n  k: v\n", "data: and dataDefaults: have no effect"},
+		{"data defaults rejected", "dataDefaults:\n  k: false\n", "data: and dataDefaults: have no effect"},
 		{"paths rejected", "paths:\n  - '**/*.go'\n", "read only from domain sidecars"},
 		{"unknown section rejected", "sections:\n  intr:\n    drop: true\n", "intr"},
 	} {

@@ -424,7 +424,7 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 			continue
 		}
 		if spec.defaults != nil {
-			sc = withDefaultData(sc, spec.defaults(name))
+			sc = withDefaultData(sc, spec.defaults(name), specializedListDataKeys(spec.kind, name)...)
 		}
 		if spec.transform != nil {
 			if sc, err = spec.transform(name, sc); err != nil {

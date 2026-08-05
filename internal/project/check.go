@@ -103,7 +103,7 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	// the shipped layer would escape the threshold entirely. The ingestion can
 	// still fail here: a local: true sidecar is skipped by the render pass, so
 	// AdvisoryNotes having rendered the doc above does not vouch for it.
-	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data))
+	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
 	if err != nil {
 		return nil, err
 	}

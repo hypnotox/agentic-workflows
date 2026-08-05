@@ -72,6 +72,7 @@ var registry = []Migration{
 	{To: retargetCheckCommandsGeneration, Name: "retarget-check-commands", Apply: treeOnly(applyRetargetCheckCommands)},
 	{To: 33, Name: "decision-item-slugs", Apply: applyDecisionItemSlugs},
 	{To: 34, Name: "commit-policy", Apply: treeOnly(applyCommitPolicy)},
+	{To: layerCatalogListsGeneration, Name: "layer-catalog-lists", Apply: treeOnly(applyLayerCatalogLists)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the

@@ -72,6 +72,12 @@ Origin: ADR-0183
 Revised-by: ADR-0184, ADR-0192
 Backing: test
 
+### `invariant: sidecar-data-defaults-control`
+
+A sidecar dataDefaults map accepts only boolean controls whose keys name same-key list defaults declared by that catalog artifact. Absence or true keeps the default and false suppresses it; unknown, non-list, local-only, differently keyed specialized, and non-boolean entries are rejected, and a present catalog-backed project list value must be a list rather than null or another type.
+Origin: ADR-layer-catalog-list-defaults-and-project-entries
+Backing: test
+
 ### `invariant: tag-coverage-note`
 
 Under a non-empty tag vocabulary, awf check emits a non-failing note for each ADR and each pitfall that carries zero tags and for no tagged artifact, never changing the exit code; an empty or absent vocabulary is inert.
