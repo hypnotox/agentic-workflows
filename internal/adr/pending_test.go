@@ -255,6 +255,11 @@ func TestV3HistoryIsPrefixAppendOnly(t *testing.T) {
 	if !adr.HistoryTransitionValid(before, parseV3Governed(t, "Implementing", v3Changes, implementing+first+second)) {
 		t.Fatal("appending one Applied batch while Implementing must be legal")
 	}
+	accepted := parseV3Governed(t, "Accepted", v3Changes,
+		"- 2026-07-31: Proposed\n- 2026-07-31: Accepted; content-sha256: "+digest)
+	if !adr.HistoryTransitionValid(accepted, parseV3Governed(t, "Implementing", v3Changes, implementing+first+second)) {
+		t.Fatal("an exact-prefix legal multi-event replay must be legal")
+	}
 	// Mutating a retained event and deleting one are both refused: the before
 	// history must survive as an exact prefix.
 	if adr.HistoryTransitionValid(before, parseV3Governed(t, "Implementing", v3Changes, implementing+second)) {

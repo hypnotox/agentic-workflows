@@ -23,7 +23,7 @@ Completes: ["observable-authored-transactions"]
 ### Task 1.1: Pin the relaxed authored contract before changing production code
 Latitude: exact
 Applying: ["validate-authored-transactions-by-observable-operations:observable-authored-transaction", "validate-authored-transactions-by-observable-operations:same-claim-authored-boundary", "validate-authored-transactions-by-observable-operations:merge-chain-boundary", "validate-authored-transactions-by-observable-operations:historical-authored-interpretation"]
-Paths: ["internal/currentstate/aggregate_test.go", "internal/currentstate/transition_test.go", "internal/adr/format_test.go", "internal/adr/pending_test.go", "internal/project/mergeaggregate_test.go", "internal/project/spine_test.go", "internal/audit/history_test.go"]
+Paths: ["internal/currentstate/aggregate_test.go", "internal/currentstate/transition_test.go", "internal/adr/format_test.go", "internal/adr/pending_test.go", "internal/project/mergeaggregate_test.go", "internal/project/spine_test.go", "internal/project/staged_test.go", "internal/audit/history_test.go"]
 
 Change the existing transition fixtures before production code so focused tests fail for the removed cardinality rules. In `internal/currentstate/aggregate_test.go`, make the several-distinct-target-batches and multi-step-history cases require both `AuthoredCommit` and `MergeAggregate` to pass. Keep `TestMergeAggregateFoldsClaimChains` proving an authored add/update chain is refused, and change corrective-reapplication authored expectations from the removed batch-cap diagnostic to the same-claim duplicate-target diagnostic. In `internal/currentstate/transition_test.go`, replace the standalone multi-batch refusal assertion with acceptance for distinct targets while retaining the adjacent duplicate-target rejection.
 
@@ -153,3 +153,5 @@ feat(rendering): place guidance at execution boundaries
 ## Notes
 
 The grounding check rejected a full mode unification because same-claim endpoint folding would weaken per-occurrence update and corrective-reapplication substance. `TransitionMode` therefore remains meaningful only at that boundary. Historical ADR prose remains frozen; current-state claims, templates, generated docs, changelog, and active pitfalls carry the forward correction.
+
+During Phase 1 source revalidation, `internal/project/staged_test.go` proved to name the retired batch-cap diagnostic even though the test's contract is only that provisional older-format introductions do not suppress unrelated blocking findings. The user approved adding that exact path and retaining the test with another blocking finding already produced by its fixture.

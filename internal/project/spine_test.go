@@ -1436,6 +1436,30 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
+
+	observable := []string{"distinct claim IDs", "separately observable authored transaction", "exact prefix", "legal ordered lifecycle"}
+	scaffold := renderGolden(t, "adr-template/template.md.tmpl", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
+	})
+	for name, body := range map[string]string{"generic ADR scaffold": scaffold, "generic lifecycle skill": out} {
+		for _, phrase := range observable {
+			if !strings.Contains(body, phrase) {
+				t.Errorf("%s missing observable authored-transaction phrase %q:\n%s", name, phrase, body)
+			}
+		}
+	}
+	root := testsupport.RepoRoot(t)
+	for _, rel := range []string{".claude/skills/awf-adr-lifecycle/SKILL.md", ".pi/skills/awf-adr-lifecycle/SKILL.md"} {
+		body, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, phrase := range observable {
+			if !bytes.Contains(body, []byte(phrase)) {
+				t.Errorf("%s missing observable authored-transaction phrase %q", rel, phrase)
+			}
+		}
+	}
 }
 
 func TestBrainstormingTemplate(t *testing.T) {

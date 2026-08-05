@@ -205,8 +205,8 @@ func TestFrozenContentEqual(t *testing.T) {
 	}
 }
 
-// TestHistoryTransitionValid requires equality without a status change and an
-// exact one-entry extension for every legal status edge.
+// TestHistoryTransitionValid requires an exact retained prefix and accepts any
+// legal ordered lifecycle replay parsed into the after record.
 func TestHistoryTransitionValid(t *testing.T) {
 	p := adr.StatusEntry{Date: "2026-01-01", Status: "Proposed"}
 	a := adr.StatusEntry{Date: "2026-01-02", Status: "Accepted", Digest: "digest"}
@@ -224,7 +224,7 @@ func TestHistoryTransitionValid(t *testing.T) {
 		{"legal exact append", record("Accepted", p, a), record("Implemented", p, a, i), true},
 		{"legal append after rewritten prefix", record("Accepted", p, a), record("Implemented", adr.StatusEntry{Date: "2026-01-09", Status: "Proposed"}, a, i), false},
 		{"legal edge missing append", record("Accepted", p, a), record("Implemented", p, a), false},
-		{"legal edge two appends", record("Proposed", p), record("Implemented", p, a, i), false},
+		{"legal ordered multi-event replay", record("Proposed", p), record("Implemented", p, a, i), true},
 		{"illegal edge", record("Implemented", p, i), record("Abandoned", p, i, adr.StatusEntry{Date: "2026-01-04", Status: "Abandoned"}), false},
 	}
 	for _, tc := range cases {
@@ -732,12 +732,14 @@ func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 		{"illegal status edge", record("Accepted", p, accepted), record("Proposed", p, accepted, p), false},
 		{"amend while accepted", record("Accepted", p, accepted), record("Accepted", p, accepted, amended), true},
 		{"amend while implementing", record("Implementing", p, i, applied), record("Implementing", p, i, applied, amended), true},
-		{"amend plus second event", record("Implementing", p, i, applied), record("Implementing", p, i, applied, amended, appliedNext), false},
+		{"amend plus second event", record("Implementing", p, i, applied), record("Implementing", p, i, applied, amended, appliedNext), true},
 		{"amend while proposed", record("Proposed", p), record("Proposed", p, amended), false},
 		{"amend after implemented", record("Implemented", p, accepted, done), record("Implemented", p, accepted, done, amended), false},
 		{"amend after abandoned", record("Abandoned", p, accepted, abandoned), record("Abandoned", p, accepted, abandoned, amended), false},
-		{"amend riding a flip", record("Accepted", p, accepted), record("Implemented", p, accepted, amended, done), false},
+		{"amend riding a flip", record("Accepted", p, accepted), record("Implemented", p, accepted, amended, done), true},
 		{"same-status extra status event", record("Accepted", p, accepted), record("Accepted", p, accepted, status("Accepted")), false},
+		{"V2 zero-kind event", record("Proposed", p), record("Proposed", p, adr.HistoryEvent{}), false},
+		{"V2 unknown event kind", record("Proposed", p), record("Proposed", p, adr.HistoryEvent{Kind: adr.HistoryEventKind(99)}), false},
 		{"V4 prefix append", func() adr.ADR { r := record("Implementing", p, i, applied); r.Format = adr.CurrentStateV4; return r }(), func() adr.ADR {
 			r := record("Implementing", p, i, applied, appliedNext)
 			r.Format = adr.CurrentStateV4

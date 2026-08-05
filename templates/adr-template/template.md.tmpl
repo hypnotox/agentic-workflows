@@ -49,10 +49,13 @@ Include known risks and how they are mitigated.
 
 Append-only Status history starts with Proposed. Later status events carry the latest content stamp,
 and an Amended event records each post-Accepted amendment with its new digest. Incremental
-implementation first appends an Implementing status event and its first Applied event, then
-appends later Applied events in any membership order, one checked batch per commit. History
-occurrences remain ordered. Amend an unapplied operation directly. If an already-applied add or
-update needs correction throughout Implementing, append one Reapplied event and its material claim
+implementation first appends an Implementing status event and its first Applied event. One authored
+transaction may append several Applied or Reapplied batches only across distinct claim IDs; a
+repeated same-claim occurrence requires a separately observable authored transaction. Status history
+may append several events when the prior history remains an exact prefix and the appended events
+replay as a legal ordered lifecycle. Operations inside one event are unordered membership while
+history occurrences remain ordered. Amend an unapplied operation directly. If an already-applied add
+or update needs correction throughout Implementing, append a Reapplied event and its material claim
 correction; otherwise use a follow-up ADR or remove plus add. The final explicit batch remains
 Implementing; settled review later appends only Implemented. For example:
 
