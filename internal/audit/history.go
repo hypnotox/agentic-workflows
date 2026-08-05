@@ -57,6 +57,69 @@ func compactReplayCommit(ordinal int, commit awfgit.Commit) replayCommit {
 type firstParentPaths func(context.Context, string) ([]string, error)
 type liveEvaluator func(context.Context) ([]Finding, error)
 
+// replayGraph validates compact history evidence and schedules each selected
+// child before its selected parents. Parents outside the selected range are
+// retained as direct boundary dependencies and are never expanded.
+type replayGraph struct {
+	schedule   []replayCommit
+	boundaries map[string]bool
+}
+
+func newReplayGraph(commits []replayCommit) (replayGraph, error) {
+	byRevision := make(map[string]replayCommit, len(commits))
+	for _, commit := range commits {
+		if commit.Revision == "" {
+			return replayGraph{}, errors.New("replay commit has no revision")
+		}
+		if _, exists := byRevision[commit.Revision]; exists {
+			return replayGraph{}, fmt.Errorf("duplicate replay revision %s", commit.Revision)
+		}
+		byRevision[commit.Revision] = commit
+	}
+	remainingChildren := make(map[string]int, len(commits))
+	boundaries := map[string]bool{}
+	for _, commit := range commits {
+		for _, parent := range commit.Parents {
+			if parent == commit.Revision {
+				return replayGraph{}, fmt.Errorf("replay revision %s names itself as a parent", parent)
+			}
+			if _, selected := byRevision[parent]; selected {
+				remainingChildren[parent]++
+			} else {
+				boundaries[parent] = true
+			}
+		}
+	}
+	ready := make([]string, 0, len(commits))
+	for revision := range byRevision {
+		if remainingChildren[revision] == 0 {
+			ready = append(ready, revision)
+		}
+	}
+	slices.Sort(ready)
+	schedule := make([]replayCommit, 0, len(commits))
+	for len(ready) > 0 {
+		revision := ready[0]
+		ready = ready[1:]
+		commit := byRevision[revision]
+		schedule = append(schedule, commit)
+		for _, parent := range commit.Parents {
+			if _, selected := byRevision[parent]; !selected {
+				continue
+			}
+			remainingChildren[parent]--
+			if remainingChildren[parent] == 0 {
+				ready = append(ready, parent)
+				slices.Sort(ready)
+			}
+		}
+	}
+	if len(schedule) != len(commits) {
+		return replayGraph{}, errors.New("cycle among selected replay revisions")
+	}
+	return replayGraph{schedule: schedule, boundaries: boundaries}, nil
+}
+
 // historyOperation owns every historical input and derived revision state for
 // one audit invocation. Nothing on it is retained by Project or shared with a
 // later invocation.
@@ -124,21 +187,30 @@ func newHistoryOperationFromCompact(commits []replayCommit, ordinary []Finding, 
 }
 
 func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
-	findings := slices.Clone(h.ordinary)
-	stale, err := h.staleMergeFindings(ctx)
+	graph, err := newReplayGraph(h.commits)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build historical replay graph: %w", err)
 	}
-	findings = append(findings, stale...)
+	var stale, transitions []Finding
+	for _, commit := range graph.schedule {
+		stepStale, err := h.replayStale(ctx, commit)
+		if err != nil {
+			return nil, err
+		}
+		stale = append(stale, stepStale...)
+		stepTransitions, err := h.replayTransition(ctx, commit)
+		if err != nil {
+			return nil, err
+		}
+		transitions = append(transitions, stepTransitions...)
+	}
 	live, err := h.live(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("evaluate live cleanliness: %w", err)
 	}
+	findings := slices.Clone(h.ordinary)
+	findings = append(findings, stale...)
 	findings = append(findings, live...)
-	transitions, err := h.transitionFindings(ctx)
-	if err != nil {
-		return nil, err
-	}
 	return append(findings, transitions...), nil
 }
 
@@ -376,51 +448,49 @@ func revisionStateFromSelection(selection *snapshot.Selection, cfg *config.Confi
 	return state
 }
 
-func (h *historyOperation) transitionFindings(ctx context.Context) ([]Finding, error) {
+func (h *historyOperation) replayTransition(ctx context.Context, commit replayCommit) ([]Finding, error) {
 	var out []Finding
-	for _, commit := range h.commits {
-		afterState, err := h.stateForCommit(ctx, commit)
+	afterState, err := h.stateForCommit(ctx, commit)
+	if err != nil {
+		if contextTermination(err) {
+			return nil, fmt.Errorf("derive transition result %s: %w", commit.Hash, err)
+		}
+		out = append(out, transitionLoadWarning(commit, err))
+		return out, nil
+	}
+	after, err := afterState.currentState()
+	if err != nil {
+		if contextTermination(err) {
+			return nil, fmt.Errorf("derive transition result current state %s: %w", commit.Hash, err)
+		}
+		out = append(out, transitionLoadWarning(commit, err))
+		return out, nil
+	}
+	before := currentstate.Universe{}
+	if len(commit.Parents) > 0 {
+		beforeState, loadErr := h.state(ctx, commit.Parents[0])
+		if loadErr != nil {
+			if contextTermination(loadErr) {
+				return nil, fmt.Errorf("derive transition first parent %s: %w", commit.Hash, loadErr)
+			}
+			out = append(out, transitionLoadWarning(commit, loadErr))
+			return out, nil
+		}
+		before, err = beforeState.currentState()
 		if err != nil {
 			if contextTermination(err) {
-				return nil, fmt.Errorf("derive transition result %s: %w", commit.Hash, err)
+				return nil, fmt.Errorf("derive transition first-parent current state %s: %w", commit.Hash, err)
 			}
 			out = append(out, transitionLoadWarning(commit, err))
-			continue
+			return out, nil
 		}
-		after, err := afterState.currentState()
-		if err != nil {
-			if contextTermination(err) {
-				return nil, fmt.Errorf("derive transition result current state %s: %w", commit.Hash, err)
-			}
-			out = append(out, transitionLoadWarning(commit, err))
-			continue
-		}
-		before := currentstate.Universe{}
-		if len(commit.Parents) > 0 {
-			beforeState, loadErr := h.state(ctx, commit.Parents[0])
-			if loadErr != nil {
-				if contextTermination(loadErr) {
-					return nil, fmt.Errorf("derive transition first parent %s: %w", commit.Hash, loadErr)
-				}
-				out = append(out, transitionLoadWarning(commit, loadErr))
-				continue
-			}
-			before, err = beforeState.currentState()
-			if err != nil {
-				if contextTermination(err) {
-					return nil, fmt.Errorf("derive transition first-parent current state %s: %w", commit.Hash, err)
-				}
-				out = append(out, transitionLoadWarning(commit, err))
-				continue
-			}
-		}
-		mode := currentstate.AuthoredCommit
-		if commit.IsMerge {
-			mode = currentstate.MergeAggregate
-		}
-		for _, transition := range currentstate.CheckPair(before, after, mode) {
-			out = append(out, replayFinding(severity.Error, currentStateTransitionRule, commit, transition.Message))
-		}
+	}
+	mode := currentstate.AuthoredCommit
+	if commit.IsMerge {
+		mode = currentstate.MergeAggregate
+	}
+	for _, transition := range currentstate.CheckPair(before, after, mode) {
+		out = append(out, replayFinding(severity.Error, currentStateTransitionRule, commit, transition.Message))
 	}
 	return out, nil
 }
@@ -436,81 +506,79 @@ func transitionLoadWarning(commit replayCommit, err error) Finding {
 
 // staleMergeFindings applies the live stale-merge evidence policy to historical
 // merge commits once their result lock reaches schema generation 31.
-func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, error) {
+func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit) ([]Finding, error) {
+	if !commit.IsMerge {
+		return nil, nil
+	}
 	var findings []Finding
-	for _, commit := range h.commits {
-		if !commit.IsMerge {
-			continue
+	resultState, err := h.stateForCommit(ctx, commit)
+	if err != nil {
+		return nil, fmt.Errorf("load merge result %s: %w", commit.Hash, err)
+	}
+	lock, found, err := resultState.lockEvidence()
+	if err != nil {
+		return nil, fmt.Errorf("load merge result lock %s: %w", commit.Hash, err)
+	}
+	if !found || lock.SchemaVersion < 31 {
+		return nil, nil
+	}
+	current, _ := adr.FormatAtGeneration(lock.SchemaVersion)
+	if len(commit.Parents) < 2 {
+		return nil, fmt.Errorf("merge %s has fewer than two parents", commit.Hash)
+	}
+	result, err := resultState.currentState()
+	if err != nil {
+		return nil, fmt.Errorf("load merge result current state %s: %w", commit.Hash, err)
+	}
+	firstState, err := h.state(ctx, commit.Parents[0])
+	if err != nil {
+		return nil, fmt.Errorf("load merge first parent %s: %w", commit.Hash, err)
+	}
+	first, err := firstState.currentState()
+	if err != nil {
+		return nil, fmt.Errorf("load merge first parent current state %s: %w", commit.Hash, err)
+	}
+	incoming := make([]currentstate.Universe, len(commit.Parents)-1)
+	for i, revision := range commit.Parents[1:] {
+		incomingState, loadErr := h.state(ctx, revision)
+		if loadErr != nil {
+			return nil, fmt.Errorf("load merge incoming parent %s: %w", commit.Hash, loadErr)
 		}
-		resultState, err := h.stateForCommit(ctx, commit)
+		incoming[i], err = incomingState.currentState()
 		if err != nil {
-			return nil, fmt.Errorf("load merge result %s: %w", commit.Hash, err)
+			return nil, fmt.Errorf("load merge incoming parent current state %s: %w", commit.Hash, err)
 		}
-		lock, found, err := resultState.lockEvidence()
-		if err != nil {
-			return nil, fmt.Errorf("load merge result lock %s: %w", commit.Hash, err)
+	}
+	authorizations, err := commitmsg.ParseAuthorizations(commitmsg.Clean([]byte(commit.Message)), func(value string) bool {
+		return value == "legacy" || adr.KnownFormatMarker(value)
+	})
+	if err != nil {
+		syntax, syntaxErr := staleAuthorizationSyntax(err)
+		if syntaxErr != nil { // coverage-ignore: ParseAuthorizations returns only *SyntaxError; the checked fallback protects future implementations
+			return nil, syntaxErr
 		}
-		if !found || lock.SchemaVersion < 31 {
-			continue
-		}
-		current, _ := adr.FormatAtGeneration(lock.SchemaVersion)
-		if len(commit.Parents) < 2 {
-			return nil, fmt.Errorf("merge %s has fewer than two parents", commit.Hash)
-		}
-		result, err := resultState.currentState()
-		if err != nil {
-			return nil, fmt.Errorf("load merge result current state %s: %w", commit.Hash, err)
-		}
-		firstState, err := h.state(ctx, commit.Parents[0])
-		if err != nil {
-			return nil, fmt.Errorf("load merge first parent %s: %w", commit.Hash, err)
-		}
-		first, err := firstState.currentState()
-		if err != nil {
-			return nil, fmt.Errorf("load merge first parent current state %s: %w", commit.Hash, err)
-		}
-		incoming := make([]currentstate.Universe, len(commit.Parents)-1)
-		for i, revision := range commit.Parents[1:] {
-			incomingState, loadErr := h.state(ctx, revision)
-			if loadErr != nil {
-				return nil, fmt.Errorf("load merge incoming parent %s: %w", commit.Hash, loadErr)
-			}
-			incoming[i], err = incomingState.currentState()
-			if err != nil {
-				return nil, fmt.Errorf("load merge incoming parent current state %s: %w", commit.Hash, err)
-			}
-		}
-		authorizations, err := commitmsg.ParseAuthorizations(commitmsg.Clean([]byte(commit.Message)), func(value string) bool {
-			return value == "legacy" || adr.KnownFormatMarker(value)
-		})
-		if err != nil {
-			syntax, syntaxErr := staleAuthorizationSyntax(err)
-			if syntaxErr != nil { // coverage-ignore: ParseAuthorizations returns only *SyntaxError; the checked fallback protects future implementations
-				return nil, syntaxErr
-			}
+		findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
+			fmt.Sprintf("malformed reserved trailer at cleaned line %d: %s", syntax.Line, syntax.Reason)))
+		return findings, nil
+	}
+	allowed := map[string]bool{}
+	for _, authorization := range authorizations {
+		allowed[authorization.Version] = true
+	}
+	for _, qualification := range currentstate.QualifyIncoming(first, result, incoming, current) {
+		identity := "ADR-" + qualification.Introduction.Identity
+		if !qualification.Qualified {
 			findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
-				fmt.Sprintf("malformed reserved trailer at cleaned line %d: %s", syntax.Line, syntax.Reason)))
+				"unqualified incoming-parent record "+identity))
 			continue
 		}
-		allowed := map[string]bool{}
-		for _, authorization := range authorizations {
-			allowed[authorization.Version] = true
+		version := adr.FormatMarker(qualification.Introduction.Format)
+		if version == "" {
+			version = "legacy"
 		}
-		for _, qualification := range currentstate.QualifyIncoming(first, result, incoming, current) {
-			identity := "ADR-" + qualification.Introduction.Identity
-			if !qualification.Qualified {
-				findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
-					"unqualified incoming-parent record "+identity))
-				continue
-			}
-			version := adr.FormatMarker(qualification.Introduction.Format)
-			if version == "" {
-				version = "legacy"
-			}
-			if !allowed[version] {
-				findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
-					"missing authorization version "+version+" for "+identity))
-			}
+		if !allowed[version] {
+			findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
+				"missing authorization version "+version+" for "+identity))
 		}
 	}
 	return findings, nil

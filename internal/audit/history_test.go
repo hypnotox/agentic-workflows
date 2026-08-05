@@ -22,6 +22,40 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+// Legacy focused assertions use these test-only adapters; production replay
+// always executes the single interleaved graph schedule through run.
+func (h *historyOperation) transitionFindings(ctx context.Context) ([]Finding, error) {
+	graph, err := newReplayGraph(h.commits)
+	if err != nil {
+		return nil, err
+	}
+	var findings []Finding
+	for _, commit := range graph.schedule {
+		step, err := h.replayTransition(ctx, commit)
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, step...)
+	}
+	return findings, nil
+}
+
+func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, error) {
+	graph, err := newReplayGraph(h.commits)
+	if err != nil {
+		return nil, err
+	}
+	var findings []Finding
+	for _, commit := range graph.schedule {
+		step, err := h.replayStale(ctx, commit)
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, step...)
+	}
+	return findings, nil
+}
+
 func TestStreamingProjectionDetachesRetainedSubjects(t *testing.T) {
 	message := "not conventional\n\n" + strings.Repeat("body", 4096)
 	subject := message[:len("not conventional")]
@@ -33,6 +67,65 @@ func TestStreamingProjectionDetachesRetainedSubjects(t *testing.T) {
 	}
 	if unsafe.StringData(retainedFinding.Subject) == unsafe.StringData(subject) {
 		t.Fatal("ordinary finding subject retains the rich message backing allocation")
+	}
+}
+
+func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T) {
+	commits := []replayCommit{
+		{Revision: "merge", Parents: []string{"left", "right"}, IsMerge: true},
+		{Revision: "left", Parents: []string{"root"}},
+		{Revision: "right", Parents: []string{"root"}},
+		{Revision: "root", Parents: []string{"boundary"}},
+		{Revision: "isolated", Parents: []string{"boundary"}},
+	}
+	graph, err := newReplayGraph(commits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, commit := range graph.schedule {
+		got = append(got, commit.Revision)
+	}
+	if want := []string{"isolated", "merge", "left", "right", "root"}; !slices.Equal(got, want) {
+		t.Fatalf("schedule = %v, want %v", got, want)
+	}
+	if !graph.boundaries["boundary"] {
+		t.Fatalf("boundary parents = %#v", graph.boundaries)
+	}
+	permuted := slices.Clone(commits)
+	slices.Reverse(permuted)
+	permutedGraph, err := newReplayGraph(permuted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var permutedSchedule []string
+	for _, commit := range permutedGraph.schedule {
+		permutedSchedule = append(permutedSchedule, commit.Revision)
+	}
+	if !slices.Equal(got, permutedSchedule) {
+		t.Fatalf("permuted schedule = %v, want %v", permutedSchedule, got)
+	}
+	for _, invalid := range [][]replayCommit{
+		{{}},
+		{{Revision: "same"}, {Revision: "same"}},
+		{{Revision: "self", Parents: []string{"self"}}},
+		{{Revision: "one", Parents: []string{"two"}}, {Revision: "two", Parents: []string{"one"}}},
+	} {
+		if _, err := newReplayGraph(invalid); err == nil {
+			t.Fatalf("invalid graph accepted: %#v", invalid)
+		}
+	}
+	op := newHistoryOperationFromCompact([]replayCommit{{Revision: "duplicate"}, {Revision: "duplicate"}}, nil, 2,
+		func(context.Context, string) (*revisionState, error) {
+			t.Fatal("invalid graph loaded a revision")
+			return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+		}, nil,
+		func(context.Context) ([]Finding, error) {
+			t.Fatal("invalid graph ran live evaluation")
+			return []Finding{}, nil
+		})
+	if _, err := op.run(testContext(t)); err == nil {
+		t.Fatal("run accepted an invalid graph")
 	}
 }
 
