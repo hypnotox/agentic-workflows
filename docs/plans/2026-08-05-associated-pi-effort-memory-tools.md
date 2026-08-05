@@ -365,7 +365,7 @@ plan rather than copying it into architecture or workflow prose.
 
 ### Phase close
 
-Run `./x render`, read back every source and generated target changed by Tasks 4.1 and 4.3, and stage
+Run `./x render`, read back every source and generated target changed by Tasks 4.2 and 4.3, and stage
 the complete Phase 4 transaction explicitly. Run `awf check staged` and `./x gate`; both must pass
 with clean drift, current-state validation, 100% Go and TypeScript coverage, dead-code checks, and the
 real pinned Pi runtime smoke. Create one commit:
