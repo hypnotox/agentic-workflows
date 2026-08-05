@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: lifetime-bounded-historical-audit-replay
-status: Proposed
+status: Accepted
 date: 2026-08-05
 ---
 # ADR-lifetime-bounded-historical-audit-replay: Lifetime-bounded historical audit replay
@@ -148,3 +148,4 @@ of this decision.
 ## Status history
 
 - 2026-08-05: Proposed
+- 2026-08-05: Accepted; content-sha256: 19db84280c3e343808a838eb72b5a92735c02b44b1bc145dc9560bb1e6ee916b
