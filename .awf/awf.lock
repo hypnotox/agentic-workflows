@@ -238,9 +238,9 @@
     },
     ".pi/extensions/awf-effort/client.ts": {
       "templateId": "pi/awf-effort/client.ts.tmpl",
-      "templateHash": "sha256:896193bc49177bb8c7176426387d88095a35b896e491a02d0d7f6c98cda37f50",
+      "templateHash": "sha256:a53aa0bf46753fb7cf5b5504f009d61e0d0e5f5cfecb7d2024940a4ee12b90f2",
       "configHash": "sha256:26ea31afa82c13dc1ff6597242ba7efa29d6a721e35d108c52fc73743f68ab26",
-      "outputHash": "sha256:77e31da77eb65e837fd4da8922a753fedba8ef46bd063e679a420578662f39f0"
+      "outputHash": "sha256:6c5dbf83a8952b541cdddf7bfbf6556c0239275d37117d2a1bd13f9afecfb24c"
     },
     ".pi/extensions/awf-effort/index.ts": {
       "templateId": "pi/awf-effort/index.ts.tmpl",
