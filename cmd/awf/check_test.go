@@ -509,6 +509,53 @@ func TestRunCheckRunsStagedAfterRepoFailure(t *testing.T) {
 	}
 }
 
+func TestRunCheckRetainsRepositoryFailureWhenGitLookupFails(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	repoFailure := errors.New("repository collection failed")
+	gitFailure := errors.New("git lookup failed")
+	dependencies := productionCheckDependencies()
+	dependencies.collectRepo = func(context.Context, string, planNoteSink) (checkCollection, error) {
+		return checkCollection{}, repoFailure
+	}
+	dependencies.openContaining = func(string) (*awfgit.Repo, string, error) {
+		return nil, "", gitFailure
+	}
+	var out bytes.Buffer
+	err := runCheckWith(testContext(t), root, &out, dependencies)
+	if !errors.Is(err, repoFailure) || !errors.Is(err, gitFailure) {
+		t.Fatalf("bare check error = %v, want repository and git lookup failures", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("stdout = %q, want no partial report for operational failures", out.String())
+	}
+}
+
+func TestRunCheckRetainsOperationalFailuresAcrossUniverses(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	repoFailure := errors.New("repository collection failed")
+	stagedFailure := errors.New("staged collection failed")
+	stagedRan := false
+	dependencies := productionCheckDependencies()
+	dependencies.collectRepo = func(context.Context, string, planNoteSink) (checkCollection, error) {
+		return checkCollection{}, repoFailure
+	}
+	dependencies.collectStaged = func(context.Context, string, planNoteSink) (checkCollection, error) {
+		stagedRan = true
+		return checkCollection{}, stagedFailure
+	}
+	var out bytes.Buffer
+	err := runCheckWith(testContext(t), root, &out, dependencies)
+	if !stagedRan {
+		t.Fatal("staged collection did not run after repository collection failed")
+	}
+	if !errors.Is(err, repoFailure) || !errors.Is(err, stagedFailure) {
+		t.Fatalf("bare check error = %v, want both collection failures", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("stdout = %q, want no partial report for operational failures", out.String())
+	}
+}
+
 // TestRunCheckStagedSurfacesFinding covers the staged route of runCheck: an
 // error-severity index coverage finding prints the finding line and fails.
 func TestRunCheckStagedSurfacesFinding(t *testing.T) {

@@ -12,11 +12,16 @@ type planNoteSink map[string]struct{}
 
 type checkDependencies struct {
 	openContaining func(string) (*awfgit.Repo, string, error)
+	collectRepo    func(context.Context, string, planNoteSink) (checkCollection, error)
 	collectStaged  func(context.Context, string, planNoteSink) (checkCollection, error)
 }
 
 func productionCheckDependencies() checkDependencies {
-	return checkDependencies{openContaining: awfgit.OpenContaining, collectStaged: collectCheckStaged}
+	return checkDependencies{
+		openContaining: awfgit.OpenContaining,
+		collectRepo:    collectCheckRepoWithPlanNotes,
+		collectStaged:  collectCheckStaged,
+	}
 }
 
 // runCheck runs both check universes. Outside a Git repository the repo universe
@@ -27,9 +32,9 @@ func runCheck(ctx context.Context, root string, stdout io.Writer) error {
 
 func runCheckWith(ctx context.Context, root string, stdout io.Writer, dependencies checkDependencies) error {
 	planNotes := planNoteSink{}
-	repo, repoErr := collectCheckRepoWithPlanNotes(ctx, root, planNotes)
+	repo, repoErr := dependencies.collectRepo(ctx, root, planNotes)
 	if repoErr != nil {
-		return repoErr
+		repo.operational = append(repo.operational, repoErr)
 	}
 	_, _, gitErr := dependencies.openContaining(root)
 	if errors.Is(gitErr, awfgit.ErrNotARepository) {
@@ -37,11 +42,12 @@ func runCheckWith(ctx context.Context, root string, stdout io.Writer, dependenci
 		return renderCheckCollection(stdout, repo)
 	}
 	if gitErr != nil {
-		return gitErr
+		return errors.Join(append(repo.operational, gitErr)...)
 	}
 	staged, stagedErr := dependencies.collectStaged(ctx, root, planNotes)
+	repo = repo.append(staged)
 	if stagedErr != nil {
-		return stagedErr
+		repo.operational = append(repo.operational, stagedErr)
 	}
-	return renderCheckCollection(stdout, repo.append(staged))
+	return renderCheckCollection(stdout, repo)
 }
