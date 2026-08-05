@@ -238,7 +238,10 @@ func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structu
 				if len(after) > 0 {
 					after = after[1:]
 				}
-				if firstLineIsATX(after) {
+				// Authoring comments are removed before part assembly, so they do
+				// not separate two effective leading structural candidates. Inspect
+				// through them while preserving their bytes in the eventual edit.
+				if firstLineIsATX(after[leadingStructuralOffset(after):]) {
 					return structuralHeadingRefusal(root, path, entry.heading)
 				}
 				info, err := os.Stat(path)
@@ -308,5 +311,5 @@ func structuralHeadingRefusal(root, path, heading string) error {
 		rel = path
 	}
 	rel = filepath.ToSlash(rel)
-	return fmt.Errorf("operation: structural-heading migration refuses because %s must begin with the exact removable heading %q or unambiguously body content; changed bytes: no; changed index: no; changed message: no; changed merge state: no; next actions: 1. edit %s so its leading heading is %q or body content 2. run `awf upgrade`", rel, heading, rel, heading)
+	return fmt.Errorf("operation: structural-heading migration refuses because %s must begin with the exact removable heading %q or unambiguously body content; changed bytes: no; changed index: no; changed message: no; changed merge state: no; next actions: 1. edit %s so its leading heading is %q or unambiguously body content 2. run `awf upgrade`", rel, heading, rel, heading)
 }

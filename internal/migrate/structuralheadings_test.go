@@ -71,6 +71,7 @@ func TestStructuralHeadingsMigration(t *testing.T) {
 		"changed message: no",
 		"changed merge state: no",
 		"next actions: 1. edit .awf/docs/parts/development/setup.md",
+		`so its leading heading is "## Setup" or unambiguously body content`,
 		"2. run `awf upgrade`",
 	}
 	position := -1
@@ -81,7 +82,7 @@ func TestStructuralHeadingsMigration(t *testing.T) {
 		}
 		position += next + 1
 	}
-	if strings.Contains(refusal, "cause:") {
+	if strings.Contains(refusal, "cause:") || errors.Unwrap(err) != nil {
 		t.Fatalf("operation refusal must carry no cause: %s", refusal)
 	}
 	if !sameSnapshot(before, snapshotTree(t, root)) {
@@ -131,6 +132,16 @@ func TestStructuralHeadingsRefusesMultipleAndSupportsUnterminatedHeading(t *test
 	}
 	if !sameSnapshot(before, snapshotTree(t, root)) {
 		t.Fatal("multiple-heading refusal mutated files")
+	}
+	root = closeFixture(t, "prefix: ex\n", map[string]string{
+		"docs/parts/testing/gate.md": "## The gate\n<!-- awf:comment source-only -->\n### custom heading\nbody\n",
+	})
+	before = snapshotTree(t, root)
+	if err := applyStructuralHeadings(root, io.Discard); err == nil {
+		t.Fatal("authoring comment must not hide an ambiguous adjacent heading")
+	}
+	if !sameSnapshot(before, snapshotTree(t, root)) {
+		t.Fatal("comment-separated heading refusal mutated files")
 	}
 	root = closeFixture(t, "prefix: ex\n", map[string]string{"docs/parts/testing/gate.md": "## The gate"})
 	if err := applyStructuralHeadings(root, io.Discard); err != nil {

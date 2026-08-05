@@ -200,3 +200,34 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 		})
 	}
 }
+
+// TestRenderProducerCallsitesForwardEncoder is the mutation-sensitive wiring
+// complement to the behavior test above: every actual producer family must pass
+// its declaration into the shared renderTarget seam.
+func TestRenderProducerCallsitesForwardEncoder(t *testing.T) {
+	renderSource, err := os.ReadFile("render.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(renderSource)
+	for name, fragment := range map[string]string{
+		"catalog target Markdown":  "options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target, encoder: MarkdownAgentDialect}",
+		"agent target encoder":     "options.encoder = spec.target.AgentDialect",
+		"target output encoder":    "encoder:     targetOutput.Encoder,",
+		"generated domain encoder": "Encoder: rf.Encoder,",
+	} {
+		if !strings.Contains(source, fragment) {
+			t.Errorf("%s callsite stopped forwarding its declared encoder", name)
+		}
+	}
+	if got := strings.Count(source, "&renderOutputOptions{encoder: PlainAgentDialect}"); got != 2 {
+		t.Errorf("conditional and resident plain callsites = %d, want 2", got)
+	}
+	configReferenceSource, err := os.ReadFile("configreference.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(configReferenceSource), "Encoder: rf.Encoder") {
+		t.Error("generated config-reference wrapper stopped forwarding its encoder")
+	}
+}
