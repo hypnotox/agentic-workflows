@@ -200,6 +200,7 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
 
 ## State changes
 
+- update `tooling/cli:explicit-output-bypasses`
 - update `tooling/cli:effort-command-contract`
 - update `tooling/effort-management:effort-record-authority`
 - update `tooling/effort-management:memory-skeleton-purpose-partition`
