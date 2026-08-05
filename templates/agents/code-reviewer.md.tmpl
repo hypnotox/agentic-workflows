@@ -4,9 +4,9 @@ Independent reviewer for implementation diffs, separate from the implementer.
 
 <!-- awf:include review-spine-head -->
 
+<!-- awf:section universal-lenses -->
 ## Universal lenses
 
-<!-- awf:section universal-lenses -->
 Apply all lenses to every implementation diff:
 
 1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
@@ -26,9 +26,9 @@ Apply all lenses to every implementation diff:
 1. **maintainable-design**: consult `{{ .layout.maintainableCodeDesign }}` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design; flag behavior bolted onto an unsuitable abstraction, refactoring scope silently broadened beyond the settled design, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 <!-- awf:end -->
 
+<!-- awf:section project-focus -->
 ## Project-specific focus items
 
-<!-- awf:section project-focus -->
 {{ with .data.correctnessTraps }}{{ range . }}
 - {{ .description }}
 {{ end }}{{ end }}
@@ -38,9 +38,9 @@ Apply all lenses to every implementation diff:
 {{ end }}{{ end }}
 <!-- awf:end -->
 
+<!-- awf:section doc-currency -->
 ## Doc-currency checklist
 
-<!-- awf:section doc-currency -->
 {{ with .data.docCurrencyItems }}For each item below, flag a finding if the gating condition is met AND the diff does not include a same-commit update of the listed artifact:
 
 {{ range . }}- {{ .check }}

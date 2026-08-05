@@ -321,8 +321,11 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 	if len(expectedHeading) > 0 && expectedHeading[0] != "" && len(body) > 0 {
 		// A structural slot is awf-owned. Consume the expected heading, and also
 		// a changed heading at the same level so tampering cannot become body.
-		first := strings.TrimSpace(body[0])
-		if first == expectedHeading[0] || sameATXLevel(first, expectedHeading[0]) {
+		// Compare the rendered expected line byte-for-byte before applying the
+		// deliberately broader same-level tamper classification. In particular,
+		// whitespace produced by a placeholder belongs to the awf-owned heading,
+		// not to the adopter body on the next render.
+		if body[0] == expectedHeading[0] || sameATXLevel(strings.TrimSpace(body[0]), strings.TrimSpace(expectedHeading[0])) {
 			body = body[1:]
 		}
 	}
@@ -393,6 +396,9 @@ type renderOutputOptions struct {
 	encode      func(string) (string, error)
 	bannerStyle render.CommentStyle
 	target      *Target
+	// encoder is the output node's declared representation policy. Structural
+	// heading parsing follows it rather than target identity or filename shape.
+	encoder AgentDialect
 }
 
 type renderKindSpec struct {
@@ -465,10 +471,11 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 				data[key] = value
 			}
 			target := spec.target
-			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target}
+			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target, encoder: MarkdownAgentDialect}
 		}
 		if spec.encode != nil {
 			options.bannerStyle = spec.target.agentCommentStyle()
+			options.encoder = spec.target.AgentDialect
 			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
 		}
 		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), eff, options)
@@ -553,6 +560,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				config.Sidecar{}, data, targetOutput.Path, eff, &renderOutputOptions{
 					bannerStyle: targetOutput.Provenance,
 					target:      &target,
+					encoder:     targetOutput.Encoder,
 				})
 			if err != nil { // coverage-ignore: targetOutputDeclarations read this same embedded template before render.
 				return nil, err
@@ -637,7 +645,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			continue
 		}
 		rf, err := p.renderTarget(unit.kind, "", unit.tid, unit.sections,
-			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff)
+			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff,
+			&renderOutputOptions{encoder: PlainAgentDialect})
 		if err != nil {
 			return nil, err
 		}
@@ -646,7 +655,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
 	for _, name := range resident.RootNames() {
-		rf, err := p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff)
+		rf, err := p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff, &renderOutputOptions{encoder: PlainAgentDialect})
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}
@@ -677,8 +686,13 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	markdown := options == nil || options.target == nil || options.target.AgentDialect == MarkdownAgentDialect
-	segs := render.ParseSections(stripped, markdown)
+	// Ordinary catalog and neutral Markdown producers retain the declared
+	// Markdown default. Explicit producers supply their representation directly.
+	encoder := MarkdownAgentDialect
+	if options != nil && options.encoder != "" {
+		encoder = options.encoder
+	}
+	segs := render.ParseSections(stripped, encoder == MarkdownAgentDialect)
 	style := render.CommentStyleForSource(stripped)
 	headings := map[string]string{}
 	for _, s := range segs {
@@ -748,6 +762,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
 		RegenChecked: anyInPlace(plan),
 		Policy:       declaredPolicy(kind, anyInPlace(plan)),
+		Encoder:      encoder,
 		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 		ConsumedInputs: consumedInputs, ObservedTemplateID: tid,
@@ -845,7 +860,9 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
-			partVarRefs: rf.partVarRefs, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID})
+			partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
+			RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, Encoder: rf.Encoder,
+			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID})
 	}
 	return out, nil
 }

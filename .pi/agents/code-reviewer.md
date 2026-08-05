@@ -41,9 +41,9 @@ Severity is informational only; the dispatching skill routes by classification k
 
 When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the diff against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating diff passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
+<!-- awf:edit universal-lenses: default; create .awf/agents/parts/code-reviewer/universal-lenses.md to override -->
 ## Universal lenses
 
-<!-- awf:edit universal-lenses: default; create .awf/agents/parts/code-reviewer/universal-lenses.md to override -->
 Apply all lenses to every implementation diff:
 
 1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
@@ -62,9 +62,9 @@ Apply all lenses to every implementation diff:
 
 1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design; flag behavior bolted onto an unsuitable abstraction, refactoring scope silently broadened beyond the settled design, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 
+<!-- awf:edit project-focus: default; create .awf/agents/parts/code-reviewer/project-focus.md to override -->
 ## Project-specific focus items
 
-<!-- awf:edit project-focus: default; create .awf/agents/parts/code-reviewer/project-focus.md to override -->
 
 - error paths; every returned error is checked or explicitly ignored with a stated reason
 
@@ -146,9 +146,9 @@ Apply all lenses to every implementation diff:
 
 
 
+<!-- awf:edit doc-currency: default; create .awf/agents/parts/code-reviewer/doc-currency.md to override -->
 ## Doc-currency checklist
 
-<!-- awf:edit doc-currency: default; create .awf/agents/parts/code-reviewer/doc-currency.md to override -->
 For each item below, flag a finding if the gating condition is met AND the diff does not include a same-commit update of the listed artifact:
 
 - the change updates every document that states the old behaviour, in the same commit

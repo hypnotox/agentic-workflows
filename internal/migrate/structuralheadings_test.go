@@ -13,6 +13,40 @@ import (
 )
 
 // invariant: config/migrations-and-locks:structural-heading-part-migration (TestStructuralHeadingsMigration)
+// TestStructuralHeadingsCompleteCutoverFixture proves the frozen literal covers
+// the entire declaration-derived cutover population, rather than only the parts
+// this adopter happened to override before schema 36.
+func TestStructuralHeadingsCompleteCutoverFixture(t *testing.T) {
+	const cutoverPopulation = 171
+	if len(structuralHeadingSnapshot) != cutoverPopulation {
+		t.Fatalf("snapshot population = %d, want %d", len(structuralHeadingSnapshot), cutoverPopulation)
+	}
+	files := make(map[string]string, len(structuralHeadingSnapshot))
+	seen := map[string]bool{}
+	for _, entry := range structuralHeadingSnapshot {
+		if seen[entry.path] {
+			t.Fatalf("duplicate cutover path %q", entry.path)
+		}
+		seen[entry.path] = true
+		path := strings.Replace(entry.path, "*", "example", 1)
+		files[path] = entry.heading + "\nbody\n"
+	}
+	root := closeFixture(t, "prefix: ex\n", files)
+	if err := applyStructuralHeadings(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	for path := range files {
+		got, err := os.ReadFile(filepath.Join(root, ".awf", path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != "body\n" {
+			t.Errorf("%s = %q, want body only", path, got)
+		}
+	}
+}
+
+// invariant: config/migrations-and-locks:structural-heading-part-migration (TestStructuralHeadingsMigration)
 func TestStructuralHeadingsMigration(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{
 		"docs/parts/testing/gate.md":              "## The gate\nbody\n",
@@ -65,7 +99,6 @@ func TestStructuralHeadingsMigration(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:structural-heading-part-migration (TestStructuralHeadingsRetryAfterWriteFailure)
 func TestStructuralHeadingsRefusesMultipleAndSupportsUnterminatedHeading(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{"docs/parts/roadmap/ideas.md": "## Ideas\n### second\nbody\n"})
 	before := snapshotTree(t, root)
@@ -85,6 +118,7 @@ func TestStructuralHeadingsRefusesMultipleAndSupportsUnterminatedHeading(t *test
 	}
 }
 
+// invariant: config/migrations-and-locks:structural-heading-part-migration (TestStructuralHeadingsRetryAfterWriteFailure)
 func TestStructuralHeadingsRetryAfterWriteFailure(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{
 		"docs/parts/testing/gate.md":  "## The gate\nbody\n",

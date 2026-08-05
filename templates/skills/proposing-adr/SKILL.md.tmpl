@@ -6,15 +6,15 @@ description: >
   INDEX.md, commits, and hands off to {{ .prefix }}-reviewing-adr.
 ---
 
+<!-- awf:section positioning -->
 # {{ .prefix }}-proposing-adr
 
-<!-- awf:section positioning -->
 Writes a new ADR to `{{ .layout.adrDir }}/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment: one decision per ADR. See `{{ .layout.workflowRef }}` for the full lifecycle rules and `{{ .prefix }}-adr-lifecycle` for state transitions.
 <!-- awf:end -->
 
+<!-- awf:section when-to-invoke -->
 ## When to invoke
 
-<!-- awf:section when-to-invoke -->
 Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decision. A Decision commitment remains meaningful after implementation and passes the post-implementation and counterfactual tests; a mechanism belongs only when the ADR explains why the mechanism itself is load-bearing. Route implementation directives to the plan. Bugfixes and routine refactors do not need an ADR. When in doubt, consult the ADR guide rather than expanding the record into a task list.
 
 {{ with .data.adrTriggers }}Load-bearing triggers include:
@@ -23,9 +23,9 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 When grounding is stale - the ADR will cite repository facts not verified in the current session - invoke `{{ .prefix }}-orienting` before writing.
 <!-- awf:end -->
 
+<!-- awf:section conventions -->
 ## Conventions enforced
 
-<!-- awf:section conventions -->
 - **Identity by branch:** `awf new adr` numbers the record on the integration branch and leaves it pending anywhere else, which is where authoring normally happens. Never reuse a number, and never hand-number a pending record: `awf adr number` does that at integration.
 - **Filename:** `NNNN-kebab-title.md` when numbered, `kebab-title.md` while pending.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `{{ .layout.adrTemplate }}`; never hand-copy or shell-copy it yourself.
@@ -78,8 +78,8 @@ This skill requires the one existing confirmed effort and its exact owned memory
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
+<!-- awf:section notes -->
 ## Notes
 
-<!-- awf:section notes -->
 - The ADR stays `status: Proposed` through review. A later implementation step owns any nonterminal `Accepted` or `Implementing` transition and every explicit incremental batch; the terminal-review flow owns only the status-only `Implemented` transition. Direct terminal implementation remains one implicit batch. Those transitions use `{{ .prefix }}-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked batches with unordered operation membership; each Applied event travels with exactly its matching claim mutations.
 <!-- awf:end -->

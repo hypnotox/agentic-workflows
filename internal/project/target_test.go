@@ -585,7 +585,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	want := map[string]AgentDialect{
 		".custom/workflows/example-tdd/SKILL.md":   MarkdownAgentDialect,
 		".custom/reviewers/code-reviewer.agent.md": MarkdownAgentDialect,
-		"CUSTOM.md":            "",
+		"CUSTOM.md":            MarkdownAgentDialect,
 		".custom/extension.ts": PlainAgentDialect,
 	}
 	counts := map[string]int{}

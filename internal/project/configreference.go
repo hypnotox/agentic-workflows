@@ -525,7 +525,8 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 	return &RenderedFile{Path: rf.Path, Content: rf.Content,
 		stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 		markerParts: rf.markerParts, assembled: rf.assembled,
-		partVarRefs: rf.partVarRefs, RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID,
+		partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
+		RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID, Encoder: rf.Encoder,
 		Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, true, nil
 }
 

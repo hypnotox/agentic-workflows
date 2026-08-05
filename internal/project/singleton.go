@@ -102,41 +102,51 @@ type conditionalUnit struct {
 	sections []string
 }
 
-// liveTemplateIDs derives the embedded identities that can participate in this
-// project's render authority. coOwnedRunnerTID is intentionally absent: it is
-// retained only to recognize an outgoing historical lock entry.
-func (p *Project) liveTemplateIDs() map[string]bool {
-	ids := map[string]bool{topicTID: true, topicIndexTID: true}
+// liveTemplateEncoders derives every embedded identity that can participate in
+// render authority together with its declared representation. Recognition-only
+// identities are intentionally absent. This keeps structural parsing and the
+// exhaustive census on the same declaration owners as output planning.
+func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
+	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect}
 	for _, descriptor := range kindDescriptors {
 		if descriptor.baseTID != "" {
-			ids[descriptor.baseTID] = true
+			encoders[descriptor.baseTID] = MarkdownAgentDialect
 		}
 		if descriptor.freeformDomain {
-			ids[descriptor.tid("")] = true
+			encoders[descriptor.tid("")] = MarkdownAgentDialect
 		}
 	}
 	for name := range p.Cat.Skills {
-		ids[p.skillTID(name)] = true
+		encoders[p.skillTID(name)] = MarkdownAgentDialect
 	}
 	for name := range p.Cat.Agents {
-		ids[p.agentTID(name)] = true
+		encoders[p.agentTID(name)] = MarkdownAgentDialect
 	}
 	for _, entry := range p.Cat.Docs {
-		ids[entry.TID] = true
+		encoders[entry.TID] = MarkdownAgentDialect
 	}
 	for _, target := range p.Targets {
 		if target.BridgeTemplate != "" {
-			ids[target.BridgeTemplate] = true
+			encoders[target.BridgeTemplate] = MarkdownAgentDialect
 		}
 		for _, output := range target.Outputs {
-			ids[output.TemplateID] = true
+			encoders[output.TemplateID] = output.Encoder
 		}
 	}
 	for _, unit := range conditionalUnits() {
-		ids[unit.tid] = true
+		encoders[unit.tid] = PlainAgentDialect
 	}
 	for _, root := range resident.RootNames() {
-		ids[residentGitignoreTID(root)] = true
+		encoders[residentGitignoreTID(root)] = PlainAgentDialect
+	}
+	return encoders
+}
+
+// liveTemplateIDs is the identity-only projection used by completeness checks.
+func (p *Project) liveTemplateIDs() map[string]bool {
+	ids := map[string]bool{}
+	for tid := range p.liveTemplateEncoders() {
+		ids[tid] = true
 	}
 	return ids
 }

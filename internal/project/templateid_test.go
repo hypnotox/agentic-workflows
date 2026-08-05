@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -337,6 +338,41 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	p.Cat.Docs["missing-live-fixture"] = missing
 	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
+	}
+}
+
+func TestLiveTemplateEncodersFollowDeclarations(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoders := p.liveTemplateEncoders()
+	for _, unit := range conditionalUnits() {
+		if encoders[unit.tid] != PlainAgentDialect {
+			t.Errorf("conditional template %q encoder = %q, want plain", unit.tid, encoders[unit.tid])
+		}
+	}
+	for _, rootName := range resident.RootNames() {
+		tid := residentGitignoreTID(rootName)
+		if encoders[tid] != PlainAgentDialect {
+			t.Errorf("resident template %q encoder = %q, want plain", tid, encoders[tid])
+		}
+	}
+	for _, entry := range p.Cat.Docs {
+		if encoders[entry.TID] != MarkdownAgentDialect {
+			t.Errorf("catalog doc template %q encoder = %q, want Markdown", entry.TID, encoders[entry.TID])
+		}
+	}
+	for _, target := range p.Targets {
+		for _, output := range target.Outputs {
+			if encoders[output.TemplateID] != output.Encoder {
+				t.Errorf("target output %q encoder = %q, want %q", output.TemplateID, encoders[output.TemplateID], output.Encoder)
+			}
+		}
 	}
 }
 
