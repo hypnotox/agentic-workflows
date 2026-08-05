@@ -132,13 +132,29 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 		state := project.CurrentStateReport{Static: []currentstate.Finding{{Message: "current-state-sentinel"}}}
 		deps := repoCheckTestDependencies(t, cfg, p, check, state, tree, counts)
+		selected := []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}
+		collection, err := collectRepoCheckSelectionWithPlanNotes(context.Background(), t.TempDir(), selected, execution.ContinueOnFailure, true, nil, planNoteSink{}, deps)
+		if err != nil {
+			t.Fatal(err)
+		}
 		var out bytes.Buffer
-		err = runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, deps)
+		err = renderCheckCollection(&out, collection)
 		if err == nil {
 			t.Fatal("aggregate error = nil, want first drift action error")
 		}
 		if got, want := err.Error(), `execute step "drift": check repo drift failed`; got != want {
 			t.Fatalf("aggregate error = %q, want first failure only %q", got, want)
+		}
+		if len(collection.failures) < 2 {
+			t.Fatalf("collected failures = %d, want multiple identities", len(collection.failures))
+		}
+		if !errors.Is(err, collection.failures[0]) {
+			t.Fatalf("aggregate error %v does not retain first failure identity %v", err, collection.failures[0])
+		}
+		for _, later := range collection.failures[1:] {
+			if errors.Is(err, later) {
+				t.Fatalf("aggregate error %v retained later failure identity %v", err, later)
+			}
 		}
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)

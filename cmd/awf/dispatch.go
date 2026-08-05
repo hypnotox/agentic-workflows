@@ -50,6 +50,8 @@ func handlerSuccess() handlerResult { return handlerResult{} }
 
 type producedReportError struct{ error }
 
+func (e *producedReportError) Unwrap() error { return e.error }
+
 func completeProducedReport(err error) bool {
 	var report *producedReportError
 	return errors.As(err, &report)
