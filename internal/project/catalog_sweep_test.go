@@ -130,8 +130,9 @@ func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 }
 
 type singletonTemplateContext struct {
-	tid  string
-	data map[string]any
+	tid          string
+	data         map[string]any
+	dataArtifact string
 }
 
 type singletonConditional struct {
@@ -220,7 +221,7 @@ func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []
 			}
 			data["data"] = collections
 		}
-		contexts = append(contexts, singletonTemplateContext{tid: entry.TID, data: data})
+		contexts = append(contexts, singletonTemplateContext{tid: entry.TID, data: data, dataArtifact: kind})
 	}
 	for _, unit := range conditionalUnits() {
 		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: p.data(config.Sidecar{}, eff)})
@@ -474,7 +475,7 @@ func conditionalPathExists(value any, path []string) bool {
 	return false
 }
 
-func conditionalPathUsesLiveContext(data map[string]any, path []string) bool {
+func conditionalPathUsesLiveContext(data map[string]any, dataArtifact string, path []string) bool {
 	if conditionalPathExists(data, path) {
 		return true
 	}
@@ -488,9 +489,21 @@ func conditionalPathUsesLiveContext(data map[string]any, path []string) bool {
 	}
 	if len(path) > 1 && path[0] == "data" {
 		for _, descriptor := range configspec.DataKeys() {
-			if descriptor.Key == path[1] {
+			if descriptor.Artifact != dataArtifact || descriptor.Key != path[1] {
+				continue
+			}
+			if len(path) == 2 {
 				return true
 			}
+			if len(path) != 4 || path[2] != "*" {
+				return false
+			}
+			for _, field := range descriptor.Fields {
+				if field == path[3] {
+					return true
+				}
+			}
+			return false
 		}
 	}
 	return false
@@ -637,7 +650,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 			}
 			seenConditions++
 			for _, path := range condition.paths {
-				if !conditionalPathUsesLiveContext(context.data, path) {
+				if !conditionalPathUsesLiveContext(context.data, context.dataArtifact, path) {
 					t.Errorf("%s %s conditional path %s has no root on its real render context", context.tid, condition.kind, strings.Join(path, "."))
 					continue
 				}
@@ -699,13 +712,26 @@ func TestSingletonConditionalInspectionRejectsUnsupportedForms(t *testing.T) {
 }
 
 func TestSingletonConditionalInspectionRejectsMissingContextDescendant(t *testing.T) {
-	inspection, err := inspectSingletonConditionals(`{{ if .vars.reviewMissingKey }}configured{{ else }}fallback{{ end }}`, "missing-descendant")
-	if err != nil {
-		t.Fatal(err)
+	fixtures := []struct {
+		name         string
+		src          string
+		dataArtifact string
+	}{
+		{"missing-var", `{{ if .vars.reviewMissingKey }}configured{{ else }}fallback{{ end }}`, ""},
+		{"missing-record-field", `{{ range .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, "agents-doc"},
+		{"other-artifact-data", `{{ if .data.adrSections }}configured{{ else }}fallback{{ end }}`, "agents-doc"},
 	}
-	path := inspection.conditions[0].paths[0]
-	if conditionalPathUsesLiveContext(map[string]any{"vars": map[string]any{}}, path) {
-		t.Fatalf("missing render-context descendant was accepted: %s", strings.Join(path, "."))
+	for _, fixture := range fixtures {
+		t.Run(fixture.name, func(t *testing.T) {
+			inspection, err := inspectSingletonConditionals(fixture.src, fixture.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := inspection.conditions[len(inspection.conditions)-1].paths[0]
+			if conditionalPathUsesLiveContext(map[string]any{"vars": map[string]any{}, "data": map[string]any{}}, fixture.dataArtifact, path) {
+				t.Fatalf("missing render-context descendant was accepted: %s", strings.Join(path, "."))
+			}
+		})
 	}
 }
 
