@@ -482,6 +482,10 @@ test(tooling): enforce CLI presentation adoption
 
 ## Notes
 
+- Phase 5 recorded a bounded enabling deviation: although Task 5.2's exact Paths omit
+  `internal/project`, upgrade's terminal sync already depends on `internal/project.SyncReport`, and
+  truthful partial upgrade diagnostics required its actual sync write and mode axes. This does not
+  broaden sync business behavior.
 - ADR application partition follows complete live implementation rather than declaration position:
   Phase 1 moves the ADR directly from Proposed to Implementing and applies operations 1-2; Phase 2
   applies operation 4; Phase 3 applies operations 3, 5, and 6 in declaration order within its batch;
