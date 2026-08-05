@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-08-05
+
 ### Features
 
 - Ordinary CLI mutations, details, collections, refusals, and commit-policy reports now use the deterministic readable-text presentation contract. Convenience JSON remains removed from effort and topic commands; authored plan and changelog payloads plus effort activity, init descriptor, and context spill protocols retain their exact bytes.

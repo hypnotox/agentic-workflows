@@ -228,6 +228,15 @@ func TestChangelogPublicPayloadContracts(t *testing.T) {
 		t.Fatal(err)
 	}
 	latest := entries[0].Version
+	sinceEntries, err := changelog.Since(entries, "0.18.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sincePayload strings.Builder
+	for _, entry := range sinceEntries {
+		sincePayload.WriteString(entry.Raw)
+		sincePayload.WriteByte('\n')
+	}
 	for _, tc := range []struct {
 		name string
 		args []string
@@ -235,7 +244,7 @@ func TestChangelogPublicPayloadContracts(t *testing.T) {
 	}{
 		{"full", []string{"awf", "changelog"}, full},
 		{"version", []string{"awf", "changelog", "--version", "0.2.0"}, readGolden(t, "version-0.2.0.md")},
-		{"since", []string{"awf", "changelog", "--since", "0.18.0"}, []byte(entries[0].Raw + "\n")},
+		{"since", []string{"awf", "changelog", "--since", "0.18.0"}, []byte(sincePayload.String())},
 		{"range", []string{"awf", "changelog", "--range", "0.2.0..0.4.0"}, append(readGolden(t, "range-0.2.0-0.4.0.md"), '\n')},
 		{"empty-since", []string{"awf", "changelog", "--since", latest}, []byte("status: no releases since " + latest + "\n")},
 	} {
