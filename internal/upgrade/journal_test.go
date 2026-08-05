@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -185,6 +186,32 @@ func TestJournalLoadRejections(t *testing.T) {
 	}
 }
 
+func TestRecoverRefusesControlCharacterOperationPathsBeforeMutation(t *testing.T) {
+	for _, path := range []string{"a\r.txt", "a\n.txt"} {
+		t.Run(strconv.Quote(path), func(t *testing.T) {
+			root := t.TempDir()
+			journal := lockJournal(phaseApplying)
+			journal.Operations[0].Path = path
+			writeRawJournal(t, root, journal)
+			mustWrite(t, filepath.Join(root, "a.txt"), []byte("unchanged"))
+			mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+
+			if _, err := Recover(root); err == nil || !strings.Contains(err.Error(), "unsafe path") {
+				t.Fatalf("recover control-character journal: %v", err)
+			}
+			if got, err := os.ReadFile(filepath.Join(root, "a.txt")); err != nil || string(got) != "unchanged" {
+				t.Fatalf("output after refusal = %q, %v; want unchanged", got, err)
+			}
+			if got, err := os.ReadFile(filepath.Join(root, LockRel())); err != nil || string(got) != "old-lock" {
+				t.Fatalf("lock after refusal = %q, %v; want old-lock", got, err)
+			}
+			if !journalPresence(t, root) {
+				t.Fatal("journal removed despite parse refusal")
+			}
+		})
+	}
+}
+
 func TestJournalCommitHappyPath(t *testing.T) {
 	root := t.TempDir()
 	mustMkdir(t, filepath.Join(root, ".awf"))
@@ -335,7 +362,7 @@ func TestJournalHelpers(t *testing.T) {
 	if journalPresence(t, root) {
 		t.Fatal("phantom journal")
 	}
-	if safeRelPath("") || safeRelPath("/abs") || safeRelPath("a/../b") || !safeRelPath("a/b.txt") {
+	if safeRelPath("") || safeRelPath("/abs") || safeRelPath("a/../b") || safeRelPath("a\r/b") || safeRelPath("a\n/b") || !safeRelPath("a/b.txt") {
 		t.Fatal("safeRelPath")
 	}
 	empty := t.TempDir()

@@ -362,7 +362,7 @@ func validateImage(img Image) error {
 // safeRelPath reports whether p is a clean, relative, forward-slash path that
 // stays inside the tree.
 func safeRelPath(p string) bool {
-	if p == "" || strings.HasPrefix(p, "/") || filepath.IsAbs(filepath.FromSlash(p)) {
+	if p == "" || strings.ContainsAny(p, "\r\n") || strings.HasPrefix(p, "/") || filepath.IsAbs(filepath.FromSlash(p)) {
 		return false
 	}
 	for _, seg := range strings.Split(p, "/") {
