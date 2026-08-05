@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -16,7 +15,7 @@ func applyDropWorkflowTelemetry(root string, out *Changes) error {
 			return nil, err
 		}
 		if !bytes.Equal(src, next) {
-			fmt.Fprintln(out, "drop-workflow-telemetry: removed retired workflowTelemetry block")
+			out.Add("drop-workflow-telemetry: removed retired workflowTelemetry block")
 		}
 		return next, nil
 	})

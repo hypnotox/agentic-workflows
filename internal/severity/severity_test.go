@@ -51,4 +51,14 @@ func TestOneSpellingAcrossEveryRankSurface(t *testing.T) {
 			t.Errorf("%s renders the retired warning spelling", tc.what)
 		}
 	}
+	report, err := audit.Report([]audit.Finding{
+		{Rule: "error-rule", Detail: "failed", Severity: severity.Error},
+		{Rule: "warn-rule", Detail: "advisory", Severity: severity.Warn},
+	}, 1, "base", "head")
+	if err != nil {
+		t.Fatalf("audit report: %v", err)
+	}
+	if len(report.Categories) != 2 || report.Categories[0].Label != "errors" || report.Categories[1].Label != "warnings" {
+		t.Fatalf("presentation categories = %#v, want errors then warnings", report.Categories)
+	}
 }

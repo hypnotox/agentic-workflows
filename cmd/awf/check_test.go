@@ -12,10 +12,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/prosegate"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -58,6 +62,14 @@ func TestRunCheckPropagatesOperationalGitAndStagedDriftFailures(t *testing.T) {
 	}
 
 	testsupport.SwapVar(t, &checkOpenContaining, awfgit.OpenContaining)
+	stagedFailure := errors.New("staged collection failed")
+	testsupport.SwapVar(t, &checkCollectStaged, func(context.Context, string, planNoteSink) (checkCollection, error) {
+		return checkCollection{}, stagedFailure
+	})
+	if err := runCheck(ctx, root, io.Discard); !errors.Is(err, stagedFailure) {
+		t.Fatalf("staged collection failure = %v, want %v", err, stagedFailure)
+	}
+	testsupport.SwapVar(t, &checkCollectStaged, collectCheckStaged)
 	driftFailure := errors.New("staged drift failed")
 	testsupport.SwapVar(t, &checkStagedDriftRoot, func(context.Context, string) ([]manifest.Drift, error) {
 		return nil, driftFailure
@@ -98,7 +110,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 		t.Fatalf("repeat Proposed plan check: %v\n%s", err, proposedSecond.String())
 	}
 	proposedNote := "advisory | 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
-	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 1 {
+	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 2 {
 		t.Fatalf("Proposed plan assignment advisories must deterministically join the repo universe without failing; first=%q second=%q", proposedFirst.String(), proposedSecond.String())
 	}
 
@@ -134,16 +146,16 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 
 	// The index now carries the Proposed source while working bytes restore the
-	// Implemented source. The one surviving note proves the staged universe reads
-	// its own bytes; a working edit can neither remove nor add that staged note.
+	// Implemented source. Both source-ordered universes retain their evidence;
+	// a working edit can neither remove nor add the staged note.
 	gitfixture.Stage(t, gitfixture.At(implementedRoot), map[string]string{planPath: validPlan})
 	testsupport.WriteFile(t, filepath.Join(implementedRoot, planPath), strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1))
 	var stagedProposed bytes.Buffer
 	if err := runCheck(ctx, implementedRoot, &stagedProposed); err != nil {
 		t.Fatalf("staged Proposed plan advisory must stay green: %v\n%s", err, stagedProposed.String())
 	}
-	if got := strings.Count(stagedProposed.String(), proposedNote); got != 1 {
-		t.Fatalf("staged Proposed advisory note count = %d, want 1: %q", got, stagedProposed.String())
+	if got := strings.Count(stagedProposed.String(), proposedNote); got != 2 {
+		t.Fatalf("staged Proposed advisory note count = %d, want 2: %q", got, stagedProposed.String())
 	}
 
 	// Hand-edit the rendered skill.
@@ -153,6 +165,20 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 	if err := runCheck(ctx, root, io.Discard); err == nil {
 		t.Errorf("expected drift error after hand-edit")
+	}
+}
+
+func TestProseCheckFindingsPropagatesScannerFailure(t *testing.T) {
+	failure := errors.New("scan failed")
+	testsupport.SwapVar(t, &proseScan, func([]prosegate.File, []prosegate.Exemption) ([]prosegate.Finding, []string, error) {
+		return nil, nil, failure
+	})
+	tree, err := snapshot.NewTree(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := proseCheckFindings(&config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, tree); !errors.Is(err, failure) {
+		t.Fatalf("scanner failure = %v, want %v", err, failure)
 	}
 }
 
@@ -773,5 +799,29 @@ func TestRunCheckStagedError(t *testing.T) {
 	})
 	if err := runCheckStaged(ctx, dir, io.Discard); err == nil {
 		t.Fatal("expected the staged check to fail with no staged config")
+	}
+}
+
+func TestCollectCheckStagedPropagatesCategoryFailures(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	for _, tc := range []struct {
+		name         string
+		state, drift bool
+		set          func(error)
+	}{
+		{"state", true, false, func(failure error) {
+			testsupport.SwapVar(t, &checkStagedCurrentStateCategories, func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) { return nil, failure })
+		}},
+		{"drift", false, true, func(failure error) {
+			testsupport.SwapVar(t, &checkStagedDriftCategories, func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure })
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			failure := errors.New(tc.name + " category mapping failed")
+			tc.set(failure)
+			if _, err := collectCheckStagedSelection(testContext(t), root, planNoteSink{}, tc.state, tc.drift); !errors.Is(err, failure) {
+				t.Fatalf("category mapping failure = %v, want %v", err, failure)
+			}
+		})
 	}
 }

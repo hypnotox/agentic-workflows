@@ -96,7 +96,7 @@ func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock, log io.
 // the schema generation is stamped, exactly as every other migration leaves the
 // release version to the terminal sync; the generation alone is what makes an
 // older binary refuse this tree.
-func ResetLegacyResidents(root string, residents []string, schema int, log io.Writer) error {
+func ResetLegacyResidents(root string, residents []string, schema int) error {
 	lockPrior, err := imageOf(root, LockRel())
 	if err != nil { // coverage-ignore: the caller loaded this same lock immediately before
 		return err
@@ -131,7 +131,7 @@ func ResetLegacyResidents(root string, residents []string, schema int, log io.Wr
 	if err := validateOperations(ops); err != nil {
 		return fmt.Errorf("invalid resident reset plan: %w; %s", err, gitRestorationGuidance)
 	}
-	return commitTransaction(root, ops, log)
+	return commitTransaction(root, ops, io.Discard)
 }
 
 // quarantinePath maps a resident path to its destination under the quarantine

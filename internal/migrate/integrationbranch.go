@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -36,7 +35,7 @@ func applyIntegrationBranch(root string, out *Changes) error {
 		if err != nil { // coverage-ignore: loadForMigration already parsed this config, so SetString cannot error here
 			return nil, err
 		}
-		fmt.Fprintln(out, "integration-branch-explicit: set integrationBranch: main")
+		out.Add("integration-branch-explicit: set integrationBranch: main")
 		return b, nil
 	})
 }

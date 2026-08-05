@@ -51,9 +51,9 @@ func applyPitfallsData(root string, out *Changes) error {
 	_ = os.Remove(filepath.Dir(partPath)) // drop the now-empty dir; a non-empty dir is left as-is
 	sidecarRel := path.Join(config.DirName, "docs", "pitfalls.yaml")
 	for _, e := range entries {
-		fmt.Fprintf(out, "pitfalls-data: split entry %q\n", e.title)
+		out.Add(fmt.Sprintf("pitfalls-data: split entry %q\n", e.title))
 	}
-	fmt.Fprintf(out, "pitfalls-data: review %s and tag each entry's domains: (untagged entries do not surface in awf context)\n", sidecarRel)
+	out.Add(fmt.Sprintf("pitfalls-data: review %s and tag each entry's domains: (untagged entries do not surface in awf context)\n", sidecarRel))
 	return nil
 }
 

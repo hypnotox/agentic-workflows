@@ -6,77 +6,55 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-// checkFinding is a command-owned semantic check result. It carries no
-// presentation bytes; the terminal report assigns its fixed record schema.
-type checkFinding struct {
-	severity string
-	check    string
-	detail   string
+type checkCollection struct {
+	notes       []string
+	categories  []presentation.ReportCategory
+	failures    []error
+	operational []error
 }
 
-type checkCollection struct {
-	notes    []string
-	findings []checkFinding
-	failures []error
+type producedCheckFailure struct{ err error }
+
+func (e producedCheckFailure) Error() string {
+	return e.err.Error()
 }
+func (e producedCheckFailure) Unwrap() error { return e.err }
 
 func (c checkCollection) append(other checkCollection) checkCollection {
-	notes := make(map[string]struct{}, len(c.notes))
-	for _, note := range c.notes {
-		notes[note] = struct{}{}
-	}
-	for _, note := range other.notes {
-		if _, seen := notes[note]; !seen {
-			c.notes = append(c.notes, note)
-			notes[note] = struct{}{}
-		}
-	}
-	findings := make(map[checkFinding]struct{}, len(c.findings))
-	for _, finding := range c.findings {
-		findings[finding] = struct{}{}
-	}
-	for _, finding := range other.findings {
-		if _, seen := findings[finding]; !seen {
-			c.findings = append(c.findings, finding)
-			findings[finding] = struct{}{}
-		}
-	}
+	// Ordinary evidence is not identity data: equal notes and findings from the
+	// repository and staged universes remain separate, source-ordered facts.
+	// Plan notes are deduplicated at their dedicated planNoteSink boundary.
+	c.notes = append(c.notes, other.notes...)
+	c.categories = append(c.categories, other.categories...)
 	c.failures = append(c.failures, other.failures...)
+	c.operational = append(c.operational, other.operational...)
 	return c
 }
 
-func checkReport(notes []string, findings []checkFinding) (presentation.Report, error) {
-	errors, warnings := make([]presentation.Record, 0), make([]presentation.Record, 0)
-	add := func(target *[]presentation.Record, check, detail string) error {
-		checkValue, err := presentation.Prose(check)
-		if err != nil {
-			return err
-		}
-		detailValue, err := presentation.Prose(detail)
-		if err != nil {
-			return err
-		}
-		record, err := presentation.NewRecord(checkValue, detailValue)
-		if err != nil { // coverage-ignore: both Prose calls returned validated values, so fixed-arity record construction cannot fail
-			return err
-		}
-		*target = append(*target, record)
-		return nil
-	}
+func checkReport(notes []string, categories []presentation.ReportCategory) (presentation.Report, error) {
+	warnings := make([]presentation.Record, 0, len(notes))
 	for _, note := range notes {
-		if err := add(&warnings, "advisory", note); err != nil {
+		check, err := presentation.Prose("advisory")
+		if err != nil { // coverage-ignore: the fixed nonempty advisory literal is normalized by Prose before validation
 			return presentation.Report{}, err
 		}
+		detail, err := presentation.Prose(note)
+		if err != nil {
+			return presentation.Report{}, err
+		}
+		record, err := presentation.NewRecord(check, detail)
+		if err != nil { // coverage-ignore: both Record values were validated by Prose immediately above
+			return presentation.Report{}, err
+		}
+		warnings = append(warnings, record)
 	}
-	for _, finding := range findings {
-		if finding.severity == "warn" {
-			if err := add(&warnings, finding.check, finding.detail); err != nil {
-				return presentation.Report{}, err
-			}
-			continue
-		}
-		if err := add(&errors, finding.check, finding.detail); err != nil {
-			return presentation.Report{}, err
+	errors := []presentation.Record{}
+	for _, category := range categories {
+		switch category.Label {
+		case "errors":
+			errors = append(errors, category.Records...)
+		case "warnings":
+			warnings = append(warnings, category.Records...)
 		}
 	}
 	status := "completed"
@@ -86,19 +64,19 @@ func checkReport(notes []string, findings []checkFinding) (presentation.Report, 
 		status = "warnings"
 	}
 	value, err := presentation.Literal(fmt.Sprintf("%d errors, %d warnings", len(errors), len(warnings)))
-	if err != nil { // coverage-ignore: the fixed decimal summary is grammar-valid
+	if err != nil { // coverage-ignore: the fixed decimal-only summary format always satisfies Literal's grammar
 		return presentation.Report{}, err
 	}
 	summary, err := presentation.NewField("findings", value)
-	if err != nil { // coverage-ignore: Literal validated the value and findings is a fixed grammar-valid label
+	if err != nil { // coverage-ignore: the fixed grammar-valid findings label receives the validated Literal value
 		return presentation.Report{}, err
 	}
-	categories := []presentation.ReportCategory{}
+	output := []presentation.ReportCategory{}
 	if len(errors) > 0 {
-		categories = append(categories, presentation.ReportCategory{Label: "errors", Schema: []string{"check", "detail"}, Records: errors})
+		output = append(output, presentation.ReportCategory{Label: "errors", Schema: []string{"check", "detail"}, Records: errors})
 	}
 	if len(warnings) > 0 {
-		categories = append(categories, presentation.ReportCategory{Label: "warnings", Schema: []string{"check", "detail"}, Records: warnings})
+		output = append(output, presentation.ReportCategory{Label: "warnings", Schema: []string{"check", "detail"}, Records: warnings})
 	}
-	return presentation.Report{Status: status, Summary: []presentation.Field{summary}, Categories: categories}, nil
+	return presentation.Report{Status: status, Summary: []presentation.Field{summary}, Categories: output}, nil
 }

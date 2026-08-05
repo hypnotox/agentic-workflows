@@ -11,7 +11,12 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var checkStagedDriftRoot = project.CheckStagedDriftRoot
+var (
+	checkStagedStateRoot              = project.CheckStagedRoot
+	checkStagedDriftRoot              = project.CheckStagedDriftRoot
+	checkStagedCurrentStateCategories = project.CurrentStateCategories
+	checkStagedDriftCategories        = project.DriftCategories
+)
 
 // runCheckStaged runs the staged transition universe. The commit child is direct-only.
 func runCheckStaged(ctx context.Context, root string, stdout io.Writer) error {
@@ -33,34 +38,40 @@ func collectCheckStagedSelection(ctx context.Context, root string, planNotes pla
 		collection.notes = append(collection.notes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
 	}
 	if state {
-		report, err := project.CheckStagedRoot(ctx, root)
+		report, err := checkStagedStateRoot(ctx, root)
 		if err != nil {
-			return checkCollection{}, err
-		}
-		collection.notes = append(collection.notes, report.Notes()...)
-		for _, note := range report.PlanNotes {
-			if _, seen := planNotes[note]; !seen {
-				planNotes[note] = struct{}{}
-				collection.notes = append(collection.notes, note)
+			collection.operational = append(collection.operational, err)
+		} else {
+			collection.notes = append(collection.notes, report.Notes()...)
+			for _, note := range report.PlanNotes {
+				if _, seen := planNotes[note]; !seen {
+					planNotes[note] = struct{}{}
+					collection.notes = append(collection.notes, note)
+				}
 			}
-		}
-		for _, finding := range report.Findings() {
-			collection.findings = append(collection.findings, checkFinding{severity: "error", check: "staged current-state", detail: finding})
-		}
-		if len(report.Findings()) > 0 {
-			collection.failures = append(collection.failures, errors.New("check staged state failed"))
+			categories, err := checkStagedCurrentStateCategories(report, true)
+			if err != nil {
+				return checkCollection{}, err
+			}
+			collection.categories = append(collection.categories, categories...)
+			if len(report.Findings()) > 0 {
+				collection.failures = append(collection.failures, errors.New("check staged state failed"))
+			}
 		}
 	}
 	if drift {
 		findings, err := checkStagedDriftRoot(ctx, root)
 		if err != nil {
-			return checkCollection{}, err
-		}
-		for _, finding := range findings {
-			collection.findings = append(collection.findings, checkFinding{severity: "error", check: "staged drift", detail: fmt.Sprintf("%s: %s: %s", finding.Kind, finding.Path, finding.Detail)})
-		}
-		if len(findings) > 0 {
-			collection.failures = append(collection.failures, errors.New("check staged drift failed"))
+			collection.operational = append(collection.operational, err)
+		} else {
+			categories, err := checkStagedDriftCategories(findings, true)
+			if err != nil {
+				return checkCollection{}, err
+			}
+			collection.categories = append(collection.categories, categories...)
+			if len(findings) > 0 {
+				collection.failures = append(collection.failures, errors.New("check staged drift failed"))
+			}
 		}
 	}
 	return collection, nil

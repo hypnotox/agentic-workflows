@@ -62,7 +62,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 		n := catalog.Node{Kind: "skill", Name: s}
 		delete(enabled, n)
 		drops = append(drops, n)
-		fmt.Fprintf(out, "close-enabled-set: dropped dormant skill %q (its %q doc is disabled)\n", s, req)
+		out.Add(fmt.Sprintf("close-enabled-set: dropped dormant skill %q (its %q doc is disabled)\n", s, req))
 	}
 
 	// Step 2: additive fixed point over the direct requirement edges of every
@@ -87,7 +87,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 				}
 				enabled[r] = true
 				adds = append(adds, r)
-				fmt.Fprintf(out, "close-enabled-set: enabled %s %q (required by %q)\n", r.Kind, r.Name, n.Name)
+				out.Add(fmt.Sprintf("close-enabled-set: enabled %s %q (required by %q)\n", r.Kind, r.Name, n.Name))
 				changed = true
 			}
 		}

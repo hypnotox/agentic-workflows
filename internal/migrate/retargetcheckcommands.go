@@ -173,7 +173,7 @@ func applyRetargetCheckCommands(root string, out *Changes) error {
 			return nil, err
 		}
 		for _, change := range changes {
-			fmt.Fprintf(out, "retarget-check-commands: %s\n", change)
+			out.Add(fmt.Sprintf("retarget-check-commands: %s\n", change))
 		}
 		return edited, nil
 	})

@@ -79,9 +79,8 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	}
 	applied, changes, err := migrate.Upgrade(ctx, root)
 	if err != nil {
-		return err
+		return newUpgradeFailure(applied, err)
 	}
-	_ = applied
 	_ = gen
 	if authorityPath != config.LockPath(root) {
 		if _, found, err := manifest.LoadOptional(config.LockPath(root)); err != nil { // coverage-ignore: migrations either leave this path absent or write it through validated manifest serialization
@@ -105,9 +104,9 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	}
 	sync, err := upgradeSync(ctx, root)
 	if err != nil {
-		return err
+		return newUpgradeFailure(applied, err)
 	}
-	mutation, err := upgradeMutation(sync, changes)
+	mutation, err := upgradeMutation(sync, applied, changes)
 	if err != nil { // coverage-ignore: registered migration descriptions are validated fixed prose
 		return err
 	}

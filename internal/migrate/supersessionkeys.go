@@ -118,7 +118,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 		n := strings.Count(body, "`supersedes: ADR-") - strings.Count(rewritten, "`supersedes: ADR-")
 		shift[a.Path] = len(rewritten) - len(body)
 		edited[a.Path] = []byte(raw[:start] + rewritten + raw[end:])
-		fmt.Fprintf(out, "supersession-keys: %s: %d item token(s) downgraded to refines:\n", a.Filename, n)
+		out.Add(fmt.Sprintf("supersession-keys: %s: %d item token(s) downgraded to refines:\n", a.Filename, n))
 	}
 
 	type edge struct{ target, carrier string }
@@ -204,7 +204,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 		raw = stripKeyLine(raw, supersededByLineRe)
 		removed := before - len(raw)
 		if removed > 0 {
-			fmt.Fprintf(out, "supersession-keys: %s: stripped supersedes:/superseded_by:\n", a.Filename)
+			out.Add(fmt.Sprintf("supersession-keys: %s: stripped supersedes:/superseded_by:\n", a.Filename))
 		}
 
 		if len(predecessors) > 0 {
@@ -248,7 +248,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 			} else {
 				raw = raw[:at] + item + "\n" + raw[at:]
 			}
-			fmt.Fprintf(out, "supersession-keys: %s: appended Decision item %d (retires ADR-%s)\n", a.Filename, n, strings.Join(predecessors, ", ADR-"))
+			out.Add(fmt.Sprintf("supersession-keys: %s: appended Decision item %d (retires ADR-%s)\n", a.Filename, n, strings.Join(predecessors, ", ADR-")))
 		}
 		edited[a.Path] = []byte(raw)
 	}
@@ -280,7 +280,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 				entry = existing + ", " + entry
 			}
 			raw = raw[:m[2]] + entry + raw[m[3]:]
-			fmt.Fprintf(out, "supersession-keys: %s: related: gains %d (back-pointer for ADR-%s)\n", target.Filename, carrier, e.carrier)
+			out.Add(fmt.Sprintf("supersession-keys: %s: related: gains %d (back-pointer for ADR-%s)\n", target.Filename, carrier, e.carrier))
 			fmEnd = strings.Index(raw[3:], "\n---") + 3 + 1
 		}
 
@@ -289,7 +289,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 		// recoverable from the related: back-pointers written above.
 		if loc := suffixedStatusRe.FindStringIndex(raw[:fmEnd]); loc != nil {
 			raw = raw[:loc[0]] + "status: Superseded" + raw[loc[1]:]
-			fmt.Fprintf(out, "supersession-keys: %s: status rewritten to bare Superseded\n", target.Filename)
+			out.Add(fmt.Sprintf("supersession-keys: %s: status rewritten to bare Superseded\n", target.Filename))
 		}
 		edited[target.Path] = []byte(raw)
 	}

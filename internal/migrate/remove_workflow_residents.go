@@ -37,7 +37,7 @@ func removeWorkflowResidents(primary string, out *Changes, lstat func(string) (f
 		path := filepath.Join(primary, ".awf", name)
 		info, err := lstat(path)
 		if os.IsNotExist(err) {
-			fmt.Fprintf(out, "remove-workflow-residents: %s already absent\n", name)
+			out.Add(fmt.Sprintf("remove-workflow-residents: %s already absent\n", name))
 			continue
 		}
 		if err != nil {
@@ -49,7 +49,7 @@ func removeWorkflowResidents(primary string, out *Changes, lstat func(string) (f
 		if err := removeAll(path); err != nil {
 			return fmt.Errorf("remove-workflow-residents: remove %s: %w", name, err)
 		}
-		fmt.Fprintf(out, "remove-workflow-residents: %s removed\n", name)
+		out.Add(fmt.Sprintf("remove-workflow-residents: %s removed\n", name))
 	}
 	return nil
 }

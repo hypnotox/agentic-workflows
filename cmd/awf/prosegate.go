@@ -8,18 +8,21 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
+
+var proseScan = prosegate.Scan
 
 // runProseGate selects the prose step from the shared repository-check plan.
 func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
 	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepProse}, execution.StopOnFailure, false, productionRepoCheckDependencies())
 }
 
-func proseCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]checkFinding, error) {
+func proseCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation.ReportCategory, error) {
 	if cfg.ProseGate == nil || !cfg.ProseGate.Enabled {
-		return []checkFinding{{severity: "warn", check: "prose", detail: "disabled (proseGate.enabled)"}}, nil
+		return prosegate.DisabledCategory()
 	}
 	exemptions := make([]prosegate.Exemption, 0, len(cfg.ProseGate.Exemptions))
 	for _, e := range cfg.ProseGate.Exemptions {
@@ -34,19 +37,16 @@ func proseCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]checkFinding
 	for i, blob := range blobs {
 		files[i] = prosegate.File{Path: blob.Path, Bytes: blob.Bytes}
 	}
-	findings, skipped, err := prosegate.Scan(files, exemptions)
-	if err != nil { // coverage-ignore: Scan only traverses in-memory bytes and already parsed exemptions
+	findings, skipped, err := proseScan(files, exemptions)
+	if err != nil {
 		return nil, fmt.Errorf("check repo prose: %w", err)
 	}
-	result := make([]checkFinding, 0, len(findings)+len(skipped))
-	for _, path := range skipped {
-		result = append(result, checkFinding{severity: "warn", check: "prose", detail: "skipped binary: " + path})
-	}
-	for _, finding := range findings {
-		result = append(result, checkFinding{severity: "error", check: "prose", detail: prosegate.Format(finding)})
+	categories, err := prosegate.Categories(findings, skipped)
+	if err != nil { // coverage-ignore: Categories receives only scanner findings and fixed skipped-binary diagnostics
+		return nil, err
 	}
 	if len(findings) > 0 {
-		return result, errors.New("check repo prose: use plain punctuation, or exempt the path in proseGate.exemptions")
+		return categories, producedCheckFailure{errors.New("check repo prose: use plain punctuation, or exempt the path in proseGate.exemptions")}
 	}
-	return result, nil
+	return categories, nil
 }

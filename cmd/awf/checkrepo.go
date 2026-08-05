@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -37,16 +38,18 @@ type repoCheckInputs struct {
 	checkReport  project.CheckReport
 	currentState project.CurrentStateReport
 	index        *snapshot.Tree
-	findings     []checkFinding
+	categories   []presentation.ReportCategory
 	notes        []string
 }
 
 type repoCheckDependencies struct {
-	loadConfig   func(string) (*config.Config, error)
-	openProject  func(context.Context, string, *config.Config) (*project.Project, error)
-	checkReport  func(context.Context, *project.Project) (project.CheckReport, error)
-	currentState func(context.Context, *project.Project) (project.CurrentStateReport, error)
-	indexTree    func(context.Context, string) (*snapshot.Tree, error)
+	loadConfig             func(string) (*config.Config, error)
+	openProject            func(context.Context, string, *config.Config) (*project.Project, error)
+	checkReport            func(context.Context, *project.Project) (project.CheckReport, error)
+	currentState           func(context.Context, *project.Project) (project.CurrentStateReport, error)
+	indexTree              func(context.Context, string) (*snapshot.Tree, error)
+	driftCategories        func([]manifest.Drift, bool) ([]presentation.ReportCategory, error)
+	currentStateCategories func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error)
 }
 
 type repoIndexPreparationError struct{ err error }
@@ -81,6 +84,8 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 		currentState: func(ctx context.Context, p *project.Project) (project.CurrentStateReport, error) {
 			return p.CheckCurrentState(ctx)
 		},
+		driftCategories:        project.DriftCategories,
+		currentStateCategories: project.CurrentStateCategories,
 		indexTree: func(ctx context.Context, root string) (*snapshot.Tree, error) {
 			tree, err := stagedTree(ctx, root)
 			if err != nil {
@@ -160,11 +165,13 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 								}
 							}
 						}
-						for _, drift := range report.Drift {
-							inputs.findings = append(inputs.findings, checkFinding{severity: "error", check: "drift", detail: fmt.Sprintf("%s: %s: %s", drift.Kind, drift.Path, drift.Detail)})
+						categories, err := deps.driftCategories(report.Drift, false)
+						if err != nil {
+							return err
 						}
+						inputs.categories = append(inputs.categories, categories...)
 						if len(report.Drift) > 0 {
-							return errors.New("check repo drift failed")
+							return producedCheckFailure{errors.New("check repo drift failed")}
 						}
 						return nil
 					}})
@@ -172,26 +179,28 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 					report := inputs.currentState
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
 						inputs.notes = append(inputs.notes, report.Notes()...)
-						for _, finding := range report.Findings() {
-							inputs.findings = append(inputs.findings, checkFinding{severity: "error", check: "current-state", detail: finding})
+						categories, err := deps.currentStateCategories(report, false)
+						if err != nil {
+							return err
 						}
+						inputs.categories = append(inputs.categories, categories...)
 						if len(report.Findings()) > 0 {
-							return errors.New("check repo state failed")
+							return producedCheckFailure{errors.New("check repo state failed")}
 						}
 						return nil
 					}})
 				case repoStepProse:
 					cfg, tree := inputs.config, inputs.index
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						findings, err := proseCheckFindings(cfg, tree)
-						inputs.findings = append(inputs.findings, findings...)
+						categories, err := proseCheckFindings(cfg, tree)
+						inputs.categories = append(inputs.categories, categories...)
 						return err
 					}})
 				case repoStepMemory:
 					cfg, tree := inputs.config, inputs.index
 					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						findings, err := memoryCheckFindings(cfg, tree)
-						inputs.findings = append(inputs.findings, findings...)
+						categories, err := memoryCheckFindings(cfg, tree)
+						inputs.categories = append(inputs.categories, categories...)
 						return err
 					}})
 				}
@@ -227,22 +236,33 @@ func collectRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, se
 	if err != nil {
 		return checkCollection{}, err
 	}
-	collection := checkCollection{notes: inputs.notes, findings: inputs.findings}
+	collection := checkCollection{notes: inputs.notes, categories: inputs.categories}
 	for _, outcome := range outcomes {
-		if outcome.Err != nil {
-			collection.failures = append(collection.failures, outcome.Err)
+		if outcome.Err == nil {
+			continue
 		}
+		var produced producedCheckFailure
+		if errors.As(outcome.Err, &produced) {
+			collection.failures = append(collection.failures, outcome.Err)
+			continue
+		}
+		collection.operational = append(collection.operational, outcome.Err)
 	}
 	return collection, nil
 }
 
 func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
-	report, err := checkReport(collection.notes, collection.findings)
+	// A report is complete produced evidence. Operational step failures mean it
+	// cannot be complete, even when continuation ran later selected steps.
+	if len(collection.operational) > 0 {
+		return errors.Join(collection.operational...)
+	}
+	report, err := checkReport(collection.notes, collection.categories)
 	if err != nil {
 		return err
 	}
 	document, err := report.Document()
-	if err != nil { // coverage-ignore: checkReport constructs only validated values and fixed report grammar
+	if err != nil {
 		return err
 	}
 	if err := presentation.Render(stdout, document); err != nil {

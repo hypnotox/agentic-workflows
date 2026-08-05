@@ -96,7 +96,7 @@ func applyRetirementTokens(root string, out *Changes) error {
 		}
 		removed := loc[1] - loc[0]
 		raw = raw[:loc[0]] + raw[loc[1]:]
-		fmt.Fprintf(out, "retirement-tokens: %s: stripped retires_invariants\n", a.Filename)
+		out.Add(fmt.Sprintf("retirement-tokens: %s: stripped retires_invariants\n", a.Filename))
 
 		// The slug list comes from the raw line, not the parsed struct: the
 		// schema no longer carries the field (ADR-0120 item 7), and this
@@ -136,7 +136,7 @@ func applyRetirementTokens(root string, out *Changes) error {
 			} else {
 				raw = raw[:at] + item + "\n" + raw[at:]
 			}
-			fmt.Fprintf(out, "retirement-tokens: %s: appended Decision item %d (%s)\n", a.Filename, n, strings.Join(slugs, ", "))
+			out.Add(fmt.Sprintf("retirement-tokens: %s: appended Decision item %d (%s)\n", a.Filename, n, strings.Join(slugs, ", ")))
 		}
 		edited[a.Path] = []byte(raw)
 	}
@@ -170,7 +170,7 @@ func applyRetirementTokens(root string, out *Changes) error {
 		}
 		raw = raw[:m[2]] + entry + raw[m[3]:]
 		edited[target.Path] = []byte(raw)
-		fmt.Fprintf(out, "retirement-tokens: %s: related: gains %d (back-pointer for ADR-%s)\n", target.Filename, carrier, e.carrier)
+		out.Add(fmt.Sprintf("retirement-tokens: %s: related: gains %d (back-pointer for ADR-%s)\n", target.Filename, carrier, e.carrier))
 	}
 
 	for path, b := range edited {

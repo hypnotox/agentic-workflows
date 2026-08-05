@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Checks and audits now collect complete structured reports before rendering, preserving source-ordered findings and separating produced failures from operational diagnostics. Upgrade mutations now identify every applied migration and report proven changed axes with recovery steps if terminal sync fails.
+
 - Render, effort, and managed-worktree commands now use readable typed output. Convenience JSON for `awf effort new`, `list`, and `show` is retired; activity JSON remains the byte-exact protocol.
 
 - CLI help now derives from structured command specifications, command diagnostics use the typed output boundary, commit authorization uses actionable steps, and init prompts validate completely before their single flushed prompt tail.

@@ -821,7 +821,7 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade legacy: %v", err)
 	}
-	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "migrations:\n      topic-claim-budget:") || strings.Contains(out.String(), "note:") {
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "migration changes:\n      topic-claim-budget:") || strings.Contains(out.String(), "note:") {
 		t.Errorf("expected structured migration mutation, got %q", out.String())
 	}
 	for _, path := range []string{".awf/config.yaml", ".awf/awf.lock"} {

@@ -10,7 +10,10 @@ import (
 
 type planNoteSink map[string]struct{}
 
-var checkOpenContaining = awfgit.OpenContaining
+var (
+	checkOpenContaining = awfgit.OpenContaining
+	checkCollectStaged  = collectCheckStaged
+)
 
 // runCheck runs both check universes. Outside a Git repository the repo universe
 // still applies, while the staged universe is unavailable.
@@ -28,7 +31,7 @@ func runCheck(ctx context.Context, root string, stdout io.Writer) error {
 	if gitErr != nil {
 		return gitErr
 	}
-	staged, stagedErr := collectCheckStaged(ctx, root, planNotes)
+	staged, stagedErr := checkCollectStaged(ctx, root, planNotes)
 	if stagedErr != nil {
 		return stagedErr
 	}

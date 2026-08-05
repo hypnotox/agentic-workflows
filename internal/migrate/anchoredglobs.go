@@ -20,7 +20,7 @@ func applyAnchoredGlobs(root string, out *Changes) error {
 			return nil, err
 		}
 		for _, r := range rewrites {
-			fmt.Fprintf(out, "anchored-globs: rewrote glob %q → %q (%s)\n", r.From, "**/"+r.From, r.Key)
+			out.Add(fmt.Sprintf("anchored-globs: rewrote glob %q → %q (%s)\n", r.From, "**/"+r.From, r.Key))
 		}
 		return updated, nil
 	})

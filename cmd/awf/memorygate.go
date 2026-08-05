@@ -9,6 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
@@ -17,9 +18,9 @@ func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepMemory}, execution.StopOnFailure, false, productionRepoCheckDependencies())
 }
 
-func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]checkFinding, error) {
+func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation.ReportCategory, error) {
 	if cfg.MemoryCite == nil || !cfg.MemoryCite.Enabled {
-		return []checkFinding{{severity: "warn", check: "memory", detail: "disabled (memoryCite.enabled)"}}, nil
+		return memorycite.DisabledCategory()
 	}
 	exemptions := make([]memorycite.Exemption, 0, len(cfg.MemoryCite.Exemptions))
 	for _, e := range cfg.MemoryCite.Exemptions {
@@ -40,12 +41,12 @@ func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]checkFindin
 		}
 	}
 	findings := memorycite.Scan(files, exemptions)
-	result := make([]checkFinding, len(findings))
-	for i, finding := range findings {
-		result[i] = checkFinding{severity: "error", check: "memory", detail: memorycite.Format(finding)}
+	categories, err := memorycite.Categories(findings)
+	if err != nil { // coverage-ignore: Categories receives only scanner Findings and builds every nonempty record from fixed templates
+		return nil, err
 	}
 	if len(findings) > 0 {
-		return result, errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")
+		return categories, producedCheckFailure{errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")}
 	}
-	return result, nil
+	return categories, nil
 }

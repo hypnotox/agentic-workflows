@@ -52,6 +52,14 @@ func TestRunAuditWarningsExitZero(t *testing.T) {
 	}
 }
 
+func TestRunAuditPropagatesWriterFailure(t *testing.T) {
+	repo, base := auditProject(t)
+	gitfixture.Commit(t, repo, "feat(awf): clean change", map[string]string{"main.go": "package x\nvar z int\n"})
+	if err := runAudit(testContext(t), repo.Root(), base, &failOnWrite{failAt: 1, err: io.ErrClosedPipe}); err == nil {
+		t.Fatal("writer failure accepted")
+	}
+}
+
 func TestRunAuditErrorExitsNonZero(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()

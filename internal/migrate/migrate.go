@@ -97,7 +97,7 @@ func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
 			return nil, err
 		}
 		if !bytes.Equal(out, src) {
-			fmt.Fprintln(w, "current-state-topic-substrate: removed the retired top-level invariants block")
+			w.Add("current-state-topic-substrate: removed the retired top-level invariants block")
 		}
 		return out, nil
 	})

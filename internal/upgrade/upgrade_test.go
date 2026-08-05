@@ -360,7 +360,7 @@ func TestResetLegacyResidentsRefusals(t *testing.T) {
 		root := t.TempDir()
 		mustMkdir(t, filepath.Join(root, ".awf", "efforts"))
 		mustWrite(t, filepath.Join(root, ".awf", "efforts", "legacy.json"), []byte("{}"))
-		err := ResetLegacyResidents(root, []string{".awf/efforts/legacy.json"}, 22, io.Discard)
+		err := ResetLegacyResidents(root, []string{".awf/efforts/legacy.json"}, 22)
 		if err == nil || !strings.Contains(err.Error(), "cannot reset 1 legacy resident") {
 			t.Fatalf("want a missing-lock refusal, got %v", err)
 		}
@@ -373,7 +373,7 @@ func TestResetLegacyResidentsRefusals(t *testing.T) {
 		// stamps the first lock; there is nothing to advance and nothing a
 		// modern binary could have left behind.
 		root := t.TempDir()
-		if err := ResetLegacyResidents(root, nil, 22, io.Discard); err != nil {
+		if err := ResetLegacyResidents(root, nil, 22); err != nil {
 			t.Fatalf("lockless tree with no residents: %v", err)
 		}
 		if journalPresence(t, root) {
@@ -384,7 +384,7 @@ func TestResetLegacyResidentsRefusals(t *testing.T) {
 		root := t.TempDir()
 		mustMkdir(t, filepath.Join(root, ".awf"))
 		mustWrite(t, filepath.Join(root, LockRel()), []byte(`{"awfVersion":"0.25.0","schemaVersion":21,"files":{}}`))
-		err := ResetLegacyResidents(root, []string{"../escape"}, 22, io.Discard)
+		err := ResetLegacyResidents(root, []string{"../escape"}, 22)
 		if err == nil || !strings.Contains(err.Error(), "invalid resident reset plan") {
 			t.Fatalf("want a plan refusal, got %v", err)
 		}
@@ -406,10 +406,9 @@ func TestResetLegacyResidentsCommitsSchemaAndDiscards(t *testing.T) {
 	mustWrite(t, filepath.Join(root, ".awf", "memory", "notes.md"), []byte("standalone"))
 	mustWrite(t, filepath.Join(root, LockRel()), []byte(`{"awfVersion":"0.25.0","schemaVersion":21,"files":{}}`))
 
-	var log bytes.Buffer
 	// Deliberately unsorted: the journal contract requires sorted operations and
 	// this entry point owns putting them in order.
-	if err := ResetLegacyResidents(root, []string{".awf/memory", ".awf/efforts/legacy.json"}, 22, &log); err != nil {
+	if err := ResetLegacyResidents(root, []string{".awf/memory", ".awf/efforts/legacy.json"}, 22); err != nil {
 		t.Fatalf("reset: %v", err)
 	}
 	for _, gone := range []string{".awf/efforts/legacy.json", ".awf/memory", QuarantineRel()} {
@@ -431,8 +430,5 @@ func TestResetLegacyResidentsCommitsSchemaAndDiscards(t *testing.T) {
 	}
 	if journalPresence(t, root) {
 		t.Fatal("journal residue after a committed reset")
-	}
-	if !strings.Contains(log.String(), "operation: upgrade committed") {
-		t.Fatalf("log = %q", log.String())
 	}
 }

@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -18,7 +17,7 @@ func applyTopicClaimBudget(root string, out *Changes) error {
 			return nil, err
 		}
 		if !bytes.Equal(edited, src) {
-			fmt.Fprintln(out, "topic-claim-budget: set currentState.maxClaimsPerTopic to 20")
+			out.Add("topic-claim-budget: set currentState.maxClaimsPerTopic to 20")
 		}
 		return edited, nil
 	})

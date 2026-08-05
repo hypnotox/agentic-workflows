@@ -37,7 +37,7 @@ func applyWorkflowTelemetry(root string, out *Changes) error {
 			return nil, err
 		}
 		_ = enc.Close()
-		fmt.Fprintln(out, "workflow-telemetry: added workflowTelemetry defaults")
+		out.Add("workflow-telemetry: added workflowTelemetry defaults")
 		return b.Bytes(), nil
 	})
 }

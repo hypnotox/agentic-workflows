@@ -113,9 +113,9 @@ func applyUnifiedEffortResidents(ctx context.Context, root string, out *Changes)
 			"run `awf upgrade` from "+classified.PrimaryRoot,
 		)
 	}
-	fmt.Fprintln(out, "unified-effort-residents: breaking change: protocol-1 effort records and standalone .awf/memory/ content are reset, not migrated")
-	fmt.Fprintln(out, "unified-effort-residents: protocol 2 keeps each effort at .awf/efforts/<slug>/ with its own memory.md; recreate the ones you still need with `awf effort new --slug <slug> \"<outcome>\"`")
-	return upgrade.ResetLegacyResidents(root, classified.Quarantine, 22, out)
+	out.Add("unified-effort-residents: breaking change: protocol-1 effort records and standalone .awf/memory/ content are reset, not migrated")
+	out.Add("unified-effort-residents: protocol 2 keeps each effort at .awf/efforts/<slug>/ with its own memory.md; recreate the ones you still need with `awf effort new --slug <slug> \"<outcome>\"`")
+	return upgrade.ResetLegacyResidents(root, classified.Quarantine, 22)
 }
 
 // ClassifyLegacyResidents inspects every schema-1 binary-owned leaf and every

@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -53,10 +54,39 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Proj
 			}
 			return state, nil
 		},
+		driftCategories:        project.DriftCategories,
+		currentStateCategories: project.CurrentStateCategories,
 		indexTree: func(context.Context, string) (*snapshot.Tree, error) {
 			counts.indexes++
 			return tree, nil
 		},
+	}
+}
+
+func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
+	cfg := &config.Config{}
+	p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+	for _, tc := range []struct {
+		name string
+		step execution.StepID
+		set  func(*repoCheckDependencies, error)
+	}{
+		{"drift", repoStepDrift, func(deps *repoCheckDependencies, failure error) {
+			deps.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure }
+		}},
+		{"state", repoStepState, func(deps *repoCheckDependencies, failure error) {
+			deps.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) { return nil, failure }
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			counts := &repoCheckCounters{}
+			deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, project.CurrentStateReport{}, nil, counts)
+			failure := errors.New(tc.name + " category failure")
+			tc.set(&deps, failure)
+			if err := runRepoCheckSelection(context.Background(), t.TempDir(), io.Discard, []execution.StepID{tc.step}, execution.StopOnFailure, false, deps); !errors.Is(err, failure) {
+				t.Fatalf("error = %v, want %v", err, failure)
+			}
+		})
 	}
 }
 

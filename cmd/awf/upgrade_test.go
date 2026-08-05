@@ -46,6 +46,30 @@ func TestRunUpgradeRejectsCorruptOrMissingAuthority(t *testing.T) {
 	}
 }
 
+func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
+	failure := errors.New("terminal sync failed")
+	partial := upgradeFailure{applied: []string{"first", "second"}, cause: failure}
+	if got := partial.Error(); got != failure.Error() {
+		t.Fatalf("Error() = %q", got)
+	}
+	diagnostic, err := partial.Diagnostic()
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := diagnostic.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	want := "condition: upgrade did not reach terminal sync\nstate: partial mutation\ncause: terminal sync failed\n\ndiagnostic:\n  changed:\n    migration: applied: first\n    migration: applied: second\n  steps:\n    step 1: inspect the changed migration axes\n    step 2: run awf upgrade --recover if an upgrade journal exists\n    step 3: restore the project from version control if recovery cannot complete\n"
+	if out.String() != want {
+		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
+	}
+}
+
 func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 	t.Run("loader construction", func(t *testing.T) {
 		root := t.TempDir()
@@ -71,7 +95,10 @@ func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 			t.Fatalf("sync failure = %v, want %v", err, failure)
 		}
 	})
-	if _, err := upgradeMutation(presentation.Mutation{}, []migrate.Change{{Text: "\n"}}); err == nil {
+	if _, err := upgradeMutation(presentation.Mutation{}, []string{"\n"}, nil); err == nil {
+		t.Fatal("invalid applied migration name accepted")
+	}
+	if _, err := upgradeMutation(presentation.Mutation{}, nil, []migrate.Change{{Text: "\n"}}); err == nil {
 		t.Fatal("invalid migration description accepted")
 	}
 	t.Run("upgrade sync", func(t *testing.T) {

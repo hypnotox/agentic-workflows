@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -29,6 +28,6 @@ func applyIntrinsicADRFormatWithSave(_ context.Context, root string, out *Change
 	if err := save(lock, path); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "intrinsic-adr-format: discarded permanent ADR routing payload")
+	out.Add("intrinsic-adr-format: discarded permanent ADR routing payload")
 	return nil
 }

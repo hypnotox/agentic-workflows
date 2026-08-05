@@ -73,7 +73,7 @@ func applyDropSeveritySettings(root string, w *Changes) error {
 		if err != nil {                                 // coverage-ignore: seeded is a re-encode of bytes whose removals already succeeded
 			return nil, err
 		}
-		fmt.Fprintf(w, "drop-severity-settings: set currentState.%s to %d, keeping coverage and fan-out evaluating\n", defaultMaxTopicsPerPathKey, defaultMaxTopicsPerPath)
+		w.Add(fmt.Sprintf("drop-severity-settings: set currentState.%s to %d, keeping coverage and fan-out evaluating\n", defaultMaxTopicsPerPathKey, defaultMaxTopicsPerPath))
 		return out, nil
 	})
 }
@@ -91,7 +91,7 @@ func dropSeverityKeys(src []byte, w *Changes) ([]byte, error) {
 			return nil, err
 		}
 		if !bytes.Equal(next, out) {
-			fmt.Fprintf(w, "drop-severity-settings: removed currentState.%s\n", key)
+			w.Add(fmt.Sprintf("drop-severity-settings: removed currentState.%s\n", key))
 		}
 		out = next
 	}

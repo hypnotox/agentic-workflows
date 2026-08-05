@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -26,7 +25,7 @@ func applyDropMaxClaimsPerTopic(root string, w *Changes) error {
 			return nil, err
 		}
 		if !bytes.Equal(out, src) {
-			fmt.Fprint(w, "drop-max-claims-per-topic: removed currentState.maxClaimsPerTopic\n")
+			w.Add("drop-max-claims-per-topic: removed currentState.maxClaimsPerTopic\n")
 		}
 		return out, nil
 	})

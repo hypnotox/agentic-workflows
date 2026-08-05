@@ -78,7 +78,7 @@ func applyADRNumberProvenance(root string, out *Changes) error {
 			if err := os.WriteFile(a.Path, []byte(head+rewritten), 0o644); err != nil { // coverage-ignore: the path was just read successfully
 				return err
 			}
-			fmt.Fprintf(out, "adr-number-provenance: %s: stripped state-sequence segment(s)\n", a.Filename)
+			out.Add(fmt.Sprintf("adr-number-provenance: %s: stripped state-sequence segment(s)\n", a.Filename))
 		}
 	}
 
@@ -101,7 +101,7 @@ func applyADRNumberProvenance(root string, out *Changes) error {
 			return err
 		}
 		rel, _ := filepath.Rel(root, path)
-		fmt.Fprintf(out, "adr-number-provenance: %s: Revised-by canonicalized to ascending ADR number\n", filepath.ToSlash(rel))
+		out.Add(fmt.Sprintf("adr-number-provenance: %s: Revised-by canonicalized to ascending ADR number\n", filepath.ToSlash(rel)))
 	}
 	return nil
 }

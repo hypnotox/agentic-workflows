@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -23,7 +22,7 @@ func applyDropAuditBase(root string, w *Changes) error {
 			return nil, err
 		}
 		if !bytes.Equal(out, src) {
-			fmt.Fprintln(w, "drop-audit-base: removed audit.baseBranch")
+			w.Add("drop-audit-base: removed audit.baseBranch")
 		}
 		return out, nil
 	})

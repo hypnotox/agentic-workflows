@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"fmt"
 	"os"
 	"slices"
 
@@ -31,7 +30,7 @@ func applyOrientingSkillBackfill(root string, out *Changes) error {
 		if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot error here
 			return nil, err
 		}
-		fmt.Fprintln(out, "orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)")
+		out.Add("orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)")
 		return b, nil
 	})
 }
