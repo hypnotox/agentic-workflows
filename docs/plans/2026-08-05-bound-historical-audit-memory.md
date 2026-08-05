@@ -105,18 +105,21 @@ mechanically checked Git entrypoint registry to name the new seam and its contra
 a production `RangeCommits` compatibility wrapper that would become unreachable outside tests and
 fail the dead-code gate.
 
-Add an audit differential fixture that feeds the same rich commits to the existing whole-range rule
-functions and to a new incremental evaluator oracle. Assert exact `Finding` slices per rule group and
-for final grouping, including disabled and empty cases. Cover conventional subjects, ADR
-frontmatter and status/index co-change, dependency-manifest versus ADR branch aggregation,
-non-generated changed-line threshold versus plan presence, documented and undocumented domains,
-domain code and current-state-part co-change, generated-path exclusions, and punctuation rises,
-falls, and stable counts. The new tests must fail because no streaming seam or incremental evaluator
-exists; record that expected red state before production edits.
+Before refactoring, run the existing whole-range evaluator over a fixed rich-commit fixture and
+capture its exact literal `Finding` slices per rule group and final grouping in the new regression
+test. The lasting test compares the incremental evaluator only with those frozen expected values; it
+must not retain, copy, or call the superseded whole-range policy implementation after Task 2.2.
+Include disabled and empty cases. Cover conventional subjects, ADR frontmatter and status/index
+co-change, dependency-manifest versus ADR branch aggregation, non-generated changed-line threshold
+versus plan presence, documented and undocumented domains, domain code and current-state-part
+co-change, generated-path exclusions, and punctuation rises, falls, and stable counts. The new tests
+must fail because no streaming seam or incremental evaluator exists; record that expected red state
+before production edits.
 
 ### Task 2.2: Replace whole-range evaluation with one-pass accumulators
+Latitude: exact
 Applying: ["lifetime-bounded-historical-audit-replay:compact-replay-projection", "lifetime-bounded-historical-audit-replay:invocation-local-boundary"]
-Paths: ["internal/git/walk.go", "internal/git/walk_test.go", "internal/git/entrypoints_test.go", "internal/audit/audit.go", "internal/audit/audit_test.go", "internal/audit/history.go", "internal/audit/history_test.go"]
+Paths: ["internal/git/walk.go", "internal/git/walk_test.go", "internal/git/entrypoints_test.go", "internal/audit/audit.go", "internal/audit/audit_test.go", "internal/audit/history.go", "internal/audit/history_test.go", ".awf/docs/parts/architecture/components.md", ".awf/docs/parts/architecture/data-flow.md", ".awf/docs/parts/architecture/dependencies.md", "docs/architecture.md", ".awf/awf.lock"]
 
 In `internal/git/walk.go`, extract the existing range resolution and traversal into
 `Repo.WalkRangeCommits`. Invoke the visitor only after prefix inclusion is decided, stop on its
@@ -141,6 +144,12 @@ collector, compact records, grouped ordinary findings, and exact visited count. 
 existing stale and transition implementations may still iterate compact records through a temporary
 adapter, but no later consumer may require the rich range.
 
+Update the authored architecture component, data-flow, and dependency descriptions in the same
+transaction: Git supplies one rich-commit visitor without audit policy; audit incrementally owns
+ordinary rule state and compact replay metadata; no prose may still describe a materialized rich
+range. Run `./x render` and include `docs/architecture.md` and `.awf/awf.lock`; never edit generated
+architecture directly.
+
 Require all existing audit finding tests to remain byte-for-byte compatible. Run
 `go test ./internal/git ./internal/audit` and verify the streaming tests establish visitor failure
 and cancellation without a second walk.
@@ -148,11 +157,12 @@ and cancellation without a second walk.
 ### Phase close
 
 Run `go test ./internal/git ./internal/audit`, `git diff --check`, `./x render`, and `./x check`; each
-must exit zero. Stage the complete seam, accumulator, compact projection, and test transaction
-explicitly. Require `./awf check staged` and `./x gate` to pass, then create the closing commit.
+must exit zero. Stage the complete seam, accumulator, compact projection, tests, authored
+architecture, and rendered consequences explicitly. Require `./awf check staged` and `./x gate` to
+pass, then create the closing commit.
 
 ```commit
-refactor(tooling): stream audit range evaluation
+refactor(code-design): stream audit range evaluation
 ```
 
 ## Phase 3: Schedule deterministic interleaved replay
@@ -192,8 +202,9 @@ are reachable, the deterministic graph's first encountered failure wins, while c
 still aborts immediately and is never converted to a finding.
 
 ### Task 3.2: Replace phase-wide history loops with one graph replay
+Latitude: exact
 Applying: ["lifetime-bounded-historical-audit-replay:explicit-dependency-schedule", "lifetime-bounded-historical-audit-replay:deterministic-interleaved-replay"]
-Paths: ["internal/audit/history.go", "internal/audit/history_test.go"]
+Paths: ["internal/audit/history.go", "internal/audit/history_test.go", ".awf/docs/parts/architecture/components.md", ".awf/docs/parts/architecture/data-flow.md", "docs/architecture.md", ".awf/awf.lock"]
 
 Implement the compact replay graph and deterministic child-before-parent scheduler in
 `internal/audit`. Validate the complete compact graph before loading committed authority. Boundary
@@ -211,15 +222,21 @@ retaining parallel implementations.
 
 Preserve exact fatal/advisory boundaries: malformed or unavailable stale-merge evidence is fatal;
 non-context transition projection failure is a warning for its commit; context cancellation and
-deadline expiry remain matchable operation errors; cached errors are not retried. Run
-`go test ./internal/audit` and require graph permutation tests and all existing historical policy
+deadline expiry remain matchable operation errors; cached errors are not retried.
+
+Update the authored architecture components and data flow in this transaction to replace separate
+stale-live-transition execution phases with deterministic interleaved graph replay and separately
+buffered external finding groups. Run `./x render` and include generated architecture and lock
+consequences; do not describe final-consumer release before Phase 4 makes it true.
+
+Run `go test ./internal/audit` and require graph permutation tests and all existing historical policy
 fixtures to pass.
 
 ### Phase close
 
 Run `go test ./internal/audit`, `git diff --check`, `./x render`, and `./x check`; each must exit zero.
-Stage the graph, replay, and tests explicitly. Require `./awf check staged` and `./x gate` to pass,
-then create the closing commit.
+Stage the graph, replay, tests, authored architecture, and rendered consequences explicitly. Require
+`./awf check staged` and `./x gate` to pass, then create the closing commit.
 
 ```commit
 refactor(tooling): schedule historical audit replay
@@ -263,8 +280,9 @@ stale consumer even when ADR/topic transition data remains live, and the full un
 after its final consumer.
 
 ### Task 4.2: Split revision controls from heavy payload and account for shared consumers
+Latitude: exact
 Applying: ["lifetime-bounded-historical-audit-replay:final-consumer-release", "lifetime-bounded-historical-audit-replay:alias-aware-ownership"]
-Paths: ["internal/audit/history.go", "internal/audit/history_test.go"]
+Paths: ["internal/audit/history.go", "internal/audit/history_test.go", ".awf/docs/parts/architecture/components.md", ".awf/docs/parts/architecture/data-flow.md", ".awf/docs/parts/architecture/dependencies.md", "docs/architecture.md", ".awf/awf.lock"]
 
 Refactor `revisionState` and `loadSelectedRevision` into explicit light and heavy ownership. The
 light load enumerates committed metadata once, reads and validates config plus the optional lock,
@@ -288,14 +306,21 @@ cannot prove irrelevance. Preserve cancellation identity at every light and heav
 from the injected loader remains fail-closed. Remove lazy closures whose only effect was
 operation-lifetime selection retention.
 
+Update the authored architecture components, data flow, and dependencies in this transaction to
+name lightweight committed controls, alias-aware canonical entries, at-most-once heavy outcomes,
+separate source/universe consumer lifetimes, and final-consumer release. Run `./x render` and include
+generated architecture and lock consequences; no active architecture prose may retain the
+operation-lifetime heavy-cache model.
+
 Run `go test ./internal/audit` and require the deterministic logical frontier tests, exact load-call
 assertions, and all policy compatibility fixtures to pass.
 
 ### Phase close
 
 Run `go test ./internal/audit`, `git diff --check`, `./x render`, and `./x check`; each must exit zero.
-Stage the state ownership, release accounting, and regression tests explicitly. Require
-`./awf check staged` and `./x gate` to pass, then create the closing commit.
+Stage the state ownership, release accounting, regression tests, authored architecture, and rendered
+consequences explicitly. Require `./awf check staged` and `./x gate` to pass, then create the closing
+commit.
 
 ```commit
 fix(tooling): release consumed audit revision state
@@ -310,7 +335,7 @@ Completes: ["authority-current", "repository-green"]
 ### Task 5.1: Measure streaming and heavy-frontier scaling
 Latitude: exact
 Applying: ["lifetime-bounded-historical-audit-replay:bounded-memory-contract"]
-Paths: ["internal/audit/history_benchmark_test.go", "internal/audit/history_test.go", "internal/git/walk_test.go"]
+Paths: ["internal/audit/history_benchmark_test.go", "internal/audit/history_test.go", "internal/git/walk_test.go", "docs/plans/2026-08-05-bound-historical-audit-memory.md"]
 
 Start from a clean managed worktree whose latest commit is the Phase 4 final-use transaction.
 `git status --short` must produce no output, `./x check` must finish clean, and `./x gate` must pass.
@@ -330,55 +355,79 @@ the command must exit zero. Record diagnostic benchmark results in the plan Note
 without turning machine-specific bytes or duration into a gate. Do not run the reported full
 `v0.22.0..HEAD` audit in the unisolated development host.
 
-### Task 5.2: Apply the operation-owned claim and authored documentation
-Kind: batch
+### Task 5.2: Consolidate proof ownership and author the exact claim
 Latitude: exact
 Applying: ["lifetime-bounded-historical-audit-replay:compact-replay-projection", "lifetime-bounded-historical-audit-replay:explicit-dependency-schedule", "lifetime-bounded-historical-audit-replay:final-consumer-release", "lifetime-bounded-historical-audit-replay:alias-aware-ownership", "lifetime-bounded-historical-audit-replay:deterministic-interleaved-replay", "lifetime-bounded-historical-audit-replay:invocation-local-boundary", "lifetime-bounded-historical-audit-replay:bounded-memory-contract"]
-Paths: [".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", ".awf/docs/parts/architecture/components.md", ".awf/docs/parts/architecture/data-flow.md", ".awf/docs/parts/architecture/dependencies.md", "docs/decisions/lifetime-bounded-historical-audit-replay.md", "internal/audit/history_test.go", "changelog/CHANGELOG.md", "docs/topics/tooling/audit-and-snapshots.md", "docs/architecture.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
-Representative: "Update `audit-history-operation-owned` so one streamed range operation owns incremental rule state, compact graph metadata, at-most-once revision outcomes, alias-aware shared entries, and final-consumer release bounded by the live unique dependency frontier."
-Edge: "Preserve immediate cancellation and normal finding order while stating that deterministic interleaved replay, not the former stale-live-transition execution sequence, owns coexisting failure precedence."
-Post-check: "Run ./x render && ./x check, then run ./awf context --show pending docs/decisions/lifetime-bounded-historical-audit-replay.md; require the one update operation Applied, none Remaining or Canceled, and the ADR still Implementing. Run rg -n 'materializ|cache.*lifetime|stale.*live.*transition' .awf/topics/parts/tooling/audit-and-snapshots/current-state.md .awf/docs/parts/architecture/components.md .awf/docs/parts/architecture/data-flow.md .awf/docs/parts/architecture/dependencies.md and inspect every match so no active prose retains the superseded whole-range or operation-lifetime-heavy-cache model."
+Paths: ["internal/audit/history_test.go", ".awf/topics/parts/tooling/audit-and-snapshots/current-state.md"]
+
+In `internal/audit/history_test.go`, make
+`TestHistoryOperationStreamsAndReleasesFinalConsumers` the one named unit proving the expanded
+operation-owned invariant. It must exercise the production streaming collector, compatible grouped
+findings, one derivation per canonical outcome, an irrelevant alias shared with its parent, source
+release at final stale use, universe release at final heavy use, and a terminal logical high-water
+matching its fixture frontier. Place this literal marker immediately above it:
+
+```go
+// invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationStreamsAndReleasesFinalConsumers)
+```
+
+Remove the same invariant marker from
+`TestHistoryOperationCollectsRangeOnceAndCachesStates` and
+`TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay`; retain those tests under names and
+assertions truthful for any narrower behavior they still cover, or merge their nonduplicate
+assertions into the new proving unit. No stale partial proof marker may remain.
+
+Replace the authored `audit-history-operation-owned` claim with exactly this prose and metadata:
+
+```markdown
+### `invariant: audit-history-operation-owned`
+
+One `awf audit` invocation walks its requested commit range exactly once, feeds each rich commit through audit-owned incremental rule accumulators, and retains only grouped findings and compact graph metadata after the visitor returns. Deterministic interleaved transition and stale-merge replay shares alias-aware revision entries and cached load errors; each required revision outcome derives at most once, source evidence and parsed universes are released after their final scheduled consumers, and logical heavy-state high-water is bounded by the live unique dependency frontier. No cache survives the invocation or lives on Project.
+Origin: ADR-0221
+Revised-by: ADR-lifetime-bounded-historical-audit-replay
+Backing: test
+```
+
+Keep the surrounding policy-projection, cancellation, and sparse-selection claims byte-for-byte
+unchanged because the linked ADR declares no operation on them.
+
+### Task 5.3: Apply the ADR batch and publish operator-facing consequences
+Latitude: exact
+Applying: ["lifetime-bounded-historical-audit-replay:compact-replay-projection", "lifetime-bounded-historical-audit-replay:explicit-dependency-schedule", "lifetime-bounded-historical-audit-replay:final-consumer-release", "lifetime-bounded-historical-audit-replay:alias-aware-ownership", "lifetime-bounded-historical-audit-replay:deterministic-interleaved-replay", "lifetime-bounded-historical-audit-replay:invocation-local-boundary", "lifetime-bounded-historical-audit-replay:bounded-memory-contract"]
+Paths: ["docs/decisions/lifetime-bounded-historical-audit-replay.md", ".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", "changelog/CHANGELOG.md", "docs/topics/tooling/audit-and-snapshots.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
 
 Apply the linked ADR's one declared operation using `awf-adr-lifecycle`. Change its frontmatter from
 `Accepted` to `Implementing`, append the canonical Implementing status event repeating the latest
 content stamp, then append one Applied event naming exactly
 `update tooling/audit-and-snapshots:audit-history-operation-owned`. Do not append Implemented; the
-terminal review flow owns that later status-only transaction.
+terminal review flow owns that later status-only transaction. The Applied event and exact claim
+mutation from Task 5.2 must remain in this same Phase 5 commit.
 
-Rewrite the authored claim to retain one invocation, one streamed range walk, normal finding
-compatibility, at-most-once revision outcomes, and no Project/global cache while adding incremental
-range-rule state, compact replay graph ownership, deterministic interleaving, alias-aware shared
-entries, and final-consumer source/universe release. Preserve `Origin: ADR-0221`, add
-`Revised-by: ADR-lifetime-bounded-historical-audit-replay`, retain `Backing: test`, and place the
-exact invariant proof marker on the live test whose named unit proves streaming, shared ownership,
-and terminal release. Keep cancellation and sparse-policy claims unchanged unless their prose is
-mechanically cross-referenced; this ADR declares no operation on them.
+Add an Unreleased changelog fix describing one-pass streaming and final-consumer historical state
+release as preventing long authority-heavy audits from exhausting memory. Do not promise a fixed
+byte ceiling or runtime. Run `./x render`; include the generated topic, decision index, and lock
+consequences, and never edit generated files directly. Run `./x check`, then run
+`./awf context --show pending docs/decisions/lifetime-bounded-historical-audit-replay.md`; require the
+one update operation Applied, none Remaining or Canceled, and the ADR still Implementing.
 
-Update only authored architecture sources to replace the materialized range and operation-lifetime
-heavy cache with the streaming Git callback boundary, audit-owned incremental accumulators, compact
-graph scheduling, light controls, and final-consumer heavy ownership. Keep `internal/git` free of
-audit policy and keep current-state parsing/qualification with their existing packages. Add an
-Unreleased changelog fix describing bounded audit memory without promising a fixed byte or duration.
-Run `./x render`; include every generated topic, architecture, decision index, and lock consequence,
-and never edit generated files directly.
-
-### Task 5.3: Verify the complete bounded-memory transaction
+### Task 5.4: Verify the complete bounded-memory transaction
+Latitude: exact
 Applying: ["lifetime-bounded-historical-audit-replay:bounded-memory-contract"]
-Paths: ["internal/audit", "internal/git", ".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", ".awf/docs/parts/architecture/components.md", ".awf/docs/parts/architecture/data-flow.md", ".awf/docs/parts/architecture/dependencies.md", "docs/decisions/lifetime-bounded-historical-audit-replay.md", "changelog/CHANGELOG.md"]
+Paths: ["internal/audit", "internal/git", ".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", "docs/decisions/lifetime-bounded-historical-audit-replay.md", "changelog/CHANGELOG.md", "docs/plans/2026-08-05-bound-historical-audit-memory.md"]
 
 Run `go test ./internal/git ./internal/audit`, the bounded one-iteration benchmark command from Task
 5.1, `git diff --check`, `./x render`, and `./x check`; every command must exit zero. Inspect
-`git status --short` and stage the complete code, benchmark, ADR application, authored claim,
-authored architecture, changelog, and deterministic rendered outputs explicitly. Run
-`./awf check staged` and `./x gate`; both must pass with the invariant proof marker resolving to its
-named live test and no dead production seam.
+`git status --short` and stage the complete benchmark, proof-marker consolidation, ADR application,
+authored claim, changelog, plan Notes measurement, and deterministic rendered outputs explicitly.
+Run `./awf check staged` and `./x gate`; both must pass with the invariant proof marker resolving to
+`TestHistoryOperationStreamsAndReleasesFinalConsumers` and no dead production seam.
 
 ### Phase close
 
-After Task 5.3's staged checks pass, create the one closing application commit.
+After Task 5.4's staged checks pass, create the one closing application commit.
 
 ```commit
-fix(tooling): publish bounded historical audit ownership
+fix(tooling): bound audit memory (applies audit replay batch)
 ```
 
 ## Definition of done
