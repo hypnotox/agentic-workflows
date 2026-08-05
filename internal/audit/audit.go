@@ -196,7 +196,8 @@ func (e *rangeEvaluator) observe(c awfgit.Commit) {
 }
 
 func (e *rangeEvaluator) findings() []Finding {
-	out := append([]Finding{}, e.conventional...)
+	var out []Finding
+	out = append(out, e.conventional...)
 	out = append(out, e.status...)
 	out = append(out, e.front...)
 	if e.manifest != nil && !e.adrTouched {

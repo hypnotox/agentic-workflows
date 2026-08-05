@@ -65,7 +65,6 @@ type historyOperation struct {
 	commits          []replayCommit
 	ordinary         []Finding
 	visited          int
-	inputs           Inputs
 	loadRevision     revisionLoader
 	firstParentPaths firstParentPaths
 	live             liveEvaluator
@@ -110,15 +109,14 @@ func newStreamingHistoryOperation(ctx context.Context, base, head string, in Inp
 	if err != nil {
 		return nil, fmt.Errorf("collect audit range: %w", err)
 	}
-	return newHistoryOperationFromCompact(commits, evaluator.findings(), count, in, load, paths, live), nil
+	return newHistoryOperationFromCompact(commits, evaluator.findings(), count, load, paths, live), nil
 }
 
-func newHistoryOperationFromCompact(commits []replayCommit, ordinary []Finding, visited int, in Inputs, load revisionLoader, paths firstParentPaths, live liveEvaluator) *historyOperation {
+func newHistoryOperationFromCompact(commits []replayCommit, ordinary []Finding, visited int, load revisionLoader, paths firstParentPaths, live liveEvaluator) *historyOperation {
 	return &historyOperation{
 		commits:          slices.Clone(commits),
 		ordinary:         slices.Clone(ordinary),
 		visited:          visited,
-		inputs:           in,
 		loadRevision:     load,
 		firstParentPaths: paths,
 		live:             live,

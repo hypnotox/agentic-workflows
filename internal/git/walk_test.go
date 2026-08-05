@@ -49,14 +49,62 @@ func TestWalkRangeCommitsStopsAtVisitorError(t *testing.T) {
 	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"a.md": "base\n"})
 	gitfixture.Commit(t, repo, "feat(awf): first", map[string]string{"a.md": "first\n"})
 	gitfixture.Commit(t, repo, "feat(awf): second", map[string]string{"a.md": "second\n"})
-	boom := errors.New("visitor failed")
-	visited := 0
-	count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, "HEAD", func(Commit) error {
-		visited++
-		return boom
+	gitfixture.Commit(t, repo, "feat(awf): third", map[string]string{"a.md": "third\n"})
+	t.Run("multiple successful visits", func(t *testing.T) {
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, "HEAD", func(Commit) error {
+			visits++
+			return nil
+		})
+		if err != nil || count != 3 || visits != 3 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (3, nil), 3", count, err, visits)
+		}
 	})
-	if !errors.Is(err, boom) || count != 0 || visited != 1 {
-		t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (0, visitor identity), 1", count, err, visited)
+	t.Run("later visitor error preserves identity and stops", func(t *testing.T) {
+		boom := errors.New("visitor failed")
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, "HEAD", func(Commit) error {
+			visits++
+			if visits == 3 {
+				return boom
+			}
+			return nil
+		})
+		if !errors.Is(err, boom) || count != 2 || visits != 3 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (2, visitor identity), 3", count, err, visits)
+		}
+	})
+	t.Run("visitor boundary cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		defer cancel()
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(ctx, "HEAD~1", "HEAD", func(Commit) error {
+			visits++
+			cancel()
+			return nil
+		})
+		if !errors.Is(err, context.Canceled) || count != 1 || visits != 1 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (1, context.Canceled), 1", count, err, visits)
+		}
+	})
+}
+
+func TestWalkRangeRichConstructionPreservesCancellation(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"nested/a.md": "base\n"})
+	head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"nested/a.md": "head\n"})
+	ctx, cancel := context.WithCancel(testContext(t))
+	cancel()
+	if _, err := toCommit(ctx, walkCommitObject(t, repo.Root(), head), ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("rich commit cancellation = %v", err)
+	}
+
+	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
+	feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{"nested/feature.md": "feature\n"})
+	gitfixture.StageFile(t, repo, "nested/a.md", "head\n", 0o644)
+	merge := gitfixture.Merge(t, repo, "Merge head", feature, head)
+	if _, err := mergeTouchesPrefix(ctx, walkCommitObject(t, repo.Root(), merge), "nested"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("merge prefix cancellation = %v", err)
 	}
 }
 
@@ -248,7 +296,7 @@ func TestRangeCommitsBoundaryErrorsAndRoot(t *testing.T) {
 	root := gitfixture.Commit(t, repo, "root", map[string]string{"a.md": "root\n"})
 	handle := walkRepo(t, dir)
 	rootCommit := walkCommitObject(t, dir, root)
-	commit, err := toCommit(rootCommit, "")
+	commit, err := toCommit(testContext(t), rootCommit, "")
 	if err != nil {
 		t.Fatal(err)
 	}

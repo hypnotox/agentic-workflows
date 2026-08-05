@@ -95,13 +95,13 @@ func (r *Repo) WalkRangeCommits(ctx context.Context, base, head string, visit fu
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		nc, err := toCommit(c, r.prefix)
+		nc, err := toCommit(ctx, c, r.prefix)
 		if err != nil { // coverage-ignore: every branch toCommit can fail on is itself unreachable from a walk that already enumerated this commit's ancestry (see its own ignored branches)
 			return err
 		}
 		include := r.prefix == "" || len(nc.Changes) != 0
 		if r.prefix != "" && nc.IsMerge {
-			include, err = mergeTouchesPrefix(c, r.prefix)
+			include, err = mergeTouchesPrefix(ctx, c, r.prefix)
 			if err != nil {
 				return err
 			}
@@ -120,6 +120,9 @@ func (r *Repo) WalkRangeCommits(ctx context.Context, base, head string, visit fu
 			return visited, visitorErr
 		}
 		return visited, opaqueError(err)
+	}
+	if err := checkContext(ctx); err != nil {
+		return visited, err
 	}
 	return visited, nil
 }
@@ -268,7 +271,7 @@ func (r *Repo) RangeDiffText(ctx context.Context, base, head string) (string, er
 	return string(out), nil
 }
 
-func toCommit(c *object.Commit, prefix string) (Commit, error) {
+func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, error) {
 	subject, body := splitMessage(c.Message)
 	parents := make([]string, len(c.ParentHashes))
 	for i, parent := range c.ParentHashes {
@@ -293,12 +296,15 @@ func toCommit(c *object.Commit, prefix string) (Commit, error) {
 			return Commit{}, err
 		}
 	}
-	changes, err := object.DiffTree(parentTree, curTree)
-	if err != nil { // coverage-ignore: diffing two resolved trees does not fail
-		return Commit{}, err
+	changes, err := object.DiffTreeContext(ctx, parentTree, curTree)
+	if err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return Commit{}, contextErr
+		}
+		return Commit{}, err // coverage-ignore: resolved valid trees leave cancellation as the only reachable diff failure
 	}
 	patch, err := changes.Patch()
-	if err != nil { // coverage-ignore: building a patch from a valid change set does not fail
+	if err != nil { // coverage-ignore: building a patch from the validated change set does not fail
 		return Commit{}, err
 	}
 	stats := map[string]object.FileStat{}
@@ -307,17 +313,17 @@ func toCommit(c *object.Commit, prefix string) (Commit, error) {
 	}
 	for _, ch := range changes {
 		fc, include, err := toFileChange(ch, parentTree, curTree, stats, prefix)
-		if err != nil { // coverage-ignore: toFileChange fails only on a malformed change (see its own ignored branch)
+		if err != nil { // coverage-ignore: toFileChange fails only on a malformed change
 			return Commit{}, err
 		}
 		if include {
 			nc.Changes = append(nc.Changes, fc)
 		}
 	}
-	return nc, nil
+	return nc, checkContext(ctx)
 }
 
-func mergeTouchesPrefix(c *object.Commit, prefix string) (bool, error) {
+func mergeTouchesPrefix(ctx context.Context, c *object.Commit, prefix string) (bool, error) {
 	curTree, err := c.Tree()
 	if err != nil {
 		return false, err
@@ -330,9 +336,12 @@ func mergeTouchesPrefix(c *object.Commit, prefix string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	changes, err := object.DiffTree(parentTree, curTree)
-	if err != nil { // coverage-ignore: diffing two resolved top-level trees compares their entries without loading descendant objects
-		return false, err
+	changes, err := object.DiffTreeContext(ctx, parentTree, curTree)
+	if err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return false, contextErr
+		}
+		return false, err // coverage-ignore: resolved valid trees leave cancellation as the only reachable diff failure
 	}
 	for _, change := range changes {
 		_, oldInside := scopedPath(change.From.Name, prefix)
@@ -341,7 +350,7 @@ func mergeTouchesPrefix(c *object.Commit, prefix string) (bool, error) {
 			return true, nil
 		}
 	}
-	return false, nil
+	return false, checkContext(ctx)
 }
 
 func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map[string]object.FileStat, prefix string) (FileChange, bool, error) {

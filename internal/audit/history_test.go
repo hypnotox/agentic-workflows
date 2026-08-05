@@ -23,7 +23,7 @@ import (
 
 func TestStreamingHistoryOperationReportsMalformedMergeAuthorization(t *testing.T) {
 	state := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
-	op := newHistoryOperationFromCompact([]replayCommit{{Hash: "merge", Revision: "merge", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"first", "incoming"}}}, nil, 1, Inputs{}, func(context.Context, string) (*revisionState, error) { return state, nil }, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	op := newHistoryOperationFromCompact([]replayCommit{{Hash: "merge", Revision: "merge", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"first", "incoming"}}}, nil, 1, func(context.Context, string) (*revisionState, error) { return state, nil }, nil, func(context.Context) ([]Finding, error) { return nil, nil })
 	findings, err := op.staleMergeFindings(testContext(t))
 	if err != nil || countRule(findings, "stale-merge-authorization", severity.Error) != 1 {
 		t.Fatalf("malformed merge findings = %#v, %v", findings, err)
@@ -72,7 +72,7 @@ func newHistoryOperationWithRelevance(commits []awfgit.Commit, _ Inputs, load re
 		evaluator.observe(commit)
 		compact = append(compact, compactReplayCommit(i, commit))
 	}
-	return newHistoryOperationFromCompact(compact, evaluator.findings(), len(compact), Inputs{}, load, paths, live)
+	return newHistoryOperationFromCompact(compact, evaluator.findings(), len(compact), load, paths, live)
 }
 
 // invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationCollectsRangeOnceAndCachesStates)
