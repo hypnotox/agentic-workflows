@@ -195,5 +195,9 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		steps = append(steps, value)
 	}
-	return presentation.Diagnostic{Condition: "upgrade did not reach terminal sync", State: "partial mutation", Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
+	state := ""
+	if len(changed) > 0 {
+		state = "partial mutation"
+	}
+	return presentation.Diagnostic{Condition: "upgrade did not reach terminal sync", State: state, Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
 }

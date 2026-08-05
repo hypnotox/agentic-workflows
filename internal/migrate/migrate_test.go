@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -921,6 +922,43 @@ func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) 
 	}
 	if lock.SchemaVersion != next {
 		t.Fatalf("fallback schema = %d, want %d", lock.SchemaVersion, next)
+	}
+}
+
+func TestUpgradeReturnsAppliedChangesWhenFallbackStampSaveFails(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 0)
+
+	originalRegistry := registry
+	originalSave := stampLockSave
+	registry = []Migration{
+		{To: 1, Name: "first", Apply: func(_ context.Context, _ string, changes *Changes) error {
+			changes.Add("first: changed config")
+			return nil
+		}},
+		{To: 2, Name: "second", Apply: func(_ context.Context, _ string, changes *Changes) error {
+			changes.Add("second: changed config")
+			return nil
+		}},
+	}
+	failure := errors.New("save stamped lock")
+	stampLockSave = func(*manifest.Lock, string) error { return failure }
+	t.Cleanup(func() {
+		registry = originalRegistry
+		stampLockSave = originalSave
+	})
+
+	applied, changes, err := Upgrade(testContext(t), root)
+	if !errors.Is(err, failure) {
+		t.Fatalf("Upgrade error = %v, want %v", err, failure)
+	}
+	if want := []string{"first", "second"}; !slices.Equal(applied, want) {
+		t.Fatalf("applied = %v, want %v", applied, want)
+	}
+	wantChanges := []Change{{Text: "first: changed config"}, {Text: "second: changed config"}}
+	if !slices.Equal(changes, wantChanges) {
+		t.Fatalf("changes = %#v, want %#v", changes, wantChanges)
 	}
 }
 

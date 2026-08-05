@@ -73,6 +73,74 @@ func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
 	}
 }
 
+func TestUpgradeFailureDiagnosticOmitsPartialStateBeforeAnyChange(t *testing.T) {
+	failure := errors.New("first migration pre-write sync failed")
+	diagnostic, err := (upgradeFailure{cause: failure}).Diagnostic()
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := diagnostic.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	want := "condition: upgrade did not reach terminal sync\ncause: first migration pre-write sync failed\n\ndiagnostic:\n  steps:\n    step 1: inspect the changed migration axes\n    step 2: run awf upgrade --recover if an upgrade journal exists\n    step 3: restore the project from version control if recovery cannot complete\n"
+	if out.String() != want {
+		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
+	}
+}
+
+func TestRunUpgradeFailuresBeforeChangesOmitPartialMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		set  func(t *testing.T, failure error)
+	}{
+		{
+			name: "first-migration",
+			set: func(t *testing.T, failure error) {
+				testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
+					return nil, nil, failure
+				})
+			},
+		},
+		{
+			name: "pre-write-sync",
+			set: func(t *testing.T, failure error) {
+				testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
+					return nil, nil, nil
+				})
+				testsupport.SwapVar(t, &upgradeSync, func(context.Context, string) (upgradeSyncOutcome, error) {
+					return upgradeSyncOutcome{}, failure
+				})
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			failure := errors.New(tc.name + " failed")
+			tc.set(t, failure)
+			testsupport.SwapVar(t, &upgradeGate, func(context.Context, string) error { return nil })
+			err := runUpgrade(testContext(t), scaffoldProject(t), io.Discard)
+			if !errors.Is(err, failure) {
+				t.Fatalf("runUpgrade error = %v, want %v", err, failure)
+			}
+			var upgradeErr upgradeFailure
+			if !errors.As(err, &upgradeErr) {
+				t.Fatalf("runUpgrade error = %T, want upgradeFailure", err)
+			}
+			diagnostic, diagnosticErr := upgradeErr.Diagnostic()
+			if diagnosticErr != nil {
+				t.Fatal(diagnosticErr)
+			}
+			if diagnostic.State != "" || len(diagnostic.Changed) != 0 {
+				t.Fatalf("diagnostic = %#v, want no partial state or changed axes", diagnostic)
+			}
+		})
+	}
+}
+
 func TestJournalFailureRoutesRecoveryAndFinalErrorsToOneDiagnostic(t *testing.T) {
 	root := scaffoldProject(t)
 	failure := errors.New("journal failed")

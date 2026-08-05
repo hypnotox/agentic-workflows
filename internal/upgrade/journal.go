@@ -424,6 +424,33 @@ func appendEvidence(values []Evidence, evidence ...Evidence) []Evidence {
 	return append(append([]Evidence(nil), values...), evidence...)
 }
 
+// committedChanged reduces committed evidence to axes that remain true when the
+// transaction returns. Evidence remains the complete ordered history; a
+// discarded resident replaces its earlier applied fact in Changed, while an
+// undiscarded resident remains applied after partial cleanup.
+func committedChanged(j Journal, evidence []Evidence) []Evidence {
+	discarded := map[string]bool{}
+	residents := map[string]bool{}
+	for _, op := range j.Operations {
+		if op.residentTree() {
+			residents[op.Path] = true
+		}
+	}
+	for _, fact := range evidence {
+		if fact.Action == "discarded" && residents[fact.Path] {
+			discarded[fact.Path] = true
+		}
+	}
+	changed := make([]Evidence, 0, len(evidence))
+	for _, fact := range evidence {
+		if fact.Action == "applied" && discarded[fact.Path] {
+			continue
+		}
+		changed = append(changed, fact)
+	}
+	return changed
+}
+
 func commitTransaction(root string, ops []Operation) (Outcome, error) {
 	if err := validateOperations(ops); err != nil { // coverage-ignore: the final-upgrade planner validated the same set before this call
 		return Outcome{}, err
@@ -459,13 +486,14 @@ func commitTransaction(root string, ops []Operation) (Outcome, error) {
 	// rather than restored. A fault leaves a recoverable journal, never a rollback.
 	discarded, err := completeQuarantine(root, j)
 	evidence = append(evidence, discarded...)
+	changed := committedChanged(j, evidence)
 	if err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(evidence, retainedJournal(root))}, fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
+		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
 	if err := journalRemove(JournalPath(root)); err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(evidence, retainedJournal(root))}, fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
+		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
-	return Outcome{Evidence: evidence, Changed: evidence}, nil
+	return Outcome{Evidence: evidence, Changed: changed}, nil
 }
 
 // rollBack enters the rolling-back phase and restores every prior image in
@@ -590,10 +618,11 @@ func finishCommitted(root string, j Journal) (Outcome, error) {
 	evidence = append(evidence, Evidence{Action: "committed", Path: LockRel()})
 	discarded, err := completeQuarantine(root, j)
 	evidence = append(evidence, discarded...)
+	changed := committedChanged(j, evidence)
 	if err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(evidence, retainedJournal(root))}, err
+		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, err
 	}
-	return cleanupJournal(root, evidence, evidence)
+	return cleanupJournal(root, evidence, changed)
 }
 
 // cleanupJournal removes the journal residue idempotently.

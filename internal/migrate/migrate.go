@@ -260,6 +260,8 @@ func ProjectPresentFromFiles(has func(string) bool) bool {
 	return false
 }
 
+var stampLockSave = func(lock *manifest.Lock, path string) error { return lock.Save(path) }
+
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
 // missing lock (e.g. just after the legacy tree-layout port, before the first
 // sync) is a no-op - Generation's no-lock branch already reports Current().
@@ -273,7 +275,7 @@ func stampLockSchema(root string) error {
 		return err
 	}
 	l.SchemaVersion = Current()
-	return l.Save(lockPath)
+	return stampLockSave(l, lockPath)
 }
 
 // registryTos returns the To values of every registered migration.
@@ -345,7 +347,7 @@ func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
 		highestApplied = m
 	}
 	if len(applied) > 0 && !highestApplied.OwnsSchemaStamp {
-		if err := stampLockSchema(root); err != nil { // coverage-ignore: stampLockSchema only fails on a lock Save fault, unreachable in a writable tree
+		if err := stampLockSchema(root); err != nil {
 			return applied, changes.Items(), err
 		}
 	}

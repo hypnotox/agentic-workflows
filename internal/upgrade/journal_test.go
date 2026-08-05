@@ -983,6 +983,71 @@ func TestJournalCommitLockFailureHaltsRollback(t *testing.T) {
 }
 
 func TestJournalCleanupFaultOutcomes(t *testing.T) {
+	t.Run("committed-transaction-records-terminal-discarded-residents", func(t *testing.T) {
+		root := t.TempDir()
+		seedResidents(t, root)
+		outcome, err := commitTransaction(root, residentJournal(phasePrepared).Operations)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantEvidence := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: ".awf/efforts/legacy.json"},
+			{Action: "applied", Path: ".awf/memory"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			{Action: "discarded", Path: ".awf/memory"},
+		}
+		if !slices.Equal(outcome.Evidence, wantEvidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
+		}
+		wantChanged := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			{Action: "discarded", Path: ".awf/memory"},
+		}
+		if !slices.Equal(outcome.Changed, wantChanged) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantChanged)
+		}
+	})
+
+	t.Run("committed-recovery-records-terminal-discarded-residents", func(t *testing.T) {
+		root := t.TempDir()
+		seedResidents(t, root)
+		mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
+		writeRawJournal(t, root, residentJournal(phaseLockCommitted))
+		outcome, err := Recover(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantEvidence := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: ".awf/efforts/legacy.json"},
+			{Action: "applied", Path: ".awf/memory"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			{Action: "discarded", Path: ".awf/memory"},
+			{Action: "recovered", Path: JournalPath(root)},
+		}
+		if !slices.Equal(outcome.Evidence, wantEvidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
+		}
+		wantChanged := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			{Action: "discarded", Path: ".awf/memory"},
+		}
+		if !slices.Equal(outcome.Changed, wantChanged) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantChanged)
+		}
+	})
+
 	t.Run("committed-transaction-retains-partial-discard", func(t *testing.T) {
 		root := t.TempDir()
 		seedResidents(t, root)
@@ -1012,7 +1077,14 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
 		}
-		wantChanged := appendEvidence(wantEvidence, retainedJournal(root))
+		wantChanged := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: ".awf/memory"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			retainedJournal(root),
+		}
 		if !slices.Equal(outcome.Changed, wantChanged) {
 			t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantChanged)
 		}
@@ -1064,9 +1136,16 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		seedResidents(t, root)
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
 		writeRawJournal(t, root, residentJournal(phaseLockCommitted))
-		failure := errors.New("discard quarantine")
+		failure := errors.New("discard second quarantine")
 		prior := quarantineRemoveAll
-		quarantineRemoveAll = func(string) error { return failure }
+		calls := 0
+		quarantineRemoveAll = func(path string) error {
+			calls++
+			if calls == 2 {
+				return failure
+			}
+			return prior(path)
+		}
 		t.Cleanup(func() { quarantineRemoveAll = prior })
 		outcome, err := Recover(root)
 		if !errors.Is(err, failure) {
@@ -1078,12 +1157,21 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 			{Action: "applied", Path: ".awf/memory"},
 			{Action: "applied", Path: LockRel()},
 			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
 		}
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
 		}
-		if want := appendEvidence(wantEvidence, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
-			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		wantChanged := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: ".awf/memory"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			retainedJournal(root),
+		}
+		if !slices.Equal(outcome.Changed, wantChanged) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantChanged)
 		}
 	})
 
