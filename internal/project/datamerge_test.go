@@ -8,12 +8,14 @@ import (
 )
 
 // invariant: rendering/project-output-plan:catalog-list-data-layering (TestWithDefaultData)
+// invariant: config/configuration:sidecar-data-defaults-control (TestWithDefaultData)
 func TestWithDefaultData(t *testing.T) {
 	cases := []struct {
-		name     string
-		sidecar  map[string]any
-		defaults map[string]any
-		want     map[string]any
+		name         string
+		sidecar      map[string]any
+		dataDefaults map[string]bool
+		defaults     map[string]any
+		want         map[string]any
 	}{
 		{
 			name:     "nil defaults leaves sidecar untouched",
@@ -46,16 +48,24 @@ func TestWithDefaultData(t *testing.T) {
 			want:     map[string]any{"a": []any{"default"}},
 		},
 		{
-			name:     "authored list follows catalog list in order",
-			sidecar:  map[string]any{"a": []any{"project"}},
-			defaults: map[string]any{"a": []any{"default"}},
-			want:     map[string]any{"a": []any{"default", "project"}},
+			name:         "authored lists preserve both orders and duplicates",
+			sidecar:      map[string]any{"a": []any{"project-one", map[string]any{"name": "duplicate"}, "project-two"}},
+			dataDefaults: map[string]bool{"a": true},
+			defaults:     map[string]any{"a": []any{"default-one", map[string]any{"name": "duplicate"}, "default-two"}},
+			want:         map[string]any{"a": []any{"default-one", map[string]any{"name": "duplicate"}, "default-two", "project-one", map[string]any{"name": "duplicate"}, "project-two"}},
 		},
 		{
-			name:     "explicit false suppresses catalog list",
-			sidecar:  map[string]any{"a": []any{"project"}},
-			defaults: map[string]any{"a": []any{"default"}},
-			want:     map[string]any{"a": []any{"project"}},
+			name:         "explicit false suppresses catalog list",
+			sidecar:      map[string]any{"a": []any{"project"}},
+			dataDefaults: map[string]bool{"a": false},
+			defaults:     map[string]any{"a": []any{"default"}},
+			want:         map[string]any{"a": []any{"project"}},
+		},
+		{
+			name:         "explicit false without authored list yields empty",
+			dataDefaults: map[string]bool{"a": false},
+			defaults:     map[string]any{"a": []any{"default"}},
+			want:         map[string]any{"a": []any{}},
 		},
 		{
 			name:     "nil sidecar data with defaults yields the defaults",
@@ -66,10 +76,7 @@ func TestWithDefaultData(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sc := config.Sidecar{Data: tc.sidecar}
-			if tc.name == "explicit false suppresses catalog list" {
-				sc.DataDefaults = map[string]bool{"a": false}
-			}
+			sc := config.Sidecar{Data: tc.sidecar, DataDefaults: tc.dataDefaults}
 			got := withDefaultData(sc, tc.defaults)
 			if tc.defaults == nil {
 				if !reflect.DeepEqual(got.Data, tc.sidecar) {
@@ -88,9 +95,15 @@ func TestWithDefaultData(t *testing.T) {
 	authored := []any{map[string]any{"name": "project"}}
 	got := withDefaultData(config.Sidecar{Data: map[string]any{"a": authored}}, map[string]any{"a": defaults})
 	merged := got.Data["a"].([]any)
-	merged[0].(map[string]any)["name"] = "changed"
+	merged[0].(map[string]any)["name"] = "changed default"
+	merged[1].(map[string]any)["name"] = "changed project"
 	if defaults[0].(map[string]any)["name"] != "default" || authored[0].(map[string]any)["name"] != "project" {
 		t.Fatal("effective list aliases catalog or authored input")
+	}
+	defaults[0].(map[string]any)["name"] = "changed source default"
+	authored[0].(map[string]any)["name"] = "changed source project"
+	if merged[0].(map[string]any)["name"] != "changed default" || merged[1].(map[string]any)["name"] != "changed project" {
+		t.Fatal("source list aliases effective catalog or authored records")
 	}
 
 	specialized := withDefaultData(

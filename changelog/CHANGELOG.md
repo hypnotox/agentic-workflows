@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Catalog-backed sidecar lists now preserve standard defaults before project entries unless `dataDefaults.<key>: false` explicitly suppresses them. Null and non-list project values are rejected, glossary term layering remains specialized, and the schema-35 upgrade records suppression for existing replacements without changing their rendered meaning.
+
 - Planning and implementation review now carry focused human checks for contradictory generated prose, concept-preserving paraphrase, and intentional literal placeholder syntax at each affected output boundary. The guidance requires concrete examples and expected readings without introducing semantic inference or a universal output validator.
 
 - Render completeness now derives conditional config-tree units and live template identities from their existing catalog, kind, target, and singleton declarations. Config-reference live values use one exhaustive typed classification for generated documentation and CLI presentation, and singleton template conditionals are checked against their artifact-specific live contexts.

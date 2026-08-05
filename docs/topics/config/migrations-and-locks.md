@@ -47,7 +47,7 @@ Backing: test
 
 ### `invariant: list-replacement-fixed-snapshot`
 
-Schema generation 35 classifies only its frozen kind, artifact, and list-key snapshot, preflights every matching sidecar before writing, and refuses any non-null non-list replacement with all changed axes false and an actionable repair. A list is retained with matching dataDefaults false, null is removed with that suppression, each changed sidecar is atomically replaced and announced, unrelated bytes and modes are preserved, retry after a later write failure completes safely, rerun is a silent no-op, and future catalog list keys are excluded.
+Schema generation 35 classifies only its frozen kind, artifact, and list-key snapshot, preflights every matching sidecar before writing, and refuses any non-null non-list replacement with all changed axes false and an actionable repair. A list is retained with matching dataDefaults false, null is removed with that suppression, each changed sidecar is atomically replaced and announced, unrelated mappings, comments, key order, and modes are preserved, retry after a later write failure completes safely, rerun is a silent no-op, and future catalog list keys are excluded.
 Origin: ADR-layer-catalog-list-defaults-and-project-entries
 Backing: test
 

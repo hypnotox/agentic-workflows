@@ -103,13 +103,11 @@ func applyLayerCatalogListsWithWriter(root string, out io.Writer, write atomicSi
 				}
 				var err error
 				if edit.nulls[key] {
-					updated, err = config.RemoveMappingKey(updated, "data", key)
-					if err != nil { // coverage-ignore: successful typed preflight guarantees data is an editable mapping
-						return err
-					}
+					updated, err = config.MoveMappingKeyToBool(updated, "data", key, "dataDefaults", false)
+				} else {
+					updated, err = config.SetMappingScalar(updated, "dataDefaults", key, false)
 				}
-				updated, err = config.SetMappingScalar(updated, "dataDefaults", key, false)
-				if err != nil { // coverage-ignore: successful YAML preflight guarantees an editable document root
+				if err != nil { // coverage-ignore: successful YAML preflight guarantees editable mapping nodes
 					return err
 				}
 			}

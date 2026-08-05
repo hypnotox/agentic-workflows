@@ -3,6 +3,8 @@ package project
 import (
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // commandWiringErrs initializes a fresh tree with the given config - first
@@ -24,14 +26,6 @@ func commandWiringErrs(t *testing.T, configYAML string) (syncErr, checkErr error
 	return syncErr, checkErr
 }
 
-// Sync and check refuse an enabled hooks singleton whose rendered payloads
-// could not resolve their commands: a missing project gate command, and - with
-// the runner singleton disabled - a missing hook-referenced awf-verb var,
-// checked in a fixed order that names the exact var to set. A resolvable
-// wiring (gateCmd plus either the runner or the three vars) and a
-// hooks-disabled config both stay valid, and first-adoption init never runs
-// the rule.
-// invariant: config/validation:hooks-commands-resolvable (TestValidateCommandWiring)
 // invariant: config/configuration:sidecar-data-defaults-control (TestCatalogListSidecarValidation)
 func TestCatalogListSidecarValidation(t *testing.T) {
 	base := "prefix: example\nintegrationBranch: main\nskills: [tdd]\ndocs: [glossary]\n"
@@ -79,8 +73,19 @@ func TestCatalogListSidecarValidation(t *testing.T) {
 	if got := catalogData(nil, "unknown", "artifact"); got != nil {
 		t.Fatalf("unknown catalog data = %v, want nil", got)
 	}
+	if err := validateCatalogListData("skills/example.yaml", config.Sidecar{DataDefaults: map[string]bool{"scalar": false}}, map[string]any{"scalar": "default"}); err == nil || !strings.Contains(err.Error(), "dataDefaults.scalar") {
+		t.Fatalf("catalog non-list suppression error = %v", err)
+	}
 }
 
+// Sync and check refuse an enabled hooks singleton whose rendered payloads
+// could not resolve their commands: a missing project gate command, and - with
+// the runner singleton disabled - a missing hook-referenced awf-verb var,
+// checked in a fixed order that names the exact var to set. A resolvable
+// wiring (gateCmd plus either the runner or the three vars) and a
+// hooks-disabled config both stay valid, and first-adoption init never runs
+// the rule.
+// invariant: config/validation:hooks-commands-resolvable (TestValidateCommandWiring)
 func TestValidateCommandWiring(t *testing.T) {
 	fixtures := []struct {
 		name, config, want string

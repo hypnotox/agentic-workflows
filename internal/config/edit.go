@@ -290,6 +290,89 @@ func RemoveMappingKey(src []byte, key, child string) ([]byte, error) {
 	return src, nil
 }
 
+// MoveMappingKeyToBool removes child from one top-level mapping and writes the
+// same child as a boolean under another mapping in one YAML-node edit. Comments
+// owned by a removed child, and by a source mapping that becomes empty, move to
+// the replacement nodes rather than disappearing with the retired null value.
+func MoveMappingKeyToBool(src []byte, fromKey, child, toKey string, value bool) ([]byte, error) {
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
+	}
+	from, fromValueIndex := mapValue(root, fromKey)
+	if from == nil || from.Kind != yaml.MappingNode {
+		return SetMappingScalar(src, toKey, child, value)
+	}
+	childValue, childValueIndex := mapValue(from, child)
+	if childValue == nil {
+		return SetMappingScalar(src, toKey, child, value)
+	}
+	fromKeyNode := root.Content[fromValueIndex-1]
+	childKeyNode := from.Content[childValueIndex-1]
+	from.Content = append(from.Content[:childValueIndex-1], from.Content[childValueIndex+1:]...)
+	fromRemoved := len(from.Content) == 0
+	if fromRemoved {
+		root.Content = append(root.Content[:fromValueIndex-1], root.Content[fromValueIndex+1:]...)
+	}
+
+	to, toValueIndex := mapValue(root, toKey)
+	var toKeyNode *yaml.Node
+	if to == nil || to.Kind != yaml.MappingNode {
+		to = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		if toValueIndex < 0 {
+			toKeyNode = strScalar(toKey)
+			root.Content = append(root.Content, toKeyNode, to)
+		} else {
+			toKeyNode = root.Content[toValueIndex-1]
+			root.Content[toValueIndex] = to
+		}
+	} else {
+		toKeyNode = root.Content[toValueIndex-1]
+	}
+	boolStr := "false"
+	if value {
+		boolStr = "true"
+	}
+	toChildValue, toChildValueIndex := mapValue(to, child)
+	var toChildKey *yaml.Node
+	if toChildValue == nil {
+		toChildKey = strScalar(child)
+		toChildValue = boolScalar(boolStr)
+		to.Content = append(to.Content, toChildKey, toChildValue)
+	} else {
+		toChildKey = to.Content[toChildValueIndex-1]
+		toChildValue.Tag, toChildValue.Value, toChildValue.Style = "!!bool", boolStr, 0
+	}
+	if fromRemoved {
+		transferYAMLComments(toKeyNode, fromKeyNode)
+		transferYAMLComments(to, from)
+	}
+	transferYAMLComments(toChildKey, childKeyNode)
+	transferYAMLComments(toChildValue, childValue)
+	return encode(doc)
+}
+
+func transferYAMLComments(dst, src *yaml.Node) {
+	appendYAMLComment(&dst.HeadComment, src.HeadComment)
+	if dst.LineComment == "" {
+		dst.LineComment = src.LineComment
+	} else {
+		appendYAMLComment(&dst.FootComment, src.LineComment)
+	}
+	appendYAMLComment(&dst.FootComment, src.FootComment)
+}
+
+func appendYAMLComment(dst *string, value string) {
+	if value == "" {
+		return
+	}
+	if *dst == "" {
+		*dst = value
+		return
+	}
+	*dst += "\n" + value
+}
+
 // HasMapping reports whether src carries a top-level key whose value is a
 // mapping node, so a caller can distinguish an absent block from an empty one
 // without parsing config.yaml itself (ADR-0026 keeps that knowledge here). A

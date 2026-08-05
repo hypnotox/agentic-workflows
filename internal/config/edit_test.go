@@ -324,6 +324,61 @@ func TestRemoveMappingKey(t *testing.T) {
 	}
 }
 
+func TestMoveMappingKeyToBoolPreservesRemovedComments(t *testing.T) {
+	src := "# before data\ndata: # data line\n  # before only\n  only: # key line\n    # null foot\n# before sections\nsections:\n  notes: true\n"
+	got, err := MoveMappingKeyToBool([]byte(src), "data", "only", "dataDefaults", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"# before data", "# data line", "# before only", "# key line", "# null foot", "# before sections", "sections:", "notes: true", "dataDefaults:", "only: false"} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("combined edit lost %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(string(got), "data:\n") {
+		t.Errorf("empty source mapping remains:\n%s", got)
+	}
+}
+
+func TestMoveMappingKeyToBoolShapes(t *testing.T) {
+	for _, tc := range []struct {
+		name, src string
+		value     bool
+		wants     []string
+		wantErr   bool
+	}{
+		{
+			name:  "retains source siblings and merges existing target comments",
+			src:   "data:\n  keep: value\n  # moved head\n  only: null # moved line\ndataDefaults:\n  # existing head\n  only: false # existing line\n",
+			value: true,
+			wants: []string{"data:", "keep: value", "dataDefaults:", "only: true", "# moved head", "# moved line", "# existing head", "# existing line"},
+		},
+		{name: "replaces non-mapping target", src: "data:\n  only: null\ndataDefaults: nope\n", wants: []string{"dataDefaults:", "only: false"}},
+		{name: "absent source creates target", src: "prefix: x\n", wants: []string{"prefix: x", "dataDefaults:", "only: false"}},
+		{name: "non-mapping source creates target", src: "data: nope\n", wants: []string{"data: nope", "dataDefaults:", "only: false"}},
+		{name: "absent child creates target", src: "data:\n  keep: value\n", wants: []string{"keep: value", "dataDefaults:", "only: false"}},
+		{name: "parse error", src: "data: [\n", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := MoveMappingKeyToBool([]byte(tc.src), "data", "only", "dataDefaults", tc.value)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got:\n%s", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range tc.wants {
+				if !strings.Contains(string(got), want) {
+					t.Errorf("combined edit missing %q:\n%s", want, got)
+				}
+			}
+		})
+	}
+}
+
 func TestRemoveKeyPreservesComments(t *testing.T) {
 	src := "# top comment\nprefix: x # inline\nhooks:\n  - a\n"
 	got, err := RemoveKey([]byte(src), "hooks")

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -18,6 +19,7 @@ func TestLayerCatalogListsMigration(t *testing.T) {
 		"skills/tdd.yaml":           "# retained\ndata:\n    testSurfaces:\n        - {name: Local, kind: unit, location: here}\n    laterCatalogList:\n        - retained\nsections:\n    notes:\n        drop: true\n",
 		"skills/proposing-adr.yaml": "data:\n    adrTriggers:\n        - Local trigger\n    adrSections:\n",
 		"agents/code-reviewer.yaml": "data:\n    focusItems: []\n",
+		"agents/adr-reviewer.yaml":  "# before data\ndata: # data line\n    # before null\n    focusItems: # key line\n        # null foot\n",
 		"skills/future.yaml":        "data:\n    laterCatalogList:\n        - retained\n",
 	})
 	tddPath := filepath.Join(root, ".awf", "skills", "tdd.yaml")
@@ -32,6 +34,7 @@ func TestLayerCatalogListsMigration(t *testing.T) {
 		"skills/tdd.yaml":           {"testSurfaces"},
 		"skills/proposing-adr.yaml": {"adrTriggers", "adrSections"},
 		"agents/code-reviewer.yaml": {"focusItems"},
+		"agents/adr-reviewer.yaml":  {"focusItems"},
 	} {
 		got, err := os.ReadFile(filepath.Join(root, ".awf", rel))
 		if err != nil {
@@ -73,8 +76,20 @@ func TestLayerCatalogListsMigration(t *testing.T) {
 	if strings.Contains(string(future), "dataDefaults") {
 		t.Fatalf("future artifact was preemptively suppressed:\n%s", future)
 	}
-	if !strings.Contains(out.String(), "layer-catalog-lists: updated .awf/skills/tdd.yaml") {
-		t.Errorf("mutation output = %q", out.String())
+	commentedNull, _ := os.ReadFile(filepath.Join(root, ".awf", "agents/adr-reviewer.yaml"))
+	for _, want := range []string{"# before data", "# data line", "# before null", "# key line", "# null foot", "dataDefaults:", "focusItems: false"} {
+		if !strings.Contains(string(commentedNull), want) {
+			t.Errorf("null-only sidecar lost %q:\n%s", want, commentedNull)
+		}
+	}
+	if strings.Count(string(commentedNull), "focusItems:") != 1 {
+		t.Errorf("null custom key remained alongside suppression:\n%s", commentedNull)
+	}
+	for _, rel := range []string{"skills/tdd.yaml", "skills/proposing-adr.yaml", "agents/code-reviewer.yaml", "agents/adr-reviewer.yaml"} {
+		want := "layer-catalog-lists: updated .awf/" + rel
+		if strings.Count(out.String(), want) != 1 {
+			t.Errorf("mutation output contains %q %d times, want once: %q", want, strings.Count(out.String(), want), out.String())
+		}
 	}
 
 	before := snapshotTree(t, root)
@@ -84,6 +99,55 @@ func TestLayerCatalogListsMigration(t *testing.T) {
 	}
 	if out.Len() != 0 || !sameSnapshot(before, snapshotTree(t, root)) {
 		t.Fatalf("rerun was not a silent byte-identical no-op: %q", out.String())
+	}
+}
+
+// invariant: config/migrations-and-locks:list-replacement-fixed-snapshot (TestLayerCatalogListSnapshotExact)
+func TestLayerCatalogListSnapshotExact(t *testing.T) {
+	want := []struct {
+		kind, artifact string
+		keys           []string
+	}{
+		{"agents", "adr-reviewer", []string{"focusItems"}},
+		{"agents", "code-reviewer", []string{"correctnessTraps", "focusItems", "docCurrencyItems"}},
+		{"agents", "plan-reviewer", []string{"focusItems", "docCurrencyItems"}},
+		{"agents", "implementer", []string{"prohibitedShortcuts"}},
+		{"skills", "adr-lifecycle", []string{"adrStates"}},
+		{"skills", "proposing-adr", []string{"adrSections", "adrTriggers"}},
+		{"skills", "tdd", []string{"testSurfaces"}},
+	}
+	if !reflect.DeepEqual(layerCatalogListSnapshot, want) {
+		t.Fatalf("frozen snapshot = %#v, want %#v", layerCatalogListSnapshot, want)
+	}
+	files := map[string]string{}
+	for _, artifact := range want {
+		var body strings.Builder
+		body.WriteString("data:\n")
+		for _, key := range artifact.keys {
+			body.WriteString("  " + key + ": []\n")
+		}
+		files[artifact.kind+"/"+artifact.artifact+".yaml"] = body.String()
+	}
+	root := closeFixture(t, "prefix: ex\n", files)
+	var out bytes.Buffer
+	if err := applyLayerCatalogLists(root, &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, artifact := range want {
+		rel := artifact.kind + "/" + artifact.artifact + ".yaml"
+		got, err := os.ReadFile(filepath.Join(root, ".awf", rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range artifact.keys {
+			if !strings.Contains(string(got), key+": false") {
+				t.Errorf("%s missing exact snapshot key %s:\n%s", rel, key, got)
+			}
+		}
+		announcement := "layer-catalog-lists: updated .awf/" + rel
+		if strings.Count(out.String(), announcement) != 1 {
+			t.Errorf("announcement %q count = %d, want 1: %q", announcement, strings.Count(out.String(), announcement), out.String())
+		}
 	}
 }
 
@@ -107,6 +171,7 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 	})
 }
 
+// invariant: config/migrations-and-locks:list-replacement-fixed-snapshot (TestLayerCatalogListsRefusalPreflightsEverySidecar)
 func TestLayerCatalogListsRefusalPreflightsEverySidecar(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{
 		"skills/tdd.yaml":           "data:\n  testSurfaces:\n    - valid\n",
@@ -127,6 +192,7 @@ func TestLayerCatalogListsRefusalPreflightsEverySidecar(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:list-replacement-fixed-snapshot (TestLayerCatalogListsRetryAfterLaterWriteFailure)
 func TestLayerCatalogListsRetryAfterLaterWriteFailure(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{
 		"agents/adr-reviewer.yaml":  "data:\n  focusItems: []\n",
