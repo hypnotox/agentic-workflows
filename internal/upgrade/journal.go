@@ -106,12 +106,14 @@ type Journal struct {
 	Operations      []Operation `json:"operations"`
 }
 
+const journalRel = config.DirName + "/current-state-upgrade.journal"
+
 // LockRel is the repo-relative lock path every journal ends on.
 func LockRel() string { return config.DirName + "/awf.lock" }
 
 // JournalPath returns the fixed journal path under root.
 func JournalPath(root string) string {
-	return filepath.Join(root, config.DirName, "current-state-upgrade.journal")
+	return filepath.Join(root, journalRel)
 }
 
 // JournalPresent reports whether a journal file exists under root. A fault is
@@ -422,8 +424,8 @@ func ParseJournal(b []byte) (Journal, error) {
 // images and clears the journal; a failure after leaves the sealed lock plus a
 // recoverable journal. It returns ordered typed terminal evidence; the command
 // owner renders it only after the outcome is known.
-func retainedJournal(root string) Evidence {
-	return Evidence{Action: "retained", Path: JournalPath(root)}
+func retainedJournal(string) Evidence {
+	return Evidence{Action: "retained", Path: journalRel}
 }
 
 func appendEvidence(values []Evidence, evidence ...Evidence) []Evidence {
@@ -649,7 +651,7 @@ func cleanupJournal(root string, evidence, changed []Evidence, operation journal
 	if err := operation.remove(JournalPath(root)); err != nil && !os.IsNotExist(err) {
 		return outcomeWithRetainedJournal(root, evidence, changed), err
 	}
-	evidence = append(evidence, Evidence{Action: "recovered", Path: JournalPath(root)})
+	evidence = append(evidence, Evidence{Action: "recovered", Path: journalRel})
 	return Outcome{Evidence: evidence, Changed: changed}, nil
 }
 

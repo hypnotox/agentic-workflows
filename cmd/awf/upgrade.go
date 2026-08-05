@@ -41,7 +41,7 @@ func runRecoverWith(root string, stdout io.Writer, dependencies upgradeDependenc
 		return newJournalFailure("recovery has not reached terminal state", outcome, err)
 	}
 	mutation, err := outcome.RecoveredMutation()
-	if err != nil { // coverage-ignore: Outcome formats evidence with fixed valid syntax
+	if err != nil {
 		return err
 	}
 	document, err := mutation.Document()
@@ -105,7 +105,7 @@ func runUpgradeWith(ctx context.Context, root string, stdout io.Writer, dependen
 			return newJournalFailure("upgrade has not reached terminal state", outcome, finalErr)
 		}
 		mutation, err := outcome.CompletedMutation()
-		if err != nil { // coverage-ignore: Outcome formats evidence with fixed valid syntax
+		if err != nil {
 			return err
 		}
 		document, err := mutation.Document()

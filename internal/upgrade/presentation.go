@@ -18,7 +18,7 @@ func (o Outcome) RecoveredMutation() (presentation.Mutation, error) {
 
 func (o Outcome) mutation(status string) (presentation.Mutation, error) {
 	values, err := journalValues(o.Evidence)
-	if err != nil { // coverage-ignore: evidence formatting always includes the fixed nonempty separator
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
 	mutation := presentation.Mutation{Status: status}
@@ -61,8 +61,8 @@ func (o Outcome) terminalChanged() []Evidence {
 func journalValues(evidence []Evidence) ([]presentation.Value, error) {
 	values := make([]presentation.Value, 0, len(evidence))
 	for _, fact := range evidence {
-		value, err := presentation.Prose(fact.Action + ": " + fact.Path)
-		if err != nil { // coverage-ignore: the fixed separator makes every evidence fact nonempty
+		value, err := presentation.Literal(fact.Action + ": " + fact.Path)
+		if err != nil {
 			return nil, err
 		}
 		values = append(values, value)
@@ -72,7 +72,7 @@ func journalValues(evidence []Evidence) ([]presentation.Value, error) {
 
 func journalFields(evidence []Evidence) ([]presentation.Field, error) {
 	values, err := journalValues(evidence)
-	if err != nil { // coverage-ignore: evidence formatting always includes the fixed nonempty separator
+	if err != nil {
 		return nil, err
 	}
 	fields := make([]presentation.Field, 0, len(values))

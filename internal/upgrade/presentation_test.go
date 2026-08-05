@@ -3,6 +3,7 @@ package upgrade
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -52,6 +53,20 @@ func TestOutcomePresentation(t *testing.T) {
 	want := "condition: upgrade has not reached terminal state\nstate: operation\ncause: journal write failed\n\ndiagnostic:\n  changed:\n    journal: committed: .awf/awf.lock\n  steps:\n    step 1: run awf upgrade --recover if an upgrade journal exists\n    step 2: inspect the listed changed axes\n    step 3: restore the project from version control if recovery cannot complete\n"
 	if got := rendered.String(); got != want {
 		t.Fatalf("diagnostic = %q, want %q", got, want)
+	}
+}
+
+func TestOutcomePresentationRejectsLineBreakEvidence(t *testing.T) {
+	for _, lineBreak := range []string{"\r", "\n"} {
+		t.Run(fmt.Sprintf("%q", lineBreak), func(t *testing.T) {
+			outcome := Outcome{Evidence: []Evidence{{Action: "applied", Path: "bad" + lineBreak + "path"}}}
+			if _, err := outcome.RecoveredMutation(); err == nil {
+				t.Fatal("RecoveredMutation accepted evidence with a line break")
+			}
+			if _, err := outcome.FailureDiagnostic("recovery failed", errors.New("cause")); err == nil {
+				t.Fatal("FailureDiagnostic accepted evidence with a line break")
+			}
+		})
 	}
 }
 

@@ -157,6 +157,29 @@ func TestRunUpgradeNoOpMigrationFailureUsesRetryOnlyDiagnostic(t *testing.T) {
 	}
 }
 
+func TestRunRecoverPropagatesInvalidEvidence(t *testing.T) {
+	root := scaffoldProject(t)
+	dependencies := testUpgradeDependencies()
+	dependencies.recover = func(string) (upgrade.Outcome, error) {
+		return upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "recovered", Path: "bad\npath"}}}, nil
+	}
+	if err := runRecoverWith(root, io.Discard, dependencies); err == nil || !strings.Contains(err.Error(), "line break") {
+		t.Fatalf("recover error = %v, want invalid evidence error", err)
+	}
+}
+
+func TestRunUpgradePropagatesInvalidFinalEvidence(t *testing.T) {
+	root := scaffoldProject(t)
+	attestLock(t, root)
+	dependencies := testUpgradeDependencies()
+	dependencies.final = func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error) {
+		return upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "committed", Path: "bad\rpath"}}}, nil
+	}
+	if err := runUpgradeWith(testContext(t), root, io.Discard, dependencies); err == nil || !strings.Contains(err.Error(), "line break") {
+		t.Fatalf("upgrade error = %v, want invalid evidence error", err)
+	}
+}
+
 func TestJournalFailureRoutesRecoveryAndFinalErrorsToOneDiagnostic(t *testing.T) {
 	root := scaffoldProject(t)
 	failure := errors.New("journal failed")
@@ -667,6 +690,11 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 	// A precommit journal whose lock hash differs from the final hash rolls the
 	// prepared write back to its prior image on recovery.
 	root := scaffoldProject(t)
+	newlineRoot := filepath.Join(t.TempDir(), "newline\nroot")
+	if err := os.Rename(root, newlineRoot); err != nil {
+		t.Fatal(err)
+	}
+	root = newlineRoot
 	lockPath := config.LockPath(root)
 	lockBytes, err := os.ReadFile(lockPath)
 	if err != nil {

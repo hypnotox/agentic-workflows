@@ -487,7 +487,7 @@ func TestRecoveryJournalWriteFailureRetainsTerminalJournalAxis(t *testing.T) {
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v", err)
 	}
-	if want := []Evidence{{Action: "pending", Path: LockRel()}, {Action: "retained", Path: JournalPath(root)}}; !slices.Equal(outcome.Changed, want) {
+	if want := []Evidence{{Action: "pending", Path: LockRel()}, {Action: "retained", Path: journalRel}}; !slices.Equal(outcome.Changed, want) {
 		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
 	}
 }
@@ -528,7 +528,7 @@ func TestJournalWriteFailuresReportTerminalJournalAxis(t *testing.T) {
 			}
 			for i := range tc.want {
 				if tc.want[i].Path == "" {
-					tc.want[i].Path = JournalPath(root)
+					tc.want[i].Path = journalRel
 				}
 			}
 			if !slices.Equal(outcome.Changed, tc.want) {
@@ -1058,7 +1058,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 			{Action: "committed", Path: LockRel()},
 			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
 			{Action: "discarded", Path: ".awf/memory"},
-			{Action: "recovered", Path: JournalPath(root)},
+			{Action: "recovered", Path: journalRel},
 		}
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
