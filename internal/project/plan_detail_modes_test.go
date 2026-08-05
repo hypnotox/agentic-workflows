@@ -111,10 +111,18 @@ func TestPlanningVerificationGuidanceStayAligned(t *testing.T) {
 	for _, surface := range surfaces {
 		policy := strings.ToLower(planPolicySection(t, surface))
 		for _, clause := range clauses {
-			if !strings.Contains(policy, clause) {
-				t.Errorf("%s missing planning-verification clause %q:\n%s", surface.name, clause, policy)
+			if count := strings.Count(policy, clause); count != 1 {
+				t.Errorf("%s planning-verification clause %q occurs %d times, want exactly once:\n%s", surface.name, clause, count, policy)
 			}
 		}
+	}
+
+	convention := strings.ToLower(readPlanPolicyFile(t, root, ".awf/skills/parts/writing-plans/conventions-tasks.md"))
+	if !strings.Contains(convention, "{{=awf:sectiondefault}}") {
+		t.Errorf("writing-plans convention must preserve the generic section through sectionDefault")
+	}
+	if strings.Contains(convention, "each material `post-check:` names its input population") {
+		t.Errorf("writing-plans convention duplicates the generic material-verification policy")
 	}
 }
 
