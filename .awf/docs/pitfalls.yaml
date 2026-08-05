@@ -82,17 +82,18 @@ data:
         After adding a structural catalog edge such as `RequiresAgent`, follow every fixture and
         closure-test failure and re-express the affected expectation without weakening what the test
         was meant to prove. A passing open-path fixture does not settle closure semantics.
-    - title: "Hard-coded counts in domain narratives drift"
+    - title: "Free-form domain narratives can hide drifting counts"
       domains: [adr-system]
       tags: [domain-staleness, convention-parts]
       body: |
-        The domain current-state narratives (`.awf/domains/parts/*/current-state.md`) are free prose, so a
-        spelled-out cardinal ("the nine chain-progression skills", "only the ten workflow-chain skills")
-        is invisible to every deterministic check and goes stale the moment the catalog grows; a 2026-07-07
-        currency sweep found three such stale counts from ADR-0067/0068 alone, in paragraphs the
-        feature commits never touched. When a narrative must quantify the catalog, prefer count-free
-        phrasing ("the `core`-flagged skills", "the chain-progression skills") or expect to sweep every
-        count in the doc (not just the paragraph you are editing) whenever a chain artifact lands.
+        Governed plan post-checks now distinguish indicative counts from terminal-set verification,
+        but domain current-state narratives (`.awf/domains/parts/*/current-state.md`) remain free prose.
+        A spelled-out cardinal ("the nine chain-progression skills", "only the ten workflow-chain
+        skills") is invisible to deterministic checks and can go stale when the catalog grows. A
+        2026-07-07 currency sweep found three such counts from ADR-0067/0068 in paragraphs the feature
+        commits never touched. In free-form narratives, prefer count-free phrasing ("the
+        `core`-flagged skills", "the chain-progression skills"); when a count is essential, sweep the
+        whole narrative whenever its source population changes.
     - title: "README.md is outside the drift oracle"
       domains: [tooling]
       tags: [doc-standard, cli-dispatch]
@@ -219,17 +220,16 @@ data:
         the repo for the phrase being retired (`templates/`, `.awf/**/parts/`, and the rendered
         outputs will surface every carrier, parts included) and rewrite stale clauses in place;
         an appended correction beside a surviving old claim is worse than either alone.
-    - title: "An empty scan result only counts once the probe provably ran"
+    - title: "An ad hoc empty scan still needs proof that the probe ran"
       tags: [verification-discipline]
       body: |
-        A compound shell command that errors mid-sequence silently drops every later segment: a
-        `grep A; echo ---; grep B` probe whose separator failed to parse never ran the second grep,
-        and its missing output was read as "no matches; templates carry no repo-identity literals"
-        (2026-07-09, ADR-0082 brainstorm). The false premise shaped a design decision and survived
-        until a fresh-context grounding check re-ran the scan and found two hits. Absence of output
-        is not verified absence: run verification probes as separate invocations (or with an
-        explicit sentinel/exit-code check), and treat any scan whose success path you did not
-        observe as unrun, not clean.
+        Material plan post-checks now require a success sentinel or checked exit status before empty
+        output proves absence. The residual hazard is an ad hoc probe outside that contract. A
+        compound command that errors mid-sequence can silently skip a later scan: during the
+        ADR-0082 brainstorm, a failed separator meant a second grep never ran, yet its missing output
+        was read as "no matches" until grounding found two hits. For interactive investigations and
+        other non-plan probes, run scans separately or check an explicit sentinel or exit status;
+        treat an unobserved success path as unrun, not clean.
     - title: "Re-prove every touched coverage ignore"
       domains: [tooling]
       tags: [coverage-gate]
@@ -317,15 +317,15 @@ data:
         rendered file against this repo's own parts caught it). When authoring a part, check the
         section's default (or an existing adopter's part) for whether the heading is yours to write.
         No note fires: the stub advisory clears the moment the part exists, whatever its shape.
-    - title: "Verify compound-chain side effects by reading the target back"
+    - title: "Ad hoc compound mutations still need target read-back"
       tags: [verification-discipline]
       body: |
-        A `cd <dir> && <edit>` chain silently skips the edit when the `cd` fails (wrong cwd
-        assumption across tool calls), while an unchained command later in the same block still
-        runs and succeeds; the block "worked", green output and all, minus the one side effect
-        that mattered (an `invariants:` config append vanished this way in the ADR-0090 session;
-        only `tail`-ing the file exposed it). After any compound chain that edits state, verify the
-        target's content, not the block's exit status.
+        Material plan post-checks now require reading back every target after a compound mutation.
+        Interactive and otherwise unplanned command chains remain exposed: a failed `cd <dir> &&
+        <edit>` can skip the edit while a later unchained command succeeds, making the block appear
+        green without its intended side effect. An `invariants:` append vanished this way during the
+        ADR-0090 session and only a target read-back exposed it. Outside the governed plan contract,
+        inspect each mutation target rather than trusting the compound command's overall result.
     - title: "Reuse the repository boundary for new filesystem walks"
       domains: [tooling]
       tags: [repo-open]
@@ -445,86 +445,52 @@ data:
         adding a config field that carries a meaningful live value, add its `liveState` case (mirror the
         sibling, `currentState.testGlobs` mirrors `currentState.sources`) and assert the rendered value in a
         `configreference_test.go` case; an `n/a` placeholder for a set top-level field is the smell.
-    - title: "A code-fence info string chosen as a marker can collide with a Linguist alias"
+    - title: "A future code-fence marker must account for Linguist aliases"
       domains: [adr-system]
       tags: [plan-taxonomy, commit-gate]
       related: [111]
       body: |
-        ADR-0111 marks a plan's planned commit subject with a ```commit fenced block. `commit` is
-        not an arbitrary token: GitHub Linguist registers it as an alias of its "Git Commit" grammar,
-        so ```commit is a real, highlighted language identifier. Two forces followed from that. (1)
-        Keep `commit` rather than a namespaced `awf-commit`, so the block keeps its commit-message
-        syntax highlighting; `awf-commit` is unknown to every highlighter. (2) Make the check fail
-        *safe*: a ```commit block is validated by default (a real planned subject in the natural fence
-        is caught, not silently skipped), with a second info-string token `awf-ignore` (```commit
-        awf-ignore) as the per-block opt-out for a display-only example. Highlighting survives the
-        opt-out because a highlighter selects the language from the info string's *first* token and
-        ignores the rest. Lesson for any future fence-based marker: check the token against Linguist's
-        language aliases (`lib/linguist/languages.yml`) before adopting it, and prefer a
-        checked-by-default marker plus an explicit opt-out over a namespaced token that silently loses
-        highlighting and fails open (ADR-0111; 2026-07-14).
-    - title: "A render primitive proven against Markdown hides output-language gaps until a real target runs"
+        ADR-0111 settled the existing ```commit marker: `commit` remains a GitHub Linguist alias with
+        commit-message highlighting, the check validates it by default, and ```commit awf-ignore is
+        the explicit display-only opt-out. The residual hazard applies when choosing another
+        fence-based marker. Check its first info-string token against Linguist's language aliases
+        (`lib/linguist/languages.yml`) before adopting it, preserve useful highlighting when possible,
+        and prefer checked-by-default semantics with an explicit opt-out over a namespaced token that
+        silently loses highlighting and fails open.
+    - title: "A new output language needs an exercised real render target"
       domains: [rendering]
       tags: [editable-sections, provenance-markers, command-runner]
       body: |
-        The in-place-editable-sections primitive (ADR-0100) was designed and unit-tested entirely
-        against Markdown, then its first *shell* consumer (the managed runner `x`, ADR-0101) exposed
-        two gaps invisible until a shell file was rendered *and executed/parsed*; each forcing a
-        mid-implementation ADR amendment. (1) The `awf:edit`-family provenance pointers survive into
-        output *as comments*, and an HTML `<!-- ... -->` pointer is a hard `bash` syntax error, so the
-        pointers had to become comment-syntax-aware (`#` for a `#!`-shebang target, HTML otherwise;
-        the same sniff `injectBanner` already used). (2) awf's sync wrote every file `0644`, but the
-        runner is invoked as `./x`, so it had to be rendered executable. Both were invisible to
-        `go test` (which never `bash -n`s or executes the rendered output) and to a Markdown-only
-        mental model. Lesson: when a rendering primitive will serve a new *output language*, render a
-        real target of that language and exercise it the way an adopter will (`bash -n`, execute,
-        parse) before finalizing the ADR; Markdown's assumptions (HTML comments are inert, no execute
-        bit) do not transfer, and the format-specific property (comment syntax, file mode, escaping)
-        that must survive into output is the first thing to validate (ADR-0100, ADR-0101; 2026-07-15).
-    - title: "A non-catalog config-tree render unit has a hand-wired fan-out the catalog table doesn't cover"
+        ADR-0101 fixed the shell runner gaps that Markdown-only tests missed: provenance comments are
+        syntax-aware and executable targets retain their mode. The residual hazard begins when a
+        rendering primitive gains another output language. Render a real target in that language and
+        exercise it as an adopter will (execute, parse, or validate syntax) before finalizing the
+        design. Existing Markdown and shell coverage cannot prove the new format's comment syntax,
+        file mode, escaping, or other language-specific properties.
+    - title: "A future non-catalog render singleton still has hand-wired fan-out"
       domains: [rendering]
       tags: [render-completeness, closed-config-tree, template-embed]
       body: |
-        A catalog skill/agent/doc rides a table-driven fan-out (enable array, catalog pool, render
-        loop, sweep, checks), but a config-tree singleton rendered by a dedicated `RenderAll` block,
-        the bootstrap, the hooks, and now the runner `x` (ADR-0101), must be wired *by hand* in every
-        place the table would otherwise cover, and each omission surfaces far from the render block.
-        Adding the runner touched, and each was easy to miss: the `//go:embed` directive
-        (`templates/embed.go`, a template absent from the embed FS fails only at first render), the
-        `RenderAll` block, the closed-tree sweep's claimed-path model (`buildClaimedModel`, an
-        unclaimed `.awf/runner/parts` made a `create ... to override` pointer's own advice fail `check`,
-        caught only in impl review), the `internal/configspec` entry + regenerated config-reference
-        (ADR-0088 parity), and the nameless-singleton enable-CLI arm (`cmd/awf` hardcodes each
-        singleton kind in the dispatcher, the toggle, `enableDisableSingleton`, `awf list`, and the
-        unknown-kind message; five sites, no central list). Lesson: when adding a config-tree singleton, walk the full
-        list (embed, render block, sweep claim, configspec/reference, enable CLI, example adoption)
-        rather than trusting the render to surface the gaps (ADR-0101, ADR-0086, ADR-0088; 2026-07-15).
-    - title: "A post-check whose scope is wider than the change's scope is unsatisfiable"
+        The bootstrap, hooks, and runner are now wired and covered, but their architecture remains
+        unlike the table-driven catalog fan-out. A new config-tree singleton rendered by a dedicated
+        `RenderAll` block must still be added by hand to the template embed, render block, closed-tree
+        claimed-path model, configspec and generated reference, enable/disable and list dispatch, and
+        example adoption. Existing singleton coverage proves only the known set; it cannot infer a
+        new kind. Walk the whole fan-out when adding one rather than trusting its first successful
+        render.
+    - title: "An ad hoc post-check can still overrun the change's scope"
       domains: [tooling]
       related: [115]
       tags: [verification-discipline, plan-taxonomy]
       body: |
-        The two sibling entries above cover a probe that never ran and a probe whose pattern is too
-        narrow. This is the variant where the probe runs, the pattern is right, and the *scope* is
-        wrong: it reads a wider unit than the rule governs, so it counts grandfathered matches the
-        change was never allowed to touch and can never reach its expected value. Satisfying it
-        would mean violating the invariant the task exists to protect.
-
-        ADR-0115's plan (2026-07-15) told task 5.1 to normalize an em-dash out of three ADR *heading*
-        lines and change "nothing else in these files", then post-checked with
-        `grep -lP '<banned>' docs/decisions/0007-*.md ... | wc -l` expecting `0`, on the stated
-        premise that those three bodies "happen to carry no other banned codepoint". They carry 15,
-        13, and 11. The check greps whole files, so it prints `3` forever; the only way to make it
-        print `0` is to clean the bodies, which the same plan, the same ADR, and the append-only
-        invariant all forbid. The heading-scoped check (`grep -hP '^# ADR-' ... | grep -cP
-        '<banned>'`) prints `0` and is the one that matches the rule.
-
-        The lesson is not "write better greps": it is that **a post-check is unverified prose until
-        someone runs it**. This one shipped through plan review, a verify pass, and a plan-vs-ADR
-        resync, all of which independently re-derived the em-dash *counts* and none of which
-        executed the command. Grep at the granularity the rule governs (line, literal, heading), and
-        when a task's scope is narrower than a file, say so in the probe rather than the prose
-        around it.
+        Material plan post-checks now name their population, exclusions, lifecycle snapshot, and
+        expected terminal set or authorized residual findings. Checks outside that contract can
+        still read a wider unit than the rule governs, count grandfathered findings the change must
+        preserve, and demand an impossible zero. ADR-0115 exposed the shape: a heading-only cleanup
+        was checked by scanning whole append-only ADR files whose bodies intentionally retained
+        banned punctuation. For ad hoc checks and non-plan artifacts, scope the probe itself to the
+        governed unit (line, literal, heading, or population); explanatory prose around a wider probe
+        does not narrow what it measures.
     - title: "Raw-byte ADR surgery must bound every scan to the frontmatter window"
       domains: [config]
       related: [120]
@@ -603,23 +569,17 @@ data:
         the concept) and re-derive each consumer's correctness under the new semantics; the 0154
         grounding check caught this only because the dispatch brief explicitly asked who else
         reads the map (ADR-0154; 2026-07-23).
-    - title: "A singleton-template conditional can be dead prose for its whole life"
+    - title: "A new singleton-template conditional needs a live key and both branches pinned"
       domains: [rendering]
       tags: [template-overlay, target-seam]
       body: |
-        AGENTS.md and the singleton docs render neutrally, once, through `p.data()`; only
-        per-target artifacts receive target-derived render keys. Every
-        `targetSessionHandoff` branch authored into the guide and workflow-doc templates was
-        therefore dead from birth: authored, reviewed, shipped, and never rendered for any
-        project. Nothing failed, because the `else` branch is coherent (publication safety
-        holds) and the golden tests pinned only the neutral output. ADR-0157 made the signal
-        real (a project-level any-enabled-target capability key) and pinned BOTH branches
-        with proof-marked tests. The general trap: a template conditional keyed on a render
-        key that no render path for that artifact sets is invisible to every existing gate.
-        When authoring a conditional in any template, locate the code that sets the key on
-        that artifact's render path, and pin both branches in a test. A deterministic
-        conditional-key consumption check (extending the ADR-0086 union) is recorded on the
-        roadmap.
+        ADR-0157 replaced the dead `targetSessionHandoff` branches with a real project-level
+        capability key and proof-marked tests for both outcomes. The residual hazard applies to a
+        future conditional in AGENTS.md or another singleton document: these artifacts render once
+        through neutral project data, not through each target's derived keys. Before authoring the
+        branch, locate the code that sets its key on that singleton's render path and add tests that
+        render both outcomes. A coherent fallback and green neutral golden output do not prove that
+        the alternate branch is reachable.
     - title: "An ordering proof written against the log proves nothing"
       domains: [tooling, invariants]
       related: [175]
