@@ -18,7 +18,7 @@ identity, or configurable structural headings.
 
 ## Architecture summary
 
-Implementation proceeds through four independently green transactions. The project package first
+Implementation proceeds through five independently green transactions. The project package first
 consolidates declaration facts and exhaustive projections, then strengthens ordinary fresh-render
 drift and the human semantic boundary. Two schema generations subsequently introduce list layering
 and structural headings with fixed-snapshot, preflighted migrations. Existing catalog, output-plan,
@@ -105,57 +105,54 @@ Stage the complete phase, inspect `git diff --cached --check`, run `./awf check 
 refactor(rendering): derive output completeness (applies ADR batch)
 ```
 
-## Phase 2: Distinguish binary drift and reinforce semantic review
+## Phase 2: Detect binary-derived ordinary drift
 
 **Execution mode: subagent-driven.**
 
-Completes: ["fresh-render-and-semantic-boundary"]
+Completes: ["fresh-render-authority"]
 
-### Task 2.1: Compare ordinary outputs with a fresh render before attribution
+### Task 2.1: Establish failing fresh-render drift regressions
 Latitude: exact
 Applying: ["derive-render-completeness-from-output-authority:current-render-freshness"]
-Paths: ["internal/project/check.go", "internal/project/staged_drift.go", "internal/project/render.go", "internal/project/output_plan.go", "internal/project/drift_test.go", "internal/project/staged_drift_test.go", "internal/project/inplace_test.go"]
+Paths: ["internal/project/drift_test.go", "internal/project/staged_drift_test.go"]
 
 Establish the subagent-driven phase baseline before editing: `git status --short` produces no output,
 `./x check` reports clean and exits zero, and `./x gate` exits zero.
+
+Add controlled-renderer regression cases for ordinary and staged frozen outputs whose template and
+config hashes are unchanged while the current planned bytes differ from the locked output. Run only
+the new cases and observe the expected failure under the existing hand-edit attribution before
+changing production code. Preserve that failing result in the phase evidence, then proceed directly
+to Task 2.2 without committing the red state.
+
+### Task 2.2: Compare ordinary outputs with a fresh render before attribution
+Latitude: exact
+Applying: ["derive-render-completeness-from-output-authority:current-render-freshness"]
+Paths: ["internal/project/check.go", "internal/project/staged_drift.go", "internal/project/render.go", "internal/project/output_plan.go", "internal/project/drift_test.go", "internal/project/staged_drift_test.go", "internal/project/inplace_test.go"]
 
 In the ordinary frozen-output branch, after template and config hashes match, render the current
 planned bytes and compare their hash with the locked output hash before comparing the worktree or
 index bytes. Report binary-derived stale output when the fresh hash differs from the lock; attribute a
 hand edit only when the fresh hash still matches the lock and observed bytes do not. Reuse the same
 classification in staged drift. Leave regenerated and in-place nodes on their declared regeneration
-policy. Cover ordinary clean, binary-derived stale, hand-edited, missing, regenerated, in-place, and
-staged equivalents, including a controlled renderer change with unchanged template/config hashes.
-Temporarily falsify the fresh-render comparison and prove the binary-derived test fails, then restore
-only that mutation.
+policy. Complete coverage for ordinary clean, binary-derived stale, hand-edited, missing, regenerated,
+in-place, and staged equivalents. Re-run the Task 2.1 regressions and the surrounding drift suites to
+prove the implementation changes the intended attribution only. Temporarily falsify the fresh-render
+comparison and prove the binary-derived test fails, then restore only that mutation.
 
-### Task 2.2: Place semantic rendering checks at planning and review boundaries
-Kind: batch
+### Task 2.3: Apply the drift claim and regenerate outputs
 Latitude: exact
-Applying: ["derive-render-completeness-from-output-authority:semantic-boundary"]
-Paths: ["templates/skills/writing-plans/SKILL.md.tmpl", "templates/agents/plan-reviewer.md.tmpl", "templates/agents/code-reviewer.md.tmpl", "internal/evals/chain_test.go", "internal/project/target_test.go", "internal/project/golden_test.go"]
-Representative: "The writing-plan contract requires a focused check for contradictory generated prose, concept-preserving paraphrase, and literal placeholder intent at each affected output boundary, while the plan reviewer checks that the plan schedules it."
-Edge: "The code reviewer verifies produced outputs and tests without claiming synonym detection, contradiction inference, placeholder-intent inference, or a universal output-language validator; missingkey=zero and generic empty fallbacks remain unchanged."
-Post-check: "Authority check over include-expanded live planning and reviewer templates: prove each enabled target receives the focused semantic-boundary instructions, then run exact golden/eval cases for empty data and literal placeholder examples; success is a clean targeted test run with no unresolved no-value token, not a source-line count."
+Applying: ["derive-render-completeness-from-output-authority:current-render-freshness"]
+Paths: ["docs/decisions/derive-render-completeness-from-output-authority.md", ".awf/topics/parts/rendering/sync-and-drift/current-state.md", "docs/decisions/INDEX.md", "docs/topics", "docs/domains", ".awf/awf.lock"]
 
-Add concise, adopter-neutral instructions only at planning and plan/code review moments that can judge
-meaning. Do not add a generic scanner or widen deterministic checks beyond exact known tokens. Keep
-the agent digest and workflow dispatch contracts unchanged.
-
-### Task 2.3: Apply the drift and semantic claim batch and regenerate outputs
-Latitude: exact
-Applying: ["derive-render-completeness-from-output-authority:current-render-freshness", "derive-render-completeness-from-output-authority:semantic-boundary"]
-Paths: ["docs/decisions/derive-render-completeness-from-output-authority.md", ".awf/topics/parts/rendering/sync-and-drift/current-state.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", "docs/decisions/INDEX.md", "AGENTS.md", ".pi", ".claude", "docs/topics", "docs/domains", ".awf/awf.lock"]
-
-Append one Applied event covering exactly:
+Transition the ADR from `Proposed` to `Accepted`, then to `Implementing`, and append one Applied event
+covering exactly:
 
 - add `rendering/sync-and-drift:ordinary-render-freshness`
-- add `rendering/workflow-skill-templates:semantic-rendering-review`
 
-Author both claims with test backing and exact proof markers. Run `./x render`, read back every reported
-mutation, and retain generated Pi, Claude, guide, topic, domain, index, and lock outputs. Confirm the
-ADR has no Remaining operations but stays `Implementing`; terminal review, not this phase, owns its
-status-only `Implemented` transition.
+Author the claim with test backing and its exact proof marker. Run `./x render`, read back every
+reported mutation, and retain generated topic, domain, index, and lock outputs. Confirm the ADR keeps
+the semantic-boundary operation Remaining and stays `Implementing`.
 
 ### Phase close
 
@@ -166,13 +163,58 @@ Stage the complete phase, inspect `git diff --cached --check`, run `./awf check 
 fix(rendering): detect binary-derived drift (applies ADR batch)
 ```
 
-## Phase 3: Layer catalog list defaults and migrate replacements
+## Phase 3: Reinforce semantic rendering review
+
+**Execution mode: subagent-driven.**
+
+Completes: ["semantic-rendering-boundary"]
+
+### Task 3.1: Place semantic rendering checks at planning and review boundaries
+Kind: batch
+Latitude: exact
+Applying: ["derive-render-completeness-from-output-authority:semantic-boundary"]
+Paths: ["templates/skills/writing-plans/SKILL.md.tmpl", "templates/agents/plan-reviewer.md.tmpl", "templates/agents/code-reviewer.md.tmpl", "internal/evals/chain_test.go", "internal/project/target_test.go", "internal/project/golden_test.go"]
+Representative: "The writing-plan contract requires a focused check for contradictory generated prose, concept-preserving paraphrase, and literal placeholder intent at each affected output boundary, while the plan reviewer checks that the plan schedules it."
+Edge: "The code reviewer verifies produced outputs and tests without claiming synonym detection, contradiction inference, placeholder-intent inference, or a universal output-language validator; missingkey=zero and generic empty fallbacks remain unchanged."
+Post-check: "Authority check over include-expanded live planning and reviewer templates: prove each enabled target receives the focused semantic-boundary instructions, then run exact golden/eval cases for empty data and literal placeholder examples; success is a clean targeted test run with no unresolved no-value token, not a source-line count."
+
+Establish the subagent-driven phase baseline before editing: `git status --short` produces no output,
+`./x check` reports clean and exits zero, and `./x gate` exits zero.
+
+Add concise, adopter-neutral instructions only at planning and plan/code review moments that can judge
+meaning. Do not add a generic scanner or widen deterministic checks beyond exact known tokens. Keep
+the agent digest and workflow dispatch contracts unchanged.
+
+### Task 3.2: Apply the semantic-boundary claim and regenerate outputs
+Latitude: exact
+Applying: ["derive-render-completeness-from-output-authority:semantic-boundary"]
+Paths: ["docs/decisions/derive-render-completeness-from-output-authority.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", "docs/decisions/INDEX.md", "AGENTS.md", ".pi", ".claude", "docs/topics", "docs/domains", ".awf/awf.lock"]
+
+Append one Applied event covering exactly:
+
+- add `rendering/workflow-skill-templates:semantic-rendering-review`
+
+Author the claim with test backing and its exact proof marker. Run `./x render`, read back every
+reported mutation, and retain generated Pi, Claude, guide, topic, domain, index, and lock outputs.
+Confirm the ADR has no Remaining operations but stays `Implementing`; terminal review, not this phase,
+owns its status-only `Implemented` transition.
+
+### Phase close
+
+Stage the complete phase, inspect `git diff --cached --check`, run `./awf check staged` and
+`./x gate`, and create the single closing commit.
+
+```commit
+docs(rendering): reinforce semantic output review (applies ADR batch)
+```
+
+## Phase 4: Layer catalog list defaults and migrate replacements
 
 **Execution mode: subagent-driven.**
 
 Completes: ["catalog-list-layering"]
 
-### Task 3.1: Model, validate, merge, and hash list layers
+### Task 4.1: Model, validate, merge, and hash list layers
 Latitude: exact
 Applying: ["layer-catalog-list-defaults-and-project-entries:list-data-layers", "layer-catalog-list-defaults-and-project-entries:explicit-default-suppression", "layer-catalog-list-defaults-and-project-entries:null-list-refusal", "layer-catalog-list-defaults-and-project-entries:specialized-list-transforms"]
 Paths: ["internal/config/config.go", "internal/config/config_test.go", "internal/project/datamerge.go", "internal/project/datamerge_test.go", "internal/project/validate.go", "internal/project/validate_test.go", "internal/project/confighash.go", "internal/project/confighash_test.go", "internal/project/glossary.go", "internal/project/glossary_test.go"]
@@ -190,13 +232,13 @@ the glossary's `standardTerms`/`terms` identity-aware transform outside this gen
 suppression map and effective data in the existing config-hash boundary. Cover every absence, empty,
 true, false, invalid-key, invalid-type, ordering, alias-safety, and glossary-exclusion branch.
 
-### Task 3.2: Add the fixed-snapshot list-replacement migration
+### Task 4.2: Add the fixed-snapshot list-replacement migration
 Latitude: exact
 Applying: ["layer-catalog-list-defaults-and-project-entries:fixed-snapshot-migration"]
-Paths: ["internal/migrate/migrate.go", "internal/migrate/layercataloglists.go", "internal/migrate/layercataloglists_test.go", "internal/migrate/configedit.go", "internal/migrate/migrate_test.go"]
+Paths: ["internal/migrate/migrate.go", "internal/migrate/layercataloglists.go", "internal/migrate/layercataloglists_test.go", "internal/migrate/configedit.go", "internal/migrate/migrate_test.go", "internal/project/project.go", "internal/project/version_test.go"]
 
-Register the next schema generation after the execution snapshot's current registry tip. In
-`layercataloglists.go`, freeze an explicit kind/artifact/key population for catalog-backed list
+Register the next schema generation after the execution snapshot's current registry tip and map it
+to the current `Version` in `minVersionBySchema`. In `layercataloglists.go`, freeze an explicit kind/artifact/key population for catalog-backed list
 replacements at this cutover; never derive that population from future `catalog.Standard` during
 upgrade. Preflight every matching sidecar before writing: a non-null non-list replacement produces
 the ADR's operation-category actionable refusal, reports every changed axis false, and names the
@@ -207,7 +249,7 @@ replacement, announce each mutation, and make rerun a no-op. Tests must prove re
 entire fixture byte-identical, an injected later-file write failure is safely retryable, and a
 post-cutover catalog key is not suppressed by the frozen snapshot.
 
-### Task 3.3: Project list-layer state into the configuration reference
+### Task 4.3: Project list-layer state into the configuration reference
 Latitude: exact
 Applying: ["layer-catalog-list-defaults-and-project-entries:list-data-layers", "layer-catalog-list-defaults-and-project-entries:explicit-default-suppression", "layer-catalog-list-defaults-and-project-entries:specialized-list-transforms"]
 Paths: ["internal/configspec/spec.go", "internal/configspec/spec_test.go", "internal/project/configreference.go", "internal/project/configreference_print.go", "internal/project/configreference_test.go", "templates/docs/config-reference.md.tmpl"]
@@ -219,7 +261,7 @@ the same typed rows. The reference must distinguish `dataDefaults: true` from ab
 configuration presence, not different effective content, and state that null is invalid for a
 catalog-backed list. Preserve specialized glossary documentation.
 
-### Task 3.4: Upgrade this adopter, apply claims, and regenerate
+### Task 4.4: Upgrade this adopter, apply claims, and regenerate
 Latitude: exact
 Applying: ["layer-catalog-list-defaults-and-project-entries:list-data-layers", "layer-catalog-list-defaults-and-project-entries:explicit-default-suppression", "layer-catalog-list-defaults-and-project-entries:null-list-refusal", "layer-catalog-list-defaults-and-project-entries:fixed-snapshot-migration", "layer-catalog-list-defaults-and-project-entries:specialized-list-transforms"]
 Paths: ["docs/decisions/layer-catalog-list-defaults-and-project-entries.md", ".awf/skills/tdd.yaml", ".awf/skills/proposing-adr.yaml", ".awf/agents/adr-reviewer.yaml", ".awf/agents/plan-reviewer.yaml", ".awf/agents/code-reviewer.yaml", ".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/config/configuration/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", "docs/config-reference.md", "docs/decisions/INDEX.md", "docs/topics", "docs/domains", ".awf/awf.lock"]
@@ -247,13 +289,13 @@ Stage the complete phase, inspect `git diff --cached --check`, run `./awf check 
 feat(config): layer catalog lists (applies ADR batch)
 ```
 
-## Phase 4: Separate structural Markdown headings from bodies
+## Phase 5: Separate structural Markdown headings from bodies
 
 **Execution mode: subagent-driven.**
 
 Completes: ["structural-section-headings"]
 
-### Task 4.1: Parse and assemble policy-aware structural headings
+### Task 5.1: Parse and assemble policy-aware structural headings
 Latitude: exact
 Applying: ["separate-structural-markdown-headings-from-section-bodies:optional-structural-heading", "separate-structural-markdown-headings-from-section-bodies:heading-body-assembly", "separate-structural-markdown-headings-from-section-bodies:no-heading-configuration"]
 Paths: ["internal/render/section.go", "internal/render/section_test.go", "internal/render/render.go", "internal/render/render_test.go", "internal/project/render.go", "internal/project/output_plan.go", "internal/project/section_default_render_test.go"]
@@ -271,7 +313,7 @@ the skeleton. Update in-place pointer wording so a headed section says the headi
 only the following body is preserved. Test headed, headingless, stub, part, repeated section-default,
 non-Markdown, drop, empty fallback, and unresolved-value branches.
 
-### Task 4.2: Exclude rendered structural headings from in-place read-back
+### Task 5.2: Exclude rendered structural headings from in-place read-back
 Latitude: exact
 Applying: ["separate-structural-markdown-headings-from-section-bodies:structural-heading-drift"]
 Paths: ["internal/project/render.go", "internal/project/inplace_test.go", "internal/render/render.go", "internal/render/render_test.go"]
@@ -288,7 +330,7 @@ missing heading, body beginning with a subordinate heading, and first-render fal
 make read-back retain the structural heading and prove the tamper/duplication test fails, then restore
 only that mutation.
 
-### Task 4.3: Normalize every live Markdown section site
+### Task 5.3: Normalize every live Markdown section site
 Kind: batch
 Latitude: exact
 Applying: ["separate-structural-markdown-headings-from-section-bodies:exact-heading-migration"]
@@ -302,12 +344,24 @@ marker-relative position and do not edit section body prose. Update parity and g
 newly added live Markdown section automatically enters the classifier without maintaining another
 template list.
 
-### Task 4.4: Add the fixed-snapshot convention-part heading migration
+### Task 5.4: Document structural-heading and body ownership
+Latitude: exact
+Applying: ["separate-structural-markdown-headings-from-section-bodies:optional-structural-heading", "separate-structural-markdown-headings-from-section-bodies:heading-body-assembly"]
+Paths: ["templates/docs/working-with-awf.md.tmpl", ".awf/parts/working-with-awf/config-and-overrides.md", "docs/working-with-awf.md"]
+
+Update both the standard documentation source and this adopter's overriding convention part to say
+that a declared structural heading is awf-owned, is excluded from convention-part replacement and
+in-place read-back, and disappears only when the complete section is dropped. Preserve the distinct
+body override and preservation rules. Regenerate `docs/working-with-awf.md` in Task 5.6 and verify the
+rendered wording is coherent once, without duplicate standard and override prose.
+
+### Task 5.5: Add the fixed-snapshot convention-part heading migration
 Latitude: exact
 Applying: ["separate-structural-markdown-headings-from-section-bodies:adopter-part-migration"]
-Paths: ["internal/migrate/migrate.go", "internal/migrate/structuralheadings.go", "internal/migrate/structuralheadings_test.go", "internal/migrate/configedit.go", "internal/migrate/migrate_test.go"]
+Paths: ["internal/migrate/migrate.go", "internal/migrate/structuralheadings.go", "internal/migrate/structuralheadings_test.go", "internal/migrate/configedit.go", "internal/migrate/migrate_test.go", "internal/project/project.go", "internal/project/version_test.go"]
 
-Register the next schema generation after Phase 3. Freeze the cutover's exact artifact/section/heading
+Register the next schema generation after Phase 4, map it to the current `Version` in
+`minVersionBySchema`, and freeze the cutover's exact artifact/section/heading
 mapping in `structuralheadings.go`; later template headings must not widen it. Preflight every matching
 convention part. Remove an exact heading in the leading structural position while preserving all
 remaining bytes, comments, modes, and framing; leave no-heading parts unchanged. A different,
@@ -317,10 +371,11 @@ announce them, and make rerun a no-op. Test exact, no-heading, custom, multiple-
 comment, injected write-failure/retry, and future-heading cases; preflight refusal must leave the
 whole fixture byte-identical.
 
-### Task 4.5: Upgrade this adopter, apply claims, and regenerate
+### Task 5.6: Upgrade this adopter, apply claims, and regenerate
 Latitude: exact
 Applying: ["separate-structural-markdown-headings-from-section-bodies:optional-structural-heading", "separate-structural-markdown-headings-from-section-bodies:heading-body-assembly", "separate-structural-markdown-headings-from-section-bodies:structural-heading-drift", "separate-structural-markdown-headings-from-section-bodies:exact-heading-migration", "separate-structural-markdown-headings-from-section-bodies:adopter-part-migration", "separate-structural-markdown-headings-from-section-bodies:no-heading-configuration"]
-Paths: ["docs/decisions/separate-structural-markdown-headings-from-section-bodies.md", ".awf/parts", ".awf/skills/parts", ".awf/agents/parts", ".awf/docs/parts", ".awf/domains/parts", ".awf/topics/parts/rendering/render-engine/current-state.md", ".awf/topics/parts/rendering/inplace-and-placeholders/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", "docs/decisions/INDEX.md", "AGENTS.md", ".pi", ".claude", "docs/topics", "docs/domains", ".awf/awf.lock"]
+Paths: ["docs/decisions/separate-structural-markdown-headings-from-section-bodies.md", ".awf/parts", ".awf/skills/parts", ".awf/agents/parts", ".awf/docs/parts", ".awf/domains/parts", ".awf/topics/parts/rendering/render-engine/current-state.md", ".awf/topics/parts/rendering/inplace-and-placeholders/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", "docs/decisions/INDEX.md", "glob:*.md", "glob:docs/**/*.md", "glob:.pi/**/*.md", "glob:.claude/**/*.md", ".awf/awf.lock"]
+Post-check: "Compare the complete `./x render` mutation report with the declared root, docs, Pi, and Claude Markdown pathspecs; success requires every reported path to be covered and each expected output population to have at least one visited artifact."
 
 Transition the ADR through `Accepted` to `Implementing` and append one Applied event for exactly:
 
@@ -335,9 +390,11 @@ Transition the ADR through `Accepted` to `Implementing` and append one Applied e
 Run `./awf upgrade`, then read back every part reported changed and the lock before trusting the
 compound mutation. Confirm exact copied headings were removed, other body bytes stayed stable, and a
 second upgrade is a no-op. Apply claim/proof changes with correct provenance, then run `./x render`
-and read back every reported generated mutation. Verify the post-render working diff contains no
-unexplained prose change, `./x check` is clean, every live section is classified, and the ADR has no
-Remaining operations while staying `Implementing`.
+and read back every reported generated mutation. Verify every path reported by `./x render` is
+covered by the declared generated-output pathspecs and that each expected Markdown output population
+was visited. Verify the post-render working diff
+contains no unexplained prose change, `./x check` is clean, every live section is classified, and the
+ADR has no Remaining operations while staying `Implementing`.
 
 ### Phase close
 
@@ -351,7 +408,8 @@ feat(rendering): separate section headings (applies ADR batch)
 ## Definition of done
 
 - `dod: render-authority-complete` Declaration and render projections share bounded existing authority; every live template, config-reference field, and singleton conditional is exhaustively classified and test-backed.
-- `dod: fresh-render-and-semantic-boundary` Working and staged drift distinguish binary-derived ordinary output from hand edits, while planning and review carry focused meaning-dependent checks without semantic inference machinery.
+- `dod: fresh-render-authority` Working and staged drift distinguish binary-derived ordinary output from hand edits across the frozen-output branches.
+- `dod: semantic-rendering-boundary` Planning and review carry focused meaning-dependent checks without semantic inference machinery.
 - `dod: catalog-list-layering` Catalog-backed lists compose before project entries, explicit suppression and null/type validation are hash-visible, specialized transforms remain intact, and the fixed-snapshot migration is clean and retryable.
 - `dod: structural-section-headings` Markdown structural headings are awf-owned, body sources remain independently replaceable or preserved, drop removes the complete section, and exhaustive template/part migration settles without ambiguity.
 
