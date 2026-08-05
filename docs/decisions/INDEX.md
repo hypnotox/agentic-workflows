@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-derive-render-completeness-from-output-authority: Derive render completeness from output authority](derive-render-completeness-from-output-authority.md) (Proposed)
+- [ADR-layer-catalog-list-defaults-and-project-entries: Layer catalog list defaults and project entries](layer-catalog-list-defaults-and-project-entries.md) (Proposed)
 
 ## History
 
