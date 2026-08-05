@@ -190,6 +190,48 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
+func TestPiEffortMemoryToolContract(t *testing.T) {
+	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
+	index := selected[".pi/extensions/awf-effort/index.ts"]
+	client := selected[".pi/extensions/awf-effort/client.ts"]
+	guidance := selected[".pi/skills/example-using-effort/SKILL.md"]
+	for _, want := range []string{
+		`MEMORY_TOOL_NAMES = ["effort_memory_read", "effort_memory_edit", "effort_memory_update"]`,
+		`Type.Object({ offset: Type.Optional(Type.Integer({ minimum: 1 })), limit: Type.Optional(Type.Integer({ minimum: 1 })) }, { additionalProperties: false })`,
+		`Type.Array(Type.Object({ oldText: Type.String({ minLength: 1, maxLength: 1048576 }), newText: Type.String({ maxLength: 1048576 }) }, { additionalProperties: false }), { minItems: 1, maxItems: 128 })`,
+		`Type.Object({ phase: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })), next: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })) }, { additionalProperties: false })`,
+		"activate(true)", "const clear = () => { current = undefined; activate(false); publish(); }", "fileMutationQueue(join(ctx.cwd, \".awf\", \"efforts\", snapshot.slug, \"memory.md\"), run)",
+		"getActiveTools", "setActiveTools", "withFileMutationQueue", "promptGuidelines",
+	} {
+		if !strings.Contains(index, want) {
+			t.Errorf("rendered effort index missing memory-tool contract %q", want)
+		}
+	}
+	for _, want := range []string{"decodeMemory", "exact(reply", "memoryRead", "memoryEdit", "memoryUpdate", "childMemoryExecutor"} {
+		if !strings.Contains(client, want) {
+			t.Errorf("rendered effort client missing memory-tool contract %q", want)
+		}
+	}
+	for _, want := range []string{"prefer `effort_memory_read`", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
+		if !strings.Contains(guidance, want) {
+			t.Errorf("rendered using-effort guidance missing %q", want)
+		}
+	}
+	for _, config := range []string{
+		"prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n",
+		"prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n",
+	} {
+		for path, content := range explorationRenderedByPath(t, config) {
+			if strings.Contains(path, "awf-effort") || strings.Contains(path, "using-effort") || strings.Contains(content, "effort_memory_") {
+				t.Errorf("unselected or non-Pi rendering leaked memory tools into %s", path)
+			}
+		}
+	}
+	fallback := renderSkillGolden(t, "using-effort", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
+	assertNoLeaks(t, fallback)
+}
+
 func TestPiMinimumRuntime(t *testing.T) {
 	for _, name := range []string{"awf-context-usage/index.ts", "awf-handoff/index.ts", "awf-subagents/index.ts"} {
 		out := renderPiExtensionFile(t, name)

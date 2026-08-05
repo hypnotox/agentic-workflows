@@ -267,3 +267,4 @@ avoids a second locking system.
 - 2026-08-05: Applied; operations: update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:memory-skeleton-purpose-partition`, update `tooling/cli:explicit-output-bypasses`, update `tooling/cli:effort-command-contract`
 - 2026-08-05: Reapplied; operations: update `tooling/cli:explicit-output-bypasses`, update `tooling/cli:effort-command-contract`
 - 2026-08-05: Applied; operations: update `rendering/pi-runtime:pi-minimum-runtime`
+- 2026-08-05: Applied; operations: update `rendering/pi-runtime:pi-extension-target-render`, update `rendering/pi-workflows:pi-effort-session-association`, update `rendering/pi-workflows:using-effort-skill`, add `rendering/pi-workflows:pi-effort-memory-tools`
