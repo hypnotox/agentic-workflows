@@ -168,7 +168,7 @@ var Standard = &Catalog{
 				"focusItems": []any{
 					map[string]any{"name": "plan-adherence", "description": "the diff matches the plan's stated file paths and content; unexplained drift is a finding"},
 					map[string]any{"name": "test-coverage", "description": "behaviour changes carry tests in the same commit; no assertion is weakened to pass"},
-					map[string]any{"name": "verification-instrument-can-fail", "description": "for every added or changed mechanical check, require a negative case and a temporary falsification that proves the mutation landed before its passing verdict counts"},
+					map[string]any{"name": "verification-instrument-can-fail", "description": "for every added or changed mechanical check, require a negative case and a temporary falsification that proves the mutation landed before its passing verdict counts; restore only the temporary mutation, and never use a whole-file reset that can erase unrelated uncommitted work"},
 					map[string]any{"name": "check-authority-taxonomy", "description": "classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation"},
 				},
 				"docCurrencyItems": []any{

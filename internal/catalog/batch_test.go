@@ -50,7 +50,7 @@ func TestReviewerVerificationGuidanceDefaults(t *testing.T) {
 		{
 			agent: "code-reviewer",
 			items: map[string][]string{
-				"verification-instrument-can-fail": {"added or changed mechanical check", "negative case", "temporary falsification", "mutation landed", "verdict counts"},
+				"verification-instrument-can-fail": {"added or changed mechanical check", "negative case", "temporary falsification", "mutation landed", "verdict counts", "restore only the temporary mutation", "whole-file reset", "unrelated uncommitted work"},
 				"check-authority-taxonomy":         {"authority, state, or choreography", "preserve authority checks", "no stricter than the durable property", "no named authority or state obligation"},
 			},
 		},
