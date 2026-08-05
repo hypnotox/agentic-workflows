@@ -83,22 +83,71 @@ func TestOneSpellingAcrossEveryRankSurface(t *testing.T) {
 	}
 }
 
-func TestReportCategoriesRejectsDynamicLabel(t *testing.T) {
-	_, err := reportCategories("dynamic.go", []byte(`package fixture
+func TestReportCategoriesResolvesPresentationAndLocalAliases(t *testing.T) {
+	categories, err := reportCategories("aliases.go", []byte(`package fixture
 
-var label = "errors"
-var _ = presentation.ReportCategory{Label: label}
+import output "github.com/hypnotox/agentic-workflows/internal/presentation"
+
+type category = output.ReportCategory
+type categoryAlias = category
+type categories = []categoryAlias
+
+var _ = categories{{Label: "errors"}}
 `))
-	if err == nil {
-		t.Fatal("dynamic category label was accepted")
+	if err != nil || categories != 1 {
+		t.Fatalf("aliases: categories=%d err=%v, want 1 and no error", categories, err)
 	}
 }
+
+func TestReportCategoriesRejectsUnresolvedCategoryForms(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source string
+	}{
+		{"presentation-import-alias", `package fixture
+import output "github.com/hypnotox/agentic-workflows/internal/presentation"
+var _ = output.ReportCategory{Label: "invalid"}`},
+		{"local-type-alias", `package fixture
+import output "github.com/hypnotox/agentic-workflows/internal/presentation"
+type category = output.ReportCategory
+var _ = category{Label: "invalid"}`},
+		{"missing-label", `package fixture
+import "github.com/hypnotox/agentic-workflows/internal/presentation"
+var _ = presentation.ReportCategory{}`},
+		{"invalid-label", `package fixture
+import "github.com/hypnotox/agentic-workflows/internal/presentation"
+var _ = presentation.ReportCategory{Label: "invalid"}`},
+		{"dynamic-label", `package fixture
+import "github.com/hypnotox/agentic-workflows/internal/presentation"
+var label = "errors"
+var _ = presentation.ReportCategory{Label: label}`},
+		{"positional-construction", `package fixture
+import "github.com/hypnotox/agentic-workflows/internal/presentation"
+var _ = presentation.ReportCategory{"errors"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			categories, err := reportCategories(tc.name+".go", []byte(tc.source))
+			if err == nil || categories != 1 {
+				t.Fatalf("categories=%d err=%v, want 1 and a rejection", categories, err)
+			}
+		})
+	}
+}
+
+type reportCategoryType int
+
+const (
+	notReportCategory reportCategoryType = iota
+	reportCategory
+	reportCategorySlice
+)
 
 func reportCategories(path string, source []byte) (int, error) {
 	file, err := parser.ParseFile(token.NewFileSet(), path, source, 0)
 	if err != nil {
 		return 0, err
 	}
+	types := reportCategoryTypes(file)
 	var problems []error
 	seen := map[*ast.CompositeLit]struct{}{}
 	check := func(literal *ast.CompositeLit) {
@@ -120,10 +169,11 @@ func reportCategories(path string, source []byte) (int, error) {
 		if !ok {
 			return true
 		}
-		if isReportCategory(literal.Type) {
+		switch reportCategoryTypeOf(literal.Type, types) {
+		case notReportCategory:
+		case reportCategory:
 			check(literal)
-		}
-		if isReportCategorySlice(literal.Type) {
+		case reportCategorySlice:
 			for _, element := range literal.Elts {
 				if category, ok := element.(*ast.CompositeLit); ok {
 					check(category)
@@ -135,18 +185,66 @@ func reportCategories(path string, source []byte) (int, error) {
 	return len(seen), errors.Join(problems...)
 }
 
-func isReportCategory(expr ast.Expr) bool {
-	selector, ok := expr.(*ast.SelectorExpr)
-	if !ok || selector.Sel.Name != "ReportCategory" {
-		return false
+func reportCategoryTypes(file *ast.File) map[string]reportCategoryType {
+	imports := map[string]bool{}
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil || path != "github.com/hypnotox/agentic-workflows/internal/presentation" {
+			continue
+		}
+		name := "presentation"
+		if spec.Name != nil {
+			name = spec.Name.Name
+		}
+		imports[name] = true
 	}
-	qualifier, ok := selector.X.(*ast.Ident)
-	return ok && qualifier.Name == "presentation"
+	types := map[string]reportCategoryType{}
+	for name := range imports {
+		if name != "." {
+			types[name] = notReportCategory
+		}
+	}
+	if imports["."] {
+		types["ReportCategory"] = reportCategory
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, declaration := range file.Decls {
+			general, ok := declaration.(*ast.GenDecl)
+			if !ok || general.Tok != token.TYPE {
+				continue
+			}
+			for _, spec := range general.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok || !typeSpec.Assign.IsValid() || types[typeSpec.Name.Name] != notReportCategory {
+					continue
+				}
+				if kind := reportCategoryTypeOf(typeSpec.Type, types); kind != notReportCategory {
+					types[typeSpec.Name.Name] = kind
+					changed = true
+				}
+			}
+		}
+	}
+	return types
 }
 
-func isReportCategorySlice(expr ast.Expr) bool {
-	slice, ok := expr.(*ast.ArrayType)
-	return ok && isReportCategory(slice.Elt)
+func reportCategoryTypeOf(expr ast.Expr, types map[string]reportCategoryType) reportCategoryType {
+	if selector, ok := expr.(*ast.SelectorExpr); ok && selector.Sel.Name == "ReportCategory" {
+		if qualifier, ok := selector.X.(*ast.Ident); ok && types[qualifier.Name] == notReportCategory {
+			_, imported := types[qualifier.Name]
+			if imported {
+				return reportCategory
+			}
+		}
+	}
+	if ident, ok := expr.(*ast.Ident); ok {
+		return types[ident.Name]
+	}
+	if slice, ok := expr.(*ast.ArrayType); ok && reportCategoryTypeOf(slice.Elt, types) == reportCategory {
+		return reportCategorySlice
+	}
+	return notReportCategory
 }
 
 func reportCategoryLabel(literal *ast.CompositeLit) (string, error) {
