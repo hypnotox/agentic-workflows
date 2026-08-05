@@ -476,9 +476,6 @@ func conditionalPathExists(value any, path []string) bool {
 }
 
 func conditionalPathUsesLiveContext(data map[string]any, dataArtifact string, path []string) bool {
-	if conditionalPathExists(data, path) {
-		return true
-	}
 	if len(path) > 1 && path[0] == "vars" {
 		for _, descriptor := range catalog.Standard.Vars {
 			if descriptor.Key == path[1] {
@@ -505,8 +502,9 @@ func conditionalPathUsesLiveContext(data map[string]any, dataArtifact string, pa
 			}
 			return false
 		}
+		return conditionalPathExists(data, path)
 	}
-	return false
+	return conditionalPathExists(data, path)
 }
 
 func setConditionalPath(value any, path []string, kind string, set bool, literal string) any {
@@ -723,11 +721,13 @@ func TestSingletonConditionalInspectionRejectsMissingContextDescendant(t *testin
 		name         string
 		src          string
 		dataArtifact string
+		data         map[string]any
 	}{
-		{"missing-var", `{{ if .vars.reviewMissingKey }}configured{{ else }}fallback{{ end }}`, ""},
-		{"non-record-descendant", `{{ with .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, "agents-doc"},
-		{"missing-record-field", `{{ range .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, "agents-doc"},
-		{"other-artifact-data", `{{ if .data.adrSections }}configured{{ else }}fallback{{ end }}`, "agents-doc"},
+		{name: "missing-var", src: `{{ if .vars.reviewMissingKey }}configured{{ else }}fallback{{ end }}`},
+		{name: "non-record-descendant", src: `{{ with .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, dataArtifact: "agents-doc"},
+		{name: "missing-record-field-empty-list", src: `{{ range .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, dataArtifact: "agents-doc", data: map[string]any{"commands": []any{}}},
+		{name: "missing-record-field-heterogeneous", src: `{{ range .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, dataArtifact: "agents-doc", data: map[string]any{"commands": []any{map[string]any{"cmd": "one"}, map[string]any{"reviewMissingKey": true}}}},
+		{name: "other-artifact-data", src: `{{ if .data.adrSections }}configured{{ else }}fallback{{ end }}`, dataArtifact: "agents-doc"},
 	}
 	for _, fixture := range fixtures {
 		t.Run(fixture.name, func(t *testing.T) {
@@ -736,7 +736,7 @@ func TestSingletonConditionalInspectionRejectsMissingContextDescendant(t *testin
 				t.Fatal(err)
 			}
 			path := inspection.conditions[len(inspection.conditions)-1].paths[0]
-			if conditionalPathUsesLiveContext(map[string]any{"vars": map[string]any{}, "data": map[string]any{}}, fixture.dataArtifact, path) {
+			if conditionalPathUsesLiveContext(map[string]any{"vars": map[string]any{}, "data": fixture.data}, fixture.dataArtifact, path) {
 				t.Fatalf("missing render-context descendant was accepted: %s", strings.Join(path, "."))
 			}
 		})
