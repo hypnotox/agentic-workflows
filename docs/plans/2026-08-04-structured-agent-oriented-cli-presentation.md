@@ -365,19 +365,23 @@ Completes: ["deterministic-adoption-gate", "ordinary-output-contract", "reposito
 Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:standard-result-shapes", "structured-agent-oriented-cli-presentation:semantic-mapping-ownership", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:interactive-presentation", "structured-agent-oriented-cli-presentation:enforced-adoption"]
-Paths: ["internal/presentation/shapes.go", "internal/project/", "internal/config/", "internal/adr/", "cmd/awf/list_add.go", "cmd/awf/init.go", "cmd/awf/new.go", "cmd/awf/adr.go", "cmd/awf/uninstall.go", "cmd/awf/config.go", "internal/project/configreference_print.go", "cmd/awf/changelog.go", "glob:cmd/awf/*_test.go", "cmd/awf/testdata/"]
-Representative: "Map enable/disable, init, new, ADR numbering, uninstall, and config-reference results in their model-owning packages into `Mutation`, `Detail`, or `Collection`, with one stable label or record per semantic fact."
-Edge: "Preserve init descriptor JSON and selected changelog bytes as isolated protocols/payloads; keep a no-release changelog diagnostic ordinary; forbid Markdown headings, tables, alignment padding, and semicolon-compressed result lines."
-Post-check: "`go test ./internal/project ./internal/config ./internal/adr ./cmd/awf` exits zero and exact command goldens cover success, emptiness, refusal, partial mutation, and renderer failure; record every remaining direct-output candidate for the structural detector in Task 6.3 rather than manually classifying it as accepted."
+Paths: ["internal/presentation/shapes.go", "internal/project/", "internal/config/", "internal/adr/", "cmd/awf/list_add.go", "cmd/awf/init.go", "cmd/awf/new.go", "cmd/awf/adr.go", "cmd/awf/uninstall.go", "cmd/awf/config.go", "cmd/awf/commitgate.go", "cmd/awf/commitgate_test.go", "cmd/awf/commitpolicy.go", "cmd/awf/commitpolicy_test.go", "cmd/awf/main.go", "cmd/awf/main_test.go", "internal/project/configreference_print.go", "cmd/awf/changelog.go", "glob:cmd/awf/*_test.go", "cmd/awf/testdata/"]
+Representative: "Map enable/disable, init, new, ADR numbering, uninstall, config-reference, commit-gate, and commit-policy results in their model-owning packages into `Mutation`, `Detail`, `Diagnostic`, or `Collection`, with one stable label or record per semantic fact."
+Edge: "Preserve init descriptor JSON and selected changelog bytes as isolated protocols/payloads; keep a no-release changelog diagnostic ordinary; convert commit-gate and commit-policy direct writers without changing authorization, stream, or exit semantics; forbid Markdown headings, tables, alignment padding, and semicolon-compressed result lines."
+Post-check: "`go test ./internal/project ./internal/config ./internal/adr ./cmd/awf` exits zero and exact command goldens cover success, emptiness, refusal, partial mutation, commit-gate and commit-policy outcomes, and renderer failure; record every remaining direct-output candidate for the structural detector in Task 6.3 rather than manually classifying it as accepted."
 
 Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
 `go test ./internal/... ./cmd/awf` to exit zero at the Phase 5 commit.
 
 Introduce `presentation.Collection` with its first config-reference and list consumers. Extract or
 retain closed bypass functions named `runReadPlan`, `writeChangelogPayload`,
-`writeEffortActivityProtocol`, `writeInitDescriptorProtocol`, and `contextdelivery.Deliver`; the
-Phase 6 direct-output search permits only those symbols and fails without manual classification on
-any other direct writer.
+`writeEffortActivityProtocol`, `writeInitDescriptorProtocol`, and `contextdelivery.Deliver`; these
+remain the complete successful payload/protocol bypass set. Separately, add the sole
+`writeRendererFailure` terminal mechanism fallback in `cmd/awf/main.go`: it is callable only after
+the presentation renderer fails, trims and collapses every Unicode whitespace run in the cause to
+one ASCII space, substitutes `renderer failed` when empty, and writes exactly one newline-terminated
+`awf: <cause>` diagnostic to stderr. Pin ordinary, hostile multiline, and empty causes plus the sole
+call path. The Phase 6 direct-output search fails on any other direct writer.
 
 Treat `internal/render` as the existing project-template engine and leave it independent; do not use it
 for CLI presentation. Keep semantic mapping beside typed result owners rather than centralizing
@@ -404,21 +408,24 @@ Paths: ["cmd/awf/presentation_boundary_test.go", "cmd/awf/testdata/presentation-
 Build the structural test with `go/packages` and AST inspection, following the repository's existing
 context-boundary detector pattern. Scan production `cmd/awf` plus model-owner mapping packages and
 reject direct formatted ordinary output, ad hoc builders, padded formatting, Markdown headings, raw
-presentation strings, and renderer implementations outside `internal/presentation`. The allowlist is
-closed to `runReadPlan`, `writeChangelogPayload`, `writeEffortActivityProtocol`,
-`writeInitDescriptorProtocol`, and `contextdelivery.Deliver`; template rendering in
-`internal/render` and non-user-facing serialization are not presentation bypasses. Match symbols and
-call paths, not merely file names.
+presentation strings, and renderer implementations outside `internal/presentation`. The successful
+payload/protocol allowlist is closed to `runReadPlan`, `writeChangelogPayload`,
+`writeEffortActivityProtocol`, `writeInitDescriptorProtocol`, and `contextdelivery.Deliver`.
+Separately recognize only `writeRendererFailure` as a terminal mechanism fallback and prove its sole
+production call is dominated by presentation-renderer failure; it is not a sixth bypass. Template
+rendering in `internal/render` and non-user-facing serialization are not presentation bypasses.
+Match symbols and call paths, not merely file names.
 
-Use negative fixtures to prove every detector branch and a positive fixture for each allowlisted
-bypass. Keep diagnostics deterministic and path/line attributed. Create the named
+Use negative fixtures to prove every detector branch, a positive fixture for each allowlisted bypass,
+and positive and negative fixtures for the exact renderer-failure reachability rule. Keep diagnostics
+deterministic and path/line attributed. Create the named
 `TestOrdinaryCommandOutputUsesPresentation` and `TestExplicitOutputBypasses` proof units without
 invariant markers because their claims are still absent. The post-review flip adds all three pending
 markers, including the marker for the earlier live `TestCommandOutputBoundary` unit, atomically with
 their current-state claims. Run:
 
 ```sh
-go test ./internal/presentation ./cmd/awf -run 'Test(PresentationTreeContract|OrdinaryCommandOutputUsesPresentation|CommandOutputBoundary|ExplicitOutputBypasses)'
+go test ./internal/presentation ./cmd/awf -run 'Test(PresentationTreeContract|OrdinaryCommandOutputUsesPresentation|CommandOutputBoundary|ExplicitOutputBypasses|RendererFailureFallback)'
 ```
 
 The command must succeed, exercise positive and negative branches, and report zero production
@@ -446,7 +453,7 @@ Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:typed-command-boundary", "structured-agent-oriented-cli-presentation:explicit-bypasses", "structured-agent-oriented-cli-presentation:enforced-adoption", "structured-agent-oriented-cli-presentation:claim-backing"]
 Paths: ["glob:cmd/awf/*_test.go", "cmd/awf/testdata/", "internal/presentation/", "internal/contextq/", "internal/commitpolicy/", "internal/project/", "internal/audit/", "internal/effort/", "internal/worktree/", "internal/migrate/", "cmd/contextspilllog/", ".github/workflows/release.yml", "x"]
 Representative: "For each ordinary top-level command family, assert a complete representative success or produced-report presentation plus usage/operational failure stream and exit behavior, with stable labels, semantic category order, record schemas, escaping, and exactly one terminal newline."
-Edge: "Assert byte-for-byte authored plan/changelog payloads and spill/activity/descriptor protocols, prompt non-newline flush, renderer atomicity, no duplicate stderr after a produced failing report, no convenience JSON option, and contract-aware `x` and release consumers."
+Edge: "Assert byte-for-byte authored plan/changelog payloads and spill/activity/descriptor protocols, prompt non-newline flush, renderer atomicity, exact ordinary/hostile/empty renderer-failure fallback bytes and reachability, no duplicate stderr after a produced failing report, no convenience JSON option, and contract-aware `x` and release consumers."
 Post-check: "`go test ./internal/... ./cmd/awf ./cmd/contextspilllog` exits zero; the four named proof units run and pass; `./x render && ./x check` is a no-op and clean; the structural gate reports zero production findings."
 
 Before editing, require `git status --short` to print nothing, `./x check` to exit zero, and
@@ -478,8 +485,8 @@ test(tooling): enforce CLI presentation adoption
 - `dod: collected-report-contract` Checks, audits, and migrations collect complete typed outcomes before one presentation write while retaining continuation, journal, rollback, and severity semantics.
 - `dod: ordinary-output-contract` Every ordinary command result, help surface, advisory, refusal, progress replacement, and partial outcome uses deterministic labeled text with stable grouping, schemas, order, escaping, and newline behavior.
 - `dod: repository-consumer-contract` Active docs, help, runners, release automation, generated targets, and adopters consume declared labels or named protocols rather than incidental whitespace or legacy prefixes.
-- `dod: explicit-bypass-contract` Only plan/changelog payloads and effort-activity/init-descriptor/context-spill protocols bypass the tree, and each remains byte-for-byte tested without mixed presentation text.
-- `dod: deterministic-adoption-gate` AST enforcement with a closed symbol allowlist rejects any ungoverned ordinary output and reaches zero production findings before Phase 6 closes.
+- `dod: explicit-bypass-contract` Only plan/changelog payloads and effort-activity/init-descriptor/context-spill protocols bypass the tree successfully, and each remains byte-for-byte tested without mixed presentation text; the separately governed `writeRendererFailure` mechanism is exact, terminal, and reachable only after renderer failure.
+- `dod: deterministic-adoption-gate` AST enforcement with a closed five-symbol successful-bypass allowlist and a separate exact renderer-failure reachability rule rejects any ungoverned ordinary output and reaches zero production findings before Phase 6 closes.
 - `dod: exhaustive-contract-coverage` Exact-output fixtures, the four named proof units, render/check, and the full gate pin public streams, exits, labels, protocol bytes, and bypass isolation.
 
 ## Notes
