@@ -165,6 +165,10 @@ func runEnable(ctx context.Context, root, kind, name string, dryRun bool, stdout
 }
 
 func toggle(ctx context.Context, root, kind, name string, dir direction, flags toggleFlags, stdout io.Writer) error {
+	return toggleWithProjectLoader(ctx, root, kind, name, dir, flags, stdout, newProjectLoader)
+}
+
+func toggleWithProjectLoader(ctx context.Context, root, kind, name string, dir direction, flags toggleFlags, stdout io.Writer, loadProject func(string) (*project.Loader, error)) error {
 	add := dir == enableDir
 	if err := checkGraphFlags(kind, flags.dryRun, flags.withDependents); err != nil {
 		return err
@@ -226,37 +230,45 @@ func toggle(ctx context.Context, root, kind, name string, dir direction, flags t
 		}
 		edits = planEdits(plan)
 	}
+	loader, err := loadProject(root)
+	if err != nil {
+		return err
+	}
 	if err := rewriteConfig(root, p.Cfg.Source(), add, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the enabled/not-enabled guards and config.Load preclude it)
 		return err
 	}
-	if add {
-		if project.IsFreeformDomainKind(kind) {
-			if err := scaffoldDomainCurrentState(p, name); err != nil { // coverage-ignore: scaffoldDomainCurrentState only errors on an unreachable filesystem fault a test cannot trigger
-				return err
-			}
-		}
-		return runSync(ctx, root, stdout)
-	}
-	var notes []string
-	for _, op := range plan {
-		pl, _ := project.PluralKind(op.Node.Kind)
-		if hasSidecarOrParts(root, pl, op.Node.Name) {
-			notes = append(notes, fmt.Sprintf("%s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", op.Node.Kind, op.Node.Name))
-		}
-	}
-	if project.IsFreeformDomainKind(kind) && hasSidecarOrParts(root, key, name) {
-		notes = append(notes, fmt.Sprintf("%s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", kind, name))
-	}
-	notes = append(notes, unrequiredAgentNotes(p, plan)...)
-	if len(notes) > 0 {
-		if err := printEnablementNotes(stdout, notes); err != nil { // coverage-ignore: notes are synthesized from validated single-line artifact names and fixed prose
+	if add && project.IsFreeformDomainKind(kind) {
+		if err := scaffoldDomainCurrentState(p, name); err != nil { // coverage-ignore: scaffoldDomainCurrentState only errors on an unreachable filesystem fault a test cannot trigger
 			return err
 		}
 	}
-	return runSync(ctx, root, stdout)
+	syncResult, _, err := syncMutation(ctx, loader, root, nil)
+	if err != nil {
+		return err
+	}
+	if add {
+		return renderSyncMutation(stdout, syncResult)
+	}
+	var notes []project.EnablementNote
+	for _, op := range plan {
+		pl, _ := project.PluralKind(op.Node.Kind)
+		if hasSidecarOrParts(root, pl, op.Node.Name) {
+			notes = append(notes, project.EnablementNote{Reason: project.EnablementNoteOrphanedAuthoredState, Kind: op.Node.Kind, Name: op.Node.Name})
+		}
+	}
+	if project.IsFreeformDomainKind(kind) && hasSidecarOrParts(root, key, name) {
+		notes = append(notes, project.EnablementNote{Reason: project.EnablementNoteOrphanedAuthoredState, Kind: kind, Name: name})
+	}
+	notes = append(notes, unrequiredAgentNotes(p, plan)...)
+	if len(notes) > 0 {
+		if err := printEnablementNotes(stdout, notes); err != nil { // coverage-ignore: typed notes are synthesized from validated artifact identities and known reasons
+			return err
+		}
+	}
+	return renderSyncMutation(stdout, syncResult)
 }
 
-func printEnablementNotes(stdout io.Writer, notes []string) error {
+func printEnablementNotes(stdout io.Writer, notes []project.EnablementNote) error {
 	document, err := project.EnablementNotesDocument(notes)
 	if err != nil {
 		return err
@@ -298,7 +310,7 @@ func runDisable(ctx context.Context, root, kind, name string, withDependents, dr
 // skill required keeps "no longer" honest (a pre-existing standalone agent is
 // not this cascade's doing), and local-sidecar agents mirror the resolver's
 // skip.
-func unrequiredAgentNotes(p *project.Project, plan []project.PlanOp) []string {
+func unrequiredAgentNotes(p *project.Project, plan []project.PlanOp) []project.EnablementNote {
 	if len(plan) < 2 {
 		return nil
 	}
@@ -312,7 +324,7 @@ func unrequiredAgentNotes(p *project.Project, plan []project.PlanOp) []string {
 			}
 		}
 	}
-	var notes []string
+	var notes []project.EnablementNote
 	for _, agent := range p.Cfg.Agents {
 		if removed[catalog.Node{Kind: "agent", Name: agent}] || !wasRequiredBy[agent] {
 			continue
@@ -334,7 +346,7 @@ func unrequiredAgentNotes(p *project.Project, plan []project.PlanOp) []string {
 			}
 		}
 		if !required {
-			notes = append(notes, fmt.Sprintf("agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)", agent))
+			notes = append(notes, project.EnablementNote{Reason: project.EnablementNoteAgentNoLongerRequired, Kind: "agent", Name: agent})
 		}
 	}
 	return notes
@@ -383,7 +395,7 @@ func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) err
 		return err
 	}
 	document, err := p.ListDocument(kindFilter)
-	if err != nil { // coverage-ignore: Open validates every configured name and dispatch admits only known list kinds
+	if err != nil {
 		return err
 	}
 	return presentation.Render(stdout, document)

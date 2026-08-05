@@ -2,15 +2,19 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/initspec"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -330,6 +334,58 @@ func (w *nthInitErrorWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+func TestFinishInitSyncFailureRollsBackOnlyScaffoldedConfig(t *testing.T) {
+	for _, scaffolded := range []bool{false, true} {
+		t.Run(strconv.FormatBool(scaffolded), func(t *testing.T) {
+			cfgPath := filepath.Join(t.TempDir(), ".awf", "config.yaml")
+			if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(cfgPath, []byte("config"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			want := errors.New("sync failed")
+			if err := finishInitSyncFailure(cfgPath, scaffolded, want); !errors.Is(err, want) {
+				t.Fatalf("sync error = %v, want %v", err, want)
+			}
+			_, err := os.Stat(cfgPath)
+			if scaffolded && !os.IsNotExist(err) {
+				t.Fatalf("scaffolded config survived rollback: %v", err)
+			}
+			if !scaffolded && err != nil {
+				t.Fatalf("existing config was removed: %v", err)
+			}
+		})
+	}
+}
+
+func TestInitProjectLoaderPropagatesFailure(t *testing.T) {
+	forceNonInteractive(t)
+	want := errors.New("loader failed")
+	err := runInitWithProjectLoader(testContext(t), scaffoldProject(t), true, false, nil, "", io.Discard, func(string) (*project.Loader, error) {
+		return nil, want
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("loader error = %v, want %v", err, want)
+	}
+}
+
+func TestRenderInitOutcomePropagatesFailures(t *testing.T) {
+	want := errors.New("advisory failed")
+	if err := renderInitOutcome(testContext(t), nil, initspec.Outcome{ConfigPath: "config"}, io.Discard, func(context.Context, *project.Project) ([]string, error) {
+		return nil, want
+	}); !errors.Is(err, want) {
+		t.Fatalf("advisory error = %v, want %v", err, want)
+	}
+	advisories := func(context.Context, *project.Project) ([]string, error) { return nil, nil }
+	if err := renderInitOutcome(testContext(t), nil, initspec.Outcome{ConfigPath: "bad\npath"}, io.Discard, advisories); err == nil {
+		t.Fatal("invalid outcome accepted")
+	}
+	if err := renderInitOutcome(testContext(t), nil, initspec.Outcome{ConfigPath: "config"}, errorWriter{}, advisories); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("writer error = %v", err)
+	}
+}
+
 func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
 	forceNonInteractive(t)
 	for _, test := range []struct {
@@ -366,10 +422,10 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		"references unset vars",
 		"next actions:",
 		"step 1: continue with the rendered project state",
-		"step 2: fill the Identity section at .awf/parts/agents-doc/identity.md",
-		"step 3: set still-empty vars in .awf/config.yaml",
-		"step 4: wire rendered hooks under .awf/hooks/",
-		"step 5: commit .awf and rendered files together",
+		"step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render",
+		"step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render",
+		"step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself",
+		"step 5: commit .awf/ and the rendered files together",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("init output missing %q:\n%s", want, out.String())

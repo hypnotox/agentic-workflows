@@ -138,6 +138,7 @@ func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 		"negative-format.go":       "ad hoc presentation construction",
 		"negative-markdown.go":     "raw Markdown presentation",
 		"negative-renderer.go":     "direct output",
+		"negative-resident.go":     "direct output",
 		"negative-alias.go":        "direct output",
 	}
 	for fixture, want := range negativeFixtures {
@@ -224,8 +225,8 @@ func loadPresentationPackages(t *testing.T, overlay map[string][]byte) []*packag
 	patterns := []string{
 		"./cmd/awf", "./internal/audit", "./internal/clispec", "./internal/commitpolicy",
 		"./internal/contextdelivery", "./internal/contextq", "./internal/effort", "./internal/initspec",
-		"./internal/memorycite", "./internal/project", "./internal/prosegate", "./internal/topic",
-		"./internal/upgrade", "./internal/worktree",
+		"./internal/memorycite", "./internal/project", "./internal/prosegate", "./internal/resident",
+		"./internal/topic", "./internal/upgrade", "./internal/worktree",
 	}
 	pkgs, err := packages.Load(&packages.Config{Dir: repoRoot(t), Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo, Overlay: overlay}, patterns...)
 	if err != nil {
@@ -407,8 +408,8 @@ func loadBoundaryFixture(t *testing.T, name string, renderer bool) *packages.Pac
 		files = append(files, stub)
 	}
 	pkgPath := modulePath + "/cmd/awf"
-	if file.Name.Name == "contextdelivery" {
-		pkgPath = modulePath + "/internal/contextdelivery"
+	if file.Name.Name != "main" {
+		pkgPath = modulePath + "/internal/" + file.Name.Name
 	}
 	info := &types.Info{Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Types: map[ast.Expr]types.TypeAndValue{}, Selections: map[*ast.SelectorExpr]*types.Selection{}}
 	checked, err := (&types.Config{Importer: boundaryFixtureImporter{fallback: importer.Default()}}).Check(pkgPath, fileSet, files, info)

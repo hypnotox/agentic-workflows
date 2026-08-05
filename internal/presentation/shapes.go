@@ -40,6 +40,9 @@ func (c Collection) Document() (Document, error) {
 	categories := make([]Node, 0, len(c.Categories))
 	for _, category := range c.Categories {
 		if len(category.Values) > 0 {
+			if len(category.Schema) > 0 || len(category.Records) > 0 {
+				return Document{}, errors.New("collection category cannot mix values with schema or records")
+			}
 			list, err := NewList(category.Label, category.Values...)
 			if err != nil {
 				return Document{}, err

@@ -26,7 +26,7 @@ func TestRunConfigStaticFallback(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"status: config reference static",
+		"status: config reference static (not inside an awf project)",
 		"config keys:",
 		"audit.diffThreshold | int",
 		"gateCmd | Command that runs the full pre-commit gate",

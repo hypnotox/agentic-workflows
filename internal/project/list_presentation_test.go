@@ -13,7 +13,7 @@ func TestEnablementPresentationOwnersRenderBareEntries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := EnablementNotesDocument([]string{"agent remains enabled"})
+	notes, err := EnablementNotesDocument([]EnablementNote{{Reason: EnablementNoteAgentNoLongerRequired, Kind: "agent", Name: "code-reviewer"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func TestEnablementPresentationOwnersRenderBareEntries(t *testing.T) {
 		want     string
 	}{
 		{document: plan, want: "status: enablement plan\n\ncollection:\n  plan operations:\n    + skill reviewing-impl\n    + agent code-reviewer (required by reviewing-impl)\n"},
-		{document: notes, want: "status: enablement notes\n\ncollection:\n  notes:\n    agent remains enabled\n"},
+		{document: notes, want: "status: enablement notes\n\ncollection:\n  notes:\n    agent \"code-reviewer\" is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)\n"},
 	} {
 		var out strings.Builder
 		if err := presentation.Render(&out, test.document); err != nil {
@@ -38,8 +38,8 @@ func TestEnablementPresentationOwnersRejectInvalidEntries(t *testing.T) {
 	if _, err := PlanDocument([]PlanOp{{Node: catalog.Node{Kind: "skill", Name: "bad\nname"}, Enable: true}}); err == nil {
 		t.Fatal("invalid plan entry accepted")
 	}
-	if _, err := EnablementNotesDocument([]string{"bad\nnote"}); err == nil {
-		t.Fatal("invalid enablement note accepted")
+	if _, err := EnablementNotesDocument([]EnablementNote{{Reason: EnablementNoteReason(99)}}); err == nil {
+		t.Fatal("unknown enablement note accepted")
 	}
 	if _, err := listCategory("items", []string{"bad\nitem"}); err == nil {
 		t.Fatal("invalid list entry accepted")

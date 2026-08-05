@@ -21,6 +21,10 @@ import (
 )
 
 func runInit(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
+	return runInitWithProjectLoader(ctx, root, force, describe, sets, answersFile, stdout, newProjectLoader)
+}
+
+func runInitWithProjectLoader(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer, loadProject func(string) (*project.Loader, error)) error {
 	cat := catalog.Standard
 	descs := initspec.CatalogVars(cat)
 	if describe {
@@ -133,6 +137,10 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 		}
 		return collisionRefusal(collisions)
 	}
+	loader, syncErr := initProjectLoader(root, loadProject)
+	if syncErr != nil {
+		return syncErr
+	}
 	// Gate before the chained sync: init is Ungated at the driver, but re-rendering
 	// an existing schema- or version-behind tree must still refuse rather than
 	// re-stamp the current schema over an unmigrated config (ADR-0039). runSync no
@@ -144,34 +152,41 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	}
 	// Under --force, the selected sync path backs up every foreign file via the
 	// shared BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
-	loader, syncErr := newProjectLoader(root)
-	if syncErr != nil { // coverage-ignore: the gate above has already opened and validated the same repository boundary
-		return syncErr
-	}
 	var seed *project.InitAuthority
 	if !configExists && !lockExists {
 		seed = &project.InitAuthority{InitializedWithVersion: project.Version}
 	}
-	syncResult, syncErr := syncMutation(ctx, loader, root, seed)
+	syncResult, syncedProject, syncErr := syncMutation(ctx, loader, root, seed)
 	if syncErr != nil {
-		if scaffolded { // coverage-ignore: the first-adoption boundary, scaffold, collision plan, and gate all succeeded; a failure now requires a concurrent mutation or filesystem fault
-			_ = os.Remove(cfgPath)
-			_ = os.Remove(filepath.Dir(cfgPath))
-		}
-		return syncErr
+		return finishInitSyncFailure(cfgPath, scaffolded, syncErr)
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
-	np, err := project.Open(ctx, root)
-	if err != nil { // coverage-ignore: the chained runSync just opened this same tree
+	return renderInitOutcome(ctx, syncedProject, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Added: added, Sync: syncResult, NextActions: initNextActions}, stdout, func(ctx context.Context, p *project.Project) ([]string, error) {
+		return p.AdvisoryNotes(ctx)
+	})
+}
+
+func initProjectLoader(root string, load func(string) (*project.Loader, error)) (*project.Loader, error) {
+	return load(root)
+}
+
+func finishInitSyncFailure(cfgPath string, scaffolded bool, syncErr error) error {
+	if scaffolded {
+		_ = os.Remove(cfgPath)
+		_ = os.Remove(filepath.Dir(cfgPath))
+	}
+	return syncErr
+}
+
+func renderInitOutcome(ctx context.Context, p *project.Project, outcome initspec.Outcome, stdout io.Writer, advisoryNotes func(context.Context, *project.Project) ([]string, error)) error {
+	notes, err := advisoryNotes(ctx, p)
+	if err != nil {
 		return err
 	}
-	notes, err := np.AdvisoryNotes(ctx)
-	if err != nil { // coverage-ignore: sync just rendered this same tree and generated its domain docs - both AdvisoryNotes inputs succeeded moments ago
-		return err
-	}
-	document, err := (initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Added: added, Sync: syncResult, Advisories: notes, NextActions: initNextActions}).Document()
-	if err != nil { // coverage-ignore: config, sync, scaffold closure, advisories, and fixed actions were validated by their owning producers
+	outcome.Advisories = notes
+	document, err := outcome.Document()
+	if err != nil {
 		return err
 	}
 	return presentation.Render(stdout, document)
@@ -224,10 +239,10 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 }
 
 var initNextActions = []string{
-	"fill the Identity section at .awf/parts/agents-doc/identity.md",
-	"set still-empty vars in .awf/config.yaml",
-	"wire rendered hooks under .awf/hooks/",
-	"commit .awf and rendered files together",
+	"fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render",
+	"set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render",
+	"wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself",
+	"commit .awf/ and the rendered files together",
 }
 
 // writeInitDescriptorProtocol writes the documented init descriptor JSON

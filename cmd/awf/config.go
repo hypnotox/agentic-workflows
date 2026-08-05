@@ -25,7 +25,7 @@ func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		document, presentationErr := project.ConfigReferencePresentation(key, nil, "config reference static")
+		document, presentationErr := project.ConfigReferencePresentation(key, nil, "config reference static (not inside an awf project)")
 		if presentationErr != nil {
 			return presentationErr
 		}

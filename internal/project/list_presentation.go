@@ -29,10 +29,38 @@ func PlanDocument(plan []PlanOp) (presentation.Document, error) {
 	return (presentation.Collection{Status: "enablement plan", Categories: []presentation.CollectionCategory{category}}).Document()
 }
 
-// EnablementNotesDocument maps post-mutation advisories into one collection.
-func EnablementNotesDocument(notes []string) (presentation.Document, error) {
-	category, err := listCategory("notes", notes)
-	if err != nil {
+// EnablementNoteReason identifies one project-owned post-enablement advisory.
+type EnablementNoteReason int
+
+const (
+	// EnablementNoteOrphanedAuthoredState reports authored sidecars or parts left behind by removal.
+	EnablementNoteOrphanedAuthoredState EnablementNoteReason = iota
+	// EnablementNoteAgentNoLongerRequired reports a retained agent with no remaining skill requirement.
+	EnablementNoteAgentNoLongerRequired
+)
+
+// EnablementNote is one typed post-enablement advisory.
+type EnablementNote struct {
+	Reason EnablementNoteReason
+	Kind   string
+	Name   string
+}
+
+// EnablementNotesDocument maps typed post-mutation advisories into one collection.
+func EnablementNotesDocument(notes []EnablementNote) (presentation.Document, error) {
+	entries := make([]string, 0, len(notes))
+	for _, note := range notes {
+		switch note.Reason {
+		case EnablementNoteOrphanedAuthoredState:
+			entries = append(entries, fmt.Sprintf("%s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", note.Kind, note.Name))
+		case EnablementNoteAgentNoLongerRequired:
+			entries = append(entries, fmt.Sprintf("agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)", note.Name))
+		default:
+			return presentation.Document{}, fmt.Errorf("unknown enablement note reason %d", note.Reason)
+		}
+	}
+	category, err := listCategory("notes", entries)
+	if err != nil { // coverage-ignore: typed note formatting quotes identities and emits fixed single-line prose
 		return presentation.Document{}, err
 	}
 	return (presentation.Collection{Status: "enablement notes", Categories: []presentation.CollectionCategory{category}}).Document()
