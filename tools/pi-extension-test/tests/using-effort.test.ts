@@ -41,7 +41,7 @@ test("client strictly rejects transport, closed envelopes, facts, and outcomes",
 
 function harness(replies: any[] = [], opts: { directory?: any; emitThrows?: boolean; factoryCapabilities?: unknown } = {}) {
   const tools = new Map<string, any>(), hooks = new Map<string, any>(), listeners = new Map<string, any>(); const events: any[] = [], calls: any[] = [], options: any[] = [];
-  const pi: any = { registerTool: (x: any) => tools.set(x.name, x), on: (n: string, h: any) => hooks.set(n, h), events: { emit: (n: string, p: any) => { if (opts.emitThrows) throw new Error("emit"); events.push([n, p]); if (n === "remote-pi:capabilities:request" && Object.hasOwn(opts, "factoryCapabilities")) listeners.get("remote-pi:capabilities")(opts.factoryCapabilities); }, on: (n: string, h: any) => listeners.set(n, h) }, exec: async (_: string, args: string[], option: any) => { calls.push(args); options.push(option); const r = replies.shift() ?? success(args[2] as any, args[5], args[3]); if (r instanceof Error) throw r; return { code: 0, stdout: typeof r === "string" ? r : line(r), stderr: "" }; } };
+  let active:string[]=[]; const pi: any = { getActiveTools:()=>active, setActiveTools:(x:string[])=>{active=[...x]}, withFileMutationQueue:async(_p:string,f:any)=>f(), registerTool: (x: any) => tools.set(x.name, x), on: (n: string, h: any) => hooks.set(n, h), events: { emit: (n: string, p: any) => { if (opts.emitThrows) throw new Error("emit"); events.push([n, p]); if (n === "remote-pi:capabilities:request" && Object.hasOwn(opts, "factoryCapabilities")) listeners.get("remote-pi:capabilities")(opts.factoryCapabilities); }, on: (n: string, h: any) => listeners.set(n, h) }, exec: async (_: string, args: string[], option: any) => { calls.push(args); options.push(option); const r = replies.shift() ?? success(args[2] as any, args[5], args[3]); if (r instanceof Error) throw r; return { code: 0, stdout: typeof r === "string" ? r : line(r), stderr: "" }; } };
   let n = 0; registerEffort(pi, { uuid: () => n++ ? OTHER : OWNER, isDirectory: opts.directory ?? (async () => true) });
   const tool = () => tools.get("using_effort"); const ctx = { cwd: "/repo" };
   return { pi, tools, hooks, listeners, events, calls, options, tool, ctx };
@@ -135,7 +135,7 @@ test("using_effort serializes overlapping invocations in invocation order", asyn
   const firstSettled = new Promise<void>(resolve => { releaseFirst = resolve; });
   const firstInvoked = new Promise<void>(resolve => { firstStarted = resolve; });
   const tools = new Map<string, any>(); const hooks = new Map<string, any>(); const calls: string[][] = [];
-  const pi: any = { registerTool: (tool: any) => tools.set(tool.name, tool), on: (name: string, hook: any) => hooks.set(name, hook), exec: async (_: string, args: string[]) => {
+  let active:string[]=[]; const pi: any = { getActiveTools:()=>active, setActiveTools:(x:string[])=>{active=[...x]}, withFileMutationQueue:async(_p:string,f:any)=>f(), registerTool: (tool: any) => tools.set(tool.name, tool), on: (name: string, hook: any) => hooks.set(name, hook), exec: async (_: string, args: string[]) => {
     calls.push(args); if (calls.length === 1) { firstStarted(); await firstSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
     if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
     return { code: 0, stdout: line(success("attached", OWNER, "second")), stderr: "" };
@@ -157,7 +157,7 @@ test("using_effort serializes overlapping invocations in invocation order", asyn
   const failureSettled = new Promise<void>(resolve => { releaseFailure = resolve; });
   const failureInvoked = new Promise<void>(resolve => { failureStarted = resolve; });
   const failureTools = new Map<string, any>(); const failureHooks = new Map<string, any>(); const failureCalls: string[][] = [];
-  const failurePi: any = { registerTool: (tool: any) => failureTools.set(tool.name, tool), on: (name: string, hook: any) => failureHooks.set(name, hook), exec: async (_: string, args: string[]) => {
+  let failureActive:string[]=[]; const failurePi: any = { getActiveTools:()=>failureActive, setActiveTools:(x:string[])=>{failureActive=[...x]}, withFileMutationQueue:async(_p:string,f:any)=>f(), registerTool: (tool: any) => failureTools.set(tool.name, tool), on: (name: string, hook: any) => failureHooks.set(name, hook), exec: async (_: string, args: string[]) => {
     failureCalls.push(args); if (failureCalls.length === 1) { failureStarted(); await failureSettled; return { code: 0, stdout: line(success("attached", OWNER, "first")), stderr: "" }; }
     if (args[2] === "detach") return { code: 0, stdout: line({ schemaVersion: 2, condition: "detached" }), stderr: "" };
     return { code: 0, stdout: line(refusal("missing")), stderr: "" };
@@ -210,12 +210,12 @@ test("ownership loss clears suffix and thrown optional emissions preserve heartb
 });
 
 test("remote Pi display suffix capability, replay, lifecycle clears, and failures remain advisory", async () => {
-  let defaultTool: any; const standalone: any = { exec: async (_: string, argv: string[]) => ({ stdout: line(success("attached", argv[5], argv[3])) }), registerTool: (tool: any) => { defaultTool = tool } }; effortExtension(standalone); // default factory is intentionally usable
+  let defaultTool: any; const standalone: any = { getActiveTools:()=>[], setActiveTools:()=>{}, withFileMutationQueue:async(_p:string,f:any)=>f(), on:()=>{}, exec: async (_: string, argv: string[]) => ({ stdout: line(success("attached", argv[5], argv[3])) }), registerTool: (tool: any) => { if(tool.name==="using_effort") defaultTool = tool } }; effortExtension(standalone); // default factory is intentionally usable
   await mkdir("/tmp/.awf/worktrees/demo", { recursive: true });
   await defaultTool.execute("id", { effort: "demo" }, new AbortController().signal, () => {}, { cwd: "/tmp" });
-  let missingDirectoryTool: any; effortExtension({ exec: standalone.exec, registerTool: (tool: any) => { missingDirectoryTool = tool } });
+  let missingDirectoryTool: any; effortExtension({ getActiveTools:()=>[], setActiveTools:()=>{}, withFileMutationQueue:async(_p:string,f:any)=>f(), on:()=>{}, exec: standalone.exec, registerTool: (tool: any) => { if(tool.name==="using_effort") missingDirectoryTool = tool } });
   await missingDirectoryTool.execute("id", { effort: "missing-dir" }, new AbortController().signal, () => {}, { cwd: "/definitely-missing" });
-  assert.throws(() => registerEffort({ exec: async () => ({ stdout: "" }), registerTool: () => {} } as any, { uuid: () => "bad" }), /lowercase UUIDv4/);
+  assert.throws(() => registerEffort({ on:()=>{}, exec: async () => ({ stdout: "" }), registerTool: () => {}, getActiveTools:()=>[], setActiveTools:()=>{}, withFileMutationQueue:async(_p:string,f:any)=>f() } as any, { uuid: () => "bad" }), /lowercase UUIDv4/);
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }, success("attached", OWNER, "other"), { schemaVersion: 2, condition: "detached" }]);
   assert.deepEqual(h.events, [["remote-pi:capabilities:request", undefined]]);
   assert.equal(typeof h.listeners.get("remote-pi:capabilities"), "function"); assert.equal(typeof h.listeners.get("remote-pi:display-suffix:request"), "function");

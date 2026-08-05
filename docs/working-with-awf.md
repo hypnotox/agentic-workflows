@@ -162,3 +162,5 @@ changelog --since <previous version>` lists every adopter-facing change in betwe
 drift check and commit the config and rendered files together.
 
 Pi renders five governed TypeScript outputs: context usage, handoff, and subagent index, routing, and runner. Context usage is a standalone transient observation with a deterministic unavailable form; it neither persists facts nor triggers a pressure action.
+
+Pi extensions require the retained 0.81.1 fork runtime APIs, including dynamic active tools and the shared file-mutation queue; incompatible runtimes receive one actionable notice before registration.

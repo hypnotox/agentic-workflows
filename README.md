@@ -351,3 +351,5 @@ work.
 
 `awf` renders configuration for, and interoperates with, third-party coding agents. It is
 an independent project, not affiliated with or endorsed by any of their vendors.
+
+Pi extensions retain the lock-pinned fork-v0.81.1-awf.3 runtime floor, including dynamic active tools and the shared file-mutation queue.

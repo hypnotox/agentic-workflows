@@ -266,3 +266,4 @@ avoids a second locking system.
 - 2026-08-05: Implementing; content-sha256: a4263a1323591448c62c8bf4b64c8b469822218f123bd3d8c4a5ac6bfc33fbe9
 - 2026-08-05: Applied; operations: update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:memory-skeleton-purpose-partition`, update `tooling/cli:explicit-output-bypasses`, update `tooling/cli:effort-command-contract`
 - 2026-08-05: Reapplied; operations: update `tooling/cli:explicit-output-bypasses`, update `tooling/cli:effort-command-contract`
+- 2026-08-05: Applied; operations: update `rendering/pi-runtime:pi-minimum-runtime`

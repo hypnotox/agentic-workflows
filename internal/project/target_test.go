@@ -129,7 +129,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 		"displaySuffix",
 		"{value:string|null}",
 		`suffixSupported&&current?current.slug:null`,
-		`pi.on?.("session_start",(_event:any)=>{current=undefined;publish();requestCapabilities()})`,
+		`pi.on?.("session_start",(_event:any)=>{clear();requestCapabilities()})`,
 		`pi.events?.on?.("remote-pi:display-suffix:request",()=>publishSuffix())`,
 		`pi.events?.on?.("remote-pi:capabilities",(caps:RemotePiCapabilitiesReplyPayload)=>{suffixSupported=supportsDisplaySuffix(caps);publishSuffix()})`,
 		`emit("remote-pi:metadata:set",{namespace:"awf",value:x?`,

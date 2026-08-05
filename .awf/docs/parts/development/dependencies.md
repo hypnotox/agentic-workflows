@@ -26,3 +26,5 @@ coding-agent `fork-v0.81.1-awf.3` release, TypeBox, and test dependencies in
 every checkout and worktree shares, and each run reaches them through a symlink from its
 throwaway working copy, so the lane creates no volume. They are never awf binary dependencies
 and never create host npm state.
+
+Pi remains adopter-supplied. The checked test artifact is fork-v0.81.1-awf.3 at the retained numeric 0.81.1 floor and its lock-pinned integrity.

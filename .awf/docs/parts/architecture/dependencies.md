@@ -37,3 +37,5 @@
 `internal/manifest` owns schema-sensitive lock decoding, while `internal/migrate` owns generation-31 removal of retired ADR routing payload.
 
 - The generated context-usage extension uses the same pinned Pi runtime floor as handoff and subagents, but owns its local formatter rather than sharing subagent presentation code.
+
+- **Pinned Pi runtime floor**: the retained fork-v0.81.1-awf.3 coding-agent artifact (embedded 0.81.1) supplies `getActiveTools`, `setActiveTools`, tool prompt guidance, and `withFileMutationQueue`; the effort companion guards these APIs before registration and uses the shared real-path mutation queue.

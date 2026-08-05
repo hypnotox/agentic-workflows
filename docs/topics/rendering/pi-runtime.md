@@ -43,9 +43,9 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-Generated Pi extension entrypoints require the minimum Pi runtime APIs used by retained context-usage, subagent, and handoff contracts, report one actionable incompatibility notice, and fail before registering functional hooks when required APIs are absent. The direct `using_effort` companion needs no `changeCwd` capability or foreign package-version floor; its optional Remote Pi event interface remains advisory, and without that interface local association, switching, heartbeat, detach, and fixed-path context remain available. Supported context-usage, handoff, subagent, and effort-association operation emits no compatibility, pressure, handoff, or local TUI warning.
+Generated Pi extension entrypoints require the retained lock-pinned fork-v0.81.1-awf.3 runtime (embedded version 0.81.1) APIs used by context usage, subagents, handoff, and effort memory tools. This includes `getActiveTools`, `setActiveTools`, tool prompt guidance, and `withFileMutationQueue`; one actionable incompatibility notice occurs before functional registration when any required API is absent. The direct `using_effort` companion needs no `changeCwd` capability; optional Remote Pi events remain advisory. Supported operation emits no compatibility warning.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225
+Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225, ADR-add-associated-pi-effort-memory-tools
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
