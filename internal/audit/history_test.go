@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -20,6 +21,20 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+func TestStreamingProjectionDetachesRetainedSubjects(t *testing.T) {
+	message := "not conventional\n\n" + strings.Repeat("body", 4096)
+	subject := message[:len("not conventional")]
+	commit := awfgit.Commit{Hash: "deadbeef", Revision: strings.Repeat("d", 40), Subject: subject}
+	replay := compactReplayCommit(0, commit)
+	retainedFinding := finding(severity.Error, "test", commit, "detail")
+	if unsafe.StringData(replay.Subject) == unsafe.StringData(subject) {
+		t.Fatal("compact replay subject retains the rich message backing allocation")
+	}
+	if unsafe.StringData(retainedFinding.Subject) == unsafe.StringData(subject) {
+		t.Fatal("ordinary finding subject retains the rich message backing allocation")
+	}
+}
 
 func TestStreamingHistoryOperationReportsMalformedMergeAuthorization(t *testing.T) {
 	state := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})

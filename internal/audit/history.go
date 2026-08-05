@@ -51,7 +51,7 @@ func compactReplayCommit(ordinal int, commit awfgit.Commit) replayCommit {
 	if commit.IsMerge {
 		message = commit.Message
 	}
-	return replayCommit{Ordinal: ordinal, Hash: commit.Hash, Revision: commit.Revision, Subject: commit.Subject, Parents: slices.Clone(commit.Parents), IsMerge: commit.IsMerge, Message: message, Paths: slices.Sorted(maps.Keys(paths))}
+	return replayCommit{Ordinal: ordinal, Hash: commit.Hash, Revision: commit.Revision, Subject: strings.Clone(commit.Subject), Parents: slices.Clone(commit.Parents), IsMerge: commit.IsMerge, Message: message, Paths: slices.Sorted(maps.Keys(paths))}
 }
 
 type firstParentPaths func(context.Context, string) ([]string, error)

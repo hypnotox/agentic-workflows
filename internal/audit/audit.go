@@ -303,7 +303,7 @@ func countBanned(s string) map[rune]int {
 }
 
 func finding(s severity.Rank, rule string, c awfgit.Commit, detail string) Finding {
-	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: c.Subject, Detail: detail}
+	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: strings.Clone(c.Subject), Detail: detail}
 }
 
 // isADRFile reports whether path is a decision record directly under adrDir.
