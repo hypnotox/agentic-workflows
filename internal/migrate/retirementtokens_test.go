@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,6 +67,28 @@ func rtFixture(t *testing.T, files map[string]string) string {
 // target's related: back-pointer inserted, and the ordered change facts collected
 // exactly.
 // invariant: config/migrations-and-locks:upgrade-migrates-retirements (TestRetirementTokensMigratesCorpus)
+func TestRetirementTokensPublishesOnlyWrittenArtifacts(t *testing.T) {
+	root := rtFixture(t, map[string]string{"0001-target.md": rtTarget, "0002-carrier.md": rtCarrier})
+	failure := errors.New("write failed")
+	writes := 0
+	prior := retirementWriteFile
+	retirementWriteFile = func(path string, b []byte, mode os.FileMode) error {
+		writes++
+		if writes == 2 {
+			return failure
+		}
+		return prior(path, b, mode)
+	}
+	t.Cleanup(func() { retirementWriteFile = prior })
+	var changes Changes
+	if err := applyRetirementTokens(root, &changes); !errors.Is(err, failure) {
+		t.Fatalf("error = %v", err)
+	}
+	if got, want := changes.String(), "retirement-tokens: 0002-carrier.md: stripped retires_invariants\nretirement-tokens: 0002-carrier.md: appended Decision item 2 (fixture-gone)\n"; got != want {
+		t.Fatalf("changes = %q, want %q", got, want)
+	}
+}
+
 func TestRetirementTokensMigratesCorpus(t *testing.T) {
 	root := rtFixture(t, map[string]string{
 		"0001-target.md":  rtTarget,

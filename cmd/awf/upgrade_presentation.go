@@ -72,8 +72,15 @@ func (e journalFailure) Error() string { return e.cause.Error() }
 func (e journalFailure) Unwrap() error { return e.cause }
 
 func (e journalFailure) Diagnostic() (presentation.Diagnostic, error) {
-	changed := make([]presentation.Field, 0, len(e.outcome.Evidence))
-	for _, evidence := range e.outcome.Evidence {
+	terminal := e.outcome.Changed
+	// Nil is retained for direct callers compiled against the initial outcome
+	// shape; transaction owners always set Changed, including an explicit empty
+	// set after a complete rollback.
+	if terminal == nil {
+		terminal = e.outcome.Evidence
+	}
+	changed := make([]presentation.Field, 0, len(terminal))
+	for _, evidence := range terminal {
 		value, err := presentation.Prose(evidence.Action + ": " + evidence.Path)
 		if err != nil { // coverage-ignore: the fixed separator keeps every journal fact presentation-valid
 			return presentation.Diagnostic{}, err
@@ -92,7 +99,11 @@ func (e journalFailure) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		steps = append(steps, value)
 	}
-	return presentation.Diagnostic{Condition: e.condition, State: "partial mutation", Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
+	state := "no partial mutation"
+	if len(changed) > 0 {
+		state = "partial mutation"
+	}
+	return presentation.Diagnostic{Condition: e.condition, State: state, Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
 }
 
 func upgradeMutation(sync presentation.Mutation, applied []string, changes []migrate.Change) (presentation.Mutation, error) {
@@ -169,7 +180,7 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 	}
 	for _, group := range e.sync.Changes {
 		for _, value := range group.Values {
-			field, err := presentation.NewField("sync", value)
+			field, err := presentation.NewField(group.Label, value)
 			if err != nil { // coverage-ignore: sync values are validated and the fixed label is grammar-valid
 				return presentation.Diagnostic{}, err
 			}

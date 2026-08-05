@@ -841,6 +841,37 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 // entry against the fresh render, so a tweaked stored hash simulates the
 // corresponding real change (an upstream template edit, a config edit, a
 // non-hashed input) without mutating the embedded templates.
+func TestSyncReportRetainsWrittenOutputWhenChmodFails(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(p.lockPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := lock.Files["AGENTS.md"]
+	e.OutputHash = "different"
+	lock.Files["AGENTS.md"] = e
+	if err := lock.Save(p.lockPath()); err != nil {
+		t.Fatal(err)
+	}
+	prior := syncChmod
+	syncChmod = func(path string, _ os.FileMode) error {
+		if filepath.Base(path) == "AGENTS.md" {
+			return errors.New("chmod failed")
+		}
+		return nil
+	}
+	t.Cleanup(func() { syncChmod = prior })
+	p, _ = Open(testContext(t), root)
+	_, changes, _, err := p.SyncReport(testContext(t))
+	if err == nil || len(changes) == 0 || changes[0].Path != "AGENTS.md" {
+		t.Fatalf("changes = %v, err = %v", changes, err)
+	}
+}
+
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)

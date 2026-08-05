@@ -398,6 +398,95 @@ func TestJournalCommitRetainsEvidenceWhenLockPhaseWriteFails(t *testing.T) {
 	}
 }
 
+func TestRecoverPropagatesAppliedImageInspectionFailure(t *testing.T) {
+	root := t.TempDir()
+	writeRawJournal(t, root, lockJournal(phaseApplying))
+	failure := errors.New("inspect applied image")
+	prior := appliedImageOf
+	appliedImageOf = func(string, string) (Image, error) { return Image{}, failure }
+	t.Cleanup(func() { appliedImageOf = prior })
+	outcome, err := Recover(root)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if len(outcome.Evidence) != 0 || len(outcome.Changed) != 0 {
+		t.Fatalf("outcome = %#v, want no unproven evidence", outcome)
+	}
+}
+
+func TestAppliedOperationsPropagatesResidentInspectionFailure(t *testing.T) {
+	failure := errors.New("inspect quarantine")
+	prior := appliedLstat
+	appliedLstat = func(string) (os.FileInfo, error) { return nil, failure }
+	t.Cleanup(func() { appliedLstat = prior })
+	journal := Journal{Operations: []Operation{{Kind: KindResidentTree, Path: ".awf/efforts", Quarantine: ".awf/.upgrade-quarantine/efforts"}}}
+	if _, err := appliedOperations(t.TempDir(), journal); !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+}
+
+func TestRecoveryJournalWriteFailureRetainsTerminalJournalAxis(t *testing.T) {
+	root := t.TempDir()
+	writeRawJournal(t, root, lockJournal(phaseApplying))
+	failure := errors.New("recovery journal write")
+	prior := journalWrite
+	journalWrite = func(string, Journal) error { return failure }
+	t.Cleanup(func() { journalWrite = prior })
+	outcome, err := Recover(root)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v", err)
+	}
+	if want := []Evidence{{Action: "pending", Path: LockRel()}, {Action: "retained", Path: JournalPath(root)}}; !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+}
+
+func TestJournalWriteFailuresReportTerminalJournalAxis(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		failAt int
+		want   []Evidence
+	}{
+		{"initial", 1, nil},
+		{"applying", 2, []Evidence{{Action: "retained", Path: ""}}},
+		{"rollback", 3, []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "pending", Path: "blocked"}, {Action: "retained", Path: ""}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustMkdir(t, filepath.Join(root, ".awf"))
+			failure := errors.New("journal write")
+			writes := 0
+			prior := journalWrite
+			journalWrite = func(root string, j Journal) error {
+				writes++
+				if writes == tc.failAt {
+					return failure
+				}
+				return prior(root, j)
+			}
+			t.Cleanup(func() { journalWrite = prior })
+			ops := []Operation{{Path: "a.txt", Replacement: presentImg("a")}, {Path: "blocked", Prior: Image{}, Replacement: Image{Present: true, Mode: 0o644, Content: nil}}, {Path: LockRel(), Replacement: presentImg("final")}}
+			// A directory makes the second file application fail after the applying phase.
+			mustMkdir(t, filepath.Join(root, "blocked"))
+			outcome, err := commitTransaction(root, ops)
+			if !errors.Is(err, failure) && tc.failAt < 3 {
+				t.Fatalf("error = %v", err)
+			}
+			if tc.failAt == 3 && !errors.Is(err, failure) {
+				t.Fatalf("error = %v", err)
+			}
+			for i := range tc.want {
+				if tc.want[i].Path == "" {
+					tc.want[i].Path = JournalPath(root)
+				}
+			}
+			if !slices.Equal(outcome.Changed, tc.want) {
+				t.Fatalf("changed = %#v, want %#v", outcome.Changed, tc.want)
+			}
+		})
+	}
+}
+
 func TestJournalCommitPreparedWriteFailure(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses directory permissions")

@@ -292,7 +292,16 @@ func (p *Project) InitializeReport(ctx context.Context, seed InitAuthority) ([]B
 	return p.syncReport(ctx, &seed)
 }
 
+var (
+	syncWriteFile = os.WriteFile
+	syncChmod     = os.Chmod
+)
+
 func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
+	defer func() {
+		slices.Sort(pruned)
+		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
+	}()
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, nil, nil, err
@@ -389,10 +398,32 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups 
 		if strings.HasPrefix(f.Content, "#!") {
 			perm = 0o755
 		}
-		if err := os.WriteFile(abs, []byte(f.Content), perm); err != nil {
+		if err := syncWriteFile(abs, []byte(f.Content), perm); err != nil {
 			return backups, changes, pruned, err
 		}
-		if err := os.Chmod(abs, perm); err != nil { // coverage-ignore: os.Chmod fails only on a permission/ownership fault that root bypasses, right after a successful WriteFile to the same path
+		// The content write is already a proven output axis, even when the
+		// subsequent mode correction fails.
+		if old != nil {
+			oldE, ok := old.Files[f.Path]
+			if !ok {
+				changes = append(changes, Change{Path: f.Path, Cause: "added"})
+			} else if manifest.Hash([]byte(f.Content)) != oldE.OutputHash {
+				tMoved, cMoved := f.TemplateHash != oldE.TemplateHash, f.ConfigHash != oldE.ConfigHash
+				cause := "internal"
+				switch {
+				case tMoved && cMoved:
+					cause = "template+config"
+				case tMoved:
+					cause = "template"
+				case cMoved:
+					cause = "config"
+				case f.RegenChecked:
+					cause = "regenerated"
+				}
+				changes = append(changes, Change{Path: f.Path, Cause: cause})
+			}
+		}
+		if err := syncChmod(abs, perm); err != nil {
 			return backups, changes, pruned, err
 		}
 		lock.Files[f.Path] = manifest.Entry{
@@ -455,44 +486,6 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups 
 		for _, d := range dirList {
 			_ = os.Remove(d) // removes only if now empty
 		}
-	}
-	slices.Sort(pruned) // lock-map iteration order is random; output must not be
-	// Provenance: classify each written file whose output moved against the
-	// prior lock, from the final lock state (one entry per path by
-	// construction). A first sync has no baseline - report nothing rather
-	// than flood a fresh adoption with "added" lines.
-	if old != nil {
-		for path, e := range lock.Files {
-			oldE, ok := old.Files[path]
-			if !ok {
-				changes = append(changes, Change{Path: path, Cause: "added"})
-				continue
-			}
-			if e.OutputHash == oldE.OutputHash {
-				continue
-			}
-			tMoved, cMoved := e.TemplateHash != oldE.TemplateHash, e.ConfigHash != oldE.ConfigHash
-			var cause string
-			switch {
-			case tMoved && cMoved:
-				cause = "template+config"
-			case tMoved:
-				cause = "template"
-			case cMoved:
-				cause = "config"
-			case e.RegenChecked:
-				// Regeneration-checked entries carry no frozen-hash attribution:
-				// generated indexes (whose inputs are the scanned decision
-				// records) and in-place files (whose read-back body moved).
-				cause = "regenerated"
-			default:
-				// Real hashes, neither moved: a non-hashed input such as
-				// the binary's version stamp.
-				cause = "internal"
-			}
-			changes = append(changes, Change{Path: path, Cause: cause})
-		}
-		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
 	}
 	return backups, changes, pruned, lock.Save(p.lockPath())
 }
