@@ -145,8 +145,7 @@ Latitude: exact
 Applying: ["derive-render-completeness-from-output-authority:current-render-freshness"]
 Paths: ["docs/decisions/derive-render-completeness-from-output-authority.md", ".awf/topics/parts/rendering/sync-and-drift/current-state.md", "docs/decisions/INDEX.md", "docs/topics", "docs/domains", ".awf/awf.lock"]
 
-Transition the ADR from `Proposed` to `Accepted`, then to `Implementing`, and append one Applied event
-covering exactly:
+Append one Applied event to the already-`Implementing` ADR covering exactly:
 
 - add `rendering/sync-and-drift:ordinary-render-freshness`
 
