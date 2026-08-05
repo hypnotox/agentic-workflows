@@ -82,7 +82,7 @@ Applying: ["structured-agent-oriented-cli-presentation:semantic-mapping-ownershi
 Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/domains/code-design.yaml", ".awf/topics/parts/code-design/presentation-ownership/current-state.md", ".awf/topics/parts/code-design/presentation-package/current-state.md", "docs/topics/code-design/presentation-ownership.md", "docs/topics/code-design/presentation-package.md", "docs/domains/code-design.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
 Representative: "Revise `model-owner-renders` so result owners map semantics into the central representation while `internal/presentation` alone validates and renders syntax, preserving its existing Origin/Revised-by chain before appending this ADR; add the scoped `presentation-package-boundary` rule with this ADR as Origin."
 Edge: "Keep the package rule local to standard-library dependency direction and representation-only ownership; do not duplicate the global syntax grammar, add `closed-presentation-tree`, or add any tooling claim before its complete live API and proof exist."
-Post-check: "After `./x render`, `./x check` is clean and `./awf context docs/decisions/structured-agent-oriented-cli-presentation.md` reports `model-owner-renders` and `presentation-package-boundary` Applied with the other nine operations Remaining."
+Post-check: "After `./x render`, `./x check` is clean and `./awf context docs/decisions/structured-agent-oriented-cli-presentation.md` reports `model-owner-renders` and `presentation-package-boundary` Applied with the other ten operations Remaining."
 
 Add `internal/presentation/**` to `.awf/domains/code-design.yaml` so the new production package has
 its ADR-assigned domain owner before render and the staged ownership check. In the scoped
@@ -154,7 +154,7 @@ Applying: ["structured-agent-oriented-cli-presentation:semantic-mapping-ownershi
 Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/tooling/context-and-topic/current-state.md", "docs/topics/tooling/context-and-topic.md", "docs/domains/tooling.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
 Representative: "Revise `context-query-boundary` to retain query assembly and semantic mapping in `internal/contextq` while assigning node validation and syntax rendering to `internal/presentation`."
 Edge: "Preserve `Origin`, append this ADR to the prior `Revised-by` sequence, retain `Backing: test`, and keep the existing `TestContextQueryBoundary` proof marker valid after the dependency change."
-Post-check: "`./x render && ./x check` is clean and ADR context reports operations one, two, and four Applied, with operation three and operations five through eleven Remaining."
+Post-check: "`./x render && ./x check` is clean and ADR context reports operations one, two, and four Applied, with operation three and operations five through twelve Remaining."
 
 Append one middle Applied event for only the fourth declared operation and mutate its claim in the
 same transaction. Render generated outputs rather than editing them.
@@ -222,7 +222,7 @@ Applying: ["structured-agent-oriented-cli-presentation:closed-presentation-tree"
 Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/code-design/presentation-ownership/current-state.md", ".awf/topics/parts/code-design/outcome-modeling/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/code-design/presentation-ownership.md", "docs/topics/code-design/outcome-modeling.md", "docs/topics/tooling/cli.md", "docs/domains/code-design.md", "docs/domains/tooling.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
 Representative: "Add `closed-presentation-tree` with this ADR as Origin and the live `TestPresentationTreeContract` proof, and revise `actionable-outcome-protocol` so independently executable remedies render as central `Steps`."
 Edge: "Revise `cli-command-spec-single-source` so structured help model data remains single-source; preserve updated claims' existing Origin, backing mode, and proof markers while appending this ADR to provenance."
-Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through six Applied, regardless of event order, while operations seven through eleven remain pending."
+Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through six Applied, regardless of event order, while operations seven through twelve remain pending."
 
 Append one middle Applied event listing operations three, five, and six in declaration order, mutate
 all three claims in the same transaction, and render all generated output.
@@ -282,7 +282,7 @@ Applying: ["structured-agent-oriented-cli-presentation:explicit-bypasses", "stru
 Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/tooling/cli.md", "docs/domains/tooling.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
 Representative: "Revise `effort-command-contract` to make readable text the only ordinary new/list/show form and retain JSON solely for the activity protocol."
 Edge: "Preserve the claim's schema, memory, topology, and attachment semantics plus existing proof markers; append provenance without changing unrelated CLI claims."
-Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through seven Applied with operations eight through eleven Remaining."
+Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through seven Applied with operations eight through twelve Remaining."
 
 Append one middle Applied event for only operation seven, mutate its claim, and render generated files.
 
@@ -317,8 +317,9 @@ exit zero at the Phase 4 commit.
 
 Introduce `presentation.Report` with these first production consumers; do not add Collection yet.
 Do not change check selection or continuation policy. Bound execution actions collect typed results
-rather than writing presentation bytes eagerly. Preserve stable finding order and include all
-failure evidence in the complete report before exit mapping.
+rather than writing presentation bytes eagerly. Render deterministic `errors` then `warnings` categories, preserve source order within each category,
+and do not preserve source order across categories. Include all failure evidence in the complete
+report before exit mapping.
 
 ### Task 5.2: Replace migration writers with typed change collection
 Kind: batch
@@ -332,16 +333,17 @@ Post-check: "`go test ./internal/migrate ./internal/upgrade ./cmd/awf -run 'Test
 Update every migration producer and test in the same batch; do not retain a compatibility writer or
 print while mutating. Internal journal persistence is data, not presentation, and remains unchanged.
 
-### Task 5.3: Apply the severity spelling clarification
+### Task 5.3: Apply the severity and repository-check ordering clarifications
 Kind: batch
 Latitude: exact
 Applying: ["structured-agent-oriented-cli-presentation:readable-text-contract", "structured-agent-oriented-cli-presentation:enforced-adoption"]
-Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/tooling/audit-commands/current-state.md", "docs/topics/tooling/audit-commands.md", "docs/domains/tooling.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
-Representative: "Revise `severity-single-spelling` to retain rank tokens `error` and `warn` while explicitly permitting only the readable presentation section labels `errors` and `warnings`."
-Edge: "Retain both existing proof markers and their unit names, preserve Origin and prior provenance, and do not rename serialized rank tokens."
-Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through eight Applied with only the final three CLI claims Remaining."
+Paths: ["docs/decisions/structured-agent-oriented-cli-presentation.md", ".awf/topics/parts/tooling/audit-commands/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/tooling/audit-commands.md", "docs/topics/tooling/cli.md", "docs/domains/tooling.md", "docs/decisions/INDEX.md", ".awf/awf.lock", "changelog/CHANGELOG.md"]
+Representative: "Revise `severity-single-spelling` to retain rank tokens `error` and `warn` while explicitly permitting only the readable presentation section labels `errors` and `warnings`; revise `repo-check-capability-plan` and its changelog description to require deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories."
+Edge: "Retain existing proof markers and their unit names, preserve each claim's Origin and prior provenance, do not rename serialized rank tokens, and do not change repository-check capability selection, continuation, preparation-failure, or error semantics."
+Post-check: "`./x render && ./x check` is clean and ADR context reports operations one through nine Applied with only the final three CLI claims Remaining."
 
-Append one middle Applied event for operation eight, mutate its claim, and render generated files.
+Append one middle Applied event for operations eight and nine, mutate both claims and the matching
+changelog description in the same transaction, and render generated files.
 
 ### Phase close
 
@@ -489,15 +491,16 @@ test(tooling): enforce CLI presentation adoption
 - ADR application partition follows complete live implementation rather than declaration position:
   Phase 1 moves the ADR directly from Proposed to Implementing and applies operations 1-2; Phase 2
   applies operation 4; Phase 3 applies operations 3, 5, and 6 in declaration order within its batch;
-  Phase 4 applies operation 7; and Phase 5 applies operation 8. Phases 6-7 complete implementation
-  and proofs without claiming whole-interface authority early.
+  Phase 4 applies operation 7; and Phase 5 applies operations 8 and 9, with operation 9 carrying the
+  repository-check claim and changelog correction in the same atomic application transaction. Phases
+  6-7 complete implementation and proofs without claiming whole-interface authority early.
 - After settled terminal implementation review, the deferred flip transaction adds
   `tooling/cli:readable-text-output`, `tooling/cli:typed-command-output-boundary`, and
   `tooling/cli:explicit-output-bypasses` in their `.awf/topics/parts/tooling/cli/current-state.md`
   declaration order and adds the three exact invariant markers to the already-live
   `TestOrdinaryCommandOutputUsesPresentation`, `TestCommandOutputBoundary`, and
   `TestExplicitOutputBypasses` units. It appends one final Applied event for
-  operations 9-11, then the Implemented status event, flips this plan to `Implemented`, runs
+  operations 10-12, then the Implemented status event, flips this plan to `Implemented`, runs
   `./x render`, stages generated topic/domain/index/lock output, and passes `awf check staged` plus
   `./x gate` before the final lifecycle commit.
 - If execution discovers a new ordinary-output bypass, alternate renderer, raw node, unbounded tree,
