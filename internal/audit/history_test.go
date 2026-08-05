@@ -92,21 +92,35 @@ func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T
 	if !graph.boundaries["boundary"] {
 		t.Fatalf("boundary parents = %#v", graph.boundaries)
 	}
-	permuted := slices.Clone(commits)
-	slices.Reverse(permuted)
-	permutedGraph, err := newReplayGraph(permuted)
+	for _, permuted := range replayPermutations(commits) {
+		permutedGraph, err := newReplayGraph(permuted)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var permutedSchedule []string
+		for _, commit := range permutedGraph.schedule {
+			permutedSchedule = append(permutedSchedule, commit.Revision)
+		}
+		if !slices.Equal(got, permutedSchedule) {
+			t.Fatalf("permuted schedule = %v, want %v", permutedSchedule, got)
+		}
+	}
+	octopusParents := []string{"first", "second", "third", "shared-boundary"}
+	octopusGraph, err := newReplayGraph([]replayCommit{
+		{Revision: "octopus", Parents: octopusParents, IsMerge: true},
+		{Revision: "first", Parents: []string{"shared-boundary"}},
+		{Revision: "second", Parents: []string{"shared-boundary"}},
+		{Revision: "third", Parents: []string{"shared-boundary"}},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var permutedSchedule []string
-	for _, commit := range permutedGraph.schedule {
-		permutedSchedule = append(permutedSchedule, commit.Revision)
-	}
-	if !slices.Equal(got, permutedSchedule) {
-		t.Fatalf("permuted schedule = %v, want %v", permutedSchedule, got)
+	if !slices.Equal(octopusGraph.schedule[0].Parents, octopusParents) || !octopusGraph.boundaries["shared-boundary"] {
+		t.Fatalf("octopus graph lost ordered parent roles or shared boundary: %#v", octopusGraph)
 	}
 	for _, invalid := range [][]replayCommit{
 		{{}},
+		{{Revision: "empty-parent", Parents: []string{""}}},
 		{{Revision: "same"}, {Revision: "same"}},
 		{{Revision: "self", Parents: []string{"self"}}},
 		{{Revision: "one", Parents: []string{"two"}}, {Revision: "two", Parents: []string{"one"}}},
@@ -127,6 +141,135 @@ func TestReplayGraphSchedulesChildrenBeforeParentsDeterministically(t *testing.T
 	if _, err := op.run(testContext(t)); err == nil {
 		t.Fatal("run accepted an invalid graph")
 	}
+}
+
+func replayPermutations(commits []replayCommit) [][]replayCommit {
+	working := slices.Clone(commits)
+	var permutations [][]replayCommit
+	var generate func(int)
+	generate = func(index int) {
+		if index == len(working) {
+			permutations = append(permutations, slices.Clone(working))
+			return
+		}
+		for candidate := index; candidate < len(working); candidate++ {
+			working[index], working[candidate] = working[candidate], working[index]
+			generate(index + 1)
+			working[index], working[candidate] = working[candidate], working[index]
+		}
+	}
+	generate(0)
+	return permutations
+}
+
+func TestHistoryOperationPreservesStreamFindingOrderAcrossGraphReplay(t *testing.T) {
+	ordinary := Finding{Severity: severity.Warn, Rule: "ordinary"}
+	liveFinding := Finding{Severity: severity.Error, Rule: "live"}
+	t.Run("stale merge findings", func(t *testing.T) {
+		state := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
+		commits := []replayCommit{
+			{Ordinal: 0, Hash: "stream-first", Revision: "z-result", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"z-first", "z-incoming"}},
+			{Ordinal: 1, Hash: "stream-second", Revision: "a-result", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"a-first", "a-incoming"}},
+		}
+		op := newHistoryOperationFromCompact(commits, []Finding{ordinary}, len(commits), func(context.Context, string) (*revisionState, error) {
+			return state, nil
+		}, nil, func(context.Context) ([]Finding, error) { return []Finding{liveFinding}, nil })
+		findings, err := op.run(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := []string{findings[1].Commit, findings[2].Commit}; !slices.Equal(got, []string{"stream-first", "stream-second"}) {
+			t.Fatalf("stale finding commits = %v, want stream order; findings=%#v", got, findings)
+		}
+		if got := []string{findings[0].Rule, findings[3].Rule}; !slices.Equal(got, []string{"ordinary", "live"}) {
+			t.Fatalf("external finding groups = %v; findings=%#v", got, findings)
+		}
+	})
+
+	t.Run("transition warnings", func(t *testing.T) {
+		commits := []replayCommit{
+			{Ordinal: 0, Hash: "stream-first", Revision: "z-result"},
+			{Ordinal: 1, Hash: "stream-second", Revision: "a-result"},
+		}
+		op := newHistoryOperationFromCompact(commits, []Finding{ordinary}, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+			return nil, errors.New("cannot load " + revision)
+		}, nil, func(context.Context) ([]Finding, error) { return []Finding{liveFinding}, nil })
+		findings, err := op.run(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := []string{findings[2].Commit, findings[3].Commit}; !slices.Equal(got, []string{"stream-first", "stream-second"}) {
+			t.Fatalf("transition finding commits = %v, want stream order; findings=%#v", got, findings)
+		}
+		if got := []string{findings[0].Rule, findings[1].Rule}; !slices.Equal(got, []string{"ordinary", "live"}) {
+			t.Fatalf("external finding groups = %v; findings=%#v", got, findings)
+		}
+	})
+}
+
+func TestHistoryOperationChecksCancellationBetweenCachedConsumers(t *testing.T) {
+	t.Run("between stale and transition", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		state := &revisionState{
+			loadLock: func() (*manifest.Lock, bool, error) {
+				cancel()
+				return &manifest.Lock{SchemaVersion: 30}, true, nil
+			},
+			universeReady: true,
+		}
+		liveCalls := 0
+		op := newHistoryOperationFromCompact([]replayCommit{{Hash: "merge", Revision: "merge", IsMerge: true}}, nil, 1,
+			func(context.Context, string) (*revisionState, error) { return state, nil }, nil,
+			func(context.Context) ([]Finding, error) { liveCalls++; return nil, nil })
+		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) || liveCalls != 0 {
+			t.Fatalf("between-consumer cancellation = %v, live calls=%d", err, liveCalls)
+		}
+	})
+
+	t.Run("before live evaluation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		state := fixedRevisionState(nil, false, currentstate.Universe{})
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			cancel()
+			return currentstate.Universe{}, nil
+		}
+		state.universeReady = false
+		op := newHistoryOperationFromCompact([]replayCommit{{Hash: "only", Revision: "only"}}, nil, 1,
+			func(context.Context, string) (*revisionState, error) { return state, nil }, nil,
+			func(context.Context) ([]Finding, error) {
+				t.Fatal("canceled replay ran live evaluation")
+				return nil, nil
+			})
+		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) {
+			t.Fatalf("pre-live cancellation = %v", err)
+		}
+	})
+
+	t.Run("between scheduled commits", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(testContext(t))
+		loads := map[string]int{}
+		op := newHistoryOperationFromCompact([]replayCommit{
+			{Hash: "first", Revision: "a", Ordinal: 1},
+			{Hash: "later", Revision: "b", Ordinal: 0},
+		}, nil, 2, func(_ context.Context, revision string) (*revisionState, error) {
+			loads[revision]++
+			state := fixedRevisionState(nil, false, currentstate.Universe{})
+			if revision == "a" {
+				state.loadUniverse = func() (currentstate.Universe, error) {
+					cancel()
+					return currentstate.Universe{}, nil
+				}
+				state.universeReady = false
+			}
+			return state, nil
+		}, nil, func(context.Context) ([]Finding, error) {
+			t.Fatal("canceled replay ran live evaluation")
+			return nil, nil
+		})
+		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) || loads["b"] != 0 {
+			t.Fatalf("scheduled cancellation = %v, loads=%#v", err, loads)
+		}
+	})
 }
 
 func TestStreamingHistoryOperationReportsMalformedMergeAuthorization(t *testing.T) {

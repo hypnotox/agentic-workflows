@@ -80,6 +80,9 @@ func newReplayGraph(commits []replayCommit) (replayGraph, error) {
 	boundaries := map[string]bool{}
 	for _, commit := range commits {
 		for _, parent := range commit.Parents {
+			if parent == "" {
+				return replayGraph{}, fmt.Errorf("replay revision %s has an empty parent", commit.Revision)
+			}
 			if parent == commit.Revision {
 				return replayGraph{}, fmt.Errorf("replay revision %s names itself as a parent", parent)
 			}
@@ -186,32 +189,66 @@ func newHistoryOperationFromCompact(commits []replayCommit, ordinary []Finding, 
 	}
 }
 
+type scheduledFindings struct {
+	ordinal  int
+	findings []Finding
+}
+
+func findingsByStreamOrdinal(groups []scheduledFindings) []Finding {
+	slices.SortStableFunc(groups, func(a, b scheduledFindings) int { return a.ordinal - b.ordinal })
+	var findings []Finding
+	for _, group := range groups {
+		findings = append(findings, group.findings...)
+	}
+	return findings
+}
+
+func replayContext(ctx context.Context, consumer string, commit replayCommit) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("%s for %s: %w", consumer, commit.Hash, err)
+	}
+	return nil
+}
+
 func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
 	graph, err := newReplayGraph(h.commits)
 	if err != nil {
 		return nil, fmt.Errorf("build historical replay graph: %w", err)
 	}
-	var stale, transitions []Finding
+	var stale, transitions []scheduledFindings
 	for _, commit := range graph.schedule {
+		if err := replayContext(ctx, "replay stale-merge evidence", commit); err != nil {
+			return nil, err
+		}
 		stepStale, err := h.replayStale(ctx, commit)
 		if err != nil {
 			return nil, err
 		}
-		stale = append(stale, stepStale...)
+		if len(stepStale) > 0 {
+			stale = append(stale, scheduledFindings{ordinal: commit.Ordinal, findings: stepStale})
+		}
+		if err := replayContext(ctx, "replay transition evidence", commit); err != nil {
+			return nil, err
+		}
 		stepTransitions, err := h.replayTransition(ctx, commit)
 		if err != nil {
 			return nil, err
 		}
-		transitions = append(transitions, stepTransitions...)
+		if len(stepTransitions) > 0 {
+			transitions = append(transitions, scheduledFindings{ordinal: commit.Ordinal, findings: stepTransitions})
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("evaluate live cleanliness: %w", err)
 	}
 	live, err := h.live(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("evaluate live cleanliness: %w", err)
 	}
 	findings := slices.Clone(h.ordinary)
-	findings = append(findings, stale...)
+	findings = append(findings, findingsByStreamOrdinal(stale)...)
 	findings = append(findings, live...)
-	return append(findings, transitions...), nil
+	return append(findings, findingsByStreamOrdinal(transitions)...), nil
 }
 
 func (h *historyOperation) state(ctx context.Context, revision string) (*revisionState, error) {
