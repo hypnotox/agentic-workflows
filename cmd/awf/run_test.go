@@ -21,6 +21,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -563,30 +564,92 @@ func TestRunHelp(t *testing.T) {
 	}
 }
 
-// TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures keeps every
-// registered public command family on the presentation boundary. It derives
-// coverage from the command registry rather than freezing a corpus count.
+// TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures is an explicit
+// registry-keyed interface contract. A new top-level family must be added here;
+// there is no count-based or missing-family allowance. Each entry names the
+// separately executed test that pins a real result from that family; this unit
+// additionally pins its exact help, usage failure, and operational failure.
 func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) {
+	families := map[string]string{
+		"init":      "TestInitDescribeReadOnly",
+		"render":    "TestEmptyInitChecksOnUnbornHead",
+		"check":     "TestRunCheckCleanThenDirty",
+		"read":      "TestReadPlanCommand",
+		"audit":     "TestRunAuditDispatch",
+		"effort":    "TestEffortPublicTextProtocol",
+		"adr":       "TestRunADRNumberThroughTheDriver",
+		"list":      "TestRunListBareShowsAllKinds",
+		"config":    "TestRunConfigDispatch",
+		"context":   "TestRunContextModesShareDeliveryIncludingOversize",
+		"topic":     "TestRunTopicHumanTextAndFlags",
+		"new":       "TestRunNewDispatch",
+		"enable":    "TestDispatchAddRemoveList",
+		"disable":   "TestDispatchAddRemoveList",
+		"upgrade":   "TestRunUpgradeRendersSuccessfulFinalJournalMutation",
+		"uninstall": "TestRunUninstallDispatch",
+		"changelog": "TestChangelogPublicPayloadContracts",
+		"version":   "TestRunVersion",
+	}
+	contractTests := map[string]bool{}
+	paths, err := filepath.Glob("*_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		for _, declaration := range file.Decls {
+			if function, ok := declaration.(*ast.FuncDecl); ok {
+				contractTests[function.Name.Name] = true
+			}
+		}
+	}
+	commands := make(map[string]clispec.Command, len(clispec.Commands))
 	for _, command := range clispec.Commands {
-		t.Run(command.Name, func(t *testing.T) {
+		commands[command.Name] = command
+		if _, ok := families[command.Name]; !ok {
+			t.Errorf("uncontracted top-level command family %q", command.Name)
+		}
+	}
+	for name, contractTest := range families {
+		command, ok := commands[name]
+		if !ok {
+			t.Errorf("contract names missing top-level command family %q", name)
+			continue
+		}
+		if !contractTests[contractTest] {
+			t.Errorf("%s result contract test %q is missing", name, contractTest)
+		}
+		t.Run(name, func(t *testing.T) {
+			document, err := command.Help.Document("awf "+name, command.Summary)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var want bytes.Buffer
+			if err := presentation.Render(&want, document); err != nil {
+				t.Fatal(err)
+			}
 			var stdout, stderr bytes.Buffer
-			if code := run([]string{"awf", command.Name, "--help"}, &stdout, &stderr); code != 0 {
-				t.Fatalf("help exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			if code := run([]string{"awf", name, "--help"}, &stdout, &stderr); code != 0 || stdout.String() != want.String() || stderr.Len() != 0 {
+				t.Fatalf("help exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 			}
-			wantPrefix := "command: awf " + command.Name + "\nsummary: " + command.Summary + "\n\nhelp:\n"
-			if got := stdout.String(); !strings.HasPrefix(got, wantPrefix) || !strings.HasSuffix(got, "\n") || strings.HasSuffix(got, "\n\n") || stderr.Len() != 0 {
-				t.Fatalf("help streams stdout=%q stderr=%q, want structured stdout with one terminal newline", got, stderr.String())
-			}
-
 			stdout.Reset()
 			stderr.Reset()
-			if code := run([]string{"awf", command.Name, "--presentation-contract-invalid"}, &stdout, &stderr); code != 2 {
-				t.Fatalf("usage exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			if code := run([]string{"awf", name, "--presentation-contract-invalid"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || stderr.String() != "condition: awf: awf "+name+": unknown flag \"--presentation-contract-invalid\"\n" {
+				t.Fatalf("usage exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 			}
-			wantUsage := "condition: awf: awf " + command.Name + ": unknown flag \"--presentation-contract-invalid\"\n"
-			if stdout.Len() != 0 || stderr.String() != wantUsage {
-				t.Fatalf("usage streams stdout=%q stderr=%q, want stderr=%q", stdout.String(), stderr.String(), wantUsage)
-			}
+			stdout.Reset()
+			stderr.Reset()
+			func() {
+				priorGetwd := getwd
+				defer func() { getwd = priorGetwd }()
+				getwd = func() (string, error) { return "", errors.New("working directory unavailable") }
+				if code := run([]string{"awf", name}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "condition: awf: working directory unavailable\n" {
+					t.Fatalf("operational exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+				}
+			}()
 		})
 	}
 }

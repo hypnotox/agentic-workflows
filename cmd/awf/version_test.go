@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -22,23 +23,55 @@ func TestRunVersion(t *testing.T) {
 	}
 }
 
+// TestReleaseConsumerParsesOnlyLabeledVersionContract runs the parser embedded
+// in the release workflow against controlled version-command streams. This
+// rejects disconnected parser text and permissive positional parsing.
 func TestReleaseConsumerParsesOnlyLabeledVersionContract(t *testing.T) {
 	body, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := string(body)
-	for _, contract := range []string{
-		"go run ./cmd/awf version | awk '",
-		"/^version: [^[:space:]()]+( \\([^[:cntrl:]]+\\))?$/",
-		"value = substr($0, 10)",
-	} {
-		if !strings.Contains(text, contract) {
-			t.Errorf("release consumer lacks version-label contract %q", contract)
+	lines := strings.Split(string(body), "\n")
+	var script []string
+	inStep := false
+	for _, line := range lines {
+		if line == "      - name: Verify tag matches project.Version" {
+			inStep = true
+			continue
+		}
+		if inStep && strings.HasPrefix(line, "      - name: ") {
+			break
+		}
+		if inStep && strings.HasPrefix(line, "          ") {
+			script = append(script, strings.TrimPrefix(line, "          "))
 		}
 	}
-	if strings.Contains(text, "awk '{print $2}'") {
-		t.Error("release consumer still parses incidental version whitespace")
+	if len(script) == 0 {
+		t.Fatal("release parser step not found")
+	}
+	bin := t.TempDir()
+	goPath := filepath.Join(bin, "go")
+	if err := os.WriteFile(goPath, []byte("#!/bin/sh\nprintf '%s' \"$AWF_VERSION_FIXTURE\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, fixture string
+		valid         bool
+	}{
+		{"labeled", "version: 1.2.3\n", true},
+		{"missing", "", false},
+		{"duplicate", "version: 1.2.3\nversion: 1.2.3\n", false},
+		{"malformed", "version: 1.2.3 trailing\n", false},
+		{"legacy-unlabeled", "1.2.3\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command("bash", "-c", strings.Join(script, "\n"))
+			cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "GITHUB_REF_NAME=v1.2.3", "AWF_VERSION_FIXTURE="+tc.fixture)
+			err := cmd.Run()
+			if (err == nil) != tc.valid {
+				t.Fatalf("release parser fixture %q: err=%v", tc.fixture, err)
+			}
+		})
 	}
 }
 

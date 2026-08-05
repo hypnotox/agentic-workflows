@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -309,6 +310,26 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	root = topicCmdFixture(t)
 	if err := runTopic(ctx, root, "schedule/missing", true, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("missing topic = %v", err)
+	}
+}
+
+func TestTopicJSONIsRejectedBySpecAndDriver(t *testing.T) {
+	spec, ok := clispec.Lookup("topic")
+	if !ok {
+		t.Fatal("topic spec missing")
+	}
+	if _, err := parseArgs(spec, []string{"schedule/contracts", "--json"}); err == nil || err.Error() != `awf topic: unknown flag "--json"` {
+		t.Fatalf("topic parser error = %v", err)
+	}
+	if strings.Contains(strings.Join(spec.BoolFlags, " "), "--json") || strings.Contains(strings.Join(spec.ValueFlags, " "), "--json") {
+		t.Fatal("topic spec exposes --json")
+	}
+	var help, stdout, stderr bytes.Buffer
+	if code := run([]string{"awf", "topic", "--help"}, &help, &stderr); code != 0 || stderr.Len() != 0 || strings.Contains(help.String(), "--json") {
+		t.Fatalf("topic help exit=%d stdout=%q stderr=%q", code, help.String(), stderr.String())
+	}
+	if code := run([]string{"awf", "topic", "schedule/contracts", "--json"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || stderr.String() != "condition: awf: awf topic: unknown flag \"--json\"\n" {
+		t.Fatalf("topic --json exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }
 

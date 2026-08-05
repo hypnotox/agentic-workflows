@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -59,25 +58,12 @@ func TestInitDescribeReadOnly(t *testing.T) {
 	if code := run([]string{"awf", "init", "--describe"}, &out, &errb); code != 0 {
 		t.Fatalf("init --describe: exit %d (%s)", code, errb.String())
 	}
-	var parsed struct {
-		Descriptors []map[string]any `json:"descriptors"`
+	want, err := os.ReadFile(filepath.Join("testdata", "init-describe.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := json.Unmarshal(out.Bytes(), &parsed); err != nil {
-		t.Fatalf("describe output is not valid JSON: %v\n%s", err, out.String())
-	}
-	if len(parsed.Descriptors) == 0 {
-		t.Error("describe emitted no descriptors")
-	}
-	var hasTrimOptions bool
-	for _, d := range parsed.Descriptors {
-		if d["target"] == "catalog-skills" {
-			if opts, ok := d["options"].([]any); ok && len(opts) > 0 {
-				hasTrimOptions = true
-			}
-		}
-	}
-	if !hasTrimOptions {
-		t.Errorf("describe missing computed catalog-skills options:\n%s", out.String())
+	if !bytes.Equal(out.Bytes(), want) || errb.Len() != 0 {
+		t.Fatalf("init --describe streams stdout=%q stderr=%q, want exact checked-in protocol", out.String(), errb.String())
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf")); !os.IsNotExist(err) {
 		t.Errorf(".awf/ should not exist after --describe (err=%v)", err)

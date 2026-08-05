@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -205,14 +207,43 @@ func TestRunChangelogFlagsExclusive(t *testing.T) {
 	}
 }
 
-func TestDispatchChangelog(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "changelog", "--version", "0.1.0"}, &out, &errb); code != 0 {
-		t.Fatalf("dispatch changelog: code=%d err=%s", code, errb.String())
+// TestChangelogPublicPayloadContracts pins every public payload form at the
+// driver boundary: authored bytes go only to stdout and successful payloads
+// never add diagnostics or alter the exit status.
+func TestChangelogPublicPayloadContracts(t *testing.T) {
+	readGolden := func(t *testing.T, name string) []byte {
+		t.Helper()
+		got, err := os.ReadFile(filepath.Join("testdata", "changelog", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
 	}
-	if !strings.Contains(out.String(), "[0.1.0]") {
-		t.Errorf("dispatch changelog --version 0.1.0 missing its entry, got:\n%s", out.String())
+	full, err := changelogfs.FS.ReadFile("CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := changelog.Load(changelogfs.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest := entries[0].Version
+	for _, tc := range []struct {
+		name string
+		args []string
+		want []byte
+	}{
+		{"full", []string{"awf", "changelog"}, full},
+		{"version", []string{"awf", "changelog", "--version", "0.2.0"}, readGolden(t, "version-0.2.0.md")},
+		{"since", []string{"awf", "changelog", "--since", "0.18.0"}, []byte(entries[0].Raw + "\n")},
+		{"range", []string{"awf", "changelog", "--range", "0.2.0..0.4.0"}, append(readGolden(t, "range-0.2.0-0.4.0.md"), '\n')},
+		{"empty-since", []string{"awf", "changelog", "--since", latest}, []byte("status: no releases since " + latest + "\n")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := run(tc.args, &stdout, &stderr); code != 0 || !bytes.Equal(stdout.Bytes(), tc.want) || stderr.Len() != 0 {
+				t.Fatalf("run(%v): exit=%d stdout=%q stderr=%q", tc.args, code, stdout.String(), stderr.String())
+			}
+		})
 	}
 }
