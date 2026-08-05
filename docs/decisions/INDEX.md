@@ -4,6 +4,7 @@
 - [ADR-0235: Derive render completeness from output authority](0235-derive-render-completeness-from-output-authority.md) (Implementing)
 - [ADR-0236: Layer catalog list defaults and project entries](0236-layer-catalog-list-defaults-and-project-entries.md) (Implementing)
 - [ADR-0237: Separate structural Markdown headings from section bodies](0237-separate-structural-markdown-headings-from-section-bodies.md) (Implementing)
+- [ADR-authority-guided-implementation-autonomy: Authority-Guided Implementation Autonomy](authority-guided-implementation-autonomy.md) (Proposed)
 
 ## History
 
