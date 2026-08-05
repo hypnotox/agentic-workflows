@@ -19,15 +19,15 @@ publication, and typed results. `cmd/awf` composes those results into ordinary p
 closed owner-scoped protocol. The generated Pi client owns bounded process transport and strict
 protocol decoding; the generated effort index owns association state, active-tool changes,
 per-process serialization, Pi's shared file-mutation queue, and active-only guidance. Implementation
-lands in four independently green transactions: effort-domain semantics, CLI composition, generated
-client transport with its first associated-tool consumer and runtime floor, then rendered authority
-and remaining documentation closure.
+lands in three independently green transactions: binary memory semantics with their first CLI
+production consumer, generated client transport with its first associated-tool consumer and runtime
+floor, then rendered authority and remaining documentation closure.
 
-## Phase 1: Add binary-owned memory operations
+## Phase 1: Add binary-owned memory operations and their CLI consumer
 
 **Execution mode: subagent-driven.**
 
-Advances: ["binary-memory-contract"]
+Completes: ["binary-memory-contract"]
 
 ### Task 1.1: Define typed memory operations and owner-scoped resident inspection
 Latitude: exact
@@ -35,9 +35,9 @@ Applying: ["add-associated-pi-effort-memory-tools:binary-owned-memory-operations
 Paths: ["internal/effort/memory_operations.go", "internal/effort/memory_metadata.go", "internal/effort/service.go", "internal/effort/activity.go", "internal/effort/store.go", "internal/effort/types.go"]
 
 Before dispatch, require `git status --short` to print nothing, `./x check` to exit zero, and
-`go test ./internal/effort` to exit zero in the managed worktree. The phase owner retains the ADR,
-current-state, render, staging, gate, and commit transaction; helpers are report-only or
-commit-disabled.
+`go test ./internal/effort ./internal/clispec ./cmd/awf` to exit zero in the managed worktree. The
+phase owner retains the ADR, current-state, shared CLI grammar, presentation-boundary fixtures,
+render, staging, gate, and single commit transaction; helpers are report-only or commit-disabled.
 
 Add effort-owned input, success, range, diff, and refusal types for read, edit, and update. Keep the
 protocol-neutral model closed over the ADR's condition set and facts: memory metadata,
@@ -54,9 +54,12 @@ hold a cross-process lock, or add a heartbeat precondition.
 
 Reuse `readRegularNoFollowBounded`, `inspectMemory`, `encodeMemory`, and `store.replaceMemory` rather
 than adding a second resident parser or publisher. Read pagination is one-indexed across the complete
-canonical or legacy document, honors optional positive offset and limit, then caps selected output
-at 2,000 lines or 50 KiB with exact `startLine`, `endLine`, `totalLines`, `nextOffset`, and
-`truncatedBy` facts. Preserve the one-MiB resident bound and safe regular-file behavior.
+canonical or legacy document, honors optional positive offset and limit without integer overflow,
+then caps selected output at 2,000 complete lines or 50 KiB with exact `startLine`, `endLine`,
+`totalLines`, `nextOffset`, and `truncatedBy` facts. Stop before a line that would cross the byte cap;
+if the requested first line alone exceeds it, return handled `result-too-large` with its byte size and
+51,200-byte maximum. Never split a line or advance continuation past unreturned content. Preserve the
+one-MiB resident bound and safe regular-file behavior.
 
 For edit, accept 1 through 128 replacements, bound each decoded string by one MiB, require nonempty
 `oldText`, and evaluate every exact match against the original Markdown body after the closed
@@ -80,52 +83,26 @@ Applying: ["add-associated-pi-effort-memory-tools:binary-owned-memory-operations
 Paths: ["internal/effort/memory_operations_test.go", "internal/effort/memory_test.go", "internal/effort/memory_metadata_test.go", "internal/effort/activity_test.go", "internal/effort/store_test.go", "internal/effort/durability_test.go", "internal/effort/safety_test.go", "internal/effort/types_test.go"]
 Representative: "Read a canonical memory through offset and limit, edit two disjoint body regions against the original body, preserve metadata and unrelated body bytes, advance the injected UTC timestamp once, and return exact range, replacement, and diff facts."
 Edge: "With invalid mutable metadata and a matching safe activity owner, allow a complete metadata repair; reject no-match, ambiguous, nested, overlapping, unsafe-resident, missing-activity, wrong-owner, oversized-result, and pre/post-rename durability cases without partial edit publication or a false retry instruction."
-Post-check: "`go test ./internal/effort` exits zero; its test population covers every success and refusal condition in the ADR, all pagination truncation reasons, legacy and canonical input, UTF-8 byte bounds, symlink/non-regular residents, original-content batch evaluation, and publication faults before and after replacement."
+Post-check: "`go test ./internal/effort` exits zero; its independently literal test population covers every success and refusal condition in the ADR, all pagination truncation reasons, legacy and canonical input, UTF-8 byte bounds, symlink/non-regular residents, original-content batch evaluation, publication faults before and after replacement, and both expanded effort-management invariant claims through named proof markers."
 
 Use existing test service composition and injected fault stages. Assert typed facts and resident bytes,
-not command prose. Cover offsets beyond the available document, final lines without a newline,
-50-KiB and 2,000-line boundaries, repeated replacement text, replacements that create another old
+not command prose. Cover offsets beyond the available document, `math.MaxInt` limit without overflow,
+final lines without a newline, whole-line continuation before the 50-KiB cap, individually unpageable
+line refusal, 2,000-line boundaries, repeated replacement text, replacements that create another old
 text, no-op replacements, CRLF body preservation where admitted, one-MiB result rejection, and
-stable index ordering. Keep genuine kernel-impossible paths under the existing coverage-ignore
+stable index ordering. Pin independent literal acceptance/rejection pairs for the 50-KiB read and
+diff caps, one-MiB bounds, and 128-edit maximum so changing a production constant fails a test. Add
+correctly anchored proof markers on named new units that exercise the new clauses of both Applied
+effort-management claims. Keep genuine kernel-impossible paths under the existing coverage-ignore
 policy rather than weakening the 100% gate.
 
-### Task 1.3: Enter Implementing and apply effort resident authority
-Kind: batch
-Latitude: exact
-Applying: ["add-associated-pi-effort-memory-tools:binary-owned-memory-operations", "add-associated-pi-effort-memory-tools:advisory-owner-scoped-memory-calls", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
-Paths: ["docs/decisions/add-associated-pi-effort-memory-tools.md", ".awf/topics/parts/tooling/effort-management/current-state.md", "docs/topics/tooling/effort-management.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
-Representative: "Move the ADR from Proposed to Implementing and apply the `effort-record-authority` and `memory-skeleton-purpose-partition` updates in the same authored transaction as their live service behavior, preserving each claim's Origin and Revised-by prefix before appending this ADR."
-Edge: "Do not apply CLI or rendering claims, do not describe activity as authorization or locking, and leave every other State-change operation Remaining."
-Post-check: "After `./x render`, `./x check` exits zero and `./awf context --show pending docs/decisions/add-associated-pi-effort-memory-tools.md` reports exactly the two effort-management operations Applied with the CLI and rendering operations Remaining."
-
-Use `awf-adr-lifecycle` to append the Implementing status event and one Applied event naming the two
-qualified claim operations. Update the source current-state part with the live read/edit/update,
-repair, owner-check, exact-match, timestamp, and atomic-publication boundaries. Never hand-edit the
-rendered topic, decision index, or lock.
-
-### Phase close
-
-Stage the complete Phase 1 transaction explicitly. Run `awf check staged` and `./x gate`; both must
-pass. Create one commit:
-
-```commit
-feat(tooling): add memory operations (applies memory tools batch)
-```
-
-## Phase 2: Expose human commands and the closed protocol
-
-**Execution mode: subagent-driven.**
-
-Completes: ["binary-memory-contract"]
-
-### Task 2.1: Add exact memory command grammar and dispatch
+### Task 1.3: Add exact memory command grammar and dispatch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:presentation-protocol-composition", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary", "add-associated-pi-effort-memory-tools:compatible-runtime-floor"]
 Paths: ["internal/clispec/clispec.go", "internal/clispec/clispec_test.go", "cmd/awf/effort.go", "cmd/awf/effort_test.go", "cmd/awf/gate_test.go", "cmd/awf/help_test.go", "cmd/awf/testdata/help/global.txt"]
 
-Before dispatch, require `git status --short` to print nothing, `./x check` to exit zero, and
-`go test ./internal/effort ./internal/clispec ./cmd/awf` to exit zero. The phase owner keeps shared
-CLI grammar, presentation-boundary fixtures, ADR lifecycle, rendering, and the commit transaction.
+Keep command composition in this same phase transaction so every new effort export ships with its
+first real outside-package production consumer.
 
 Declare exactly the owner-free and owner-scoped `memory read`, `memory edit`, and `memory update`
 forms from the ADR. Keep `--owner` and `--json` nonrepeatable and mutually required, accept no
@@ -143,7 +120,7 @@ convenience JSON mode, local Markdown renderer, generic map, or new process-exit
 Update command spec and help fixtures from the same table. Extend gate probes so every new leaf is
 version-gated with valid nonmutating or disposable arguments and stdin where required.
 
-### Task 2.2: Map ordinary presentation and exact protocol envelopes
+### Task 1.4: Map ordinary presentation and exact protocol envelopes
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:presentation-protocol-composition", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
@@ -158,34 +135,36 @@ facts and exact omission rules. Ensure success stdout never exceeds one MiB and 
 truncation and continuation visible without altering the selected content bytes; for edits, expose
 replacement and diff facts through existing presentation shapes rather than reproducing Pi's TUI.
 
-### Task 2.3: Apply the CLI claim updates
+### Task 1.5: Enter Implementing and apply effort and CLI authority
 Kind: batch
 Latitude: exact
-Applying: ["add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:presentation-protocol-composition"]
-Paths: ["docs/decisions/add-associated-pi-effort-memory-tools.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/tooling/cli.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
-Representative: "Apply `explicit-output-bypasses` and `effort-command-contract` with exact owner-free presentation and owner-scoped protocol wording, preserving prior provenance and appending this ADR as Revised-by."
-Edge: "Keep effort activity JSON, authored plan and changelog bytes, init descriptor JSON, and context spill unchanged; do not classify memory JSON as optional convenience output."
-Post-check: "After `./x render`, `./x check` exits zero and `./awf context --show pending cmd/awf/effort.go` reports both CLI operations Applied while all rendering operations remain pending."
+Applying: ["add-associated-pi-effort-memory-tools:binary-owned-memory-operations", "add-associated-pi-effort-memory-tools:advisory-owner-scoped-memory-calls", "add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:presentation-protocol-composition", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
+Paths: ["docs/decisions/add-associated-pi-effort-memory-tools.md", ".awf/topics/parts/tooling/effort-management/current-state.md", "docs/topics/tooling/effort-management.md", ".awf/topics/parts/tooling/cli/current-state.md", "docs/topics/tooling/cli.md", "docs/decisions/INDEX.md", ".awf/awf.lock"]
+Representative: "Move the ADR from Proposed to Implementing and apply `effort-record-authority`, `memory-skeleton-purpose-partition`, `explicit-output-bypasses`, and `effort-command-contract` in the same authored transaction as their live binary and CLI behavior, preserving each existing Origin and Revised-by prefix before appending this ADR."
+Edge: "Keep effort activity JSON, authored plan and changelog bytes, init descriptor JSON, and context spill unchanged; do not classify memory JSON as optional convenience output, describe activity as authorization or locking, or apply rendering claims."
+Post-check: "After `./x render`, `./x check` exits zero and `./awf context --show pending docs/decisions/add-associated-pi-effort-memory-tools.md cmd/awf/effort.go` reports exactly the two effort-management and two CLI operations Applied while all rendering operations remain pending."
 
-Append one Applied event for the two distinct CLI operations and mutate both source claims in the same
-transaction. Never hand-edit generated topic or index output.
+Use `awf-adr-lifecycle` to append the Implementing status event and one Applied event naming all four
+qualified claim operations. Update both source current-state parts with the live memory, advisory
+owner, ordinary presentation, and required protocol boundaries in the same transaction. Never
+hand-edit rendered topics, the decision index, or the lock.
 
 ### Phase close
 
-Stage the complete Phase 2 transaction explicitly. Run `awf check staged` and `./x gate`; both must
+Stage the complete Phase 1 transaction explicitly. Run `awf check staged` and `./x gate`; both must
 pass. Create one commit:
 
 ```commit
-feat(tooling): add memory protocol (applies memory tools batch)
+feat(tooling): add memory API and protocol (applies memory tools batch)
 ```
 
-## Phase 3: Add the generated client and associated tools
+## Phase 2: Add the generated client and associated tools
 
 **Execution mode: subagent-driven.**
 
 Completes: ["associated-tool-contract"]
 
-### Task 3.1: Decode every memory protocol reply strictly
+### Task 2.1: Decode every memory protocol reply strictly
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
@@ -203,7 +182,7 @@ reply types separate where their mutation axes differ. Export only the typed inv
 needed by the generated index and tests. Preserve the canonical slug, UUIDv4, UTC, text, stdout, and
 stderr validators as single homes.
 
-### Task 3.2: Add bounded stdin-capable edit invocation
+### Task 2.2: Add bounded stdin-capable edit invocation
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:closed-memory-protocol", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
 Paths: ["templates/pi/awf-effort/client.ts.tmpl", ".pi/extensions/awf-effort/client.ts", "tools/pi-extension-test/tests/using-effort.test.ts", ".awf/awf.lock"]
@@ -221,7 +200,7 @@ argument order in tests, and never accept a caller path or slug. Test spawn fail
 abort before and during execution, timeout, signal/exit races, nonzero exit, and output truncation.
 Assert that every handle/listener/timer settles on each terminal path.
 
-### Task 3.3: Guard the companion runtime before functional registration
+### Task 2.3: Guard the companion runtime before functional registration
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:compatible-runtime-floor", "add-associated-pi-effort-memory-tools:contextual-tool-activation", "add-associated-pi-effort-memory-tools:publication-safe-memory-tool-templates"]
 Paths: ["templates/partials/pi-minimum-runtime.md", "templates/pi/awf-effort/index.ts.tmpl", ".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "internal/project/target_test.go", "tools/pi-extension-test/tests/runtime.test.ts", "tools/pi-extension-test/tests/using-effort.test.ts", ".awf/awf.lock"]
@@ -244,7 +223,7 @@ Supported runtime operation must emit no compatibility warning. Add renderer and
 for old version, missing methods/helper, exactly one notice across entrypoints, no partial tool/hook
 registration, supported registration, and publication-safe empty-variable rendering.
 
-### Task 3.4: Register strict pathless tools and active-only guidance
+### Task 2.4: Register strict pathless tools and active-only guidance
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:associated-memory-tool-surface", "add-associated-pi-effort-memory-tools:contextual-tool-activation", "add-associated-pi-effort-memory-tools:active-memory-guidance", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
 Paths: ["templates/pi/awf-effort/index.ts.tmpl", ".pi/extensions/awf-effort/index.ts", "tools/pi-extension-test/tests/using-effort.test.ts", ".awf/awf.lock"]
@@ -278,7 +257,7 @@ operation-triggered ownership loss, same-turn parallel calls, association-chain 
 path and queue ordering against a simulated generic mutation, cancellation, no-op edit, and direct
 file-tool availability.
 
-### Task 3.5: Extend the generated using-effort guidance
+### Task 2.5: Extend the generated using-effort guidance
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:active-memory-guidance", "add-associated-pi-effort-memory-tools:publication-safe-memory-tool-templates"]
 Paths: ["templates/skills/using-effort/SKILL.md.tmpl", ".pi/skills/awf-using-effort/SKILL.md", "internal/project/target_test.go", ".awf/awf.lock"]
@@ -290,7 +269,7 @@ execution, exact owned path, managed-worktree path, explicit association, adviso
 restart-detached rules. Ensure unset prefix and generic adopter rendering remain coherent with no
 unresolved token.
 
-### Task 3.6: Update the runtime-floor and testing-tier documentation
+### Task 2.6: Update the runtime-floor and testing-tier documentation
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:compatible-runtime-floor", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
@@ -305,20 +284,20 @@ never hand-edit the generated documents or lock.
 
 ### Phase close
 
-Stage the complete Phase 3 transaction explicitly. Run `awf check staged` and `./x gate`; both must
+Stage the complete Phase 2 transaction explicitly. Run `awf check staged` and `./x gate`; both must
 pass. Create one commit:
 
 ```commit
 feat(rendering): activate associated Pi memory tools
 ```
 
-## Phase 4: Apply rendering authority and close generated documentation
+## Phase 3: Apply rendering authority and close generated documentation
 
 **Execution mode: subagent-driven.**
 
 Completes: ["authority-and-generated-state", "repository-gate"]
 
-### Task 4.1: Back the rendered Pi memory-tool contract
+### Task 3.1: Back the rendered Pi memory-tool contract
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:contextual-tool-activation", "add-associated-pi-effort-memory-tools:active-memory-guidance", "add-associated-pi-effort-memory-tools:memory-tool-claim-backing", "add-associated-pi-effort-memory-tools:publication-safe-memory-tool-templates"]
@@ -336,7 +315,7 @@ Keep the proof in a current-state test glob and name `TestPiEffortMemoryToolCont
 non-marker line. Extend container coverage inputs only as needed to retain 100% TypeScript statement
 coverage; do not exclude reachable branches.
 
-### Task 4.2: Apply all remaining rendering claims
+### Task 3.2: Apply all remaining rendering claims
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:associated-memory-tool-surface", "add-associated-pi-effort-memory-tools:contextual-tool-activation", "add-associated-pi-effort-memory-tools:active-memory-guidance", "add-associated-pi-effort-memory-tools:compatible-runtime-floor", "add-associated-pi-effort-memory-tools:memory-tool-claim-backing", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
@@ -351,7 +330,7 @@ transaction. Update `pi-extension-target-render` with the client/index responsib
 `using-effort-skill` with dynamic activation and guidance, and add the exact backed invariant
 `pi-effort-memory-tools`. Never hand-edit generated topics, index, or lock.
 
-### Task 4.3: Update durable architecture and workflow prose
+### Task 3.3: Update durable architecture and workflow prose
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:cohesive-runtime-boundary", "add-associated-pi-effort-memory-tools:active-memory-guidance"]
@@ -365,8 +344,8 @@ plan rather than copying it into architecture or workflow prose.
 
 ### Phase close
 
-Run `./x render`, read back every source and generated target changed by Tasks 4.2 and 4.3, and stage
-the complete Phase 4 transaction explicitly. Run `awf check staged` and `./x gate`; both must pass
+Run `./x render`, read back every source and generated target changed by Tasks 3.2 and 3.3, and stage
+the complete Phase 3 transaction explicitly. Run `awf check staged` and `./x gate`; both must pass
 with clean drift, current-state validation, 100% Go and TypeScript coverage, dead-code checks, and the
 real pinned Pi runtime smoke. Create one commit:
 
