@@ -5,7 +5,7 @@ adrs:
   - derive-render-completeness-from-output-authority
   - layer-catalog-list-defaults-and-project-entries
   - separate-structural-markdown-headings-from-section-bodies
-status: Proposed
+status: Implemented
 ---
 # Plan: Streamline rendering authority and section composition
 
@@ -420,3 +420,4 @@ feat(rendering): separate section headings (applies ADR batch)
 - D9: executable range and else template fallbacks were rewritten to preserve missingkey-zero output behavior while making both branches explicit and testable.
 - D10: Phase 2's controlled-render fixture and path assertions were revised to match the resolved output declaration seam.
 - Phase 5 settlement: terminal review required snapshot/census/encoder/migration follow-through, including same-execution structural-heading capture, all-ATX owned-slot tamper classification, and deterministic one-handle migration reads.
+- Integration settlement: merging target `main` at `6c6711fb` combined the schema-35 and schema-36 migrations with the target's typed presentation boundary. Migration announcements became ordered typed `Changes` facts rather than fallible direct-writer output, and config-reference list-state proofs moved through the typed presentation renderer; the existing migration mutation, retry, and contextual I/O failure behavior remained covered. Rendering-streamline changelog entries stayed under Unreleased rather than entering the already-cut v0.30.0 release. Renewed terminal review restored the target's historical stale-branch incident title as an approved subordinate body heading under the awf-owned `## Deferred` heading, then verified the fix with zero findings. The integration-range audits reported warnings only and no errors.

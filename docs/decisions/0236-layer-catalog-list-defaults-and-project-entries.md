@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: layer-catalog-list-defaults-and-project-entries
-status: Implementing
+status: Implemented
 date: 2026-08-05
 ---
 # ADR-0236: Layer catalog list defaults and project entries
@@ -88,3 +88,4 @@ replacement is an unambiguous suppression control.
 - 2026-08-05: Implementing; content-sha256: cafef2a3aec9a4c0b338dbea2f4cc4c97485c7a9b3db5b57cf64ca5f01f36b14
 - 2026-08-05: Applied; operations: update `rendering/project-output-plan:sidecar-key-overrides-default`, add `rendering/project-output-plan:catalog-list-data-layering`, add `config/configuration:sidecar-data-defaults-control`, add `config/migrations-and-locks:list-replacement-fixed-snapshot`
 - 2026-08-05: Reapplied; operations: add `config/migrations-and-locks:list-replacement-fixed-snapshot`
+- 2026-08-06: Implemented; content-sha256: cafef2a3aec9a4c0b338dbea2f4cc4c97485c7a9b3db5b57cf64ca5f01f36b14

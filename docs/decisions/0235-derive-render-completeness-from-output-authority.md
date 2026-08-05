@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: derive-render-completeness-from-output-authority
-status: Implementing
+status: Implemented
 date: 2026-08-05
 ---
 # ADR-0235: Derive render completeness from output authority
@@ -83,3 +83,4 @@ green result would imply more assurance than it provides.
 - 2026-08-05: Applied; operations: update `rendering/project-output-plan:output-plan-complete`, add `rendering/project-output-plan:conditional-unit-single-source`, update `rendering/project-output-plan:template-id-single-derivation`, add `config/configspec-and-reference:live-state-projection-explicit`, add `rendering/templates:singleton-conditional-key-live`
 - 2026-08-05: Applied; operations: add `rendering/sync-and-drift:ordinary-render-freshness`
 - 2026-08-05: Applied; operations: add `rendering/workflow-skill-templates:semantic-rendering-review`
+- 2026-08-06: Implemented; content-sha256: cd4d014f2286f70a31c399fd110df9e73aeb6410ff39ff6065dda51e36c985b8
