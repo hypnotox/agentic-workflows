@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"text/template"
+	"text/template/parse"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -124,28 +127,392 @@ func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 	}
 }
 
-var singletonConditionalPathRe = regexp.MustCompile(`\{\{-?\s*(?:if|with|range)\s+\.([A-Za-z][A-Za-z0-9_]*)(?:\.([A-Za-z][A-Za-z0-9_]*))?`)
-
-func cloneRenderData(in map[string]any) map[string]any {
-	out := make(map[string]any, len(in))
-	for key, value := range in {
-		if nested, ok := value.(map[string]any); ok {
-			copy := make(map[string]any, len(nested))
-			for nestedKey, nestedValue := range nested {
-				copy[nestedKey] = nestedValue
-			}
-			out[key] = copy
-			continue
-		}
-		out[key] = value
-	}
-	return out
+type singletonTemplateContext struct {
+	tid  string
+	data map[string]any
 }
 
-// TestSingletonConditionalKeysUseLiveRenderContext derives the conditional
-// config-tree singleton population from conditionalUnits, extracts every
-// direct condition path from the shipped templates, proves that path belongs
-// to the real render data authority, and renders both outcomes.
+type singletonConditional struct {
+	id        int
+	kind      string
+	pipe      string
+	paths     [][]string
+	literals  []string
+	ancestors []conditionalState
+}
+
+type conditionalState struct {
+	condition singletonConditional
+	truth     bool
+}
+
+type singletonInspection struct {
+	template   *template.Template
+	conditions []singletonConditional
+}
+
+var supportedConditionalFuncs = map[string]bool{
+	"and": true, "eq": true, "ge": true, "gt": true, "le": true,
+	"lt": true, "ne": true, "not": true, "or": true,
+}
+
+func cloneTemplateValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(value))
+		for key, nested := range value {
+			out[key] = cloneTemplateValue(nested)
+		}
+		return out
+	case map[string]bool:
+		out := make(map[string]bool, len(value))
+		for key, nested := range value {
+			out[key] = nested
+		}
+		return out
+	case []any:
+		out := make([]any, len(value))
+		for i, nested := range value {
+			out[i] = cloneTemplateValue(nested)
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func cloneRenderData(in map[string]any) map[string]any {
+	return cloneTemplateValue(in).(map[string]any)
+}
+
+func singletonTemplateContexts(t *testing.T, p *Project, eff map[string]bool) []singletonTemplateContext {
+	t.Helper()
+	var contexts []singletonTemplateContext
+	for _, kind := range catalog.SingletonKinds() {
+		entry := p.Cat.Docs[kind]
+		sc, err := p.Cfg.Sidecar(kind, "")
+		if err != nil {
+			t.Fatalf("read %s sidecar: %v", kind, err)
+		}
+		if sc.Local {
+			continue
+		}
+		sc = withDefaultData(sc, entry.Data)
+		data := p.data(sc, eff)
+		switch {
+		case entry.AgentsDoc:
+			docs, err := p.resolvedDocs()
+			if err != nil {
+				t.Fatal(err)
+			}
+			data["docs"] = docs
+			data["mandatoryDocs"] = p.documentMapDocs()
+		case entry.Generated:
+			files, err := p.RenderAll()
+			if err != nil {
+				t.Fatal(err)
+			}
+			collections, err := p.configReferenceData(files)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data["data"] = collections
+		}
+		contexts = append(contexts, singletonTemplateContext{tid: entry.TID, data: data})
+	}
+	for _, unit := range conditionalUnits() {
+		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: p.data(config.Sidecar{}, eff)})
+	}
+	return contexts
+}
+
+func appendUniquePaths(dst [][]string, paths ...[]string) [][]string {
+	for _, path := range paths {
+		key, found := strings.Join(path, "."), false
+		for _, current := range dst {
+			if strings.Join(current, ".") == key {
+				found = true
+				break
+			}
+		}
+		if !found {
+			dst = append(dst, path)
+		}
+	}
+	return dst
+}
+
+func conditionalNodePaths(node parse.Node, scope []string, vars map[string][][]string) ([][]string, error) {
+	switch node := node.(type) {
+	case *parse.FieldNode:
+		return [][]string{append(append([]string{}, scope...), node.Ident...)}, nil
+	case *parse.VariableNode:
+		if len(node.Ident) == 0 {
+			return nil, nil
+		}
+		if node.Ident[0] == "$" {
+			if len(node.Ident) == 1 {
+				return nil, nil
+			}
+			return [][]string{append([]string{}, node.Ident[1:]...)}, nil
+		}
+		base := vars[node.Ident[0]]
+		var out [][]string
+		for _, path := range base {
+			out = appendUniquePaths(out, append(append([]string{}, path...), node.Ident[1:]...))
+		}
+		return out, nil
+	case *parse.ChainNode:
+		base, err := conditionalNodePaths(node.Node, scope, vars)
+		if err != nil {
+			return nil, err
+		}
+		var out [][]string
+		for _, path := range base {
+			out = appendUniquePaths(out, append(append([]string{}, path...), node.Field...))
+		}
+		return out, nil
+	case *parse.PipeNode:
+		var out [][]string
+		for _, command := range node.Cmds {
+			paths, err := conditionalNodePaths(command, scope, vars)
+			if err != nil {
+				return nil, err
+			}
+			out = appendUniquePaths(out, paths...)
+		}
+		return out, nil
+	case *parse.CommandNode:
+		var out [][]string
+		for _, arg := range node.Args {
+			if identifier, ok := arg.(*parse.IdentifierNode); ok {
+				if !supportedConditionalFuncs[identifier.Ident] {
+					return nil, fmt.Errorf("unsupported conditional function %q", identifier.Ident)
+				}
+				continue
+			}
+			paths, err := conditionalNodePaths(arg, scope, vars)
+			if err != nil {
+				return nil, err
+			}
+			out = appendUniquePaths(out, paths...)
+		}
+		return out, nil
+	case *parse.DotNode, *parse.BoolNode, *parse.NilNode, *parse.NumberNode, *parse.StringNode:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported conditional node %T", node)
+	}
+}
+
+func inspectSingletonConditionals(src, name string) (singletonInspection, error) {
+	tmpl, err := template.New(name).Option("missingkey=zero").Parse(src)
+	if err != nil {
+		return singletonInspection{}, err
+	}
+	vars := map[string][][]string{}
+	var found []singletonConditional
+	addCondition := func(kind string, branch *parse.BranchNode, paths [][]string, ancestors []conditionalState) singletonConditional {
+		id := len(found)
+		var literals []string
+		for _, command := range branch.Pipe.Cmds {
+			for _, arg := range command.Args {
+				if value, ok := arg.(*parse.StringNode); ok && value.Text != "" {
+					literals = append(literals, value.Text)
+				}
+			}
+		}
+		trueMarker := &parse.TextNode{NodeType: parse.NodeText, Text: []byte(fmt.Sprintf("AWF_CONDITION_%d_TRUE", id))}
+		falseMarker := &parse.TextNode{NodeType: parse.NodeText, Text: []byte(fmt.Sprintf("AWF_CONDITION_%d_FALSE", id))}
+		branch.List.Nodes = append([]parse.Node{trueMarker}, branch.List.Nodes...)
+		if branch.ElseList == nil {
+			branch.ElseList = &parse.ListNode{NodeType: parse.NodeList, Nodes: []parse.Node{falseMarker}}
+		} else {
+			branch.ElseList.Nodes = append([]parse.Node{falseMarker}, branch.ElseList.Nodes...)
+		}
+		condition := singletonConditional{id: id, kind: kind, pipe: branch.Pipe.String(), paths: paths, literals: literals, ancestors: append([]conditionalState{}, ancestors...)}
+		found = append(found, condition)
+		return condition
+	}
+	var walkList func(*parse.ListNode, []string, []conditionalState) error
+	walkList = func(list *parse.ListNode, scope []string, ancestors []conditionalState) error {
+		if list == nil {
+			return nil
+		}
+		for _, node := range list.Nodes {
+			switch node := node.(type) {
+			case *parse.ActionNode:
+				paths, pathErr := conditionalNodePaths(node.Pipe, scope, vars)
+				if pathErr != nil {
+					return pathErr
+				}
+				for _, declaration := range node.Pipe.Decl {
+					vars[declaration.Ident[0]] = appendUniquePaths(vars[declaration.Ident[0]], paths...)
+				}
+			case *parse.IfNode:
+				paths, pathErr := conditionalNodePaths(node.Pipe, scope, vars)
+				if pathErr != nil {
+					return pathErr
+				}
+				if len(paths) == 0 {
+					return fmt.Errorf("if conditional %q has no render-context path", node.Pipe.String())
+				}
+				condition := addCondition("if", &node.BranchNode, paths, ancestors)
+				if err := walkList(node.List, scope, append(ancestors, conditionalState{condition: condition, truth: true})); err != nil {
+					return err
+				}
+				if err := walkList(node.ElseList, scope, append(ancestors, conditionalState{condition: condition, truth: false})); err != nil {
+					return err
+				}
+			case *parse.WithNode:
+				paths, pathErr := conditionalNodePaths(node.Pipe, scope, vars)
+				if pathErr != nil {
+					return pathErr
+				}
+				if len(paths) != 1 {
+					return fmt.Errorf("with conditional %q has %d render-context paths", node.Pipe.String(), len(paths))
+				}
+				condition := addCondition("with", &node.BranchNode, paths, ancestors)
+				if err := walkList(node.List, paths[0], append(ancestors, conditionalState{condition: condition, truth: true})); err != nil {
+					return err
+				}
+				if err := walkList(node.ElseList, scope, append(ancestors, conditionalState{condition: condition, truth: false})); err != nil {
+					return err
+				}
+			case *parse.RangeNode:
+				paths, pathErr := conditionalNodePaths(node.Pipe, scope, vars)
+				if pathErr != nil {
+					return pathErr
+				}
+				if len(paths) != 1 {
+					return fmt.Errorf("range conditional %q has %d render-context paths", node.Pipe.String(), len(paths))
+				}
+				condition := addCondition("range", &node.BranchNode, paths, ancestors)
+				itemScope := append(append([]string{}, paths[0]...), "*")
+				if err := walkList(node.List, itemScope, append(ancestors, conditionalState{condition: condition, truth: true})); err != nil {
+					return err
+				}
+				if err := walkList(node.ElseList, scope, append(ancestors, conditionalState{condition: condition, truth: false})); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if err := walkList(tmpl.Root, nil, nil); err != nil {
+		return singletonInspection{}, fmt.Errorf("inspect %s: %w", name, err)
+	}
+	instrumented, err := template.New(name).Option("missingkey=zero").Parse(tmpl.Root.String())
+	if err != nil {
+		return singletonInspection{}, err
+	}
+	return singletonInspection{template: instrumented, conditions: found}, nil
+}
+
+func conditionalPathRootExists(data map[string]any, path []string) bool {
+	if len(path) == 0 {
+		return false
+	}
+	_, ok := data[path[0]]
+	return ok
+}
+
+func setConditionalPath(value any, path []string, kind string, set bool, literal string) any {
+	if len(path) == 0 {
+		if literal != "" {
+			return literal
+		}
+		if kind == "range" {
+			if !set {
+				return []any{}
+			}
+			if current, ok := value.([]any); ok && len(current) != 0 {
+				return current
+			}
+			return []any{map[string]any{}}
+		}
+		switch current := value.(type) {
+		case bool:
+			return set
+		case string:
+			if set {
+				return "fixture-value"
+			}
+			return ""
+		case []any:
+			if set {
+				if len(current) == 0 {
+					return []any{map[string]any{}}
+				}
+				return current
+			}
+			return []any{}
+		case nil:
+			if set {
+				return "fixture-value"
+			}
+			return nil
+		default:
+			if set {
+				return current
+			}
+			return nil
+		}
+	}
+	if path[0] == "*" {
+		items, _ := value.([]any)
+		if len(items) == 0 {
+			items = []any{map[string]any{}}
+		}
+		for i := range items {
+			items[i] = setConditionalPath(items[i], path[1:], kind, set, literal)
+		}
+		return items
+	}
+	mapping, _ := value.(map[string]any)
+	if mapping == nil {
+		mapping = map[string]any{}
+	}
+	mapping[path[0]] = setConditionalPath(mapping[path[0]], path[1:], kind, set, literal)
+	return mapping
+}
+
+func applyConditionalState(data map[string]any, condition singletonConditional, truth bool) {
+	set, literal := truth, ""
+	switch {
+	case strings.HasPrefix(condition.pipe, "not "):
+		set = !truth
+	case strings.HasPrefix(condition.pipe, "eq "):
+		if truth && len(condition.literals) != 0 {
+			literal = condition.literals[0]
+		} else {
+			set = false
+		}
+	case strings.HasPrefix(condition.pipe, "ne "):
+		if !truth && len(condition.literals) != 0 {
+			literal = condition.literals[0]
+		} else {
+			set = true
+		}
+	}
+	for _, path := range condition.paths {
+		data[path[0]] = setConditionalPath(data[path[0]], path[1:], condition.kind, set, literal)
+	}
+}
+
+func renderConditionalFixture(t *testing.T, tmpl *template.Template, data map[string]any) string {
+	t.Helper()
+	var out bytes.Buffer
+	if err := tmpl.Execute(&out, data); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
+}
+
+// TestSingletonConditionalKeysUseLiveRenderContext derives every catalog and
+// config-tree singleton from its owning declaration, inspects its expanded Go
+// template parse tree, and exercises both values for every referenced context
+// path. Historical recognition-only templates never enter either declaration.
 // invariant: rendering/templates:singleton-conditional-key-live (TestSingletonConditionalKeysUseLiveRenderContext)
 func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -160,10 +527,9 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := p.data(config.Sidecar{}, eff)
 	seenTemplates, seenConditions := 0, 0
-	for _, unit := range conditionalUnits() {
-		raw, err := fs.ReadFile(templates.FS, unit.tid)
+	for _, context := range singletonTemplateContexts(t, p, eff) {
+		raw, err := fs.ReadFile(templates.FS, context.tid)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -171,67 +537,85 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		matches := singletonConditionalPathRe.FindAllStringSubmatch(expanded, -1)
-		if len(matches) == 0 {
+		inspection, err := inspectSingletonConditionals(expanded, context.tid)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		if len(inspection.conditions) == 0 {
 			continue
 		}
 		seenTemplates++
-		seen := map[string]bool{}
-		for _, match := range matches {
-			path := match[1]
-			if match[2] != "" {
-				path += "." + match[2]
+		variants := []map[string]any{cloneRenderData(context.data)}
+		for _, condition := range inspection.conditions {
+			for _, truth := range []bool{false, true} {
+				data := cloneRenderData(context.data)
+				for _, ancestor := range condition.ancestors {
+					applyConditionalState(data, ancestor.condition, ancestor.truth)
+				}
+				applyConditionalState(data, condition, truth)
+				variants = append(variants, data)
 			}
-			if seen[path] {
-				continue
-			}
-			seen[path] = true
 			seenConditions++
-
-			rootValue, rootExists := base[match[1]]
-			if !rootExists {
-				t.Errorf("%s conditional %s has no root on the real render context", unit.tid, path)
-				continue
-			}
-			if match[2] != "" {
-				if _, ok := rootValue.(map[string]any); !ok {
-					t.Errorf("%s conditional %s traverses non-map render data", unit.tid, path)
+			for _, path := range condition.paths {
+				if !conditionalPathRootExists(context.data, path) {
+					t.Errorf("%s %s conditional path %s has no root on its real render context", context.tid, condition.kind, strings.Join(path, "."))
 					continue
 				}
-				declared := false
-				for _, descriptor := range catalog.Standard.Vars {
-					if descriptor.Key == match[2] {
-						declared = true
-						break
+				for _, candidate := range []struct {
+					set     bool
+					literal string
+				}{{}, {set: true}} {
+					data := cloneRenderData(context.data)
+					data[path[0]] = setConditionalPath(data[path[0]], path[1:], condition.kind, candidate.set, candidate.literal)
+					variants = append(variants, data)
+				}
+				for _, literal := range condition.literals {
+					data := cloneRenderData(context.data)
+					data[path[0]] = setConditionalPath(data[path[0]], path[1:], condition.kind, true, literal)
+					variants = append(variants, data)
+				}
+			}
+		}
+		outcomes := map[string]bool{}
+		for _, data := range variants {
+			out := renderConditionalFixture(t, inspection.template, data)
+			for _, condition := range inspection.conditions {
+				for _, outcome := range []string{"TRUE", "FALSE"} {
+					marker := fmt.Sprintf("AWF_CONDITION_%d_%s", condition.id, outcome)
+					outcomes[marker] = outcomes[marker] || strings.Contains(out, marker)
+				}
+				if condition.kind == "range" {
+					for _, ancestor := range condition.ancestors {
+						if !ancestor.truth || fmt.Sprint(ancestor.condition.paths) != fmt.Sprint(condition.paths) {
+							continue
+						}
+						ancestorFalse := fmt.Sprintf("AWF_CONDITION_%d_FALSE", ancestor.condition.id)
+						if strings.Contains(out, ancestorFalse) {
+							outcomes[fmt.Sprintf("AWF_CONDITION_%d_FALSE", condition.id)] = true
+						}
 					}
 				}
-				if !declared {
-					t.Errorf("%s conditional %s names no declared config var", unit.tid, path)
-					continue
+			}
+		}
+		for _, condition := range inspection.conditions {
+			for _, outcome := range []string{"TRUE", "FALSE"} {
+				marker := fmt.Sprintf("AWF_CONDITION_%d_%s", condition.id, outcome)
+				if !outcomes[marker] {
+					t.Errorf("%s %s conditional %d paths=%v literals=%v never exercised its %s outcome", context.tid, condition.kind, condition.id, condition.paths, condition.literals, strings.ToLower(outcome))
 				}
-			}
-
-			zero, set := cloneRenderData(base), cloneRenderData(base)
-			if zeroVars, ok := zero["vars"].(map[string]any); ok {
-				setVars := set["vars"].(map[string]any)
-				for key := range zeroVars {
-					zeroVars[key], setVars[key] = "", ""
-				}
-			}
-			if match[2] == "" {
-				zero[match[1]], set[match[1]] = false, true
-			} else {
-				zeroVars := zero[match[1]].(map[string]any)
-				setVars := set[match[1]].(map[string]any)
-				zeroVars[match[2]], setVars[match[2]] = "", "fixture-value"
-			}
-			if without, with := renderGolden(t, unit.tid, zero), renderGolden(t, unit.tid, set); without == with {
-				t.Errorf("%s conditional %s did not exercise distinct outcomes", unit.tid, path)
 			}
 		}
 	}
 	if seenTemplates == 0 || seenConditions == 0 {
 		t.Fatalf("conditional singleton census was vacuous: templates=%d conditions=%d", seenTemplates, seenConditions)
+	}
+}
+
+func TestSingletonConditionalInspectionRejectsUnsupportedWrappedCondition(t *testing.T) {
+	const fixture = `{{ if print .vars.gateCmd }}configured{{ else }}fallback{{ end }}`
+	if _, err := inspectSingletonConditionals(fixture, "wrapped-unsupported"); err == nil || !strings.Contains(err.Error(), `unsupported conditional function "print"`) {
+		t.Fatalf("unsupported wrapped conditional was not rejected: %v", err)
 	}
 }
 

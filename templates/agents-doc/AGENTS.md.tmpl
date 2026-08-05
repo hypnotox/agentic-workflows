@@ -85,12 +85,9 @@ Discovery creates no effort. Before first creation for a concrete non-minimal ou
 ```
 {{- else -}}
 {{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := .vars.checkCmd }}{{ if not $check }}{{ if .runnerEnabled }}{{ $check = "./awf check" }}{{ else }}{{ $check = "awf check" }}{{ end }}{{ end -}}
-{{- if or $test $gate $check -}}
 {{ with $test }}- `{{ . }}`: run the test suite
 {{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}`: run the gate before committing
 {{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}`: check rendered files for drift
-{{ end }}{{- else }}
-<!-- No commands configured. Set the testCmd/gateCmd/checkCmd vars in .awf/config.yaml (or supply data.commands via an agents-doc sidecar), then run awf render. -->
 {{ end -}}
 {{- end }}
 <!-- awf:end -->
