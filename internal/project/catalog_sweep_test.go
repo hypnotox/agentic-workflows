@@ -718,6 +718,7 @@ func TestSingletonConditionalInspectionRejectsMissingContextDescendant(t *testin
 		dataArtifact string
 	}{
 		{"missing-var", `{{ if .vars.reviewMissingKey }}configured{{ else }}fallback{{ end }}`, ""},
+		{"non-record-descendant", `{{ with .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, "agents-doc"},
 		{"missing-record-field", `{{ range .data.commands }}{{ if .reviewMissingKey }}configured{{ end }}{{ end }}`, "agents-doc"},
 		{"other-artifact-data", `{{ if .data.adrSections }}configured{{ else }}fallback{{ end }}`, "agents-doc"},
 	}
