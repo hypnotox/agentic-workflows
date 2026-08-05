@@ -31,8 +31,7 @@ cleanup you happen to notice. Report anything out of scope and leave it untouche
 
 Per `docs/maintainable-code-design.md`, preserve the structural choices your brief carries:
 semantic boundaries and ownership, representations and their translation points, dependency
-direction, and the preparatory-refactor decision. If a source fact contradicts one of them, report
-that fact rather than bolting a correction onto an unsuitable abstraction.
+direction, and the preparatory-refactor decision. If a source fact requires approval because it changes behavior, scope, structure, dependencies, patterns, checks, or testing strategy, stop before any further mutation and report the changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options, rather than bolting a correction onto an unsuitable abstraction. Equivalent mechanical choices remain autonomous.
 
 Shortcuts that are never acceptable here:
 
@@ -106,8 +105,8 @@ line.
 - the exact output of `git status --short`
 - what you completed
 - what remains
-- the failing check, named, with its actual output rather than your summary of it
+- either the failing check, named, with its actual output rather than your summary of it, or the complete approval-requiring invalidating-source report (changed fact, why the approved approach no longer fits, affected approved categories, and simplest viable options)
 - what you already tried, so the next attempt does not repeat it
 
-A stopped report missing any of the five is not a valid report. There is no third outcome, and a
+A stopped report missing any of the shared inventory or both alternatives is not a valid report. There is no third outcome, and a
 bare "blocked" is never one: a stop without this inventory tells the parent nothing it can act on.

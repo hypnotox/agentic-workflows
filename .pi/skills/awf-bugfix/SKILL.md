@@ -25,7 +25,7 @@ A minimal simple known-root fix uses no effort. Non-minimal work requires one al
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 
-2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. For materially larger work, ask the user whether to
+2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. If a newly discovered need affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy, stop before further mutation and return to the user with the changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options. Equivalent mechanical choices remain autonomous. For materially larger work, ask the user whether to
 perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
 No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 

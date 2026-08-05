@@ -10,4 +10,6 @@ Use this entry guide only inside an existing confirmed effort for one concrete n
 
 Use ordinary `awf effort` commands only to inspect or maintain that existing effort; this guide never authorizes creation. Validate either legacy `Effort: <slug>` or canonical `effort: <slug>` identity and carry the exact owned path `.awf/efforts/<slug>/memory.md`. When the effort has a managed worktree, a runtime that supplies explicit effort paths may remain at the repository root and target the exact existing `.awf/worktrees/<slug>` worktree by path. A runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree. Do not create a parallel harness-owned worktree, standalone memory is forbidden, infer topology, or treat activity as authority.
 
+Treat one checkout as one writer boundary; parallel work uses separate worktrees. Before the first mutation, verify the exact managed-worktree prefix. A suspected path slip requires the operator to inspect the primary checkout before continuing. Before any residual shared-checkout commit, obtain fresh status and compare the staged and worktree copies of shared generated files.
+
 Update checkpoints with `awf effort memory update <slug> --phase ... --next ...`. Preserve the workflow ordering: review, integration, managed-worktree removal, retrospective, then finish.

@@ -11,9 +11,9 @@ Pi workflow contracts: governed subagent tools, session handoff, native skills, 
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. Post-countdown revalidation covers the matching pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
+Pi handoff retains its model-tool batch exclusivity, supported persisted-TUI check, single-use pending request, private FIFO queued command, terminating tool result, five-second countdown, cancellation, parent-linked session creation, old-history preservation, prepared-child cleanup, pre- and post-replacement failure boundary, automatic kickoff, editor fallback, visible recovery notice, and no-silent-retry behavior. A matched replacement submits one visible default-rendered `agent-handoff` custom transcript message through replacement-bound `sendMessage` with `triggerTurn:true`; its exact ownership prefix occurs once and editor and recovery paths use the same envelope. Post-countdown revalidation covers the matching pending request and active persisted-session state; the runtime does not infer, read, validate, mutate, or mention effort memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209, ADR-0218, ADR-0219
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175, ADR-0209, ADR-0218, ADR-0219, ADR-0231
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -36,9 +36,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-Pi handoff's entire public input is exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and otherwise carries the prose unchanged into the replacement session, automatic submission, editor fallback, and recovery path. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
+Pi handoff's entire public input is exactly one required `kickoff` string property with no additional properties. It trims kickoff only to establish nonempty content, retains the public `maxLength: 1000` schema bound and execution-time 1,000-UTF-16-code-unit check, and preserves the accepted prose byte-for-byte after the two newlines in the `Agent-authored handoff context; this is not user input:` envelope. The persisted transcript role is custom with custom type `agent-handoff` and visible default rendering, while Pi's current provider adapter still converts that content to a user-role message. It accepts no memory path or other repository, filesystem, effort, ownership, link, size, encoding, header, or identity input.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209, ADR-0218, ADR-0219
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189, ADR-0209, ADR-0218, ADR-0219, ADR-0231
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
@@ -57,16 +57,16 @@ Backing: test
 
 ### `invariant: pi-effort-session-association`
 
-When selected `effort-workflow` and an enabled Pi target render the generated `using-effort` skill and `using_effort` tool, they explicitly associate one running process with at most one effort through direct non-terminating attach or detach at the repository root. A switch conservatively detaches the prior owner before attaching the next effort; immutable process-local snapshots, owner-checked heartbeat, restart-detached behavior, and ownership-loss cleanup keep advisory state bounded. Every attached model call receives the fixed relative memory path and, when cached directory presence confirms it, the fixed managed-worktree path; failures silently omit unverified advisory facts. The runtime never infers an effort, resolves a checkout, changes CWD, queues a command, replaces or creates a conversation, writes residents directly, or uses local TUI presentation. Remote Pi publication retains complete `awf` metadata replacement plus negotiated transient name override and replay; detach, restart, and ownership loss clear publication without turning presence into authority or a lock.
+When selected `effort-workflow` and an enabled Pi target render the generated `using-effort` skill and `using_effort` tool, they explicitly associate one running process with at most one effort through direct non-terminating attach or detach at the repository root. A switch conservatively detaches the prior owner before attaching the next effort; immutable process-local snapshots, owner-checked heartbeat, restart-detached behavior, and ownership-loss cleanup keep advisory state bounded. Every attached model call receives the fixed relative memory path and, when cached directory presence confirms it, the fixed managed-worktree path; failures silently omit unverified advisory facts. The runtime never infers an effort, resolves a checkout, changes CWD, queues a command, replaces or creates a conversation, writes residents directly, or uses local TUI presentation. Complete `awf` metadata remains independent. Optional presentation publishes only `{value:<canonical slug>}` or `{value:null}` through the capability-gated display-suffix event family; complete capability snapshots authoritatively withdraw support, replay is synchronous, and detach, restart, ownership loss, and shutdown clear explicitly. awf never reads or composes a name and display suffix is never routing authority.
 Origin: ADR-0218
-Revised-by: ADR-0225
+Revised-by: ADR-0225, ADR-0231
 Backing: test
 
 ### `invariant: using-effort-skill`
 
-The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from selected `effort-workflow`; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. The skill documents exactly direct `{effort:"<canonical-slug>"}` attachment and `{detach:true}` detachment from the repository root, use of the supplied fixed relative memory and optional managed-worktree paths, explicit-only association, restart-detached and advisory heartbeat/Remote-name behavior, and the rule that activity is neither authority nor a lock.
+The Pi target alone derives the target-owned `using-effort` skill and `awf-effort` extension from selected `effort-workflow`; neither artifact is independently selectable, and no non-Pi target renders or refers to either one. The skill documents exactly direct `{effort:"<canonical-slug>"}` attachment and `{detach:true}` detachment from the repository root, use of the supplied fixed relative memory and optional managed-worktree paths, explicit-only association, restart-detached state, and the display-only suffix that is never routing input; activity is neither authority nor a lock.
 Origin: ADR-0218
-Revised-by: ADR-0225
+Revised-by: ADR-0225, ADR-0231
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`

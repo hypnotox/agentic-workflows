@@ -9,12 +9,16 @@ import {
 } from "@earendil-works/pi-ai";
 import {
   createAgentSession,
+  CustomMessageComponent,
   DefaultResourceLoader,
+  getMarkdownTheme,
+  initTheme,
   ModelRuntime,
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { contextUsageLine, registerContextUsage } from "../../../.pi/extensions/awf-context-usage/index.ts";
+import { handoffEnvelope } from "../../../.pi/extensions/awf-handoff/index.ts";
 import { registerSubagentTools, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
 import { PREFERENCE_FIELDS } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
@@ -47,12 +51,13 @@ function terminalMessage(): AssistantMessage {
   };
 }
 
-async function runPinnedSession(activeTools: string[]): Promise<{
+async function runPinnedSession(activeTools: string[], handoffKickoff?: string): Promise<{
   requests: Context[];
   requestUsages: any[];
   messages: unknown[];
   entries: unknown[];
   registrations: unknown[];
+  renderers: unknown[];
 }> {
   const requests: Context[] = [];
   const requestUsages: any[] = [];
@@ -102,6 +107,27 @@ async function runPinnedSession(activeTools: string[]): Promise<{
     writeFile: async () => {}, mkdir: async () => {}, rename: async () => {}, unlink: async () => {},
     runner: { run: async () => { throw new Error("runtime smoke must not execute a subagent tool"); } },
   };
+  const extensionFactories = handoffKickoff === undefined
+    ? [
+      (pi: any) => registerSubagentTools(pi, deps),
+      (pi: any) => registerContextUsage(pi, { packageVersion: "0.81.1" }),
+    ]
+    : [
+      (pi: any) => pi.registerCommand("runtime-agent-handoff", {
+        description: "Exercise replacement-bound custom-message delivery.",
+        async handler(_args: string, ctx: any) {
+          await ctx.newSession({
+            async withSession(next: any) {
+              await next.sendMessage({
+                customType: "agent-handoff",
+                content: handoffEnvelope(handoffKickoff),
+                display: true,
+              }, { triggerTurn: true });
+            },
+          });
+        },
+      }),
+    ];
   const loader = new DefaultResourceLoader({
     cwd,
     agentDir,
@@ -111,10 +137,7 @@ async function runPinnedSession(activeTools: string[]): Promise<{
     noThemes: true,
     noContextFiles: true,
     systemPrompt: "runtime system",
-    extensionFactories: [
-      (pi) => registerSubagentTools(pi, deps),
-      (pi) => registerContextUsage(pi, { packageVersion: "0.81.1" }),
-    ],
+    extensionFactories,
   });
   await loader.reload();
   const extensionResult = loader.getExtensions();
@@ -125,6 +148,9 @@ async function runPinnedSession(activeTools: string[]): Promise<{
     flags: [...extension.flags.keys()],
     handlers: [...extension.handlers.keys()],
   }));
+  const renderers = extensionResult.extensions.map((extension: any) => [
+    ...extension.messageRenderers.keys(),
+  ]);
   const sessionManager = SessionManager.inMemory(cwd);
   const { session } = await createAgentSession({
     cwd,
@@ -138,13 +164,40 @@ async function runPinnedSession(activeTools: string[]): Promise<{
     settingsManager,
   });
   activeSession = session;
+  if (handoffKickoff !== undefined) {
+    await session.bindExtensions({
+      mode: "tui",
+      commandContextActions: {
+        async newSession(options: any = {}) {
+          const replacementManager = SessionManager.inMemory(cwd);
+          await options.setup?.(replacementManager);
+          (session as any).sessionManager = replacementManager;
+          (session as any).agent.state.messages = [];
+          await options.withSession?.(session.createReplacedSessionContext());
+          return { cancelled: false };
+        },
+      } as any,
+    });
+  }
   try {
-    await session.prompt("hello");
-    const firstKeptEntryId = sessionManager.getLeafId();
-    assert.ok(firstKeptEntryId);
-    sessionManager.appendCompaction("runtime smoke compaction", firstKeptEntryId, 2);
-    await session.prompt("after compaction");
-    return { requests, requestUsages, messages: [...session.messages], entries: sessionManager.getEntries(), registrations };
+    if (handoffKickoff === undefined) {
+      await session.prompt("hello");
+      const firstKeptEntryId = sessionManager.getLeafId();
+      assert.ok(firstKeptEntryId);
+      sessionManager.appendCompaction("runtime smoke compaction", firstKeptEntryId, 2);
+      await session.prompt("after compaction");
+    } else {
+      await session.prompt("/runtime-agent-handoff");
+      await session.waitForIdle();
+    }
+    return {
+      requests,
+      requestUsages,
+      messages: [...session.messages],
+      entries: session.sessionManager.getEntries(),
+      registrations,
+      renderers,
+    };
   } finally {
     session.dispose();
   }
@@ -177,6 +230,53 @@ const expectedRegistrations = [
   },
   { tools: [], commands: [], flags: [], handlers: ["context"] },
 ];
+
+test("pinned replacement runtime persists and renders agent-owned handoff", async () => {
+  const kickoff = "  exact runtime kickoff  ";
+  const envelope = handoffEnvelope(kickoff);
+  const active = await runPinnedSession([], kickoff);
+
+  assert.deepEqual(active.registrations, [{
+    tools: [],
+    commands: ["runtime-agent-handoff"],
+    flags: [],
+    handlers: [],
+  }]);
+  assert.deepEqual(active.renderers, [[]]);
+  assert.equal(active.requests.length, 1);
+  const providerMessages = active.requests[0]!.messages as any[];
+  assert.deepEqual(providerMessages, [{
+    role: "user",
+    content: [{ type: "text", text: envelope }],
+    timestamp: providerMessages[0]!.timestamp,
+  }]);
+
+  const customMessages = (active.messages as any[]).filter((message) => message.role === "custom");
+  assert.deepEqual(customMessages, [{
+    role: "custom",
+    customType: "agent-handoff",
+    content: envelope,
+    display: true,
+    details: undefined,
+    timestamp: customMessages[0]!.timestamp,
+  }]);
+  const persisted = (active.entries as any[]).filter((entry) =>
+    entry.type === "custom_message" && entry.customType === "agent-handoff");
+  assert.equal(persisted.length, 1);
+  assert.equal(persisted[0].content, envelope);
+  assert.equal(persisted[0].display, true);
+
+  initTheme("dark", false);
+  const component = new CustomMessageComponent(
+    customMessages[0] as any,
+    undefined,
+    getMarkdownTheme(),
+  );
+  const rendered = component.render(120).join("\n").replace(/\x1b\[[0-9;]*m/g, "");
+  assert.equal((rendered.match(/\[agent-handoff\]/g) ?? []).length, 1);
+  assert.equal((rendered.match(/Agent-authored handoff context; this is not user input:/g) ?? []).length, 1);
+  assert.equal(rendered.includes(kickoff), true);
+});
 
 test("pinned runtime refreshes transient context facts in actual requests", async () => {
   const active = await runPinnedSession(["subagent_grounding"]);

@@ -248,7 +248,7 @@ enters parent model content.
 Brainstorming uses grounding, while brainstorming, debugging, and coupling audits share the exploring skill when its conjunctive dispatch condition holds. Missing or modified
 extension files are `awf check` drift; run `awf render` to repair them.
 
-Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime lacks the readonly persisted-session query. Workflow guidance calls it alone with exact `{kickoff}` prose after a required checkpoint and any needed reorientation instruction. The runtime preserves that bounded prose unchanged while it performs a five-second Esc/Ctrl+C countdown and parent-linked replacement. It revalidates only the pending request and persisted session, preserves old history, leaves failed automatic kickoff in the editor, exposes recovery text after a failure, never retries automatically, and owns no checkpoint, effort, repository, or filesystem policy.
+Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime lacks the readonly persisted-session query. Workflow guidance calls it alone with exact `{kickoff}` prose after a required checkpoint and any needed reorientation instruction. The runtime preserves that bounded prose byte-for-byte after two newlines in one visible default-rendered `agent-handoff` custom message whose content begins `Agent-authored handoff context; this is not user input:`; it triggers the replacement turn through replacement-bound `sendMessage`, while Pi's current provider adapter still converts custom content to a user-role message. It revalidates only the pending request and persisted session, preserves old history, leaves the same envelope in failed automatic and recovery editors, never retries automatically, and owns no checkpoint, effort, repository, or filesystem policy.
 
 ### Path globs and domain territories
 
@@ -299,7 +299,7 @@ To write the placeholder syntax literally in a part (for documentation), put a b
 ## Keeping in sync
 
 After any edit to `.awf/`, run `awf render` to re-render, then `awf check` to confirm no drift, and
-commit the rendered files alongside the config change. `awf check` compares each rendered file's
+commit the rendered files alongside the config change. Always stage `.awf/awf.lock` with every regenerated output: its atomic manifest is part of one render transaction, not material to slice across independent commits. `awf check` compares each rendered file's
 template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
 gate into CI so drift and rule violations block a merge.
 

@@ -60,7 +60,7 @@ Apply all lenses to every plan:
 
 1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
 
-1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check that the relevant model, ownership, representations, translation boundaries, dependency direction, and test seams are explicit; necessary enabling refactors are ordered before dependent behavior, bounded to the failure they prevent, and deterministically verifiable; larger refactors have an explicit approved, deferred, or declined disposition; flag needless indirection and pattern mandates.
+1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check that the relevant model, ownership, representations, translation boundaries, dependency direction, and test seams are explicit; necessary enabling refactors are ordered before dependent behavior, bounded to the failure they prevent, and deterministically verifiable; larger refactors have an explicit approved, deferred, or declined disposition; flag needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 
 ## Project-specific focus items
 
@@ -85,6 +85,12 @@ Apply all lenses to every plan:
 
 
 **dependency-order**: tasks are ordered so each builds only on already-completed work
+
+
+**snapshot-scoped-verification**: execute material census and post-check commands against the exact intermediate snapshot declared by the plan; require the expected terminal set or lifecycle-authorized residual findings, and reject a premature zero requirement
+
+
+**check-authority-taxonomy**: classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation
 
 
 **terminal-state-reachable-at-its-position**: a task that declares a terminal state (a command reaching a clean verdict, a grep returning nothing) asserts that state is reachable AT THAT POINT IN THE ORDERING, not merely eventually. Check the position, not just the command. The 2026-07-30 state-ownership plan ordered its render-and-check task BEFORE the task appending the ADR's Applied batch, so its declared `awf check: clean` could not be reached: the four new claims' `Origin` and the updated claim's `Revised-by` are illegal until the batch exists, and the check failed on exactly that at execution time. The plan had ALREADY recorded "a post-check that cannot go green is worse than none, because it reads as verified" after its resync pass found three unrunnable greps, and shipped a fourth instance anyway one section away, which is why this is its own item rather than a clause in step-exactness. The sibling item demands a quoted command be rerun; this one demands it be rerun FROM THE STATE THE PRECEDING TASKS LEAVE, since a command that goes green at the end of the phase can be red where the plan actually places it

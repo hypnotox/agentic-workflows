@@ -24,7 +24,7 @@ A minimal simple known-root fix uses no effort. Non-minimal work requires one al
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 
-2. **Implement the root-cause fix, not the symptom.** Per `{{ .layout.maintainableCodeDesign }}`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. For materially larger work, ask the user whether to
+2. **Implement the root-cause fix, not the symptom.** Per `{{ .layout.maintainableCodeDesign }}`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. If a newly discovered need affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy, stop before further mutation and return to the user with the changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options. Equivalent mechanical choices remain autonomous. For materially larger work, ask the user whether to
 <!-- awf:include escalation-menu -->
 No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 

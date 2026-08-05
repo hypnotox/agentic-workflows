@@ -236,7 +236,7 @@ func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings
 		"was removed with no ADR remove operation",
 		"internal/bar.go",
 		"changed governed format across this transition",
-		"appends 2 application batches",
+		"adds claim alpha/one:x, which has no active claim",
 	} {
 		if !strings.Contains(findings, wantFinding) {
 			t.Fatalf("unrelated blocking finding %q was suppressed:\n%s", wantFinding, findings)

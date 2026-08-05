@@ -86,6 +86,64 @@ func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 	}
 }
 
+func TestHistoricalAuthoredTransactionsUseObservableOperations(t *testing.T) {
+	operation := func(verb adr.OpVerb, id string) adr.Operation { return adr.Operation{Verb: verb, ID: id} }
+	status := func(value string) adr.HistoryEvent {
+		return adr.HistoryEvent{Kind: adr.HistoryStatus, Date: "2026-08-05", Status: value}
+	}
+	batch := func(kind adr.HistoryEventKind, operations ...adr.Operation) adr.HistoryEvent {
+		return adr.HistoryEvent{Kind: kind, Date: "2026-08-05", Operations: operations}
+	}
+	record := func(statusValue string, operations []adr.Operation, history ...adr.HistoryEvent) adr.ADR {
+		return adr.ADR{Number: "0141", Format: adr.CurrentStateV2, Status: statusValue, Operations: operations, History: history}
+	}
+	universe := func(records []adr.ADR, claims ...topic.Claim) currentstate.Universe {
+		return currentstate.Universe{ADRs: records, Topics: []topic.Topic{{ID: topic.TopicID{Domain: "alpha", Slug: "one"}, Claims: claims}}}
+	}
+	run := func(t *testing.T, before, after currentstate.Universe) []Finding {
+		t.Helper()
+		op, err := newHistoryOperation(testContext(t), "base", "head", Inputs{},
+			func(context.Context, string, string) ([]awfgit.Commit, error) {
+				return []awfgit.Commit{{Hash: "child", Revision: "child", Subject: "feat(invariants): child", Parents: []string{"parent"}}}, nil
+			},
+			func(_ context.Context, revision string) (*revisionState, error) {
+				if revision == "parent" {
+					return fixedRevisionState(nil, false, before), nil
+				}
+				return fixedRevisionState(nil, false, after), nil
+			}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		findings, err := op.transitionFindings(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return findings
+	}
+
+	a, b, pending := operation(adr.OpAdd, "alpha/one:a"), operation(adr.OpAdd, "alpha/one:b"), operation(adr.OpAdd, "alpha/one:pending")
+	proposed := record("Proposed", []adr.Operation{a, b, pending}, status("Proposed"))
+	applied := record("Implementing", []adr.Operation{a, b, pending}, status("Proposed"), status("Implementing"), batch(adr.HistoryApplied, a), batch(adr.HistoryApplied, b))
+	clean := run(t, universe([]adr.ADR{proposed}), universe([]adr.ADR{applied},
+		topic.Claim{ID: a.ID, Origin: "0141"}, topic.Claim{ID: b.ID, Origin: "0141"}))
+	if countRule(clean, currentStateTransitionRule, severity.Error) != 0 {
+		t.Fatalf("distinct-target batches and legal multi-event history produced an authored transition finding: %#v", clean)
+	}
+
+	x := operation(adr.OpAdd, "alpha/one:x")
+	chainBefore := record("Proposed", []adr.Operation{x, pending}, status("Proposed"))
+	chainAfter := record("Implementing", []adr.Operation{x, pending}, status("Proposed"), status("Implementing"), batch(adr.HistoryApplied, x), batch(adr.HistoryReapplied, x))
+	chained := run(t, universe([]adr.ADR{chainBefore}), universe([]adr.ADR{chainAfter}, topic.Claim{ID: x.ID, Origin: "0141", Prose: "material endpoint"}))
+	var duplicate bool
+	for _, finding := range chained {
+		duplicate = duplicate || strings.Contains(finding.Detail, "target of more than one operation")
+	}
+	if countRule(chained, currentStateTransitionRule, severity.Error) == 0 || !duplicate {
+		t.Fatalf("same-claim authored chain did not produce the expected transition finding: %#v", chained)
+	}
+}
+
 func TestHistoryOperationRootTransitionUsesEmptyUniverse(t *testing.T) {
 	claim := topic.Claim{ID: "alpha/one:new", Slug: "new", Type: topic.Invariant, Prose: "New.", Origin: "0001", Backing: topic.ExplicitNoBacking}
 	after := currentstate.Universe{Topics: []topic.Topic{{ID: topic.TopicID{Domain: "alpha", Slug: "one"}, Claims: []topic.Claim{claim}}}}

@@ -418,8 +418,8 @@ func TestCheckPairV2BatchSetRules(t *testing.T) {
 	partial := v2rec("0141", "Implementing", []adr.Operation{x, y, z}, v2status("Proposed"), v2status("Implementing"), v2batch(x))
 	two := partial
 	two.History = append(append([]adr.HistoryEvent(nil), partial.History...), v2batch(y), v2batch(z))
-	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141")), uni([]adr.ADR{base, two}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"), claim("d/t:z", "0141")), currentstate.AuthoredCommit)); !strings.Contains(got, "at most one new batch") {
-		t.Fatalf("same ADR duplicate batch not rejected:\n%s", got)
+	if f := currentstate.CheckPair(uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141")), uni([]adr.ADR{base, two}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"), claim("d/t:z", "0141")), currentstate.AuthoredCommit); len(f) != 0 {
+		t.Fatalf("same ADR distinct-target batches rejected:\n%s", messages(f))
 	}
 
 	terminal := v2rec("0142", "Implemented", nil, v2status("Proposed"), v2status("Implemented"))

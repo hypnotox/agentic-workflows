@@ -235,3 +235,6 @@
 - [ADR-0228: Opt-in commit identity and signature enforcement](0228-opt-in-commit-identity-and-signature-enforcement.md) (Implemented)
 - [ADR-0229: Decouple ADR Application Completion from Terminal Review](0229-decouple-adr-application-completion-from-terminal-review.md) (Implemented)
 - [ADR-0230: Remove the Sundial Example Adopter](0230-remove-the-sundial-example-adopter.md) (Implemented)
+- [ADR-0231: Separate Pi continuation context from user and routing identity](0231-separate-pi-continuation-context-from-user-and-routing-identity.md) (Implemented)
+- [ADR-0232: Proportional Simplicity Boundaries](0232-proportional-simplicity-boundaries.md) (Implemented)
+- [ADR-0233: Validate Authored Transactions by Observable Operations](0233-validate-authored-transactions-by-observable-operations.md) (Implemented)
