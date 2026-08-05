@@ -57,7 +57,9 @@ func TestStreamingHistoryOperationProjectsCompactReplayEvidence(t *testing.T) {
 	}
 }
 
-func newHistoryOperation(ctx context.Context, base, head string, _ Inputs, collect rangeCollector, load revisionLoader, _ firstParentPaths, live liveEvaluator) (*historyOperation, error) {
+type testRangeCollector func(context.Context, string, string) ([]awfgit.Commit, error)
+
+func newHistoryOperation(ctx context.Context, base, head string, _ Inputs, collect testRangeCollector, load revisionLoader, _ firstParentPaths, live liveEvaluator) (*historyOperation, error) {
 	commits, err := collect(ctx, base, head)
 	if err != nil {
 		return nil, fmt.Errorf("collect audit range: %w", err)

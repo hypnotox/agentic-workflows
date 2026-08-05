@@ -23,7 +23,6 @@ import (
 
 const currentStateTransitionRule = "current-state-transition"
 
-type rangeCollector func(context.Context, string, string) ([]awfgit.Commit, error)
 type rangeWalker func(context.Context, string, string, func(awfgit.Commit) error) (int, error)
 type revisionLoader func(context.Context, string) (*revisionState, error)
 

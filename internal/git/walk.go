@@ -115,10 +115,10 @@ func (r *Repo) WalkRangeCommits(ctx context.Context, base, head string, visit fu
 		}
 		return nil
 	})
+	if visitorErr != nil {
+		return visited, visitorErr
+	}
 	if err != nil {
-		if visitorErr != nil {
-			return visited, visitorErr
-		}
 		return visited, opaqueError(err)
 	}
 	if err := checkContext(ctx); err != nil {
@@ -309,8 +309,11 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 		}
 		return Commit{}, err // coverage-ignore: resolved valid trees leave cancellation as the only reachable diff failure
 	}
-	patch, err := changes.Patch()
-	if err != nil { // coverage-ignore: building a patch from the validated change set does not fail
+	patch, err := changes.PatchContext(ctx)
+	if err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return Commit{}, contextErr
+		}
 		return Commit{}, err
 	}
 	stats := map[string]object.FileStat{}

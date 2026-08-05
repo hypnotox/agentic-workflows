@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -74,6 +75,19 @@ func TestWalkRangeCommitsStopsAtVisitorError(t *testing.T) {
 			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (2, visitor identity), 3", count, err, visits)
 		}
 	})
+	t.Run("go-git stop sentinel remains a visitor error", func(t *testing.T) {
+		visits := 0
+		count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, "HEAD", func(Commit) error {
+			visits++
+			if visits == 2 {
+				return storer.ErrStop
+			}
+			return nil
+		})
+		if !errors.Is(err, storer.ErrStop) || count != 1 || visits != 2 {
+			t.Fatalf("WalkRangeCommits = (%d, %v), visits %d; want (1, storer.ErrStop), 2", count, err, visits)
+		}
+	})
 	t.Run("visitor boundary cancellation", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(testContext(t))
 		defer cancel()
@@ -100,9 +114,14 @@ func TestWalkRangeRichConstructionPreservesCancellation(t *testing.T) {
 		t.Fatalf("rich commit cancellation = %v", err)
 	}
 	parent, cancelDuringDiff := context.WithCancel(testContext(t))
-	duringDiff := &cancelOnDoneContext{Context: parent, cancel: cancelDuringDiff}
-	if _, err := toCommit(duringDiff, headCommit, ""); !errors.Is(err, context.Canceled) || !duringDiff.observed {
-		t.Fatalf("rich commit diff cancellation = %v, diff observed %t", err, duringDiff.observed)
+	duringDiff := &cancelOnDoneContext{Context: parent, cancel: cancelDuringDiff, target: 1}
+	if _, err := toCommit(duringDiff, headCommit, ""); !errors.Is(err, context.Canceled) || duringDiff.count < duringDiff.target {
+		t.Fatalf("rich commit diff cancellation = %v, observations %d", err, duringDiff.count)
+	}
+	parent, cancelDuringPatch := context.WithCancel(testContext(t))
+	duringPatch := &cancelOnDoneContext{Context: parent, cancel: cancelDuringPatch, target: 4}
+	if _, err := toCommit(duringPatch, headCommit, ""); !errors.Is(err, context.Canceled) || duringPatch.count < duringPatch.target {
+		t.Fatalf("rich commit patch cancellation = %v, observations %d", err, duringPatch.count)
 	}
 
 	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
@@ -182,14 +201,56 @@ func TestWalkRangeCommitsReportsOrdinaryCorruptTrees(t *testing.T) {
 	}
 }
 
+func TestWalkRangeCommitsReportsOrdinaryCorruptBlobs(t *testing.T) {
+	for _, target := range []string{"current blob", "parent blob"} {
+		t.Run(target, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"nested/a.md": "base\n"})
+			head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"nested/a.md": "head\n"})
+			revision := head
+			if target == "parent blob" {
+				revision = base
+			}
+			tree, err := walkCommitObject(t, repo.Root(), revision).Tree()
+			if err != nil {
+				t.Fatal(err)
+			}
+			file, err := tree.File("nested/a.md")
+			if err != nil {
+				t.Fatal(err)
+			}
+			hash := file.Hash.String()
+			if err := os.Remove(filepath.Join(repo.Root(), ".git", "objects", hash[:2], hash[2:])); err != nil {
+				t.Fatal(err)
+			}
+			visits := 0
+			count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, head, func(Commit) error {
+				visits++
+				return nil
+			})
+			if err == nil || count != 0 || visits != 0 {
+				t.Fatalf("corrupt %s = (%d, %v), visits %d; want (0, error), 0", target, count, err, visits)
+			}
+			if errors.Is(err, plumbing.ErrObjectNotFound) {
+				t.Fatalf("corrupt %s leaked backend error identity: %v", target, err)
+			}
+		})
+	}
+}
+
 func TestWalkRangeCommitsContract(t *testing.T) {
 	t.Run("visit count failure and cancellation", TestWalkRangeCommitsStopsAtVisitorError)
+	t.Run("rich construction cancellation", TestWalkRangeRichConstructionPreservesCancellation)
 	t.Run("rich linear evidence", TestRangeCommitsLinearRangeCarriesChangesAndText)
 	t.Run("merge evidence", TestRangeCommitsMergedRangeKeepsMergeAndNoChanges)
 	t.Run("prefix filtering and rerooting", TestRangeCommitsNestedScopeFiltersAndReroots)
+	t.Run("prefix merge inclusion", TestRangeCommitsNestedScopeKeepsRelevantMerges)
+	t.Run("prefix merge corrupt evidence", TestRangeCommitsNestedMergeReportsTreeErrors)
 	t.Run("root and boundary errors", TestRangeCommitsBoundaryErrorsAndRoot)
 	t.Run("unrelated boundary", TestRangeCommitsUnrelatedHistoryAndWorktreeConfig)
+	t.Run("shallow boundary", TestObjectReadsReportAMissingParentInAShallowClone)
 	t.Run("corrupt tree evidence", TestWalkRangeCommitsReportsOrdinaryCorruptTrees)
+	t.Run("corrupt blob evidence", TestWalkRangeCommitsReportsOrdinaryCorruptBlobs)
 }
 
 func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
@@ -752,13 +813,16 @@ func TestSplitWalkMessage(t *testing.T) {
 
 type cancelOnDoneContext struct {
 	context.Context
-	cancel   context.CancelFunc
-	observed bool
+	cancel context.CancelFunc
+	target int
+	count  int
 }
 
 func (c *cancelOnDoneContext) Done() <-chan struct{} {
-	c.observed = true
-	c.cancel()
+	c.count++
+	if c.count == c.target {
+		c.cancel()
+	}
 	return c.Context.Done()
 }
 
