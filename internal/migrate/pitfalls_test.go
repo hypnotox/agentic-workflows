@@ -23,7 +23,7 @@ func TestPitfallsDataSplits(t *testing.T) {
 		"## First pitfall\n\nbody one\n\nwith two paragraphs\n\n"+
 			"## Second pitfall\n\n```\n## not a heading inside a fence\n```\nbody two\n")
 
-	var out bytes.Buffer
+	var out Changes
 	if err := applyPitfallsData(root, &out); err != nil {
 		t.Fatalf("applyPitfallsData: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestPitfallsDataEmptyList(t *testing.T) {
 	root := t.TempDir()
 	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
 	testsupport.WriteFile(t, part, "just prose, no headings\n")
-	if err := applyPitfallsData(root, io.Discard); err == nil || err.Error() != "pitfalls-data: no top-level entries to migrate" {
+	if err := applyPitfallsData(root, &Changes{}); err == nil || err.Error() != "pitfalls-data: no top-level entries to migrate" {
 		t.Fatalf("applyPitfallsData error = %v, want no-entry error", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "docs", "pitfalls.yaml")); !os.IsNotExist(err) {
@@ -97,7 +97,7 @@ func TestPitfallsDataEmptyList(t *testing.T) {
 func TestPitfallsDataNoOp(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
-	var out bytes.Buffer
+	var out Changes
 	if err := applyPitfallsData(root, &out); err != nil {
 		t.Fatalf("applyPitfallsData: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestPitfallsDataRejectsInvalidSerializationBeforeDeletion(t *testing.T) {
 		return []byte("not: [valid"), nil
 	})
 
-	err := applyPitfallsData(root, io.Discard)
+	err := applyPitfallsData(root, &Changes{})
 	if err == nil {
 		t.Fatal("applyPitfallsData succeeded after invalid serialization")
 	}
@@ -143,7 +143,7 @@ func TestPitfallsDataRetainsSourceOnRenderError(t *testing.T) {
 		return nil, io.ErrUnexpectedEOF
 	})
 
-	err := applyPitfallsData(root, io.Discard)
+	err := applyPitfallsData(root, &Changes{})
 	if err == nil {
 		t.Fatal("applyPitfallsData succeeded after render error")
 	}
@@ -175,7 +175,7 @@ func TestPitfallsDataPreservesIndentedBodies(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md"), "## Mixed code and prose\n\n    code first\n    still code\n\ncolumn-zero prose\n\n## Only code\n\n    all code\n    remains indented\n")
 
-	if err := applyPitfallsData(root, io.Discard); err != nil {
+	if err := applyPitfallsData(root, &Changes{}); err != nil {
 		t.Fatalf("applyPitfallsData: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, ".awf", "docs", "pitfalls.yaml"))
@@ -215,7 +215,7 @@ func TestPitfallsDataEscapesTitle(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md"),
 		"## A \"quoted\" and \\slashed title\n\nbody\n")
-	if err := applyPitfallsData(root, io.Discard); err != nil {
+	if err := applyPitfallsData(root, &Changes{}); err != nil {
 		t.Fatalf("applyPitfallsData: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, ".awf", "docs", "pitfalls.yaml"))

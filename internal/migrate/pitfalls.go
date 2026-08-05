@@ -3,7 +3,6 @@ package migrate
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,7 +20,7 @@ import (
 // dir), and prints one provenance line per created entry plus a review instruction. An
 // absent part is a no-op - so a re-run after a prior split (the part gone, the
 // sidecar present) does nothing.
-func applyPitfallsData(root string, out io.Writer) error {
+func applyPitfallsData(root string, out *Changes) error {
 	awfDir := config.RootDir(root)
 	partPath := filepath.Join(awfDir, "docs", "parts", "pitfalls", "entries.md")
 	data, err := os.ReadFile(partPath)

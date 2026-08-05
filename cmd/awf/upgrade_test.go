@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +15,9 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
@@ -39,6 +44,45 @@ func TestRunUpgradeRejectsCorruptOrMissingAuthority(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
+	t.Run("loader construction", func(t *testing.T) {
+		root := t.TempDir()
+		testsupport.WriteAwfConfig(t, root, minimalYAML)
+		if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := upgradeSyncMutation(testContext(t), root); err == nil {
+			t.Fatal("malformed repository accepted")
+		}
+	})
+	t.Run("project loading", func(t *testing.T) {
+		if _, err := upgradeSyncMutation(testContext(t), t.TempDir()); err == nil {
+			t.Fatal("missing project accepted")
+		}
+	})
+	t.Run("project sync", func(t *testing.T) {
+		failure := errors.New("sync failed")
+		testsupport.SwapVar(t, &upgradeProjectSyncReport, func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
+			return nil, nil, nil, failure
+		})
+		if _, err := upgradeSyncMutation(testContext(t), scaffoldProject(t)); !errors.Is(err, failure) {
+			t.Fatalf("sync failure = %v, want %v", err, failure)
+		}
+	})
+	if _, err := upgradeMutation(presentation.Mutation{}, []migrate.Change{{Text: "\n"}}); err == nil {
+		t.Fatal("invalid migration description accepted")
+	}
+	t.Run("upgrade sync", func(t *testing.T) {
+		failure := errors.New("terminal sync failed")
+		testsupport.SwapVar(t, &upgradeSync, func(context.Context, string) (presentation.Mutation, error) {
+			return presentation.Mutation{}, failure
+		})
+		if err := runUpgrade(testContext(t), scaffoldProject(t), io.Discard); !errors.Is(err, failure) {
+			t.Fatalf("terminal sync failure = %v, want %v", err, failure)
+		}
+	})
 }
 
 func TestRunUpgradeGateStateError(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
@@ -33,6 +34,8 @@ func runRecover(root string, stdout io.Writer) error {
 	}
 	return upgrade.Recover(root, stdout)
 }
+
+var upgradeSync = upgradeSyncMutation
 
 // runUpgrade consumes a sealed attestation when the lock carries one: the final
 // current-state cutover verifies only the sealed facts and journals the approval
@@ -74,16 +77,12 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	if state == "ahead" {
 		return schemaAheadError(gen)
 	}
-	applied, err := migrate.Upgrade(ctx, root, stdout)
+	applied, changes, err := migrate.Upgrade(ctx, root)
 	if err != nil {
 		return err
 	}
-	if len(applied) == 0 {
-		fmt.Fprintf(stdout, "awf upgrade: config already at schema %d\n", gen)
-	}
-	for _, name := range applied {
-		fmt.Fprintf(stdout, "awf upgrade: applied %s\n", name)
-	}
+	_ = applied
+	_ = gen
 	if authorityPath != config.LockPath(root) {
 		if _, found, err := manifest.LoadOptional(config.LockPath(root)); err != nil { // coverage-ignore: migrations either leave this path absent or write it through validated manifest serialization
 			return err
@@ -92,7 +91,7 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 			if err := lock.Save(config.LockPath(root)); err != nil { // coverage-ignore: migration just created the writable current config directory
 				return err
 			}
-			if _, err := migrate.Upgrade(ctx, root, stdout); err != nil { // coverage-ignore: the first migration pass validated the same migrated config and ADR corpus before this relocated-lock completion pass
+			if _, _, err := migrate.Upgrade(ctx, root); err != nil { // coverage-ignore: the first migration pass validated the same migrated config and ADR corpus before this relocated-lock completion pass
 				return err
 			}
 		}
@@ -104,5 +103,17 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	return runSync(ctx, root, stdout)
+	sync, err := upgradeSync(ctx, root)
+	if err != nil {
+		return err
+	}
+	mutation, err := upgradeMutation(sync, changes)
+	if err != nil { // coverage-ignore: registered migration descriptions are validated fixed prose
+		return err
+	}
+	document, err := mutation.Document()
+	if err != nil { // coverage-ignore: typed sync and migration mutations compose only grammar-valid presentation values
+		return err
+	}
+	return presentation.Render(stdout, document)
 }

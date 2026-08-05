@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -66,7 +65,7 @@ var (
 // by diff. Idempotency rests on the generation gate: appending an item is not
 // naturally idempotent the way stripping a key is.
 // touches-state: config/migrations-and-locks:upgrade-migrates-supersession-keys - the migration itself; proof in supersessionkeys_test.go
-func applySupersessionKeys(root string, out io.Writer) error {
+func applySupersessionKeys(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}

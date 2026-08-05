@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -490,7 +489,7 @@ func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 	t.Run("propagates-a-preflight-refusal", func(t *testing.T) {
 		root := residentTree(t)
 		path := writeLeaf(t, root, legacyEffortsRel+"/stray.txt", []byte("x"))
-		var out bytes.Buffer
+		var out Changes
 		requireRefusal(t, applyUnifiedEffortResidents(testContext(t), root, &out), "unknown resident leaf", preserveManually)
 		if out.Len() != 0 {
 			t.Fatalf("a refused migration announced the reset: %q", out.String())
@@ -512,7 +511,7 @@ func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 		}
 		linked := filepath.Join(filepath.Dir(primary), "linked")
 		gitfixture.NativeWorktreeAddDetached(t, repo, linked, "HEAD")
-		var out bytes.Buffer
+		var out Changes
 		// One journal spans one root, so the split is refused rather than
 		// half-applied across two checkouts.
 		requireRefusal(t, applyUnifiedEffortResidents(testContext(t), linked, &out), "belong to the primary checkout", "run `awf upgrade` from "+primary)

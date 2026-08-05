@@ -21,9 +21,9 @@ import (
 func TestCheckChildrenCleanLines(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	for _, tc := range []struct{ sub, want string }{
-		{"repo drift", "awf check repo drift: clean"},
-		{"repo state", "awf check repo state: clean"},
+	for _, tc := range []struct{ sub string }{
+		{"repo drift"},
+		{"repo state"},
 	} {
 		t.Run(tc.sub, func(t *testing.T) {
 			root := scaffoldProject(t)
@@ -32,8 +32,8 @@ func TestCheckChildrenCleanLines(t *testing.T) {
 			if code := runAt(t, root, args, &out, &errb); code != 0 {
 				t.Fatalf("exit = %d, stderr=%q", code, errb.String())
 			}
-			if !strings.Contains(out.String(), tc.want) {
-				t.Errorf("output = %q, want %q", out.String(), tc.want)
+			if out.String() != completedCheckReport {
+				t.Errorf("output = %q, want structured completed report", out.String())
 			}
 			// Neither child prints the bare form's version-ahead note or advisories.
 			if strings.Contains(out.String(), "is ahead of this project") {
@@ -50,8 +50,8 @@ func TestCheckRepoStateNoInvariantClaims(t *testing.T) {
 	if code := runAt(t, root, []string{"awf", "check", "repo", "state"}, &out, &errb); code != 0 {
 		t.Fatalf("check repo state with no invariant claims exited %d: %s", code, errb.String())
 	}
-	if got := out.String(); got != "awf check repo state: clean\n" || strings.Contains(got, "backing") {
-		t.Fatalf("check repo state with no invariant claims = %q, want one clean line", got)
+	if got := out.String(); got != completedCheckReport || strings.Contains(got, "backing") {
+		t.Fatalf("check repo state with no invariant claims = %q, want structured completed report", got)
 	}
 }
 
@@ -60,25 +60,24 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 	root := syncedGitProject(t, checkYAML)
 	for _, tc := range []struct {
 		args []string
-		want string
 	}{
-		{[]string{"awf", "check", "repo", "state"}, "awf check repo state: clean"},
-		{[]string{"awf", "check", "staged", "state"}, "awf check staged state: clean"},
+		{[]string{"awf", "check", "repo", "state"}},
+		{[]string{"awf", "check", "staged", "state"}},
 	} {
 		var out, errb bytes.Buffer
 		if code := runAt(t, root, tc.args, &out, &errb); code != 0 {
 			t.Fatalf("%v exited %d: %s", tc.args, code, errb.String())
 		}
-		if !strings.Contains(out.String(), tc.want) {
-			t.Errorf("%v output = %q, want %q", tc.args, out.String(), tc.want)
+		if out.String() != completedCheckReport {
+			t.Errorf("%v output = %q, want structured completed report", tc.args, out.String())
 		}
 	}
 }
 
 // invariant: tooling/cli:check-disabled-child-disclosure (TestCheckDisabledChildDisclosure)
 func TestCheckDisabledChildDisclosure(t *testing.T) {
-	const proseNote = "note: prose: disabled (proseGate.enabled)\n"
-	const memoryNote = "note: memory: disabled (memoryCite.enabled)\n"
+	const proseNote = "prose | disabled (proseGate.enabled)\n"
+	const memoryNote = "memory | disabled (memoryCite.enabled)\n"
 
 	t.Run("aggregate discloses disabled children", func(t *testing.T) {
 		root := syncedGitProject(t, checkYAML)
@@ -119,8 +118,8 @@ func TestCheckDisabledChildDisclosure(t *testing.T) {
 			if code := runAt(t, root, []string{"awf", "check", "repo", tc.child}, &out, &errb); code != 0 {
 				t.Fatalf("check repo %s exited %d: %s", tc.child, code, errb.String())
 			}
-			if got := out.String(); got != tc.want {
-				t.Errorf("check repo %s output = %q, want %q", tc.child, got, tc.want)
+			if got := out.String(); !strings.Contains(got, "status: warnings") || !strings.Contains(got, tc.want) {
+				t.Errorf("check repo %s output = %q, want structured disclosure %q", tc.child, got, tc.want)
 			}
 		}
 	})
@@ -395,8 +394,8 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		if err := runCheckState(ctx, root, &out); err != nil {
 			t.Fatalf("a warn-ranked finding must not fail check repo state: %v", err)
 		}
-		if !strings.Contains(out.String(), "note: ") {
-			t.Errorf("expected a warn note on stdout:\n%s", out.String())
+		if !strings.Contains(out.String(), "warnings:\n") {
+			t.Errorf("expected a structured warning on stdout:\n%s", out.String())
 		}
 	})
 }

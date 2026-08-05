@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,7 +71,7 @@ func TestRetirementTokensMigratesCorpus(t *testing.T) {
 		"0001-target.md":  rtTarget,
 		"0002-carrier.md": rtCarrier,
 	})
-	var buf bytes.Buffer
+	var buf Changes
 	if err := applyRetirementTokens(root, &buf); err != nil {
 		t.Fatalf("applyRetirementTokens: %v", err)
 	}
@@ -109,7 +108,7 @@ func TestRetirementTokensAppendsAfterFencedSyntax(t *testing.T) {
 		"0001-target.md":  rtTarget,
 		"0002-carrier.md": carrier,
 	})
-	if err := applyRetirementTokens(root, io.Discard); err != nil {
+	if err := applyRetirementTokens(root, &Changes{}); err != nil {
 		t.Fatalf("applyRetirementTokens: %v", err)
 	}
 	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0002-carrier.md"))
@@ -131,7 +130,7 @@ func TestRetirementTokensEmptyKeyAndExistingBackpointer(t *testing.T) {
 		root := rtFixture(t, map[string]string{
 			"0001-solo.md": "---\nstatus: Implemented\nretires_invariants: []\nrelated: []\n---\n# ADR-0001: Solo\n\n## Decision\n\n1. x.\n",
 		})
-		var buf bytes.Buffer
+		var buf Changes
 		if err := applyRetirementTokens(root, &buf); err != nil {
 			t.Fatal(err)
 		}
@@ -149,7 +148,7 @@ func TestRetirementTokensEmptyKeyAndExistingBackpointer(t *testing.T) {
 			"0001-target.md":  target,
 			"0002-carrier.md": rtCarrier,
 		})
-		var buf bytes.Buffer
+		var buf Changes
 		if err := applyRetirementTokens(root, &buf); err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +166,7 @@ func TestRetirementTokensEmptyKeyAndExistingBackpointer(t *testing.T) {
 			"0001-target.md":  target,
 			"0002-carrier.md": rtCarrier,
 		})
-		if err := applyRetirementTokens(root, io.Discard); err != nil {
+		if err := applyRetirementTokens(root, &Changes{}); err != nil {
 			t.Fatal(err)
 		}
 		b, _ := os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-target.md"))
@@ -190,7 +189,7 @@ func TestRetirementTokensCarrierTargetAndTrailingDecision(t *testing.T) {
 		"0002-carrier.md": rtCarrier,
 		"0003-elder.md":   "---\nstatus: Superseded by ADR-0001\nsuperseded_by: \"0001\"\nrelated: [1]\n---\n# ADR-0003: Elder\n\n## Decision\n\n1. x.\n\n## Invariants\n\n- `invariant: fixture-old` - x.\n",
 	})
-	if err := applyRetirementTokens(root, io.Discard); err != nil {
+	if err := applyRetirementTokens(root, &Changes{}); err != nil {
 		t.Fatalf("applyRetirementTokens: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-target.md"))
@@ -216,7 +215,7 @@ func TestRetirementTokensIdempotent(t *testing.T) {
 		"0001-target.md":  rtTarget,
 		"0002-carrier.md": rtCarrier,
 	})
-	if err := applyRetirementTokens(root, io.Discard); err != nil {
+	if err := applyRetirementTokens(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	before := map[string][]byte{}
@@ -227,7 +226,7 @@ func TestRetirementTokensIdempotent(t *testing.T) {
 		}
 		before[name] = b
 	}
-	var buf bytes.Buffer
+	var buf Changes
 	if err := applyRetirementTokens(root, &buf); err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +306,7 @@ func TestRetirementTokensLoudFailures(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := rtFixture(t, tc.files)
-			err := applyRetirementTokens(root, io.Discard)
+			err := applyRetirementTokens(root, &Changes{})
 			if err == nil {
 				t.Fatal("expected a loud failure, got nil")
 			}
@@ -324,7 +323,7 @@ func TestRetirementTokensLoudFailures(t *testing.T) {
 // malformed config, and a malformed ADR.
 func TestRetirementTokensNoOpAndErrorPaths(t *testing.T) {
 	t.Run("no config is a no-op", func(t *testing.T) {
-		var buf bytes.Buffer
+		var buf Changes
 		if err := applyRetirementTokens(t.TempDir(), &buf); err != nil || buf.Len() != 0 {
 			t.Fatalf("want silent no-op, got err=%v out=%q", err, buf.String())
 		}
@@ -332,7 +331,7 @@ func TestRetirementTokensNoOpAndErrorPaths(t *testing.T) {
 	t.Run("no decisions dir is a no-op", func(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteAwfConfig(t, root, rtCfg)
-		var buf bytes.Buffer
+		var buf Changes
 		if err := applyRetirementTokens(root, &buf); err != nil || buf.Len() != 0 {
 			t.Fatalf("want silent no-op, got err=%v out=%q", err, buf.String())
 		}
@@ -340,7 +339,7 @@ func TestRetirementTokensNoOpAndErrorPaths(t *testing.T) {
 	t.Run("malformed config errors", func(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteAwfConfig(t, root, "prefix: [unterminated\n")
-		if err := applyRetirementTokens(root, io.Discard); err == nil {
+		if err := applyRetirementTokens(root, &Changes{}); err == nil {
 			t.Fatal("expected config load error")
 		}
 	})
@@ -348,7 +347,7 @@ func TestRetirementTokensNoOpAndErrorPaths(t *testing.T) {
 		root := rtFixture(t, map[string]string{
 			"0001-broken.md": "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n",
 		})
-		if err := applyRetirementTokens(root, io.Discard); err == nil {
+		if err := applyRetirementTokens(root, &Changes{}); err == nil {
 			t.Fatal("expected adr.ParseDir error")
 		}
 	})

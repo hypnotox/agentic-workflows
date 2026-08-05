@@ -79,7 +79,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		want := "note: project-advisory-sentinel\nnote: working-plan-note-sentinel\nawf check repo drift: clean\nawf check repo state: clean\ncheck repo prose: clean\ncheck repo memory: clean\n"
+		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | project-advisory-sentinel\n    advisory | working-plan-note-sentinel\n"
 		if got := out.String(); got != want {
 			t.Fatalf("output = %q, want %q", got, want)
 		}
@@ -104,21 +104,20 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		deps := repoCheckTestDependencies(t, cfg, p, check, state, tree, counts)
 		var out bytes.Buffer
 		err = runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, deps)
-		if err == nil || !strings.Contains(err.Error(), "awf check repo drift") {
-			t.Fatalf("error = %v, want first drift action error", err)
+		if err == nil || !strings.Contains(err.Error(), "execute step \"drift\"") {
+			t.Fatalf("error = %v, want collected drift action error", err)
 		}
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
 		text := out.String()
-		ordered := []string{"working-advisory-sentinel", "working-drift-sentinel", "current-state-sentinel", "prose-index-sentinel.txt", "memory-index-sentinel.md"}
-		position := -1
-		for _, sentinel := range ordered {
-			next := strings.Index(text, sentinel)
-			if next <= position {
-				t.Fatalf("output does not preserve universe/action order %v: %q", ordered, text)
+		for _, sentinel := range []string{"working-advisory-sentinel", "working-drift-sentinel", "current-state-sentinel", "prose-index-sentinel.txt", "memory-index-sentinel.md"} {
+			if !strings.Contains(text, sentinel) {
+				t.Fatalf("output omitted collected finding %q: %q", sentinel, text)
 			}
-			position = next
+		}
+		if strings.Index(text, "errors:") > strings.Index(text, "warnings:") {
+			t.Fatalf("report categories are not deterministically ordered: %q", text)
 		}
 	})
 
@@ -157,10 +156,10 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 			want     repoCheckCounters
 			wantText string
 		}{
-			{name: "drift", cfg: &config.Config{}, step: repoStepDrift, want: repoCheckCounters{loads: 1, opens: 1, reports: 1}, wantText: "awf check repo drift: clean\n"},
-			{name: "state", cfg: &config.Config{}, step: repoStepState, want: repoCheckCounters{loads: 1, opens: 1, states: 1}, wantText: "awf check repo state: clean\n"},
-			{name: "prose enabled", cfg: &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, step: repoStepProse, want: repoCheckCounters{loads: 1, indexes: 1}, wantText: "check repo prose: clean\n"},
-			{name: "memory disabled", cfg: &config.Config{}, step: repoStepMemory, want: repoCheckCounters{loads: 1}, wantText: "note: memory: disabled (memoryCite.enabled)\n"},
+			{name: "drift", cfg: &config.Config{}, step: repoStepDrift, want: repoCheckCounters{loads: 1, opens: 1, reports: 1}, wantText: completedCheckReport},
+			{name: "state", cfg: &config.Config{}, step: repoStepState, want: repoCheckCounters{loads: 1, opens: 1, states: 1}, wantText: completedCheckReport},
+			{name: "prose enabled", cfg: &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, step: repoStepProse, want: repoCheckCounters{loads: 1, indexes: 1}, wantText: completedCheckReport},
+			{name: "memory disabled", cfg: &config.Config{}, step: repoStepMemory, want: repoCheckCounters{loads: 1}, wantText: "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    memory | disabled (memoryCite.enabled)\n"},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -201,7 +200,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		if !strings.Contains(out.String(), "note: prose: disabled") || !strings.Contains(out.String(), "note: memory: disabled") {
+		if !strings.Contains(out.String(), "prose | disabled") || !strings.Contains(out.String(), "memory | disabled") {
 			t.Fatalf("disabled aggregate output = %q", out.String())
 		}
 	})
@@ -249,8 +248,11 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		counts := &repoCheckCounters{}
 		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, project.CurrentStateReport{}, tree, counts)
 		ctx, cancel := context.WithCancel(context.Background())
-		writer := &cancelOnWrite{cancel: cancel}
-		err = runRepoCheckSelection(ctx, t.TempDir(), writer, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps)
+		deps.checkReport = func(context.Context, *project.Project) (project.CheckReport, error) {
+			cancel()
+			return project.CheckReport{}, nil
+		}
+		err = runRepoCheckSelection(ctx, t.TempDir(), io.Discard, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps)
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("error = %v, want context cancellation", err)
 		}
@@ -268,7 +270,8 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 	}{
 		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "p.CheckReport("}},
 		{"checkrepo.go", "runCheckRepo", []string{"runCheckRepoWithPlanNotes", "planNoteSink{}"}},
-		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
+		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"collectCheckRepoWithPlanNotes", "renderCheckCollection"}},
+		{"checkrepo.go", "collectCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
 		{"checkrepo.go", "runCheckDrift", []string{"repoStepDrift", "execution.StopOnFailure", "false", "p.Check("}},
 		{"checkrepo.go", "runCheckState", []string{"repoStepState", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
 		{"prosegate.go", "runProseGate", []string{"repoStepProse", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
@@ -289,7 +292,9 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 			case "runCheckRepo":
 				callee = "runCheckRepoWithPlanNotes("
 			case "runCheckRepoWithPlanNotes":
-				callee = "runRepoCheckSelectionWithPlanNotes("
+				callee = "collectCheckRepoWithPlanNotes("
+			case "collectCheckRepoWithPlanNotes":
+				callee = "collectRepoCheckSelectionWithPlanNotes("
 			}
 			if callee != "" && strings.Count(body, callee) != 1 {
 				t.Fatalf("%s %s must call %s exactly once:\n%s", tc.file, tc.function, callee, body)
@@ -297,9 +302,9 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 		})
 	}
 
-	aggregate := formattedFunctionBody(t, "checkrepo.go", "runCheckRepoWithPlanNotes")
+	aggregate := formattedFunctionBody(t, "checkrepo.go", "collectCheckRepoWithPlanNotes")
 	versionOutput := strings.Index(aggregate, "fmt.Sprintf")
-	executionCall := strings.Index(aggregate, "runRepoCheckSelectionWithPlanNotes")
+	executionCall := strings.Index(aggregate, "collectRepoCheckSelectionWithPlanNotes")
 	if versionOutput < 0 || executionCall < 0 || versionOutput >= executionCall {
 		t.Fatalf("aggregate version note preparation must precede execution:\n%s", aggregate)
 	}
@@ -325,15 +330,4 @@ func formattedFunctionBody(t *testing.T, path, name string) string {
 	}
 	t.Fatalf("function %s not found in %s", name, path)
 	return ""
-}
-
-type cancelOnWrite struct {
-	bytes.Buffer
-	cancel context.CancelFunc
-}
-
-func (w *cancelOnWrite) Write(p []byte) (int, error) {
-	n, err := w.Buffer.Write(p)
-	w.cancel()
-	return n, err
 }

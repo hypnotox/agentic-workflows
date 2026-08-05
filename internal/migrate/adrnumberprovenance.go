@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -43,7 +42,7 @@ var (
 // Revised-by lines, so digest-covered content survives byte-identical. A
 // state-sequence line the two rewrites cannot consume is a hard stop naming
 // the file, and a second run finds nothing to rewrite.
-func applyADRNumberProvenance(root string, out io.Writer) error {
+func applyADRNumberProvenance(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}

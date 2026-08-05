@@ -3,7 +3,6 @@ package migrate
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -13,7 +12,7 @@ import (
 // applyAwfRelocation moves a finished .claude/awf/ config tree (and its lock) to
 // .awf/ (ADR-0016). Idempotent: a no-op when .claude/awf/ is absent. Fails rather
 // than overwrite if .awf/ already exists.
-func applyAwfRelocation(root string, _ io.Writer) error {
+func applyAwfRelocation(root string, _ *Changes) error {
 	oldDir := filepath.Join(root, ".claude", "awf")
 	newDir := config.RootDir(root)
 	if _, err := os.Stat(oldDir); errors.Is(err, os.ErrNotExist) {

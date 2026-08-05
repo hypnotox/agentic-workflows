@@ -15,7 +15,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -27,7 +26,7 @@ import (
 type Migration struct {
 	To              int
 	Name            string
-	Apply           func(ctx context.Context, root string, out io.Writer) error
+	Apply           func(ctx context.Context, root string, out *Changes) error
 	OwnsSchemaStamp bool
 }
 
@@ -78,8 +77,8 @@ var registry = []Migration{
 // registry's context-taking shape. Only a migration that reaches Git needs the
 // context, so wrapping the rest keeps that distinction visible in the registry
 // itself rather than hiding it behind an unused parameter in every migration.
-func treeOnly(apply func(root string, out io.Writer) error) func(context.Context, string, io.Writer) error {
-	return func(_ context.Context, root string, out io.Writer) error { return apply(root, out) }
+func treeOnly(apply func(root string, out *Changes) error) func(context.Context, string, *Changes) error {
+	return func(_ context.Context, root string, out *Changes) error { return apply(root, out) }
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
@@ -91,7 +90,7 @@ func treeOnly(apply func(root string, out io.Writer) error) func(context.Context
 // deleting a value an adopter set stays readable from command output. The edit
 // routes through config.RemoveKey so config.yaml serialization stays owned by
 // internal/config (ADR-0026); the key is top-level, so RemoveKey applies.
-func applyCurrentStateTopicSubstrate(root string, w io.Writer) error {
+func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
 	return editConfig(root, func(src []byte) ([]byte, error) {
 		out, err := config.RemoveKey(src, "invariants")
 		if err != nil {
@@ -326,32 +325,30 @@ func GateState(root string) (string, int, error) {
 }
 
 // Upgrade applies every registered migration with To > Generation(root), in
-// ascending To order, and returns the applied migration names. Idempotent: at the
-// current generation it applies nothing and returns an empty slice, nil error.
-// After applying any migration it restamps an existing tree lock to Current() so
-// Generation reflects the new state and the terminal sync's schema gate passes
-// (a tree→tree upgrade keeps its lock, unlike the legacy 0→1 port which drops it).
-func Upgrade(ctx context.Context, root string, out io.Writer) ([]string, error) {
+// ascending To order, and returns applied names and ordered changes only after
+// the migration run completes. It never accepts a presentation writer.
+func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
 	from, err := Generation(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	changes := &Changes{}
 	var applied []string
 	var highestApplied Migration
 	for _, m := range registry { // registry is already ascending by To
 		if m.To <= from {
 			continue
 		}
-		if err := m.Apply(ctx, root, out); err != nil {
-			return applied, fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
+		if err := m.Apply(ctx, root, changes); err != nil {
+			return applied, changes.Items(), fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
 		applied = append(applied, m.Name)
 		highestApplied = m
 	}
 	if len(applied) > 0 && !highestApplied.OwnsSchemaStamp {
 		if err := stampLockSchema(root); err != nil { // coverage-ignore: stampLockSchema only fails on a lock Save fault, unreachable in a writable tree
-			return applied, err
+			return applied, changes.Items(), err
 		}
 	}
-	return applied, nil
+	return applied, changes.Items(), nil
 }

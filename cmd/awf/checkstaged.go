@@ -11,88 +11,81 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+var checkStagedDriftRoot = project.CheckStagedDriftRoot
+
 // runCheckStaged runs the staged transition universe. The commit child is direct-only.
 func runCheckStaged(ctx context.Context, root string, stdout io.Writer) error {
 	return runCheckStagedWithPlanNotes(ctx, root, stdout, planNoteSink{})
 }
 
+func collectCheckStaged(ctx context.Context, root string, planNotes planNoteSink) (checkCollection, error) {
+	return collectCheckStagedSelection(ctx, root, planNotes, true, true)
+}
+
+func collectCheckStagedSelection(ctx context.Context, root string, planNotes planNoteSink, state, drift bool) (checkCollection, error) {
+	lock, err := stagedLock(ctx, root)
+	if err != nil {
+		return checkCollection{}, err
+	}
+	collection := checkCollection{}
+	lockV, binV, ok := lockVsBinaryLock(lock)
+	if ok && semver.Compare(binV, lockV) > 0 {
+		collection.notes = append(collection.notes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
+	}
+	if state {
+		report, err := project.CheckStagedRoot(ctx, root)
+		if err != nil {
+			return checkCollection{}, err
+		}
+		collection.notes = append(collection.notes, report.Notes()...)
+		for _, note := range report.PlanNotes {
+			if _, seen := planNotes[note]; !seen {
+				planNotes[note] = struct{}{}
+				collection.notes = append(collection.notes, note)
+			}
+		}
+		for _, finding := range report.Findings() {
+			collection.findings = append(collection.findings, checkFinding{severity: "error", check: "staged current-state", detail: finding})
+		}
+		if len(report.Findings()) > 0 {
+			collection.failures = append(collection.failures, errors.New("check staged state failed"))
+		}
+	}
+	if drift {
+		findings, err := checkStagedDriftRoot(ctx, root)
+		if err != nil {
+			return checkCollection{}, err
+		}
+		for _, finding := range findings {
+			collection.findings = append(collection.findings, checkFinding{severity: "error", check: "staged drift", detail: fmt.Sprintf("%s: %s: %s", finding.Kind, finding.Path, finding.Detail)})
+		}
+		if len(findings) > 0 {
+			collection.failures = append(collection.failures, errors.New("check staged drift failed"))
+		}
+	}
+	return collection, nil
+}
+
 func runCheckStagedWithPlanNotes(ctx context.Context, root string, stdout io.Writer, planNotes planNoteSink) error {
-	if err := writeStagedAheadNote(ctx, root, stdout); err != nil {
+	collection, err := collectCheckStaged(ctx, root, planNotes)
+	if err != nil {
 		return err
 	}
-	err := errors.Join(
-		writeStagedState(ctx, root, stdout, false, planNotes),
-		writeStagedDrift(ctx, root, stdout, false),
-	)
-	if err == nil {
-		fmt.Fprintln(stdout, "awf check staged: clean")
-	}
-	return err
+	return renderCheckCollection(stdout, collection)
 }
 
 func runCheckStagedState(ctx context.Context, root string, stdout io.Writer) error {
-	if err := writeStagedAheadNote(ctx, root, stdout); err != nil {
+	collection, err := collectCheckStagedSelection(ctx, root, planNoteSink{}, true, false)
+	if err != nil {
 		return err
 	}
-	return writeStagedState(ctx, root, stdout, true, planNoteSink{})
+	return renderCheckCollection(stdout, collection)
 }
 
 func runCheckStagedDrift(ctx context.Context, root string, stdout io.Writer) error {
-	if err := writeStagedAheadNote(ctx, root, stdout); err != nil {
-		return err
-	}
-	return writeStagedDrift(ctx, root, stdout, true)
-}
-
-func writeStagedAheadNote(ctx context.Context, root string, stdout io.Writer) error {
-	lock, err := stagedLock(ctx, root)
+	collection, err := collectCheckStagedSelection(ctx, root, planNoteSink{}, false, true)
 	if err != nil {
 		return err
 	}
-	lockV, binV, ok := lockVsBinaryLock(lock)
-	if ok && semver.Compare(binV, lockV) > 0 {
-		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf render to re-pin\n", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
-	}
-	return nil
-}
-
-func writeStagedState(ctx context.Context, root string, stdout io.Writer, printClean bool, planNotes planNoteSink) error {
-	report, err := project.CheckStagedRoot(ctx, root)
-	if err != nil {
-		return err
-	}
-	general := report
-	general.PlanNotes = nil
-	for _, n := range general.Notes() {
-		fmt.Fprintf(stdout, "note: %s\n", n)
-	}
-	planNotes.write(stdout, report.PlanNotes)
-	current := report.Findings()
-	for _, f := range current {
-		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)
-	}
-	if len(current) == 0 {
-		if printClean {
-			fmt.Fprintln(stdout, "awf check staged state: clean")
-		}
-		return nil
-	}
-	return &producedReportError{fmt.Errorf("awf check staged state: %d current-state issue(s)", len(current))}
-}
-
-func writeStagedDrift(ctx context.Context, root string, stdout io.Writer, printClean bool) error {
-	drift, err := project.CheckStagedDriftRoot(ctx, root)
-	if err != nil {
-		return err
-	}
-	for _, d := range drift {
-		fmt.Fprintf(stdout, "  %-14s %s: %s\n", d.Kind, d.Path, d.Detail)
-	}
-	if len(drift) == 0 {
-		if printClean {
-			fmt.Fprintln(stdout, "awf check staged drift: clean")
-		}
-		return nil
-	}
-	return &producedReportError{fmt.Errorf("awf check staged drift: %d drift(s)", len(drift))}
+	return renderCheckCollection(stdout, collection)
 }

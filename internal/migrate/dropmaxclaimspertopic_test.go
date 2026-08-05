@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,7 +51,7 @@ func TestApplyDropMaxClaimsPerTopic(t *testing.T) {
 			root := t.TempDir()
 			p := filepath.Join(root, ".awf", "config.yaml")
 			testsupport.WriteFile(t, p, tc.src)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyDropMaxClaimsPerTopic(root, &out); err != nil {
 				t.Fatal(err)
 			}
@@ -70,7 +69,7 @@ func TestApplyDropMaxClaimsPerTopic(t *testing.T) {
 				t.Errorf("announcement = %v, want %v (output %q)", announced, tc.wantAnnounce, out.String())
 			}
 			// A replay must neither change the file again nor re-announce.
-			var second bytes.Buffer
+			var second Changes
 			if err := applyDropMaxClaimsPerTopic(root, &second); err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +90,7 @@ func TestApplyDropMaxClaimsPerTopic(t *testing.T) {
 func TestApplyDropMaxClaimsPerTopicRefusesMalformedYAML(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: [\ncurrentState:\n  maxClaimsPerTopic: 20\n")
-	var out bytes.Buffer
+	var out Changes
 	if err := applyDropMaxClaimsPerTopic(root, &out); err == nil {
 		t.Fatal("malformed YAML must surface the parse error, not be swallowed")
 	}

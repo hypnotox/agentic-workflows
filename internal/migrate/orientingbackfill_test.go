@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,7 +53,7 @@ func TestOrientingBackfill(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := closeFixture(t, tc.cfg, nil)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyOrientingSkillBackfill(root, &out); err != nil {
 				t.Fatalf("apply: %v", err)
 			}
@@ -73,7 +72,7 @@ func TestOrientingBackfill(t *testing.T) {
 				t.Errorf("orienting present = %v, want %v:\n%s", gotOrienting, tc.wantOrienting, cfg)
 			}
 			// Idempotence: a second run prints nothing and changes nothing.
-			var second bytes.Buffer
+			var second Changes
 			if err := applyOrientingSkillBackfill(root, &second); err != nil {
 				t.Fatalf("re-apply: %v", err)
 			}
@@ -90,7 +89,7 @@ func TestOrientingBackfill(t *testing.T) {
 
 // An absent config is a no-op (idempotent re-run safe, the editConfig skeleton).
 func TestOrientingBackfillNoConfigNoop(t *testing.T) {
-	if err := applyOrientingSkillBackfill(t.TempDir(), io.Discard); err != nil {
+	if err := applyOrientingSkillBackfill(t.TempDir(), &Changes{}); err != nil {
 		t.Fatalf("absent config must be a no-op, got %v", err)
 	}
 }
@@ -98,7 +97,7 @@ func TestOrientingBackfillNoConfigNoop(t *testing.T) {
 // A malformed config surfaces the load error rather than mutating anything.
 func TestOrientingBackfillMalformedConfig(t *testing.T) {
 	root := closeFixture(t, ": : not valid : :\n", nil)
-	if err := applyOrientingSkillBackfill(root, io.Discard); err == nil {
+	if err := applyOrientingSkillBackfill(root, &Changes{}); err == nil {
 		t.Fatal("expected a parse error for a malformed config")
 	}
 	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))

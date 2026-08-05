@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -45,14 +44,14 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	}
 
 	t.Run("inspection-error", func(t *testing.T) {
-		if err := removeWorkflowResidents(newRoot(t), &bytes.Buffer{}, func(string) (os.FileInfo, error) { return nil, os.ErrPermission }, os.RemoveAll); err == nil {
+		if err := removeWorkflowResidents(newRoot(t), &Changes{}, func(string) (os.FileInfo, error) { return nil, os.ErrPermission }, os.RemoveAll); err == nil {
 			t.Fatal("inspection error accepted")
 		}
 	})
 	t.Run("non-Git fixture falls back to supplied root", func(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
-		if err := applyRemoveWorkflowResidents(testContext(t), root, &bytes.Buffer{}); err != nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &Changes{}); err != nil {
 			t.Fatal(err)
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -70,7 +69,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		if _, err := awfgit.Open(root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
 			t.Fatalf("fixture did not produce a present broken Git error: %v", err)
 		}
-		if err := applyRemoveWorkflowResidents(testContext(t), root, &bytes.Buffer{}); err == nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), root, &Changes{}); err == nil {
 			t.Fatal("broken Git checkout fell back to fixture root")
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -87,7 +86,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		if err := os.Symlink(primary, alias); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		if err := applyRemoveWorkflowResidents(testContext(t), alias, &bytes.Buffer{}); err == nil {
+		if err := applyRemoveWorkflowResidents(testContext(t), alias, &Changes{}); err == nil {
 			t.Fatal("unsafe Git checkout fell back to fixture root")
 		}
 		for _, name := range []string{"metrics", "assignments"} {
@@ -98,7 +97,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	})
 	t.Run("absent", func(t *testing.T) {
 		root := newRoot(t)
-		var out bytes.Buffer
+		var out Changes
 		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +108,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	t.Run("nested-roots", func(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
-		var out bytes.Buffer
+		var out Changes
 		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
@@ -123,7 +122,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	t.Run("ordered-output", func(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
-		var out bytes.Buffer
+		var out Changes
 		if err := applyRemoveWorkflowResidents(testContext(t), root, &out); err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +144,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 			} else if err := os.WriteFile(path, []byte("unsafe"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := applyRemoveWorkflowResidents(testContext(t), root, &bytes.Buffer{}); err == nil {
+			if err := applyRemoveWorkflowResidents(testContext(t), root, &Changes{}); err == nil {
 				t.Fatal("unsafe root accepted")
 			}
 			if _, err := os.Lstat(path); err != nil {
@@ -156,7 +155,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	t.Run("partial-failure-then-retry", func(t *testing.T) {
 		root := newRoot(t)
 		makeResidents(t, root)
-		var out bytes.Buffer
+		var out Changes
 		calls := 0
 		err := removeWorkflowResidents(root, &out, os.Lstat, func(path string) error {
 			calls++
@@ -193,7 +192,7 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 		linked := filepath.Join(filepath.Dir(primary), "linked")
 		gitfixture.NativeWorktreeAddDetached(t, repo, linked, "HEAD")
 		makeResidents(t, primary)
-		var out bytes.Buffer
+		var out Changes
 		if err := applyRemoveWorkflowResidents(testContext(t), linked, &out); err != nil {
 			t.Fatal(err)
 		}

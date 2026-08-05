@@ -787,8 +787,8 @@
     "docs/topics/tooling/audit-commands.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:d80a97b7c2ec18e1470a051d68bc7f802fba0fc5fcf4e20c12cac96fe1ebd54a",
-      "outputHash": "sha256:cb8db18365a0bd899147a8a8f9d8be5daa25debbe0a19883dd96967124bfdeca"
+      "configHash": "sha256:a681bf321c2360403a552bf00b20104253c6361c600e14f7d6aa5d5431ab5acb",
+      "outputHash": "sha256:f4a51841201e15251d49654dffee0b5cea31206e68b71ecb69f7e60cd101a0ae"
     },
     "docs/topics/tooling/changelog-and-release.md": {
       "templateId": "topics/topic.md.tmpl",

@@ -3,7 +3,6 @@ package migrate
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -17,7 +16,7 @@ import (
 // edit routes through config.RemoveMappingKey so config.yaml serialization stays
 // owned by internal/config (ADR-0026); RemoveKey cannot be used, since it walks
 // only top-level entries and baseBranch is nested under audit.
-func applyDropAuditBase(root string, w io.Writer) error {
+func applyDropAuditBase(root string, w *Changes) error {
 	return editConfig(root, func(src []byte) ([]byte, error) {
 		out, err := config.RemoveMappingKey(src, "audit", "baseBranch")
 		if err != nil {

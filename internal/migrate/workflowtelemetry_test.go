@@ -20,7 +20,7 @@ func TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20(t *testing.T
 	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	var out bytes.Buffer
+	var out Changes
 	if err := applyWorkflowTelemetry(root, &out); err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20(t *testing.T
 	if err := lock.Save(config.LockPath(registryRoot)); err != nil {
 		t.Fatal(err)
 	}
-	applied, err := Upgrade(testContext(t), registryRoot, &out)
+	applied, _, err := Upgrade(testContext(t), registryRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestWorkflowTelemetryHistoricalMigrationRejectsMalformedYAML(t *testing.T) 
 	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: [bad\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyWorkflowTelemetry(root, &bytes.Buffer{}); err == nil {
+	if err := applyWorkflowTelemetry(root, &Changes{}); err == nil {
 		t.Fatal("malformed config accepted")
 	}
 }

@@ -1,8 +1,6 @@
 package migrate
 
 import (
-	"io"
-
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"gopkg.in/yaml.v3"
 )
@@ -15,7 +13,7 @@ import (
 // disk is a no-op (idempotent re-run safe), and a config that already carries a
 // runner key made a choice - a replay from a degraded lock must not override a
 // deliberate opt-out.
-func applyEnableRunner(root string, _ io.Writer) error {
+func applyEnableRunner(root string, _ *Changes) error {
 	return editConfig(root, func(src []byte) ([]byte, error) {
 		var doc map[string]any
 		if yaml.Unmarshal(src, &doc) == nil {

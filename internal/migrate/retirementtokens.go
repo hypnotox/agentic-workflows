@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,7 +34,7 @@ var (
 // byte-identical and meaning-preservation is checkable by diff. Idempotent: a
 // corpus with no keys prints nothing.
 // touches-state: config/migrations-and-locks:upgrade-migrates-retirements - the migration itself; proof in retirementtokens_test.go
-func applyRetirementTokens(root string, out io.Writer) error {
+func applyRetirementTokens(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}

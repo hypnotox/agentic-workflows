@@ -142,7 +142,7 @@ var handlers = map[string]handler{
 		return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
 	},
 	"audit": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+		return handlerReport(runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
 	},
 	"effort": func(c *cmdCtx) handlerResult { return handlerFailure(runEffort(c, openEffortComposition)) },
 	"adr":    func(c *cmdCtx) handlerResult { return handlerFailure(runADR(c)) },

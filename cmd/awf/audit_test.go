@@ -46,9 +46,8 @@ func TestRunAuditWarningsExitZero(t *testing.T) {
 	if err := runAudit(testContext(t), root, base, &out); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
-	// Assert the rendered rank on the finding line, not the "%d warning(s)" verdict
-	// summary: the summary would satisfy a bare "warn" substring check on its own.
-	if !strings.Contains(out.String(), "warn    dependency-adr") {
+	// The readable category is plural while the domain rank remains warn.
+	if !strings.Contains(out.String(), "warnings:\n    dependency-adr |") {
 		t.Errorf("expected a warn-ranked dependency-adr finding, got: %q", out.String())
 	}
 }
@@ -86,7 +85,7 @@ func TestRunAuditCleanRange(t *testing.T) {
 	if err := runAudit(testContext(t), root, base, &buf); err != nil {
 		t.Fatalf("clean range should exit zero, got: %v", err)
 	}
-	if !strings.Contains(buf.String(), "awf audit: clean") {
+	if !strings.Contains(buf.String(), "status: clean") {
 		t.Errorf("expected clean message, got: %q", buf.String())
 	}
 }
@@ -118,7 +117,7 @@ func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 		t.Fatalf("clean range should exit zero, got: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "clean over 1 commit(s) in "+base+"..HEAD") {
+	if !strings.Contains(got, "scope: 1 commit(s) in "+base+"..HEAD") {
 		t.Errorf("the clean verdict must name its scope, got: %q", got)
 	}
 }
@@ -132,15 +131,12 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	root := repo.Root()
 	// Warn path: touches go.mod with no ADR -> dependency-adr warn, exit zero.
 	gitfixture.Commit(t, repo, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
-	scope := "over 1 commit(s) in " + base + "..HEAD"
+	scope := "scope: 1 commit(s) in " + base + "..HEAD"
 	var warnBuf bytes.Buffer
 	if err := runAudit(testContext(t), root, base, &warnBuf); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
-	// Match the full verdict, not the bare scope: the scope substring alone also
-	// appears in the clean line, so a mutation routing a findings-bearing run
-	// through the clean branch would keep a looser assertion green.
-	if !strings.Contains(warnBuf.String(), "1 warning(s), 0 errors "+scope) {
+	if !strings.Contains(warnBuf.String(), "status: warnings") || !strings.Contains(warnBuf.String(), scope) {
 		t.Errorf("the warning verdict must name its scope, got: %q", warnBuf.String())
 	}
 	// Error path: a malformed subject is an Error finding, so runAudit returns
@@ -166,10 +162,10 @@ func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
 		t.Fatalf("an empty range still exits zero, got: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "HEAD..HEAD resolved to 0 commit(s); no history rule evaluated") {
+	if !strings.Contains(got, "scope: 0 commit(s) in HEAD..HEAD") {
 		t.Errorf("an empty range must announce itself, got: %q", got)
 	}
-	if strings.Contains(got, "awf audit: clean") {
+	if strings.Contains(got, "status: clean") {
 		t.Errorf("an empty range must not read as a clean audit, got: %q", got)
 	}
 }

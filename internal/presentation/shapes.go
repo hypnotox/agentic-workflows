@@ -1,5 +1,64 @@
 package presentation
 
+// ReportCategory is one semantic category of same-schema findings in a report.
+type ReportCategory struct {
+	Label   string
+	Schema  []string
+	Records []Record
+}
+
+// Report is a representation-only complete check or audit result. Its owner
+// supplies the status, context, summary, categories, schemas, and ordering.
+type Report struct {
+	Status     string
+	Context    []Field
+	Summary    []Field
+	Categories []ReportCategory
+}
+
+// Document lowers a report into the closed presentation tree.
+func (r Report) Document() (Document, error) {
+	statusValue, err := Prose(r.Status)
+	if err != nil {
+		return Document{}, err
+	}
+	status, err := NewField("status", statusValue)
+	if err != nil { // coverage-ignore: Prose validated status and the fixed label is grammar-valid
+		return Document{}, err
+	}
+	nodes := []Node{status}
+	if len(r.Context) > 0 {
+		section, err := NewSection("context", fieldsAsNodes(r.Context)...)
+		if err != nil { // coverage-ignore: exported Fields can only be constructed validly
+			return Document{}, err
+		}
+		nodes = append(nodes, section)
+	}
+	if len(r.Summary) > 0 {
+		section, err := NewSection("summary", fieldsAsNodes(r.Summary)...)
+		if err != nil { // coverage-ignore: exported Fields can only be constructed validly
+			return Document{}, err
+		}
+		nodes = append(nodes, section)
+	}
+	if len(r.Categories) > 0 {
+		children := make([]Node, 0, len(r.Categories))
+		for _, category := range r.Categories {
+			group, err := NewRecordGroup(category.Label, category.Schema, category.Records...)
+			if err != nil {
+				return Document{}, err
+			}
+			children = append(children, group)
+		}
+		section, err := NewSection("findings", children...)
+		if err != nil { // coverage-ignore: RecordGroup construction validated every child
+			return Document{}, err
+		}
+		nodes = append(nodes, section)
+	}
+	return NewDocument(nodes...)
+}
+
 // Diagnostic is a representation-only actionable failure. Its owner supplies
 // all semantic labels, state, changed axes, cause, and ordered remedies.
 type Diagnostic struct {

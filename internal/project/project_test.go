@@ -3,7 +3,6 @@ package project
 import (
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"os/exec"
@@ -299,7 +298,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "retained", "resident"), name)
 	}
 
-	if _, err := migrate.Upgrade(testContext(t), root, io.Discard); err != nil {
+	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"metrics", "assignments"} {

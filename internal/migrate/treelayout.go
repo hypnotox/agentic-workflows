@@ -3,7 +3,6 @@ package migrate
 import (
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -17,7 +16,7 @@ import (
 // fields), per-target sidecars for everything non-prose, every replaceWith part
 // copied to its convention path, and the agents-doc prose re-modelled into
 // convention parts. Idempotent: a no-op (nil) when .claude/awf.yaml is absent.
-func applyTreeLayout(root string, _ io.Writer) error {
+func applyTreeLayout(root string, _ *Changes) error {
 	claudeDir := filepath.Join(root, ".claude")
 	legacyPath := filepath.Join(claudeDir, "awf.yaml")
 	if _, err := os.Stat(legacyPath); errors.Is(err, os.ErrNotExist) {

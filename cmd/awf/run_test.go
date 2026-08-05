@@ -275,7 +275,8 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:                                              1,
 		{file: "list_add.go", owner: "toggle", name: "runSync"}:                                                           2,
 		{file: "new.go", owner: "newLocal", name: "runSync"}:                                                              1,
-		{file: "upgrade.go", owner: "runUpgrade", name: "runSync"}:                                                        1,
+		{file: "upgrade_presentation.go", owner: "upgradeSyncMutation", name: "newProjectLoader"}:                         1,
+		{file: "upgrade_presentation.go", owner: "upgradeSyncMutation", name: "loader.Open"}:                              1,
 		{file: "adr.go", owner: "runADR", name: "project.Open"}:                                                           1,
 		{file: "audit.go", owner: "runAudit", name: "project.Open"}:                                                       1,
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader"}:                       1,
@@ -820,8 +821,8 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade legacy: %v", err)
 	}
-	if !strings.Contains(out.String(), "applied") {
-		t.Errorf("expected an applied migration, got %q", out.String())
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "migrations:\n      topic-claim-budget:") || strings.Contains(out.String(), "note:") {
+		t.Errorf("expected structured migration mutation, got %q", out.String())
 	}
 	for _, path := range []string{".awf/config.yaml", ".awf/awf.lock"} {
 		if _, err := os.Stat(filepath.Join(root, path)); err != nil {
@@ -977,8 +978,8 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade: %v", err)
 	}
-	if !strings.Contains(out.String(), "already at schema") {
-		t.Errorf("expected already-at-schema report, got %q", out.String())
+	if strings.Contains(out.String(), "already at schema") || !strings.Contains(out.String(), "mutation:") {
+		t.Errorf("expected structured no-op mutation, got %q", out.String())
 	}
 	// The zero-migrations path must still sync: a same-schema binary bump
 	// re-renders every managed file and re-pins the bootstrap (ADR-0085).

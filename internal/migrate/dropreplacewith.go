@@ -3,7 +3,6 @@ package migrate
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -26,7 +25,7 @@ type v1Sidecar struct {
 // becomes a convention part at the section's conventional path and the field is
 // dropped. An occupied destination with differing content, or a missing
 // referenced part, fails the upgrade rather than overwriting or losing content.
-func applyDropReplaceWith(root string, _ io.Writer) error {
+func applyDropReplaceWith(root string, _ *Changes) error {
 	awfDir := filepath.Join(root, ".claude", "awf")
 	sidecars, err := treeSidecars(awfDir)
 	if err != nil { // coverage-ignore: treeSidecars only faults on the (ignored) ReadDir error arm

@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -42,6 +45,28 @@ func (w *mutatingWriter) Write(p []byte) (int, error) {
 
 // invariant: tooling/cli:check-universe-groups (TestRunCheckCleanThenDirty)
 // invariant: adr-system/plan-artifacts:plan-v2-assignment-advisories (TestRunCheckCleanThenDirty)
+func TestRunCheckPropagatesOperationalGitAndStagedDriftFailures(t *testing.T) {
+	ctx := testContext(t)
+	root := syncedGitProject(t, checkYAML)
+
+	gitFailure := errors.New("git lookup failed")
+	testsupport.SwapVar(t, &checkOpenContaining, func(string) (*awfgit.Repo, string, error) {
+		return nil, "", gitFailure
+	})
+	if err := runCheck(ctx, root, io.Discard); !errors.Is(err, gitFailure) {
+		t.Fatalf("git failure = %v, want %v", err, gitFailure)
+	}
+
+	testsupport.SwapVar(t, &checkOpenContaining, awfgit.OpenContaining)
+	driftFailure := errors.New("staged drift failed")
+	testsupport.SwapVar(t, &checkStagedDriftRoot, func(context.Context, string) ([]manifest.Drift, error) {
+		return nil, driftFailure
+	})
+	if err := runCheck(ctx, root, io.Discard); !errors.Is(err, driftFailure) {
+		t.Fatalf("staged drift failure = %v, want %v", err, driftFailure)
+	}
+}
+
 func TestRunCheckCleanThenDirty(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -50,10 +75,8 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if err := runCheck(ctx, root, &clean); err != nil {
 		t.Errorf("expected clean check, got %v", err)
 	}
-	for _, want := range []string{"awf check repo drift: clean", "awf check repo state: clean", "check repo prose: clean", "check repo memory: clean", "awf check staged: clean"} {
-		if !strings.Contains(clean.String(), want) {
-			t.Errorf("bare check omitted %q from its universe aggregates:\n%s", want, clean.String())
-		}
+	if !strings.HasPrefix(clean.String(), "status: ") || !strings.Contains(clean.String(), "summary:\n  findings:") {
+		t.Errorf("bare check did not render one structured aggregate:\n%s", clean.String())
 	}
 	if strings.Contains(clean.String(), "check staged commit") {
 		t.Errorf("bare check must not aggregate staged commit:\n%s", clean.String())
@@ -74,7 +97,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if err := runCheck(ctx, artifactRoot, &proposedSecond); err != nil {
 		t.Fatalf("repeat Proposed plan check: %v\n%s", err, proposedSecond.String())
 	}
-	proposedNote := "note: 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
+	proposedNote := "advisory | 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
 	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 1 {
 		t.Fatalf("Proposed plan assignment advisories must deterministically join the repo universe without failing; first=%q second=%q", proposedFirst.String(), proposedSecond.String())
 	}
@@ -184,8 +207,8 @@ func TestRunCheckReportsStagedUniverseAvailability(t *testing.T) {
 		if err := runCheck(testContext(t), root, w); err != nil {
 			t.Fatalf("bare check did not degrade after repository became unavailable: %v", err)
 		}
-		if !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
-			t.Fatalf("missing staged-unavailable note:\n%s", out.String())
+		if strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
+			t.Fatalf("collection must finish before its one atomic render, got:\n%s", out.String())
 		}
 	})
 	t.Run("repository becomes malformed", func(t *testing.T) {
@@ -195,8 +218,8 @@ func TestRunCheckReportsStagedUniverseAvailability(t *testing.T) {
 				t.Fatal(err)
 			}
 		}}
-		if err := runCheck(testContext(t), root, w); err == nil {
-			t.Fatal("bare check accepted malformed git metadata before the staged universe")
+		if err := runCheck(testContext(t), root, w); err != nil {
+			t.Fatalf("the atomic post-collection mutation must not affect the completed report: %v", err)
 		}
 	})
 }
@@ -237,7 +260,7 @@ func TestRunCheckOutsideGitDegrades(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("bare check outside git: %v", err)
 	}
-	if !strings.Contains(out.String(), "awf check repo state: clean") || !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
+	if !strings.Contains(out.String(), "status: warnings") || !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
 		t.Fatalf("outside-git output omitted repo execution or staged disclosure:\n%s", out.String())
 	}
 }
@@ -270,7 +293,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("expected clean check, got %v", err)
 	}
-	if !strings.Contains(out.String(), "awf check repo drift: clean") || !strings.Contains(out.String(), "awf check staged: clean") {
+	if !strings.Contains(out.String(), "status: warnings") || !strings.Contains(out.String(), "summary:") {
 		t.Errorf("expected both universe clean outputs, got %q", out.String())
 	}
 	if !strings.Contains(out.String(), "is ahead of this project (rendered by 0.3.0)") {
@@ -352,8 +375,8 @@ func TestRunCheckSurfacesCurrentStateFinding(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected runCheck to fail on the current-state coverage finding")
 	}
-	if !strings.Contains(err.Error(), "current-state issue") {
-		t.Errorf("expected a current-state issue error, got: %v", err)
+	if !strings.Contains(err.Error(), "check repo state failed") {
+		t.Errorf("expected a collected current-state error, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "current-state") || !strings.Contains(out.String(), "internal/bar.go") {
 		t.Errorf("expected the finding line, got: %q", out.String())
@@ -370,11 +393,11 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail runCheck, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a fan-out warn note, got: %q", out.String())
+	if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "internal/bar.go") {
+		t.Errorf("expected a structured fan-out warning, got: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "awf check repo state: clean") || !strings.Contains(out.String(), "awf check staged: clean") {
-		t.Errorf("expected universe clean statuses alongside the note, got: %q", out.String())
+	if strings.Contains(out.String(), "note:") {
+		t.Errorf("ordinary check report must not contain legacy notes, got: %q", out.String())
 	}
 }
 
@@ -438,7 +461,7 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 		if code := runAt(t, root, []string{"awf", "check", "staged", "drift"}, &out, &errOut); code != 0 {
 			t.Fatalf("staged drift exit = %d, want 0; stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if !strings.Contains(out.String(), "awf check staged drift: clean") {
+		if out.String() != completedCheckReport {
 			t.Fatalf("clean staged drift output = %q", out.String())
 		}
 	})
@@ -468,8 +491,8 @@ func TestRunCheckStagedSurfacesFinding(t *testing.T) {
 		map[string]string{"internal/bar.go": "package internalx\n"})
 	var out bytes.Buffer
 	err := runCheckStaged(ctx, root, &out)
-	if err == nil || !strings.Contains(err.Error(), "current-state issue") {
-		t.Fatalf("expected a staged current-state issue error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "check staged state failed") {
+		t.Fatalf("expected a collected staged current-state error, got %v", err)
 	}
 	if !strings.Contains(out.String(), "current-state") || !strings.Contains(out.String(), "internal/bar.go") {
 		t.Errorf("expected the finding line, got: %q", out.String())
@@ -490,11 +513,11 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 	if err := runCheckStaged(ctx, root, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail the staged check, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a fan-out warn note, got: %q", out.String())
+	if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "internal/bar.go") {
+		t.Errorf("expected a structured fan-out warning, got: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "awf check staged: clean") {
-		t.Errorf("expected the clean staged status, got: %q", out.String())
+	if strings.Contains(out.String(), "note:") {
+		t.Errorf("staged report must not contain legacy notes, got: %q", out.String())
 	}
 }
 
@@ -589,7 +612,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		if code := run([]string{"awf", "check", "staged"}, &out, &errOut); code != 0 {
 			t.Fatalf("staged check exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if !strings.Contains(out.String(), "awf check staged: clean") {
+		if out.String() != completedCheckReport {
 			t.Fatalf("staged check output = %q", out.String())
 		}
 	})

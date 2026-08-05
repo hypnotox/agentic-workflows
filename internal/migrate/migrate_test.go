@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"context"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -146,7 +145,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "config.yaml"), "prefix: ex\nskills: []\nagents: []\n")
-	applied, err := Upgrade(testContext(t), root, io.Discard)
+	applied, _, err := Upgrade(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
@@ -191,7 +190,7 @@ func stampLockAt(t *testing.T, lockPath string, schema int) {
 
 func TestTreeLayoutPortsMonolith(t *testing.T) {
 	root := writeMonolith(t)
-	if err := applyTreeLayout(root, io.Discard); err != nil {
+	if err := applyTreeLayout(root, &Changes{}); err != nil {
 		t.Fatalf("applyTreeLayout: %v", err)
 	}
 	awfDir := filepath.Join(root, ".claude", "awf")
@@ -326,7 +325,7 @@ func writeLegacyRoot(t *testing.T, body string) string {
 func TestApplyTreeLayoutNoopWhenLegacyAbsent(t *testing.T) {
 	// No .claude/awf.yaml → already ported (or never legacy): a nil no-op.
 	root := t.TempDir()
-	if err := applyTreeLayout(root, io.Discard); err != nil {
+	if err := applyTreeLayout(root, &Changes{}); err != nil {
 		t.Fatalf("applyTreeLayout(no legacy) = %v, want nil", err)
 	}
 }
@@ -356,7 +355,7 @@ func TestUpgradePropagatesMigrationError(t *testing.T) {
 	if got := mustGeneration(t, root); got != 0 {
 		t.Fatalf("Generation(malformed legacy) = %d, want 0", got)
 	}
-	applied, err := Upgrade(testContext(t), root, io.Discard)
+	applied, _, err := Upgrade(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "tree-layout") {
 		t.Fatalf("Upgrade(testContext(t), malformed legacy) err = %v, want a tree-layout migration error", err)
 	}
@@ -371,7 +370,7 @@ func TestApplyTreeLayoutConfigWriteError(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "config.yaml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyTreeLayout(root, io.Discard); err == nil {
+	if err := applyTreeLayout(root, &Changes{}); err == nil {
 		t.Fatal("applyTreeLayout with config.yaml dir = nil, want a write error")
 	}
 }
@@ -380,7 +379,7 @@ func TestApplyTreeLayoutSidecarMkdirError(t *testing.T) {
 	// A regular file squatting on the skills/ dir makes the sidecar MkdirAll fail.
 	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  alpha:\n    data:\n      k: v\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "skills"), "not a dir\n")
-	if err := applyTreeLayout(root, io.Discard); err == nil {
+	if err := applyTreeLayout(root, &Changes{}); err == nil {
 		t.Fatal("applyTreeLayout with skills/ as a file = nil, want a mkdir error")
 	}
 }
@@ -388,7 +387,7 @@ func TestApplyTreeLayoutSidecarMkdirError(t *testing.T) {
 func TestApplyTreeLayoutMissingPartSource(t *testing.T) {
 	// A replaceWith pointing at an absent legacy part makes copyPart's read fail.
 	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  gamma:\n    sections:\n      sec:\n        replaceWith: parts/missing.md\n")
-	err := applyTreeLayout(root, io.Discard)
+	err := applyTreeLayout(root, &Changes{})
 	if err == nil || !strings.Contains(err.Error(), "read part") {
 		t.Fatalf("applyTreeLayout(missing part) = %v, want a read-part error", err)
 	}
@@ -402,7 +401,7 @@ func TestApplyTreeLayoutCopyPartWriteError(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "skills", "parts", "beta", "sec.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyTreeLayout(root, io.Discard); err == nil {
+	if err := applyTreeLayout(root, &Changes{}); err == nil {
 		t.Fatal("applyTreeLayout with squatted part dst = nil, want a write error")
 	}
 }
@@ -419,7 +418,7 @@ func TestApplyTreeLayoutLockRemoveError(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(lock, "occupant"), "x\n")
-	if err := applyTreeLayout(root, io.Discard); err == nil {
+	if err := applyTreeLayout(root, &Changes{}); err == nil {
 		t.Fatal("applyTreeLayout with non-empty awf.lock dir = nil, want a remove error")
 	}
 }
@@ -440,7 +439,7 @@ func TestPortAgentsDocSectionsLocalAndData(t *testing.T) {
 		"    sec-b:\n"+
 		"      drop: true\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "parts", "adp.md"), "AD PART\n")
-	if err := applyTreeLayout(root, io.Discard); err != nil {
+	if err := applyTreeLayout(root, &Changes{}); err != nil {
 		t.Fatalf("applyTreeLayout: %v", err)
 	}
 	awfDir := filepath.Join(root, ".claude", "awf")
@@ -468,7 +467,7 @@ func TestPortAgentsDocSkipsAbsentOwnershipIdentity(t *testing.T) {
 	// agentsDoc whose data lacks ownership/identity skips the prose-part writes
 	// and keeps the remaining data in the sidecar.
 	root := writeLegacyRoot(t, "prefix: ex\nagentsDoc:\n  data:\n    extra: keep\n")
-	if err := applyTreeLayout(root, io.Discard); err != nil {
+	if err := applyTreeLayout(root, &Changes{}); err != nil {
 		t.Fatalf("applyTreeLayout: %v", err)
 	}
 	awfDir := filepath.Join(root, ".claude", "awf")
@@ -487,7 +486,7 @@ func TestPortAgentsDocSkipsAbsentOwnershipIdentity(t *testing.T) {
 func TestPortAgentsDocEmptySidecarOmitted(t *testing.T) {
 	// agentsDoc with only ownership/identity yields prose parts and no sidecar.
 	root := writeLegacyRoot(t, "prefix: ex\nagentsDoc:\n  data:\n    ownership: \"Own.\"\n    identity: \"Id.\"\n")
-	if err := applyTreeLayout(root, io.Discard); err != nil {
+	if err := applyTreeLayout(root, &Changes{}); err != nil {
 		t.Fatalf("applyTreeLayout: %v", err)
 	}
 	awfDir := filepath.Join(root, ".claude", "awf")
@@ -509,7 +508,7 @@ func TestPortAgentsDocSectionCopyError(t *testing.T) {
 		"  sections:\n"+
 		"    sec:\n"+
 		"      replaceWith: parts/missing.md\n")
-	err := applyTreeLayout(root, io.Discard)
+	err := applyTreeLayout(root, &Changes{})
 	if err == nil || !strings.Contains(err.Error(), "read part") {
 		t.Fatalf("applyTreeLayout(agentsDoc missing part) = %v, want a read-part error", err)
 	}
@@ -522,7 +521,7 @@ func TestPortAgentsDocProseWriteError(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "parts", "agents-doc", "you-and-this-project.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyTreeLayout(root, io.Discard); err == nil {
+	if err := applyTreeLayout(root, &Changes{}); err == nil {
 		t.Fatal("applyTreeLayout with squatted prose part = nil, want a write error")
 	}
 }
@@ -593,7 +592,7 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	if mustGateState(t, root) != "gate" {
 		t.Fatalf("expected gate state, got %q", mustGateState(t, root))
 	}
-	if _, err := Upgrade(testContext(t), root, io.Discard); err != nil {
+	if _, _, err := Upgrade(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
@@ -608,7 +607,7 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 }
 
 func TestAwfRelocationNoopWhenAbsent(t *testing.T) {
-	if err := applyAwfRelocation(t.TempDir(), io.Discard); err != nil {
+	if err := applyAwfRelocation(t.TempDir(), &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -621,7 +620,7 @@ func TestAwfRelocationRefusesExistingTarget(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyAwfRelocation(root, io.Discard); err == nil {
+	if err := applyAwfRelocation(root, &Changes{}); err == nil {
 		t.Fatal("expected error when .awf already exists")
 	}
 }
@@ -637,7 +636,7 @@ func TestDropHooksStrips(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	testsupport.WriteFile(t, cfg, "prefix: ex\nhooks:\n  - pre-commit\n  - pre-push\nskills:\n  - tdd\n")
-	if err := applyDropHooks(root, io.Discard); err != nil {
+	if err := applyDropHooks(root, &Changes{}); err != nil {
 		t.Fatalf("applyDropHooks: %v", err)
 	}
 	out, err := os.ReadFile(cfg)
@@ -660,7 +659,7 @@ func TestDropHooksKeepsModernMapping(t *testing.T) {
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "prefix: ex\nhooks:\n  enabled: true\nskills:\n  - tdd\n"
 	testsupport.WriteFile(t, cfg, src)
-	if err := applyDropHooks(root, io.Discard); err != nil {
+	if err := applyDropHooks(root, &Changes{}); err != nil {
 		t.Fatalf("applyDropHooks: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
@@ -674,7 +673,7 @@ func TestDropHooksIdempotent(t *testing.T) {
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "prefix: ex\nskills:\n  - tdd\n"
 	testsupport.WriteFile(t, cfg, src)
-	if err := applyDropHooks(root, io.Discard); err != nil {
+	if err := applyDropHooks(root, &Changes{}); err != nil {
 		t.Fatalf("applyDropHooks: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
@@ -684,7 +683,7 @@ func TestDropHooksIdempotent(t *testing.T) {
 }
 
 func TestDropHooksAbsentConfig(t *testing.T) {
-	if err := applyDropHooks(t.TempDir(), io.Discard); err != nil {
+	if err := applyDropHooks(t.TempDir(), &Changes{}); err != nil {
 		t.Errorf("applyDropHooks with no .awf/config.yaml should be a no-op, got %v", err)
 	}
 }
@@ -692,7 +691,7 @@ func TestDropHooksAbsentConfig(t *testing.T) {
 func TestDropHooksMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
-	if err := applyDropHooks(root, io.Discard); err == nil {
+	if err := applyDropHooks(root, &Changes{}); err == nil {
 		t.Error("expected error surfaced from RemoveKey for malformed config.yaml")
 	}
 }
@@ -701,7 +700,7 @@ func TestEnableBootstrapAdds(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	testsupport.WriteFile(t, cfg, "prefix: ex\nskills:\n  - tdd\n")
-	if err := applyEnableBootstrap(root, io.Discard); err != nil {
+	if err := applyEnableBootstrap(root, &Changes{}); err != nil {
 		t.Fatalf("applyEnableBootstrap: %v", err)
 	}
 	out, err := os.ReadFile(cfg)
@@ -724,7 +723,7 @@ func TestEnableBootstrapKeepsExplicitOptOut(t *testing.T) {
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "prefix: ex\nbootstrap:\n  enabled: false\n"
 	testsupport.WriteFile(t, cfg, src)
-	if err := applyEnableBootstrap(root, io.Discard); err != nil {
+	if err := applyEnableBootstrap(root, &Changes{}); err != nil {
 		t.Fatalf("applyEnableBootstrap: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
@@ -734,7 +733,7 @@ func TestEnableBootstrapKeepsExplicitOptOut(t *testing.T) {
 }
 
 func TestEnableBootstrapAbsentConfig(t *testing.T) {
-	if err := applyEnableBootstrap(t.TempDir(), io.Discard); err != nil {
+	if err := applyEnableBootstrap(t.TempDir(), &Changes{}); err != nil {
 		t.Errorf("applyEnableBootstrap with no .awf/config.yaml should be a no-op, got %v", err)
 	}
 }
@@ -742,7 +741,7 @@ func TestEnableBootstrapAbsentConfig(t *testing.T) {
 func TestEnableBootstrapMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
-	if err := applyEnableBootstrap(root, io.Discard); err == nil {
+	if err := applyEnableBootstrap(root, &Changes{}); err == nil {
 		t.Error("expected error surfaced from SetMappingScalar for malformed config.yaml")
 	}
 }
@@ -752,7 +751,7 @@ func TestDropReplaceWithNoop(t *testing.T) {
 	awfFile(t, root, "config.yaml", "prefix: ex\n")
 	awfFile(t, root, "skills/a.yaml", "sections:\n  s:\n    drop: true\n")
 	before, _ := os.ReadFile(filepath.Join(root, ".claude", "awf", "skills", "a.yaml"))
-	if err := applyDropReplaceWith(root, io.Discard); err != nil {
+	if err := applyDropReplaceWith(root, &Changes{}); err != nil {
 		t.Fatalf("applyDropReplaceWith: %v", err)
 	}
 	after, _ := os.ReadFile(filepath.Join(root, ".claude", "awf", "skills", "a.yaml"))
@@ -774,7 +773,7 @@ func TestDropReplaceWithConverts(t *testing.T) {
 	awfFile(t, root, "agents-doc.yaml", "sections:\n  identity:\n    replaceWith: parts/agents-doc/legacy3.md\n")
 	awfFile(t, root, "parts/agents-doc/legacy3.md", "AD BODY\n")
 
-	if err := applyDropReplaceWith(root, io.Discard); err != nil {
+	if err := applyDropReplaceWith(root, &Changes{}); err != nil {
 		t.Fatalf("applyDropReplaceWith: %v", err)
 	}
 	awf := filepath.Join(root, ".claude", "awf")
@@ -808,7 +807,7 @@ func TestDropReplaceWithIdempotent(t *testing.T) {
 	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
 	awfFile(t, root, "skills/parts/x/legacy.md", "BODY\n")
 	awfFile(t, root, "skills/parts/x/s.md", "BODY\n") // dst already present, identical
-	if err := applyDropReplaceWith(root, io.Discard); err != nil {
+	if err := applyDropReplaceWith(root, &Changes{}); err != nil {
 		t.Fatalf("applyDropReplaceWith: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude", "awf", "skills", "x.yaml")); !os.IsNotExist(err) {
@@ -822,7 +821,7 @@ func TestDropReplaceWithConflict(t *testing.T) {
 	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
 	awfFile(t, root, "skills/parts/x/legacy.md", "NEW\n")
 	awfFile(t, root, "skills/parts/x/s.md", "OLD DIFFERENT\n")
-	err := applyDropReplaceWith(root, io.Discard)
+	err := applyDropReplaceWith(root, &Changes{})
 	if err == nil || !strings.Contains(err.Error(), "already exists with different content") {
 		t.Errorf("want conflict error, got: %v", err)
 	}
@@ -832,7 +831,7 @@ func TestDropReplaceWithMissingPart(t *testing.T) {
 	root := t.TempDir()
 	awfFile(t, root, "config.yaml", "prefix: ex\n")
 	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
-	err := applyDropReplaceWith(root, io.Discard)
+	err := applyDropReplaceWith(root, &Changes{})
 	if err == nil || !strings.Contains(err.Error(), "legacy.md") {
 		t.Errorf("want missing-part error mentioning legacy.md, got: %v", err)
 	}
@@ -858,8 +857,8 @@ func TestUpgradeAppliesExactlyTheMigrationsAboveTheDetectedGeneration(t *testing
 	}
 
 	var ran []string
-	record := func(name string) func(context.Context, string, io.Writer) error {
-		return func(context.Context, string, io.Writer) error {
+	record := func(name string) func(context.Context, string, *Changes) error {
+		return func(context.Context, string, *Changes) error {
 			ran = append(ran, name)
 			return nil
 		}
@@ -875,7 +874,7 @@ func TestUpgradeAppliesExactlyTheMigrationsAboveTheDetectedGeneration(t *testing
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 2)
 
-	applied, err := Upgrade(testContext(t), root, io.Discard)
+	applied, _, err := Upgrade(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -887,7 +886,7 @@ func TestUpgradeAppliesExactlyTheMigrationsAboveTheDetectedGeneration(t *testing
 	// Upgrade stamped the lock at the current generation, so the re-run has
 	// nothing above it left to apply and still exits zero.
 	ran = nil
-	applied, err = Upgrade(testContext(t), root, io.Discard)
+	applied, _, err = Upgrade(testContext(t), root)
 	if err != nil {
 		t.Fatalf("re-run at the current schema errored: %v", err)
 	}
@@ -907,9 +906,9 @@ func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) 
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current())
 	original := registry
 	next := Current() + 1
-	registry = append(append([]Migration(nil), registry...), Migration{To: next, Name: "test-fallback-stamp", Apply: func(context.Context, string, io.Writer) error { return nil }})
+	registry = append(append([]Migration(nil), registry...), Migration{To: next, Name: "test-fallback-stamp", Apply: func(context.Context, string, *Changes) error { return nil }})
 	t.Cleanup(func() { registry = original })
-	applied, err := Upgrade(testContext(t), root, io.Discard)
+	applied, _, err := Upgrade(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -929,7 +928,7 @@ func TestDropReplaceWithMalformedSidecar(t *testing.T) {
 	root := t.TempDir()
 	awfFile(t, root, "config.yaml", "prefix: ex\n")
 	awfFile(t, root, "skills/x.yaml", "sections: [not-a-map\n")
-	err := applyDropReplaceWith(root, io.Discard)
+	err := applyDropReplaceWith(root, &Changes{})
 	if err == nil || !strings.Contains(err.Error(), "parse sidecar") {
 		t.Errorf("want parse-sidecar error, got: %v", err)
 	}
@@ -998,7 +997,7 @@ func TestGenerationCorruptTreeLockErrors(t *testing.T) {
 	if _, err := Generation(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("want corrupt-lock error, got %v", err)
 	}
-	if _, err := Upgrade(testContext(t), root, io.Discard); err == nil {
+	if _, _, err := Upgrade(testContext(t), root); err == nil {
 		t.Fatal("Upgrade must refuse a corrupt lock upfront")
 	}
 }
@@ -1074,7 +1073,7 @@ func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
 		stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), from)
-		applied, err := Upgrade(testContext(t), root, io.Discard)
+		applied, _, err := Upgrade(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Upgrade from %d: %v", from, err)
 		}
@@ -1084,7 +1083,7 @@ func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
 
 		// Re-running at the schema the first run reached applies nothing and exits
 		// zero, so upgrade is safe to repeat.
-		again, err := Upgrade(testContext(t), root, io.Discard)
+		again, _, err := Upgrade(testContext(t), root)
 		if err != nil {
 			t.Errorf("re-running Upgrade from %d: %v", from, err)
 		}

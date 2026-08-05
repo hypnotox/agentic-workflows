@@ -1,8 +1,6 @@
 package migrate
 
 import (
-	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +16,7 @@ func TestSingletonStandardDocsRelocatesSidecarAndParts(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(awf, "docs", "workflow.yaml"), "data:\n  k: v\n")
 	testsupport.WriteFile(t, filepath.Join(awf, "docs", "parts", "workflow", "local-hooks.md"), "LOCAL HOOKS BODY\n")
 
-	var out bytes.Buffer
+	var out Changes
 	if err := applySingletonStandardDocs(root, &out); err != nil {
 		t.Fatalf("applySingletonStandardDocs: %v", err)
 	}
@@ -65,10 +63,10 @@ func TestSingletonStandardDocsIdempotent(t *testing.T) {
 	root := t.TempDir()
 	awf := filepath.Join(root, ".awf")
 	testsupport.WriteFile(t, filepath.Join(awf, "config.yaml"), "prefix: ex\n")
-	if err := applySingletonStandardDocs(root, io.Discard); err != nil {
+	if err := applySingletonStandardDocs(root, &Changes{}); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
-	var out bytes.Buffer
+	var out Changes
 	if err := applySingletonStandardDocs(root, &out); err != nil {
 		t.Fatalf("second run (no sidecars/parts/docs entries present) should be a no-op: %v", err)
 	}
@@ -78,7 +76,7 @@ func TestSingletonStandardDocsIdempotent(t *testing.T) {
 }
 
 func TestSingletonStandardDocsAbsentConfig(t *testing.T) {
-	if err := applySingletonStandardDocs(t.TempDir(), io.Discard); err != nil {
+	if err := applySingletonStandardDocs(t.TempDir(), &Changes{}); err != nil {
 		t.Errorf("applySingletonStandardDocs with no .awf/config.yaml should be a no-op, got %v", err)
 	}
 }
@@ -86,7 +84,7 @@ func TestSingletonStandardDocsAbsentConfig(t *testing.T) {
 func TestSingletonStandardDocsMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "docs: [a, b\n")
-	if err := applySingletonStandardDocs(root, io.Discard); err == nil {
+	if err := applySingletonStandardDocs(root, &Changes{}); err == nil {
 		t.Error("expected error surfaced from the malformed docs: probe decode")
 	}
 }
@@ -116,7 +114,7 @@ func TestSingletonStandardDocsRefusesPartialPriorMigration(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(awf, "docs", "workflow.yaml"), "data: {}\n")
 	testsupport.WriteFile(t, filepath.Join(awf, "workflow.yaml"), "data: {}\n")
 
-	err := applySingletonStandardDocs(root, io.Discard)
+	err := applySingletonStandardDocs(root, &Changes{})
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("expected the existing-destination refusal, got %v", err)
 	}

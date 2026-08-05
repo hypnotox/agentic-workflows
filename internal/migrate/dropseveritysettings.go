@@ -3,7 +3,6 @@ package migrate
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -39,7 +38,7 @@ const defaultMaxTopicsPerPath = 8
 // pins only the announcement prefix by substring and never the trailing clause,
 // which is precisely why retaining it has to be a recorded choice rather than
 // something the suite backstops.
-func applyDropSeveritySettings(root string, w io.Writer) error {
+func applyDropSeveritySettings(root string, w *Changes) error {
 	return editConfig(root, func(src []byte) ([]byte, error) {
 		// The removals run first so a malformed config surfaces its parse error
 		// here, on the path every tree takes, rather than from one of the
@@ -70,7 +69,7 @@ func applyDropSeveritySettings(root string, w io.Writer) error {
 		if err != nil { // coverage-ignore: src parsed above and its currentState is a mapping, so neither error path is reachable
 			return nil, err
 		}
-		out, err = dropSeverityKeys(seeded, io.Discard) // already announced on the first pass
+		out, err = dropSeverityKeys(seeded, &Changes{}) // already announced on the first pass
 		if err != nil {                                 // coverage-ignore: seeded is a re-encode of bytes whose removals already succeeded
 			return nil, err
 		}
@@ -84,7 +83,7 @@ const defaultMaxTopicsPerPathKey = "maxTopicsPerPath"
 
 // dropSeverityKeys removes both retired keys, announcing each removal it makes.
 // It is shared by the announcing first pass and the silent re-run the seed needs.
-func dropSeverityKeys(src []byte, w io.Writer) ([]byte, error) {
+func dropSeverityKeys(src []byte, w *Changes) ([]byte, error) {
 	out := src
 	for _, key := range []string{"topicCoverage", "topicFanout"} {
 		next, err := config.RemoveMappingKey(out, "currentState", key)

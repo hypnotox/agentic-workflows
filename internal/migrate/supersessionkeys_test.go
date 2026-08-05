@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,7 +49,7 @@ func TestSupersessionKeysMigration(t *testing.T) {
 			"# ADR-0003: Other\n\n## Decision\n\n1. c.\n\n## Invariants\n\n- `invariant: c-slug` - x.\n",
 	})
 
-	var out bytes.Buffer
+	var out Changes
 	if err := applySupersessionKeys(root, &out); err != nil {
 		t.Fatalf("applySupersessionKeys: %v", err)
 	}
@@ -138,7 +137,7 @@ func TestSupersessionKeysOffsetsSurvivePassOne(t *testing.T) {
 		"0003-other.md": "---\nstatus: Implemented\ndate: 2026-01-03\ntags: [x]\nrelated: [2]\ndomains: []\nsupersedes: []\nsuperseded_by: \"\"\n---\n" +
 			"# ADR-0003: Other\n\n## Decision\n\n1. c.\n",
 	})
-	if err := applySupersessionKeys(root, &bytes.Buffer{}); err != nil {
+	if err := applySupersessionKeys(root, &Changes{}); err != nil {
 		t.Fatalf("applySupersessionKeys: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0002-new.md"))
@@ -162,13 +161,13 @@ func TestSupersessionKeysOffsetsSurvivePassOne(t *testing.T) {
 // corpus that carries neither key.
 // invariant: config/migrations-and-locks:upgrade-migrates-supersession-keys (TestSupersessionKeysIsNoOpWithoutKeys)
 func TestSupersessionKeysIsNoOpWithoutKeys(t *testing.T) {
-	if err := applySupersessionKeys(t.TempDir(), &bytes.Buffer{}); err != nil {
+	if err := applySupersessionKeys(t.TempDir(), &Changes{}); err != nil {
 		t.Fatalf("no config should be a no-op, got %v", err)
 	}
 
 	clean := "---\nstatus: Implemented\ndate: 2026-01-01\ntags: [x]\nrelated: []\ndomains: []\n---\n# ADR-0001: Clean\n\n## Decision\n\n1. a.\n"
 	root := writeSupersessionFixture(t, map[string]string{"0001-clean.md": clean})
-	var out bytes.Buffer
+	var out Changes
 	if err := applySupersessionKeys(root, &out); err != nil {
 		t.Fatalf("applySupersessionKeys: %v", err)
 	}
@@ -199,7 +198,7 @@ func TestSupersessionKeysRefusesUnresolvableClaim(t *testing.T) {
 				"0001-a.md": "---\nstatus: Implemented\ndate: 2026-01-01\ntags: [x]\nrelated: []\ndomains: []\n" + line + "\nsuperseded_by: \"\"\n---\n" +
 					"# ADR-0001: A\n\n## Decision\n\n1. a.\n",
 			})
-			if err := applySupersessionKeys(root, &bytes.Buffer{}); err == nil {
+			if err := applySupersessionKeys(root, &Changes{}); err == nil {
 				t.Fatal("expected the migration to refuse an unresolvable supersedes: claim")
 			}
 		})
@@ -218,7 +217,7 @@ func TestSupersessionKeysEdgeShapes(t *testing.T) {
 		body := fmt.Sprintf(fm, "Implemented", "[]", `supersedes: []`+"\n"+`superseded_by: ""`) +
 			"# ADR-0001: Prose\n\n## Context\n\nNo decision section at all.\n"
 		root := writeSupersessionFixture(t, map[string]string{"0001-prose.md": body})
-		if err := applySupersessionKeys(root, &bytes.Buffer{}); err != nil {
+		if err := applySupersessionKeys(root, &Changes{}); err != nil {
 			t.Fatalf("applySupersessionKeys: %v", err)
 		}
 		b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-prose.md"))
@@ -237,7 +236,7 @@ func TestSupersessionKeysEdgeShapes(t *testing.T) {
 			"0002-new.md": fmt.Sprintf(fm, "Implemented", "[]", `supersedes: [1]`+"\n"+`superseded_by: ""`) +
 				"# ADR-0002: New\n\n## Decision\n\n1. b.\n",
 		})
-		if err := applySupersessionKeys(root, &bytes.Buffer{}); err != nil {
+		if err := applySupersessionKeys(root, &Changes{}); err != nil {
 			t.Fatalf("applySupersessionKeys: %v", err)
 		}
 		b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-old.md"))
@@ -256,7 +255,7 @@ func TestSupersessionKeysEdgeShapes(t *testing.T) {
 			"0002-new.md": fmt.Sprintf(fm, "Implemented", "[]", `supersedes: [1]`+"\n"+`superseded_by: ""`) +
 				"# ADR-0002: New\n\n## Decision\n\n1. b.\n",
 		})
-		if err := applySupersessionKeys(root, &bytes.Buffer{}); err == nil {
+		if err := applySupersessionKeys(root, &Changes{}); err == nil {
 			t.Fatal("expected a refusal: there is no anchor to write a retirement token for")
 		}
 	})
@@ -268,7 +267,7 @@ func TestSupersessionKeysEdgeShapes(t *testing.T) {
 			"0002-new.md": fmt.Sprintf(fm, "Implemented", "[]", `supersedes: [1]`+"\n"+`superseded_by: ""`) +
 				"# ADR-0002: New\n\n## Context\n\nNowhere to append the bookkeeping item.\n",
 		})
-		if err := applySupersessionKeys(root, &bytes.Buffer{}); err == nil {
+		if err := applySupersessionKeys(root, &Changes{}); err == nil {
 			t.Fatal("expected a refusal: the bookkeeping item has no Decision section to land in")
 		}
 	})
@@ -280,7 +279,7 @@ func TestSupersessionKeysEdgeShapes(t *testing.T) {
 			"0002-new.md": fmt.Sprintf(fm, "Implemented", "[]", `supersedes: [1]`+"\n"+`superseded_by: ""`) +
 				"# ADR-0002: New\n\n## Decision\n\n1. b.\n",
 		})
-		if err := applySupersessionKeys(root, &bytes.Buffer{}); err == nil {
+		if err := applySupersessionKeys(root, &Changes{}); err == nil {
 			t.Fatal("expected a refusal rather than a silent body edit where related: is absent")
 		}
 	})
@@ -290,14 +289,14 @@ func TestSupersessionKeysEdgeShapes(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("docsDir: [not, a, string]\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := applySupersessionKeys(root, &bytes.Buffer{}); err == nil {
+		if err := applySupersessionKeys(root, &Changes{}); err == nil {
 			t.Fatal("expected the config parse error to surface")
 		}
 
 		bad := writeSupersessionFixture(t, map[string]string{
 			"0001-bad.md": "---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n",
 		})
-		if err := applySupersessionKeys(bad, &bytes.Buffer{}); err == nil {
+		if err := applySupersessionKeys(bad, &Changes{}); err == nil {
 			t.Fatal("expected the ADR parse error to surface")
 		}
 	})
@@ -320,7 +319,7 @@ func TestSupersessionKeysChainedSupersession(t *testing.T) {
 		"0003-c.md": fmt.Sprintf(fm, "Superseded by ADR-0002", "[]", "[]", "0002") +
 			"# ADR-0003: C\n\n## Decision\n\n1. c.\n",
 	})
-	if err := applySupersessionKeys(root, &bytes.Buffer{}); err != nil {
+	if err := applySupersessionKeys(root, &Changes{}); err != nil {
 		t.Fatalf("applySupersessionKeys: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-a.md"))
@@ -347,7 +346,7 @@ func TestSupersessionKeysChainedSupersession(t *testing.T) {
 		"0003-c.md": fmt.Sprintf(fm, "Superseded by ADR-0002", "[]", "[]", "0002") +
 			"# ADR-0003: C\n\n## Decision\n\n1. c.\n",
 	})
-	if err := applySupersessionKeys(root, &bytes.Buffer{}); err != nil {
+	if err := applySupersessionKeys(root, &Changes{}); err != nil {
 		t.Fatalf("applySupersessionKeys: %v", err)
 	}
 	b, err = os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-a.md"))
@@ -374,7 +373,7 @@ func TestSupersessionKeysRefusesBlockList(t *testing.T) {
 		"0002-b.md": "---\nstatus: Implemented\ndate: 2026-01-02\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: []\nsuperseded_by: \"\"\n---\n" +
 			"# ADR-0002: B\n\n## Decision\n\n1. b.\n",
 	})
-	err := applySupersessionKeys(root, &bytes.Buffer{})
+	err := applySupersessionKeys(root, &Changes{})
 	if err == nil {
 		t.Fatal("expected a refusal for a block-style supersedes: list, not a silent corruption")
 	}

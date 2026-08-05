@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +35,7 @@ func TestApplyCurrentStateTopicSubstrate(t *testing.T) {
 			root := t.TempDir()
 			cfgPath := filepath.Join(root, ".awf", "config.yaml")
 			testsupport.WriteFile(t, cfgPath, tc.src)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyCurrentStateTopicSubstrate(root, &out); err != nil {
 				t.Fatal(err)
 			}
@@ -51,7 +50,7 @@ func TestApplyCurrentStateTopicSubstrate(t *testing.T) {
 				t.Errorf("announce = %v, want %v (output %q)", msg, tc.wantMsg, out.String())
 			}
 			// Idempotent: re-running removes nothing and announces nothing.
-			var second bytes.Buffer
+			var second Changes
 			if err := applyCurrentStateTopicSubstrate(root, &second); err != nil {
 				t.Fatal(err)
 			}
@@ -63,7 +62,7 @@ func TestApplyCurrentStateTopicSubstrate(t *testing.T) {
 }
 
 func TestApplyCurrentStateTopicSubstrateNoConfig(t *testing.T) {
-	var out bytes.Buffer
+	var out Changes
 	if err := applyCurrentStateTopicSubstrate(t.TempDir(), &out); err != nil {
 		t.Fatalf("an absent config.yaml must be a no-op, got %v", err)
 	}
@@ -75,7 +74,7 @@ func TestApplyCurrentStateTopicSubstrateNoConfig(t *testing.T) {
 func TestApplyCurrentStateTopicSubstrateMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "invariants: [a, b\n")
-	if err := applyCurrentStateTopicSubstrate(root, &bytes.Buffer{}); err == nil {
+	if err := applyCurrentStateTopicSubstrate(root, &Changes{}); err == nil {
 		t.Fatal("a malformed config must surface the parse error, not be swallowed")
 	}
 }

@@ -1,8 +1,6 @@
 package migrate
 
 import (
-	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +24,7 @@ audit:
     - go.mod
     - '**/package.json'
 `)
-	var out bytes.Buffer
+	var out Changes
 	if err := applyAnchoredGlobs(root, &out); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +64,7 @@ audit:
 }
 
 func TestApplyAnchoredGlobsNoConfigNoop(t *testing.T) {
-	if err := applyAnchoredGlobs(t.TempDir(), io.Discard); err != nil {
+	if err := applyAnchoredGlobs(t.TempDir(), &Changes{}); err != nil {
 		t.Fatalf("absent config must be a no-op, got %v", err)
 	}
 }
@@ -74,7 +72,7 @@ func TestApplyAnchoredGlobsNoConfigNoop(t *testing.T) {
 func TestApplyAnchoredGlobsMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "not: [valid\n")
-	if err := applyAnchoredGlobs(root, io.Discard); err == nil {
+	if err := applyAnchoredGlobs(root, &Changes{}); err == nil {
 		t.Error("expected the parse error surfaced from AnchorNoSlashGlobs")
 	}
 }

@@ -3,7 +3,6 @@ package migrate
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,7 +25,7 @@ var singletonStandardDocNames = []string{"workflow", "doc-standard", "agents-md-
 // then <name> is stripped from the docs: array - each step a no-op if its
 // source is already absent, so a repeated run is idempotent. Each performed
 // operation prints one provenance line to out.
-func applySingletonStandardDocs(root string, out io.Writer) error {
+func applySingletonStandardDocs(root string, out *Changes) error {
 	awfDir := config.RootDir(root)
 	for _, name := range singletonStandardDocNames {
 		relocations := []struct{ src, dst []string }{

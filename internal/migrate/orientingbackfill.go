@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"slices"
 
@@ -16,7 +15,7 @@ import (
 // declares no agent or doc requirement), so applyCloseEnabledSet cannot reach
 // it. Any config with brainstorming enabled gains orienting; a config without
 // brainstorming is untouched. Idempotent; the addition is announced.
-func applyOrientingSkillBackfill(root string, out io.Writer) error {
+func applyOrientingSkillBackfill(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to backfill (idempotent re-run safe)
 	}

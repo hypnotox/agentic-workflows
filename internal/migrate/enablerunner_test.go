@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,7 @@ func TestEnableRunnerAdds(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	testsupport.WriteFile(t, cfg, "prefix: ex\nskills:\n  - tdd\n")
-	if err := applyEnableRunner(root, io.Discard); err != nil {
+	if err := applyEnableRunner(root, &Changes{}); err != nil {
 		t.Fatalf("applyEnableRunner: %v", err)
 	}
 	out, err := os.ReadFile(cfg)
@@ -41,7 +40,7 @@ func TestEnableRunnerKeepsExplicitOptOut(t *testing.T) {
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "prefix: ex\nrunner:\n  enabled: false\n"
 	testsupport.WriteFile(t, cfg, src)
-	if err := applyEnableRunner(root, io.Discard); err != nil {
+	if err := applyEnableRunner(root, &Changes{}); err != nil {
 		t.Fatalf("applyEnableRunner: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
@@ -51,7 +50,7 @@ func TestEnableRunnerKeepsExplicitOptOut(t *testing.T) {
 }
 
 func TestEnableRunnerAbsentConfig(t *testing.T) {
-	if err := applyEnableRunner(t.TempDir(), io.Discard); err != nil {
+	if err := applyEnableRunner(t.TempDir(), &Changes{}); err != nil {
 		t.Errorf("applyEnableRunner with no .awf/config.yaml should be a no-op, got %v", err)
 	}
 }
@@ -59,7 +58,7 @@ func TestEnableRunnerAbsentConfig(t *testing.T) {
 func TestEnableRunnerMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
-	if err := applyEnableRunner(root, io.Discard); err == nil {
+	if err := applyEnableRunner(root, &Changes{}); err == nil {
 		t.Error("expected error surfaced from SetMappingScalar for malformed config.yaml")
 	}
 }

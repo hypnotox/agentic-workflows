@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +45,7 @@ func TestIntegrationBranchMigration(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := closeFixture(t, tc.cfg, nil)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyIntegrationBranch(root, &out); err != nil {
 				t.Fatalf("apply: %v", err)
 			}
@@ -64,7 +63,7 @@ func TestIntegrationBranchMigration(t *testing.T) {
 				t.Errorf("config missing %q:\n%s", tc.wantValue, cfg)
 			}
 			// Idempotence: a second run prints nothing and changes nothing.
-			var second bytes.Buffer
+			var second Changes
 			if err := applyIntegrationBranch(root, &second); err != nil {
 				t.Fatalf("re-apply: %v", err)
 			}
@@ -129,7 +128,7 @@ func TestConfigForCurrentSchemaRefusesMalformedIntegrationBranchYAML(t *testing.
 
 // An absent config is a no-op (idempotent re-run safe, the editConfig skeleton).
 func TestIntegrationBranchNoConfigNoop(t *testing.T) {
-	if err := applyIntegrationBranch(t.TempDir(), io.Discard); err != nil {
+	if err := applyIntegrationBranch(t.TempDir(), &Changes{}); err != nil {
 		t.Fatalf("absent config must be a no-op, got %v", err)
 	}
 }
@@ -137,7 +136,7 @@ func TestIntegrationBranchNoConfigNoop(t *testing.T) {
 // A malformed config surfaces the load error rather than mutating anything.
 func TestIntegrationBranchMalformedConfig(t *testing.T) {
 	root := closeFixture(t, ": : not valid : :\n", nil)
-	if err := applyIntegrationBranch(root, io.Discard); err == nil {
+	if err := applyIntegrationBranch(root, &Changes{}); err == nil {
 		t.Fatal("expected a parse error for a malformed config")
 	}
 	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))

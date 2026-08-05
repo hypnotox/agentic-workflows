@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -100,7 +99,7 @@ func legacyWorktreeNextAction(id string) string {
 // breaking change: protocol-1 records and standalone memory are discarded, not
 // ported. Nothing here invents a slug for the efforts that are lost; callers
 // supply a new explicit slug and independent outcome title.
-func applyUnifiedEffortResidents(ctx context.Context, root string, out io.Writer) error {
+func applyUnifiedEffortResidents(ctx context.Context, root string, out *Changes) error {
 	classified, err := ClassifyLegacyResidents(ctx, root)
 	if err != nil {
 		return err
