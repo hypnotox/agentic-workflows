@@ -1,6 +1,7 @@
 package effort
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 // noTopology is the answer set of a checkout that carries no managed worktree
@@ -49,6 +51,72 @@ func TestUpdateMemoryRefusesInvalidResidentsAndUnrepairedMetadata(t *testing.T) 
 	raw, err := os.ReadFile(memory)
 	if err != nil || !strings.Contains(string(raw), "updated: ") || strings.Contains(string(raw), "updated: invalid") {
 		t.Fatalf("canonical metadata refresh bytes=%q err=%v", raw, err)
+	}
+}
+
+func TestRefusalDiagnosticsPreserveErrorIdentityAndSeparateFacts(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, nil)
+	_, err := service.Finish(testContext(t), "absent-finish")
+	if err == nil || err.Error() != "effort \"absent-finish\" has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug" {
+		t.Fatalf("absent finish error = %v", err)
+	}
+	var refused *refusalError
+	if !errors.As(err, &refused) {
+		t.Fatalf("absent finish error lost refusal identity: %v", err)
+	}
+	assertRefusalDiagnostic(t, refused, "condition: effort \"absent-finish\" has no active resident or finishing reservation\nstate: resident\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: run `awf effort list` and use an active slug\n")
+
+	_, err = service.New(testContext(t), NewInput{Slug: strings.Repeat("s", 33), Title: "Overlong slug"})
+	if err == nil || !strings.Contains(err.Error(), "changed bytes: no") {
+		t.Fatalf("overlong slug error = %v", err)
+	}
+	if !errors.As(err, &refused) {
+		t.Fatalf("overlong slug error lost refusal identity: %v", err)
+	}
+	assertRefusalDiagnostic(t, refused, "condition: explicit effort slug \"sssssssssssssssssssssssssssssssss\" is invalid\nstate: input\ncause: slug must contain 1-32 bytes\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: provide a different canonical value with `--slug`\n")
+
+	refusalCause := errors.New("refusal cause")
+	if err := refusal("message", "condition", "state", "cause", nil, refusalCause); !errors.Is(err, refusalCause) {
+		t.Fatalf("refusal lost cause identity: %v", err)
+	}
+
+	cause := errors.New("resident fault")
+	corrupt := &CorruptError{Path: "resident", Err: cause}
+	if !errors.Is(corrupt, cause) {
+		t.Fatal("corrupt refusal lost cause identity")
+	}
+	assertRefusalDiagnostic(t, corrupt, "condition: effort resident is unusable\nstate: resident\ncause: resident: resident fault\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: preserve the resident and inspect it for manual cleanup\n")
+
+	invalidMemory := &InvalidMemoryError{Slug: "demo", Err: cause, NextAction: "repair memory.md"}
+	if !errors.Is(invalidMemory, cause) {
+		t.Fatal("invalid memory refusal lost cause identity")
+	}
+	assertRefusalDiagnostic(t, invalidMemory, "condition: memory for effort \"demo\" cannot be updated\nstate: memory\ncause: resident fault\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: repair memory.md\n")
+
+	if _, err := recoverySteps([]RecoveryAction{{Text: "invalid\naction"}}); err == nil {
+		t.Fatal("recovery steps accepted a multiline action")
+	}
+}
+
+func assertRefusalDiagnostic(t *testing.T, err interface {
+	Diagnostic() (presentation.Diagnostic, error)
+}, want string) {
+	t.Helper()
+	diagnostic, diagnosticErr := err.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	document, documentErr := diagnostic.Document()
+	if documentErr != nil {
+		t.Fatal(documentErr)
+	}
+	var out bytes.Buffer
+	if renderErr := presentation.Render(&out, document); renderErr != nil {
+		t.Fatal(renderErr)
+	}
+	if got := out.String(); got != want {
+		t.Fatalf("diagnostic = %q, want %q", got, want)
 	}
 }
 

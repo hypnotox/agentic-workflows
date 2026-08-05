@@ -22,6 +22,24 @@ type managedTopologyError struct {
 func (e *managedTopologyError) Error() string { return e.message }
 func (e *managedTopologyError) Unwrap() error { return ErrManagedTopologyPresent }
 
+// refusalError preserves established effort refusal prose and cause identity
+// while carrying the semantic facts needed for ordinary CLI presentation.
+type refusalError struct {
+	message   string
+	condition string
+	state     string
+	cause     string
+	actions   []RecoveryAction
+	err       error
+}
+
+func (e *refusalError) Error() string { return e.message }
+func (e *refusalError) Unwrap() error { return e.err }
+
+func refusal(message, condition, state, cause string, actions []RecoveryAction, err error) error {
+	return &refusalError{message: message, condition: condition, state: state, cause: cause, actions: actions, err: err}
+}
+
 func managedTopologyRefusal(actions []RecoveryAction, format string, args ...any) error {
 	return &managedTopologyError{message: fmt.Sprintf(format, args...), actions: actions}
 }

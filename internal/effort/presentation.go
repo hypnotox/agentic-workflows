@@ -1,6 +1,47 @@
 package effort
 
-import "github.com/hypnotox/agentic-workflows/internal/presentation"
+import (
+	"fmt"
+
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
+)
+
+func unchangedBytes() ([]presentation.Field, error) {
+	value, err := presentation.Prose("no")
+	if err != nil { // coverage-ignore: fixed refusal fact always validates as prose
+		return nil, err
+	}
+	field, err := presentation.NewField("bytes", value)
+	if err != nil { // coverage-ignore: fixed grammar-valid label always validates
+		return nil, err
+	}
+	return []presentation.Field{field}, nil
+}
+
+func recoverySteps(actions []RecoveryAction) ([]presentation.Value, error) {
+	steps := make([]presentation.Value, 0, len(actions))
+	for _, action := range actions {
+		step, err := presentation.Literal(action.Text)
+		if err != nil {
+			return nil, err
+		}
+		steps = append(steps, step)
+	}
+	return steps, nil
+}
+
+// Diagnostic maps a typed effort refusal into the common readable diagnostic.
+func (e *refusalError) Diagnostic() (presentation.Diagnostic, error) {
+	changed, err := unchangedBytes()
+	if err != nil { // coverage-ignore: unchangedBytes constructs fixed valid presentation facts
+		return presentation.Diagnostic{}, err
+	}
+	steps, err := recoverySteps(e.actions)
+	if err != nil { // coverage-ignore: every internal refusal action is a fixed valid literal
+		return presentation.Diagnostic{}, err
+	}
+	return presentation.Diagnostic{Condition: e.condition, State: e.state, Cause: e.cause, Changed: changed, Steps: steps}, nil
+}
 
 // Diagnostic maps typed effort failures into the common readable diagnostic.
 func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
@@ -16,13 +57,9 @@ func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		changed = append(changed, field)
 	}
-	steps := make([]presentation.Value, 0, len(e.actions))
-	for _, action := range e.actions {
-		step, err := presentation.Literal(action.Text)
-		if err != nil {
-			return presentation.Diagnostic{}, err
-		}
-		steps = append(steps, step)
+	steps, err := recoverySteps(e.actions)
+	if err != nil {
+		return presentation.Diagnostic{}, err
 	}
 	return presentation.Diagnostic{Condition: "managed topology remains", State: "topology", Changed: changed, Steps: steps}, nil
 }
@@ -44,15 +81,37 @@ func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		changed = append(changed, field)
 	}
-	steps := make([]presentation.Value, 0, len(e.Actions))
-	for _, action := range e.Actions {
-		step, err := presentation.Literal(action.Text)
-		if err != nil {
-			return presentation.Diagnostic{}, err
-		}
-		steps = append(steps, step)
+	steps, err := recoverySteps(e.Actions)
+	if err != nil {
+		return presentation.Diagnostic{}, err
 	}
 	return presentation.Diagnostic{Condition: "effort finish was interrupted", State: "operation", Changed: changed, Cause: e.Cause.Error(), Steps: steps}, nil
+}
+
+// Diagnostic maps a corrupt resident refusal into the common readable diagnostic.
+func (e *CorruptError) Diagnostic() (presentation.Diagnostic, error) {
+	changed, err := unchangedBytes()
+	if err != nil { // coverage-ignore: unchangedBytes constructs fixed valid presentation facts
+		return presentation.Diagnostic{}, err
+	}
+	steps, err := recoverySteps([]RecoveryAction{{Text: "preserve the resident and inspect it for manual cleanup"}})
+	if err != nil { // coverage-ignore: fixed recovery literal is presentation-valid
+		return presentation.Diagnostic{}, err
+	}
+	return presentation.Diagnostic{Condition: "effort resident is unusable", State: "resident", Cause: fmt.Sprintf("%s: %v", e.Path, e.Err), Changed: changed, Steps: steps}, nil
+}
+
+// Diagnostic maps an invalid memory refusal into the common readable diagnostic.
+func (e *InvalidMemoryError) Diagnostic() (presentation.Diagnostic, error) {
+	changed, err := unchangedBytes()
+	if err != nil { // coverage-ignore: unchangedBytes constructs fixed valid presentation facts
+		return presentation.Diagnostic{}, err
+	}
+	steps, err := recoverySteps([]RecoveryAction{{Text: e.NextAction}})
+	if err != nil { // coverage-ignore: service-generated NextAction is a bounded valid effort command
+		return presentation.Diagnostic{}, err
+	}
+	return presentation.Diagnostic{Condition: fmt.Sprintf("memory for effort %q cannot be updated", e.Slug), State: "memory", Cause: e.Err.Error(), Changed: changed, Steps: steps}, nil
 }
 
 // Detail maps one resident record into its ordered readable facts.

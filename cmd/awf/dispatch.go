@@ -46,7 +46,6 @@ func handlerFailure(err error) handlerResult { return handlerResult{err: err} }
 func handlerReport(err error) handlerResult {
 	return handlerResult{err: err, producedReport: completeProducedReport(err)}
 }
-func handlerSuccess() handlerResult { return handlerResult{} }
 
 type producedReportError struct{ error }
 
@@ -192,7 +191,7 @@ var handlers = map[string]handler{
 	"changelog": func(c *cmdCtx) handlerResult {
 		return handlerFailure(runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout))
 	},
-	"version": func(c *cmdCtx) handlerResult { runVersion(c.stdout); return handlerSuccess() },
+	"version": func(c *cmdCtx) handlerResult { return handlerFailure(runVersion(c.stdout)) },
 }
 
 // enableDisableArgs resolves the shared positional forms of enable/disable -

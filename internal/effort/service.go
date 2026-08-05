@@ -96,17 +96,17 @@ func (s *Service) now() time.Time { return s.clock().UTC() }
 func (s *Service) New(ctx context.Context, input NewInput) (Record, error) {
 	normalized, err := normalizeTitle(input.Title)
 	if err != nil {
-		return Record{}, fmt.Errorf("invalid outcome title: %w; changed bytes: no; next action: provide a nonblank valid UTF-8 outcome title", err)
+		return Record{}, refusal(fmt.Sprintf("invalid outcome title: %v; changed bytes: no; next action: provide a nonblank valid UTF-8 outcome title", err), "outcome title is invalid", "input", err.Error(), []RecoveryAction{{Text: "provide a nonblank valid UTF-8 outcome title"}}, err)
 	}
 	if err := validateNewSlug(ctx, s.validateRef, input.Slug); err != nil {
 		return Record{}, err
 	}
 	id, err := s.uuid()
 	if err != nil {
-		return Record{}, fmt.Errorf("allocate internal effort UUID: %w; changed bytes: no; next action: retry `awf effort new --slug %q %q`", err, input.Slug, normalized)
+		return Record{}, refusal(fmt.Sprintf("allocate internal effort UUID: %v; changed bytes: no; next action: retry `awf effort new --slug %q %q`", err, input.Slug, normalized), fmt.Sprintf("internal effort UUID allocation failed for %q", input.Slug), "operation", err.Error(), []RecoveryAction{{Text: fmt.Sprintf("retry `awf effort new --slug %q %q`", input.Slug, normalized)}}, err)
 	}
 	if !uuidV4Pattern.MatchString(id) {
-		return Record{}, fmt.Errorf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry `awf effort new --slug %q %q`", id, input.Slug, normalized)
+		return Record{}, refusal(fmt.Sprintf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry `awf effort new --slug %q %q`", id, input.Slug, normalized), fmt.Sprintf("internal effort UUID for %q is invalid", input.Slug), "installation", "allocator returned an invalid UUIDv4", []RecoveryAction{{Text: fmt.Sprintf("repair the awf installation and retry `awf effort new --slug %q %q`", input.Slug, normalized)}}, nil)
 	}
 	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: input.Slug, Title: normalized, CreatedAt: s.now(), MemoryPath: s.paths.publicMemoryPath(input.Slug)}
 	if err := s.store.create(record); err != nil {
@@ -127,19 +127,19 @@ func (s *Service) Show(slug string) (Record, error) { return s.store.load(slug) 
 // header to the canonical closed metadata representation on its first write.
 func (s *Service) UpdateMemory(slug string, update MemoryUpdate) error {
 	if update.Phase == nil && update.Next == nil {
-		return errors.New("memory update requires --phase or --next; changed bytes: no; next action: supply at least one replacement field")
+		return refusal("memory update requires --phase or --next; changed bytes: no; next action: supply at least one replacement field", "memory update has no replacement fields", "input", "", []RecoveryAction{{Text: "supply at least one replacement field"}}, nil)
 	}
 	if err := validateSlug(slug); err != nil {
-		return fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
+		return invalidSlugRefusal(slug, err)
 	}
 	if update.Phase != nil {
 		if err := validateMemoryMutable(*update.Phase); err != nil {
-			return fmt.Errorf("invalid memory phase: %w; changed bytes: no", err)
+			return refusal(fmt.Sprintf("invalid memory phase: %v; changed bytes: no", err), "memory phase is invalid", "input", err.Error(), nil, err)
 		}
 	}
 	if update.Next != nil {
 		if err := validateMemoryMutable(*update.Next); err != nil {
-			return fmt.Errorf("invalid memory next: %w; changed bytes: no", err)
+			return refusal(fmt.Sprintf("invalid memory next: %v; changed bytes: no", err), "memory next is invalid", "input", err.Error(), nil, err)
 		}
 	}
 	// Load state separately from memory metadata: an invalid mutable memory is
@@ -199,7 +199,7 @@ func memoryUpdateCommand(slug string, invalid map[string]bool) string {
 
 func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error) {
 	if err := validateSlug(slug); err != nil {
-		return FinishResult{}, fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
+		return FinishResult{}, invalidSlugRefusal(slug, err)
 	}
 	active := s.paths.effort(slug)
 	_, err := os.Lstat(active)
@@ -238,7 +238,7 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 		return FinishResult{}, err
 	}
 	if len(tombstones) == 0 {
-		return FinishResult{}, fmt.Errorf("effort %q has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug", slug)
+		return FinishResult{}, refusal(fmt.Sprintf("effort %q has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug", slug), fmt.Sprintf("effort %q has no active resident or finishing reservation", slug), "resident", "", []RecoveryAction{{Text: "run `awf effort list` and use an active slug"}}, nil)
 	}
 	if len(tombstones) != 1 {
 		return FinishResult{}, &CorruptError{Path: s.paths.efforts, Err: fmt.Errorf("multiple finishing reservations match slug %q", slug)}

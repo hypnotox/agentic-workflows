@@ -10,43 +10,42 @@ import (
 )
 
 // runVersion renders the awf version plus display-only build provenance.
-func runVersion(stdout io.Writer) {
+func runVersion(stdout io.Writer) error {
 	info, ok := debug.ReadBuildInfo()
-	writeVersion(stdout, info, ok)
+	return writeVersion(stdout, info, ok)
 }
 
 // writeVersion selects the value mode for the complete version presentation.
-func writeVersion(stdout io.Writer, info *debug.BuildInfo, ok bool) {
+func writeVersion(stdout io.Writer, info *debug.BuildInfo, ok bool) error {
 	line := versionLine(info, ok)
 	if ok && formatProvenance(info) != "" {
 		value, err := presentation.Literal(line)
 		if err != nil { // coverage-ignore: normalized provenance and the fixed version prefix cannot produce an invalid literal
-			return
+			return err
 		}
 		field, err := presentation.NewField("version", value)
 		if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
-			return
+			return err
 		}
 		document, err := presentation.NewDocument(field)
 		if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
-			return
+			return err
 		}
-		_ = presentation.Render(stdout, document)
-		return
+		return presentation.Render(stdout, document)
 	}
 	value, err := presentation.Prose(line)
 	if err != nil { // coverage-ignore: the fixed version prefix remains nonempty after normalization
-		return
+		return err
 	}
 	field, err := presentation.NewField("version", value)
 	if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
-		return
+		return err
 	}
 	document, err := presentation.NewDocument(field)
 	if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
-		return
+		return err
 	}
-	_ = presentation.Render(stdout, document)
+	return presentation.Render(stdout, document)
 }
 
 // versionLine renders the version value, appending display-only build

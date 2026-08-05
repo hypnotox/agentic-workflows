@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,11 +89,28 @@ func TestWriteVersion(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			writeVersion(&out, tc.info, tc.ok)
+			if err := writeVersion(&out, tc.info, tc.ok); err != nil {
+				t.Fatal(err)
+			}
 			if got := out.String(); got != tc.want {
 				t.Errorf("writeVersion() = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+type failingVersionWriter struct{ err error }
+
+func (w failingVersionWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func TestVersionRenderFailureUsesCommandBoundary(t *testing.T) {
+	cause := errors.New("version destination failed")
+	var stderr bytes.Buffer
+	if code := run([]string{"awf", "version"}, failingVersionWriter{err: cause}, &stderr); code == 0 {
+		t.Fatal("version render failure exited zero")
+	}
+	if got, want := stderr.String(), "condition: awf: write presentation: version destination failed\n"; got != want {
+		t.Fatalf("stderr = %q, want %q", got, want)
 	}
 }
 

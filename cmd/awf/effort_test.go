@@ -146,7 +146,8 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 	}
 	overlong := strings.Repeat("s", 33)
 	code, stdout, stderr = runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
-	if code == 0 || stdout != "" || !strings.Contains(stderr, "1-32 bytes") || !strings.Contains(stderr, "changed bytes: no") || !strings.Contains(stderr, "--slug") {
+	overlongRefusal := "condition: explicit effort slug \"" + overlong + "\" is invalid\nstate: input\ncause: slug must contain 1-32 bytes\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: provide a different canonical value with `--slug`\n"
+	if code != 1 || stdout != "" || stderr != overlongRefusal {
 		t.Fatalf("33-byte slug code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", overlong)); !errors.Is(err, os.ErrNotExist) {
@@ -514,7 +515,7 @@ func TestEffortPublicTextProtocol(t *testing.T) {
 		}
 	}
 	code, stdout, stderr := runEffortCLI(t, root, "effort", "finish", "public-output")
-	const restart = "condition: awf: effort \"public-output\" has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug\n"
+	const restart = "condition: effort \"public-output\" has no active resident or finishing reservation\nstate: resident\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: run `awf effort list` and use an active slug\n"
 	if code != 1 || stdout != "" || stderr != restart {
 		t.Fatalf("restarted finish: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
