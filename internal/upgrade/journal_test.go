@@ -286,8 +286,13 @@ func TestJournalRecoverTable(t *testing.T) {
 		root := t.TempDir()
 		writeRawJournal(t, root, lockJournal(phaseLockCommitted))
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("DIFFERENT"))
-		if _, err := Recover(root); err == nil || !strings.Contains(err.Error(), "refusing to roll committed authority back") {
+		outcome, err := Recover(root)
+		if err == nil || !strings.Contains(err.Error(), "refusing to roll committed authority back") {
 			t.Fatalf("want refusal, got %v", err)
+		}
+		want := []Evidence{retainedJournal(root)}
+		if !slices.Equal(outcome.Changed, want) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
 		}
 		if !journalPresence(t, root) {
 			t.Fatal("journal cleared despite refusal")
@@ -409,8 +414,27 @@ func TestRecoverPropagatesAppliedImageInspectionFailure(t *testing.T) {
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
-	if len(outcome.Evidence) != 0 || len(outcome.Changed) != 0 {
-		t.Fatalf("outcome = %#v, want no unproven evidence", outcome)
+	if len(outcome.Evidence) != 0 {
+		t.Fatalf("evidence = %#v, want no unproven evidence", outcome.Evidence)
+	}
+	if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+}
+
+func TestRecoverPropagatesLockInspectionFailure(t *testing.T) {
+	root := t.TempDir()
+	writeRawJournal(t, root, lockJournal(phaseApplying))
+	failure := errors.New("inspect lock")
+	prior := lockImageOf
+	lockImageOf = func(string, string) (Image, error) { return Image{}, failure }
+	t.Cleanup(func() { lockImageOf = prior })
+	outcome, err := Recover(root)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
 	}
 }
 
@@ -955,5 +979,153 @@ func TestJournalCommitLockFailureHaltsRollback(t *testing.T) {
 	}
 	if !journalPresence(t, root) {
 		t.Fatal("journal cleared despite a halted rollback")
+	}
+}
+
+func TestJournalCleanupFaultOutcomes(t *testing.T) {
+	t.Run("committed-transaction-retains-partial-discard", func(t *testing.T) {
+		root := t.TempDir()
+		seedResidents(t, root)
+		failure := errors.New("discard second quarantine")
+		prior := quarantineRemoveAll
+		calls := 0
+		quarantineRemoveAll = func(path string) error {
+			calls++
+			if calls == 2 {
+				return failure
+			}
+			return prior(path)
+		}
+		t.Cleanup(func() { quarantineRemoveAll = prior })
+		outcome, err := commitTransaction(root, residentJournal(phasePrepared).Operations)
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want %v", err, failure)
+		}
+		wantEvidence := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: ".awf/efforts/legacy.json"},
+			{Action: "applied", Path: ".awf/memory"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+		}
+		if !slices.Equal(outcome.Evidence, wantEvidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
+		}
+		wantChanged := appendEvidence(wantEvidence, retainedJournal(root))
+		if !slices.Equal(outcome.Changed, wantChanged) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantChanged)
+		}
+	})
+
+	t.Run("post-commit-removal-retains-committed-axes", func(t *testing.T) {
+		root := t.TempDir()
+		mustMkdir(t, filepath.Join(root, ".awf"))
+		failure := errors.New("remove committed journal")
+		prior := journalRemove
+		journalRemove = func(string) error { return failure }
+		t.Cleanup(func() { journalRemove = prior })
+		outcome, err := commitTransaction(root, lockJournal(phasePrepared).Operations)
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want %v", err, failure)
+		}
+		wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "applied", Path: LockRel()}, {Action: "committed", Path: LockRel()}}
+		if !slices.Equal(outcome.Evidence, wantEvidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
+		}
+		if want := appendEvidence(wantEvidence, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		}
+	})
+
+	t.Run("rollback-removal-retains-only-journal", func(t *testing.T) {
+		root := t.TempDir()
+		mustMkdir(t, filepath.Join(root, ".awf"))
+		mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
+		failure := errors.New("remove rollback journal")
+		prior := journalRemove
+		journalRemove = func(string) error { return failure }
+		t.Cleanup(func() { journalRemove = prior })
+		outcome, err := rollBack(root, lockJournal(phaseApplying), errors.New("apply blocked"), []Evidence{{Action: "applied", Path: "a.txt"}})
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want %v", err, failure)
+		}
+		wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "restored", Path: "a.txt"}}
+		if !slices.Equal(outcome.Evidence, wantEvidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
+		}
+		if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Changed, want) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		}
+	})
+
+	t.Run("committed-recovery-quarantine-failure", func(t *testing.T) {
+		root := t.TempDir()
+		seedResidents(t, root)
+		mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
+		writeRawJournal(t, root, residentJournal(phaseLockCommitted))
+		failure := errors.New("discard quarantine")
+		prior := quarantineRemoveAll
+		quarantineRemoveAll = func(string) error { return failure }
+		t.Cleanup(func() { quarantineRemoveAll = prior })
+		outcome, err := Recover(root)
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want %v", err, failure)
+		}
+		wantEvidence := []Evidence{
+			{Action: "applied", Path: ".awf/config.yaml"},
+			{Action: "applied", Path: ".awf/efforts/legacy.json"},
+			{Action: "applied", Path: ".awf/memory"},
+			{Action: "applied", Path: LockRel()},
+			{Action: "committed", Path: LockRel()},
+		}
+		if !slices.Equal(outcome.Evidence, wantEvidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
+		}
+		if want := appendEvidence(wantEvidence, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		}
+	})
+
+	t.Run("cleanup-journal-failure-retains-input-axes", func(t *testing.T) {
+		root := t.TempDir()
+		failure := errors.New("remove recovery journal")
+		prior := journalRemove
+		journalRemove = func(string) error { return failure }
+		t.Cleanup(func() { journalRemove = prior })
+		evidence := []Evidence{{Action: "applied", Path: "a.txt"}}
+		changed := []Evidence{{Action: "applied", Path: "a.txt"}}
+		outcome, err := cleanupJournal(root, evidence, changed)
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want %v", err, failure)
+		}
+		if !slices.Equal(outcome.Evidence, evidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, evidence)
+		}
+		if want := appendEvidence(changed, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		}
+	})
+}
+
+func TestRecoverRestoreWriteHaltRetainsAppliedAxes(t *testing.T) {
+	root := t.TempDir()
+	writeRawJournal(t, root, lockJournal(phaseApplying))
+	mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+	failure := errors.New("restore image")
+	prior := restoreImage
+	restoreImage = func(string, string, Image) error { return failure }
+	t.Cleanup(func() { restoreImage = prior })
+	outcome, err := Recover(root)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}}
+	if !slices.Equal(outcome.Evidence, wantEvidence) {
+		t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
+	}
+	if want := appendEvidence(wantEvidence, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
 	}
 }

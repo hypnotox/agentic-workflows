@@ -212,6 +212,8 @@ func restoreTree(root string, op Operation) error {
 var (
 	quarantineRemoveAll = os.RemoveAll
 	journalRemove       = os.Remove
+	lockImageOf         = imageOf
+	restoreImage        = applyImage
 )
 
 func completeQuarantine(root string, j Journal) ([]Evidence, error) {
@@ -220,7 +222,7 @@ func completeQuarantine(root string, j Journal) ([]Evidence, error) {
 		if !op.residentTree() {
 			continue
 		}
-		if err := quarantineRemoveAll(filepath.Join(root, filepath.FromSlash(op.Quarantine))); err != nil { // coverage-ignore: owned quarantine fault preserves accumulated discard evidence
+		if err := quarantineRemoveAll(filepath.Join(root, filepath.FromSlash(op.Quarantine))); err != nil {
 			return evidence, fmt.Errorf("discard quarantine %s: %w", op.Quarantine, err)
 		}
 		evidence = append(evidence, Evidence{Action: "discarded", Path: op.Path})
@@ -457,10 +459,10 @@ func commitTransaction(root string, ops []Operation) (Outcome, error) {
 	// rather than restored. A fault leaves a recoverable journal, never a rollback.
 	discarded, err := completeQuarantine(root, j)
 	evidence = append(evidence, discarded...)
-	if err != nil { // coverage-ignore: cleanup fault preserves committed terminal axes
+	if err != nil {
 		return Outcome{Evidence: evidence, Changed: appendEvidence(evidence, retainedJournal(root))}, fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
-	if err := journalRemove(JournalPath(root)); err != nil { // coverage-ignore: cleanup fault leaves retained journal axis
+	if err := journalRemove(JournalPath(root)); err != nil {
 		return Outcome{Evidence: evidence, Changed: appendEvidence(evidence, retainedJournal(root))}, fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
 	return Outcome{Evidence: evidence, Changed: evidence}, nil
@@ -479,7 +481,7 @@ func rollBack(root string, j Journal, cause error, applied []Evidence) (Outcome,
 	if err != nil {
 		return Outcome{Evidence: evidence, Changed: appendEvidence(remaining, retainedJournal(root))}, fmt.Errorf("%w; rollback halted: %w", cause, err)
 	}
-	if err := journalRemove(JournalPath(root)); err != nil { // coverage-ignore: cleanup fault leaves only retained journal axis
+	if err := journalRemove(JournalPath(root)); err != nil {
 		return Outcome{Evidence: evidence, Changed: []Evidence{retainedJournal(root)}}, fmt.Errorf("%w; rollback done but journal cleanup failed: %w", cause, err)
 	}
 	return Outcome{Evidence: evidence, Changed: []Evidence{}}, cause
@@ -516,7 +518,7 @@ func restorePriors(root string, j Journal, applied []Evidence) ([]Evidence, []Ev
 		if !imagesEqual(current, op.Prior) && !imagesEqual(current, op.Replacement) {
 			return evidence, remaining, fmt.Errorf("path %s was modified outside the transaction; %s", op.Path, gitRestorationGuidance)
 		}
-		if err := applyImage(root, op.Path, op.Prior); err != nil { // coverage-ignore: restore write fault retains journal for retry
+		if err := restoreImage(root, op.Path, op.Prior); err != nil {
 			return evidence, remaining, fmt.Errorf("restore %s: %w", op.Path, err)
 		}
 		evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
@@ -544,16 +546,16 @@ func Recover(root string) (Outcome, error) {
 	if err != nil {
 		return Outcome{}, err
 	}
-	current, err := imageOf(root, LockRel())
-	if err != nil { // coverage-ignore: the lock path reads cleanly unless a concurrent removal races
-		return Outcome{}, err
+	current, err := lockImageOf(root, LockRel())
+	if err != nil {
+		return Outcome{Changed: []Evidence{retainedJournal(root)}}, err
 	}
 	lockIsFinal := current.Present && imageSHA(current) == j.FinalLockSHA256
 	if j.Phase == phaseLockCommitted {
 		if lockIsFinal {
 			return finishCommitted(root, j)
 		}
-		return Outcome{}, fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
+		return Outcome{Changed: []Evidence{retainedJournal(root)}}, fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
 	}
 	if lockIsFinal {
 		// The lock was written before the phase advanced; treat it as committed.
@@ -561,7 +563,7 @@ func Recover(root string) (Outcome, error) {
 	}
 	applied, err := appliedOperations(root, j)
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{Changed: []Evidence{retainedJournal(root)}}, err
 	}
 	j.Phase = phaseRollingBack
 	if err := journalWrite(root, j); err != nil {
@@ -569,7 +571,7 @@ func Recover(root string) (Outcome, error) {
 	}
 	restored, remaining, err := restorePriors(root, j, applied)
 	evidence := appendEvidence(applied, restored...)
-	if err != nil { // coverage-ignore: recovery restore halt retains terminal applied axes
+	if err != nil {
 		return Outcome{Evidence: evidence, Changed: appendEvidence(remaining, retainedJournal(root))}, err
 	}
 	return cleanupJournal(root, evidence, nil)
@@ -588,7 +590,7 @@ func finishCommitted(root string, j Journal) (Outcome, error) {
 	evidence = append(evidence, Evidence{Action: "committed", Path: LockRel()})
 	discarded, err := completeQuarantine(root, j)
 	evidence = append(evidence, discarded...)
-	if err != nil { // coverage-ignore: committed cleanup fault retains reconstructed evidence
+	if err != nil {
 		return Outcome{Evidence: evidence, Changed: appendEvidence(evidence, retainedJournal(root))}, err
 	}
 	return cleanupJournal(root, evidence, evidence)
@@ -596,7 +598,7 @@ func finishCommitted(root string, j Journal) (Outcome, error) {
 
 // cleanupJournal removes the journal residue idempotently.
 func cleanupJournal(root string, evidence, changed []Evidence) (Outcome, error) {
-	if err := journalRemove(JournalPath(root)); err != nil && !os.IsNotExist(err) { // coverage-ignore: cleanup fault preserves retained journal axis
+	if err := journalRemove(JournalPath(root)); err != nil && !os.IsNotExist(err) {
 		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, err
 	}
 	evidence = append(evidence, Evidence{Action: "recovered", Path: JournalPath(root)})
