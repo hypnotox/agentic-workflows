@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -222,6 +223,7 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 // Explicit audit values render without the default marker; explicit-empty
 // lists render their accept-any/rule-off prose; a local-from-birth reference
 // (never synced, no lock entry) reports nothing.
+// invariant: config/configspec-and-reference:live-state-projection-explicit (TestConfigReferenceCurrentValues)
 func TestConfigReferenceCurrentValues(t *testing.T) {
 	auditYAML := crefYAML + `audit:
   subjectMaxLength: 80
@@ -248,7 +250,7 @@ memoryCite:
     - path: docs/plans/x.md
       count: 1
 `
-	root, _ := syncedProject(t, auditYAML, nil)
+	root, p := syncedProject(t, auditYAML, nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -268,6 +270,29 @@ memoryCite:
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)
+		}
+	}
+
+	model, err := p.ConfigReferenceModel(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		key       string
+		cliValues []string
+	}{
+		{"audit.subjectMaxLength", []string{"default: 72", "current: 80"}},
+		{"runner.enabled", []string{"default: false (key absent); awf init and awf upgrade seed it true", "current: true"}},
+		{"gateCmdFull", []string{"state: absent, declined"}},
+	} {
+		var cli bytes.Buffer
+		if err := PrintConfigReference(&cli, tc.key, &model, ""); err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range tc.cliValues {
+			if !strings.Contains(cli.String(), want) {
+				t.Errorf("CLI projection for %s missing %q:\n%s", tc.key, want, cli.String())
+			}
 		}
 	}
 

@@ -629,6 +629,13 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		baselineTemplate, err := template.New(context.tid).Option("missingkey=zero").Parse(expanded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if baseline := renderConditionalFixture(t, baselineTemplate, context.data); strings.Contains(baseline, "<no value>") {
+			t.Errorf("%s real singleton fallback rendered missing-value residue", context.tid)
+		}
 		inspection, err := inspectSingletonConditionals(expanded, context.tid)
 		if err != nil {
 			t.Error(err)
