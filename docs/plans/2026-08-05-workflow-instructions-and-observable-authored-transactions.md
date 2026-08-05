@@ -155,3 +155,5 @@ feat(rendering): place guidance at execution boundaries
 The grounding check rejected a full mode unification because same-claim endpoint folding would weaken per-occurrence update and corrective-reapplication substance. `TransitionMode` therefore remains meaningful only at that boundary. Historical ADR prose remains frozen; current-state claims, templates, generated docs, changelog, and active pitfalls carry the forward correction.
 
 During Phase 1 source revalidation, `internal/project/staged_test.go` proved to name the retired batch-cap diagnostic even though the test's contract is only that provisional older-format introductions do not suppress unrelated blocking findings. The user approved adding that exact path and retaining the test with another blocking finding already produced by its fixture.
+
+During Phase 3 execution, `.awf/parts/workflow/composing-the-gate.md` proved to replace the generic gate section, so the planned template edit could not update `docs/workflow.md`. The user approved adding that convention part to Phase 3 and mirroring the generic gate-output guidance there.
