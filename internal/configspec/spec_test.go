@@ -110,6 +110,7 @@ func TestADRStatesV2DescriptionAndEmptyOverride(t *testing.T) {
 // TestConfigspecKeyParity keeps the hand-authored key table bidirectionally
 // matched to the config structs, every entry fully described.
 // invariant: config/configspec-and-reference:configspec-key-parity (TestConfigspecKeyParity)
+// invariant: config/configspec-and-reference:live-state-projection-explicit (TestConfigspecKeyParity)
 func TestConfigspecKeyParity(t *testing.T) {
 	want := map[string]bool{}
 	walkPaths(reflect.TypeOf(config.Config{}), "", want)
@@ -133,6 +134,21 @@ func TestConfigspecKeyParity(t *testing.T) {
 	for p := range got {
 		if !want[p] {
 			t.Errorf("configspec entry %q names no live config key", p)
+		}
+	}
+
+	classes := LiveStateClassifications()
+	for path := range got {
+		if _, ok := classes[path]; !ok {
+			t.Errorf("configspec entry %q has no live-state classification", path)
+		}
+	}
+	for path, class := range classes {
+		if !got[path] {
+			t.Errorf("live-state classification %q names no configspec entry", path)
+		}
+		if class != LiveStateProjection && class != StaticNotApplicable {
+			t.Errorf("live-state classification %q has unknown class %d", path, class)
 		}
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 // Template-ID declarations for every render unit that has no catalog DocEntry:
@@ -86,4 +88,59 @@ func buildPlainSingletons() []singletonSpec {
 		})
 	}
 	return out
+}
+
+// conditionalUnit is the bounded shared declaration for config-tree outputs.
+// It deliberately excludes policy, encoding, and data construction: those stay
+// explicit at the render seam, while selection, path, identity, kind, and
+// fixed section facts cannot drift between declaration and dispatch.
+type conditionalUnit struct {
+	enabled  func(*config.Config) bool
+	path     string
+	tid      string
+	kind     string
+	sections []string
+}
+
+// liveTemplateIDs derives the embedded identities that can participate in this
+// project's render authority. coOwnedRunnerTID is intentionally absent: it is
+// retained only to recognize an outgoing historical lock entry.
+func (p *Project) liveTemplateIDs() map[string]bool {
+	ids := map[string]bool{topicTID: true, topicIndexTID: true}
+	for name := range p.Cat.Skills {
+		ids[p.skillTID(name)] = true
+	}
+	for name := range p.Cat.Agents {
+		ids[p.agentTID(name)] = true
+	}
+	for _, entry := range p.Cat.Docs {
+		ids[entry.TID] = true
+	}
+	for _, target := range p.Targets {
+		if target.BridgeTemplate != "" {
+			ids[target.BridgeTemplate] = true
+		}
+		for _, output := range target.Outputs {
+			ids[output.TemplateID] = true
+		}
+	}
+	for _, unit := range conditionalUnits() {
+		ids[unit.tid] = true
+	}
+	for _, root := range resident.RootNames() {
+		ids[residentGitignoreTID(root)] = true
+	}
+	return ids
+}
+
+func conditionalUnits() []conditionalUnit {
+	units := []conditionalUnit{
+		{func(c *config.Config) bool { return c.Bootstrap != nil && c.Bootstrap.Enabled }, config.DirName + "/bootstrap.sh", bootstrapTID, "bootstrap", nil},
+		{func(c *config.Config) bool { return c.Bootstrap != nil && c.Bootstrap.Enabled }, config.DirName + "/upgrade.sh", upgradeTID, "bootstrap", nil},
+		{func(c *config.Config) bool { return c.Runner != nil && c.Runner.Enabled }, "awf", runnerTID, "runner", runnerSections},
+	}
+	for _, name := range hookNames {
+		units = append(units, conditionalUnit{func(c *config.Config) bool { return c.Hooks != nil && c.Hooks.Enabled }, config.DirName + "/hooks/" + name + ".sh", hookTID(name), "hooks", nil})
+	}
+	return units
 }

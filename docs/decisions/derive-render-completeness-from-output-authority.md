@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: derive-render-completeness-from-output-authority
-status: Proposed
+status: Implementing
 date: 2026-08-05
 ---
 # ADR-derive-render-completeness-from-output-authority: Derive render completeness from output authority
@@ -78,3 +78,6 @@ green result would imply more assurance than it provides.
 ## Status history
 
 - 2026-08-05: Proposed
+- 2026-08-05: Accepted; content-sha256: cd4d014f2286f70a31c399fd110df9e73aeb6410ff39ff6065dda51e36c985b8
+- 2026-08-05: Implementing; content-sha256: cd4d014f2286f70a31c399fd110df9e73aeb6410ff39ff6065dda51e36c985b8
+- 2026-08-05: Applied; operations: update `rendering/project-output-plan:output-plan-complete`, add `rendering/project-output-plan:conditional-unit-single-source`, update `rendering/project-output-plan:template-id-single-derivation`, add `config/configspec-and-reference:live-state-projection-explicit`, add `rendering/templates:singleton-conditional-key-live`

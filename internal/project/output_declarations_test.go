@@ -211,6 +211,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 // same declaration tables (ADR-0195 item 5), so that axis would compare the
 // derivation with itself. The other five axes are compared exactly as the
 // runtime check did.
+// invariant: rendering/project-output-plan:conditional-unit-single-source (TestOutputDeclarationsMatchThePlan)
 func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

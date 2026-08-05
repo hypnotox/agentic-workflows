@@ -603,46 +603,18 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		out = append(out, rfs...)
 	}
-	// .awf/bootstrap.sh + .awf/upgrade.sh (neutral config-tree singleton; rendered
-	// as a unit only when enabled - ADR-0040 for the pinned installer, relocated by
-	// ADR-0047; ADR-0085 for the upgrade porcelain). No catalog spec / no
-	// overridable sections, like the CLAUDE.md bridge.
-	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
-		for _, u := range []struct{ tid, path string }{
-			{bootstrapTID, config.DirName + "/bootstrap.sh"},
-			{upgradeTID, config.DirName + "/upgrade.sh"},
-		} {
-			brf, err := p.renderTarget("bootstrap", "", u.tid,
-				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), u.path, eff)
-			if err != nil { // coverage-ignore: the bootstrap-unit templates reference only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
-				return nil, err
-			}
-			out = append(out, brf)
+	// .awf/bootstrap.sh, hook payloads, and the runner share only their declarative selection facts. Rendering
+	// retains its own data construction and lifecycle behavior at this seam.
+	for _, unit := range conditionalUnits() {
+		if !unit.enabled(p.Cfg) {
+			continue
 		}
-	}
-	// .awf/hooks/*.sh git-hook payloads (neutral config-tree singleton; rendered
-	// as a unit only when enabled - ADR-0048). No catalog spec / no overridable
-	// sections, like the bootstrap; awf never activates them.
-	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
-		for _, name := range hookNames {
-			hrf, err := p.renderTarget("hooks", "", hookTID(name),
-				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/hooks/"+name+".sh", eff)
-			if err != nil { // coverage-ignore: every var reference in the hook templates is with/else- or if-wrapped (ADR-0045), and they use no parts, so renderTarget cannot produce <no value> or a read error
-				return nil, err
-			}
-			out = append(out, hrf)
-		}
-	}
-	// The pure awf wrapper `awf` at the repo root (config-tree singleton rendered
-	// only when enabled - ADR-0156; fully awf-owned, no in-place sections, not a
-	// catalog DocEntry, so it stays out of SingletonKinds()).
-	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
-		rrf, err := p.renderTarget("runner", "", runnerTID,
-			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}, eff), "awf", eff)
-		if err != nil {
+		rf, err := p.renderTarget(unit.kind, "", unit.tid, unit.sections,
+			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff)
+		if err != nil { // coverage-ignore: these embedded units have fixed, publication-safe inputs
 			return nil, err
 		}
-		out = append(out, rrf)
+		out = append(out, rf)
 	}
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.

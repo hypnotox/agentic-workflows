@@ -3,6 +3,7 @@ package project
 import (
 	"go/ast"
 	"go/token"
+	"io/fs"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -10,6 +11,8 @@ import (
 	"testing"
 
 	"golang.org/x/tools/go/packages"
+
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // templateIDScanPatterns are the production sources the template-ID claim
@@ -263,6 +266,36 @@ func fixtureConformingBase() string { return baseTID("agents") }
 		if strings.Contains(f, "template_id_fixture.go") {
 			t.Errorf("a conforming consumer was flagged: %q", f)
 		}
+	}
+}
+
+// TestLiveTemplateIDsResolve derives the complete live identity population from
+// its existing owners and verifies every live entry resolves in the embedded FS.
+// coOwnedRunnerTID is recognition-only and must not enter this population.
+// invariant: rendering/templates:singleton-conditional-key-live (TestLiveTemplateIDsResolve)
+func TestLiveTemplateIDsResolve(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := p.liveTemplateIDs()
+	if ids[coOwnedRunnerTID] {
+		t.Error("recognition-only runner is live")
+	}
+	for tid := range ids {
+		if _, err := fs.ReadFile(templates.FS, tid); err != nil {
+			t.Errorf("live template %q does not resolve: %v", tid, err)
+		}
+	}
+	missing := p.Cat.Docs["architecture"]
+	missing.TID = "missing/live-template.tmpl"
+	p.Cat.Docs["missing-live-fixture"] = missing
+	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
+		t.Fatalf("missing live template error = %v", err)
 	}
 }
 

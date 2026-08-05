@@ -205,6 +205,8 @@ proseGate:
     - path: docs/x.md
       codepoint: U+2014
       count: 1
+runner:
+  enabled: true
 memoryCite:
   enabled: true
   exemptions:
@@ -222,6 +224,7 @@ memoryCite:
 		"| accept any |",
 		"| rule off |",
 		"| 1 entries |", // proseGate.exemptions live-state count
+		"`runner.enabled` | bool | false (key absent); awf init and awf upgrade seed it true | true |",
 		"`memoryCite.enabled` | bool | false (key absent) | true |",
 		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | 1 entries |",
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",

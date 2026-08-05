@@ -52,9 +52,9 @@ Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
+The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and exactly two resident-root self-ignoring outputs: efforts and worktrees. Its conditional config-tree units share their declaration facts with render dispatch. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
 Origin: ADR-0124
-Revised-by: ADR-0164, ADR-0167, ADR-0175
+Revised-by: ADR-0164, ADR-0167, ADR-0175, ADR-derive-render-completeness-from-output-authority
 Backing: test
 
 ### `invariant: check-report-single-plan`
@@ -119,6 +119,16 @@ Backing: test
 
 ### `invariant: template-id-single-derivation`
 
-Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree.
+Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree. Live identity resolution derives from those same authorities, while the co-owned runner remains recognition-only.
 Origin: ADR-0195
+Revised-by: ADR-derive-render-completeness-from-output-authority
+Backing: test
+
+### `invariant: conditional-unit-single-source`
+
+Each enabled config-tree render unit derives its enablement, path, template identity, render kind,
+and fixed sections from one bounded descriptor consumed by output declarations and render dispatch.
+Unit-specific data construction, policy, encoding, and lifecycle behavior remain at their owning
+render seams.
+Origin: ADR-derive-render-completeness-from-output-authority
 Backing: test

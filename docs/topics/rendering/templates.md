@@ -27,6 +27,14 @@ Every standard skill or agent template whose post-include-expansion source conta
 Origin: ADR-0080
 Backing: test
 
+### `invariant: singleton-conditional-key-live`
+
+Every conditional in a live singleton template is supplied by that artifact's real render context and
+is exercised with both outcomes. The population derives from catalog and singleton declarations;
+recognition-only templates are excluded, and missingkey=zero retains generic empty fallbacks.
+Origin: ADR-derive-render-completeness-from-output-authority
+Backing: test
+
 ### `invariant: empty-init-coherent-render`
 
 A non-interactive `awf init` with no answers renders artifacts that contain no empty inline code spans, no tables lacking body rows, and no list-introduction sentence followed by nothing, so every artifact degrades to coherent prose.

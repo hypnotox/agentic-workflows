@@ -15,6 +15,15 @@ Because the config-reference doc's data namespace is injected at generation time
 Origin: ADR-0148
 Backing: test
 
+### `invariant: live-state-projection-explicit`
+
+Every config-reference key has an exhaustive typed classification: a live-state projection or an
+explicitly static not-applicable row. The generated reference and CLI consume that classification,
+so omitted or wrongly classified fields fail parity while absent, default, and current presentation
+remain unchanged.
+Origin: ADR-derive-render-completeness-from-output-authority
+Backing: test
+
 ### `invariant: config-reference-no-bare-vars`
 
 The generated config-reference doc contains no unresolved bare vars or data reference token, and none of the template partials it assembles from reference a bare or dotted vars token.

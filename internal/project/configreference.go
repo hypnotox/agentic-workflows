@@ -177,6 +177,8 @@ func (p *Project) currentValue(path string) string {
 		return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
 	case "hooks.enabled":
 		return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
+	case "runner.enabled":
+		return strconv.FormatBool(p.Cfg.Runner != nil && p.Cfg.Runner.Enabled)
 	case "proseGate.enabled":
 		return strconv.FormatBool(p.Cfg.ProseGate != nil && p.Cfg.ProseGate.Enabled)
 	case "proseGate.exemptions":
@@ -191,7 +193,7 @@ func (p *Project) currentValue(path string) string {
 			return "(none)"
 		}
 		return fmt.Sprintf("%d entries", len(p.Cfg.MemoryCite.Exemptions))
-	default: // per-entry leaves (audit.allowedScopes[]....)
+	default: // coverage-ignore: exhaustive configspec classification never dispatches static leaves here
 		return "n/a"
 	}
 }
@@ -258,7 +260,11 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 			ref.SidecarFields = append(ref.SidecarFields, row)
 			continue
 		}
-		row.Current = p.currentValue(e.Path)
+		if configspec.LiveStateClassifications()[e.Path] == configspec.LiveStateProjection {
+			row.Current = p.currentValue(e.Path)
+		} else {
+			row.Current = "n/a"
+		}
 		ref.ConfigKeys = append(ref.ConfigKeys, row)
 	}
 

@@ -17,6 +17,36 @@ type Entry struct {
 	Availability string // when the key has effect: "always", "domain sidecars only", ...
 }
 
+// LiveStateClass declares whether a configuration-reference key has a
+// project-specific current-value projection. Static keys deliberately carry no
+// current value: sidecar fields and structural list leaves have no one project
+// value to display.
+type LiveStateClass uint8
+
+const (
+	StaticNotApplicable LiveStateClass = iota
+	LiveStateProjection
+)
+
+// LiveStateClassifications is exhaustive over Keys. It is kept beside the
+// config-spec authority so a newly documented key cannot silently fall through
+// the reference's presentation switch.
+func LiveStateClassifications() map[string]LiveStateClass {
+	out := make(map[string]LiveStateClass, len(keys))
+	for _, e := range keys {
+		out[e.Path] = StaticNotApplicable
+	}
+	for _, path := range []string{
+		"prefix", "integrationBranch", "docsDir", "vars", "skills", "agents", "docs", "domains", "targets",
+		"currentState.sources", "currentState.testGlobs", "currentState.maxTopicsPerPath",
+		"audit.allowedTypes", "audit.allowedScopes", "audit.subjectMaxLength", "audit.dependencyManifests", "audit.diffThreshold", "audit.domainDocStaleness", "audit.domainCodeStaleness", "audit.undocumentedDomain", "audit.plainPunctuation", "audit.uncommittedChanges",
+		"bootstrap.enabled", "hooks.enabled", "runner.enabled", "proseGate.enabled", "proseGate.exemptions", "memoryCite.enabled", "memoryCite.exemptions",
+	} {
+		out[path] = LiveStateProjection
+	}
+	return out
+}
+
 // VarEntry describes one config var. Description text is carried verbatim
 // from the catalog descriptor - the catalog stays the sole var authority;
 // configspec attaches only the availability clause.

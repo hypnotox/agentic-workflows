@@ -358,18 +358,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		decisionInputs = append(decisionInputs, OutputInput{Path: strings.TrimRight(cfg.DocsDir, "/") + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
 	}
 	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...), false)
-	if cfg.Runner != nil && cfg.Runner.Enabled {
-		add("awf", runnerTID, runnerTID, inputs(runnerTID, partInputs("runner", "", runnerSections)...), false)
-	}
-	if cfg.Bootstrap != nil && cfg.Bootstrap.Enabled {
-		add(".awf/bootstrap.sh", bootstrapTID, bootstrapTID, inputs(bootstrapTID), false)
-		add(".awf/upgrade.sh", upgradeTID, upgradeTID, inputs(upgradeTID), false)
-	}
-	if cfg.Hooks != nil && cfg.Hooks.Enabled {
-		for _, n := range hookNames {
-			tid := hookTID(n)
-			add(".awf/hooks/"+n+".sh", tid, tid, inputs(tid), false)
+	for _, unit := range conditionalUnits() {
+		if !unit.enabled(cfg) {
+			continue
 		}
+		add(unit.path, unit.tid, unit.tid, inputs(unit.tid, partInputs(unit.kind, "", unit.sections)...), false)
 	}
 	for _, name := range resident.RootNames() {
 		tid := residentGitignoreTID(name)
@@ -587,6 +580,9 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 	if err != nil {
 		return nil, err
 	}
+	if err := p.validateLiveTemplates(); err != nil {
+		return nil, err
+	}
 	plan := &OutputPlan{}
 	add := func(f RenderedFile, declarer string, deps ...string) error {
 		recipe := OutputRecipe{TemplateID: f.TemplateID, TemplateHash: f.TemplateHash, ConfigHash: f.ConfigHash, Policy: f.Policy, Encoder: f.Encoder, Provenance: fmt.Sprintf("%d", f.Provenance)}
@@ -742,6 +738,17 @@ func (p *Project) PlannedOutputs(ctx context.Context) ([]string, error) {
 
 // localReservations validates plan reservation nodes rather than reconstructing
 // local output paths in lifecycle callers.
+// validateLiveTemplates verifies that every identity derived from the live
+// declaration owners resolves in the shipped embedded filesystem.
+func (p *Project) validateLiveTemplates() error {
+	for tid := range p.liveTemplateIDs() {
+		if _, err := fs.Stat(templates.FS, tid); err != nil {
+			return fmt.Errorf("read template %s: %w", tid, err)
+		}
+	}
+	return nil
+}
+
 func (p *Project) localReservations(op *OutputPlan, fail func(string, error)) {
 	for _, n := range op.Nodes {
 		if !n.Reservation || !n.Policy.LocalValidation {
