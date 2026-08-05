@@ -39,11 +39,11 @@ const defaultMaxTopicsPerPath = 8
 // which is precisely why retaining it has to be a recorded choice rather than
 // something the suite backstops.
 func applyDropSeveritySettings(root string, w *Changes) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, w, func(src []byte, planned *Changes) ([]byte, error) {
 		// The removals run first so a malformed config surfaces its parse error
 		// here, on the path every tree takes, rather than from one of the
 		// presence probes below.
-		out, err := dropSeverityKeys(src, w)
+		out, err := dropSeverityKeys(src, planned)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +73,7 @@ func applyDropSeveritySettings(root string, w *Changes) error {
 		if err != nil {                                 // coverage-ignore: seeded is a re-encode of bytes whose removals already succeeded
 			return nil, err
 		}
-		w.Add(fmt.Sprintf("drop-severity-settings: set currentState.%s to %d, keeping coverage and fan-out evaluating\n", defaultMaxTopicsPerPathKey, defaultMaxTopicsPerPath))
+		planned.Add(fmt.Sprintf("drop-severity-settings: set currentState.%s to %d, keeping coverage and fan-out evaluating\n", defaultMaxTopicsPerPathKey, defaultMaxTopicsPerPath))
 		return out, nil
 	})
 }

@@ -75,6 +75,49 @@ func TestPitfallsDataSplits(t *testing.T) {
 	}
 }
 
+func TestPitfallsDataWriteFailurePublishesNoFacts(t *testing.T) {
+	root := t.TempDir()
+	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
+	testsupport.WriteFile(t, part, "## Unwritten\n\nbody\n")
+	failure := errors.New("write sidecar")
+	operation := productionPitfallsOperation()
+	operation.writeAtomic = func(string, []byte) error { return failure }
+	var out Changes
+	if err := applyPitfallsDataWith(root, &out, operation); !errors.Is(err, failure) {
+		t.Fatalf("applyPitfallsDataWith error = %v, want %v", err, failure)
+	}
+	if got := out.String(); got != "" {
+		t.Fatalf("changes = %q, want no unproven facts", got)
+	}
+}
+
+func TestPitfallsDataReportsWrittenSidecarWhenPartRemovalFails(t *testing.T) {
+	root := t.TempDir()
+	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
+	testsupport.WriteFile(t, part, "## Kept evidence\n\nbody\n")
+	failure := errors.New("remove part")
+	operation := productionPitfallsOperation()
+	operation.remove = func(path string) error {
+		if path == part {
+			return failure
+		}
+		return os.Remove(path)
+	}
+
+	var out Changes
+	if err := applyPitfallsDataWith(root, &out, operation); !errors.Is(err, failure) {
+		t.Fatalf("applyPitfallsDataWith error = %v, want %v", err, failure)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "docs", "pitfalls.yaml")); err != nil {
+		t.Fatalf("sidecar was not written: %v", err)
+	}
+	want := "pitfalls-data: split entry \"Kept evidence\"\n" +
+		"pitfalls-data: review .awf/docs/pitfalls.yaml and tag each entry's domains: (untagged entries do not surface in awf context)\n"
+	if got := out.String(); got != want {
+		t.Fatalf("changes = %q, want %q", got, want)
+	}
+}
+
 // A part with no top-level `##` heading is retained because it cannot be
 // migrated losslessly.
 func TestPitfallsDataEmptyList(t *testing.T) {

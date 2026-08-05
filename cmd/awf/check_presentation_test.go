@@ -23,6 +23,13 @@ func TestCheckReportRejectsInvalidPresentationValues(t *testing.T) {
 	}
 }
 
+func TestCheckReportRejectsUnknownCategory(t *testing.T) {
+	_, err := checkReport(nil, []presentation.ReportCategory{{Label: "unexpected"}})
+	if err == nil || !strings.Contains(err.Error(), `unknown check report category "unexpected"`) {
+		t.Fatalf("checkReport error = %v, want unknown-category refusal", err)
+	}
+}
+
 func TestRenderCheckCollectionPropagatesConstructionAndWriterFailures(t *testing.T) {
 	var clean strings.Builder
 	if err := renderCheckCollection(&clean, checkCollection{}); err != nil {

@@ -10,20 +10,28 @@ import (
 
 type planNoteSink map[string]struct{}
 
-var (
-	checkOpenContaining = awfgit.OpenContaining
-	checkCollectStaged  = collectCheckStaged
-)
+type checkDependencies struct {
+	openContaining func(string) (*awfgit.Repo, string, error)
+	collectStaged  func(context.Context, string, planNoteSink) (checkCollection, error)
+}
+
+func productionCheckDependencies() checkDependencies {
+	return checkDependencies{openContaining: awfgit.OpenContaining, collectStaged: collectCheckStaged}
+}
 
 // runCheck runs both check universes. Outside a Git repository the repo universe
 // still applies, while the staged universe is unavailable.
 func runCheck(ctx context.Context, root string, stdout io.Writer) error {
+	return runCheckWith(ctx, root, stdout, productionCheckDependencies())
+}
+
+func runCheckWith(ctx context.Context, root string, stdout io.Writer, dependencies checkDependencies) error {
 	planNotes := planNoteSink{}
 	repo, repoErr := collectCheckRepoWithPlanNotes(ctx, root, planNotes)
 	if repoErr != nil {
 		return repoErr
 	}
-	_, _, gitErr := checkOpenContaining(root)
+	_, _, gitErr := dependencies.openContaining(root)
 	if errors.Is(gitErr, awfgit.ErrNotARepository) {
 		repo.notes = append(repo.notes, "staged check universe unavailable outside a git repository")
 		return renderCheckCollection(stdout, repo)
@@ -31,7 +39,7 @@ func runCheck(ctx context.Context, root string, stdout io.Writer) error {
 	if gitErr != nil {
 		return gitErr
 	}
-	staged, stagedErr := checkCollectStaged(ctx, root, planNotes)
+	staged, stagedErr := dependencies.collectStaged(ctx, root, planNotes)
 	if stagedErr != nil {
 		return stagedErr
 	}

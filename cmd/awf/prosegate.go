@@ -13,7 +13,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
-var proseScan = prosegate.Scan
+type proseDependencies struct {
+	scan func([]prosegate.File, []prosegate.Exemption) ([]prosegate.Finding, []string, error)
+}
+
+func productionProseDependencies() proseDependencies { return proseDependencies{scan: prosegate.Scan} }
 
 // runProseGate selects the prose step from the shared repository-check plan.
 func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
@@ -21,6 +25,10 @@ func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
 }
 
 func proseCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation.ReportCategory, error) {
+	return proseCheckFindingsWith(cfg, tree, productionProseDependencies())
+}
+
+func proseCheckFindingsWith(cfg *config.Config, tree *snapshot.Tree, dependencies proseDependencies) ([]presentation.ReportCategory, error) {
 	if cfg.ProseGate == nil || !cfg.ProseGate.Enabled {
 		return prosegate.DisabledCategory()
 	}
@@ -37,7 +45,7 @@ func proseCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation
 	for i, blob := range blobs {
 		files[i] = prosegate.File{Path: blob.Path, Bytes: blob.Bytes}
 	}
-	findings, skipped, err := proseScan(files, exemptions)
+	findings, skipped, err := dependencies.scan(files, exemptions)
 	if err != nil {
 		return nil, fmt.Errorf("check repo prose: %w", err)
 	}

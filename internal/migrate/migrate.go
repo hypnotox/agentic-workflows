@@ -90,13 +90,13 @@ func treeOnly(apply func(root string, out *Changes) error) func(context.Context,
 // routes through config.RemoveKey so config.yaml serialization stays owned by
 // internal/config (ADR-0026); the key is top-level, so RemoveKey applies.
 func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, w, func(src []byte, planned *Changes) ([]byte, error) {
 		out, err := config.RemoveKey(src, "invariants")
 		if err != nil {
 			return nil, err
 		}
 		if !bytes.Equal(out, src) {
-			w.Add("current-state-topic-substrate: removed the retired top-level invariants block")
+			planned.Add("current-state-topic-substrate: removed the retired top-level invariants block")
 		}
 		return out, nil
 	})

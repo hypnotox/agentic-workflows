@@ -14,13 +14,13 @@ import (
 // Serialization stays owned by internal/config (ADR-0026); the write is atomic
 // via editConfig (ADR-0076).
 func applyAnchoredGlobs(root string, out *Changes) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		updated, rewrites, err := config.AnchorNoSlashGlobs(src)
 		if err != nil {
 			return nil, err
 		}
 		for _, r := range rewrites {
-			out.Add(fmt.Sprintf("anchored-globs: rewrote glob %q → %q (%s)\n", r.From, "**/"+r.From, r.Key))
+			planned.Add(fmt.Sprintf("anchored-globs: rewrote glob %q → %q (%s)\n", r.From, "**/"+r.From, r.Key))
 		}
 		return updated, nil
 	})

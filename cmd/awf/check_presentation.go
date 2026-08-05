@@ -55,6 +55,8 @@ func checkReport(notes []string, categories []presentation.ReportCategory) (pres
 			errors = append(errors, category.Records...)
 		case "warnings":
 			warnings = append(warnings, category.Records...)
+		default:
+			return presentation.Report{}, fmt.Errorf("unknown check report category %q", category.Label)
 		}
 	}
 	status := "completed"

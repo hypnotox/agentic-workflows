@@ -16,13 +16,13 @@ import (
 // owned by internal/config (ADR-0026); RemoveKey cannot be used, since it walks
 // only top-level entries and baseBranch is nested under audit.
 func applyDropAuditBase(root string, w *Changes) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, w, func(src []byte, planned *Changes) ([]byte, error) {
 		out, err := config.RemoveMappingKey(src, "audit", "baseBranch")
 		if err != nil {
 			return nil, err
 		}
 		if !bytes.Equal(out, src) {
-			w.Add("drop-audit-base: removed audit.baseBranch")
+			planned.Add("drop-audit-base: removed audit.baseBranch")
 		}
 		return out, nil
 	})

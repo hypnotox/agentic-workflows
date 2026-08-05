@@ -18,6 +18,14 @@ func Report(findings []Finding, commits int, base, head string) (presentation.Re
 	if err != nil { // coverage-ignore: the fixed grammar-valid scope label receives the validated Literal value
 		return presentation.Report{}, err
 	}
+	contextFields := []presentation.Field{context}
+	if commits == 0 {
+		// ParseRange has already rejected line breaks, and the fixed label is
+		// grammar-valid, so this closed report fact cannot fail construction.
+		noticeValue, _ := presentation.Literal(fmt.Sprintf("%s..%s resolved to 0 commit(s); no history rule evaluated", base, head))
+		notice, _ := presentation.NewField("notice", noticeValue)
+		contextFields = append(contextFields, notice)
+	}
 	errors, warnings := []presentation.Record{}, []presentation.Record{}
 	for _, finding := range findings {
 		location := finding.Commit
@@ -66,5 +74,5 @@ func Report(findings []Finding, commits int, base, head string) (presentation.Re
 	if len(warnings) > 0 {
 		categories = append(categories, presentation.ReportCategory{Label: "warnings", Schema: []string{"rule", "location", "detail"}, Records: warnings})
 	}
-	return presentation.Report{Status: status, Context: []presentation.Field{context}, Summary: []presentation.Field{count}, Categories: categories}, nil
+	return presentation.Report{Status: status, Context: contextFields, Summary: []presentation.Field{count}, Categories: categories}, nil
 }

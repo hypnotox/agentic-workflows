@@ -19,13 +19,13 @@ import (
 // independently of currentState block presence, so a dropped block changes no
 // behaviour, and seeding would write back a key the adopter never set.
 func applyDropMaxClaimsPerTopic(root string, w *Changes) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, w, func(src []byte, planned *Changes) ([]byte, error) {
 		out, err := config.RemoveMappingKey(src, "currentState", "maxClaimsPerTopic")
 		if err != nil {
 			return nil, err
 		}
 		if !bytes.Equal(out, src) {
-			w.Add("drop-max-claims-per-topic: removed currentState.maxClaimsPerTopic\n")
+			planned.Add("drop-max-claims-per-topic: removed currentState.maxClaimsPerTopic\n")
 		}
 		return out, nil
 	})

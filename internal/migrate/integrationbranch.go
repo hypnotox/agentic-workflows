@@ -30,12 +30,12 @@ func applyIntegrationBranch(root string, out *Changes) error {
 	if cfg.IntegrationBranch != "" {
 		return nil
 	}
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		b, err := config.SetString(src, "integrationBranch", "main")
 		if err != nil { // coverage-ignore: loadForMigration already parsed this config, so SetString cannot error here
 			return nil, err
 		}
-		out.Add("integration-branch-explicit: set integrationBranch: main")
+		planned.Add("integration-branch-explicit: set integrationBranch: main")
 		return b, nil
 	})
 }

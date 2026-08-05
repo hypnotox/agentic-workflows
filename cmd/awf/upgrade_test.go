@@ -22,6 +22,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
+func testUpgradeDependencies() upgradeDependencies { return productionUpgradeDependencies() }
+
 // TestRunUpgradeGateStateError covers the GateState error branch in runUpgrade:
 // a valid current authority lock exists without current config while an old-tree
 // (.claude/awf/) migration lock is corrupt. Authority loading selects the current
@@ -96,33 +98,28 @@ func TestUpgradeFailureDiagnosticUsesRetryBeforeAnyChange(t *testing.T) {
 func TestRunUpgradeFailuresBeforeChangesUseOperationState(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		set  func(t *testing.T, failure error)
+		set  func(*upgradeDependencies, error)
 	}{
 		{
 			name: "first-migration",
-			set: func(t *testing.T, failure error) {
-				testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
-					return nil, nil, failure
-				})
+			set: func(dependencies *upgradeDependencies, failure error) {
+				dependencies.migrate = func(context.Context, string) ([]string, []migrate.Change, error) { return nil, nil, failure }
 			},
 		},
 		{
 			name: "pre-write-sync",
-			set: func(t *testing.T, failure error) {
-				testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
-					return nil, nil, nil
-				})
-				testsupport.SwapVar(t, &upgradeSync, func(context.Context, string) (upgradeSyncOutcome, error) {
-					return upgradeSyncOutcome{}, failure
-				})
+			set: func(dependencies *upgradeDependencies, failure error) {
+				dependencies.migrate = func(context.Context, string) ([]string, []migrate.Change, error) { return nil, nil, nil }
+				dependencies.sync = func(context.Context, string) (upgradeSyncOutcome, error) { return upgradeSyncOutcome{}, failure }
 			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			failure := errors.New(tc.name + " failed")
-			tc.set(t, failure)
-			testsupport.SwapVar(t, &upgradeGate, func(context.Context, string) error { return nil })
-			err := runUpgrade(testContext(t), scaffoldProject(t), io.Discard)
+			dependencies := testUpgradeDependencies()
+			tc.set(&dependencies, failure)
+			dependencies.gate = func(context.Context, string) error { return nil }
+			err := runUpgradeWith(testContext(t), scaffoldProject(t), io.Discard, dependencies)
 			if !errors.Is(err, failure) {
 				t.Fatalf("runUpgrade error = %v, want %v", err, failure)
 			}
@@ -143,11 +140,10 @@ func TestRunUpgradeFailuresBeforeChangesUseOperationState(t *testing.T) {
 
 func TestRunUpgradeNoOpMigrationFailureUsesRetryOnlyDiagnostic(t *testing.T) {
 	failure := errors.New("gate failed after no-op migration")
-	testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
-		return []string{"no-op"}, nil, nil
-	})
-	testsupport.SwapVar(t, &upgradeGate, func(context.Context, string) error { return failure })
-	err := runUpgrade(testContext(t), scaffoldProject(t), io.Discard)
+	dependencies := testUpgradeDependencies()
+	dependencies.migrate = func(context.Context, string) ([]string, []migrate.Change, error) { return []string{"no-op"}, nil, nil }
+	dependencies.gate = func(context.Context, string) error { return failure }
+	err := runUpgradeWith(testContext(t), scaffoldProject(t), io.Discard, dependencies)
 	var upgradeErr upgradeFailure
 	if !errors.As(err, &upgradeErr) {
 		t.Fatalf("runUpgrade error = %T, want upgradeFailure", err)
@@ -165,8 +161,9 @@ func TestJournalFailureRoutesRecoveryAndFinalErrorsToOneDiagnostic(t *testing.T)
 	root := scaffoldProject(t)
 	failure := errors.New("journal failed")
 	outcome := upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "applied", Path: ".awf/awf.lock"}}}
-	testsupport.SwapVar(t, &upgradeRecover, func(string) (upgrade.Outcome, error) { return outcome, failure })
-	if err := runRecover(root, io.Discard); !errors.Is(err, failure) {
+	dependencies := testUpgradeDependencies()
+	dependencies.recover = func(string) (upgrade.Outcome, error) { return outcome, failure }
+	if err := runRecoverWith(root, io.Discard, dependencies); !errors.Is(err, failure) {
 		t.Fatalf("recover error = %v, want journal failure", err)
 	} else {
 		var journalErr journalFailure
@@ -174,9 +171,10 @@ func TestJournalFailureRoutesRecoveryAndFinalErrorsToOneDiagnostic(t *testing.T)
 			t.Fatalf("recover error = %T, want journalFailure", err)
 		}
 	}
-	testsupport.SwapVar(t, &upgradeFinal, func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error) { return outcome, failure })
+	dependencies = testUpgradeDependencies()
+	dependencies.final = func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error) { return outcome, failure }
 	attestLock(t, root)
-	if err := runUpgrade(testContext(t), root, io.Discard); !errors.Is(err, failure) {
+	if err := runUpgradeWith(testContext(t), root, io.Discard, dependencies); !errors.Is(err, failure) {
 		t.Fatalf("final error = %v, want journal failure", err)
 	}
 }
@@ -185,9 +183,10 @@ func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
 	root := scaffoldProject(t)
 	attestLock(t, root)
 	outcome := upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "committed", Path: upgrade.LockRel()}}}
-	testsupport.SwapVar(t, &upgradeFinal, func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error) { return outcome, nil })
+	dependencies := testUpgradeDependencies()
+	dependencies.final = func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error) { return outcome, nil }
 	var stdout bytes.Buffer
-	if err := runUpgrade(testContext(t), root, &stdout); err != nil {
+	if err := runUpgradeWith(testContext(t), root, &stdout, dependencies); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(stdout.String(), "committed: .awf/awf.lock") {
@@ -228,10 +227,11 @@ func TestJournalFailureUsesTerminalChangedAxes(t *testing.T) {
 }
 
 func TestUpgradeSyncMutationRejectsInvalidCollectedChange(t *testing.T) {
-	testsupport.SwapVar(t, &upgradeProjectSyncReport, func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
+	dependencies := productionUpgradeSyncDependencies()
+	dependencies.projectSyncReport = func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
 		return []project.Backup{{Path: "\n", Bak: "backup"}}, nil, nil, nil
-	})
-	if _, err := upgradeSyncMutation(testContext(t), scaffoldProject(t)); err == nil {
+	}
+	if _, err := upgradeSyncMutationWith(testContext(t), scaffoldProject(t), dependencies); err == nil {
 		t.Fatal("invalid collected sync change accepted")
 	}
 }
@@ -239,11 +239,12 @@ func TestUpgradeSyncMutationRejectsInvalidCollectedChange(t *testing.T) {
 func TestRunUpgradeFailureRetainsChangesBeforeMigrationFailure(t *testing.T) {
 	root := scaffoldProject(t)
 	failure := errors.New("migration failed")
-	testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
+	dependencies := testUpgradeDependencies()
+	dependencies.migrate = func(context.Context, string) ([]string, []migrate.Change, error) {
 		return []string{"first"}, []migrate.Change{{Text: "first: changed config"}}, failure
-	})
+	}
 	var stdout bytes.Buffer
-	err := runUpgrade(testContext(t), root, &stdout)
+	err := runUpgradeWith(testContext(t), root, &stdout, dependencies)
 	if !errors.Is(err, failure) {
 		t.Fatalf("upgrade error = %v, want %v", err, failure)
 	}
@@ -265,12 +266,13 @@ func TestRunUpgradeFailureRetainsChangesBeforeMigrationFailure(t *testing.T) {
 func TestRunUpgradeGateFailureIsPartialDiagnostic(t *testing.T) {
 	root := scaffoldProject(t)
 	gateFailure := errors.New("post-migration gate failed")
-	testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
+	dependencies := testUpgradeDependencies()
+	dependencies.migrate = func(context.Context, string) ([]string, []migrate.Change, error) {
 		return []string{"first", "second"}, []migrate.Change{{Text: "first: changed config"}, {Text: "second: wrote lock"}}, nil
-	})
-	testsupport.SwapVar(t, &upgradeGate, func(context.Context, string) error { return gateFailure })
+	}
+	dependencies.gate = func(context.Context, string) error { return gateFailure }
 	var stdout bytes.Buffer
-	err := runUpgrade(testContext(t), root, &stdout)
+	err := runUpgradeWith(testContext(t), root, &stdout, dependencies)
 	if !errors.Is(err, gateFailure) {
 		t.Fatalf("upgrade error = %v, want %v", err, gateFailure)
 	}
@@ -320,14 +322,25 @@ func TestRunUpgradeRelocatedLockFailuresRetainMigrationDiagnostics(t *testing.T)
 				t.Fatal(err)
 			}
 			failure := errors.New(tc.name + " relocated lock failed")
+			dependencies := testUpgradeDependencies()
 			switch tc.name {
 			case "load":
-				testsupport.SwapVar(t, &upgradeLoadOptional, func(string) (*manifest.Lock, bool, error) { return nil, false, failure })
+				dependencies.loadOptional = func(path string) (*manifest.Lock, bool, error) {
+					if path == config.LockPath(root) {
+						return nil, false, failure
+					}
+					return manifest.LoadOptional(path)
+				}
 			case "save":
-				testsupport.SwapVar(t, &upgradeLoadOptional, func(string) (*manifest.Lock, bool, error) { return nil, false, nil })
-				testsupport.SwapVar(t, &upgradeSaveLock, func(*manifest.Lock, string) error { return failure })
+				dependencies.loadOptional = func(path string) (*manifest.Lock, bool, error) {
+					if path == config.LockPath(root) {
+						return nil, false, nil
+					}
+					return manifest.LoadOptional(path)
+				}
+				dependencies.saveLock = func(*manifest.Lock, string) error { return failure }
 			}
-			err = runUpgrade(testContext(t), root, io.Discard)
+			err = runUpgradeWith(testContext(t), root, io.Discard, dependencies)
 			if !errors.Is(err, failure) {
 				t.Fatalf("upgrade error = %v, want %v", err, failure)
 			}
@@ -355,7 +368,8 @@ func TestRunUpgradeCompletionMigrationFailureRetainsCreatedLockAxis(t *testing.T
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.lock"), string(lockBytes))
 	completionFailure := errors.New("completion migration failed")
 	calls := 0
-	testsupport.SwapVar(t, &upgradeMigrate, func(_ context.Context, gotRoot string) ([]string, []migrate.Change, error) {
+	dependencies := testUpgradeDependencies()
+	dependencies.migrate = func(_ context.Context, gotRoot string) ([]string, []migrate.Change, error) {
 		calls++
 		if calls == 1 {
 			if err := os.MkdirAll(config.RootDir(gotRoot), 0o755); err != nil {
@@ -364,9 +378,9 @@ func TestRunUpgradeCompletionMigrationFailureRetainsCreatedLockAxis(t *testing.T
 			return []string{"relocate"}, []migrate.Change{{Text: "relocate: moved config"}}, nil
 		}
 		return nil, nil, completionFailure
-	})
+	}
 	var stdout bytes.Buffer
-	err = runUpgrade(testContext(t), root, &stdout)
+	err = runUpgradeWith(testContext(t), root, &stdout, dependencies)
 	if !errors.Is(err, completionFailure) {
 		t.Fatalf("upgrade error = %v, want %v", err, completionFailure)
 	}
@@ -421,10 +435,11 @@ func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 	})
 	t.Run("project sync", func(t *testing.T) {
 		failure := errors.New("sync failed")
-		testsupport.SwapVar(t, &upgradeProjectSyncReport, func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
+		dependencies := productionUpgradeSyncDependencies()
+		dependencies.projectSyncReport = func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
 			return nil, nil, nil, failure
-		})
-		if _, err := upgradeSyncMutation(testContext(t), scaffoldProject(t)); !errors.Is(err, failure) {
+		}
+		if _, err := upgradeSyncMutationWith(testContext(t), scaffoldProject(t), dependencies); !errors.Is(err, failure) {
 			t.Fatalf("sync failure = %v, want %v", err, failure)
 		}
 	})
@@ -436,10 +451,9 @@ func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 	}
 	t.Run("upgrade sync", func(t *testing.T) {
 		failure := errors.New("terminal sync failed")
-		testsupport.SwapVar(t, &upgradeSync, func(context.Context, string) (upgradeSyncOutcome, error) {
-			return upgradeSyncOutcome{}, failure
-		})
-		if err := runUpgrade(testContext(t), scaffoldProject(t), io.Discard); !errors.Is(err, failure) {
+		dependencies := testUpgradeDependencies()
+		dependencies.sync = func(context.Context, string) (upgradeSyncOutcome, error) { return upgradeSyncOutcome{}, failure }
+		if err := runUpgradeWith(testContext(t), scaffoldProject(t), io.Discard, dependencies); !errors.Is(err, failure) {
 			t.Fatalf("terminal sync failure = %v, want %v", err, failure)
 		}
 	})

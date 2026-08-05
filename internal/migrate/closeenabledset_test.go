@@ -136,13 +136,11 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 func TestCloseEnabledSetWriteFailurePublishesNoChanges(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\nskills: [brainstorming, roadmap-graduation]\nagents: []\n", nil)
 	failure := errors.New("atomic write failed")
-	prior := writeConfigAtomic
-	writeConfigAtomic = func(string, []byte) error { return failure }
-	t.Cleanup(func() { writeConfigAtomic = prior })
+	editor := configEditor{writeAtomic: func(string, []byte) error { return failure }}
 
 	var changes Changes
-	if err := applyCloseEnabledSet(root, &changes); !errors.Is(err, failure) {
-		t.Fatalf("applyCloseEnabledSet error = %v, want %v", err, failure)
+	if err := closeEnabledSetWithEditor(root, catalog.Standard, &changes, editor); !errors.Is(err, failure) {
+		t.Fatalf("closeEnabledSetWithEditor error = %v, want %v", err, failure)
 	}
 	if got := changes.String(); got != "" {
 		t.Errorf("changes = %q, want no facts after failed write", got)

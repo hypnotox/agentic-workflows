@@ -11,8 +11,8 @@ import (
 // `hooks: {enabled: ...}` mapping is not this migration's shape - it survives a
 // replay from a degraded lock. The edit routes through config.RemoveKey so
 // config.yaml serialization stays owned by internal/config (ADR-0026).
-func applyDropHooks(root string, _ *Changes) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+func applyDropHooks(root string, out *Changes) error {
+	return editConfig(root, out, func(src []byte, _ *Changes) ([]byte, error) {
 		// A typed-probe error on a parseable document means hooks is not the
 		// legacy array (the modern mapping mis-types here) - leave it alone. A
 		// genuinely malformed document falls through so RemoveKey surfaces its

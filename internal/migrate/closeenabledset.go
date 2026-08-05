@@ -29,6 +29,10 @@ func applyCloseEnabledSet(root string, out *Changes) error {
 // so the demanded-dormant re-add interplay (unreachable in the shipped catalog -
 // nothing requires a doc-gated skill today) stays testable synthetically.
 func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
+	return closeEnabledSetWithEditor(root, cat, out, productionConfigEditor())
+}
+
+func closeEnabledSetWithEditor(root string, cat *catalog.Catalog, out *Changes, editor configEditor) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to close (idempotent re-run safe)
 	}
@@ -99,7 +103,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 	if len(drops) == 0 && len(adds) == 0 {
 		return nil
 	}
-	if err := editConfig(root, func(src []byte) ([]byte, error) {
+	if err := editor.editConfig(root, out, func(src []byte, committed *Changes) ([]byte, error) {
 		b := src
 		var err error
 		for _, n := range drops {
@@ -112,12 +116,12 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 				return nil, err
 			}
 		}
+		for _, change := range planned.Items() {
+			committed.Add(change.Text)
+		}
 		return b, nil
 	}); err != nil {
 		return err
-	}
-	for _, change := range planned.Items() {
-		out.Add(change.Text)
 	}
 	return nil
 }

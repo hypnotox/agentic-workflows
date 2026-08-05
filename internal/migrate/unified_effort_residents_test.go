@@ -486,21 +486,39 @@ func TestClassifyLegacyResidentsGitFailures(t *testing.T) {
 // conditions: it propagates any preflight refusal untouched, and it refuses a
 // checkout whose residents belong to a different root than the lock it would
 // commit.
-func TestApplyUnifiedEffortResidentsRetainsNoResetFactsOnTransactionFailure(t *testing.T) {
-	root := residentTree(t)
+func TestApplyUnifiedEffortResidentsRetainsTerminalResetFactsOnTransactionFailure(t *testing.T) {
 	failure := errors.New("reset failed")
-	prior := resetLegacyResidents
-	resetLegacyResidents = func(string, []string, int) (upgrade.Outcome, error) {
-		return upgrade.Outcome{}, failure
-	}
-	t.Cleanup(func() { resetLegacyResidents = prior })
-	var out Changes
-	if err := applyUnifiedEffortResidents(testContext(t), root, &out); !errors.Is(err, failure) {
-		t.Fatalf("migration error = %v, want reset failure", err)
-	}
-	if out.Len() != 0 {
-		t.Fatalf("failed reset collected persistent facts: %q", out.String())
-	}
+	t.Run("empty-outcome", func(t *testing.T) {
+		operation := unifiedEffortResidentsOperation{reset: func(string, []string, int) (upgrade.Outcome, error) {
+			return upgrade.Outcome{}, failure
+		}}
+		var out Changes
+		if err := applyUnifiedEffortResidentsWith(testContext(t), residentTree(t), &out, operation); !errors.Is(err, failure) {
+			t.Fatalf("migration error = %v, want reset failure", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("empty failed reset collected facts: %q", out.String())
+		}
+	})
+	t.Run("terminal-outcome", func(t *testing.T) {
+		operation := unifiedEffortResidentsOperation{reset: func(string, []string, int) (upgrade.Outcome, error) {
+			return upgrade.Outcome{
+				Evidence: []upgrade.Evidence{{Action: "applied", Path: ".awf/memory"}, {Action: "restored", Path: ".awf/memory"}},
+				Changed:  []upgrade.Evidence{{Action: "committed", Path: upgrade.LockRel()}},
+			}, failure
+		}}
+		var out Changes
+		if err := applyUnifiedEffortResidentsWith(testContext(t), residentTree(t), &out, operation); !errors.Is(err, failure) {
+			t.Fatalf("migration error = %v, want reset failure", err)
+		}
+		want := "unified-effort-residents: applied .awf/memory\nunified-effort-residents: restored .awf/memory\nunified-effort-residents: terminal committed .awf/awf.lock\n"
+		if got := out.String(); got != want {
+			t.Fatalf("failed reset facts = %q, want %q", got, want)
+		}
+		if strings.Contains(out.String(), "committed reset") {
+			t.Fatalf("failed reset claimed success: %q", out.String())
+		}
+	})
 }
 
 func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {

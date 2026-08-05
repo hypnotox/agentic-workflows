@@ -9,8 +9,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
-var upgradeProjectSyncReport = func(ctx context.Context, p *project.Project) ([]project.Backup, []project.Change, []string, error) {
-	return p.SyncReport(ctx)
+type upgradeSyncDependencies struct {
+	projectSyncReport func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error)
+}
+
+func productionUpgradeSyncDependencies() upgradeSyncDependencies {
+	return upgradeSyncDependencies{projectSyncReport: func(ctx context.Context, p *project.Project) ([]project.Backup, []project.Change, []string, error) {
+		return p.SyncReport(ctx)
+	}}
 }
 
 // upgradeSyncOutcome preserves every proven SyncReport axis even if the
@@ -22,6 +28,10 @@ type upgradeSyncOutcome struct {
 // upgradeSyncMutation performs the terminal sync but leaves rendering to the
 // upgrade owner, so migration facts and sync changes become one mutation.
 func upgradeSyncMutation(ctx context.Context, root string) (upgradeSyncOutcome, error) {
+	return upgradeSyncMutationWith(ctx, root, productionUpgradeSyncDependencies())
+}
+
+func upgradeSyncMutationWith(ctx context.Context, root string, dependencies upgradeSyncDependencies) (upgradeSyncOutcome, error) {
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		return upgradeSyncOutcome{}, err
@@ -30,7 +40,7 @@ func upgradeSyncMutation(ctx context.Context, root string) (upgradeSyncOutcome, 
 	if err != nil {
 		return upgradeSyncOutcome{}, err
 	}
-	backups, changes, pruned, syncErr := upgradeProjectSyncReport(ctx, p)
+	backups, changes, pruned, syncErr := dependencies.projectSyncReport(ctx, p)
 	mutation, mutationErr := project.SyncMutation(backups, changes, pruned)
 	if mutationErr != nil {
 		return upgradeSyncOutcome{}, mutationErr

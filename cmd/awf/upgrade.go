@@ -29,10 +29,14 @@ func runUpgradeFlags(ctx context.Context, root string, recoverMode bool, stdout 
 // runRecover replays the current-state upgrade journal recovery table. It never
 // runs project tests or gates; terminal evidence is rendered only after recovery.
 func runRecover(root string, stdout io.Writer) error {
+	return runRecoverWith(root, stdout, productionUpgradeDependencies())
+}
+
+func runRecoverWith(root string, stdout io.Writer, dependencies upgradeDependencies) error {
 	if !migrate.ProjectPresent(root) {
 		return errors.New("not an awf project (run `awf init`)")
 	}
-	outcome, err := upgradeRecover(root)
+	outcome, err := dependencies.recover(root)
 	if err != nil {
 		return newJournalFailure("recovery has not reached terminal state", outcome, err)
 	}
@@ -47,15 +51,23 @@ func runRecover(root string, stdout io.Writer) error {
 	return presentation.Render(stdout, document)
 }
 
-var (
-	upgradeSync         = upgradeSyncMutation
-	upgradeRecover      = upgrade.Recover
-	upgradeFinal        = upgrade.FinalUpgrade
-	upgradeMigrate      = migrate.Upgrade
-	upgradeGate         = gate
-	upgradeLoadOptional = manifest.LoadOptional
-	upgradeSaveLock     = func(lock *manifest.Lock, path string) error { return lock.Save(path) }
-)
+type upgradeDependencies struct {
+	sync         func(context.Context, string) (upgradeSyncOutcome, error)
+	recover      func(string) (upgrade.Outcome, error)
+	final        func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error)
+	migrate      func(context.Context, string) ([]string, []migrate.Change, error)
+	gate         func(context.Context, string) error
+	loadOptional func(string) (*manifest.Lock, bool, error)
+	saveLock     func(*manifest.Lock, string) error
+}
+
+func productionUpgradeDependencies() upgradeDependencies {
+	return upgradeDependencies{
+		sync: upgradeSyncMutation, recover: upgrade.Recover, final: upgrade.FinalUpgrade,
+		migrate: migrate.Upgrade, gate: gate, loadOptional: manifest.LoadOptional,
+		saveLock: func(lock *manifest.Lock, path string) error { return lock.Save(path) },
+	}
+}
 
 // runUpgrade consumes a sealed attestation when the lock carries one: the final
 // current-state cutover verifies only the sealed facts and journals the approval
@@ -67,11 +79,15 @@ var (
 // (ADR-0076 Decision 4): no config layout at all → the awf init hint; a tree
 // whose schema is ahead of this binary → the version-gate guidance.
 func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
+	return runUpgradeWith(ctx, root, stdout, productionUpgradeDependencies())
+}
+
+func runUpgradeWith(ctx context.Context, root string, stdout io.Writer, dependencies upgradeDependencies) error {
 	if !migrate.ProjectPresent(root) {
 		return errors.New("not an awf project (run `awf init`)")
 	}
 	authorityPath := authorityLockPath(root)
-	lock, found, err := manifest.LoadOptional(authorityPath)
+	lock, found, err := dependencies.loadOptional(authorityPath)
 	if err != nil {
 		return err
 	}
@@ -84,7 +100,7 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	}
 	switch authority {
 	case manifest.AuthorityBridge:
-		outcome, finalErr := upgradeFinal(ctx, root, lock)
+		outcome, finalErr := dependencies.final(ctx, root, lock)
 		if finalErr != nil {
 			return newJournalFailure("upgrade has not reached terminal state", outcome, finalErr)
 		}
@@ -109,21 +125,21 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	if state == "ahead" {
 		return schemaAheadError(gen)
 	}
-	applied, changes, err := upgradeMigrate(ctx, root)
+	applied, changes, err := dependencies.migrate(ctx, root)
 	if err != nil {
 		return newUpgradeFailure(applied, changes, err)
 	}
 	_ = gen
 	if authorityPath != config.LockPath(root) {
-		if _, found, err := upgradeLoadOptional(config.LockPath(root)); err != nil {
+		if _, found, err := dependencies.loadOptional(config.LockPath(root)); err != nil {
 			return newUpgradeFailure(applied, changes, err)
 		} else if !found {
 			lock.SchemaVersion = 14
-			if err := upgradeSaveLock(lock, config.LockPath(root)); err != nil {
+			if err := dependencies.saveLock(lock, config.LockPath(root)); err != nil {
 				return newUpgradeFailure(applied, changes, err)
 			}
 			changes = append(changes, migrate.Change{Text: "created and schema-stamped .awf/awf.lock"})
-			completionApplied, completionChanges, completionErr := upgradeMigrate(ctx, root)
+			completionApplied, completionChanges, completionErr := dependencies.migrate(ctx, root)
 			applied = append(applied, completionApplied...)
 			changes = append(changes, completionChanges...)
 			if completionErr != nil {
@@ -135,10 +151,10 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	// binary behind the lock's awfVersion (version axis, schema equal) must still
 	// refuse rather than re-stamp a downgraded version. runSync no longer self-gates,
 	// so upgrade re-asserts it here (schema-ahead is already refused above).
-	if err := upgradeGate(ctx, root); err != nil {
+	if err := dependencies.gate(ctx, root); err != nil {
 		return newUpgradeFailure(applied, changes, err)
 	}
-	sync, err := upgradeSync(ctx, root)
+	sync, err := dependencies.sync(ctx, root)
 	if err != nil {
 		return newUpgradeFailureWithSync(applied, changes, sync.mutation, err)
 	}

@@ -171,8 +171,9 @@ func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
 		t.Fatalf("an empty range still exits zero, got: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "scope: 0 commit(s) in HEAD..HEAD") {
-		t.Errorf("an empty range must announce itself, got: %q", got)
+	const want = "status: empty\n\ncontext:\n  scope: 0 commit(s) in HEAD..HEAD\n  notice: HEAD..HEAD resolved to 0 commit(s); no history rule evaluated\n\nsummary:\n  findings: 0 errors, 0 warnings\n"
+	if got != want {
+		t.Errorf("empty report = %q, want %q", got, want)
 	}
 	if strings.Contains(got, "status: clean") {
 		t.Errorf("an empty range must not read as a clean audit, got: %q", got)

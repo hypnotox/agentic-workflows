@@ -81,7 +81,13 @@ func residentRefusal(condition, nextAction string) error {
 // prove are its own to discard.
 const preserveManually = "preserve the resident, inspect it by hand, and rerun `awf upgrade` once it is resolved or removed"
 
-var resetLegacyResidents = upgrade.ResetLegacyResidents
+type unifiedEffortResidentsOperation struct {
+	reset func(string, []string, int) (upgrade.Outcome, error)
+}
+
+func productionUnifiedEffortResidentsOperation() unifiedEffortResidentsOperation {
+	return unifiedEffortResidentsOperation{reset: upgrade.ResetLegacyResidents}
+}
 
 // legacyWorktreeNextAction names the pre-upgrade commands that clear a managed
 // worktree. The current binary cannot do it: protocol 2 derives worktrees from
@@ -102,6 +108,10 @@ func legacyWorktreeNextAction(id string) string {
 // ported. Nothing here invents a slug for the efforts that are lost; callers
 // supply a new explicit slug and independent outcome title.
 func applyUnifiedEffortResidents(ctx context.Context, root string, out *Changes) error {
+	return applyUnifiedEffortResidentsWith(ctx, root, out, productionUnifiedEffortResidentsOperation())
+}
+
+func applyUnifiedEffortResidentsWith(ctx context.Context, root string, out *Changes, operation unifiedEffortResidentsOperation) error {
 	classified, err := ClassifyLegacyResidents(ctx, root)
 	if err != nil {
 		return err
@@ -115,19 +125,20 @@ func applyUnifiedEffortResidents(ctx context.Context, root string, out *Changes)
 			"run `awf upgrade` from "+classified.PrimaryRoot,
 		)
 	}
-	// The journal outcome is authoritative: only a committed transaction may
-	// contribute resident reset facts to the ordered migration changes.
-	outcome, err := resetLegacyResidents(root, classified.Quarantine, 22)
-	if err != nil {
-		return err
-	}
-	if len(outcome.Evidence) > 0 {
+	// The journal outcome is authoritative. Its proven history and terminal
+	// axes remain reportable even when reset returns an error; the committed
+	// summary is reserved for the error-free result.
+	outcome, err := operation.reset(root, classified.Quarantine, 22)
+	if err == nil && len(outcome.Evidence) > 0 {
 		out.Add("unified-effort-residents: committed reset of proven legacy residents")
-		for _, evidence := range outcome.Evidence {
-			out.Add("unified-effort-residents: " + evidence.Action + " " + evidence.Path)
-		}
 	}
-	return nil
+	for _, evidence := range outcome.Evidence {
+		out.Add("unified-effort-residents: " + evidence.Action + " " + evidence.Path)
+	}
+	for _, changed := range outcome.Changed {
+		out.Add("unified-effort-residents: terminal " + changed.Action + " " + changed.Path)
+	}
+	return err
 }
 
 // ClassifyLegacyResidents inspects every schema-1 binary-owned leaf and every

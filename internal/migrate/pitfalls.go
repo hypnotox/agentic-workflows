@@ -20,7 +20,20 @@ import (
 // dir), and collects one ordered change fact per created entry plus a review instruction. An
 // absent part is a no-op - so a re-run after a prior split (the part gone, the
 // sidecar present) does nothing.
+type pitfallsOperation struct {
+	writeAtomic func(string, []byte) error
+	remove      func(string) error
+}
+
+func productionPitfallsOperation() pitfallsOperation {
+	return pitfallsOperation{writeAtomic: manifest.WriteFileAtomic, remove: os.Remove}
+}
+
 func applyPitfallsData(root string, out *Changes) error {
+	return applyPitfallsDataWith(root, out, productionPitfallsOperation())
+}
+
+func applyPitfallsDataWith(root string, out *Changes, operation pitfallsOperation) error {
 	awfDir := config.RootDir(root)
 	partPath := filepath.Join(awfDir, "docs", "parts", "pitfalls", "entries.md")
 	data, err := os.ReadFile(partPath)
@@ -42,18 +55,18 @@ func applyPitfallsData(root string, out *Changes) error {
 		return fmt.Errorf("pitfalls-data: validate rendered pitfalls sidecar: %w", err)
 	}
 	sidecarPath := filepath.Join(awfDir, "docs", "pitfalls.yaml")
-	if err := manifest.WriteFileAtomic(sidecarPath, sidecar); err != nil { // coverage-ignore: the atomic write faults only on a permission/IO error the test root bypasses
+	if err := operation.writeAtomic(sidecarPath, sidecar); err != nil {
 		return err
 	}
-	if err := os.Remove(partPath); err != nil { // coverage-ignore: removal of the part we just read; fails only on a permission fault root bypasses
-		return err
-	}
-	_ = os.Remove(filepath.Dir(partPath)) // drop the now-empty dir; a non-empty dir is left as-is
 	sidecarRel := path.Join(config.DirName, "docs", "pitfalls.yaml")
 	for _, e := range entries {
 		out.Add(fmt.Sprintf("pitfalls-data: split entry %q\n", e.title))
 	}
 	out.Add(fmt.Sprintf("pitfalls-data: review %s and tag each entry's domains: (untagged entries do not surface in awf context)\n", sidecarRel))
+	if err := operation.remove(partPath); err != nil {
+		return err
+	}
+	_ = operation.remove(filepath.Dir(partPath)) // drop the now-empty dir; a non-empty dir is left as-is
 	return nil
 }
 

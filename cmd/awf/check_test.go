@@ -54,27 +54,28 @@ func TestRunCheckPropagatesOperationalGitAndStagedDriftFailures(t *testing.T) {
 	root := syncedGitProject(t, checkYAML)
 
 	gitFailure := errors.New("git lookup failed")
-	testsupport.SwapVar(t, &checkOpenContaining, func(string) (*awfgit.Repo, string, error) {
-		return nil, "", gitFailure
-	})
-	if err := runCheck(ctx, root, io.Discard); !errors.Is(err, gitFailure) {
+	dependencies := productionCheckDependencies()
+	dependencies.openContaining = func(string) (*awfgit.Repo, string, error) { return nil, "", gitFailure }
+	if err := runCheckWith(ctx, root, io.Discard, dependencies); !errors.Is(err, gitFailure) {
 		t.Fatalf("git failure = %v, want %v", err, gitFailure)
 	}
 
-	testsupport.SwapVar(t, &checkOpenContaining, awfgit.OpenContaining)
 	stagedFailure := errors.New("staged collection failed")
-	testsupport.SwapVar(t, &checkCollectStaged, func(context.Context, string, planNoteSink) (checkCollection, error) {
+	dependencies = productionCheckDependencies()
+	dependencies.collectStaged = func(context.Context, string, planNoteSink) (checkCollection, error) {
 		return checkCollection{}, stagedFailure
-	})
-	if err := runCheck(ctx, root, io.Discard); !errors.Is(err, stagedFailure) {
+	}
+	if err := runCheckWith(ctx, root, io.Discard, dependencies); !errors.Is(err, stagedFailure) {
 		t.Fatalf("staged collection failure = %v, want %v", err, stagedFailure)
 	}
-	testsupport.SwapVar(t, &checkCollectStaged, collectCheckStaged)
 	driftFailure := errors.New("staged drift failed")
-	testsupport.SwapVar(t, &checkStagedDriftRoot, func(context.Context, string) ([]manifest.Drift, error) {
-		return nil, driftFailure
-	})
-	if err := runCheck(ctx, root, io.Discard); !errors.Is(err, driftFailure) {
+	stagedDependencies := productionCheckStagedDependencies()
+	stagedDependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) { return nil, driftFailure }
+	dependencies = productionCheckDependencies()
+	dependencies.collectStaged = func(ctx context.Context, root string, notes planNoteSink) (checkCollection, error) {
+		return collectCheckStagedWith(ctx, root, notes, stagedDependencies)
+	}
+	if err := runCheckWith(ctx, root, io.Discard, dependencies); !errors.Is(err, driftFailure) {
 		t.Fatalf("staged drift failure = %v, want %v", err, driftFailure)
 	}
 }
@@ -170,14 +171,15 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 
 func TestProseCheckFindingsPropagatesScannerFailure(t *testing.T) {
 	failure := errors.New("scan failed")
-	testsupport.SwapVar(t, &proseScan, func([]prosegate.File, []prosegate.Exemption) ([]prosegate.Finding, []string, error) {
+	dependencies := productionProseDependencies()
+	dependencies.scan = func([]prosegate.File, []prosegate.Exemption) ([]prosegate.Finding, []string, error) {
 		return nil, nil, failure
-	})
+	}
 	tree, err := snapshot.NewTree(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := proseCheckFindings(&config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, tree); !errors.Is(err, failure) {
+	if _, err := proseCheckFindingsWith(&config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, tree, dependencies); !errors.Is(err, failure) {
 		t.Fatalf("scanner failure = %v, want %v", err, failure)
 	}
 }
@@ -806,16 +808,21 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
 	stateFailure := errors.New("state category mapping failed")
 	driftFailure := errors.New("staged drift failed")
-	testsupport.SwapVar(t, &checkStagedCurrentStateCategories, func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) {
+	dependencies := productionCheckStagedDependencies()
+	dependencies.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) {
 		return nil, stateFailure
-	})
+	}
 	driftRan := false
-	testsupport.SwapVar(t, &checkStagedDriftRoot, func(context.Context, string) ([]manifest.Drift, error) {
+	dependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) {
 		driftRan = true
 		return nil, driftFailure
-	})
+	}
 	var stdout bytes.Buffer
-	err := runCheckStaged(testContext(t), root, &stdout)
+	collection, err := collectCheckStagedWith(testContext(t), root, planNoteSink{}, dependencies)
+	if err != nil {
+		t.Fatalf("collection error = %v, want operational failures retained in the collection", err)
+	}
+	err = renderCheckCollection(&stdout, collection)
 	if !driftRan {
 		t.Fatal("staged drift did not run after state presentation failure")
 	}
@@ -830,8 +837,9 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 func TestCollectCheckStagedPropagatesDriftCategoryFailure(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
 	failure := errors.New("drift category mapping failed")
-	testsupport.SwapVar(t, &checkStagedDriftCategories, func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure })
-	if _, err := collectCheckStagedSelection(testContext(t), root, planNoteSink{}, false, true); !errors.Is(err, failure) {
+	dependencies := productionCheckStagedDependencies()
+	dependencies.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure }
+	if _, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, false, true, dependencies); !errors.Is(err, failure) {
 		t.Fatalf("category mapping failure = %v, want %v", err, failure)
 	}
 }

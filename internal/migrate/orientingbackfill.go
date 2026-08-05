@@ -25,12 +25,12 @@ func applyOrientingSkillBackfill(root string, out *Changes) error {
 	if !slices.Contains(cfg.Skills, "brainstorming") || slices.Contains(cfg.Skills, "orienting") {
 		return nil
 	}
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		b, err := config.SetArrayMember(src, "skills", "orienting", true)
 		if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot error here
 			return nil, err
 		}
-		out.Add("orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)")
+		planned.Add("orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)")
 		return b, nil
 	})
 }

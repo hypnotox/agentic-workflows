@@ -391,6 +391,7 @@ func TestJournalCommitRetainsEvidenceWhenLockPhaseWriteFails(t *testing.T) {
 		{Action: "applied", Path: "a.txt"},
 		{Action: "applied", Path: LockRel()},
 		{Action: "committed", Path: LockRel()},
+		retainedJournal(root),
 	}
 	if !slices.Equal(outcome.Evidence, want) {
 		t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, want)
@@ -414,8 +415,8 @@ func TestRecoverPropagatesAppliedImageInspectionFailure(t *testing.T) {
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
-	if len(outcome.Evidence) != 0 {
-		t.Fatalf("evidence = %#v, want no unproven evidence", outcome.Evidence)
+	if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Evidence, want) {
+		t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, want)
 	}
 	if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Changed, want) {
 		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
@@ -1073,6 +1074,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 			{Action: "applied", Path: LockRel()},
 			{Action: "committed", Path: LockRel()},
 			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			retainedJournal(root),
 		}
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
@@ -1101,12 +1103,12 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
-		wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "applied", Path: LockRel()}, {Action: "committed", Path: LockRel()}}
+		wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "applied", Path: LockRel()}, {Action: "committed", Path: LockRel()}, retainedJournal(root)}
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
 		}
-		if want := appendEvidence(wantEvidence, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
-			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		if !slices.Equal(outcome.Changed, wantEvidence) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantEvidence)
 		}
 	})
 
@@ -1122,7 +1124,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
-		wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "restored", Path: "a.txt"}}
+		wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "restored", Path: "a.txt"}, retainedJournal(root)}
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
 		}
@@ -1158,6 +1160,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 			{Action: "applied", Path: LockRel()},
 			{Action: "committed", Path: LockRel()},
 			{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+			retainedJournal(root),
 		}
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
 			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
@@ -1187,8 +1190,9 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
-		if !slices.Equal(outcome.Evidence, evidence) {
-			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, evidence)
+		wantEvidence := appendEvidence(evidence, retainedJournal(root))
+		if !slices.Equal(outcome.Evidence, wantEvidence) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
 		}
 		if want := appendEvidence(changed, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
 			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
@@ -1209,11 +1213,11 @@ func TestRecoverRestoreWriteHaltRetainsAppliedAxes(t *testing.T) {
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
-	wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}}
+	wantEvidence := []Evidence{{Action: "applied", Path: "a.txt"}, retainedJournal(root)}
 	if !slices.Equal(outcome.Evidence, wantEvidence) {
 		t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, wantEvidence)
 	}
-	if want := appendEvidence(wantEvidence, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
-		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	if !slices.Equal(outcome.Changed, wantEvidence) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, wantEvidence)
 	}
 }

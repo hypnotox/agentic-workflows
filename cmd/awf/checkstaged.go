@@ -7,16 +7,25 @@ import (
 	"io"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"golang.org/x/mod/semver"
 )
 
-var (
-	checkStagedStateRoot              = project.CheckStagedRoot
-	checkStagedDriftRoot              = project.CheckStagedDriftRoot
-	checkStagedCurrentStateCategories = project.CurrentStateCategories
-	checkStagedDriftCategories        = project.DriftCategories
-)
+type checkStagedDependencies struct {
+	stateRoot              func(context.Context, string) (project.CurrentStateReport, error)
+	driftRoot              func(context.Context, string) ([]manifest.Drift, error)
+	currentStateCategories func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error)
+	driftCategories        func([]manifest.Drift, bool) ([]presentation.ReportCategory, error)
+}
+
+func productionCheckStagedDependencies() checkStagedDependencies {
+	return checkStagedDependencies{
+		stateRoot: project.CheckStagedRoot, driftRoot: project.CheckStagedDriftRoot,
+		currentStateCategories: project.CurrentStateCategories, driftCategories: project.DriftCategories,
+	}
+}
 
 // runCheckStaged runs the staged transition universe. The commit child is direct-only.
 func runCheckStaged(ctx context.Context, root string, stdout io.Writer) error {
@@ -24,10 +33,18 @@ func runCheckStaged(ctx context.Context, root string, stdout io.Writer) error {
 }
 
 func collectCheckStaged(ctx context.Context, root string, planNotes planNoteSink) (checkCollection, error) {
-	return collectCheckStagedSelection(ctx, root, planNotes, true, true)
+	return collectCheckStagedWith(ctx, root, planNotes, productionCheckStagedDependencies())
+}
+
+func collectCheckStagedWith(ctx context.Context, root string, planNotes planNoteSink, dependencies checkStagedDependencies) (checkCollection, error) {
+	return collectCheckStagedSelectionWith(ctx, root, planNotes, true, true, dependencies)
 }
 
 func collectCheckStagedSelection(ctx context.Context, root string, planNotes planNoteSink, state, drift bool) (checkCollection, error) {
+	return collectCheckStagedSelectionWith(ctx, root, planNotes, state, drift, productionCheckStagedDependencies())
+}
+
+func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes planNoteSink, state, drift bool, dependencies checkStagedDependencies) (checkCollection, error) {
 	lock, err := stagedLock(ctx, root)
 	if err != nil {
 		return checkCollection{}, err
@@ -38,7 +55,7 @@ func collectCheckStagedSelection(ctx context.Context, root string, planNotes pla
 		collection.notes = append(collection.notes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
 	}
 	if state {
-		report, err := checkStagedStateRoot(ctx, root)
+		report, err := dependencies.stateRoot(ctx, root)
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		} else {
@@ -49,7 +66,7 @@ func collectCheckStagedSelection(ctx context.Context, root string, planNotes pla
 					collection.notes = append(collection.notes, note)
 				}
 			}
-			categories, err := checkStagedCurrentStateCategories(report, true)
+			categories, err := dependencies.currentStateCategories(report, true)
 			if err != nil {
 				collection.operational = append(collection.operational, err)
 			} else {
@@ -61,11 +78,11 @@ func collectCheckStagedSelection(ctx context.Context, root string, planNotes pla
 		}
 	}
 	if drift {
-		findings, err := checkStagedDriftRoot(ctx, root)
+		findings, err := dependencies.driftRoot(ctx, root)
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		} else {
-			categories, err := checkStagedDriftCategories(findings, true)
+			categories, err := dependencies.driftCategories(findings, true)
 			if err != nil {
 				return checkCollection{}, err
 			}

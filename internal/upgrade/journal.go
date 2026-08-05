@@ -424,6 +424,11 @@ func appendEvidence(values []Evidence, evidence ...Evidence) []Evidence {
 	return append(append([]Evidence(nil), values...), evidence...)
 }
 
+func outcomeWithRetainedJournal(root string, evidence, changed []Evidence) Outcome {
+	retained := retainedJournal(root)
+	return Outcome{Evidence: appendEvidence(evidence, retained), Changed: appendEvidence(changed, retained)}
+}
+
 // committedChanged reduces committed evidence to axes that remain true when the
 // transaction returns. Evidence remains the complete ordered history; a
 // discarded resident replaces its earlier applied fact in Changed, while an
@@ -461,7 +466,7 @@ func commitTransaction(root string, ops []Operation) (Outcome, error) {
 	}
 	j.Phase = phaseApplying
 	if err := journalWrite(root, j); err != nil {
-		return Outcome{Changed: []Evidence{retainedJournal(root)}}, err
+		return outcomeWithRetainedJournal(root, nil, nil), err
 	}
 	evidence := make([]Evidence, 0, len(ops)+1)
 	lockOp := ops[len(ops)-1]
@@ -480,7 +485,7 @@ func commitTransaction(root string, ops []Operation) (Outcome, error) {
 	evidence = append(evidence, Evidence{Action: "committed", Path: LockRel()})
 	j.Phase = phaseLockCommitted
 	if err := journalWrite(root, j); err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(evidence, retainedJournal(root))}, fmt.Errorf("lock committed but journal update failed (%w); run `awf upgrade --recover`", err)
+		return outcomeWithRetainedJournal(root, evidence, evidence), fmt.Errorf("lock committed but journal update failed (%w); run `awf upgrade --recover`", err)
 	}
 	// Authority is committed from here on, so quarantined trees are discarded
 	// rather than restored. A fault leaves a recoverable journal, never a rollback.
@@ -488,10 +493,10 @@ func commitTransaction(root string, ops []Operation) (Outcome, error) {
 	evidence = append(evidence, discarded...)
 	changed := committedChanged(j, evidence)
 	if err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
+		return outcomeWithRetainedJournal(root, evidence, changed), fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
 	if err := journalRemove(JournalPath(root)); err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
+		return outcomeWithRetainedJournal(root, evidence, changed), fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
 	return Outcome{Evidence: evidence, Changed: changed}, nil
 }
@@ -502,15 +507,15 @@ func commitTransaction(root string, ops []Operation) (Outcome, error) {
 func rollBack(root string, j Journal, cause error, applied []Evidence) (Outcome, error) {
 	j.Phase = phaseRollingBack
 	if err := journalWrite(root, j); err != nil {
-		return Outcome{Evidence: applied, Changed: appendEvidence(applied, retainedJournal(root))}, fmt.Errorf("%w; and the journal could not record rollback: %w", cause, err)
+		return outcomeWithRetainedJournal(root, applied, applied), fmt.Errorf("%w; and the journal could not record rollback: %w", cause, err)
 	}
 	restored, remaining, err := restorePriors(root, j, applied)
 	evidence := appendEvidence(applied, restored...)
 	if err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(remaining, retainedJournal(root))}, fmt.Errorf("%w; rollback halted: %w", cause, err)
+		return outcomeWithRetainedJournal(root, evidence, remaining), fmt.Errorf("%w; rollback halted: %w", cause, err)
 	}
 	if err := journalRemove(JournalPath(root)); err != nil {
-		return Outcome{Evidence: evidence, Changed: []Evidence{retainedJournal(root)}}, fmt.Errorf("%w; rollback done but journal cleanup failed: %w", cause, err)
+		return outcomeWithRetainedJournal(root, evidence, nil), fmt.Errorf("%w; rollback done but journal cleanup failed: %w", cause, err)
 	}
 	return Outcome{Evidence: evidence, Changed: []Evidence{}}, cause
 }
@@ -576,14 +581,14 @@ func Recover(root string) (Outcome, error) {
 	}
 	current, err := lockImageOf(root, LockRel())
 	if err != nil {
-		return Outcome{Changed: []Evidence{retainedJournal(root)}}, err
+		return outcomeWithRetainedJournal(root, nil, nil), err
 	}
 	lockIsFinal := current.Present && imageSHA(current) == j.FinalLockSHA256
 	if j.Phase == phaseLockCommitted {
 		if lockIsFinal {
 			return finishCommitted(root, j)
 		}
-		return Outcome{Changed: []Evidence{retainedJournal(root)}}, fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
+		return outcomeWithRetainedJournal(root, nil, nil), fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
 	}
 	if lockIsFinal {
 		// The lock was written before the phase advanced; treat it as committed.
@@ -591,16 +596,16 @@ func Recover(root string) (Outcome, error) {
 	}
 	applied, err := appliedOperations(root, j)
 	if err != nil {
-		return Outcome{Changed: []Evidence{retainedJournal(root)}}, err
+		return outcomeWithRetainedJournal(root, nil, nil), err
 	}
 	j.Phase = phaseRollingBack
 	if err := journalWrite(root, j); err != nil {
-		return Outcome{Evidence: applied, Changed: appendEvidence(applied, retainedJournal(root))}, err
+		return outcomeWithRetainedJournal(root, applied, applied), err
 	}
 	restored, remaining, err := restorePriors(root, j, applied)
 	evidence := appendEvidence(applied, restored...)
 	if err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(remaining, retainedJournal(root))}, err
+		return outcomeWithRetainedJournal(root, evidence, remaining), err
 	}
 	return cleanupJournal(root, evidence, nil)
 }
@@ -620,7 +625,7 @@ func finishCommitted(root string, j Journal) (Outcome, error) {
 	evidence = append(evidence, discarded...)
 	changed := committedChanged(j, evidence)
 	if err != nil {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, err
+		return outcomeWithRetainedJournal(root, evidence, changed), err
 	}
 	return cleanupJournal(root, evidence, changed)
 }
@@ -628,7 +633,7 @@ func finishCommitted(root string, j Journal) (Outcome, error) {
 // cleanupJournal removes the journal residue idempotently.
 func cleanupJournal(root string, evidence, changed []Evidence) (Outcome, error) {
 	if err := journalRemove(JournalPath(root)); err != nil && !os.IsNotExist(err) {
-		return Outcome{Evidence: evidence, Changed: appendEvidence(changed, retainedJournal(root))}, err
+		return outcomeWithRetainedJournal(root, evidence, changed), err
 	}
 	evidence = append(evidence, Evidence{Action: "recovered", Path: JournalPath(root)})
 	return Outcome{Evidence: evidence, Changed: changed}, nil

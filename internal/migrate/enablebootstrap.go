@@ -12,8 +12,8 @@ import (
 // internal/config (ADR-0026). A config absent on disk is a no-op (idempotent
 // re-run safe), and a config that already carries a bootstrap key made a choice -
 // a replay from a degraded lock must not override a deliberate opt-out.
-func applyEnableBootstrap(root string, _ *Changes) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+func applyEnableBootstrap(root string, out *Changes) error {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		var doc map[string]any
 		if yaml.Unmarshal(src, &doc) == nil {
 			if _, ok := doc["bootstrap"]; ok {
