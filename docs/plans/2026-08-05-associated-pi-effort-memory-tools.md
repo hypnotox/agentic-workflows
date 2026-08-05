@@ -203,16 +203,20 @@ Assert that every handle/listener/timer settles on each terminal path.
 ### Task 2.3: Guard the companion runtime before functional registration
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:compatible-runtime-floor", "add-associated-pi-effort-memory-tools:contextual-tool-activation", "add-associated-pi-effort-memory-tools:publication-safe-memory-tool-templates"]
-Paths: ["templates/partials/pi-minimum-runtime.md", "templates/pi/awf-effort/index.ts.tmpl", ".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "internal/project/target_test.go", "tools/pi-extension-test/tests/runtime.test.ts", "tools/pi-extension-test/tests/using-effort.test.ts", ".awf/awf.lock"]
+Paths: ["templates/partials/pi-minimum-runtime.md", "templates/pi/awf-effort/index.ts.tmpl", ".pi/extensions/awf-context-usage/index.ts", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "internal/project/target_test.go", "tools/pi-extension-test/package.json", "tools/pi-extension-test/package-lock.json", "tools/pi-extension-test/tests/context-usage.test.ts", "tools/pi-extension-test/tests/handoff.test.ts", "tools/pi-extension-test/tests/index.test.ts", "tools/pi-extension-test/tests/runtime.test.ts", "tools/pi-extension-test/tests/using-effort.test.ts", ".awf/awf.lock"]
 
-Before dispatch, require `git status --short` to print nothing, `./x check` to exit zero, and
-`./x pi-test run` to exit zero. Verify the pinned Pi package exports `getActiveTools`,
-`setActiveTools`, tool `promptGuidelines`, and `withFileMutationQueue`; the phase must fail rather
-than substitute a private queue or persistent prompt injection.
+Verify that the exact pinned coding-agent artifact remains
+`https://github.com/hypnotox/pi/releases/download/fork-v0.81.1-awf.3/pi-coding-agent-fork-v0.81.1-awf.3.tgz`
+with embedded version 0.81.1 and lock integrity
+`sha512-Xk34jkheEgNwBPMfT00+jmhY3YHcMkq5xL3C+a1Cr9yR0hsN76J5am6RJkZVQSxwAdHS2GKgzREElp0awve/sQ==`.
+Its published declarations already export `getActiveTools`, `setActiveTools`, tool
+`promptGuidelines`, and `withFileMutationQueue`; prove those exports through the real pinned package
+rather than substituting a private queue, a persistent prompt injection, or a newer unapproved
+artifact.
 
-Raise the shared documented Pi floor to the earliest pinned package version that exports the
-required active-tool metadata and file-mutation queue helper, and add `setActiveTools` to the closed
-minimum-runtime API vocabulary. Make the effort entrypoint consume the same one-notice guard before
+Retain the numeric Pi floor at 0.81.1, the earliest approved pinned artifact with every existing and
+newly required API, while extending the closed minimum-runtime feature vocabulary with
+`getActiveTools`, `setActiveTools`, tool `promptGuidelines`, and `withFileMutationQueue`. Make the effort entrypoint consume the same one-notice guard before
 registering association hooks or tools. Resolve the newly required queue helper in a way that lets an
 older or incomplete runtime reach the actionable compatibility notice instead of failing at static
 module import. Do not require `changeCwd`, Remote Pi events, or unrelated UI APIs.
@@ -273,14 +277,14 @@ unresolved token.
 Kind: batch
 Latitude: exact
 Applying: ["add-associated-pi-effort-memory-tools:compatible-runtime-floor", "add-associated-pi-effort-memory-tools:cohesive-runtime-boundary"]
-Paths: [".awf/docs/parts/architecture/dependencies.md", ".awf/docs/parts/testing/layout.md", "docs/architecture.md", "docs/testing.md", ".awf/awf.lock"]
-Representative: "Document the companion's active-tool and shared file-queue dependencies, the earliest compatible Pi floor, and the Go, TypeScript, render, coverage, and real-runtime test tiers that prove the generated client and first index consumer together."
-Edge: "Keep Pi packages adopter-supplied rather than binary dependencies, retain the one-notice compatibility refusal, and do not claim that unit stubs replace the pinned real-runtime smoke."
-Post-check: "After `./x render`, `./x check` exits zero; the generated architecture and testing docs name the guarded active-tool/file-queue floor and the test tiers exercised by the same runtime phase."
+Paths: [".awf/docs/parts/architecture/dependencies.md", ".awf/docs/parts/testing/layout.md", ".awf/docs/parts/testing/tiers.md", ".awf/docs/parts/development/dependencies.md", ".awf/docs/parts/releasing/content.md", "templates/docs/working-with-awf.md.tmpl", "README.md", "docs/architecture.md", "docs/testing.md", "docs/development.md", "docs/releasing.md", "docs/working-with-awf.md", ".awf/awf.lock"]
+Representative: "Document the companion's active-tool and shared file-queue dependencies, retained exact fork-v0.81.1-awf.3 artifact and numeric 0.81.1 floor, expanded required-API feature floor, and the Go, TypeScript, render, coverage, and real-runtime test tiers that prove the generated client and first index consumer together."
+Edge: "Keep Pi packages adopter-supplied rather than binary dependencies, preserve the exact fork URL and integrity, retain the one-notice compatibility refusal, remove the stale no-version-floor claim, and do not claim that unit stubs replace the pinned real-runtime smoke."
+Post-check: "After `./x render`, `./x check` exits zero; README and every generated architecture, testing, development, releasing, and working-with-awf document consistently name the retained 0.81.1 fork floor, expanded required APIs, and test tiers exercised by the same runtime phase."
 
-Update the authoring parts and render both generated documents in the same transaction that raises
-the runtime floor and introduces its first functional consumer. Read back both sources and outputs;
-never hand-edit the generated documents or lock.
+Update every listed authoring source and render its generated document in the same transaction that
+extends the runtime feature floor and introduces its first functional consumer. Read back every
+source and output; never hand-edit generated documents or the lock.
 
 ### Phase close
 
@@ -362,9 +366,10 @@ feat(rendering): back memory tools (applies memory tools batch)
 
 ## Notes
 
-- Pi 0.83.0 documentation names `pi.getActiveTools()`, `pi.setActiveTools()`, tool
-  `promptGuidelines`, and exported `withFileMutationQueue()` as the supported dynamic-tool and
-  shared-mutation primitives. Implementation must verify the pinned package/type export before
-  setting the exact floor and must not replace either primitive with a private analogue.
+- The exact pinned `fork-v0.81.1-awf.3` coding-agent artifact, embedded version 0.81.1, exports
+  `pi.getActiveTools()`, `pi.setActiveTools()`, tool `promptGuidelines`, and
+  `withFileMutationQueue()`. Phase 2 retains that numeric/artifact floor, extends its guarded feature
+  vocabulary, proves the lock-pinned declarations and real runtime, and never replaces either
+  primitive with a private analogue.
 - The terminal implementation review later owns the plan status flip and the ADR's status-only
   Implemented transition; no implementation phase performs either freeze.
