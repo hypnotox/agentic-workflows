@@ -101,8 +101,12 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
 
    The object contains no additional properties and contains 1 through 128 edit objects with no
    additional properties. Each decoded string is individually bounded by the one-MiB memory limit,
-   and the complete stdin request is bounded to 16 MiB. Read selection is capped at 2,000 lines or
-   50 KiB after honoring its optional line limit.
+   and the complete stdin request is bounded to 16 MiB. Read selection is capped at 2,000 complete
+   lines or 50 KiB after honoring its optional line limit. Byte truncation stops before the first
+   line that would exceed the cap and sets `nextOffset` to that line; it never returns a partial
+   line. If the line at the requested offset cannot fit by itself, read returns handled
+   `result-too-large` with that line's byte size and the 50-KiB maximum so line-offset continuation
+   never skips content.
 
    A syntactically valid read offset beyond the document's total line count returns the handled
    `offset-out-of-range` refusal rather than an empty success or malformed-bound failure.
@@ -150,8 +154,10 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
    positive integer greater than the positive integer `totalLines`. `no-match` adds exactly
    `"edit":{"index":0}`. `ambiguous-match` adds exactly `"edit":{"index":0,"occurrences":2}`.
    `overlapping-edits` adds exactly `"edits":{"firstIndex":0,"secondIndex":1}`.
-   `result-too-large` adds exactly `"size":{"bytes":1048577,"maxBytes":1048576}`. Indexes and byte
-   counts are nonnegative integers, and an occurrence count is an integer greater than one. No other
+   `result-too-large` adds exactly `"size":{"bytes":1048577,"maxBytes":1048576}`; for an
+   individually unpageable read line, `bytes` is that line's byte size and `maxBytes` is 51,200.
+   Indexes and byte counts are nonnegative integers, and an occurrence count is an integer greater
+   than one. No other
    refusal carries an extra fact. `changedMemory` is false for every refusal except `memory-failure` after atomic
    replacement, where it is true. Handled refusals exit zero. Malformed grammar or stdin, invalid
    bounds, and failures before managed state is observed use nonzero exit, empty stdout, and bounded
