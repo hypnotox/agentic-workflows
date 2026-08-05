@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -648,8 +649,8 @@ func finishCommitted(root string, j Journal, operation journalOperation) (Outcom
 
 // cleanupJournal removes the journal residue idempotently.
 func cleanupJournal(root string, evidence, changed []Evidence, operation journalOperation) (Outcome, error) {
-	if err := operation.remove(JournalPath(root)); err != nil && !os.IsNotExist(err) {
-		return outcomeWithRetainedJournal(root, evidence, changed), err
+	if err := operation.remove(JournalPath(root)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return outcomeWithRetainedJournal(root, evidence, changed), fmt.Errorf("remove current-state upgrade journal: %w", err)
 	}
 	evidence = append(evidence, Evidence{Action: "recovered", Path: journalRel})
 	return Outcome{Evidence: evidence, Changed: changed}, nil
@@ -661,8 +662,8 @@ func appliedOperations(root string, j Journal, operation journalOperation) ([]Ev
 		if op.residentTree() {
 			if _, err := operation.lstat(filepath.Join(root, filepath.FromSlash(op.Quarantine))); err == nil {
 				applied = append(applied, Evidence{Action: "applied", Path: op.Path})
-			} else if !os.IsNotExist(err) {
-				return nil, err
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("inspect quarantine %s: %w", op.Quarantine, err)
 			}
 			continue
 		}

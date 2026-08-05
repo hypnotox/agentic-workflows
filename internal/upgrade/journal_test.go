@@ -3,6 +3,8 @@ package upgrade
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -469,8 +471,23 @@ func TestAppliedOperationsPropagatesResidentInspectionFailure(t *testing.T) {
 	operation := productionJournalOperation()
 	operation.lstat = func(string) (os.FileInfo, error) { return nil, failure }
 	journal := Journal{Operations: []Operation{{Kind: KindResidentTree, Path: ".awf/efforts", Quarantine: ".awf/.upgrade-quarantine/efforts"}}}
-	if _, err := appliedOperations(t.TempDir(), journal, operation); !errors.Is(err, failure) {
-		t.Fatalf("error = %v, want %v", err, failure)
+	if _, err := appliedOperations(t.TempDir(), journal, operation); !errors.Is(err, failure) || !strings.Contains(err.Error(), "inspect quarantine .awf/.upgrade-quarantine/efforts") {
+		t.Fatalf("error = %v, want wrapped inspection failure with quarantine path", err)
+	}
+}
+
+func TestAppliedOperationsTreatsWrappedResidentAbsenceAsUnapplied(t *testing.T) {
+	operation := productionJournalOperation()
+	operation.lstat = func(string) (os.FileInfo, error) {
+		return nil, fmt.Errorf("quarantine unavailable: %w", fs.ErrNotExist)
+	}
+	journal := Journal{Operations: []Operation{{Kind: KindResidentTree, Path: ".awf/efforts", Quarantine: ".awf/.upgrade-quarantine/efforts"}}}
+	applied, err := appliedOperations(t.TempDir(), journal, operation)
+	if err != nil {
+		t.Fatalf("appliedOperations: %v", err)
+	}
+	if len(applied) != 0 {
+		t.Fatalf("applied = %#v, want none", applied)
 	}
 }
 
@@ -1242,8 +1259,8 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		evidence := []Evidence{{Action: "applied", Path: "a.txt"}}
 		changed := []Evidence{{Action: "applied", Path: "a.txt"}}
 		outcome, err := cleanupJournal(root, evidence, changed, operation)
-		if !errors.Is(err, failure) {
-			t.Fatalf("error = %v, want %v", err, failure)
+		if !errors.Is(err, failure) || !strings.Contains(err.Error(), "remove current-state upgrade journal") {
+			t.Fatalf("error = %v, want wrapped journal removal failure", err)
 		}
 		wantEvidence := appendEvidence(evidence, retainedJournal(root))
 		if !slices.Equal(outcome.Evidence, wantEvidence) {
@@ -1251,6 +1268,20 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		}
 		if want := appendEvidence(changed, retainedJournal(root)); !slices.Equal(outcome.Changed, want) {
 			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		}
+	})
+
+	t.Run("wrapped-absence-is-idempotent", func(t *testing.T) {
+		operation := productionJournalOperation()
+		operation.remove = func(string) error {
+			return fmt.Errorf("journal already removed: %w", fs.ErrNotExist)
+		}
+		outcome, err := cleanupJournal(t.TempDir(), nil, nil, operation)
+		if err != nil {
+			t.Fatalf("cleanupJournal: %v", err)
+		}
+		if want := []Evidence{{Action: "recovered", Path: journalRel}}; !slices.Equal(outcome.Evidence, want) {
+			t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, want)
 		}
 	})
 }
