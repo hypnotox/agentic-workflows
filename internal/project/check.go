@@ -620,8 +620,8 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 			continue
 		}
-		if manifest.Hash(onDisk) != e.OutputHash {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"})
+		if finding, found := classifyFrozenOutputDrift(rf, e, onDisk, "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
+			drift = append(drift, finding)
 			continue
 		}
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate

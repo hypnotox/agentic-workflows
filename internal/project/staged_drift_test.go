@@ -14,6 +14,29 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
+// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftDetectsBinaryDerivedOutput)
+func TestStagedDriftDetectsBinaryDerivedOutput(t *testing.T) {
+	const path = "ordinary-output"
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: path, Mode: snapshot.Regular, Bytes: []byte("hand edit")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{
+		path: {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
+	}}
+	rendered := map[string]RenderedFile{
+		path: {Path: path, Content: "fresh render", TemplateHash: "template", ConfigHash: "config"},
+	}
+	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []manifest.Drift{{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("staged binary-derived drift = %#v, want %#v", got, want)
+	}
+}
+
 func TestCheckStagedDriftErrorPaths(t *testing.T) {
 	if _, err := CheckStagedDriftRoot(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("staged drift root accepted a non-repository")
@@ -84,6 +107,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		{Path: "regen-stale", Mode: snapshot.Regular, Bytes: []byte("old")},
 		{Path: "regen-edit", Mode: snapshot.Regular, Bytes: []byte("old")},
 		{Path: "regen-clean", Mode: snapshot.Regular, Bytes: []byte("same")},
+		{Path: "ordinary-binary", Mode: snapshot.Regular, Bytes: []byte("edited")},
 		{Path: "ordinary-edit", Mode: snapshot.Regular, Bytes: []byte("edited")},
 		{Path: "ordinary-clean", Mode: snapshot.Regular, Bytes: []byte("same")},
 	})
@@ -97,6 +121,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		"regen-edit":              {},
 		"regen-clean":             {},
 		"ordinary-stale":          {TemplateHash: "old-template", ConfigHash: "config"},
+		"ordinary-binary":         {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
 		"ordinary-edit":           {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
 		"ordinary-clean":          {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
 		"ordinary-missing":        {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("same"))},
@@ -111,13 +136,14 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		"regen-edit":              {Path: "regen-edit", Content: "new", TemplateID: "template", Policy: OutputPolicy{Regenerate: true}},
 		"regen-clean":             {Path: "regen-clean", Content: "same", Policy: OutputPolicy{Regenerate: true}},
 		"ordinary-stale":          {Path: "ordinary-stale", TemplateHash: "new-template", ConfigHash: "config"},
-		"ordinary-edit":           {Path: "ordinary-edit", TemplateHash: "template", ConfigHash: "config"},
-		"ordinary-clean":          {Path: "ordinary-clean", TemplateHash: "template", ConfigHash: "config"},
+		"ordinary-binary":         {Path: "ordinary-binary", Content: "fresh", TemplateHash: "template", ConfigHash: "config"},
+		"ordinary-edit":           {Path: "ordinary-edit", Content: "same", TemplateHash: "template", ConfigHash: "config"},
+		"ordinary-clean":          {Path: "ordinary-clean", Content: "same", TemplateHash: "template", ConfigHash: "config"},
 		"ordinary-missing":        {Path: "ordinary-missing", TemplateHash: "template", ConfigHash: "config"},
-		"dead-reference.md":       {Path: "dead-reference.md", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ScanReferences: true}},
-		"invalid-frontmatter.md":  {Path: "invalid-frontmatter.md", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ValidateFrontmatter: true}},
-		"missing-provenance.md":   {Path: "missing-provenance.md", TemplateHash: "template", ConfigHash: "config"},
-		"bad-attribution.md":      {Path: "bad-attribution.md", TemplateHash: "template", ConfigHash: "config"},
+		"dead-reference.md":       {Path: "dead-reference.md", Content: "[missing](absent.md)", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ScanReferences: true}},
+		"invalid-frontmatter.md":  {Path: "invalid-frontmatter.md", Content: "not frontmatter", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ValidateFrontmatter: true}},
+		"missing-provenance.md":   {Path: "missing-provenance.md", Content: "no generated banner", TemplateHash: "template", ConfigHash: "config"},
+		"bad-attribution.md":      {Path: "bad-attribution.md", Content: "unattributed", TemplateHash: "template", ConfigHash: "config"},
 	}
 
 	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, false)
@@ -128,6 +154,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	// silent: config hygiene, backup, dead-reference, frontmatter, provenance,
 	// attribution, and orphaned-lock inputs produce no additional kind.
 	want := []manifest.Drift{
+		{Path: "ordinary-binary", Kind: "stale", Detail: "rendered output out of date; run awf render"},
 		{Path: "ordinary-edit", Kind: "hand-edited", Detail: "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"},
 		{Path: "ordinary-stale", Kind: "stale", Detail: "template or config changed; run awf render"},
 		{Path: "regen-edit", Kind: "hand-edited", Detail: "staged output differs from the regenerated file; run awf render to restore awf-owned regions"},

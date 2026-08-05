@@ -81,3 +81,4 @@ green result would imply more assurance than it provides.
 - 2026-08-05: Accepted; content-sha256: cd4d014f2286f70a31c399fd110df9e73aeb6410ff39ff6065dda51e36c985b8
 - 2026-08-05: Implementing; content-sha256: cd4d014f2286f70a31c399fd110df9e73aeb6410ff39ff6065dda51e36c985b8
 - 2026-08-05: Applied; operations: update `rendering/project-output-plan:output-plan-complete`, add `rendering/project-output-plan:conditional-unit-single-source`, update `rendering/project-output-plan:template-id-single-derivation`, add `config/configspec-and-reference:live-state-projection-explicit`, add `rendering/templates:singleton-conditional-key-live`
+- 2026-08-05: Applied; operations: add `rendering/sync-and-drift:ordinary-render-freshness`

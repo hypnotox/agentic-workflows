@@ -757,8 +757,8 @@
     "docs/topics/rendering/sync-and-drift.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:a5bca4b579a008bf8cfe1b77d64247e377ae719c7fc29c2103a5d8079afaa2b1",
-      "outputHash": "sha256:cd68ef42003887619c170b75cab9198ad71a94bcc92a30535c40d347223a99c8"
+      "configHash": "sha256:d3a00f7fbeaf29082b5955abc7f622cdef86d7a4f87826b90913be6ee1d40f9d",
+      "outputHash": "sha256:72c1e4aff283ab78048bec5107dc13c5eec5455286054e145eff9d2963d0c52e"
     },
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",

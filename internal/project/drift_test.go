@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -65,6 +66,26 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	p.localReservations(reservation, func(_ string, err error) { localErr = err })
 	if localErr == nil || !strings.Contains(localErr.Error(), "absent") {
 		t.Fatalf("local validation policy error = %v", localErr)
+	}
+}
+
+// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestCheckLockedFilesDetectsBinaryDerivedDrift)
+func TestCheckLockedFilesDetectsBinaryDerivedDrift(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const path = "ordinary-output"
+	testsupport.WriteFile(t, filepath.Join(root, path), "hand edit")
+	file := RenderedFile{Path: path, Content: "fresh render", TemplateHash: "template", ConfigHash: "config"}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{
+		path: {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
+	}}
+	got := p.checkLockedFiles(lock, map[string]RenderedFile{path: file})
+	want := []manifest.Drift{{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"}}
+	if !slices.Equal(got, want) {
+		t.Fatalf("binary-derived drift = %#v, want %#v", got, want)
 	}
 }
 
