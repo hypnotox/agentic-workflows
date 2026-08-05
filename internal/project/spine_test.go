@@ -285,7 +285,7 @@ func TestCodeReviewerAgent(t *testing.T) {
 func TestRenderedReviewerVerificationGuidance(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	contracts := map[string][]string{
-		"plan-reviewer.md": {
+		"plan-reviewer": {
 			"material census and post-check commands",
 			"exact intermediate snapshot",
 			"terminal set or lifecycle-authorized residual findings",
@@ -295,7 +295,7 @@ func TestRenderedReviewerVerificationGuidance(t *testing.T) {
 			"no stricter than the durable property",
 			"no named authority or state obligation",
 		},
-		"code-reviewer.md": {
+		"code-reviewer": {
 			"added or changed mechanical check",
 			"negative case",
 			"temporary falsification",
@@ -310,16 +310,27 @@ func TestRenderedReviewerVerificationGuidance(t *testing.T) {
 			"no named authority or state obligation",
 		},
 	}
-	for _, target := range []string{".claude", ".pi"} {
-		for name, clauses := range contracts {
-			path := filepath.Join(root, target, "agents", name)
+	for agent, clauses := range contracts {
+		surfaces := map[string]string{
+			"generic " + agent: renderAgentGolden(t, agent, map[string]any{
+				"prefix": "example",
+				"vars":   map[string]any{},
+				"layout": map[string]any{"plansDir": "docs/plans"},
+				"data":   catalog.Standard.Agents[agent].Data,
+			}),
+		}
+		for _, target := range []string{".claude", ".pi"} {
+			path := filepath.Join(root, target, "agents", agent+".md")
 			body, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatalf("read %s: %v", path, err)
 			}
+			surfaces[path] = string(body)
+		}
+		for surface, body := range surfaces {
 			for _, clause := range clauses {
-				if !strings.Contains(string(body), clause) {
-					t.Errorf("%s missing reviewer verification clause %q", path, clause)
+				if !strings.Contains(body, clause) {
+					t.Errorf("%s missing reviewer verification clause %q", surface, clause)
 				}
 			}
 		}
