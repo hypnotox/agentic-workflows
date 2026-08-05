@@ -40,6 +40,11 @@ actionable-outcome rule also flattens multi-step recovery onto one numbered line
 chosen readable list form, and the audit severity claim reserves `warn` even though grouped output
 needs the readable category `warnings`.
 
+One terminal mechanism path cannot use the presentation renderer: if rendering itself fails, using
+that renderer again to describe its own failure would recurse or suppress the cause. The command
+boundary therefore needs one exact, tested stderr fallback distinct from ordinary presentation and
+from payload or protocol bypasses.
+
 The desired interface is readable before it is terse: labeled blocks for ordinary results,
 semantic categories for collections, and one stable record per line when volume is high. It must
 remain deterministic enough for agent and script consumption, use minimal formatting, and avoid
@@ -63,9 +68,9 @@ order impossible. Its new claim therefore narrows only its ordering clause to de
 
 6. `decision: interactive-presentation` Interactive prompts are a validated presentation mode, not a raw-output exemption. The presentation package buffers and writes the prompt prelude under the ordinary tree grammar, then writes and flushes one validated `prompt:` tail without a newline before input is read. This is the only ordinary presentation mode allowed to write before a complete command result exists.
 
-7. `decision: explicit-bypasses` Every output that bypasses the presentation tree is explicitly classified as a payload or machine protocol and tested byte-for-byte. Authored plan projections and changelog content are payloads. Effort activity JSON, init descriptor JSON, and the context spill notice are protocols. Bypasses never mix presentation text into their bytes. Version output is ordinary presentation and its in-repository consumers parse the labeled contract. Optional JSON modes for effort new, list, and show and for topic are removed; JSON remains only where the command contract is itself a machine protocol.
+7. `decision: explicit-bypasses` Every successful output that bypasses the presentation tree is explicitly classified as a payload or machine protocol and tested byte-for-byte. Authored plan projections and changelog content are payloads. Effort activity JSON, init descriptor JSON, and the context spill notice are protocols. Bypasses never mix presentation text into their bytes. Version output is ordinary presentation and its in-repository consumers parse the labeled contract. Optional JSON modes for effort new, list, and show and for topic are removed; JSON remains only where the command contract is itself a machine protocol. Separately, after the presentation renderer itself fails, the command boundary may call only `writeRendererFailure` to emit one newline-terminated `awf: <cause>` mechanism diagnostic to stderr. It trims and collapses every Unicode whitespace run in the cause to one ASCII space, substitutes `renderer failed` when that normalization is empty, is not a successful output or alternate renderer, and is tested with ordinary, hostile multiline, and empty causes as the sole renderer-failure fallback rather than added to the payload or protocol set.
 
-8. `decision: enforced-adoption` Every ordinary command surface, including help, prompts, successful results, advisories, reports, refusals, and partial outcomes, converts to the central presentation contract. A structural gate rejects direct formatted command output outside the explicit payload and protocol boundary. Exact presentation tests own public labels, schemas, grouping, order, escaping, stream selection, and exit behavior; long expected outputs are checked-in reviewable test data rather than silently regenerated snapshots. Every repository consumer of ordinary output validates the public labels and field boundaries it reads instead of relying on incidental whitespace positions.
+8. `decision: enforced-adoption` Every ordinary command surface, including help, prompts, successful results, advisories, reports, refusals, and partial outcomes, converts to the central presentation contract. A structural gate rejects direct formatted command output outside the explicit payload and protocol boundary, separately recognizes only the exact `writeRendererFailure` terminal mechanism fallback, and proves that fallback is reachable only after renderer failure. Exact presentation tests own public labels, schemas, grouping, order, escaping, stream selection, and exit behavior; long expected outputs are checked-in reviewable test data rather than silently regenerated snapshots. Every repository consumer of ordinary output validates the public labels and field boundaries it reads instead of relying on incidental whitespace positions.
 
 9. `decision: package-and-authority-home` The new presentation package belongs to the code-design domain because it owns a repository-wide representation pattern rather than tooling command semantics. The global presentation-ownership topic owns the cross-cutting node grammar, closed standard result-shape set, and semantic-mapping boundary. The path-scoped presentation-package topic covers `internal/presentation/**` and owns its package-local dependency and representation-only boundary without duplicating the global syntax contract. The tooling CLI topic owns the public text grammar, typed command boundary, explicit bypass set, structured help contract, and command-specific JSON retirement. The context-query boundary continues to assign query and semantic mapping ownership to `internal/contextq`, while the presentation package owns syntax rendering. Outcome modeling continues to own diagnostic meaning and retry safety, with its flattened remedy rendering revised to use the central Steps shape.
 
@@ -119,7 +124,9 @@ necessary early flush through their single governed mode.
 Removing optional JSON modes is a deliberate pre-1.0 compatibility break. Required machine
 protocols remain isolated and exact. New machine consumers should prefer the deterministic text
 contract unless they genuinely require a separately governed protocol; convenience alone does not
-earn a second renderer.
+earn a second renderer. The renderer-failure fallback adds no successful-output format and cannot
+be invoked as a convenience path; its narrow exception exists only because a failed renderer cannot
+reliably render its own failure.
 
 A multi-phase implementation plan is required. The state claims apply with their matching code and
 test transactions rather than becoming authority before the converted surfaces exist. The narrow
@@ -136,6 +143,7 @@ and error semantics unchanged.
 | Keep readable text plus optional JSON everywhere | Doubles compatibility and test surface without a demonstrated protocol consumer. |
 | Use padded tables or Markdown-like output | Optimizes terminal appearance rather than stable records and introduces alignment and decorative syntax with no semantic value. |
 | Let prompts and migrations bypass central presentation | Preserves eager writes but leaves two of the most complicated output producers outside the rule the decision exists to establish. |
+| Exit silently after renderer failure | Avoids one direct diagnostic but suppresses the renderer's actionable cause at the terminal command boundary. |
 | Store raw strings in a generic node tree | Makes the tree nominal rather than enforcing; arbitrary text would recreate every current inconsistency behind one type. |
 
 ## Status history
@@ -150,3 +158,4 @@ and error semantics unchanged.
 - 2026-08-04: Applied; operations: update `tooling/audit-commands:severity-single-spelling`
 - 2026-08-05: Amended; content-sha256: 280ce5ee0878e27b8b65d305a8f9bb97840add53a20588027768100227ad5f5b
 - 2026-08-05: Applied; operations: update `tooling/cli:repo-check-capability-plan`
+- 2026-08-05: Amended; content-sha256: f198c6210b3d9ca4ba34457ee7dd9480c7cfec04561dba0917995f604ebda9f4
