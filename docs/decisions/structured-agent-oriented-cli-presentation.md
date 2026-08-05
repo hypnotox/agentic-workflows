@@ -45,9 +45,13 @@ semantic categories for collections, and one stable record per line when volume 
 remain deterministic enough for agent and script consumption, use minimal formatting, and avoid
 both terminal tables and a JSON-first contract.
 
+Severity grouping in the repository check capability plan makes cross-category step and finding
+order impossible. Its new claim therefore narrows only its ordering clause to deterministic
+`errors` then `warnings`, with source order within each category.
+
 ## Decision
 
-1. `decision: readable-text-contract` Ordinary awf command output uses one deterministic readable-text contract. A scalar is `label: value`, indentation is two spaces, and a section is a lowercase label followed by nested nodes. Output uses no alignment padding, Markdown headings or tables, decorative framing, or semicolon-compressed records. Colon separates a label from its value. A compact record separates its ordered fields with ASCII ` | `. A collection groups records under semantic category labels and gives every entry in one category the same declared field schema. Categories and records have deterministic order, and each high-volume record occupies one line. Root Fields form an optional leading block and every root Section follows that block; a root Field after any root Section is invalid. Consecutive root Fields have no blank line, a Section-first document has no leading blank line, exactly one blank line separates a leading Field block from the first Section, exactly one blank line separates root Sections, nested nodes have no blank lines, and a complete document ends with exactly one newline. Labels contain lowercase ASCII words or digits separated by one space or hyphen. Empty values, lists, records, and sections are invalid, and explicit emptiness renders as a scalar such as `efforts: none`. The domain severity rank tokens remain `error` and `warn`, while grouped presentation category labels use the readable plurals `errors` and `warnings`.
+1. `decision: readable-text-contract` Ordinary awf command output uses one deterministic readable-text contract. A scalar is `label: value`, indentation is two spaces, and a section is a lowercase label followed by nested nodes. Output uses no alignment padding, Markdown headings or tables, decorative framing, or semicolon-compressed records. Colon separates a label from its value. A compact record separates its ordered fields with ASCII ` | `. A collection groups records under semantic category labels and gives every entry in one category the same declared field schema. Categories and records have deterministic order. Finding reports order categories as `errors` then `warnings` and preserve source order within each category, not across categories. Each high-volume record occupies one line. Root Fields form an optional leading block and every root Section follows that block; a root Field after any root Section is invalid. Consecutive root Fields have no blank line, a Section-first document has no leading blank line, exactly one blank line separates a leading Field block from the first Section, exactly one blank line separates root Sections, nested nodes have no blank lines, and a complete document ends with exactly one newline. Labels contain lowercase ASCII words or digits separated by one space or hyphen. Empty values, lists, records, and sections are invalid, and explicit emptiness renders as a scalar such as `efforts: none`. The domain severity rank tokens remain `error` and `warn`, while grouped presentation category labels use the readable plurals `errors` and `warnings`.
 
 2. `decision: closed-presentation-tree` One package owns a closed, bounded presentation node tree and its sole renderer. The root Document admits Field and Section nodes. A Section admits Field, Section, List, RecordGroup, and Steps nodes; RecordGroup admits only fixed-arity Record leaves under an unprinted schema. A List's section label names the common plural entity and its normalized single-line leaves render bare at the next indentation level, without a repeated item label. Steps render under their section as `step 1: value`, `step 2: value`, and so on. Section nesting is limited to three levels, and the tree exposes no raw-text node. Constructors validate labels, shapes, record arity, normalization, and escaping. Scalar, list, step, and record values reject CR and LF. A prose constructor trims and collapses Unicode whitespace to one ASCII space; a literal constructor preserves meaningful horizontal spaces. Compact record fields replace `\` with `\\` and `|` with `\|`; other nodes need no delimiter escaping. Rendering validates the complete tree into a buffer before one destination write, so invalid presentation cannot leak partial bytes. The package exists to enforce the one text contract, not to support speculative JSON, Markdown, color, or alternate-renderer visitors.
 
@@ -77,6 +81,7 @@ both terminal tables and a JSON-first contract.
 - update `tooling/cli:cli-command-spec-single-source`
 - update `tooling/cli:effort-command-contract`
 - update `tooling/audit-commands:severity-single-spelling`
+- update `tooling/cli:repo-check-capability-plan`
 - add `tooling/cli:readable-text-output`
 - add `tooling/cli:typed-command-output-boundary`
 - add `tooling/cli:explicit-output-bypasses`
@@ -117,7 +122,9 @@ contract unless they genuinely require a separately governed protocol; convenien
 earn a second renderer.
 
 A multi-phase implementation plan is required. The state claims apply with their matching code and
-test transactions rather than becoming authority before the converted surfaces exist.
+test transactions rather than becoming authority before the converted surfaces exist. The narrow
+repository check ordering change leaves capability selection, continuation, preparation-failure,
+and error semantics unchanged.
 
 ## Alternatives Considered
 
@@ -141,3 +148,4 @@ test transactions rather than becoming authority before the converted surfaces e
 - 2026-08-04: Reapplied; operations: update `code-design/outcome-modeling:actionable-outcome-protocol`
 - 2026-08-04: Applied; operations: update `tooling/cli:effort-command-contract`
 - 2026-08-04: Applied; operations: update `tooling/audit-commands:severity-single-spelling`
+- 2026-08-05: Amended; content-sha256: 280ce5ee0878e27b8b65d305a8f9bb97840add53a20588027768100227ad5f5b
