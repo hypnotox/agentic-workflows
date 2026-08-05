@@ -12,3 +12,11 @@
   it out of the verification step. The same rule governs prose about the repo's own shape: see the
   pitfalls entry on hard-coded counts drifting. For a batch or glob/pathspec `Paths:` scope, make
   `Post-check:` assert the terminal set or clean result rather than freezing its authoring-time count.
+- **Scope and classify material verification.** Each material `Post-check:` names its input
+  population, exclusions, lifecycle snapshot, and expected terminal set or lifecycle-authorized
+  residual findings. Empty output proves absence only after a probe success sentinel or checked exit
+  status establishes that the probe ran. After a compound mutating command, read back every mutation
+  target before trusting the result. Classify each material check as an authority, state, or
+  choreography check. Preserve authority checks. Use the least restrictive state validation that
+  proves the durable property. Omit a choreography-only constraint unless a named authority or state
+  property requires it.

@@ -282,6 +282,47 @@ func TestCodeReviewerAgent(t *testing.T) {
 	}
 }
 
+func TestRenderedReviewerVerificationGuidance(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	contracts := map[string][]string{
+		"plan-reviewer.md": {
+			"material census and post-check commands",
+			"exact intermediate snapshot",
+			"terminal set or lifecycle-authorized residual findings",
+			"reject a premature zero requirement",
+			"authority, state, or choreography check",
+			"preserve authority checks",
+			"no stricter than the durable property",
+			"no named authority or state obligation",
+		},
+		"code-reviewer.md": {
+			"added or changed mechanical check",
+			"negative case",
+			"temporary falsification",
+			"mutation landed",
+			"verdict counts",
+			"authority, state, or choreography check",
+			"preserve authority checks",
+			"no stricter than the durable property",
+			"no named authority or state obligation",
+		},
+	}
+	for _, target := range []string{".claude", ".pi"} {
+		for name, clauses := range contracts {
+			path := filepath.Join(root, target, "agents", name)
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			for _, clause := range clauses {
+				if !strings.Contains(string(body), clause) {
+					t.Errorf("%s missing reviewer verification clause %q", path, clause)
+				}
+			}
+		}
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:implementer-role-contract (TestImplementerAgent)
 func TestImplementerAgent(t *testing.T) {
 	data := map[string]any{

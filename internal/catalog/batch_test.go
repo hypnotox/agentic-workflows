@@ -34,3 +34,51 @@ func TestPlanReviewerStepExactnessSanctionsBatch(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewerVerificationGuidanceDefaults(t *testing.T) {
+	contracts := []struct {
+		agent string
+		items map[string][]string
+	}{
+		{
+			agent: "plan-reviewer",
+			items: map[string][]string{
+				"snapshot-scoped-verification": {"material census and post-check commands", "exact intermediate snapshot", "terminal set", "lifecycle-authorized residual findings", "premature zero"},
+				"check-authority-taxonomy":     {"authority, state, or choreography", "preserve authority checks", "no stricter than the durable property", "no named authority or state obligation"},
+			},
+		},
+		{
+			agent: "code-reviewer",
+			items: map[string][]string{
+				"verification-instrument-can-fail": {"added or changed mechanical check", "negative case", "temporary falsification", "mutation landed", "verdict counts"},
+				"check-authority-taxonomy":         {"authority, state, or choreography", "preserve authority checks", "no stricter than the durable property", "no named authority or state obligation"},
+			},
+		},
+	}
+
+	for _, contract := range contracts {
+		t.Run(contract.agent, func(t *testing.T) {
+			items, ok := Standard.Agents[contract.agent].Data["focusItems"].([]any)
+			if !ok {
+				t.Fatalf("%s focusItems missing or not []any", contract.agent)
+			}
+			descriptions := map[string]string{}
+			for _, item := range items {
+				entry, ok := item.(map[string]any)
+				if !ok {
+					continue
+				}
+				name, _ := entry["name"].(string)
+				descriptions[name], _ = entry["description"].(string)
+			}
+			for name, clauses := range contract.items {
+				description := descriptions[name]
+				for _, clause := range clauses {
+					if !strings.Contains(description, clause) {
+						t.Errorf("%s focus item %q missing %q: %q", contract.agent, name, clause, description)
+					}
+				}
+			}
+		})
+	}
+}

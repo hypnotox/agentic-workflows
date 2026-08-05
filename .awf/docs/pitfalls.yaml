@@ -1,19 +1,5 @@
 data:
   pitfalls:
-    - title: "An intermediate search expectation must respect deferred claim operations"
-      domains: [adr-system, rendering]
-      tags: [plan-artifact, adr-lifecycle, verification-discipline]
-      body: |
-        A reviewed plan required a closed-root stale-signature search to reach zero in Phase 1 while
-        the same phase was required to leave one matching current-state claim byte-for-byte unchanged
-        and its update operation Remaining until the terminal flip. Rendering made the contradiction
-        two findings: the authored claim and its generated topic copy. Implementation review caught
-        it only after the phase commit because plan review had reasoned about the final clean tree
-        rather than executing the search against each declared lifecycle snapshot. A plan that
-        partitions claim operations must run every exact census or zero-finding command against the
-        intermediate trees it specifies. Name the lifecycle-authorized intermediate findings exactly,
-        keep the terminal zero requirement attached to the operation that removes them, and reject any
-        additional match; never demand a clean search state before the batch authorized to create it.
     - title: "A census number is only as good as its stated query"
       domains: [adr-system]
       tags: [verification-discipline]
@@ -809,44 +795,6 @@ data:
         gate catches this shape, because a hang is not a failure until the timeout fires. If it
         recurs, the fix is to bound the fixture lane's invocations rather than to chase the
         individual test.
-    - title: "A mechanical check proves nothing until you have seen it fail"
-      domains: [tooling, invariants]
-      related: [193]
-      tags: [verification-discipline, invariant-backing]
-      body: |
-        A green grep, walker, or registry check is evidence only after you have watched it go red
-        on a case it must catch. Three instruments lied inside one effort, each in a different
-        direction. A post-check spelled `exec\.Command(Context)?\([^)]*"git"` reported success
-        over two unconverted files, because a bracket expression cannot cross the `)` in
-        `exec.CommandContext(t.Context(), "git", ...)` - which was the only spelling left; the
-        phase owner and the reviewing parent both took the empty output as completeness. A
-        repo-walker hand-rolled its traversal instead of using the repository's one definition of
-        the walk boundary, so it flagged every file inside a managed worktree and would have
-        failed on the target the moment the effort integrated: a false RED that passed review
-        only because the branch had no worktree of its own. And an entrypoint registry asserting
-        that each registered suite names its entrypoint was satisfied for seventeen of
-        thirty-five registrations by the test function's own NAME, because the check printed the
-        whole declaration rather than its body.
-        The habit that catches all three is cheap: plant the violation the check exists to find,
-        watch it fail, remove it. Prefer a permanent negative case in the suite, so the
-        instrument keeps proving itself. Beware two shapes especially - a check whose subject is
-        a regexp over source, where the language's syntax is richer than the pattern; and a
-        check reused from another context, where the boundary it encodes may not be the boundary
-        you need. Both look identical to a working check from the output alone.
-
-        A fourth shape inverts the failure: the check is fine and the FALSIFICATION is broken, so
-        the habit above silently degrades into the thing it was meant to replace. Planting a
-        violation with `sed -i "s|...|...|"` fails outright when the pattern contains `||`, since
-        the alternation collides with the `s|` delimiter; `sed` prints its usage error, the
-        surrounding script carries on, and the test then passes because nothing was ever mutated.
-        Two of three mutations in one ADR-0198 round failed exactly this way and their green
-        results were briefly read as evidence. A mutation that does not apply is indistinguishable
-        from a test that catches nothing, and it is the more dangerous of the two, because it
-        arrives wearing the costume of due diligence. Assert the mutation landed before trusting
-        its verdict: prefer a substitution that fails loudly on a missing pattern, such as python
-        with an `assert pattern in source` before the replace. One more trap in the same loop:
-        undoing a mutation with `git checkout -- <file>` also discards any UNCOMMITTED real edit
-        to that file, so a comment written minutes earlier vanishes with the mutation.
     - title: "Port a stale branch before merging a breaking marker grammar"
       domains: [invariants, adr-system, tooling]
       related: [205, 206]

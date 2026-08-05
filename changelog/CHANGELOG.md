@@ -12,6 +12,8 @@ query a single version or a range.
 
 - Authored current-state transactions may now append several distinct-target Applied or Reapplied batches and any exact-prefix legal Status progression, while repeated same-claim occurrences remain separately observable and merge-only folding stays provenance-gated. Historical audit applies the same rule to retained non-merge commits.
 
+- Plan authoring and review now scope material verification to its actual lifecycle snapshot, require demonstrated negative cases for mechanical checks, and distinguish authority, state, and choreography constraints so durable properties are preserved without enforcing unnecessary process shape.
+
 - Rendered workflow guidance now makes the simplest sufficient solution the default: brainstorming approves a proportionate scope and design boundary before implementation, material deviations stop for user approval, planning is used only when it materially helps, and reviewers reject speculative additions.
 
 - Pi effort association now keeps complete metadata independent while capability-gated display suffix publication sends only the canonical slug or null. It never overrides, reads, or composes routing identity, and degrades to metadata-only behavior.
