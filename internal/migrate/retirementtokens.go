@@ -32,7 +32,7 @@ var (
 // multi-line key fail loudly, naming the file. Edits are raw-byte string
 // surgery, never a frontmatter re-serialization, so untouched lines survive
 // byte-identical and meaning-preservation is checkable by diff. Idempotent: a
-// corpus with no keys prints nothing.
+// corpus with no keys collects no change facts.
 // touches-state: config/migrations-and-locks:upgrade-migrates-retirements - the migration itself; proof in retirementtokens_test.go
 func applyRetirementTokens(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {

@@ -1,9 +1,8 @@
 package upgrade
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -193,8 +192,7 @@ func TestJournalCommitHappyPath(t *testing.T) {
 		{Path: "a.txt", Prior: Image{}, Replacement: presentImg("alpha")},
 		{Path: LockRel(), Prior: Image{}, Replacement: presentImg("lock-final")},
 	}
-	var log bytes.Buffer
-	if err := commitTransaction(root, ops, &log); err != nil {
+	if _, err := commitTransaction(root, ops); err != nil {
 		t.Fatalf("commit: %v", err)
 	}
 	if got, _ := os.ReadFile(filepath.Join(root, "a.txt")); string(got) != "alpha" {
@@ -205,11 +203,6 @@ func TestJournalCommitHappyPath(t *testing.T) {
 	}
 	if journalPresence(t, root) {
 		t.Fatal("journal residue after success")
-	}
-	for _, want := range []string{"operation: applied a.txt", "operation: applied .awf/awf.lock", "operation: upgrade committed"} {
-		if !strings.Contains(log.String(), want) {
-			t.Fatalf("log missing %q: %s", want, log.String())
-		}
 	}
 }
 
@@ -230,8 +223,7 @@ func TestJournalCommitRollsBackOnApplyFailure(t *testing.T) {
 		{Path: "ro/new.txt", Prior: Image{}, Replacement: presentImg("blocked")},
 		{Path: LockRel(), Prior: Image{}, Replacement: presentImg("lock-final")},
 	}
-	var log bytes.Buffer
-	if err := commitTransaction(root, ops, &log); err == nil || !strings.Contains(err.Error(), "ro/new.txt") {
+	if _, err := commitTransaction(root, ops); err == nil || !strings.Contains(err.Error(), "ro/new.txt") {
 		t.Fatalf("want apply failure, got %v", err)
 	}
 	if got, _ := os.ReadFile(filepath.Join(root, "a.txt")); string(got) != "original" {
@@ -243,9 +235,6 @@ func TestJournalCommitRollsBackOnApplyFailure(t *testing.T) {
 	if journalPresence(t, root) {
 		t.Fatal("journal residue after rollback")
 	}
-	if !strings.Contains(log.String(), "operation: restored") || !strings.Contains(log.String(), "operation: rolled back") {
-		t.Fatalf("rollback log: %s", log.String())
-	}
 }
 
 func TestJournalRecoverTable(t *testing.T) {
@@ -254,8 +243,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		writeRawJournal(t, root, lockJournal(phaseApplying))
 		mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
-		var log bytes.Buffer
-		if err := Recover(root, &log); err != nil {
+		if _, err := Recover(root); err != nil {
 			t.Fatalf("recover: %v", err)
 		}
 		if _, err := os.Stat(filepath.Join(root, "a.txt")); !os.IsNotExist(err) {
@@ -264,7 +252,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		if journalPresence(t, root) {
 			t.Fatal("journal residue")
 		}
-		if err := Recover(root, io.Discard); err == nil {
+		if _, err := Recover(root); err == nil {
 			t.Fatal("second recovery with no journal accepted")
 		}
 	})
@@ -273,7 +261,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		writeRawJournal(t, root, lockJournal(phasePrepared))
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
 		mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
-		if err := Recover(root, io.Discard); err != nil {
+		if _, err := Recover(root); err != nil {
 			t.Fatalf("recover: %v", err)
 		}
 		if journalPresence(t, root) {
@@ -287,7 +275,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		root := t.TempDir()
 		writeRawJournal(t, root, lockJournal(phaseLockCommitted))
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
-		if err := Recover(root, io.Discard); err != nil {
+		if _, err := Recover(root); err != nil {
 			t.Fatalf("recover: %v", err)
 		}
 		if journalPresence(t, root) {
@@ -298,7 +286,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		root := t.TempDir()
 		writeRawJournal(t, root, lockJournal(phaseLockCommitted))
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("DIFFERENT"))
-		if err := Recover(root, io.Discard); err == nil || !strings.Contains(err.Error(), "refusing to roll committed authority back") {
+		if _, err := Recover(root); err == nil || !strings.Contains(err.Error(), "refusing to roll committed authority back") {
 			t.Fatalf("want refusal, got %v", err)
 		}
 		if !journalPresence(t, root) {
@@ -310,7 +298,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		writeRawJournal(t, root, lockJournal(phaseApplying))
 		mustWrite(t, filepath.Join(root, "a.txt"), []byte("TAMPERED"))
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
-		if err := Recover(root, io.Discard); err == nil || !strings.Contains(err.Error(), "a.txt") {
+		if _, err := Recover(root); err == nil || !strings.Contains(err.Error(), "a.txt") {
 			t.Fatalf("want third-party halt, got %v", err)
 		}
 		if !journalPresence(t, root) {
@@ -353,6 +341,63 @@ func TestJournalHelpers(t *testing.T) {
 	}
 }
 
+func TestJournalCommitApplyingPhaseWriteFailure(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".awf"))
+	failure := errors.New("applying phase write failed")
+	writes := 0
+	prior := journalWrite
+	journalWrite = func(root string, j Journal) error {
+		writes++
+		if writes == 2 {
+			return failure
+		}
+		return prior(root, j)
+	}
+	t.Cleanup(func() { journalWrite = prior })
+	if _, err := commitTransaction(root, []Operation{{Path: LockRel(), Replacement: presentImg("final")}}); !errors.Is(err, failure) {
+		t.Fatalf("commit error = %v, want applying phase-write failure", err)
+	}
+}
+
+func TestJournalCommitRetainsEvidenceWhenLockPhaseWriteFails(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".awf"))
+	failure := errors.New("phase write failed")
+	writes := 0
+	prior := journalWrite
+	journalWrite = func(root string, j Journal) error {
+		writes++
+		if writes == 3 {
+			return failure
+		}
+		return prior(root, j)
+	}
+	t.Cleanup(func() { journalWrite = prior })
+	ops := []Operation{
+		{Path: "a.txt", Prior: Image{}, Replacement: presentImg("alpha")},
+		{Path: LockRel(), Prior: Image{}, Replacement: presentImg("lock-final")},
+	}
+	outcome, err := commitTransaction(root, ops)
+	if !errors.Is(err, failure) {
+		t.Fatalf("commit error = %v, want phase-write failure", err)
+	}
+	want := []Evidence{
+		{Action: "applied", Path: "a.txt"},
+		{Action: "applied", Path: LockRel()},
+		{Action: "committed", Path: LockRel()},
+	}
+	if !slices.Equal(outcome.Evidence, want) {
+		t.Fatalf("evidence = %#v, want %#v", outcome.Evidence, want)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "lock-final" {
+		t.Fatalf("lock = %q, want committed bytes", got)
+	}
+	if !journalPresence(t, root) {
+		t.Fatal("recoverable journal missing after committed lock")
+	}
+}
+
 func TestJournalCommitPreparedWriteFailure(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses directory permissions")
@@ -365,7 +410,7 @@ func TestJournalCommitPreparedWriteFailure(t *testing.T) {
 	}
 	defer func() { _ = os.Chmod(awf, 0o755) }()
 	ops := []Operation{{Path: LockRel(), Replacement: presentImg("final")}}
-	if err := commitTransaction(root, ops, io.Discard); err == nil {
+	if _, err := commitTransaction(root, ops); err == nil {
 		t.Fatal("commit succeeded despite an unwritable journal directory")
 	}
 }
@@ -458,38 +503,13 @@ func TestJournalResidentKindRejections(t *testing.T) {
 	}
 }
 
-// lockWatcher reads the on-disk lock at the moment each operation line is
-// emitted. The log alone cannot prove when the commit point landed, because a
-// transaction that wrote the lock early would still print that line in its
-// usual place; only the bytes on disk at each step show the real order.
-type lockWatcher struct {
-	root  string
-	lines []string
-	locks []string
-}
-
-func (w *lockWatcher) Write(p []byte) (int, error) {
-	for _, line := range strings.Split(strings.TrimSuffix(string(p), "\n"), "\n") {
-		if line == "" {
-			continue
-		}
-		raw, err := os.ReadFile(filepath.Join(w.root, filepath.FromSlash(LockRel())))
-		if err != nil && !os.IsNotExist(err) {
-			return 0, err
-		}
-		w.lines = append(w.lines, line)
-		w.locks = append(w.locks, string(raw))
-	}
-	return len(p), nil
-}
-
 // invariant: config/migrations-and-locks:unified-effort-resident-migration (TestJournalResidentCommitQuarantinesThenDiscards)
 func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 	root := t.TempDir()
 	seedResidents(t, root)
 	j := residentJournal(phasePrepared)
-	log := &lockWatcher{root: root}
-	if err := commitTransaction(root, j.Operations, log); err != nil {
+	outcome, err := commitTransaction(root, j.Operations)
+	if err != nil {
 		t.Fatalf("commit: %v", err)
 	}
 	for _, gone := range []string{".awf/efforts/legacy.json", ".awf/memory", QuarantineRel()} {
@@ -504,35 +524,18 @@ func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "FINAL" {
 		t.Fatalf("lock: %q", got)
 	}
-	// The order is the contract, not just the membership.
-	want := []string{
-		"operation: applied .awf/config.yaml",
-		"operation: applied .awf/efforts/legacy.json",
-		"operation: applied .awf/memory",
-		"operation: applied .awf/awf.lock",
-		"operation: discarded .awf/efforts/legacy.json",
-		"operation: discarded .awf/memory",
-		"operation: upgrade committed",
+	// Ordered terminal evidence is collected only after the lock commits.
+	want := []Evidence{
+		{Action: "applied", Path: ".awf/config.yaml"},
+		{Action: "applied", Path: ".awf/efforts/legacy.json"},
+		{Action: "applied", Path: ".awf/memory"},
+		{Action: "applied", Path: LockRel()},
+		{Action: "committed", Path: LockRel()},
+		{Action: "discarded", Path: ".awf/efforts/legacy.json"},
+		{Action: "discarded", Path: ".awf/memory"},
 	}
-	if !slices.Equal(log.lines, want) {
-		t.Fatalf("operation sequence:\ngot  %q\nwant %q", log.lines, want)
-	}
-	// The lock replacement is the commit point, so it must not reach the disk
-	// until every resident has been quarantined. Writing it any earlier would let
-	// a crash seal the new generation with the residents still in place, and
-	// recovery would then take the committed branch and delete the journal
-	// without ever resetting them: an unrecoverable half-migration. Watching the
-	// bytes rather than the log is what makes that unbuildable, because a
-	// transaction that wrote the lock first would still log it last.
-	commit := slices.Index(want, "operation: applied "+LockRel())
-	for i, line := range log.lines {
-		got, expect := log.locks[i], "FINAL"
-		if i < commit {
-			expect = "old-lock"
-		}
-		if got != expect {
-			t.Fatalf("lock was %q at %q (step %d of %d); the commit point is step %d", got, line, i, len(log.lines), commit)
-		}
+	if !slices.Equal(outcome.Evidence, want) {
+		t.Fatalf("evidence:\ngot  %#v\nwant %#v", outcome.Evidence, want)
 	}
 	if journalPresence(t, root) {
 		t.Fatal("journal residue after success")
@@ -559,8 +562,7 @@ func TestJournalResidentRollbackRestoresQuarantinedBytes(t *testing.T) {
 		Operation{Path: "ro/new.txt", Prior: Image{}, Replacement: presentImg("blocked")},
 		Operation{Path: LockRel(), Prior: presentImg("old-lock"), Replacement: presentImg("FINAL")},
 	)
-	var log bytes.Buffer
-	if err := commitTransaction(root, ops, &log); err == nil || !strings.Contains(err.Error(), "ro/new.txt") {
+	if _, err := commitTransaction(root, ops); err == nil || !strings.Contains(err.Error(), "ro/new.txt") {
 		t.Fatalf("want apply failure, got %v", err)
 	}
 	if got, _ := os.ReadFile(filepath.Join(root, ".awf", "memory", "notes.md")); string(got) != "standalone" {
@@ -689,8 +691,7 @@ func TestJournalResidentInterruption(t *testing.T) {
 				mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), []byte("new-config"))
 			}
 			writeRawJournal(t, root, residentJournal(tc.phase))
-			var log bytes.Buffer
-			if err := Recover(root, &log); err != nil {
+			if _, err := Recover(root); err != nil {
 				t.Fatalf("recover: %v", err)
 			}
 			leaf := filepath.Join(root, filepath.FromSlash(leafRel))
@@ -711,7 +712,7 @@ func TestJournalResidentInterruption(t *testing.T) {
 			}
 			// `awf upgrade --recover` is idempotent in effect: a second run has
 			// no journal to act on and must not mutate the converged tree.
-			if err := Recover(root, io.Discard); err == nil {
+			if _, err := Recover(root); err == nil {
 				t.Fatal("second recovery without a journal accepted")
 			}
 			if exists(t, leaf) != tc.wantResidents || exists(t, tree) != tc.wantResidents {
@@ -776,8 +777,7 @@ func TestJournalResidentAbsentResidentCommits(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(root, ".awf", "memory")); err != nil {
 		t.Fatal(err)
 	}
-	var log bytes.Buffer
-	if err := commitTransaction(root, residentJournal(phasePrepared).Operations, &log); err != nil {
+	if _, err := commitTransaction(root, residentJournal(phasePrepared).Operations); err != nil {
 		t.Fatalf("commit: %v", err)
 	}
 	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "FINAL" {
@@ -785,11 +785,6 @@ func TestJournalResidentAbsentResidentCommits(t *testing.T) {
 	}
 	if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
 		t.Fatal("quarantine residue")
-	}
-	for _, want := range []string{"operation: applied .awf/memory", "operation: discarded .awf/memory"} {
-		if !strings.Contains(log.String(), want) {
-			t.Fatalf("log missing %q: %s", want, log.String())
-		}
 	}
 }
 
@@ -803,7 +798,7 @@ func TestJournalResidentCollisionRefusals(t *testing.T) {
 		mustMkdir(t, filepath.Join(root, filepath.FromSlash(QuarantineRel())))
 		mustWrite(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()), "efforts-legacy.json"), []byte("earlier"))
 		ops := residentJournal(phasePrepared).Operations
-		err := commitTransaction(root, ops, io.Discard)
+		_, err := commitTransaction(root, ops)
 		if err == nil || !strings.Contains(err.Error(), "quarantine destination") || !strings.Contains(err.Error(), gitRestorationGuidance) {
 			t.Fatalf("want a quarantine-collision refusal, got %v", err)
 		}
@@ -841,7 +836,7 @@ func TestJournalResidentCollisionRefusals(t *testing.T) {
 		mustMkdir(t, filepath.Join(root, ".awf", "memory"))
 		mustWrite(t, filepath.Join(root, ".awf", "memory", "foreign.md"), []byte("recreated"))
 		writeRawJournal(t, root, residentJournal(phaseApplying))
-		err := Recover(root, io.Discard)
+		_, err := Recover(root)
 		if err == nil || !strings.Contains(err.Error(), ".awf/memory") || !strings.Contains(err.Error(), gitRestorationGuidance) {
 			t.Fatalf("want a restore refusal, got %v", err)
 		}
@@ -865,8 +860,7 @@ func TestJournalCommitLockFailureHaltsRollback(t *testing.T) {
 		{Path: "a.txt", Prior: Image{}, Replacement: presentImg("alpha")},
 		{Path: LockRel(), Prior: Image{}, Replacement: presentImg("final")},
 	}
-	var log bytes.Buffer
-	err := commitTransaction(root, ops, &log)
+	_, err := commitTransaction(root, ops)
 	if err == nil || !strings.Contains(err.Error(), "apply .awf/awf.lock") || !strings.Contains(err.Error(), "rollback halted") {
 		t.Fatalf("want a halted rollback, got %v", err)
 	}

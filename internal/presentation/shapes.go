@@ -29,14 +29,14 @@ func (r Report) Document() (Document, error) {
 	nodes := []Node{status}
 	if len(r.Context) > 0 {
 		section, err := NewSection("context", fieldsAsNodes(r.Context)...)
-		if err != nil { // coverage-ignore: exported Fields can only be constructed validly
+		if err != nil {
 			return Document{}, err
 		}
 		nodes = append(nodes, section)
 	}
 	if len(r.Summary) > 0 {
 		section, err := NewSection("summary", fieldsAsNodes(r.Summary)...)
-		if err != nil { // coverage-ignore: exported Fields can only be constructed validly
+		if err != nil {
 			return Document{}, err
 		}
 		nodes = append(nodes, section)

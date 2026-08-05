@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +78,18 @@ type Operation struct {
 
 // residentTree reports whether op quarantines a tree rather than imaging a file.
 func (o Operation) residentTree() bool { return o.Kind == KindResidentTree }
+
+// Evidence is one ordered, terminally proven journal fact. It is collected by
+// the transaction owner and rendered only at the command boundary.
+type Evidence struct {
+	Action string
+	Path   string
+}
+
+// Outcome is the ordered terminal evidence from one journal operation.
+type Outcome struct {
+	Evidence []Evidence
+}
 
 // Journal is the durable transaction record. Version is always 1; Operations
 // are unique, sorted, and end with the lock operation; FinalLockSHA256 is the
@@ -193,18 +204,19 @@ func restoreTree(root string, op Operation) error {
 // completeQuarantine discards every quarantined tree once the lock has
 // committed, then drops the shared quarantine root. It is idempotent so a
 // repeated recovery converges rather than failing on already-deleted bytes.
-func completeQuarantine(root string, j Journal, log io.Writer) error {
+func completeQuarantine(root string, j Journal) ([]Evidence, error) {
+	var evidence []Evidence
 	for _, op := range j.Operations {
 		if !op.residentTree() {
 			continue
 		}
 		if err := os.RemoveAll(filepath.Join(root, filepath.FromSlash(op.Quarantine))); err != nil { // coverage-ignore: the quarantine root is an owned writable directory created by this transaction
-			return fmt.Errorf("discard quarantine %s: %w", op.Quarantine, err)
+			return nil, fmt.Errorf("discard quarantine %s: %w", op.Quarantine, err)
 		}
-		fmt.Fprintf(log, "operation: discarded %s\n", op.Path)
+		evidence = append(evidence, Evidence{Action: "discarded", Path: op.Path})
 	}
 	dropQuarantineRoot(root)
-	return nil
+	return evidence, nil
 }
 
 // dropQuarantineRoot removes the shared quarantine root once it is empty. It is
@@ -352,6 +364,8 @@ func writeJournal(root string, j Journal) error {
 // LoadJournal reads and validates the journal under root. A malformed or
 // contract-violating journal is a hard error naming the Git-restoration escape,
 // so no caller mutates the tree on a journal it cannot trust.
+var journalWrite = writeJournal
+
 func LoadJournal(root string) (Journal, error) {
 	b, err := os.ReadFile(JournalPath(root))
 	if err != nil {
@@ -388,144 +402,150 @@ func ParseJournal(b []byte) (Journal, error) {
 // non-lock replacement, writes the lock last, marks the journal lock-committed,
 // and deletes it. A failure before the lock is written rolls back to the prior
 // images and clears the journal; a failure after leaves the sealed lock plus a
-// recoverable journal. It prints one deterministic operation line per applied
-// path.
-func commitTransaction(root string, ops []Operation, log io.Writer) error {
+// recoverable journal. It returns ordered typed terminal evidence; the command
+// owner renders it only after the outcome is known.
+func commitTransaction(root string, ops []Operation) (Outcome, error) {
 	if err := validateOperations(ops); err != nil { // coverage-ignore: the final-upgrade planner validated the same set before this call
-		return err
+		return Outcome{}, err
 	}
 	j := Journal{Version: JournalVersion, Phase: phasePrepared, FinalLockSHA256: imageSHA(ops[len(ops)-1].Replacement), Operations: ops}
-	if err := writeJournal(root, j); err != nil {
-		return err
+	if err := journalWrite(root, j); err != nil {
+		return Outcome{}, err
 	}
 	j.Phase = phaseApplying
-	if err := writeJournal(root, j); err != nil { // coverage-ignore: the journal path just wrote durably; a second write fails only on a concurrent filesystem fault
-		return err
+	if err := journalWrite(root, j); err != nil {
+		return Outcome{}, err
 	}
+	evidence := make([]Evidence, 0, len(ops)+1)
 	lockOp := ops[len(ops)-1]
 	for _, op := range ops[:len(ops)-1] {
 		if err := applyOperation(root, op); err != nil {
-			return rollBack(root, j, fmt.Errorf("apply %s: %w", op.Path, err), log)
+			return rollBack(root, j, fmt.Errorf("apply %s: %w", op.Path, err))
 		}
-		fmt.Fprintf(log, "operation: applied %s\n", op.Path)
+		evidence = append(evidence, Evidence{Action: "applied", Path: op.Path})
 	}
 	if err := applyImage(root, lockOp.Path, lockOp.Replacement); err != nil {
-		return rollBack(root, j, fmt.Errorf("apply %s: %w", lockOp.Path, err), log)
+		return rollBack(root, j, fmt.Errorf("apply %s: %w", lockOp.Path, err))
 	}
-	fmt.Fprintf(log, "operation: applied %s\n", lockOp.Path)
+	evidence = append(evidence, Evidence{Action: "applied", Path: lockOp.Path})
+	evidence = append(evidence, Evidence{Action: "committed", Path: LockRel()})
 	j.Phase = phaseLockCommitted
-	if err := writeJournal(root, j); err != nil { // coverage-ignore: the lock is committed; a phase-write fault leaves a recoverable journal that --recover cleans
-		return fmt.Errorf("lock committed but journal update failed (%w); run `awf upgrade --recover`", err)
+	if err := journalWrite(root, j); err != nil {
+		return Outcome{Evidence: evidence}, fmt.Errorf("lock committed but journal update failed (%w); run `awf upgrade --recover`", err)
 	}
 	// Authority is committed from here on, so quarantined trees are discarded
 	// rather than restored. A fault leaves a recoverable journal, never a rollback.
-	if err := completeQuarantine(root, j, log); err != nil { // coverage-ignore: the only failure path inside completeQuarantine is itself coverage-ignored
-		return fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
+	discarded, err := completeQuarantine(root, j)
+	if err != nil { // coverage-ignore: the only failure path inside completeQuarantine is itself coverage-ignored
+		return Outcome{Evidence: evidence}, fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
+	evidence = append(evidence, discarded...)
 	if err := os.Remove(JournalPath(root)); err != nil { // coverage-ignore: the lock is committed; a cleanup fault leaves a recoverable journal that --recover removes
-		return fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
+		return Outcome{Evidence: evidence}, fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
-	fmt.Fprintln(log, "operation: upgrade committed")
-	return nil
+	return Outcome{Evidence: evidence}, nil
 }
 
 // rollBack enters the rolling-back phase and restores every prior image in
 // reverse. It preserves the journal and reports the exact path on a third-party
 // image or a failed restore; on full restoration it clears the journal.
-func rollBack(root string, j Journal, cause error, log io.Writer) error {
+func rollBack(root string, j Journal, cause error) (Outcome, error) {
 	j.Phase = phaseRollingBack
-	if err := writeJournal(root, j); err != nil { // coverage-ignore: the journal path is writable throughout the transaction
-		return fmt.Errorf("%w; and the journal could not record rollback: %w", cause, err)
+	if err := journalWrite(root, j); err != nil { // coverage-ignore: the journal path is writable throughout the transaction
+		return Outcome{}, fmt.Errorf("%w; and the journal could not record rollback: %w", cause, err)
 	}
-	if err := restorePriors(root, j, log); err != nil {
-		return fmt.Errorf("%w; rollback halted: %w", cause, err)
+	evidence, err := restorePriors(root, j)
+	if err != nil {
+		return Outcome{Evidence: evidence}, fmt.Errorf("%w; rollback halted: %w", cause, err)
 	}
 	if err := os.Remove(JournalPath(root)); err != nil { // coverage-ignore: the journal was just written durably and the directory is writable
-		return fmt.Errorf("%w; rollback done but journal cleanup failed: %w", cause, err)
+		return Outcome{Evidence: evidence}, fmt.Errorf("%w; rollback done but journal cleanup failed: %w", cause, err)
 	}
-	fmt.Fprintln(log, "operation: rolled back")
-	return cause
+	return Outcome{Evidence: evidence}, cause
 }
 
 // restorePriors verifies each current image equals the prior or replacement,
 // then restores the prior, walking operations in reverse.
-func restorePriors(root string, j Journal, log io.Writer) error {
+func restorePriors(root string, j Journal) ([]Evidence, error) {
+	var evidence []Evidence
 	for i := len(j.Operations) - 1; i >= 0; i-- {
 		op := j.Operations[i]
 		if op.residentTree() {
 			if err := restoreTree(root, op); err != nil {
-				return fmt.Errorf("restore %s: %w", op.Path, err)
+				return evidence, fmt.Errorf("restore %s: %w", op.Path, err)
 			}
-			fmt.Fprintf(log, "operation: restored %s\n", op.Path)
+			evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
 			continue
 		}
 		current, err := imageOf(root, op.Path)
 		if err != nil {
-			return fmt.Errorf("read %s: %w", op.Path, err)
+			return evidence, fmt.Errorf("read %s: %w", op.Path, err)
 		}
 		if !imagesEqual(current, op.Prior) && !imagesEqual(current, op.Replacement) {
-			return fmt.Errorf("path %s was modified outside the transaction; %s", op.Path, gitRestorationGuidance)
+			return evidence, fmt.Errorf("path %s was modified outside the transaction; %s", op.Path, gitRestorationGuidance)
 		}
 		if err := applyImage(root, op.Path, op.Prior); err != nil { // coverage-ignore: the prior image was readable at journal time and the directory is writable
-			return fmt.Errorf("restore %s: %w", op.Path, err)
+			return evidence, fmt.Errorf("restore %s: %w", op.Path, err)
 		}
-		fmt.Fprintf(log, "operation: restored %s\n", op.Path)
+		evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
 	}
 	// Every tree is home again, so a fully restored transaction leaves no
 	// quarantine residue behind for the next run to trip over.
 	dropQuarantineRoot(root)
-	return nil
+	return evidence, nil
 }
 
 // Recover applies the journal recovery decision table. It is the only project
 // mode permitted while a journal exists.
-func Recover(root string, log io.Writer) error {
+func Recover(root string) (Outcome, error) {
 	j, err := LoadJournal(root)
 	if err != nil {
-		return err
+		return Outcome{}, err
 	}
 	current, err := imageOf(root, LockRel())
 	if err != nil { // coverage-ignore: the lock path reads cleanly unless a concurrent removal races
-		return err
+		return Outcome{}, err
 	}
 	lockIsFinal := current.Present && imageSHA(current) == j.FinalLockSHA256
 	if j.Phase == phaseLockCommitted {
 		if lockIsFinal {
-			return finishCommitted(root, j, log)
+			return finishCommitted(root, j)
 		}
-		return fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
+		return Outcome{}, fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
 	}
 	if lockIsFinal {
 		// The lock was written before the phase advanced; treat it as committed.
-		return finishCommitted(root, j, log)
+		return finishCommitted(root, j)
 	}
 	j.Phase = phaseRollingBack
-	if err := writeJournal(root, j); err != nil { // coverage-ignore: the journal directory is writable during recovery
-		return err
+	if err := journalWrite(root, j); err != nil { // coverage-ignore: the journal directory is writable during recovery
+		return Outcome{}, err
 	}
-	if err := restorePriors(root, j, log); err != nil {
-		return err
+	evidence, err := restorePriors(root, j)
+	if err != nil {
+		return Outcome{Evidence: evidence}, err
 	}
-	return cleanupJournal(root, log)
+	return cleanupJournal(root, evidence)
 }
 
 // finishCommitted completes a transaction whose lock is already the sealed
 // authority: quarantined trees are discarded, never restored, and then the
 // journal residue is cleared.
-func finishCommitted(root string, j Journal, log io.Writer) error {
-	if err := completeQuarantine(root, j, log); err != nil { // coverage-ignore: the only failure path inside completeQuarantine is itself coverage-ignored
-		return err
+func finishCommitted(root string, j Journal) (Outcome, error) {
+	evidence, err := completeQuarantine(root, j)
+	if err != nil { // coverage-ignore: the only failure path inside completeQuarantine is itself coverage-ignored
+		return Outcome{Evidence: evidence}, err
 	}
-	return cleanupJournal(root, log)
+	return cleanupJournal(root, evidence)
 }
 
 // cleanupJournal removes the journal residue idempotently.
-func cleanupJournal(root string, log io.Writer) error {
+func cleanupJournal(root string, evidence []Evidence) (Outcome, error) {
 	if err := os.Remove(JournalPath(root)); err != nil && !os.IsNotExist(err) { // coverage-ignore: the journal was just loaded and the directory is writable
-		return err
+		return Outcome{Evidence: evidence}, err
 	}
-	fmt.Fprintln(log, "operation: recovered")
-	return nil
+	evidence = append(evidence, Evidence{Action: "recovered", Path: JournalPath(root)})
+	return Outcome{Evidence: evidence}, nil
 }
 
 // imageSHA is the SHA-256 of a present image's content (empty for an absent

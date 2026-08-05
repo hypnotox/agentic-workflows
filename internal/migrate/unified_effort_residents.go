@@ -81,6 +81,8 @@ func residentRefusal(condition, nextAction string) error {
 // prove are its own to discard.
 const preserveManually = "preserve the resident, inspect it by hand, and rerun `awf upgrade` once it is resolved or removed"
 
+var resetLegacyResidents = upgrade.ResetLegacyResidents
+
 // legacyWorktreeNextAction names the pre-upgrade commands that clear a managed
 // worktree. The current binary cannot do it: protocol 2 derives worktrees from
 // Git topology and knows nothing about UUID-named managed resources.
@@ -113,9 +115,19 @@ func applyUnifiedEffortResidents(ctx context.Context, root string, out *Changes)
 			"run `awf upgrade` from "+classified.PrimaryRoot,
 		)
 	}
-	out.Add("unified-effort-residents: breaking change: protocol-1 effort records and standalone .awf/memory/ content are reset, not migrated")
-	out.Add("unified-effort-residents: protocol 2 keeps each effort at .awf/efforts/<slug>/ with its own memory.md; recreate the ones you still need with `awf effort new --slug <slug> \"<outcome>\"`")
-	return upgrade.ResetLegacyResidents(root, classified.Quarantine, 22)
+	// The journal outcome is authoritative: only a committed transaction may
+	// contribute resident reset facts to the ordered migration changes.
+	outcome, err := resetLegacyResidents(root, classified.Quarantine, 22)
+	if err != nil {
+		return err
+	}
+	if len(outcome.Evidence) > 0 {
+		out.Add("unified-effort-residents: committed reset of proven legacy residents")
+		for _, evidence := range outcome.Evidence {
+			out.Add("unified-effort-residents: " + evidence.Action + " " + evidence.Path)
+		}
+	}
+	return nil
 }
 
 // ClassifyLegacyResidents inspects every schema-1 binary-owned leaf and every

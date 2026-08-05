@@ -62,7 +62,7 @@ func TestIntegrationBranchMigration(t *testing.T) {
 			if !strings.Contains(string(cfg), tc.wantValue) {
 				t.Errorf("config missing %q:\n%s", tc.wantValue, cfg)
 			}
-			// Idempotence: a second run prints nothing and changes nothing.
+			// Idempotence: a second run collects no changes and changes no bytes.
 			var second Changes
 			if err := applyIntegrationBranch(root, &second); err != nil {
 				t.Fatalf("re-apply: %v", err)

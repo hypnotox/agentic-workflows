@@ -63,7 +63,7 @@ func rtFixture(t *testing.T, files map[string]string) string {
 
 // TestRetirementTokensMigratesCorpus covers the happy path end to end: the key
 // stripped, the bookkeeping Decision item appended without renumbering, the
-// target's related: back-pointer inserted, and the provenance lines printed
+// target's related: back-pointer inserted, and the ordered change facts collected
 // exactly.
 // invariant: config/migrations-and-locks:upgrade-migrates-retirements (TestRetirementTokensMigratesCorpus)
 func TestRetirementTokensMigratesCorpus(t *testing.T) {
@@ -208,7 +208,7 @@ func TestRetirementTokensCarrierTargetAndTrailingDecision(t *testing.T) {
 	}
 }
 
-// A re-run after migration prints nothing and leaves the corpus byte-identical.
+// A re-run after migration collects no changes and leaves the corpus byte-identical.
 // invariant: config/migrations-and-locks:upgrade-migrates-retirements (TestRetirementTokensIdempotent)
 func TestRetirementTokensIdempotent(t *testing.T) {
 	root := rtFixture(t, map[string]string{
@@ -231,7 +231,7 @@ func TestRetirementTokensIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if buf.Len() != 0 {
-		t.Errorf("re-run must print nothing, got:\n%s", buf.String())
+		t.Errorf("re-run must collect no changes, got:\n%s", buf.String())
 	}
 	for name, want := range before {
 		got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", name))

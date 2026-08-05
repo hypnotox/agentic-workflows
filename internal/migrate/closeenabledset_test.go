@@ -86,8 +86,8 @@ func TestCloseEnabledSetScansEnabledAgents(t *testing.T) {
 	}
 }
 
-// Dormant doc-gated skills are dropped (printed), missing requirements are
-// added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
+// Dormant doc-gated skills are dropped and collected as ordered change facts,
+// missing requirements are added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
 // Decision 8).
 // invariant: config/migrations-and-locks:close-enabled-set-migration (TestCloseEnabledSetDropsDormantAndCloses)
 func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {

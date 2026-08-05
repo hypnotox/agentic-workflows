@@ -10,8 +10,8 @@ import (
 // (ADR-0127), so awf holds no opinion about which branch an adopter integrates
 // into. config.yaml is strict-parsed, so a surviving key would hard-fail on the
 // new binary rather than warn. Unlike the silent applyDropHooks precedent this
-// announces the removal: deleting a value an adopter deliberately set must be
-// readable from command output rather than recovered by git archaeology. The
+// collects the removal fact: deleting a value an adopter deliberately set must
+// remain available to terminal-owner presentation rather than git archaeology. The
 // edit routes through config.RemoveMappingKey so config.yaml serialization stays
 // owned by internal/config (ADR-0026); RemoveKey cannot be used, since it walks
 // only top-level entries and baseBranch is nested under audit.

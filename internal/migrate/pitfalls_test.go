@@ -14,8 +14,8 @@ import (
 )
 
 // A `##`-delimited part splits into a data.pitfalls sidecar (fenced `##` lines
-// not mis-split), the part file and its dir are removed, and one provenance line
-// per entry plus the review instruction print.
+// not mis-split), the part file and its dir are removed, and one ordered change fact
+// is collected per entry plus the review instruction.
 func TestPitfallsDataSplits(t *testing.T) {
 	root := t.TempDir()
 	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
@@ -92,7 +92,7 @@ func TestPitfallsDataEmptyList(t *testing.T) {
 	}
 }
 
-// An absent part is a clean no-op - no output, no sidecar written - so a re-run
+// An absent part is a clean no-op - no changes, no sidecar written - so a re-run
 // after a prior split does nothing.
 func TestPitfallsDataNoOp(t *testing.T) {
 	root := t.TempDir()
@@ -102,7 +102,7 @@ func TestPitfallsDataNoOp(t *testing.T) {
 		t.Fatalf("applyPitfallsData: %v", err)
 	}
 	if out.String() != "" {
-		t.Errorf("absent part must print nothing, got:\n%s", out.String())
+		t.Errorf("absent part must collect no changes, got:\n%s", out.String())
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "docs", "pitfalls.yaml")); !os.IsNotExist(err) {
 		t.Errorf("absent part must not write a sidecar: %v", err)

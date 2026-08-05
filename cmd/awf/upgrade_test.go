@@ -73,6 +73,82 @@ func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
 	}
 }
 
+func TestJournalFailureRoutesRecoveryAndFinalErrorsToOneDiagnostic(t *testing.T) {
+	root := scaffoldProject(t)
+	failure := errors.New("journal failed")
+	outcome := upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "applied", Path: ".awf/awf.lock"}}}
+	testsupport.SwapVar(t, &upgradeRecover, func(string) (upgrade.Outcome, error) { return outcome, failure })
+	if err := runRecover(root, io.Discard); !errors.Is(err, failure) {
+		t.Fatalf("recover error = %v, want journal failure", err)
+	} else {
+		var journalErr journalFailure
+		if !errors.As(err, &journalErr) {
+			t.Fatalf("recover error = %T, want journalFailure", err)
+		}
+	}
+	testsupport.SwapVar(t, &upgradeFinal, func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error) { return outcome, failure })
+	attestLock(t, root)
+	if err := runUpgrade(testContext(t), root, io.Discard); !errors.Is(err, failure) {
+		t.Fatalf("final error = %v, want journal failure", err)
+	}
+}
+
+func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
+	root := scaffoldProject(t)
+	attestLock(t, root)
+	outcome := upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "committed", Path: upgrade.LockRel()}}}
+	testsupport.SwapVar(t, &upgradeFinal, func(context.Context, string, *manifest.Lock) (upgrade.Outcome, error) { return outcome, nil })
+	var stdout bytes.Buffer
+	if err := runUpgrade(testContext(t), root, &stdout); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "committed: .awf/awf.lock") {
+		t.Fatalf("final mutation = %q", stdout.String())
+	}
+}
+
+func TestJournalPresentationCollectsOneTerminalResult(t *testing.T) {
+	outcome := upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "applied", Path: ".awf/config.yaml"}}}
+	var stdout bytes.Buffer
+	if err := renderJournalMutation(&stdout, "upgrade completed", outcome); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := stdout.String(), "status: upgrade completed\n\nmutation:\n  changes:\n    journal:\n      applied: .awf/config.yaml\n"; got != want {
+		t.Fatalf("mutation = %q, want %q", got, want)
+	}
+	if err := renderJournalMutation(effortErrorWriter{}, "upgrade completed", outcome); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("writer error = %v, want closed writer", err)
+	}
+	if err := renderJournalMutation(io.Discard, "", outcome); err == nil {
+		t.Fatal("empty journal status accepted")
+	}
+	failure := journalFailure{condition: "recovery did not reach terminal state", outcome: outcome, cause: errors.New("recovery failed")}
+	diagnostic, err := failure.Diagnostic()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostic.Changed) != 1 {
+		t.Fatalf("diagnostic facts = %#v", diagnostic.Changed)
+	}
+	syncValue, err := presentation.Prose("changed docs/AGENTS.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	syncDiagnostic, err := (upgradeFailure{sync: presentation.Mutation{Changes: []presentation.MutationChange{{Label: "outputs", Values: []presentation.Value{syncValue}}}}, cause: errors.New("sync failed")}).Diagnostic()
+	if err != nil || len(syncDiagnostic.Changed) != 1 {
+		t.Fatalf("sync diagnostic = %#v, err = %v", syncDiagnostic, err)
+	}
+}
+
+func TestUpgradeSyncMutationRejectsInvalidCollectedChange(t *testing.T) {
+	testsupport.SwapVar(t, &upgradeProjectSyncReport, func(context.Context, *project.Project) ([]project.Backup, []project.Change, []string, error) {
+		return []project.Backup{{Path: "\n", Bak: "backup"}}, nil, nil, nil
+	})
+	if _, err := upgradeSyncMutation(testContext(t), scaffoldProject(t)); err == nil {
+		t.Fatal("invalid collected sync change accepted")
+	}
+}
+
 func TestRunUpgradeFailureRetainsChangesBeforeMigrationFailure(t *testing.T) {
 	root := scaffoldProject(t)
 	failure := errors.New("migration failed")
@@ -250,8 +326,8 @@ func TestUpgradePresentationPropagatesOperationalFailures(t *testing.T) {
 	}
 	t.Run("upgrade sync", func(t *testing.T) {
 		failure := errors.New("terminal sync failed")
-		testsupport.SwapVar(t, &upgradeSync, func(context.Context, string) (presentation.Mutation, error) {
-			return presentation.Mutation{}, failure
+		testsupport.SwapVar(t, &upgradeSync, func(context.Context, string) (upgradeSyncOutcome, error) {
+			return upgradeSyncOutcome{}, failure
 		})
 		if err := runUpgrade(testContext(t), scaffoldProject(t), io.Discard); !errors.Is(err, failure) {
 			t.Fatalf("terminal sync failure = %v, want %v", err, failure)
@@ -370,7 +446,7 @@ func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
 	if journalPresence(t, root) {
 		t.Fatal("journal not cleaned by recovery")
 	}
-	if !strings.Contains(out.String(), "operation: recovered") {
+	if !strings.Contains(out.String(), "recovered: ") {
 		t.Fatalf("no recovered line: %s", out.String())
 	}
 }

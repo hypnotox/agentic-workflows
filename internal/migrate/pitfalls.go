@@ -17,7 +17,7 @@ import (
 // part to the ADR-0099 data.pitfalls sidecar: it splits the part on top-level
 // `## ` headings outside fenced code into {title, body} entries, validates and
 // writes docs/pitfalls.yaml atomically, then deletes the part (and its now-empty
-// dir), and prints one provenance line per created entry plus a review instruction. An
+// dir), and collects one ordered change fact per created entry plus a review instruction. An
 // absent part is a no-op - so a re-run after a prior split (the part gone, the
 // sidecar present) does nothing.
 func applyPitfallsData(root string, out *Changes) error {

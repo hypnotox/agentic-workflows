@@ -20,6 +20,14 @@ type badNode struct{}
 
 func (badNode) presentationNode() {}
 
+func TestReportDocumentRejectsConstructibleZeroFields(t *testing.T) {
+	for _, report := range []Report{{Context: []Field{{}}}, {Summary: []Field{{}}}} {
+		if _, err := report.Document(); err == nil {
+			t.Fatal("report accepted a constructible zero Field")
+		}
+	}
+}
+
 // invariant: code-design/presentation-ownership:closed-presentation-tree (TestPresentationTreeContract)
 func TestPresentationTreeContract(t *testing.T) {
 	assertPresentationSourceContract(t)

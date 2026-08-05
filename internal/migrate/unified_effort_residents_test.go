@@ -11,6 +11,7 @@ import (
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
 const (
@@ -485,6 +486,23 @@ func TestClassifyLegacyResidentsGitFailures(t *testing.T) {
 // conditions: it propagates any preflight refusal untouched, and it refuses a
 // checkout whose residents belong to a different root than the lock it would
 // commit.
+func TestApplyUnifiedEffortResidentsRetainsNoResetFactsOnTransactionFailure(t *testing.T) {
+	root := residentTree(t)
+	failure := errors.New("reset failed")
+	prior := resetLegacyResidents
+	resetLegacyResidents = func(string, []string, int) (upgrade.Outcome, error) {
+		return upgrade.Outcome{}, failure
+	}
+	t.Cleanup(func() { resetLegacyResidents = prior })
+	var out Changes
+	if err := applyUnifiedEffortResidents(testContext(t), root, &out); !errors.Is(err, failure) {
+		t.Fatalf("migration error = %v, want reset failure", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("failed reset collected persistent facts: %q", out.String())
+	}
+}
+
 func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 	t.Run("propagates-a-preflight-refusal", func(t *testing.T) {
 		root := residentTree(t)

@@ -24,7 +24,7 @@ var singletonStandardDocNames = []string{"workflow", "doc-standard", "agents-md-
 // convention-part dir from <awfDir>/docs/parts/<name>/ to <awfDir>/parts/<name>/,
 // then <name> is stripped from the docs: array - each step a no-op if its
 // source is already absent, so a repeated run is idempotent. Each performed
-// operation prints one provenance line to out.
+// operation collects one ordered change fact.
 func applySingletonStandardDocs(root string, out *Changes) error {
 	awfDir := config.RootDir(root)
 	for _, name := range singletonStandardDocNames {

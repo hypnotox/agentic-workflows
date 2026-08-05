@@ -6,28 +6,93 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
 var upgradeProjectSyncReport = func(ctx context.Context, p *project.Project) ([]project.Backup, []project.Change, []string, error) {
 	return p.SyncReport(ctx)
 }
 
+// upgradeSyncOutcome preserves every proven SyncReport axis even if the
+// terminal write fails, leaving the command owner to present it once.
+type upgradeSyncOutcome struct {
+	mutation presentation.Mutation
+}
+
 // upgradeSyncMutation performs the terminal sync but leaves rendering to the
 // upgrade owner, so migration facts and sync changes become one mutation.
-func upgradeSyncMutation(ctx context.Context, root string) (presentation.Mutation, error) {
+func upgradeSyncMutation(ctx context.Context, root string) (upgradeSyncOutcome, error) {
 	loader, err := newProjectLoader(root)
 	if err != nil {
-		return presentation.Mutation{}, err
+		return upgradeSyncOutcome{}, err
 	}
 	p, err := loader.Open(ctx, root)
 	if err != nil {
-		return presentation.Mutation{}, err
+		return upgradeSyncOutcome{}, err
 	}
-	backups, changes, pruned, err := upgradeProjectSyncReport(ctx, p)
+	backups, changes, pruned, syncErr := upgradeProjectSyncReport(ctx, p)
+	mutation, mutationErr := project.SyncMutation(backups, changes, pruned)
+	if mutationErr != nil {
+		return upgradeSyncOutcome{}, mutationErr
+	}
+	return upgradeSyncOutcome{mutation: mutation}, syncErr
+}
+
+func renderJournalMutation(dst interface{ Write([]byte) (int, error) }, status string, outcome upgrade.Outcome) error {
+	values := make([]presentation.Value, 0, len(outcome.Evidence))
+	for _, evidence := range outcome.Evidence {
+		value, err := presentation.Prose(evidence.Action + ": " + evidence.Path)
+		if err != nil { // coverage-ignore: the fixed separator keeps every journal fact presentation-valid
+			return err
+		}
+		values = append(values, value)
+	}
+	mutation := presentation.Mutation{Status: status}
+	if len(values) > 0 {
+		mutation.Changes = []presentation.MutationChange{{Label: "journal", Values: values}}
+	}
+	document, err := mutation.Document()
 	if err != nil {
-		return presentation.Mutation{}, err
+		return err
 	}
-	return project.SyncMutation(backups, changes, pruned)
+	return presentation.Render(dst, document)
+}
+
+type journalFailure struct {
+	condition string
+	outcome   upgrade.Outcome
+	cause     error
+}
+
+func newJournalFailure(condition string, outcome upgrade.Outcome, cause error) error {
+	return journalFailure{condition: condition, outcome: outcome, cause: cause}
+}
+
+func (e journalFailure) Error() string { return e.cause.Error() }
+func (e journalFailure) Unwrap() error { return e.cause }
+
+func (e journalFailure) Diagnostic() (presentation.Diagnostic, error) {
+	changed := make([]presentation.Field, 0, len(e.outcome.Evidence))
+	for _, evidence := range e.outcome.Evidence {
+		value, err := presentation.Prose(evidence.Action + ": " + evidence.Path)
+		if err != nil { // coverage-ignore: the fixed separator keeps every journal fact presentation-valid
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField("journal", value)
+		if err != nil { // coverage-ignore: the fixed grammar-valid journal label receives validated prose
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
+	steps := []presentation.Value{}
+	for _, text := range []string{"inspect the changed journal axes", "run awf upgrade --recover if an upgrade journal exists", "restore the project from version control if recovery cannot complete"} {
+		value, err := presentation.Prose(text)
+		if err != nil { // coverage-ignore: every closed recovery-step literal is nonempty and Prose-normalized
+			return presentation.Diagnostic{}, err
+		}
+		steps = append(steps, value)
+	}
+	return presentation.Diagnostic{Condition: e.condition, State: "partial mutation", Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
 }
 
 func upgradeMutation(sync presentation.Mutation, applied []string, changes []migrate.Change) (presentation.Mutation, error) {
@@ -61,15 +126,16 @@ func upgradeMutation(sync presentation.Mutation, applied []string, changes []mig
 type upgradeFailure struct {
 	applied []string
 	changes []migrate.Change
+	sync    presentation.Mutation
 	cause   error
 }
 
 func newUpgradeFailure(applied []string, changes []migrate.Change, cause error) error {
-	return upgradeFailure{
-		applied: append([]string(nil), applied...),
-		changes: append([]migrate.Change(nil), changes...),
-		cause:   cause,
-	}
+	return newUpgradeFailureWithSync(applied, changes, presentation.Mutation{}, cause)
+}
+
+func newUpgradeFailureWithSync(applied []string, changes []migrate.Change, sync presentation.Mutation, cause error) error {
+	return upgradeFailure{applied: append([]string(nil), applied...), changes: append([]migrate.Change(nil), changes...), sync: sync, cause: cause}
 }
 
 func (e upgradeFailure) Error() string { return e.cause.Error() }
@@ -100,6 +166,15 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 			return presentation.Diagnostic{}, err
 		}
 		changed = append(changed, field)
+	}
+	for _, group := range e.sync.Changes {
+		for _, value := range group.Values {
+			field, err := presentation.NewField("sync", value)
+			if err != nil { // coverage-ignore: sync values are validated and the fixed label is grammar-valid
+				return presentation.Diagnostic{}, err
+			}
+			changed = append(changed, field)
+		}
 	}
 	steps := []presentation.Value{}
 	for _, step := range []string{"inspect the changed migration axes", "run awf upgrade --recover if an upgrade journal exists", "restore the project from version control if recovery cannot complete"} {

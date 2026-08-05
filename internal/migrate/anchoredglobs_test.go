@@ -53,13 +53,13 @@ audit:
 		t.Errorf("already-slashed patterns must not be reported:\n%s", out.String())
 	}
 
-	// Idempotent re-run prints nothing.
+	// Idempotent re-run collects no changes.
 	out.Reset()
 	if err := applyAnchoredGlobs(root, &out); err != nil {
 		t.Fatal(err)
 	}
 	if out.String() != "" {
-		t.Errorf("a no-op run must print nothing, got:\n%s", out.String())
+		t.Errorf("a no-op run must collect no changes, got:\n%s", out.String())
 	}
 }
 

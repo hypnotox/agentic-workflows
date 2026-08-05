@@ -71,7 +71,7 @@ func TestSingletonStandardDocsIdempotent(t *testing.T) {
 		t.Fatalf("second run (no sidecars/parts/docs entries present) should be a no-op: %v", err)
 	}
 	if out.String() != "" {
-		t.Errorf("a no-op run must print nothing, got:\n%s", out.String())
+		t.Errorf("a no-op run must collect no changes, got:\n%s", out.String())
 	}
 }
 

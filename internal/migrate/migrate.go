@@ -85,8 +85,8 @@ func treeOnly(apply func(root string, out *Changes) error) func(context.Context,
 // topic corpus is authored, not migration-generated, so this migration performs
 // no topic synthesis; it only removes the schema field the current strict
 // config.Config no longer accepts, which would otherwise hard-fail the new binary
-// on the migrated tree. Mirroring applyDropAuditBase, the removal is announced so
-// deleting a value an adopter set stays readable from command output. The edit
+// on the migrated tree. Mirroring applyDropAuditBase, the removal collects a
+// change fact so terminal-owner presentation can name an adopter-set value. The edit
 // routes through config.RemoveKey so config.yaml serialization stays owned by
 // internal/config (ADR-0026); the key is top-level, so RemoveKey applies.
 func applyCurrentStateTopicSubstrate(root string, w *Changes) error {

@@ -10,8 +10,8 @@ import (
 // is removed (ADR-0194), so awf check emits no topic claim-count note. config.yaml
 // is strict-parsed, so a surviving key would hard-fail on the new binary rather
 // than warn. The removal is announced because deleting a value an adopter
-// deliberately set must be readable from command output rather than recovered by
-// git archaeology. The edit routes through RemoveMappingKey because the key is
+// deliberately set must remain available to terminal-owner presentation rather
+// than recovered by git archaeology. The edit routes through RemoveMappingKey because the key is
 // nested under currentState, which RemoveKey cannot reach.
 //
 // Unlike applyDropSeveritySettings, this migration seeds nothing when the removal

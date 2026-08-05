@@ -15,12 +15,12 @@ import (
 // (ADR-0081 Decision 8), in two ordered steps: first every dormant doc-gated
 // skill - enabled while its doc is disabled, the pre-schema-8 valid
 // silent-suppression state - is dropped, preserving the adopter's observed
-// rendered output (the drop skips `local:`-owned skills, symmetric with the
+// rendered artifacts (the drop skips `local:`-owned skills, symmetric with the
 // validator: a local doc-gated skill renders today even without its doc);
 // then an additive fixed point over all three Requires* edge kinds enables
 // every remaining enabled artifact's missing skills, agents, and docs - so a
 // dormant skill something still requires re-enters with its doc. Idempotent;
-// every addition and drop is printed; the config write is atomic.
+// every addition and drop collects an ordered change fact; the config write is atomic.
 func applyCloseEnabledSet(root string, out *Changes) error {
 	return closeEnabledSet(root, catalog.Standard, out)
 }
@@ -66,8 +66,8 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 	}
 
 	// Step 2: additive fixed point over the direct requirement edges of every
-	// enabled, non-local skill and agent. Iteration is sorted so the printed
-	// plan and the resulting enable arrays are deterministic.
+	// enabled, non-local skill and agent. Iteration is sorted so the collected
+	// change facts and resulting enable arrays are deterministic.
 	var adds []catalog.Node
 	for changed := true; changed; {
 		changed = false

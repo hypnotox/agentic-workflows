@@ -27,16 +27,22 @@ func runUpgradeFlags(ctx context.Context, root string, recoverMode bool, stdout 
 }
 
 // runRecover replays the current-state upgrade journal recovery table. It never
-// runs project tests or gates and prints deterministic operation lines.
+// runs project tests or gates; terminal evidence is rendered only after recovery.
 func runRecover(root string, stdout io.Writer) error {
 	if !migrate.ProjectPresent(root) {
 		return errors.New("not an awf project (run `awf init`)")
 	}
-	return upgrade.Recover(root, stdout)
+	outcome, err := upgradeRecover(root)
+	if err != nil {
+		return newJournalFailure("recovery did not reach terminal state", outcome, err)
+	}
+	return renderJournalMutation(stdout, "upgrade recovered", outcome)
 }
 
 var (
 	upgradeSync         = upgradeSyncMutation
+	upgradeRecover      = upgrade.Recover
+	upgradeFinal        = upgrade.FinalUpgrade
 	upgradeMigrate      = migrate.Upgrade
 	upgradeGate         = gate
 	upgradeLoadOptional = manifest.LoadOptional
@@ -70,7 +76,11 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	}
 	switch authority {
 	case manifest.AuthorityBridge:
-		return upgrade.FinalUpgrade(ctx, root, lock, stdout)
+		outcome, finalErr := upgradeFinal(ctx, root, lock)
+		if finalErr != nil {
+			return newJournalFailure("upgrade did not reach terminal state", outcome, finalErr)
+		}
+		return renderJournalMutation(stdout, "upgrade completed", outcome)
 	case manifest.AuthorityPermanent:
 		// Continue with ordinary schema migration and sync.
 	default: // coverage-ignore: AuthorityState returns only the closed enum values
@@ -113,9 +123,9 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	}
 	sync, err := upgradeSync(ctx, root)
 	if err != nil {
-		return newUpgradeFailure(applied, changes, err)
+		return newUpgradeFailureWithSync(applied, changes, sync.mutation, err)
 	}
-	mutation, err := upgradeMutation(sync, applied, changes)
+	mutation, err := upgradeMutation(sync.mutation, applied, changes)
 	if err != nil { // coverage-ignore: registered migration descriptions are validated fixed prose
 		return newUpgradeFailure(applied, changes, err)
 	}

@@ -71,7 +71,7 @@ func TestOrientingBackfill(t *testing.T) {
 			if gotOrienting != tc.wantOrienting {
 				t.Errorf("orienting present = %v, want %v:\n%s", gotOrienting, tc.wantOrienting, cfg)
 			}
-			// Idempotence: a second run prints nothing and changes nothing.
+			// Idempotence: a second run collects no changes and changes no bytes.
 			var second Changes
 			if err := applyOrientingSkillBackfill(root, &second); err != nil {
 				t.Fatalf("re-apply: %v", err)
