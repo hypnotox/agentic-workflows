@@ -202,13 +202,14 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 		`Type.Array(Type.Object({ oldText: Type.String({ minLength: 1, maxLength: 1048576 }), newText: Type.String({ maxLength: 1048576 }) }, { additionalProperties: false }), { minItems: 1, maxItems: 128 })`,
 		`Type.Object({ phase: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })), next: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })) }, { additionalProperties: false })`,
 		"activate(true)", "const clear = () => { current = undefined; activate(false); publish(); }", "fileMutationQueue(join(ctx.cwd, \".awf\", \"efforts\", snapshot.slug, \"memory.md\"), run)",
-		"getActiveTools", "setActiveTools", "withFileMutationQueue", "promptGuidelines",
+		"const memoryCall = async", "serial(async () =>", `reply.condition === "not-owner" || reply.condition === "missing" || reply.condition === "unsafe-activity"`, `pi.on?.("session_start", () => { clear();`,
+		"getActiveTools", "setActiveTools", "withFileMutationQueue", "promptGuidelines", "Generic file tools remain available",
 	} {
 		if !strings.Contains(index, want) {
 			t.Errorf("rendered effort index missing memory-tool contract %q", want)
 		}
 	}
-	for _, want := range []string{"decodeMemory", "exact(reply", "memoryRead", "memoryEdit", "memoryUpdate", "childMemoryExecutor"} {
+	for _, want := range []string{"decodeMemory", "exact(reply", "MEMORY_STDOUT_MAX", "MEMORY_STDERR_MAX", `stdout.endsWith("\n")`, "memoryRead", "memoryEdit", "memoryUpdate", "childMemoryExecutor"} {
 		if !strings.Contains(client, want) {
 			t.Errorf("rendered effort client missing memory-tool contract %q", want)
 		}

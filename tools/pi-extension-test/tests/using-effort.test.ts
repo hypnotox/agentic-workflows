@@ -320,8 +320,12 @@ test("memory tools stay inactive while detached, preserve unrelated tools, carry
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }], { active: ["read", "effort_memory_read"], memoryExec });
   h.hooks.get("session_start")({}); assert.deepEqual(h.active(), ["read"]); assert.equal(h.tools.size, 4);
   for (const name of ["effort_memory_read", "effort_memory_edit", "effort_memory_update"]) { const tool = h.tools.get(name); assert.equal(Array.isArray(tool.promptGuidelines), true); assert.match(tool.promptGuidelines[0], new RegExp(name)); }
-  assert.equal(Value.Check(h.tools.get("effort_memory_read").parameters, { offset: 1, limit: 2 }), true); assert.equal(Value.Check(h.tools.get("effort_memory_read").parameters, { path: "x" }), false);
-  assert.equal(Value.Check(h.tools.get("effort_memory_edit").parameters, { edits: [{ oldText: "x", newText: "" }] }), true); assert.equal(Value.Check(h.tools.get("effort_memory_update").parameters, {}), true);
+  const readParameters = h.tools.get("effort_memory_read").parameters; const editParameters = h.tools.get("effort_memory_edit").parameters; const updateParameters = h.tools.get("effort_memory_update").parameters;
+  assert.equal(Value.Check(readParameters, { offset: 1, limit: 2 }), true); assert.equal(Value.Check(readParameters, { path: "x" }), false); assert.equal(Value.Check(readParameters, { offset: 0 }), false);
+  assert.equal(Value.Check(editParameters, { edits: [{ oldText: "x", newText: "" }] }), true);
+  for (const invalid of [{}, { edits: [] }, { edits: [{ oldText: "", newText: "x" }] }, { edits: [{ oldText: "x", newText: "", extra: true }] }, { edits: [{ oldText: "x", newText: "" }], path: "x" }]) assert.equal(Value.Check(editParameters, invalid), false);
+  assert.equal(Value.Check(updateParameters, {}), true); assert.equal(Value.Check(updateParameters, { phase: "Build", next: "Review" }), true);
+  for (const invalid of [{ phase: "" }, { next: "x".repeat(501) }, { phase: "Build", path: "x" }]) assert.equal(Value.Check(updateParameters, invalid), false);
   await request(h, { effort: "demo" }); assert.deepEqual(h.active(), ["read", "effort_memory_read", "effort_memory_edit", "effort_memory_update"]);
   const signal = new AbortController().signal;
   assert.equal(lastText(await h.tools.get("effort_memory_read").execute("id", {}, signal, () => {}, h.ctx)), "line\n");
@@ -331,6 +335,18 @@ test("memory tools stay inactive while detached, preserve unrelated tools, carry
   await request(h, { detach: true }); assert.deepEqual(h.active(), ["read"]);
   await assert.rejects(h.tools.get("effort_memory_read").execute("id", {}, signal, () => {}, h.ctx), /Attach an effort/);
   await assert.rejects(h.tools.get("effort_memory_update").execute("id", {}, signal, () => {}, h.ctx), /phase or next/);
+});
+
+test("memory operations serialize with association changes until the complete operation settles", async () => {
+  let releaseRead!: () => void; let readStarted!: () => void;
+  const readSettled = new Promise<void>((resolve) => { releaseRead = resolve; }); const readInvoked = new Promise<void>((resolve) => { readStarted = resolve; });
+  const h = harness([success(), { schemaVersion: 2, condition: "detached" }], { active: ["read"], memoryExec: async () => { readStarted(); await readSettled; return { code: 0, stdout: line(memoryReadReply()), stderr: "" }; } });
+  await request(h, { effort: "demo" });
+  const signal = new AbortController().signal; const reading = h.tools.get("effort_memory_read").execute("read", {}, signal, () => {}, h.ctx); await readInvoked;
+  const detaching = request(h, { detach: true }); await Promise.resolve();
+  assert.deepEqual(h.calls.map((args: string[]) => args[2]), ["attach"], "detach began before the memory operation settled"); assert.deepEqual(h.active(), ["read", "effort_memory_read", "effort_memory_edit", "effort_memory_update"]);
+  releaseRead(); assert.equal(lastText(await reading), "line\n"); assert.equal(lastText(await detaching), "Detached.");
+  assert.deepEqual(h.calls.map((args: string[]) => args[2]), ["attach", "detach"]); assert.deepEqual(h.active(), ["read"]);
 });
 
 test("memory refusals render the memory axis and ownership losses clear only companion state", async () => {
