@@ -47,6 +47,12 @@ Run outside an adopted project, where no config file is present, the config comm
 Origin: ADR-0088
 Backing: test
 
+### `invariant: explicit-output-bypasses`
+
+Only authored plan projections, selected changelog content, effort activity JSON, init descriptor JSON, and the context spill notice bypass the presentation tree on successful output, each under byte-exact tests. The exact `writeRendererFailure` terminal mechanism diagnostic is separate, is reachable only after presentation rendering fails, and is not an alternate successful renderer.
+Origin: ADR-0234
+Backing: test
+
 ### `invariant: gated-commands-generated`
 
 The gated-command list rendered into the managed docs is generated from the clispec command table through one generator feeding both the render placeholder and the agent-guide value, with no hand-maintained enumeration in either doc. It is the single projection of top-level commands whose gating classification is not ungated, with no group-child exclusion list.
@@ -88,6 +94,12 @@ Origin: ADR-0213
 Revised-by: ADR-0217
 Backing: test
 
+### `invariant: readable-text-output`
+
+Every ordinary awf command surface, including help, prompts, results, advisories, reports, refusals, and partial outcomes, uses the central deterministic readable-text presentation contract with stable labels, semantic grouping, ordering, escaping, stream selection, and newline behavior.
+Origin: ADR-0234
+Backing: test
+
 ### `invariant: repo-check-capability-plan`
 
 The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index for enabled scanners; disabled or scanner-only selections acquire no unrelated capability. The aggregate preserves version and advisory order, executes selected steps in capability-plan order, and presents their findings in deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
@@ -123,6 +135,12 @@ Backing: test
 
 The add, remove, and list target commands mutate and read the config targets array against the known-adapter set without routing through the kind/catalog/parts/orphan machinery, and enabling a target renders its output tree.
 Origin: ADR-0037
+Backing: test
+
+### `invariant: typed-command-output-boundary`
+
+The command boundary carries typed presentation and exit information: complete produced reports write once to stdout even when their status requires nonzero exit, usage and operational failures render one diagnostic to stderr, and renderer failures alone use the exact terminal mechanism fallback without duplicate output.
+Origin: ADR-0234
 Backing: test
 
 ### `invariant: upgrade-always-syncs`

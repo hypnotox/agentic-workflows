@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: structured-agent-oriented-cli-presentation
-status: Implementing
+status: Implemented
 date: 2026-08-04
 ---
 # ADR-0234: Structured Agent-Oriented CLI Presentation
@@ -159,3 +159,5 @@ and error semantics unchanged.
 - 2026-08-05: Amended; content-sha256: 280ce5ee0878e27b8b65d305a8f9bb97840add53a20588027768100227ad5f5b
 - 2026-08-05: Applied; operations: update `tooling/cli:repo-check-capability-plan`
 - 2026-08-05: Amended; content-sha256: f198c6210b3d9ca4ba34457ee7dd9480c7cfec04561dba0917995f604ebda9f4
+- 2026-08-05: Applied; operations: add `tooling/cli:readable-text-output`, add `tooling/cli:typed-command-output-boundary`, add `tooling/cli:explicit-output-bypasses`
+- 2026-08-05: Implemented; content-sha256: f198c6210b3d9ca4ba34457ee7dd9480c7cfec04561dba0917995f604ebda9f4

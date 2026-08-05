@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-04
 adrs: [structured-agent-oriented-cli-presentation]
-status: Proposed
+status: Implemented
 ---
 # Plan: Structured Agent-Oriented CLI Presentation
 
@@ -491,6 +491,15 @@ test(tooling): enforce CLI presentation adoption
 
 ## Notes
 
+- Phase 6 expanded the reviewed detector closure to the remaining direct commit-gate and
+  commit-policy writers and classified the exact `writeRendererFailure` path as a tested terminal
+  mechanism fallback, separate from the unchanged five successful payload and protocol bypasses.
+  The implementation retained the approved semantic mappings, ordering, stream selection, exit
+  behavior, and operation-local fault boundaries while reaching zero unclassified ordinary writers.
+- Terminal implementation review settled every finding, including typed version-rendering failure
+  propagation and readable owner-defined effort refusal diagnostics, followed by its single required
+  verify pass with no residual finding. The integrated implementation and ADR-numbering commits
+  passed the full gate at 100% coverage; process and repository-local audits remained warning-only.
 - Phase 5 recorded a bounded enabling deviation: although Task 5.2's exact Paths omit
   `internal/project`, upgrade's terminal sync already depends on `internal/project.SyncReport`, and
   truthful partial upgrade diagnostics required its actual sync write and mode axes. This does not

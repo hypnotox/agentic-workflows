@@ -20,6 +20,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+// invariant: tooling/cli:typed-command-output-boundary (TestCommandOutputBoundary)
 func TestCommandOutputBoundary(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"awf", "bogus"}, &stdout, &stderr); code != 2 {
@@ -147,6 +148,7 @@ func TestWriteOutcomeRendererFailureIsSingleDiagnostic(t *testing.T) {
 // TestOrdinaryCommandOutputUsesPresentation scans the command boundary and its
 // result-model owners. Ordinary output must lower through presentation; only
 // the five named successful payload/protocol functions may write bytes directly.
+// invariant: tooling/cli:readable-text-output (TestOrdinaryCommandOutputUsesPresentation)
 func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 	if findings := ordinaryOutputFindings(t, nil); len(findings) != 0 {
 		t.Fatalf("ordinary output bypasses:\n%s", strings.Join(findings, "\n"))
@@ -175,6 +177,7 @@ func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 
 // TestExplicitOutputBypasses proves the successful bypass set is closed and
 // separately proves that the renderer fallback is reachable only after failure.
+// invariant: tooling/cli:explicit-output-bypasses (TestExplicitOutputBypasses)
 func TestExplicitOutputBypasses(t *testing.T) {
 	if findings := ordinaryOutputFindings(t, nil); len(findings) != 0 {
 		t.Fatalf("unexpected bypass: %s", strings.Join(findings, "; "))
