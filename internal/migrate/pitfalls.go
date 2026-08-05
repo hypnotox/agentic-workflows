@@ -3,7 +3,6 @@ package migrate
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -18,10 +17,24 @@ import (
 // part to the ADR-0099 data.pitfalls sidecar: it splits the part on top-level
 // `## ` headings outside fenced code into {title, body} entries, validates and
 // writes docs/pitfalls.yaml atomically, then deletes the part (and its now-empty
-// dir), and prints one provenance line per created entry plus a review instruction. An
+// dir), and collects one ordered change fact per created entry plus a review instruction. An
 // absent part is a no-op - so a re-run after a prior split (the part gone, the
 // sidecar present) does nothing.
-func applyPitfallsData(root string, out io.Writer) error {
+type pitfallsOperation struct {
+	render      func([]pitfallSplit) ([]byte, error)
+	writeAtomic func(string, []byte) error
+	remove      func(string) error
+}
+
+func productionPitfallsOperation() pitfallsOperation {
+	return pitfallsOperation{render: renderPitfallsSidecar, writeAtomic: manifest.WriteFileAtomic, remove: os.Remove}
+}
+
+func applyPitfallsData(root string, out *Changes) error {
+	return applyPitfallsDataWith(root, out, productionPitfallsOperation())
+}
+
+func applyPitfallsDataWith(root string, out *Changes, operation pitfallsOperation) error {
 	awfDir := config.RootDir(root)
 	partPath := filepath.Join(awfDir, "docs", "parts", "pitfalls", "entries.md")
 	data, err := os.ReadFile(partPath)
@@ -35,7 +48,7 @@ func applyPitfallsData(root string, out io.Writer) error {
 	if len(entries) == 0 {
 		return errors.New("pitfalls-data: no top-level entries to migrate")
 	}
-	sidecar, err := renderPitfalls(entries)
+	sidecar, err := operation.render(entries)
 	if err != nil {
 		return fmt.Errorf("pitfalls-data: render pitfalls sidecar: %w", err)
 	}
@@ -43,18 +56,18 @@ func applyPitfallsData(root string, out io.Writer) error {
 		return fmt.Errorf("pitfalls-data: validate rendered pitfalls sidecar: %w", err)
 	}
 	sidecarPath := filepath.Join(awfDir, "docs", "pitfalls.yaml")
-	if err := manifest.WriteFileAtomic(sidecarPath, sidecar); err != nil { // coverage-ignore: the atomic write faults only on a permission/IO error the test root bypasses
+	if err := operation.writeAtomic(sidecarPath, sidecar); err != nil {
 		return err
 	}
-	if err := os.Remove(partPath); err != nil { // coverage-ignore: removal of the part we just read; fails only on a permission fault root bypasses
-		return err
-	}
-	_ = os.Remove(filepath.Dir(partPath)) // drop the now-empty dir; a non-empty dir is left as-is
 	sidecarRel := path.Join(config.DirName, "docs", "pitfalls.yaml")
 	for _, e := range entries {
-		fmt.Fprintf(out, "pitfalls-data: split entry %q\n", e.title)
+		out.Add(fmt.Sprintf("pitfalls-data: split entry %q\n", e.title))
 	}
-	fmt.Fprintf(out, "pitfalls-data: review %s and tag each entry's domains: (untagged entries do not surface in awf context)\n", sidecarRel)
+	out.Add(fmt.Sprintf("pitfalls-data: review %s and tag each entry's domains: (untagged entries do not surface in awf context)\n", sidecarRel))
+	if err := operation.remove(partPath); err != nil {
+		return err
+	}
+	_ = operation.remove(filepath.Dir(partPath)) // drop the now-empty dir; a non-empty dir is left as-is
 	return nil
 }
 
@@ -119,8 +132,6 @@ type pitfallBody string
 func (b pitfallBody) MarshalYAML() (interface{}, error) {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: string(b), Style: yaml.DoubleQuotedStyle}, nil
 }
-
-var renderPitfalls = renderPitfallsSidecar
 
 // renderPitfallsSidecar serializes the data.pitfalls YAML and decodes it again
 // before destructive cleanup can proceed.

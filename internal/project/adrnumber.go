@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -24,13 +25,28 @@ type NumberingReport struct {
 	Assignments []NumberAssignment
 }
 
-// String renders one `<slug> -> NNNN` line per assignment.
-func (r NumberingReport) String() string {
-	var b strings.Builder
-	for _, a := range r.Assignments {
-		fmt.Fprintf(&b, "%s -> %s\n", a.Slug, a.Number)
+// Presentation maps the project-owned numbering result to the closed tree.
+func (r NumberingReport) Presentation() (presentation.Document, error) {
+	records := make([]presentation.Record, 0, len(r.Assignments))
+	for _, assignment := range r.Assignments {
+		slug, err := presentation.Literal(assignment.Slug)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		number, err := presentation.Literal(assignment.Number)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		record, err := presentation.NewRecord(slug, number)
+		if err != nil { // coverage-ignore: two validated nonempty literals always form a valid record
+			return presentation.Document{}, err
+		}
+		records = append(records, record)
 	}
-	return b.String()
+	if len(records) == 0 {
+		return presentation.Document{}, nil
+	}
+	return (presentation.Collection{Status: "ADR numbering completed", Categories: []presentation.CollectionCategory{{Label: "assignments", Schema: []string{"slug", "number"}, Records: records}}}).Document()
 }
 
 // duplicateNumbersRecipe is the reset-remake recipe a duplicate-number corpus

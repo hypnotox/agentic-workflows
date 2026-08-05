@@ -1,0 +1,71 @@
+awf: render agentic-workflow tooling into a project from a committed .awf config tree
+
+help:
+  usage:
+    awf <command> [flags]
+  commands:
+    commands:
+      init | Scaffold .awf/ and render the workflow-core set
+      render | Re-render after a template or config change
+      check | Verify the repository and staged universes
+      read | Read an executable projection from a parsed artifact
+      audit | Report workflow-conformance findings over a commit range (advisory)
+      effort | Manage slugged repository-local efforts
+      adr | ADR lifecycle operations
+      list | Show targets and their per-project state (all kinds, or one)
+      config | Describe config keys and vars (live state inside a project)
+      context | Orient by request with compact current-state impact reports
+      topic | Query current claims, history, references, and applicability
+      new | Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc}
+      enable | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}
+      disable | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}
+      upgrade | Migrate the .awf/ config tree or consume a current-state attestation
+      uninstall | Remove awf's generated files (keeps .awf/)
+      changelog | Print the embedded changelog, or one version/range of it
+      version | Print the awf version
+    check:
+      commands:
+        commit-policy | Verify exact commit provenance for explicit targets
+        repo | Verify repository properties
+        staged | Verify staged transition properties
+      repo:
+        drift | Report stale or hand-edited rendered output
+        state | Report current-state authority findings
+        prose | Scan tracked text files for typographic punctuation, blocking
+        memory | Scan staged decision records for working-memory citations, blocking
+      staged:
+        state | Report staged current-state transition findings
+        drift | Compare staged config with staged rendered output
+        commit | Validate one commit message and stale-ADR merge authorization, blocking
+    read:
+      commands:
+        plan | Read one exact plan phase or task projection
+    effort:
+      commands:
+        new | Create an effort with a managed worktree by default
+        list | List efforts by slug
+        show | Show one effort
+        finish | Finish and delete one effort
+        worktree | Add or remove a managed worktree
+        integrate | Integrate a managed worktree
+        memory | Update bounded effort memory metadata
+        activity | Mutate advisory Pi session activity
+      memory:
+        update | Update memory phase or next action
+      activity:
+        attach | Attach or take over an advisory activity claim
+        heartbeat | Heartbeat an owned advisory activity claim
+        detach | Detach an owned advisory activity claim
+    adr:
+      commands:
+        number | Number pending ADRs at integration
+    new:
+      commands:
+        adr | Scaffold a new ADR
+        plan | Scaffold a new plan
+        topic | Scaffold paired current-state topic inputs
+        skill | Scaffold a project-local skill
+        agent | Scaffold a project-local agent
+        doc | Scaffold a project-local doc
+  related commands:
+    awf <command> --help

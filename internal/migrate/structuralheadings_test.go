@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"os"
@@ -32,7 +31,7 @@ func TestStructuralHeadingsCompleteCutoverFixture(t *testing.T) {
 		files[path] = entry.heading + "\nbody\n"
 	}
 	root := closeFixture(t, "prefix: ex\n", files)
-	if err := applyStructuralHeadings(root, io.Discard); err != nil {
+	if err := applyStructuralHeadings(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	for path := range files {
@@ -57,7 +56,7 @@ func TestStructuralHeadingsMigration(t *testing.T) {
 		"docs/parts/future/body.md":               "## Future heading\nbody\n",
 	})
 	before := snapshotTree(t, root)
-	err := applyStructuralHeadings(root, io.Discard)
+	err := applyStructuralHeadings(root, &Changes{})
 	if err == nil {
 		t.Fatal("multiple/custom leading headings must refuse")
 	}
@@ -93,7 +92,7 @@ func TestStructuralHeadingsMigration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	var out bytes.Buffer
+	var out Changes
 	if err := applyStructuralHeadings(root, &out); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +126,7 @@ func TestStructuralHeadingsMigration(t *testing.T) {
 func TestStructuralHeadingsRefusesMultipleAndSupportsUnterminatedHeading(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{"docs/parts/roadmap/ideas.md": "## Ideas\n### second\nbody\n"})
 	before := snapshotTree(t, root)
-	if err := applyStructuralHeadings(root, io.Discard); err == nil || !strings.Contains(err.Error(), "operation:") {
+	if err := applyStructuralHeadings(root, &Changes{}); err == nil || !strings.Contains(err.Error(), "operation:") {
 		t.Fatalf("multiple heading refusal = %v", err)
 	}
 	if !sameSnapshot(before, snapshotTree(t, root)) {
@@ -137,14 +136,14 @@ func TestStructuralHeadingsRefusesMultipleAndSupportsUnterminatedHeading(t *test
 		"docs/parts/testing/gate.md": "## The gate\n<!-- awf:comment source-only -->\n### custom heading\nbody\n",
 	})
 	before = snapshotTree(t, root)
-	if err := applyStructuralHeadings(root, io.Discard); err == nil {
+	if err := applyStructuralHeadings(root, &Changes{}); err == nil {
 		t.Fatal("authoring comment must not hide an ambiguous adjacent heading")
 	}
 	if !sameSnapshot(before, snapshotTree(t, root)) {
 		t.Fatal("comment-separated heading refusal mutated files")
 	}
 	root = closeFixture(t, "prefix: ex\n", map[string]string{"docs/parts/testing/gate.md": "## The gate"})
-	if err := applyStructuralHeadings(root, io.Discard); err != nil {
+	if err := applyStructuralHeadings(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(filepath.Join(root, ".awf/docs/parts/testing/gate.md"))
@@ -161,7 +160,7 @@ func TestStructuralHeadingsRetryAfterWriteFailure(t *testing.T) {
 	})
 	writes := 0
 	injected := errors.New("injected write failure")
-	err := applyStructuralHeadingsWithWriter(root, io.Discard, func(path string, b []byte, mode os.FileMode) error {
+	err := applyStructuralHeadingsWithWriter(root, &Changes{}, func(path string, b []byte, mode os.FileMode) error {
 		writes++
 		if writes == 2 {
 			return injected
@@ -171,14 +170,10 @@ func TestStructuralHeadingsRetryAfterWriteFailure(t *testing.T) {
 	if !errors.Is(err, injected) {
 		t.Fatalf("first apply = %v", err)
 	}
-	if err := applyStructuralHeadings(root, io.Discard); err != nil {
+	if err := applyStructuralHeadings(root, &Changes{}); err != nil {
 		t.Fatalf("retry = %v", err)
 	}
 }
-
-type structuralHeadingFailWriter struct{ err error }
-
-func (w structuralHeadingFailWriter) Write([]byte) (int, error) { return 0, w.err }
 
 func TestStructuralHeadingsReadAndStatFailures(t *testing.T) {
 	t.Run("directory at frozen path", func(t *testing.T) {
@@ -187,7 +182,7 @@ func TestStructuralHeadingsReadAndStatFailures(t *testing.T) {
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		err := applyStructuralHeadings(root, io.Discard)
+		err := applyStructuralHeadings(root, &Changes{})
 		if err == nil || !strings.Contains(err.Error(), "read structural-heading part "+path) {
 			t.Fatalf("directory read error = %v", err)
 		}
@@ -195,7 +190,7 @@ func TestStructuralHeadingsReadAndStatFailures(t *testing.T) {
 	t.Run("injected read", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("read failed")
-		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+		err := applyStructuralHeadingsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
 			return migrationFaultFile{reader: migrationFailedReader{injected}}, nil
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "read structural-heading part") {
@@ -205,7 +200,7 @@ func TestStructuralHeadingsReadAndStatFailures(t *testing.T) {
 	t.Run("open", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("open failed")
-		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+		err := applyStructuralHeadingsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
 			return nil, injected
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "open structural-heading part") {
@@ -215,7 +210,7 @@ func TestStructuralHeadingsReadAndStatFailures(t *testing.T) {
 	t.Run("stat", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("stat failed")
-		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+		err := applyStructuralHeadingsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
 			return migrationFaultFile{reader: strings.NewReader(""), stat: injected}, nil
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "stat structural-heading part") {
@@ -225,24 +220,13 @@ func TestStructuralHeadingsReadAndStatFailures(t *testing.T) {
 	t.Run("close", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("close failed")
-		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+		err := applyStructuralHeadingsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
 			return migrationFaultFile{reader: strings.NewReader(""), close: injected}, nil
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "close structural-heading part") {
 			t.Fatalf("close error = %v", err)
 		}
 	})
-}
-
-func TestStructuralHeadingsReportsAnnouncementFailure(t *testing.T) {
-	root := closeFixture(t, "prefix: ex\n", map[string]string{
-		"docs/parts/testing/gate.md": "## The gate\nbody\n",
-	})
-	injected := errors.New("announcement failed")
-	err := applyStructuralHeadings(root, structuralHeadingFailWriter{err: injected})
-	if !errors.Is(err, injected) || !strings.Contains(err.Error(), "announce structural-heading update") {
-		t.Fatalf("announcement failure = %v", err)
-	}
 }
 
 func TestStructuralHeadingsRetainsPrimaryAndCleanupFailures(t *testing.T) {
@@ -262,7 +246,7 @@ func TestStructuralHeadingsRetainsPrimaryAndCleanupFailures(t *testing.T) {
 			}
 			closeErr := errors.New("close failed")
 			root := closeFixture(t, "prefix: ex\n", nil)
-			err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+			err := applyStructuralHeadingsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
 				return migrationFaultFile{reader: tc.reader, stat: tc.statErr, close: closeErr}, nil
 			})
 			if !errors.Is(err, primary) || !errors.Is(err, closeErr) || !strings.Contains(err.Error(), tc.context) || !strings.Contains(err.Error(), "close structural-heading part") {

@@ -27,8 +27,8 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 	}
 	want := filepath.Join(root, "docs", "decisions", "0001-my-new-title.md")
 	got := strings.TrimSpace(out.String())
-	if got != want {
-		t.Errorf("runNew printed %q, want %q", got, want)
+	if got != "status: created: "+want {
+		t.Errorf("runNew printed %q, want created status for %q", got, want)
 	}
 	data, err := os.ReadFile(want)
 	if err != nil {
@@ -42,6 +42,9 @@ func TestRunNewADRError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := scaffoldProject(t)
+	if err := newADR(ctx, root, nil, io.Discard); err == nil {
+		t.Fatal("expected missing-title usage error")
+	}
 	if err := runNew(ctx, root, "adr", []string{"!!!"}, os.Stdout); err == nil {
 		t.Fatal("expected NewADR error for an all-punctuation title")
 	}
@@ -78,7 +81,7 @@ func TestRunNewScaffoldsTopicWithoutSyncMutation(t *testing.T) {
 	if err := runNew(ctx, root, "topic", []string{"rendering", "Scheduling", "Contracts"}, &out); err != nil {
 		t.Fatal(err)
 	}
-	wantOut := ".awf/topics/metadata/rendering/scheduling-contracts.yaml\n.awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
+	wantOut := "topic:\n  created files:\n    .awf/topics/metadata/rendering/scheduling-contracts.yaml\n    .awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
 	if out.String() != wantOut {
 		t.Errorf("output = %q, want %q", out.String(), wantOut)
 	}
@@ -450,7 +453,7 @@ func TestRunNewScaffoldsPlan(t *testing.T) {
 	if err := runNew(ctx, root, "plan", []string{"Some", "Plan", "Title"}, &out); err != nil {
 		t.Fatalf("runNew: %v", err)
 	}
-	got := strings.TrimSpace(out.String())
+	got := strings.TrimPrefix(strings.TrimSpace(out.String()), "status: created: ")
 	// Date-prefixed under docs/plans (no sequential number); the date is today's,
 	// so match on shape rather than couple the test to the wall clock.
 	if dir := filepath.Dir(got); dir != filepath.Join(root, "docs", "plans") {
@@ -631,7 +634,7 @@ func TestRunNewTopicDispatchAndHelp(t *testing.T) {
 		t.Errorf("dispatch output = %q", out.String())
 	}
 	out.Reset()
-	if code := run([]string{"awf", "new", "topic", "--help"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "awf new topic <domain> <title>") {
+	if code := run([]string{"awf", "new", "topic", "--help"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "awf new topic <domain> <title>...") {
 		t.Fatalf("help exit = %d, output = %q, error = %q", code, out.String(), errb.String())
 	}
 }

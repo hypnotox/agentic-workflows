@@ -16,8 +16,8 @@ func TestOperationalOutcomeContracts(t *testing.T) {
 			if outcome.OK() || !errors.Is(refusal.Cause, cause) || refusal.Category != category {
 				t.Fatalf("refusal contract = %#v", outcome)
 			}
-			text := Render(Policy{}, outcome)
-			for _, want := range []string{"cause: native failure", "refs changed: false", "index changed: true", "next: reconcile", "next: rerun"} {
+			text := renderOutcome(t, Policy{}, outcome)
+			for _, want := range []string{"cause: native failure", "refs: false", "index: true", "step 1: reconcile", "step 2: rerun"} {
 				if !strings.Contains(text, want) {
 					t.Fatalf("rendered refusal %q missing %q", text, want)
 				}

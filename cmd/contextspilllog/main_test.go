@@ -4,8 +4,11 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -66,9 +69,83 @@ func TestRunSafeLogAdvisory(t *testing.T) {
 	}
 }
 
+// TestXContextConsumerUsesOnlySpillNoticeProtocol executes the checked-in x
+// runner with controlled child and logger fixtures. The malformed case proves
+// the observation instrument can fail without changing the child status.
+func TestXContextConsumerUsesOnlySpillNoticeProtocol(t *testing.T) {
+	root := t.TempDir()
+	body, err := os.ReadFile(filepath.Join("..", "..", "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "x"), body, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "awf"), []byte("#!/bin/sh\nprintf '%s' \"$AWF_CONTEXT_FIXTURE\"\nexit \"$AWF_CONTEXT_STATUS\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(root, "bin")
+	if err := os.Mkdir(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	logger := "#!/bin/sh\n" +
+		"printf '%s\\n' \"$*\" >> \"$AWF_GO_LOG\"\n" +
+		"capture=; root=; previous=\n" +
+		"for arg in \"$@\"; do if [ \"$previous\" = --notice-file ]; then capture=$arg; fi; if [ \"$previous\" = --root ]; then root=$arg; fi; previous=$arg; done\n" +
+		"if grep -q '^AWF_CONTEXT_SPILL_V1 bytes=[0-9][0-9]* format=text$' \"$capture\"; then mkdir -p \"$root/.awf/local\"; printf 'observed\\n' > \"$root/.awf/local/context-spills.log\"; exit 0; fi\n" +
+		"if grep -q '^AWF_CONTEXT_SPILL_V1' \"$capture\"; then printf 'malformed notice\\n' >&2; exit 1; fi\n" +
+		"exit 0\n"
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(logger), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, fixture, wantErr, wantLog string
+		status                          int
+	}{
+		{"ordinary", "context: static\n", "", "", 0},
+		{"spill", "AWF_CONTEXT_SPILL_V1 bytes=9 format=text\n/tmp/spill\n", "", "observed\n", 0},
+		{"malformed", "AWF_CONTEXT_SPILL_V1 bytes=x format=text\n/tmp/spill\n", "malformed notice\ncontext: warning: spill delivered but local observability logging failed\n", "", 0},
+		{"child-failure", "child failed\n", "", "", 7},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.RemoveAll(filepath.Join(root, ".awf")); err != nil {
+				t.Fatal(err)
+			}
+			logPath := filepath.Join(t.TempDir(), "go.log")
+			cmd := exec.Command("bash", "./x", "context", "internal/project")
+			cmd.Dir = root
+			cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "AWF_CONTEXT_FIXTURE="+tc.fixture, "AWF_CONTEXT_STATUS="+strconv.Itoa(tc.status), "AWF_GO_LOG="+logPath)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err := cmd.Run()
+			status := 0
+			var exit *exec.ExitError
+			if errors.As(err, &exit) {
+				status = exit.ExitCode()
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if status != tc.status || stdout.String() != tc.fixture || stderr.String() != tc.wantErr {
+				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
+			}
+			logged, _ := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+			if string(logged) != tc.wantLog {
+				t.Fatalf("spill log=%q, want %q", logged, tc.wantLog)
+			}
+			invocations, _ := os.ReadFile(logPath)
+			if (tc.status == 0) != (len(invocations) > 0) {
+				t.Fatalf("logger invocation=%q", invocations)
+			}
+		})
+	}
+}
+
 func TestRunUnrecognizedIsSilent(t *testing.T) {
 	capture := filepath.Join(t.TempDir(), "capture")
-	if err := os.WriteFile(capture, []byte("ordinary context\n"), 0o600); err != nil {
+	// This is ordinary presentation output, not a protocol sentinel. The x
+	// consumer must leave it alone even though it starts with the context label.
+	const ordinaryContext = "context: static not inside an awf project\n\nrequests:\n  status: none\n"
+	if err := os.WriteFile(capture, []byte(ordinaryContext), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer

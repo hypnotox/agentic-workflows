@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -228,23 +229,41 @@ type CommitAuthorizationResult struct {
 	NextActions       []string
 }
 
-// String renders the complete operation outcome for people and hooks.
-func (r CommitAuthorizationResult) String() string {
+// Diagnostic maps this non-mutating authorization outcome to the shared
+// actionable presentation shape. All safety axes remain explicit even when
+// none moved, so a hook user can safely distinguish correction from retry.
+func (r CommitAuthorizationResult) Diagnostic() (presentation.Diagnostic, error) {
 	yesNo := func(changed bool) string {
 		if changed {
 			return "yes"
 		}
 		return "no"
 	}
-	next := "none"
-	if len(r.NextActions) > 0 {
-		parts := make([]string, len(r.NextActions))
-		for i, action := range r.NextActions {
-			parts[i] = fmt.Sprintf("%d. %s", i+1, action)
+	changed := make([]presentation.Field, 0, 3)
+	for _, axis := range []struct{ label, value string }{
+		{"index", yesNo(r.ChangedIndex)},
+		{"message", yesNo(r.ChangedMessage)},
+		{"merge state", yesNo(r.ChangedMergeState)},
+	} {
+		value, err := presentation.Literal(axis.value)
+		if err != nil { // coverage-ignore: yes/no literal is fixed valid text
+			return presentation.Diagnostic{}, err
 		}
-		next = strings.Join(parts, " ")
+		field, err := presentation.NewField(axis.label, value)
+		if err != nil { // coverage-ignore: fixed axis labels are presentation-valid
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
 	}
-	return fmt.Sprintf("%s: %s; changed index: %s; changed message: %s; changed merge state: %s; next actions: %s", r.Category, r.Condition, yesNo(r.ChangedIndex), yesNo(r.ChangedMessage), yesNo(r.ChangedMergeState), next)
+	steps := make([]presentation.Value, len(r.NextActions))
+	for i, action := range r.NextActions {
+		value, err := presentation.Prose(action)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		steps[i] = value
+	}
+	return presentation.Diagnostic{Condition: r.Condition, State: r.Category, Changed: changed, Steps: steps}, nil
 }
 
 // CheckCommitAuthorization validates the index, first parent, every incoming

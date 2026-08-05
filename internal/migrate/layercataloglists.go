@@ -53,18 +53,18 @@ type sidecarOpener func(string) (sidecarFile, error)
 
 func openSidecarFile(path string) (sidecarFile, error) { return os.Open(path) }
 
-func applyLayerCatalogLists(root string, out io.Writer) error {
+func applyLayerCatalogLists(root string, out *Changes) error {
 	return applyLayerCatalogListsWithWriter(root, out, manifest.WriteFileAtomicMode)
 }
 
 // applyLayerCatalogListsWithWriter separates the operation's atomic write
 // dependency so interruption tests can fail a later replacement without a
 // mutable package-global seam.
-func applyLayerCatalogListsWithWriter(root string, out io.Writer, write atomicSidecarWriter) error {
+func applyLayerCatalogListsWithWriter(root string, out *Changes, write atomicSidecarWriter) error {
 	return applyLayerCatalogListsWithWriterAndOpen(root, out, write, openSidecarFile)
 }
 
-func applyLayerCatalogListsWithWriterAndOpen(root string, out io.Writer, write atomicSidecarWriter, open sidecarOpener) error {
+func applyLayerCatalogListsWithWriterAndOpen(root string, out *Changes, write atomicSidecarWriter, open sidecarOpener) error {
 	edits := make([]sidecarListEdit, 0, len(layerCatalogListSnapshot))
 	for _, artifact := range layerCatalogListSnapshot {
 		path := filepath.Join(root, config.DirName, artifact.kind, artifact.artifact+".yaml")
@@ -154,9 +154,7 @@ func applyLayerCatalogListsWithWriterAndOpen(root string, out io.Writer, write a
 		if err != nil { // coverage-ignore: edit paths are constructed below root from the frozen snapshot
 			return fmt.Errorf("relativize sidecar %s: %w", filepath.ToSlash(edit.path), err)
 		}
-		if _, err := fmt.Fprintf(out, "layer-catalog-lists: updated %s\n", filepath.ToSlash(rel)); err != nil {
-			return fmt.Errorf("announce layer-catalog-lists update for %s: %w", filepath.ToSlash(edit.path), err)
-		}
+		out.Add("layer-catalog-lists: updated " + filepath.ToSlash(rel))
 	}
 	return nil
 }

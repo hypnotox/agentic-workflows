@@ -27,7 +27,7 @@ func TestLayerCatalogListsMigration(t *testing.T) {
 	if err := os.Chmod(tddPath, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var out bytes.Buffer
+	var out Changes
 	if err := applyLayerCatalogLists(root, &out); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestLayerCatalogListSnapshotExact(t *testing.T) {
 		files[artifact.kind+"/"+artifact.artifact+".yaml"] = body.String()
 	}
 	root := closeFixture(t, "prefix: ex\n", files)
-	var out bytes.Buffer
+	var out Changes
 	if err := applyLayerCatalogLists(root, &out); err != nil {
 		t.Fatal(err)
 	}
@@ -174,14 +174,14 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := applyLayerCatalogLists(root, io.Discard); err == nil {
+		if err := applyLayerCatalogLists(root, &Changes{}); err == nil {
 			t.Fatal("expected sidecar read error")
 		}
 	})
 	t.Run("injected read", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("read failed")
-		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+		err := applyLayerCatalogListsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
 			return migrationFaultFile{reader: migrationFailedReader{injected}}, nil
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "read sidecar") {
@@ -191,7 +191,7 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 	t.Run("open", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("open failed")
-		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+		err := applyLayerCatalogListsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
 			return nil, injected
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "open sidecar") {
@@ -201,7 +201,7 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 	t.Run("stat", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("stat failed")
-		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+		err := applyLayerCatalogListsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
 			return migrationFaultFile{reader: strings.NewReader(""), stat: injected}, nil
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "stat sidecar") {
@@ -211,7 +211,7 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 	t.Run("close", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
 		injected := errors.New("close failed")
-		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+		err := applyLayerCatalogListsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
 			return migrationFaultFile{reader: strings.NewReader(""), close: injected}, nil
 		})
 		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "close sidecar") {
@@ -220,7 +220,7 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 	})
 	t.Run("parse", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", map[string]string{"skills/tdd.yaml": "data: [\n"})
-		err := applyLayerCatalogLists(root, io.Discard)
+		err := applyLayerCatalogLists(root, &Changes{})
 		if err == nil || !strings.Contains(err.Error(), "parse sidecar") {
 			t.Fatalf("error = %v", err)
 		}
@@ -234,7 +234,7 @@ func TestLayerCatalogListsRefusalPreflightsEverySidecar(t *testing.T) {
 		"agents/code-reviewer.yaml": "data:\n  focusItems: wrong\n",
 	})
 	before := snapshotTree(t, root)
-	err := applyLayerCatalogLists(root, io.Discard)
+	err := applyLayerCatalogLists(root, &Changes{})
 	if err == nil {
 		t.Fatal("expected refusal")
 	}
@@ -256,7 +256,7 @@ func TestLayerCatalogListsRetryAfterLaterWriteFailure(t *testing.T) {
 	})
 	writes := 0
 	errInjected := errors.New("injected later write failure")
-	err := applyLayerCatalogListsWithWriter(root, io.Discard, func(path string, content []byte, mode os.FileMode) error {
+	err := applyLayerCatalogListsWithWriter(root, &Changes{}, func(path string, content []byte, mode os.FileMode) error {
 		writes++
 		if writes == 2 {
 			return errInjected
@@ -266,7 +266,7 @@ func TestLayerCatalogListsRetryAfterLaterWriteFailure(t *testing.T) {
 	if !errors.Is(err, errInjected) {
 		t.Fatalf("first apply error = %v", err)
 	}
-	if err := applyLayerCatalogLists(root, io.Discard); err != nil {
+	if err := applyLayerCatalogLists(root, &Changes{}); err != nil {
 		t.Fatalf("retry: %v", err)
 	}
 	for _, rel := range []string{"agents/adr-reviewer.yaml", "agents/code-reviewer.yaml"} {
@@ -277,20 +277,13 @@ func TestLayerCatalogListsRetryAfterLaterWriteFailure(t *testing.T) {
 	}
 }
 
-func TestLayerCatalogListsReportsWriteAndAnnouncementFailures(t *testing.T) {
+func TestLayerCatalogListsReportsWriteFailure(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{"skills/tdd.yaml": "data:\n  testSurfaces: []\n"})
 	writeFailure := errors.New("write failed")
-	err := applyLayerCatalogListsWithWriter(root, io.Discard, func(string, []byte, os.FileMode) error { return writeFailure })
+	err := applyLayerCatalogListsWithWriter(root, &Changes{}, func(string, []byte, os.FileMode) error { return writeFailure })
 	path := filepath.Join(root, ".awf", "skills", "tdd.yaml")
 	if !errors.Is(err, writeFailure) || !strings.Contains(err.Error(), "write sidecar "+filepath.ToSlash(path)) {
 		t.Fatalf("write failure = %v", err)
-	}
-
-	root = closeFixture(t, "prefix: ex\n", map[string]string{"skills/tdd.yaml": "data:\n  testSurfaces: []\n"})
-	announcementFailure := errors.New("announcement failed")
-	err = applyLayerCatalogLists(root, structuralHeadingFailWriter{err: announcementFailure})
-	if !errors.Is(err, announcementFailure) || !strings.Contains(err.Error(), "announce layer-catalog-lists update") {
-		t.Fatalf("announcement failure = %v", err)
 	}
 }
 
@@ -311,7 +304,7 @@ func TestLayerCatalogListsRetainsPrimaryAndCleanupFailures(t *testing.T) {
 			}
 			closeErr := errors.New("close failed")
 			root := closeFixture(t, "prefix: ex\n", nil)
-			err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+			err := applyLayerCatalogListsWithWriterAndOpen(root, &Changes{}, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
 				return migrationFaultFile{reader: tc.reader, stat: tc.statErr, close: closeErr}, nil
 			})
 			if !errors.Is(err, primary) || !errors.Is(err, closeErr) || !strings.Contains(err.Error(), tc.context) || !strings.Contains(err.Error(), "close sidecar") {

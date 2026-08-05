@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +17,7 @@ func TestCommitPolicyMigrationPreservesAbsentConfigBytes(t *testing.T) {
 	if err := os.WriteFile(configPath, src, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyCommitPolicy(root, io.Discard); err != nil {
+	if err := applyCommitPolicy(root, &Changes{}); err != nil {
 		t.Fatalf("applyCommitPolicy: %v", err)
 	}
 	got, err := os.ReadFile(configPath)

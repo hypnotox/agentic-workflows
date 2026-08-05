@@ -3,7 +3,7 @@
 
 <!-- awf:edit current-state: from .awf/domains/parts/code-design/current-state.md -->
 ## Current state
-The code-design domain owns cross-package structure guidance and `internal/execution/**` as its scoped capability-planning implementation surface. Its pre-existing topics remain explicit global guidance and do not gain path ownership. Read the owning topic before changing a governed structure rather than copying its claims into local guidance.
+The code-design domain owns cross-package structure guidance, `internal/execution/**` as its scoped capability-planning implementation surface, and `internal/presentation/**` as the central CLI representation package. Its explicit global topics remain repository-wide guidance and do not gain path ownership. Read the owning scoped and global topics before changing a governed structure rather than copying their claims into local guidance.
 
 
 ## Topics
@@ -15,6 +15,7 @@ The code-design domain owns cross-package structure guidance and `internal/execu
 - [Outcome modeling](../topics/code-design/outcome-modeling.md): How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
 - [Package composition](../topics/code-design/package-composition.md): What a package owns and states, what earns an export, and how exported surface stays documented.
 - [Presentation ownership](../topics/code-design/presentation-ownership.md): Which package renders a result model for humans, and what a command binary keeps.
+- [Presentation package](../topics/code-design/presentation-package.md): What the central presentation package owns and excludes.
 - [Single home](../topics/code-design/single-home.md): One implementation per shared concern, and the coverage-gate posture that protects it.
 - [State ownership](../topics/code-design/state-ownership.md): What a value owns, and where state derived during one operation lives.
 - [Test design](../topics/code-design/test-design.md): How Go tests assert (error identity aside) and how they obtain controlled dependencies without new global seams.

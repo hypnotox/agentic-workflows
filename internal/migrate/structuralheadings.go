@@ -212,15 +212,15 @@ func openStructuralHeadingFile(path string) (structuralHeadingFile, error) { ret
 // applyStructuralHeadings removes only the exact legacy structural line. It
 // performs complete preflight before replacing any file, so ambiguity leaves the
 // tree untouched; each replacement itself is atomic and a retry is a no-op.
-func applyStructuralHeadings(root string, out io.Writer) error {
+func applyStructuralHeadings(root string, out *Changes) error {
 	return applyStructuralHeadingsWithWriter(root, out, manifest.WriteFileAtomicMode)
 }
 
-func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structuralHeadingWriter) error {
+func applyStructuralHeadingsWithWriter(root string, out *Changes, write structuralHeadingWriter) error {
 	return applyStructuralHeadingsWithWriterAndOpen(root, out, write, openStructuralHeadingFile)
 }
 
-func applyStructuralHeadingsWithWriterAndOpen(root string, out io.Writer, write structuralHeadingWriter, open structuralHeadingOpener) error {
+func applyStructuralHeadingsWithWriterAndOpen(root string, out *Changes, write structuralHeadingWriter, open structuralHeadingOpener) error {
 	var edits []structuralHeadingEdit
 	for _, entry := range structuralHeadingSnapshot {
 		pattern := filepath.Join(root, config.DirName, filepath.FromSlash(entry.path))
@@ -297,9 +297,7 @@ func applyStructuralHeadingsWithWriterAndOpen(root string, out io.Writer, write 
 		if err != nil { // coverage-ignore: every edit path is constructed below root from a frozen relative path or its rooted glob matches
 			return fmt.Errorf("relativize structural-heading part %s: %w", e.path, err)
 		}
-		if _, err := fmt.Fprintf(out, "structural-headings: updated %s\n", filepath.ToSlash(rel)); err != nil {
-			return fmt.Errorf("announce structural-heading update for %s: %w", e.path, err)
-		}
+		out.Add("structural-headings: updated " + filepath.ToSlash(rel))
 	}
 	return nil
 }

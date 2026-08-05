@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -35,18 +35,26 @@ func runSync(ctx context.Context, root string, stdout io.Writer) error {
 	return runSyncPrinting(ctx, loader, root, nil, stdout)
 }
 
-func runSyncInitialized(ctx context.Context, root string, seed project.InitAuthority, stdout io.Writer) error {
-	loader, err := newProjectLoader(root)
+func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
+	mutation, _, err := syncMutation(ctx, loader, root, seed)
 	if err != nil {
 		return err
 	}
-	return runSyncPrinting(ctx, loader, root, &seed, stdout)
+	return renderSyncMutation(stdout, mutation)
 }
 
-func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
+func renderSyncMutation(stdout io.Writer, mutation presentation.Mutation) error {
+	document, err := mutation.Document()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
+	}
+	return presentation.Render(stdout, document)
+}
+
+func syncMutation(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority) (presentation.Mutation, *project.Project, error) {
 	p, err := loader.Open(ctx, root)
 	if err != nil {
-		return err
+		return presentation.Mutation{}, nil, err
 	}
 	var backups []project.Backup
 	var changes []project.Change
@@ -57,24 +65,11 @@ func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, s
 		backups, changes, pruned, err = p.InitializeReport(ctx, *seed)
 	}
 	if err != nil {
-		return err
+		return presentation.Mutation{}, nil, err
 	}
-	for _, b := range backups {
-		fmt.Fprintf(stdout, "backed up %s → %s\n", b.Path, b.Bak)
-		if b.Index {
-			fmt.Fprintf(stdout, "  note: awf now generates %s; retire any external generator for it\n", b.Path)
-		}
+	mutation, err := project.SyncMutation(backups, changes, pruned)
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return presentation.Mutation{}, nil, err
 	}
-	for _, c := range changes {
-		if c.Cause == "added" {
-			fmt.Fprintf(stdout, "awf render: added %s\n", c.Path)
-			continue
-		}
-		fmt.Fprintf(stdout, "awf render: changed %s (%s)\n", c.Path, c.Cause)
-	}
-	for _, path := range pruned {
-		fmt.Fprintf(stdout, "awf render: pruned %s\n", path)
-	}
-	fmt.Fprintln(stdout, "awf render: done")
-	return nil
+	return mutation, p, nil
 }

@@ -94,7 +94,7 @@ func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 	if got != want {
 		t.Fatalf("full differs from union:\n--- full ---\n%s\n--- union ---\n%s", got, want)
 	}
-	if strings.Count(got, "alpha/one - One") != 1 || strings.Count(got, "Authority counts: invariants=2, rules=1") != 1 || strings.Contains(got, "FULL PROSE SECRET") || strings.Contains(got, "Direct rules:") {
+	if strings.Count(got, "alpha/one | One") != 1 || strings.Contains(got, "FULL PROSE SECRET") || strings.Contains(got, "Direct rules:") {
 		t.Fatalf("full restored repetition, prose, or legacy rosters:\n%s", got)
 	}
 }
@@ -126,9 +126,58 @@ func TestRenderContextGrammar(t *testing.T) {
 		Topics:   []topicImpact{{ID: "tooling/example", Title: "Example", Summary: "Summary.", Counts: contextAuthorityCounts{Invariants: 1, Rules: 2}, Direct: []contextClaimImpact{{ID: "tooling/example:r", Type: "rule", Summary: "Rule.", Sources: []contextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}}, Incoming: []string{"a"}, Outgoing: []string{"b"}}}}},
 	}
 	out := RenderContextText(res, "header", []ContextFacet{FacetArtifacts})
-	for _, want := range []string{"Selection: range a..b", "File: x", "Symlink target inside repository: false", "Source: templates/x", "State: tooling/example:r", "Authority counts: invariants=1, rules=2", "Sources: request 1 [State]", "Warning: globs", "Incoming: a", "Outgoing: b"} {
+	const contextGolden = "context: header\nselection: range a..b\n\nrequests:\n  request-1:\n    argument: x\n    file: x\n    classification: symlink\n    symlink-target-inside-repository: false\n    provenance: template | skills/example/SKILL.md.tmpl\n    source: templates/x | template source\n    domains: tooling\n    topics: tooling/example\n    warning: globs are not expanded; pass a directory or an exact file\n    state: tooling/example:r\n\nauthority:\n  topics:\n    tooling/example | Example | Summary. | 1 | 2\n  direct-claims:\n    tooling/example | tooling/example:r | rule | Rule.\n  claim-sources:\n    tooling/example | tooling/example:r | 1 | State\n"
+	if out != contextGolden {
+		t.Fatalf("context grammar:\n--- got ---\n%s--- want ---\n%s", out, contextGolden)
+	}
+	for _, want := range []string{"selection: range a..b", "file: x", "symlink-target-inside-repository: false", "source: templates/x", "state: tooling/example:r", "topics:\n    tooling/example | Example | Summary. | 1 | 2", "warning: globs"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestRenderContextFacetOwnedAuthorityOmitsAbsentData prevents unrequested
+// authority facets from asserting that test backing or known reference edges are
+// absent. The selected form retains one fixed schema for every claim row.
+// invariant: tooling/context-and-topic:context-full-authority-packet (TestRenderContextFacetOwnedAuthorityOmitsAbsentData)
+func TestRenderContextFacetOwnedAuthorityOmitsAbsentData(t *testing.T) {
+	claim := contextClaimImpact{
+		ID:       "alpha/one:tested",
+		Type:     "invariant",
+		Summary:  "Test-backed claim.",
+		Backing:  "test",
+		Verify:   "run focused test",
+		Sources:  []contextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}},
+		Evidence: []contextEvidence{{Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "internal/a  b_test.go", Line: 7}}}},
+		Incoming: []string{"alpha/one:incoming"},
+		Outgoing: []string{"alpha/one:outgoing"},
+	}
+	res := ContextResult{Selection: SelectionExplicit, Topics: []topicImpact{{ID: "alpha/one", Title: "One", Summary: "Summary.", Direct: []contextClaimImpact{claim}}}}
+	bare := RenderContextText(res, "header", nil)
+	for _, forbidden := range []string{"claim-evidence:", "claim-references:", "| test | run focused test"} {
+		if strings.Contains(bare, forbidden) {
+			t.Errorf("bare authority asserted facet-owned data: %q in:\n%s", forbidden, bare)
+		}
+	}
+	if !strings.Contains(bare, "claim-sources:\n    alpha/one | alpha/one:tested | 1 | State") {
+		t.Errorf("bare exact-file authority omitted direct source attribution:\n%s", bare)
+	}
+	faceted := RenderContextText(res, "header", []ContextFacet{FacetRelationships, FacetEvidence, FacetReferences})
+	for _, want := range []string{"alpha/one | alpha/one:tested | invariant | Test-backed claim. | test | run focused test", "claim-sources:\n    alpha/one | alpha/one:tested | 1 | State", "internal/a  b_test.go:7", "claim-references:\n    alpha/one | alpha/one:tested | alpha/one:incoming | alpha/one:outgoing"} {
+		if !strings.Contains(faceted, want) {
+			t.Errorf("faceted authority missing %q:\n%s", want, faceted)
+		}
+	}
+}
+
+func TestRenderContextPreservesLiteralIdentities(t *testing.T) {
+	const identity = "internal/a  b\tfile.go"
+	res := ContextResult{Selection: SelectionExplicit, Requests: []contextRequestReport{{Index: 1, Argument: identity, Exact: &contextExactEntry{Path: identity, Context: contextPathImpact{Classification: pathCovered, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}}}}, Topics: []topicImpact{{ID: "alpha/two  tabs\tclaim", Title: "Title prose", Summary: "Summary prose"}}}
+	got := RenderContextText(res, "header", nil)
+	for _, want := range []string{"argument: " + identity, "file: " + identity, "alpha/two  tabs\tclaim | Title prose | Summary prose"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("literal identity collapsed in %q:\n%s", want, got)
 		}
 	}
 }
@@ -136,16 +185,16 @@ func TestRenderContextGrammar(t *testing.T) {
 func TestRenderAllContextBranches(t *testing.T) {
 	t.Parallel()
 	uncovered := RenderUncoveredText(UncoveredResult{ScanRoots: []string{"internal"}, Uncovered: []uncoveredTopic{{Path: "internal/x", Domain: "d"}}, Unowned: []unownedEntry{{Path: "file", UnownedCount: 1}, {Path: "dir/", UnownedCount: 1, ExcludedCount: 2}, {Path: ".", UnownedCount: 2}}}, "header")
-	for _, want := range []string{"scan roots", "## Uncovered", "## Unowned", "1 unowned file", "2 files excluded"} {
+	for _, want := range []string{"scan-roots", "uncovered:", "unowned:", "file | 1 | 0", "dir/ | 1 | 2"} {
 		if !strings.Contains(uncovered, want) {
 			t.Errorf("uncovered missing %q: %s", want, uncovered)
 		}
 	}
-	current := contextClaimImpact{ID: "d/t:i", Type: "invariant", Summary: "Invariant.", Backing: "unbacked", Verify: "inspect", Evidence: []contextEvidence{{Kind: "state", Count: 4}, {Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "x_test.go", Line: 3}}}}}
+	current := contextClaimImpact{ID: "d/t:i", Type: "invariant", Summary: "Invariant.", Backing: "unbacked", Verify: "inspect", Sources: []contextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}}, Evidence: []contextEvidence{{Kind: "state", Count: 4}, {Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "x_test.go", Line: 3}}}}}
 	impact := contextPathImpact{Classification: pathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []contextProvenance{{Role: "template", Identity: "x", Sources: []artifactLink{}, Outputs: []artifactLink{{Path: "out", Label: "managed output"}}, Navigation: []artifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: contextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}, Warnings: []contextWarning{warningEligibleUnowned}, ADR: &adrArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []adrOperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", Detail: &adrOperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &adrOperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002"}}}}}}}
 	res := ContextResult{Selection: SelectionStaged, Requests: []contextRequestReport{{Index: 1, Argument: "empty", Directory: &contextDirectory{Included: 0, Excluded: []contextClassificationCount{{Classification: pathGeneratedOutput, Count: 2}}, Groups: []contextGroup{{Count: 2, Members: []string{"a", "b"}, Context: impact}}}}}, Topics: []topicImpact{{ID: "d/t", Title: "T", Summary: "S", Selectors: &contextSelectorImpact{DomainPaths: []string{}, TopicPaths: []string{}, DeclaredGlobal: false}, Invariants: []contextClaimImpact{current}, Pending: contextPendingImpact{OperationCount: 4, ADRs: []string{"0001", "0002", "0003"}, AdditionalADRCount: 1}}}}
-	out := RenderContextText(res, "header", []ContextFacet{FacetArtifacts})
-	for _, want := range []string{"Selection: staged", "Excluded: generated-output=2", "Members: a, b", "Nested root:", "Output: out", "Navigate: nav", "ADR: ADR-2", "Current claim:", "Removal history:", "Verify: inspect", "Evidence state: 4 sites", "Pending: 4 operations", "+1 ADRs", "Selectors: domain=[]; topic=[]"} {
+	out := RenderContextText(res, "header", []ContextFacet{FacetArtifacts, FacetRelationships, FacetEvidence, FacetReferences})
+	for _, want := range []string{"selection: staged", "excluded: generated-output=2", "members: a, b", "nested-root:", "output: out", "navigate: nav", "adr: ADR-2", "claim:\n      d/t:i", "removal-history:", "inspect", "state | 4 | none", "pending-summary:\n    d/t | 4 | 0001, 0002, 0003 | 1", "selectors:\n    d/t | none | none | both domain and topic selectors must match"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)
 		}
@@ -153,12 +202,12 @@ func TestRenderAllContextBranches(t *testing.T) {
 	res.Topics[0].Pending.Operations = []pendingChange{{ADR: "0002", Op: "add", Claim: "d/t:r", Progress: "remaining"}}
 	res.Topics[0].Selectors.DeclaredGlobal = true
 	out = RenderContextText(res, "header", nil)
-	if !strings.Contains(out, "Pending operation:") || !strings.Contains(out, "topic=global") {
+	if !strings.Contains(out, "d/t | 0002 | add | d/t:r | remaining") || !strings.Contains(out, "d/t | none | global | both domain and topic selectors must match") {
 		t.Fatal(out)
 	}
 	// A report with neither a request nor an applicable topic renders both
 	// "none" placeholders rather than an empty section.
-	if bare := RenderContextText(ContextResult{Selection: SelectionExplicit}, "header", nil); !strings.Contains(bare, "## Requests\n  none") || !strings.Contains(bare, "## Authority\n  none") {
+	if bare := RenderContextText(ContextResult{Selection: SelectionExplicit}, "header", nil); !strings.Contains(bare, "requests:\n  status: none") || !strings.Contains(bare, "authority:\n  topics: none") {
 		t.Fatalf("bare report placeholders:\n%s", bare)
 	}
 	if empty := RenderUncoveredText(UncoveredResult{}, "header"); !strings.Contains(empty, "all scanned paths are owned and covered") {

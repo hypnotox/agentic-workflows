@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,7 +51,7 @@ func TestRenameRetiredCommandsMigratesVars(t *testing.T) {
 	testsupport.WriteFile(t, cfg, "prefix: ex\nvars:\n  proseGateCmd: ./awf prose-gate # keep\n"+
 		"  memoryGateCmd: ./awf memory-gate\n  commitGateCmd: ./awf commit-gate\n"+
 		"  activeMdRegenCmd: ./awf sync\n  checkCmd: ./x check\n  gateCmd: ./x gate\n")
-	if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+	if err := applyRenameRetiredCommands(root, &Changes{}); err != nil {
 		t.Fatalf("applyRenameRetiredCommands: %v", err)
 	}
 	out, err := os.ReadFile(cfg)
@@ -74,7 +73,7 @@ func TestRenameRetiredCommandsIsIdempotent(t *testing.T) {
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "prefix: ex\nvars:\n  proseGateCmd: ./awf check prose\n"
 	testsupport.WriteFile(t, cfg, src)
-	if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+	if err := applyRenameRetiredCommands(root, &Changes{}); err != nil {
 		t.Fatalf("applyRenameRetiredCommands: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
@@ -94,7 +93,7 @@ func TestRenameRetiredCommandsToleratesNonStringVars(t *testing.T) {
 		root := t.TempDir()
 		cfg := filepath.Join(root, ".awf", "config.yaml")
 		testsupport.WriteFile(t, cfg, src)
-		if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+		if err := applyRenameRetiredCommands(root, &Changes{}); err != nil {
 			t.Fatalf("applyRenameRetiredCommands(%q): %v", src, err)
 		}
 		out, _ := os.ReadFile(cfg)
@@ -112,7 +111,7 @@ func TestRenameRetiredCommandsRewritesAnchoredVar(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	testsupport.WriteFile(t, cfg, "prefix: example\nvars:\n  helperCmd: &c ./awf prose-gate\n  proseGateCmd: *c\n")
-	if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+	if err := applyRenameRetiredCommands(root, &Changes{}); err != nil {
 		t.Fatalf("an anchored var must not fail the upgrade: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
@@ -134,7 +133,7 @@ func TestRenameRetiredCommandsLeavesAliasedVarAlone(t *testing.T) {
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "anchors:\n  a: &cmd ./awf prose-gate\nvars:\n  proseGateCmd: *cmd\n  memoryGateCmd: ./awf memory-gate\n"
 	testsupport.WriteFile(t, cfg, src)
-	if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+	if err := applyRenameRetiredCommands(root, &Changes{}); err != nil {
 		t.Fatalf("an aliased var must not fail the upgrade: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
@@ -145,7 +144,7 @@ func TestRenameRetiredCommandsLeavesAliasedVarAlone(t *testing.T) {
 }
 
 func TestRenameRetiredCommandsAbsentConfig(t *testing.T) {
-	if err := applyRenameRetiredCommands(t.TempDir(), io.Discard); err != nil {
+	if err := applyRenameRetiredCommands(t.TempDir(), &Changes{}); err != nil {
 		t.Errorf("applyRenameRetiredCommands with no .awf/config.yaml should be a no-op, got %v", err)
 	}
 }
@@ -157,7 +156,7 @@ func TestRenameRetiredCommandsMalformedConfig(t *testing.T) {
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "vars: [bad\n"
 	testsupport.WriteFile(t, cfg, src)
-	if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+	if err := applyRenameRetiredCommands(root, &Changes{}); err != nil {
 		t.Errorf("malformed config should pass through, got %v", err)
 	}
 	out, _ := os.ReadFile(cfg)

@@ -3,7 +3,6 @@ package migrate
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -25,8 +24,8 @@ var singletonStandardDocNames = []string{"workflow", "doc-standard", "agents-md-
 // convention-part dir from <awfDir>/docs/parts/<name>/ to <awfDir>/parts/<name>/,
 // then <name> is stripped from the docs: array - each step a no-op if its
 // source is already absent, so a repeated run is idempotent. Each performed
-// operation prints one provenance line to out.
-func applySingletonStandardDocs(root string, out io.Writer) error {
+// operation collects one ordered change fact.
+func applySingletonStandardDocs(root string, out *Changes) error {
 	awfDir := config.RootDir(root)
 	for _, name := range singletonStandardDocNames {
 		relocations := []struct{ src, dst []string }{
@@ -39,8 +38,8 @@ func applySingletonStandardDocs(root string, out io.Writer) error {
 				return err
 			}
 			if moved {
-				fmt.Fprintf(out, "singleton-standard-docs: moved %s → %s\n",
-					path.Join(config.DirName, path.Join(r.src...)), path.Join(config.DirName, path.Join(r.dst...)))
+				out.Add(fmt.Sprintf("singleton-standard-docs: moved %s → %s",
+					path.Join(config.DirName, path.Join(r.src...)), path.Join(config.DirName, path.Join(r.dst...))))
 			}
 		}
 		removed, err := removeFromDocsArray(filepath.Join(awfDir, "config.yaml"), name)
@@ -48,7 +47,7 @@ func applySingletonStandardDocs(root string, out io.Writer) error {
 			return err
 		}
 		if removed {
-			fmt.Fprintf(out, "singleton-standard-docs: removed doc %q from docs: (now always-on)\n", name)
+			out.Add(fmt.Sprintf("singleton-standard-docs: removed doc %q from docs: (now always-on)\n", name))
 		}
 	}
 	return nil

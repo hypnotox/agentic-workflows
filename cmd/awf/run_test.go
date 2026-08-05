@@ -16,10 +16,12 @@ import (
 	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -37,7 +39,12 @@ agents: []
 // it, leaving a drift-clean project. The base commit gives the working Tree a
 // HEAD, which the commands that read one (check, invariants) require.
 func initializeProject(ctx context.Context, root string, out io.Writer) error {
-	return runSyncInitialized(ctx, root, project.InitAuthority{InitializedWithVersion: project.Version}, out)
+	loader, err := newProjectLoader(root)
+	if err != nil {
+		return err
+	}
+	seed := &project.InitAuthority{InitializedWithVersion: project.Version}
+	return runSyncPrinting(ctx, loader, root, seed, out)
 }
 
 func scaffoldProject(t *testing.T) string {
@@ -159,17 +166,8 @@ func TestRunSyncEntryPointsRejectMalformedRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := testContext(t)
-	for name, run := range map[string]func() error{
-		"sync": func() error { return runSync(ctx, root, io.Discard) },
-		"initialized": func() error {
-			return runSyncInitialized(ctx, root, project.InitAuthority{}, io.Discard)
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := run(); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
-				t.Fatalf("malformed repository error = %v", err)
-			}
-		})
+	if err := runSync(ctx, root, io.Discard); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("malformed repository error = %v", err)
 	}
 }
 
@@ -234,7 +232,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 			name := ""
 			switch fun := ce.Fun.(type) {
 			case *ast.Ident:
-				if fun.Name == "runSync" || fun.Name == "runSyncInitialized" || fun.Name == "runSyncPrinting" || fun.Name == "newProjectLoader" {
+				if fun.Name == "runSync" || fun.Name == "runSyncPrinting" || fun.Name == "syncMutation" || fun.Name == "newProjectLoader" || fun.Name == "initProjectLoader" {
 					name = fun.Name
 				}
 			case *ast.SelectorExpr:
@@ -262,36 +260,36 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	want := map[call]int{
 		{file: "sync.go", owner: "runSync", name: "newProjectLoader"}:                                                     1,
 		{file: "sync.go", owner: "runSync", name: "runSyncPrinting"}:                                                      1,
-		{file: "sync.go", owner: "runSyncInitialized", name: "newProjectLoader"}:                                          1,
-		{file: "sync.go", owner: "runSyncInitialized", name: "runSyncPrinting"}:                                           1,
-		{file: "sync.go", owner: "runSyncPrinting", name: "loader.Open"}:                                                  1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "syncMutation"}:                                                 1,
+		{file: "sync.go", owner: "syncMutation", name: "loader.Open"}:                                                     1,
 		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoader"}:                                           1,
 		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoaderWithoutRepository"}:                          1,
 		{file: "dispatch.go", owner: "", name: "runSync"}:                                                                 1,
-		{file: "init.go", owner: "runInit", name: "runSync"}:                                                              1,
-		{file: "init.go", owner: "runInit", name: "runSyncInitialized"}:                                                   1,
+		{file: "init.go", owner: "runInitWithProjectLoader", name: "initProjectLoader"}:                                   1,
+		{file: "init.go", owner: "runInitWithProjectLoader", name: "syncMutation"}:                                        1,
 		{file: "list_add.go", owner: "enableDisableSingleton", name: "runSync"}:                                           1,
 		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:                                              1,
-		{file: "list_add.go", owner: "toggle", name: "runSync"}:                                                           2,
+		{file: "list_add.go", owner: "toggleWithProjectLoader", name: "syncMutation"}:                                     1,
 		{file: "new.go", owner: "newLocal", name: "runSync"}:                                                              1,
-		{file: "upgrade.go", owner: "runUpgrade", name: "runSync"}:                                                        1,
+		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "newProjectLoader"}:                     1,
+		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "loader.Open"}:                          1,
 		{file: "adr.go", owner: "runADR", name: "project.Open"}:                                                           1,
 		{file: "audit.go", owner: "runAudit", name: "project.Open"}:                                                       1,
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader"}:                       1,
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoader.Open"}:                  1,
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository"}:      1,
 		{file: "checkrepo.go", owner: "productionRepoCheckDependencies", name: "project.NewLoaderWithoutRepository.Open"}: 1,
-		{file: "commitgate.go", owner: "runCommitGate", name: "project.Open"}:                                             1,
+		{file: "commitgate.go", owner: "openCommitGateProjectFromDisk", name: "project.Open"}:                             1,
 		{file: "commitpolicy.go", owner: "runCommitPolicy", name: "project.VerifyCommitPolicyAt"}:                         1,
 		{file: "config.go", owner: "runConfig", name: "project.Open"}:                                                     1,
 		{file: "context.go", owner: "runContext", name: "project.Open"}:                                                   1,
 		{file: "context.go", owner: "runUncovered", name: "project.Open"}:                                                 1,
 		{file: "init.go", owner: "probeCollisions", name: "project.Open"}:                                                 2,
-		{file: "init.go", owner: "runInit", name: "project.Open"}:                                                         2,
+		{file: "init.go", owner: "runInitWithProjectLoader", name: "project.Open"}:                                        1,
 		{file: "list_add.go", owner: "enableDisableSingleton", name: "project.Open"}:                                      1,
 		{file: "list_add.go", owner: "enableDisableTarget", name: "project.Open"}:                                         1,
 		{file: "list_add.go", owner: "runList", name: "project.Open"}:                                                     1,
-		{file: "list_add.go", owner: "toggle", name: "project.Open"}:                                                      1,
+		{file: "list_add.go", owner: "toggleWithProjectLoader", name: "project.Open"}:                                     1,
 		{file: "new.go", owner: "newADR", name: "project.Open"}:                                                           1,
 		{file: "new.go", owner: "newLocal", name: "project.Open"}:                                                         1,
 		{file: "new.go", owner: "newPlan", name: "project.Open"}:                                                          1,
@@ -495,16 +493,17 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf render: pruned .claude/skills/example-tdd/SKILL.md\n") {
-		t.Errorf("missing prune line:\n%s", out.String())
+	const pruned = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed docs/config-reference.md (regenerated)\n    pruned:\n      .claude/skills/example-tdd/SKILL.md\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != pruned {
+		t.Errorf("pruned sync bytes = %q, want %q", out.String(), pruned)
 	}
-	// A drift-clean re-sync prints no prune lines.
+	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out.String(), "pruned") {
-		t.Errorf("routine re-sync must not report prunes:\n%s", out.String())
+	if got := out.String(); got != "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n" {
+		t.Errorf("empty sync bytes = %q", got)
 	}
 }
 
@@ -518,16 +517,17 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf render: changed .claude/skills/example-tdd/SKILL.md (config)\n") {
-		t.Errorf("missing config-cause change line:\n%s", out.String())
+	const changed = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed .claude/skills/example-tdd/SKILL.md (config)\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      changed docs/plans/template.md (config)\n      changed docs/workflow.md (config)\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != changed {
+		t.Errorf("changed sync bytes = %q, want %q", out.String(), changed)
 	}
-	// A drift-clean re-sync prints no change lines.
+	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out.String(), "changed") || strings.Contains(out.String(), "added") {
-		t.Errorf("routine re-sync must not report changes:\n%s", out.String())
+	if got := out.String(); got != "status: completed\n\nmutation:\n  next actions:\n    step 1: continue with the rendered project state\n" {
+		t.Errorf("empty sync bytes = %q", got)
 	}
 	// Enabling an artifact reports its files as added.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"docs: [pitfalls]\n")
@@ -535,8 +535,9 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf render: added docs/pitfalls.md\n") {
-		t.Errorf("missing added line:\n%s", out.String())
+	const added = "status: completed\n\nmutation:\n  changes:\n    outputs:\n      changed AGENTS.md (config)\n      changed docs/config-reference.md (regenerated)\n      added docs/pitfalls.md\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != added {
+		t.Errorf("added sync bytes = %q, want %q", out.String(), added)
 	}
 }
 
@@ -545,8 +546,9 @@ func TestRunNoArgs(t *testing.T) {
 	if code := run([]string{"awf"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for no args, got %d", code)
 	}
-	if !strings.Contains(errb.String(), "usage:") {
-		t.Errorf("missing usage text: %q", errb.String())
+	want := "condition: awf: usage: " + clispec.UsageLine() + " [args]; run `awf help` for command details\n"
+	if out.Len() != 0 || errb.String() != want {
+		t.Errorf("streams stdout=%q stderr=%q, want stderr=%q", out.String(), errb.String(), want)
 	}
 }
 
@@ -556,9 +558,99 @@ func TestRunHelp(t *testing.T) {
 		if code := run([]string{"awf", arg}, &out, &errb); code != 0 {
 			t.Fatalf("%s: expected exit 0, got %d", arg, code)
 		}
-		if !strings.Contains(out.String(), "Commands:") || !strings.Contains(out.String(), "uninstall") {
+		if !strings.Contains(out.String(), "commands:") || !strings.Contains(out.String(), "uninstall") {
 			t.Errorf("%s: help text missing content:\n%s", arg, out.String())
 		}
+	}
+}
+
+// TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures is an explicit
+// registry-keyed interface contract. A new top-level family must be added here;
+// there is no count-based or missing-family allowance. Each entry names the
+// separately executed test that pins a real result from that family; this unit
+// additionally pins its exact help, usage failure, and operational failure.
+func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) {
+	families := map[string]string{
+		"init":      "TestInitDescribeReadOnly",
+		"render":    "TestEmptyInitChecksOnUnbornHead",
+		"check":     "TestRunCheckCleanThenDirty",
+		"read":      "TestReadPlanCommand",
+		"audit":     "TestRunAuditDispatch",
+		"effort":    "TestEffortPublicTextProtocol",
+		"adr":       "TestRunADRNumberThroughTheDriver",
+		"list":      "TestRunListBareShowsAllKinds",
+		"config":    "TestRunConfigDispatch",
+		"context":   "TestRunContextModesShareDeliveryIncludingOversize",
+		"topic":     "TestRunTopicHumanTextAndFlags",
+		"new":       "TestRunNewDispatch",
+		"enable":    "TestDispatchAddRemoveList",
+		"disable":   "TestDispatchAddRemoveList",
+		"upgrade":   "TestRunUpgradeRendersSuccessfulFinalJournalMutation",
+		"uninstall": "TestRunUninstallDispatch",
+		"changelog": "TestChangelogPublicPayloadContracts",
+		"version":   "TestRunVersion",
+	}
+	contractTests := map[string]bool{}
+	paths, err := filepath.Glob("*_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		for _, declaration := range file.Decls {
+			if function, ok := declaration.(*ast.FuncDecl); ok {
+				contractTests[function.Name.Name] = true
+			}
+		}
+	}
+	commands := make(map[string]clispec.Command, len(clispec.Commands))
+	for _, command := range clispec.Commands {
+		commands[command.Name] = command
+		if _, ok := families[command.Name]; !ok {
+			t.Errorf("uncontracted top-level command family %q", command.Name)
+		}
+	}
+	for name, contractTest := range families {
+		command, ok := commands[name]
+		if !ok {
+			t.Errorf("contract names missing top-level command family %q", name)
+			continue
+		}
+		if !contractTests[contractTest] {
+			t.Errorf("%s result contract test %q is missing", name, contractTest)
+		}
+		t.Run(name, func(t *testing.T) {
+			document, err := command.Help.Document("awf "+name, command.Summary)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var want bytes.Buffer
+			if err := presentation.Render(&want, document); err != nil {
+				t.Fatal(err)
+			}
+			var stdout, stderr bytes.Buffer
+			if code := run([]string{"awf", name, "--help"}, &stdout, &stderr); code != 0 || stdout.String() != want.String() || stderr.Len() != 0 {
+				t.Fatalf("help exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+			stdout.Reset()
+			stderr.Reset()
+			if code := run([]string{"awf", name, "--presentation-contract-invalid"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || stderr.String() != "condition: awf: awf "+name+": unknown flag \"--presentation-contract-invalid\"\n" {
+				t.Fatalf("usage exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+			stdout.Reset()
+			stderr.Reset()
+			func() {
+				priorGetwd := getwd
+				defer func() { getwd = priorGetwd }()
+				getwd = func() (string, error) { return "", errors.New("working directory unavailable") }
+				if code := run([]string{"awf", name}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "condition: awf: working directory unavailable\n" {
+					t.Fatalf("operational exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+				}
+			}()
+		})
 	}
 }
 
@@ -567,6 +659,9 @@ func TestRunGetwdError(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on getwd error, got %d", code)
+	}
+	if out.Len() != 0 || errb.String() != "condition: awf: boom\n" {
+		t.Errorf("streams stdout=%q stderr=%q", out.String(), errb.String())
 	}
 }
 
@@ -620,8 +715,8 @@ func TestRunDispatchError(t *testing.T) {
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on dispatch error, got %d", code)
 	}
-	if !strings.HasPrefix(errb.String(), "awf:") {
-		t.Errorf("expected awf-prefixed error, got %q", errb.String())
+	if !strings.HasPrefix(errb.String(), "condition: awf:") {
+		t.Errorf("expected typed diagnostic, got %q", errb.String())
 	}
 }
 
@@ -812,8 +907,8 @@ func TestRunUpgradeLegacyAdopterRendersAndChecksClean(t *testing.T) {
 	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade legacy: %v", err)
 	}
-	if !strings.Contains(out.String(), "applied") {
-		t.Errorf("expected an applied migration, got %q", out.String())
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "awf-dir-relocation: moved .claude/awf to .awf") || strings.Contains(out.String(), "note:") {
+		t.Errorf("expected structured migration mutation with production relocation evidence, got %q", out.String())
 	}
 	for _, path := range []string{".awf/config.yaml", ".awf/awf.lock"} {
 		if _, err := os.Stat(filepath.Join(root, path)); err != nil {
@@ -969,18 +1064,19 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade: %v", err)
 	}
-	if !strings.Contains(out.String(), "already at schema") {
-		t.Errorf("expected already-at-schema report, got %q", out.String())
+	if !strings.Contains(out.String(), "migration changes:\n      config schema already current") {
+		t.Errorf("expected the schema-current fact, got %q", out.String())
 	}
 	// The zero-migrations path must still sync: a same-schema binary bump
 	// re-renders every managed file and re-pins the bootstrap (ADR-0085).
-	if !strings.Contains(out.String(), "awf render: done") {
-		t.Errorf("expected the no-op upgrade to run a sync, got %q", out.String())
+	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "continue with the rendered project state") {
+		t.Errorf("expected the schema-current upgrade to run a sync, got %q", out.String())
 	}
 }
 
 // invariant: tooling/init-and-enablement:init-collision-guard (TestInitGuardBlocksAndForceOverrides)
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
+	forceNonInteractive(t)
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
@@ -1016,8 +1112,9 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
 		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
 	}
-	if !strings.Contains(out.String(), "backed up CLAUDE.md") {
-		t.Errorf("expected backup report on stdout, got %q", out.String())
+	initForceMutation := fmt.Sprintf("status: initialization completed\n\nmutation:\n  identity:\n    config: %s/.awf/config.yaml\n    config action: scaffolded\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  notes:\n    agent adr-reviewer references unset vars: invariantTestPath; set a value, or delete the key to accept the generic prose\n    agent implementer references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    agents-doc references unset vars: checkCmd, gateCmd, testCmd; set a value, or delete the key to accept the generic prose\n    doc workflow references unset vars: checkCmd, gateCmd, gateCmdFull, testCmd; set a value, or delete the key to accept the generic prose\n    hooks commit-msg references unset vars: commitGateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-commit references unset vars: checkCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-merge-commit references unset vars: checkCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-push references unset vars: checkCmd, gateCmd, gateCmdFull; set a value, or delete the key to accept the generic prose\n    plans-template references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill adr-lifecycle references unset vars: activeMdRegenCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    skill executing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill proposing-adr references unset vars: activeMdRegenCmd; set a value, or delete the key to accept the generic prose\n    skill retrospective references unset vars: gateCmd, invariantTestPath; set a value, or delete the key to accept the generic prose\n    skill reviewing-impl references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill subagent-driven-development references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill writing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    AGENTS.md has unauthored stub content: sections at stub default: identity\n  next actions:\n    step 1: continue with the rendered project state\n    step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render\n    step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render\n    step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself\n    step 5: commit .awf/ and the rendered files together\n", root)
+	if out.String() != initForceMutation {
+		t.Errorf("init --force output = %q, want exact %q", out.String(), initForceMutation)
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
 	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.
@@ -1166,11 +1263,9 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())
 	}
-	if !strings.Contains(out.String(), "backed up docs/decisions/INDEX.md") {
-		t.Errorf("missing backup line: %q", out.String())
-	}
-	if !strings.Contains(out.String(), "note: awf now generates") {
-		t.Errorf("missing ownership-takeover note: %q", out.String())
+	const indexTakeoverOutput = "status: completed\n\nmutation:\n  changes:\n    backups:\n      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak\n    outputs:\n      added .awf/efforts/.gitignore\n      added .awf/worktrees/.gitignore\n      added .claude/skills/example-tdd/SKILL.md\n      added AGENTS.md\n      added CLAUDE.md\n      added docs/agents-md-standard.md\n      added docs/config-reference.md\n      added docs/decisions/INDEX.md\n      added docs/decisions/README.md\n      added docs/decisions/template.md\n      added docs/doc-standard.md\n      added docs/maintainable-code-design.md\n      added docs/plans/README.md\n      added docs/plans/template.md\n      added docs/workflow.md\n      added docs/working-with-awf.md\n  notes:\n    awf now generates docs/decisions/INDEX.md; retire any external generator for it\n  next actions:\n    step 1: continue with the rendered project state\n"
+	if out.String() != indexTakeoverOutput {
+		t.Errorf("index takeover stdout = %q, want %q", out.String(), indexTakeoverOutput)
 	}
 }
 

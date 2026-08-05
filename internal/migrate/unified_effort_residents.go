@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -82,6 +81,14 @@ func residentRefusal(condition, nextAction string) error {
 // prove are its own to discard.
 const preserveManually = "preserve the resident, inspect it by hand, and rerun `awf upgrade` once it is resolved or removed"
 
+type unifiedEffortResidentsOperation struct {
+	reset func(string, []string, int) (upgrade.Outcome, error)
+}
+
+func productionUnifiedEffortResidentsOperation() unifiedEffortResidentsOperation {
+	return unifiedEffortResidentsOperation{reset: upgrade.ResetLegacyResidents}
+}
+
 // legacyWorktreeNextAction names the pre-upgrade commands that clear a managed
 // worktree. The current binary cannot do it: protocol 2 derives worktrees from
 // Git topology and knows nothing about UUID-named managed resources.
@@ -100,7 +107,11 @@ func legacyWorktreeNextAction(id string) string {
 // breaking change: protocol-1 records and standalone memory are discarded, not
 // ported. Nothing here invents a slug for the efforts that are lost; callers
 // supply a new explicit slug and independent outcome title.
-func applyUnifiedEffortResidents(ctx context.Context, root string, out io.Writer) error {
+func applyUnifiedEffortResidents(ctx context.Context, root string, out *Changes) error {
+	return applyUnifiedEffortResidentsWith(ctx, root, out, productionUnifiedEffortResidentsOperation())
+}
+
+func applyUnifiedEffortResidentsWith(ctx context.Context, root string, out *Changes, operation unifiedEffortResidentsOperation) error {
 	classified, err := ClassifyLegacyResidents(ctx, root)
 	if err != nil {
 		return err
@@ -114,9 +125,22 @@ func applyUnifiedEffortResidents(ctx context.Context, root string, out io.Writer
 			"run `awf upgrade` from "+classified.PrimaryRoot,
 		)
 	}
-	fmt.Fprintln(out, "unified-effort-residents: breaking change: protocol-1 effort records and standalone .awf/memory/ content are reset, not migrated")
-	fmt.Fprintln(out, "unified-effort-residents: protocol 2 keeps each effort at .awf/efforts/<slug>/ with its own memory.md; recreate the ones you still need with `awf effort new --slug <slug> \"<outcome>\"`")
-	return upgrade.ResetLegacyResidents(root, classified.Quarantine, 22, out)
+	// A failed reset reports only the terminal axes that remain changed. Its
+	// evidence is historical journal detail, not a current partial-upgrade axis.
+	outcome, err := operation.reset(root, classified.Quarantine, 22)
+	if err != nil {
+		for _, changed := range outcome.Changed {
+			out.Add("unified-effort-residents: terminal " + changed.Action + " " + changed.Path)
+		}
+		return err
+	}
+	if len(outcome.Evidence) > 0 {
+		out.Add("unified-effort-residents: committed reset of proven legacy residents")
+	}
+	for _, evidence := range outcome.Evidence {
+		out.Add("unified-effort-residents: " + evidence.Action + " " + evidence.Path)
+	}
+	return nil
 }
 
 // ClassifyLegacyResidents inspects every schema-1 binary-owned leaf and every

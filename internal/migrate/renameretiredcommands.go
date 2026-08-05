@@ -1,7 +1,7 @@
 package migrate
 
 import (
-	"io"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -59,8 +59,8 @@ func rewriteRetiredCommand(value string) (string, bool) {
 // internal/config (ADR-0026). A config absent on disk is a no-op, and a value
 // naming another runner or spelling no retired subcommand is untouched, so the
 // migration is idempotent and safe to replay.
-func applyRenameRetiredCommands(root string, _ io.Writer) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+func applyRenameRetiredCommands(root string, out *Changes) error {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		out := src
 		var doc struct {
 			Vars map[string]any `yaml:"vars"`
@@ -87,6 +87,7 @@ func applyRenameRetiredCommands(root string, _ io.Writer) error {
 					return nil, err
 				}
 				out = edited
+				planned.Add(fmt.Sprintf("rename-retired-commands: vars.%s: rewrote %q to %q", k, s, next))
 			}
 		}
 		return out, nil

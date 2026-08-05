@@ -240,3 +240,4 @@
 - [ADR-0231: Separate Pi continuation context from user and routing identity](0231-separate-pi-continuation-context-from-user-and-routing-identity.md) (Implemented)
 - [ADR-0232: Proportional Simplicity Boundaries](0232-proportional-simplicity-boundaries.md) (Implemented)
 - [ADR-0233: Validate Authored Transactions by Observable Operations](0233-validate-authored-transactions-by-observable-operations.md) (Implemented)
+- [ADR-0234: Structured Agent-Oriented CLI Presentation](0234-structured-agent-oriented-cli-presentation.md) (Implemented)

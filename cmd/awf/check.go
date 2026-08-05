@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -11,28 +10,44 @@ import (
 
 type planNoteSink map[string]struct{}
 
-func (s planNoteSink) write(stdout io.Writer, notes []string) {
-	for _, note := range notes {
-		if _, exists := s[note]; exists {
-			continue
-		}
-		s[note] = struct{}{}
-		fmt.Fprintf(stdout, "note: %s\n", note)
+type checkDependencies struct {
+	openContaining func(string) (*awfgit.Repo, string, error)
+	collectRepo    func(context.Context, string, planNoteSink) (checkCollection, error)
+	collectStaged  func(context.Context, string, planNoteSink) (checkCollection, error)
+}
+
+func productionCheckDependencies() checkDependencies {
+	return checkDependencies{
+		openContaining: awfgit.OpenContaining,
+		collectRepo:    collectCheckRepoWithPlanNotes,
+		collectStaged:  collectCheckStaged,
 	}
 }
 
 // runCheck runs both check universes. Outside a Git repository the repo universe
 // still applies, while the staged universe is unavailable.
 func runCheck(ctx context.Context, root string, stdout io.Writer) error {
+	return runCheckWith(ctx, root, stdout, productionCheckDependencies())
+}
+
+func runCheckWith(ctx context.Context, root string, stdout io.Writer, dependencies checkDependencies) error {
 	planNotes := planNoteSink{}
-	repoCheckErr := runCheckRepoWithPlanNotes(ctx, root, stdout, planNotes)
-	_, _, repoErr := awfgit.OpenContaining(root)
-	if errors.Is(repoErr, awfgit.ErrNotARepository) {
-		fmt.Fprintln(stdout, "note: staged check universe unavailable outside a git repository")
-		return repoCheckErr
-	}
+	repo, repoErr := dependencies.collectRepo(ctx, root, planNotes)
 	if repoErr != nil {
-		return errors.Join(repoCheckErr, repoErr)
+		repo.operational = append(repo.operational, repoErr)
 	}
-	return errors.Join(repoCheckErr, runCheckStagedWithPlanNotes(ctx, root, stdout, planNotes))
+	_, _, gitErr := dependencies.openContaining(root)
+	if errors.Is(gitErr, awfgit.ErrNotARepository) {
+		repo.notes = append(repo.notes, "staged check universe unavailable outside a git repository")
+		return renderCheckCollection(stdout, repo)
+	}
+	if gitErr != nil {
+		return errors.Join(append(repo.operational, gitErr)...)
+	}
+	staged, stagedErr := dependencies.collectStaged(ctx, root, planNotes)
+	repo = repo.append(staged)
+	if stagedErr != nil {
+		repo.operational = append(repo.operational, stagedErr)
+	}
+	return renderCheckCollection(stdout, repo)
 }

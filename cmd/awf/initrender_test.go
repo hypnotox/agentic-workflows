@@ -211,7 +211,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with unset vars, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "note: skill tdd references unset vars: gateCmd") {
+	if !strings.Contains(out.String(), "advisory | skill tdd references unset vars: gateCmd") {
 		t.Errorf("missing unset-var note, got:\n%s", out.String())
 	}
 }
@@ -236,7 +236,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "note: ") ||
+	if !strings.Contains(out.String(), "advisory |") ||
 		!strings.Contains(out.String(), "has unauthored stub content: stub-marked parts: notes") {
 		t.Errorf("missing stub note, got:\n%s", out.String())
 	}
@@ -261,7 +261,7 @@ func TestCheckGlossaryTersenessNotesAreNonFailing(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with an over-length glossary meaning, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "note: ") ||
+	if !strings.Contains(out.String(), "advisory |") ||
 		!strings.Contains(out.String(), `term "bloated" meaning is 400 characters`) {
 		t.Errorf("missing glossary terseness note, got:\n%s", out.String())
 	}

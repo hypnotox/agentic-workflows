@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -69,6 +70,28 @@ func syncedProject(t *testing.T, configYAML string, files map[string]string) (st
 		t.Fatal(err)
 	}
 	return root, p
+}
+
+func TestConfigReferencePresentationRejectsInvalidRows(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		model ConfigReference
+	}{
+		{name: "config key", model: ConfigReference{ConfigKeys: []ConfigKeyRow{{}}}},
+		{name: "var", model: ConfigReference{VarEntries: []VarRow{{}}}},
+		{name: "sidecar field", model: ConfigReference{SidecarFields: []ConfigKeyRow{{}}}},
+		{name: "data key", model: ConfigReference{DataKeys: []DataKeyRow{{}}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ConfigReferencePresentation("", &test.model, "reference"); err == nil {
+				t.Fatal("invalid reference row produced a presentation")
+			}
+		})
+	}
+	valid := ConfigReference{ConfigKeys: []ConfigKeyRow{{Path: "key", Type: "string", Default: "none", Description: "description", Availability: "always"}}}
+	if _, err := ConfigReferencePresentation("", &valid, " \n\t"); err == nil {
+		t.Fatal("empty normalized status accepted")
+	}
 }
 
 // The generated reference renders per-project state: key rows with resolved
@@ -155,8 +178,12 @@ func TestConfigReferenceListLayerStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	document, err := ConfigReferencePresentation("sidecar.data", &ref, "config reference")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var out bytes.Buffer
-	if err := PrintConfigReference(&out, "sidecar.data", &ref, ""); err != nil {
+	if err := presentation.Render(&out, document); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"catalog-backed list", "null or a non-list value is invalid", "Project-only and specialized"} {
@@ -352,12 +379,16 @@ memoryCite:
 		key       string
 		cliValues []string
 	}{
-		{"audit.subjectMaxLength", []string{"default: 72", "current: 80"}},
-		{"runner.enabled", []string{"default: false (key absent); awf init and awf upgrade seed it true", "current: true"}},
-		{"gateCmdFull", []string{"state: absent, declined"}},
+		{"audit.subjectMaxLength", []string{"audit.subjectMaxLength | int | 72", "| 80"}},
+		{"runner.enabled", []string{"runner.enabled | bool | false (key absent); awf init and awf upgrade seed it true", "| true"}},
+		{"gateCmdFull", []string{"gateCmdFull |", "| absent, declined"}},
 	} {
+		document, err := ConfigReferencePresentation(tc.key, &model, "config reference")
+		if err != nil {
+			t.Fatal(err)
+		}
 		var cli bytes.Buffer
-		if err := PrintConfigReference(&cli, tc.key, &model, ""); err != nil {
+		if err := presentation.Render(&cli, document); err != nil {
 			t.Fatal(err)
 		}
 		for _, want := range tc.cliValues {

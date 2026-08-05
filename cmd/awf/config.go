@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -24,7 +25,11 @@ func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		return project.PrintConfigReference(stdout, key, nil, "config reference (static: not inside an awf project; live state appears inside one)")
+		document, presentationErr := project.ConfigReferencePresentation(key, nil, "config reference static (not inside an awf project)")
+		if presentationErr != nil {
+			return presentationErr
+		}
+		return presentation.Render(stdout, document)
 	}
 	if err := gate(ctx, cwd); err != nil {
 		return err
@@ -37,5 +42,9 @@ func runConfig(ctx context.Context, cwd, key string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return project.PrintConfigReference(stdout, key, &model, "config reference: live state for this project")
+	document, presentationErr := project.ConfigReferencePresentation(key, &model, "config reference live")
+	if presentationErr != nil {
+		return presentationErr
+	}
+	return presentation.Render(stdout, document)
 }

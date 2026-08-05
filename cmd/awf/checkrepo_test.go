@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -53,10 +54,39 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Proj
 			}
 			return state, nil
 		},
+		driftCategories:        project.DriftCategories,
+		currentStateCategories: project.CurrentStateCategories,
 		indexTree: func(context.Context, string) (*snapshot.Tree, error) {
 			counts.indexes++
 			return tree, nil
 		},
+	}
+}
+
+func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
+	cfg := &config.Config{}
+	p := &project.Project{Root: "working-project-sentinel", Cfg: cfg}
+	for _, tc := range []struct {
+		name string
+		step execution.StepID
+		set  func(*repoCheckDependencies, error)
+	}{
+		{"drift", repoStepDrift, func(deps *repoCheckDependencies, failure error) {
+			deps.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure }
+		}},
+		{"state", repoStepState, func(deps *repoCheckDependencies, failure error) {
+			deps.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) { return nil, failure }
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			counts := &repoCheckCounters{}
+			deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, project.CurrentStateReport{}, nil, counts)
+			failure := errors.New(tc.name + " category failure")
+			tc.set(&deps, failure)
+			if err := runRepoCheckSelection(context.Background(), t.TempDir(), io.Discard, []execution.StepID{tc.step}, execution.StopOnFailure, false, deps); !errors.Is(err, failure) {
+				t.Fatalf("error = %v, want %v", err, failure)
+			}
+		})
 	}
 }
 
@@ -79,7 +109,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		want := "note: project-advisory-sentinel\nnote: working-plan-note-sentinel\nawf check repo drift: clean\nawf check repo state: clean\ncheck repo prose: clean\ncheck repo memory: clean\n"
+		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | project-advisory-sentinel\n    advisory | working-plan-note-sentinel\n"
 		if got := out.String(); got != want {
 			t.Fatalf("output = %q, want %q", got, want)
 		}
@@ -102,23 +132,36 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		}
 		state := project.CurrentStateReport{Static: []currentstate.Finding{{Message: "current-state-sentinel"}}}
 		deps := repoCheckTestDependencies(t, cfg, p, check, state, tree, counts)
+		selected := []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}
+		collection, err := collectRepoCheckSelectionWithPlanNotes(context.Background(), t.TempDir(), selected, execution.ContinueOnFailure, true, nil, planNoteSink{}, deps)
+		if err != nil {
+			t.Fatal(err)
+		}
 		var out bytes.Buffer
-		err = runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, deps)
-		if err == nil || !strings.Contains(err.Error(), "awf check repo drift") {
-			t.Fatalf("error = %v, want first drift action error", err)
+		err = renderCheckCollection(&out, collection)
+		if err == nil {
+			t.Fatal("aggregate error = nil, want first drift action error")
+		}
+		if got, want := err.Error(), `execute step "drift": check repo drift failed`; got != want {
+			t.Fatalf("aggregate error = %q, want first failure only %q", got, want)
+		}
+		if len(collection.failures) < 2 {
+			t.Fatalf("collected failures = %d, want multiple identities", len(collection.failures))
+		}
+		if !errors.Is(err, collection.failures[0]) {
+			t.Fatalf("aggregate error %v does not retain first failure identity %v", err, collection.failures[0])
+		}
+		for _, later := range collection.failures[1:] {
+			if errors.Is(err, later) {
+				t.Fatalf("aggregate error %v retained later failure identity %v", err, later)
+			}
 		}
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		text := out.String()
-		ordered := []string{"working-advisory-sentinel", "working-drift-sentinel", "current-state-sentinel", "prose-index-sentinel.txt", "memory-index-sentinel.md"}
-		position := -1
-		for _, sentinel := range ordered {
-			next := strings.Index(text, sentinel)
-			if next <= position {
-				t.Fatalf("output does not preserve universe/action order %v: %q", ordered, text)
-			}
-			position = next
+		const want = "status: failed\n\nsummary:\n  findings: 4 errors, 1 warnings\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    prose | prose-index-sentinel.txt: em-dash (U+2014) appears 1 time(s); use plain punctuation\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n    advisory | working-advisory-sentinel\n"
+		if got := out.String(); got != want {
+			t.Fatalf("output = %q, want %q", got, want)
 		}
 	})
 
@@ -157,10 +200,10 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 			want     repoCheckCounters
 			wantText string
 		}{
-			{name: "drift", cfg: &config.Config{}, step: repoStepDrift, want: repoCheckCounters{loads: 1, opens: 1, reports: 1}, wantText: "awf check repo drift: clean\n"},
-			{name: "state", cfg: &config.Config{}, step: repoStepState, want: repoCheckCounters{loads: 1, opens: 1, states: 1}, wantText: "awf check repo state: clean\n"},
-			{name: "prose enabled", cfg: &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, step: repoStepProse, want: repoCheckCounters{loads: 1, indexes: 1}, wantText: "check repo prose: clean\n"},
-			{name: "memory disabled", cfg: &config.Config{}, step: repoStepMemory, want: repoCheckCounters{loads: 1}, wantText: "note: memory: disabled (memoryCite.enabled)\n"},
+			{name: "drift", cfg: &config.Config{}, step: repoStepDrift, want: repoCheckCounters{loads: 1, opens: 1, reports: 1}, wantText: completedCheckReport},
+			{name: "state", cfg: &config.Config{}, step: repoStepState, want: repoCheckCounters{loads: 1, opens: 1, states: 1}, wantText: completedCheckReport},
+			{name: "prose enabled", cfg: &config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, step: repoStepProse, want: repoCheckCounters{loads: 1, indexes: 1}, wantText: completedCheckReport},
+			{name: "memory disabled", cfg: &config.Config{}, step: repoStepMemory, want: repoCheckCounters{loads: 1}, wantText: "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    memory | disabled (memoryCite.enabled)\n"},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -201,7 +244,7 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		if !strings.Contains(out.String(), "note: prose: disabled") || !strings.Contains(out.String(), "note: memory: disabled") {
+		if !strings.Contains(out.String(), "prose | disabled") || !strings.Contains(out.String(), "memory | disabled") {
 			t.Fatalf("disabled aggregate output = %q", out.String())
 		}
 	})
@@ -249,8 +292,11 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		counts := &repoCheckCounters{}
 		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, project.CurrentStateReport{}, tree, counts)
 		ctx, cancel := context.WithCancel(context.Background())
-		writer := &cancelOnWrite{cancel: cancel}
-		err = runRepoCheckSelection(ctx, t.TempDir(), writer, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps)
+		deps.checkReport = func(context.Context, *project.Project) (project.CheckReport, error) {
+			cancel()
+			return project.CheckReport{}, nil
+		}
+		err = runRepoCheckSelection(ctx, t.TempDir(), io.Discard, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps)
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("error = %v, want context cancellation", err)
 		}
@@ -268,7 +314,8 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 	}{
 		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "p.CheckReport("}},
 		{"checkrepo.go", "runCheckRepo", []string{"runCheckRepoWithPlanNotes", "planNoteSink{}"}},
-		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
+		{"checkrepo.go", "runCheckRepoWithPlanNotes", []string{"collectCheckRepoWithPlanNotes", "renderCheckCollection"}},
+		{"checkrepo.go", "collectCheckRepoWithPlanNotes", []string{"repoStepDrift", "repoStepState", "repoStepProse", "repoStepMemory", "execution.ContinueOnFailure", "true", "productionRepoCheckDependencies()"}},
 		{"checkrepo.go", "runCheckDrift", []string{"repoStepDrift", "execution.StopOnFailure", "false", "p.Check("}},
 		{"checkrepo.go", "runCheckState", []string{"repoStepState", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
 		{"prosegate.go", "runProseGate", []string{"repoStepProse", "execution.StopOnFailure", "false", "productionRepoCheckDependencies()"}},
@@ -289,7 +336,9 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 			case "runCheckRepo":
 				callee = "runCheckRepoWithPlanNotes("
 			case "runCheckRepoWithPlanNotes":
-				callee = "runRepoCheckSelectionWithPlanNotes("
+				callee = "collectCheckRepoWithPlanNotes("
+			case "collectCheckRepoWithPlanNotes":
+				callee = "collectRepoCheckSelectionWithPlanNotes("
 			}
 			if callee != "" && strings.Count(body, callee) != 1 {
 				t.Fatalf("%s %s must call %s exactly once:\n%s", tc.file, tc.function, callee, body)
@@ -297,9 +346,9 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 		})
 	}
 
-	aggregate := formattedFunctionBody(t, "checkrepo.go", "runCheckRepoWithPlanNotes")
+	aggregate := formattedFunctionBody(t, "checkrepo.go", "collectCheckRepoWithPlanNotes")
 	versionOutput := strings.Index(aggregate, "fmt.Sprintf")
-	executionCall := strings.Index(aggregate, "runRepoCheckSelectionWithPlanNotes")
+	executionCall := strings.Index(aggregate, "collectRepoCheckSelectionWithPlanNotes")
 	if versionOutput < 0 || executionCall < 0 || versionOutput >= executionCall {
 		t.Fatalf("aggregate version note preparation must precede execution:\n%s", aggregate)
 	}
@@ -325,15 +374,4 @@ func formattedFunctionBody(t *testing.T, path, name string) string {
 	}
 	t.Fatalf("function %s not found in %s", name, path)
 	return ""
-}
-
-type cancelOnWrite struct {
-	bytes.Buffer
-	cancel context.CancelFunc
-}
-
-func (w *cancelOnWrite) Write(p []byte) (int, error) {
-	n, err := w.Buffer.Write(p)
-	w.cancel()
-	return n, err
 }

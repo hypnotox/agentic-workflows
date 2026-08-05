@@ -2,13 +2,17 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -80,6 +84,10 @@ func TestRunCommitGateAccepts(t *testing.T) {
 	var out bytes.Buffer
 	if err := runCommitGate(ctx, root, writeMsg(t, "feat: a clean subject\n"), nil, &out); err != nil {
 		t.Fatalf("conforming subject must pass: %v (out=%q)", err, out.String())
+	}
+	want := "condition: stale merge authorization satisfied\nstate: operation\n\ndiagnostic:\n  changed:\n    index: no\n    message: no\n    merge state: no\n"
+	if out.String() != want {
+		t.Fatalf("success output = %q, want %q", out.String(), want)
 	}
 }
 
@@ -171,7 +179,6 @@ None.
 	mergeHeadPath := filepath.Join(root, ".git", "MERGE_HEAD")
 	testsupport.WriteFile(t, mergeHeadPath, v2Head+"\n"+v1Head+"\n"+legacyHead+"\n")
 	observed := "merge with MERGE_HEAD " + v2Head + "," + v1Head + "," + legacyHead
-	refusalSuffix := "; changed index: no; changed message: no; changed merge state: no; next actions: 1. correct the message trailers 2. run git commit to finish the existing merge\n"
 
 	indexBefore, err := os.ReadFile(filepath.Join(root, ".git", "index"))
 	if err != nil {
@@ -190,15 +197,15 @@ None.
 	if err := runCommitGate(testContext(t), root, unstampedPath, nil, &out); err == nil {
 		t.Fatal("unstamped older-format merge succeeded")
 	}
-	wantMissing := "operation: " + observed + ": missing authorization version legacy for ADR-0001" + refusalSuffix
-	if out.String() != wantMissing {
-		t.Fatalf("unstamped refusal = %q, want %q", out.String(), wantMissing)
+	wantMissing := "condition: " + observed + ": missing authorization version legacy for ADR-0001"
+	if !strings.Contains(out.String(), wantMissing) || !strings.Contains(out.String(), "step 1: correct the message trailers") {
+		t.Fatalf("unstamped refusal = %q", out.String())
 	}
 	out.Reset()
 	if err := runCommitGate(testContext(t), root, writeMsg(t, ""), nil, &out); err == nil {
 		t.Fatal("empty-message older-format merge succeeded")
 	}
-	if out.String() != wantMissing {
+	if !strings.Contains(out.String(), wantMissing) {
 		t.Fatalf("empty-message refusal = %q, want %q", out.String(), wantMissing)
 	}
 	indexAfter, _ := os.ReadFile(filepath.Join(root, ".git", "index"))
@@ -213,9 +220,9 @@ None.
 	if err := runCommitGate(testContext(t), root, writeMsg(t, wrongVersion), nil, &out); err == nil {
 		t.Fatal("wrong-version authorization succeeded")
 	}
-	wantWrong := "operation: " + observed + ": missing authorization version current-state-v2 for ADR-0191" + refusalSuffix
-	if out.String() != wantWrong {
-		t.Fatalf("wrong-version refusal = %q, want %q", out.String(), wantWrong)
+	wantWrong := "condition: " + observed + ": missing authorization version current-state-v2 for ADR-0191"
+	if !strings.Contains(out.String(), wantWrong) {
+		t.Fatalf("wrong-version refusal = %q", out.String())
 	}
 
 	valid := "Merge old branches\n\nAWF-Allow-Version: current-state-v2\nAWF-Allow-Reason: preserve reviewed V2 history\nAWF-Allow-Version: current-state-v1\nAWF-Allow-Reason: preserve reviewed V1 history\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: preserve reviewed legacy history\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: redundant but harmless\n"
@@ -223,8 +230,8 @@ None.
 	if err := runCommitGate(testContext(t), root, writeMsg(t, valid), nil, &out); err != nil {
 		t.Fatalf("qualified octopus merge refused: %v\n%s", err, out.String())
 	}
-	wantSuccess := "operation: stale merge authorization satisfied; changed index: no; changed message: no; changed merge state: no; next actions: none\n"
-	if out.String() != wantSuccess {
+	wantSuccess := "condition: stale merge authorization satisfied\nstate: operation"
+	if !strings.Contains(out.String(), wantSuccess) {
 		t.Fatalf("success outcome = %q, want %q", out.String(), wantSuccess)
 	}
 
@@ -234,9 +241,9 @@ None.
 	if err := runCommitGate(testContext(t), root, writeMsg(t, valid), nil, &out); err == nil {
 		t.Fatal("evil merge edit succeeded")
 	}
-	wantEvil := "operation: " + observed + ": unqualified incoming-parent record ADR-0191" + refusalSuffix
-	if out.String() != wantEvil {
-		t.Fatalf("evil-merge refusal = %q, want %q", out.String(), wantEvil)
+	wantEvil := "condition: " + observed + ": unqualified incoming-parent record ADR-0191"
+	if !strings.Contains(out.String(), wantEvil) {
+		t.Fatalf("evil-merge refusal = %q", out.String())
 	}
 	gitfixture.Stage(t, fixture, map[string]string{v2ResultPath: v2Result})
 
@@ -247,7 +254,7 @@ None.
 	if err := runCommitGate(testContext(t), root, writeMsg(t, valid), nil, &out); err == nil {
 		t.Fatal("unrelated filename substitution succeeded")
 	}
-	if out.String() != wantEvil {
+	if !strings.Contains(out.String(), wantEvil) {
 		t.Fatalf("filename refusal = %q, want %q", out.String(), wantEvil)
 	}
 	gitfixture.StageRemoval(t, fixture, unrelatedPath)
@@ -260,9 +267,9 @@ None.
 	if !errors.As(err, &syntax) {
 		t.Fatalf("malformed error = %#v", err)
 	}
-	wantMalformed := "operation: " + observed + ": malformed reserved trailer at cleaned line 4: AWF-Allow-Reason must be nonempty" + refusalSuffix
-	if out.String() != wantMalformed {
-		t.Fatalf("malformed refusal = %q, want %q", out.String(), wantMalformed)
+	wantMalformed := "condition: " + observed + ": malformed reserved trailer at cleaned line 4: AWF-Allow-Reason must be nonempty"
+	if !strings.Contains(out.String(), wantMalformed) {
+		t.Fatalf("malformed refusal = %q", out.String())
 	}
 
 	if err := os.Remove(mergeHeadPath); err != nil {
@@ -272,9 +279,9 @@ None.
 	if err := runCommitGate(testContext(t), root, writeMsg(t, "feat: ordinary stale import\n\nAWF-Allow-Version: legacy\nAWF-Allow-Reason: not a merge\n"), nil, &out); err == nil {
 		t.Fatal("non-merge provisional import succeeded")
 	}
-	wantNonMerge := "operation: non-merge: provisional older-format introduction without merge parents" + refusalSuffix
-	if out.String() != wantNonMerge {
-		t.Fatalf("non-merge refusal = %q, want %q", out.String(), wantNonMerge)
+	wantNonMerge := "condition: non-merge: provisional older-format introduction without merge parents"
+	if !strings.Contains(out.String(), wantNonMerge) {
+		t.Fatalf("non-merge refusal = %q", out.String())
 	}
 }
 
@@ -286,8 +293,9 @@ func TestRunCommitGateRejectsMalformedAuthorizationByIdentity(t *testing.T) {
 	if !errors.As(err, &syntax) {
 		t.Fatalf("error = %#v, want SyntaxError; output=%q", err, out.String())
 	}
-	if !strings.Contains(out.String(), "changed index: no; changed message: no; changed merge state: no") {
-		t.Fatalf("missing non-mutation outcome: %q", out.String())
+	want := "condition: non-merge: malformed reserved trailer at cleaned line 3: AWF-Allow-Version must be immediately followed by AWF-Allow-Reason\nstate: operation\n\ndiagnostic:\n  changed:\n    index: no\n    message: no\n    merge state: no\n  steps:\n    step 1: correct the message trailers\n    step 2: run git commit to finish the existing merge\n"
+	if out.String() != want {
+		t.Fatalf("malformed authorization output = %q, want %q", out.String(), want)
 	}
 	gitfixture.StageUnmerged(t, gitfixture.At(root), "conflict.md")
 	out.Reset()
@@ -320,6 +328,10 @@ func TestRunCommitGateRejectsNonConventional(t *testing.T) {
 	// invariant: tooling/audit-and-snapshots:commit-gate-shared-rule (TestRunCommitGateRejectsNonConventional)
 	if err := runCommitGate(ctx, root, writeMsg(t, "just some words\n"), nil, &out); err == nil {
 		t.Fatal("a non-Conventional-Commits subject must be rejected")
+	}
+	want := "check staged commit:\n  errors:\n    subject is not Conventional Commits (type(scope)?: subject)\n"
+	if out.String() != want {
+		t.Fatalf("refusal output = %q, want %q", out.String(), want)
 	}
 }
 
@@ -371,8 +383,11 @@ func TestDispatchCommitGate(t *testing.T) {
 	}
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "check", "staged", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code == 0 {
-		t.Fatal("dispatch check staged commit should block a non-conforming subject")
+	if code := run([]string{"awf", "check", "staged", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code != 1 {
+		t.Fatalf("dispatch refusal exit = %d, want 1", code)
+	}
+	if out.String() != "check staged commit:\n  errors:\n    subject is not Conventional Commits (type(scope)?: subject)\n" || errb.String() != "condition: awf: check staged commit: rejected \"nope not conventional\"\n" {
+		t.Fatalf("dispatch refusal streams stdout=%q stderr=%q", out.String(), errb.String())
 	}
 }
 
@@ -480,6 +495,79 @@ func TestRunCommitGateCitationScanIgnoresSubjectExemption(t *testing.T) {
 	if err := runCommitGate(ctx, root, writeMsg(t, "Merge branch 'topic'\n\nclean body\n"), nil, &out); err != nil {
 		t.Errorf("merge subject with a clean body must stay exempt: %v", err)
 	}
+}
+
+func TestRunCommitGateMechanismFailuresPreserveIdentity(t *testing.T) {
+	root := scaffoldProject(t)
+	failure := errors.New("injected failure")
+	message := func() string { return writeMsg(t, "feat: seam\n") }
+	assertFailure := func(t *testing.T, dependencies commitGateDependencies, messagePath string, stdin io.Reader) {
+		t.Helper()
+		err := runCommitGateWithDependencies(testContext(t), root, messagePath, stdin, &bytes.Buffer{}, dependencies)
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want identity %v", err, failure)
+		}
+	}
+	authorizationResult := func() commitGateDependencies {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+			return project.CommitAuthorizationResult{Category: "operation", Condition: "refused"}, nil
+		}
+		return dependencies
+	}
+	t.Run("message file", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.readFile = func(string) ([]byte, error) { return nil, failure }
+		assertFailure(t, dependencies, message(), nil)
+	})
+	t.Run("message stdin", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.readStdin = func(io.Reader) ([]byte, error) { return nil, failure }
+		assertFailure(t, dependencies, "", strings.NewReader("feat: seam\n"))
+	})
+	t.Run("config loading", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.openProject = func(context.Context, string) (*project.Project, error) { return nil, failure }
+		assertFailure(t, dependencies, message(), nil)
+	})
+	t.Run("policy and staged transition loading", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.authorize = func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error) {
+			return project.CommitAuthorizationResult{}, failure
+		}
+		assertFailure(t, dependencies, message(), nil)
+	})
+	t.Run("diagnostic construction", func(t *testing.T) {
+		dependencies := authorizationResult()
+		dependencies.diagnostic = func(project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
+			return presentation.Diagnostic{}, failure
+		}
+		assertFailure(t, dependencies, message(), nil)
+	})
+	t.Run("diagnostic document", func(t *testing.T) {
+		dependencies := authorizationResult()
+		dependencies.diagnosticDocument = func(presentation.Diagnostic) (presentation.Document, error) { return presentation.Document{}, failure }
+		assertFailure(t, dependencies, message(), nil)
+	})
+	t.Run("diagnostic render", func(t *testing.T) {
+		dependencies := authorizationResult()
+		dependencies.render = func(io.Writer, presentation.Document) error { return failure }
+		assertFailure(t, dependencies, message(), nil)
+	})
+	t.Run("conventional report render", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.render = func(io.Writer, presentation.Document) error { return failure }
+		assertFailure(t, dependencies, writeMsg(t, "not conventional\n"), nil)
+	})
+	t.Run("citation report render", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.render = func(io.Writer, presentation.Document) error { return failure }
+		citationRoot := citingProject(t)
+		err := runCommitGateWithDependencies(testContext(t), citationRoot, writeMsg(t, "feat: cite\n\nsee "+cite()+"\n"), nil, &bytes.Buffer{}, dependencies)
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want identity %v", err, failure)
+		}
+	})
 }
 
 func TestRunCommitGateProjectOpenError(t *testing.T) {

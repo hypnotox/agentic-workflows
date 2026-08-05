@@ -75,7 +75,7 @@ func TestProseGateClean(t *testing.T) {
 	if err := runProseGate(ctx, root, &out); err != nil {
 		t.Fatalf("clean: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check repo prose: clean") {
+	if out.String() != completedCheckReport {
 		t.Errorf("clean: output %q", out.String())
 	}
 }
@@ -97,8 +97,8 @@ func TestProseGateReportsSkippedBinaries(t *testing.T) {
 	if first < 0 || second < 0 || first > second {
 		t.Errorf("skipped binary paths must be printed in sorted order: %q", text)
 	}
-	if !strings.Contains(text, "check repo prose: clean") {
-		t.Errorf("clean output missing after binary reports: %q", text)
+	if !strings.Contains(text, "status: warnings") {
+		t.Errorf("structured warning report missing after binary reports: %q", text)
 	}
 }
 
@@ -114,7 +114,7 @@ func TestProseGateValidExemptionPermits(t *testing.T) {
 	if err := runProseGate(ctx, root, &out); err != nil {
 		t.Fatalf("valid exemption: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check repo prose: clean") {
+	if out.String() != completedCheckReport {
 		t.Errorf("valid exemption: output %q", out.String())
 	}
 }
@@ -202,7 +202,7 @@ func TestProseGateDispatch(t *testing.T) {
 	if code := run([]string{"awf", "check", "repo", "prose"}, &out, &errb); code != 0 {
 		t.Fatalf("check repo prose exited %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "check repo prose: clean") {
+	if out.String() != completedCheckReport {
 		t.Errorf("dispatch: output %q", out.String())
 	}
 }

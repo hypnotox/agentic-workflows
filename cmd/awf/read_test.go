@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -174,6 +175,17 @@ func TestReadPlanCommand(t *testing.T) {
 		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
 	}
 	got := stdout.String()
+	parsed, err := plan.Resolve(filepath.Dir(path), filepath.Base(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPayload, err := plan.RenderProjection(parsed, "1.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(stdout.Bytes(), wantPayload) {
+		t.Fatalf("read plan changed payload bytes with a presentation prefix, suffix, or normalization:\n--- got ---\n%s--- want ---\n%s", stdout.Bytes(), wantPayload)
+	}
 	for _, want := range []string{"format: plan-v1", "# Plan: Read command", "## Goal", "## Architecture summary", "## Phase 1: Read", "**Execution mode: inline.**", "### Task 1.1: Return bytes", "### Phase close", "## Definition of done", "## Notes"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("projection lacks %q", want)
@@ -298,14 +310,14 @@ func TestReadPlanCommand(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	if code := run([]string{"awf", "read", "plan", "2026-08-03-read-command-v2", "01"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "awf: plan selector \"01\" must be canonical positive P or P.T; available: 1, 1.1, 1.2\n" {
+	if code := run([]string{"awf", "read", "plan", "2026-08-03-read-command-v2", "01"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "condition: awf: plan selector \"01\" must be canonical positive P or P.T; available: 1, 1.1, 1.2\n" {
 		t.Fatalf("v2 typed selector failure: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 	brokenPath := filepath.Join(root, "docs/plans/2026-08-03-broken-reference.md")
 	testsupport.WriteFile(t, brokenPath, strings.Replace(readCommandV2Plan, "fixture:first", "missing:first", 1))
 	stdout.Reset()
 	stderr.Reset()
-	const missingReferenceError = "awf: plan 2026-08-03-broken-reference.md task 1.1 Applying \"missing:first\": ADR not found\n"
+	const missingReferenceError = "condition: awf: plan 2026-08-03-broken-reference.md task 1.1 Applying \"missing:first\": ADR not found\n"
 	if code := run([]string{"awf", "read", "plan", "2026-08-03-broken-reference", "1.1"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != missingReferenceError {
 		t.Fatalf("broken v2 reference did not preserve task coordinates: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -315,7 +327,7 @@ func TestReadPlanCommand(t *testing.T) {
 	testsupport.WriteFile(t, absentPath, absentPlan)
 	stdout.Reset()
 	stderr.Reset()
-	const absentApplyingError = "awf: plan 2026-08-03-absent-applying.md task 1.1 Applying \"fixture:first\": Applying ADR is absent from adrs\n"
+	const absentApplyingError = "condition: awf: plan 2026-08-03-absent-applying.md task 1.1 Applying \"fixture:first\": Applying ADR is absent from adrs\n"
 	if code := run([]string{"awf", "read", "plan", "2026-08-03-absent-applying", "1.1"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != absentApplyingError {
 		t.Fatalf("Applying outside plan adrs did not block read: exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -346,8 +358,8 @@ func TestReadPlanCommandFailuresKeepStdoutEmpty(t *testing.T) {
 		args       []string
 		wantStderr string
 	}{
-		{[]string{"awf", "read", "plan", "missing", "1"}, "awf: plan name \"missing\" not found; available: 2026-08-02-read-command, 2026-08-02-read-command.md\n"},
-		{[]string{"awf", "read", "plan", "2026-08-02-read-command", "01"}, "awf: plan selector \"01\" must be canonical positive P or P.T; available: 1, 1.1, 1.2\n"},
+		{[]string{"awf", "read", "plan", "missing", "1"}, "condition: awf: plan name \"missing\" not found; available: 2026-08-02-read-command, 2026-08-02-read-command.md\n"},
+		{[]string{"awf", "read", "plan", "2026-08-02-read-command", "01"}, "condition: awf: plan selector \"01\" must be canonical positive P or P.T; available: 1, 1.1, 1.2\n"},
 		{[]string{"awf", "read", "plan", "2026-08-02-read-command"}, ""},
 	}
 	for _, tc := range cases {

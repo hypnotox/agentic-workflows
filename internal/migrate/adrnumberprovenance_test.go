@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,7 +77,7 @@ func TestADRNumberProvenanceMigration(t *testing.T) {
 		"tooling/other/current-state.md": "### `invariant: z`\n\nProse.\nOrigin: ADR-0001\nBacking: test\n",
 	})
 
-	var out bytes.Buffer
+	var out Changes
 	if err := applyADRNumberProvenance(root, &out); err != nil {
 		t.Fatalf("applyADRNumberProvenance: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestADRNumberProvenanceMigration(t *testing.T) {
 		}
 	}
 
-	var second bytes.Buffer
+	var second Changes
 	if err := applyADRNumberProvenance(root, &second); err != nil {
 		t.Fatalf("second run: %v", err)
 	}
@@ -154,7 +153,7 @@ func TestADRNumberProvenanceMigrationRefusesResidual(t *testing.T) {
 			"# ADR-0002: Bad\n\n## Status history\n\n- 2026-01-01: Proposed\n" +
 			"- 2026-01-02: Bogus; state-sequence: 3\n",
 	}, nil)
-	err := applyADRNumberProvenance(root, &bytes.Buffer{})
+	err := applyADRNumberProvenance(root, &Changes{})
 	if err == nil || !strings.Contains(err.Error(), "0002-bad.md") || !strings.Contains(err.Error(), "cannot rewrite status-history line") {
 		t.Fatalf("want a residual-line error naming the file, got %v", err)
 	}
@@ -163,7 +162,7 @@ func TestADRNumberProvenanceMigrationRefusesResidual(t *testing.T) {
 // TestADRNumberProvenanceMigrationSkipsBareTrees proves the no-config and
 // no-decisions guards leave a tree untouched.
 func TestADRNumberProvenanceMigrationSkipsBareTrees(t *testing.T) {
-	if err := applyADRNumberProvenance(t.TempDir(), &bytes.Buffer{}); err != nil {
+	if err := applyADRNumberProvenance(t.TempDir(), &Changes{}); err != nil {
 		t.Fatalf("no config: %v", err)
 	}
 	root := t.TempDir()
@@ -173,7 +172,7 @@ func TestADRNumberProvenanceMigrationSkipsBareTrees(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("docsDir: docs\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyADRNumberProvenance(root, &bytes.Buffer{}); err != nil {
+	if err := applyADRNumberProvenance(root, &Changes{}); err != nil {
 		t.Fatalf("no decisions dir: %v", err)
 	}
 }
@@ -188,14 +187,14 @@ func TestADRNumberProvenanceMigrationSurfacesLoadErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(badConfig, ".awf", "config.yaml"), []byte("docsDir: [\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyADRNumberProvenance(badConfig, &bytes.Buffer{}); err == nil {
+	if err := applyADRNumberProvenance(badConfig, &Changes{}); err == nil {
 		t.Fatal("an unparseable config must be an error")
 	}
 
 	badCorpus := writeProvenanceFixture(t, map[string]string{
 		"0001-bad.md": "---\nstatus: [\ndate: 2026-01-01\n---\n# ADR-0001: Bad\n",
 	}, nil)
-	if err := applyADRNumberProvenance(badCorpus, &bytes.Buffer{}); err == nil {
+	if err := applyADRNumberProvenance(badCorpus, &Changes{}); err == nil {
 		t.Fatal("an unloadable corpus must be an error")
 	}
 }

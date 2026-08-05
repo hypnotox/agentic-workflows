@@ -5,17 +5,15 @@
 // compile-time catalog (internal/catalog) for the ADR-0081 close-enabled-set
 // migration - a leaf import that keeps this package off the render path.
 //
-// Output convention: a migration that mutates the tree prints one line per
-// performed operation to its out writer, prefixed with its registry Name
-// (`<name>: <op>`), so an upgrade's config changes are readable from the
-// command output rather than git archaeology; a no-op run prints nothing.
+// Migrations collect ordered typed Change values for every performed operation.
+// The command owner presents only terminal results; a no-op run collects no
+// changes.
 package migrate
 
 import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -27,7 +25,7 @@ import (
 type Migration struct {
 	To              int
 	Name            string
-	Apply           func(ctx context.Context, root string, out io.Writer) error
+	Apply           func(ctx context.Context, root string, out *Changes) error
 	OwnsSchemaStamp bool
 }
 
@@ -80,8 +78,8 @@ var registry = []Migration{
 // registry's context-taking shape. Only a migration that reaches Git needs the
 // context, so wrapping the rest keeps that distinction visible in the registry
 // itself rather than hiding it behind an unused parameter in every migration.
-func treeOnly(apply func(root string, out io.Writer) error) func(context.Context, string, io.Writer) error {
-	return func(_ context.Context, root string, out io.Writer) error { return apply(root, out) }
+func treeOnly(apply func(root string, out *Changes) error) func(context.Context, string, *Changes) error {
+	return func(_ context.Context, root string, out *Changes) error { return apply(root, out) }
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
@@ -89,18 +87,18 @@ func treeOnly(apply func(root string, out io.Writer) error) func(context.Context
 // topic corpus is authored, not migration-generated, so this migration performs
 // no topic synthesis; it only removes the schema field the current strict
 // config.Config no longer accepts, which would otherwise hard-fail the new binary
-// on the migrated tree. Mirroring applyDropAuditBase, the removal is announced so
-// deleting a value an adopter set stays readable from command output. The edit
+// on the migrated tree. Mirroring applyDropAuditBase, the removal collects a
+// change fact so terminal-owner presentation can name an adopter-set value. The edit
 // routes through config.RemoveKey so config.yaml serialization stays owned by
 // internal/config (ADR-0026); the key is top-level, so RemoveKey applies.
-func applyCurrentStateTopicSubstrate(root string, w io.Writer) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+func applyCurrentStateTopicSubstrate(root string, w *Changes) error {
+	return editConfig(root, w, func(src []byte, planned *Changes) ([]byte, error) {
 		out, err := config.RemoveKey(src, "invariants")
 		if err != nil {
 			return nil, err
 		}
 		if !bytes.Equal(out, src) {
-			fmt.Fprintln(w, "current-state-topic-substrate: removed the retired top-level invariants block")
+			planned.Add("current-state-topic-substrate: removed the retired top-level invariants block")
 		}
 		return out, nil
 	})
@@ -267,17 +265,20 @@ func ProjectPresentFromFiles(has func(string) bool) bool {
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
 // missing lock (e.g. just after the legacy tree-layout port, before the first
 // sync) is a no-op - Generation's no-lock branch already reports Current().
-func stampLockSchema(root string) error {
+func stampLockSchemaWithSave(root string, save func(*manifest.Lock, string) error) (bool, error) {
 	lockPath := config.LockPath(root)
 	if !fileExists(lockPath) {
-		return nil // no lock yet; the terminal sync stamps it
+		return false, nil // no lock yet; the terminal sync stamps it
 	}
 	l, err := manifest.Load(lockPath)
 	if err != nil { // coverage-ignore: reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly
-		return err
+		return false, err
 	}
 	l.SchemaVersion = Current()
-	return l.Save(lockPath)
+	if err := save(l, lockPath); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // registryTos returns the To values of every registered migration.
@@ -328,32 +329,38 @@ func GateState(root string) (string, int, error) {
 }
 
 // Upgrade applies every registered migration with To > Generation(root), in
-// ascending To order, and returns the applied migration names. Idempotent: at the
-// current generation it applies nothing and returns an empty slice, nil error.
-// After applying any migration it restamps an existing tree lock to Current() so
-// Generation reflects the new state and the terminal sync's schema gate passes
-// (a tree→tree upgrade keeps its lock, unlike the legacy 0→1 port which drops it).
-func Upgrade(ctx context.Context, root string, out io.Writer) ([]string, error) {
+// ascending To order, and returns applied names and ordered changes, including
+// facts collected before a migration failure.
+func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
+	return upgradeWithStampSave(ctx, root, func(lock *manifest.Lock, path string) error { return lock.Save(path) })
+}
+
+func upgradeWithStampSave(ctx context.Context, root string, save func(*manifest.Lock, string) error) ([]string, []Change, error) {
 	from, err := Generation(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	changes := &Changes{}
 	var applied []string
 	var highestApplied Migration
 	for _, m := range registry { // registry is already ascending by To
 		if m.To <= from {
 			continue
 		}
-		if err := m.Apply(ctx, root, out); err != nil {
-			return applied, fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
+		if err := m.Apply(ctx, root, changes); err != nil {
+			return applied, changes.Items(), fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
 		applied = append(applied, m.Name)
 		highestApplied = m
 	}
 	if len(applied) > 0 && !highestApplied.OwnsSchemaStamp {
-		if err := stampLockSchema(root); err != nil { // coverage-ignore: stampLockSchema only fails on a lock Save fault, unreachable in a writable tree
-			return applied, err
+		stamped, err := stampLockSchemaWithSave(root, save)
+		if err != nil {
+			return applied, changes.Items(), err
+		}
+		if stamped {
+			changes.Add("schema-stamp: updated awf.lock schema version")
 		}
 	}
-	return applied, nil
+	return applied, changes.Items(), nil
 }

@@ -6,6 +6,26 @@
 This guide contains only current hazards that require human judgment or action beyond what a deterministic guard and its diagnostic reliably provide. Remove an entry once the system prevents the failure or explains its complete recovery; preserve historical rationale in the owning test, implementation, current-state documentation, ADR, or Git history instead.
 
 
+## A global topic cannot cover its own domain-owned package
+
+_Domains: code-design, invariants_
+
+A reviewed rollout assigned `internal/presentation/**` to the code-design domain while
+keeping its natural presentation-ownership topic global. The implementation reached its
+phase-closing check before exposing the contradiction: scoped coverage deliberately skips
+global topics, even when the topic's owning domain matches the new path, so every file in
+the package was uncovered. The plan simultaneously required immediate domain ownership and
+deferred the first path-covering claim until a later phase. Each instruction was plausible
+alone, but no intermediate repository state could satisfy all three.
+
+When a plan introduces a domain-owned path, test the prospective domain selector against
+the exact claims active in that same transaction. A global topic supplies cross-cutting
+authority but never path coverage; the new path needs at least one truthful active claim in
+a path-scoped topic when ownership lands. Do not widen an unrelated topic merely to silence
+coverage, and do not defer ownership without making that authority gap explicit. If the
+global topic is also the natural package authority, add a complementary scoped package
+boundary or separately decide the coverage semantics before implementation.
+
 ## A census number is only as good as its stated query
 
 _Domains: adr-system_

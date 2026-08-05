@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -43,8 +42,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	root := commandRepo(t)
 	managed := filepath.Join(root, ".awf", "worktrees", "default-cli")
 	text := runNewEffortCommand(t, root, "default-cli", "Default CLI", nil)
-	wantText := "effort default-cli title=\"Default CLI\" memory=.awf/efforts/default-cli/memory.md worktree=" + managed + " branch=awf/default-cli\n" +
-		"managed worktree added for default-cli; changed topology: yes; next action: continue the effort in " + managed + "\n"
+	wantText := "status: managed worktree added for default-cli\n\nmutation:\n  identity:\n    effort: default-cli\n    title: Default CLI\n    memory: .awf/efforts/default-cli/memory.md\n    worktree: " + managed + "\n    branch: awf/default-cli\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in " + managed + "\n"
 	if text != wantText {
 		t.Fatalf("default new text =\n%q\nwant\n%q", text, wantText)
 	}
@@ -55,30 +53,13 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 		t.Fatal("managed branch absent")
 	}
 
-	createdJSON := runNewEffortCommand(t, root, "json-cli", "JSON CLI", map[string]bool{"--json": true})
-	var created struct {
-		Worktree *effortWorktreeFacts `json:"worktree"`
-	}
-	if err := json.Unmarshal([]byte(createdJSON), &created); err != nil {
-		t.Fatal(err)
-	}
-	jsonManaged := filepath.Join(root, ".awf", "worktrees", "json-cli")
-	if created.Worktree == nil || created.Worktree.Path != jsonManaged || created.Worktree.Branch != "awf/json-cli" {
-		t.Fatalf("default new JSON worktree = %#v, want %q on awf/json-cli", created.Worktree, jsonManaged)
-	}
-
 	absent := runNewEffortCommand(t, root, "opted-out", "Opted out", map[string]bool{"--no-worktree": true})
-	wantAbsent := "effort opted-out title=\"Opted out\" memory=.awf/efforts/opted-out/memory.md worktree=none\n" +
-		"no managed worktree; changed topology: no; next action: continue the effort in " + root + "\n"
+	wantAbsent := "status: no managed worktree\n\nmutation:\n  identity:\n    effort: opted-out\n    title: Opted out\n    memory: .awf/efforts/opted-out/memory.md\n  next actions:\n    step 1: continue the effort in " + root + "\n"
 	if absent != wantAbsent {
 		t.Fatalf("--no-worktree text =\n%q\nwant\n%q", absent, wantAbsent)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "worktrees", "opted-out")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("--no-worktree created topology: %v", err)
-	}
-	absentJSON := runNewEffortCommand(t, root, "opted-out-json", "Opted out JSON", map[string]bool{"--json": true, "--no-worktree": true})
-	if !strings.Contains(absentJSON, `"worktree":null`) {
-		t.Fatalf("--no-worktree JSON = %q, want an explicit null worktree", absentJSON)
 	}
 }
 
@@ -157,21 +138,21 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	if err := runEffort(add, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "changed topology: yes") {
+	if !strings.Contains(output.String(), "managed topology") {
 		t.Fatalf("add output = %q", output.String())
 	}
 	output.Reset()
 	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "integrate", inv: invocation{positionals: []string{"cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "already integrated") || !strings.Contains(output.String(), "changed topology: no") {
+	if !strings.Contains(output.String(), "already integrated") || !strings.Contains(output.String(), "status:") {
 		t.Fatalf("integrate output = %q", output.String())
 	}
 	output.Reset()
 	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"remove", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "changed topology: yes") {
+	if !strings.Contains(output.String(), "managed topology") {
 		t.Fatalf("remove output = %q", output.String())
 	}
 	if _, err := filepath.Abs(root); err != nil {
@@ -229,11 +210,11 @@ func TestIntegrationGateCommandUsesOnlyAConfiguredString(t *testing.T) {
 func TestEffortHandlerComposesTheProductionWiring(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
-	if err := handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); err != nil {
-		t.Fatal(err)
+	if result := handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); result.err != nil {
+		t.Fatal(result.err)
 	}
-	if out.Len() != 0 {
-		t.Fatalf("empty list wrote %q", out.String())
+	if out.String() != "efforts: none\n" {
+		t.Fatalf("empty list = %q", out.String())
 	}
 }
 

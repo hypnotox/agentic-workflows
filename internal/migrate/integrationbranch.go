@@ -1,8 +1,6 @@
 package migrate
 
 import (
-	"fmt"
-	"io"
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -21,7 +19,7 @@ const integrationBranchGeneration = 30
 // than inheriting an invisible one. Idempotent - a config that already carries
 // the key is left byte-identical, so a re-run never overwrites a corrected
 // value - and the write is announced.
-func applyIntegrationBranch(root string, out io.Writer) error {
+func applyIntegrationBranch(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to write (idempotent re-run safe)
 	}
@@ -32,12 +30,12 @@ func applyIntegrationBranch(root string, out io.Writer) error {
 	if cfg.IntegrationBranch != "" {
 		return nil
 	}
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		b, err := config.SetString(src, "integrationBranch", "main")
 		if err != nil { // coverage-ignore: loadForMigration already parsed this config, so SetString cannot error here
 			return nil, err
 		}
-		fmt.Fprintln(out, "integration-branch-explicit: set integrationBranch: main")
+		planned.Add("integration-branch-explicit: set integrationBranch: main")
 		return b, nil
 	})
 }

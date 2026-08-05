@@ -12,8 +12,41 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
+
+type commitGateDependencies struct {
+	readFile           func(string) ([]byte, error)
+	readStdin          func(io.Reader) ([]byte, error)
+	openProject        func(context.Context, string) (*project.Project, error)
+	authorize          func(context.Context, *project.Project, commitmsg.Message) (project.CommitAuthorizationResult, error)
+	diagnostic         func(project.CommitAuthorizationResult) (presentation.Diagnostic, error)
+	diagnosticDocument func(presentation.Diagnostic) (presentation.Document, error)
+	render             func(io.Writer, presentation.Document) error
+}
+
+func defaultCommitGateDependencies() commitGateDependencies {
+	return commitGateDependencies{
+		readFile:    os.ReadFile,
+		readStdin:   io.ReadAll,
+		openProject: openCommitGateProjectFromDisk,
+		authorize: func(ctx context.Context, p *project.Project, msg commitmsg.Message) (project.CommitAuthorizationResult, error) {
+			return p.CheckCommitAuthorization(ctx, msg)
+		},
+		diagnostic: func(result project.CommitAuthorizationResult) (presentation.Diagnostic, error) {
+			return result.Diagnostic()
+		},
+		diagnosticDocument: func(diagnostic presentation.Diagnostic) (presentation.Document, error) {
+			return diagnostic.Document()
+		},
+		render: presentation.Render,
+	}
+}
+
+func openCommitGateProjectFromDisk(ctx context.Context, root string) (*project.Project, error) {
+	return project.Open(ctx, root)
+}
 
 // runCommitGate validates one commit message and returns an error (mapped to a
 // non-zero exit) on any violation, so a commit-msg hook calling it blocks the
@@ -27,18 +60,22 @@ import (
 // passes as $1) or stdin when msgPath is empty; citation line numbers are
 // relative to the git-cleaned message, not to the raw file.
 func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, stdout io.Writer) error {
+	return runCommitGateWithDependencies(ctx, root, msgPath, stdin, stdout, defaultCommitGateDependencies())
+}
+
+func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, stdin io.Reader, stdout io.Writer, dependencies commitGateDependencies) error {
 	var raw []byte
 	var err error
 	if msgPath != "" {
-		raw, err = os.ReadFile(msgPath)
+		raw, err = dependencies.readFile(msgPath)
 	} else {
-		raw, err = io.ReadAll(stdin)
+		raw, err = dependencies.readStdin(stdin)
 	}
 	if err != nil {
 		return fmt.Errorf("check staged commit: read message: %w", err)
 	}
 	msg := commitmsg.Clean(raw)
-	p, err := project.Open(ctx, root)
+	p, err := dependencies.openProject(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check staged commit: %w", err)
 	}
@@ -48,8 +85,14 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 			// the staged diff below a scissors line, and a diff may legitimately carry
 			// text git itself discards.
 			refs := memorycite.ScanText("commit message", []byte(msg.Text))
-			for _, r := range refs {
-				fmt.Fprintf(stdout, "check staged commit: %s line %d names the effort-owned memory file %q\n", r.Path, r.Line, r.Segment)
+			if len(refs) > 0 {
+				document, documentErr := memorycite.CommitGateDocument(refs)
+				if documentErr != nil { // coverage-ignore: ScanText produces nonempty single-line reference fields and the owner mapping uses fixed grammar
+					return documentErr
+				}
+				if renderErr := dependencies.render(stdout, document); renderErr != nil {
+					return renderErr
+				}
 			}
 			if len(refs) > 0 {
 				return errors.New("check staged commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
@@ -61,16 +104,30 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 			findings := audit.CheckConventionalCommit(
 				git.Commit{Subject: msg.Subject}, audit.Resolve(p.Cfg.Audit))
 			if len(findings) > 0 {
-				for _, f := range findings {
-					fmt.Fprintf(stdout, "check staged commit: %s\n", f.Detail)
+				document, documentErr := audit.ConventionalCommitDocument(findings)
+				if documentErr != nil { // coverage-ignore: CheckConventionalCommit produces fixed single-line detail and the owner mapping uses fixed grammar
+					return documentErr
+				}
+				if renderErr := dependencies.render(stdout, document); renderErr != nil {
+					return renderErr
 				}
 				return fmt.Errorf("check staged commit: rejected %q", msg.Subject)
 			}
 		}
 	}
-	result, authErr := p.CheckCommitAuthorization(ctx, msg)
+	result, authErr := dependencies.authorize(ctx, p, msg)
 	if result.Category != "" {
-		fmt.Fprintln(stdout, result.String())
+		diagnostic, diagnosticErr := dependencies.diagnostic(result)
+		if diagnosticErr != nil {
+			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
+		}
+		document, diagnosticErr := dependencies.diagnosticDocument(diagnostic)
+		if diagnosticErr != nil {
+			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
+		}
+		if diagnosticErr := dependencies.render(stdout, document); diagnosticErr != nil {
+			return fmt.Errorf("check staged commit: render authorization diagnostic: %w", diagnosticErr)
+		}
 	}
 	if authErr != nil {
 		var syntax *commitmsg.SyntaxError

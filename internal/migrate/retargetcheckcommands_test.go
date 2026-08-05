@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -92,7 +91,7 @@ vars:
   otherRunner: ./x check prose
   gateCmd: ./x gate
 `)
-	var out bytes.Buffer
+	var out Changes
 	if err := applyRetargetCheckCommands(root, &out); err != nil {
 		t.Fatalf("applyRetargetCheckCommands: %v", err)
 	}
@@ -150,7 +149,7 @@ vars:
     other: ./x check memory
   <<: *defaults
 `)
-	if err := applyRetargetCheckCommands(root, io.Discard); err != nil {
+	if err := applyRetargetCheckCommands(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	got := readMigratedVars(t, cfg)
@@ -188,7 +187,7 @@ vars:
   memoryHelper: *memory
   commitHelper: *commit
 `)
-	if err := applyRetargetCheckCommands(root, io.Discard); err != nil {
+	if err := applyRetargetCheckCommands(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	got := readMigratedVars(t, cfg)
@@ -215,7 +214,7 @@ func TestRetargetCheckCommandsForeignShapes(t *testing.T) {
 			root := t.TempDir()
 			cfg := filepath.Join(root, ".awf", "config.yaml")
 			testsupport.WriteFile(t, cfg, tc.src)
-			if err := applyRetargetCheckCommands(root, io.Discard); err != nil {
+			if err := applyRetargetCheckCommands(root, &Changes{}); err != nil {
 				t.Fatal(err)
 			}
 			got, err := os.ReadFile(cfg)
@@ -233,13 +232,13 @@ func TestRetargetCheckCommandsClearsAliasedInvariantAndAbsentConfig(t *testing.T
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	testsupport.WriteFile(t, cfg, "anchors:\n  command: &cmd ./awf check invariants\nvars:\n  helper: *cmd\n")
-	if err := applyRetargetCheckCommands(root, io.Discard); err != nil {
+	if err := applyRetargetCheckCommands(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	if got := readMigratedVars(t, cfg); len(got) != 0 {
 		t.Fatalf("aliased invariant var survived: %#v", got)
 	}
-	if err := applyRetargetCheckCommands(t.TempDir(), io.Discard); err != nil {
+	if err := applyRetargetCheckCommands(t.TempDir(), &Changes{}); err != nil {
 		t.Fatalf("absent config: %v", err)
 	}
 }

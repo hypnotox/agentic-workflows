@@ -40,18 +40,13 @@ type Runner interface {
 // of holding a single handle.
 type OpenCheckout func(root string) (Runner, error)
 
-// Result is the line-oriented mutation protocol plus structured facts
-// for orchestration; String() remains the only text surface.
+// Result carries structured managed-topology facts for orchestration and presentation mapping.
 type Result struct {
 	Condition       string
 	ChangedTopology bool
 	NextAction      string
 	Path            string
 	Branch          string
-}
-
-func (r Result) String() string {
-	return fmt.Sprintf("%s; changed topology: %s; next action: %s", r.Condition, yesNo(r.ChangedTopology), r.NextAction)
 }
 
 type Manager struct {
@@ -135,7 +130,7 @@ func operationFree(ctx context.Context, checkout Runner) error {
 			if name == "MERGE_HEAD" {
 				return mergeRefusal(ctx, checkout)
 			}
-			return refusal("operation", "checkout has an in-progress Git operation", false, "finish or abort the native Git operation, then retry")
+			return refusal("operation", "checkout has an in-progress Git operation", false, "finish or abort the native Git operation", "retry")
 		} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
 			return err
 		}
@@ -156,7 +151,7 @@ func mergeRefusal(ctx context.Context, checkout Runner) error {
 	if slug := integrationHolder(ctx, checkout); slug != "" {
 		condition = "a merge of effort " + slug + " is in progress in this checkout"
 	}
-	return refusal("operation", condition, false, "finish or abort this merge only if you started it; otherwise wait until this checkout is clean, then retry")
+	return refusal("operation", condition, false, "finish or abort this merge only if you started it", "otherwise wait until this checkout is clean", "retry")
 }
 
 // integrationHolder names the effort whose branch is being merged here, or the
@@ -198,7 +193,7 @@ func requireClean(ctx context.Context, checkout Runner) error {
 		return err
 	}
 	if tracked > 0 || untracked > 0 {
-		return refusal("cleanliness", "checkout has tracked, untracked, or staged changes", false, "confirm the changes are yours and not a concurrent effort's work, then commit them or inspect and discard them explicitly with native Git, and retry")
+		return refusal("cleanliness", "checkout has tracked, untracked, or staged changes", false, "confirm the changes are yours and not a concurrent effort's work", "commit the changes with native Git, or inspect them with native Git", "if inspection selected discarding, discard the changes explicitly with native Git", "retry")
 	}
 	return nil
 }
@@ -212,7 +207,7 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 		return Result{}, err
 	}
 	if _, err := managedLstat(path); err == nil {
-		return Result{}, refusal("topology", "managed path already exists", false, "inspect the existing path and retry add only after safe manual cleanup")
+		return Result{}, refusal("topology", "managed path already exists", false, "inspect the existing path", "perform safe manual cleanup", "retry add")
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return Result{}, err
 	}
@@ -223,7 +218,7 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 	wantBranch := "refs/heads/" + branch(slug)
 	for _, registration := range regs {
 		if filepath.Clean(registration.Path) == filepath.Clean(path) || registration.Branch == wantBranch {
-			return Result{}, refusal("topology", "managed registration or branch is already present", false, "inspect `git worktree list --porcelain` and retry after safe cleanup")
+			return Result{}, refusal("topology", "managed registration or branch is already present", false, "inspect `git worktree list --porcelain`", "perform safe cleanup", "retry add")
 		}
 	}
 	exists, err := m.git.BranchExists(ctx, branch(slug))
@@ -231,7 +226,7 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 		return Result{}, err
 	}
 	if exists {
-		return Result{}, refusal("topology", "managed branch already exists", false, "inspect the branch and retry after safe cleanup")
+		return Result{}, refusal("topology", "managed branch already exists", false, "inspect the branch", "perform safe cleanup", "retry add")
 	}
 	if err := operationFree(ctx, m.git); err != nil {
 		return Result{}, err
@@ -251,10 +246,18 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 	}
 	if err := m.git.WorktreeAdd(ctx, path, branch(slug), full); err != nil {
 		changed := m.topologyPresent(ctx, slug, path)
-		return Result{}, refusalCause("add", "git worktree add failed", changed, "inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git", err)
+		if changed {
+			return Result{}, refusalCause("operation", "git worktree add failed", true, err,
+				"inspect actual Git topology",
+				"clean only the named managed path, registration, and branch with native Git",
+				"retry add")
+		}
+		return Result{}, refusalCause("operation", "git worktree add failed", false, err,
+			"address or resolve the reported failed Git call",
+			"retry add")
 	}
 	if err := exactRegistration(ctx, m.git, path, wantBranch); err != nil {
-		return Result{}, refusalCause("repository-identity", "Git add returned without exact managed registration", true, "inspect actual Git topology and perform safe native-Git cleanup before retrying", err)
+		return Result{}, refusalCause("repository-identity", "Git add returned without exact managed registration", true, err, "inspect actual Git topology", "perform safe native-Git cleanup", "retry")
 	}
 	return Result{
 		Condition: "managed worktree added for " + slug, ChangedTopology: true,
@@ -285,13 +288,29 @@ func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr err
 	finishResult, finishErr := m.efforts.Finish(ctx, slug)
 	switch {
 	case finishErr == nil:
-		return fmt.Errorf("worktree creation failed: %w; effort %s rolled back; next action: fix the reported cause and retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rolled back; next action: retry `awf effort new --slug %q %q`", addErr, slug, record.Slug, record.Title),
+			Condition: "managed worktree creation failed and the effort was rolled back", Cause: addErr,
+			Steps: []string{"fix the reported cause", fmt.Sprintf("retry `awf effort new --slug %q %q`", record.Slug, record.Title)},
+		}
 	case errors.Is(finishErr, effort.ErrManagedTopologyPresent):
-		return fmt.Errorf("worktree creation failed: %w; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`, clean up with native Git or `awf effort worktree remove %s`, then retry `awf effort worktree add %s` or finish the effort", addErr, slug, slug, slug)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`", addErr, slug),
+			Condition: "managed worktree creation failed and topology remains", ChangedEffort: true, ChangedTopology: true, Cause: addErr, RollbackCause: finishErr,
+			Steps: []string{"inspect `git worktree list --porcelain`", fmt.Sprintf("clean up with native Git or `awf effort worktree remove %s`", slug), fmt.Sprintf("retry `awf effort worktree add %s` or finish the effort", slug)},
+		}
 	case finishResult.Renamed:
-		return fmt.Errorf("worktree creation failed: %w; effort %s rollback interrupted after rename: %w; next action: retry `awf effort finish %s`", addErr, slug, finishErr, slug)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s rollback interrupted after rename: %v; next action: retry `awf effort finish %s`", addErr, slug, finishErr, slug),
+			Condition: "managed worktree creation failed and effort rollback was interrupted", ChangedEffort: true, Cause: addErr, RollbackCause: finishErr,
+			Steps: []string{fmt.Sprintf("retry `awf effort finish %s`", slug)},
+		}
 	default:
-		return fmt.Errorf("worktree creation failed: %w; effort %s retained: rollback failed: %w; next action: resolve the rollback failure, then retry `awf effort worktree add %s` or `awf effort finish %s`", addErr, slug, finishErr, slug, slug)
+		return &CreationError{
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s retained: rollback failed: %v; next action: retry `awf effort worktree add %s` or `awf effort finish %s`", addErr, slug, finishErr, slug, slug),
+			Condition: "managed worktree creation failed and effort rollback failed", ChangedEffort: true, Cause: addErr, RollbackCause: finishErr,
+			Steps: []string{"resolve the rollback failure", fmt.Sprintf("retry `awf effort worktree add %s` or `awf effort finish %s`", slug, slug)},
+		}
 	}
 }
 
@@ -320,7 +339,7 @@ func (m *Manager) Integrate(ctx context.Context, slug, gateCommand string) (Resu
 		return Result{}, err
 	}
 	if filepath.Clean(path) == filepath.Clean(m.roots.InvokingRoot) {
-		return Result{}, refusal("repository-identity", "integration must run from the receiving checkout, not the managed worktree", false, "change to the intended clean target checkout and retry")
+		return Result{}, refusal("repository-identity", "integration must run from the receiving checkout, not the managed worktree", false, "change to the intended clean target checkout", "retry")
 	}
 	if err := m.validateManagedTarget(ctx, path); err != nil {
 		return Result{}, err
@@ -339,10 +358,10 @@ func (m *Manager) Integrate(ctx context.Context, slug, gateCommand string) (Resu
 		return Result{}, err
 	}
 	if targetBranch == "" {
-		return Result{}, refusal("topology", "receiving checkout is detached", false, "check out the intended target branch and retry")
+		return Result{}, refusal("topology", "receiving checkout is detached", false, "check out the intended target branch", "retry")
 	}
 	if targetBranch == branch(slug) {
-		return Result{}, refusal("topology", "receiving checkout is the effort branch", false, "change to the intended target branch and retry")
+		return Result{}, refusal("topology", "receiving checkout is the effort branch", false, "change to the intended target branch", "retry")
 	}
 	tip, err := m.git.ResolveCommit(ctx, branch(slug))
 	if err != nil {
@@ -368,19 +387,26 @@ func (m *Manager) Integrate(ctx context.Context, slug, gateCommand string) (Resu
 	}
 	if fastForward {
 		if err := m.git.MergeFastForward(ctx, branch(slug)); err != nil {
-			return Result{}, refusalCause("integration", "fast-forward failed", m.targetChanged(ctx, target), "inspect the receiving checkout and retry only from clean verified topology", err)
+			return Result{}, refusalCause("operation", "fast-forward failed", m.targetChanged(ctx, target), err, "inspect the receiving checkout", "retry only from clean verified topology")
 		}
 		return Result{Condition: "target fast-forwarded to effort tip", ChangedTopology: true, NextAction: "settle terminal review, then remove the managed worktree"}, nil
 	}
 	base, err := m.git.MergeBase(ctx, "HEAD", branch(slug))
 	if err != nil || strings.TrimSpace(base) == "" {
-		return Result{}, refusalCause("ancestry", "target and effort have no proven common ancestor", false, "inspect repository and branch identity; do not use --allow-unrelated-histories", err)
+		return Result{}, refusalCause("ancestry", "target and effort have no proven common ancestor", false, err, "inspect repository and branch identity", "do not use --allow-unrelated-histories")
 	}
 	gateStep := integrationGateStep(gateCommand)
 	if err := m.git.MergeNoCommit(ctx, branch(slug)); err != nil {
-		return Result{}, refusalCause("merge-conflict", "divergent integration stopped with visible conflict state", true, "resolve or abort the merge; after resolution run `./awf check staged`, "+gateStep+", commit, and renew terminal review", err)
+		return Result{}, refusalCause("merge-conflict", "divergent integration stopped with visible conflict state", true, err, "resolve or abort the merge", "run `./awf check staged`", "run "+gateStep, "commit the merge", "renew terminal review")
 	}
 	return Result{Condition: "divergent integration is staged without a commit", ChangedTopology: true, NextAction: "run `./awf check staged`, " + gateStep + ", commit the merge, and renew terminal implementation review"}, nil
+}
+
+func yesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
 }
 
 func integrationGateStep(command string) string {
@@ -403,11 +429,11 @@ func (m *Manager) validateIntegrationFacts(ctx context.Context, path, slug, targ
 	}
 	currentTarget, err := m.git.ResolveCommit(ctx, "HEAD")
 	if err != nil || currentTarget != target {
-		return refusalCause("topology", "target HEAD changed during integration preflight", false, "restart integration from the clean intended target checkout", err)
+		return refusalCause("topology", "target HEAD changed during integration preflight", false, err, "restart integration from the clean intended target checkout")
 	}
 	currentTip, err := m.git.ResolveCommit(ctx, branch(slug))
 	if err != nil || currentTip != tip {
-		return refusalCause("topology", "effort branch changed during integration preflight", false, "restart integration after the effort writer settles the branch", err)
+		return refusalCause("topology", "effort branch changed during integration preflight", false, err, "restart integration after the effort writer settles the branch")
 	}
 	return nil
 }
@@ -415,6 +441,37 @@ func (m *Manager) validateIntegrationFacts(ctx context.Context, path, slug, targ
 func (m *Manager) targetChanged(ctx context.Context, before string) bool {
 	after, err := m.git.ResolveCommit(ctx, "HEAD")
 	return err != nil || after != before
+}
+
+const removalProbeRecovery = "run `git worktree list --porcelain`"
+
+var removalProbeRecoveryActions = []string{
+	removalProbeRecovery,
+	"inspect the managed path and branch",
+	"resolve the reported probe failure",
+	"retry ordinary removal",
+}
+
+// removalProbeFailure preserves a mechanism error before any mutation, but
+// after one converts it to the actionable topology outcome that a caller needs
+// to recover safely from the residue before retrying.
+func removalProbeFailure(changed bool, condition string, err error) error {
+	if !changed {
+		return err
+	}
+	category := "operation"
+	var prior *RefusalError
+	if errors.As(err, &prior) {
+		category = prior.Category
+	}
+	var safety *awfgit.HardSafetyError
+	if errors.As(err, &safety) {
+		category = "repository-identity"
+	}
+	return &RefusalError{
+		Category: category, Condition: condition, ChangedTopology: true,
+		NextAction: removalProbeRecovery, NextActions: removalProbeRecoveryActions, Err: err,
+	}
 }
 
 func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
@@ -426,7 +483,7 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		return Result{}, err
 	}
 	if filepath.Clean(path) == filepath.Clean(m.roots.InvokingRoot) {
-		return Result{}, refusal("repository-identity", "removal must run from the intended target checkout", false, "change to the target checkout and retry")
+		return Result{}, refusal("repository-identity", "removal must run from the intended target checkout", false, "change to the target checkout", "retry")
 	}
 	if err := operationFree(ctx, m.git); err != nil {
 		return Result{}, err
@@ -440,28 +497,28 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		if _, statErr := managedLstat(path); statErr == nil {
 			pathPresent = true
 		} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
-			return Result{}, statErr
+			return Result{}, removalProbeFailure(changed, "managed path probe failed during removal", statErr)
 		}
 		regs, regsErr := m.git.WorktreeList(ctx)
 		if regsErr != nil {
-			return Result{}, regsErr
+			return Result{}, removalProbeFailure(changed, "managed topology probe failed during removal", regsErr)
 		}
 		var exact *awfgit.WorktreeRegistration
 		for index := range regs {
 			registration := &regs[index]
 			if filepath.Clean(registration.Path) == filepath.Clean(path) {
 				if exact != nil || registration.Branch != "refs/heads/"+branch(slug) || registration.Detached || registration.Bare {
-					return Result{}, refusal("repository-identity", "managed path registration is not exact", changed, "inspect native Git topology and clean it manually without discarding work")
+					return Result{}, refusal("repository-identity", "managed path registration is not exact", changed, "inspect native Git topology", "clean it manually without discarding work")
 				}
 				exact = registration
 			}
 			if registration.Branch == "refs/heads/"+branch(slug) && filepath.Clean(registration.Path) != filepath.Clean(path) {
-				return Result{}, refusal("repository-identity", "managed branch is registered at a foreign path", changed, "inspect native Git topology and clean it manually without discarding work")
+				return Result{}, refusal("repository-identity", "managed branch is registered at a foreign path", changed, "inspect native Git topology", "clean it manually without discarding work")
 			}
 		}
 		branchPresent, branchErr := m.git.BranchExists(ctx, branch(slug))
 		if branchErr != nil {
-			return Result{}, branchErr
+			return Result{}, removalProbeFailure(changed, "managed branch probe failed during removal", branchErr)
 		}
 		if !pathPresent && exact == nil && !branchPresent {
 			return Result{Condition: "managed worktree topology is absent", ChangedTopology: changed, NextAction: "continue to retrospective, then finish the effort"}, nil
@@ -469,33 +526,33 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		if branchPresent {
 			merged, ancestryErr := m.git.Ancestor(ctx, branch(slug), "HEAD")
 			if ancestryErr != nil {
-				return Result{}, ancestryErr
+				return Result{}, removalProbeFailure(changed, "managed branch ancestry probe failed during removal", ancestryErr)
 			}
 			if !merged {
-				return Result{}, refusal("ancestry", "managed branch is not merged into the target", changed, "integrate and settle terminal review, or inspect and discard explicitly with native Git")
+				return Result{}, refusal("ancestry", "managed branch is not merged into the target", changed, "integrate the managed branch, or inspect the branch with native Git", "if integration was selected, settle terminal review", "if inspection selected discarding, discard the branch explicitly with native Git")
 			}
 		}
 		if pathPresent {
 			if err := m.validateManagedTarget(ctx, path); err != nil {
-				return Result{}, err
+				return Result{}, removalProbeFailure(changed, "managed target validation failed during removal", err)
 			}
 			managedCheckout, openErr := m.open(path)
 			if openErr != nil {
-				return Result{}, openErr
+				return Result{}, removalProbeFailure(changed, "managed checkout open failed during removal", openErr)
 			}
 			if err := operationFree(ctx, managedCheckout); err != nil {
-				return Result{}, err
+				return Result{}, removalProbeFailure(changed, "managed checkout operation probe failed during removal", err)
 			}
 			if err := requireClean(ctx, managedCheckout); err != nil {
-				return Result{}, refusalCause("cleanliness", "managed worktree is dirty", changed, "commit or explicitly inspect and discard changes with native Git, then retry ordinary removal", err)
+				return Result{}, refusalCause("cleanliness", "managed worktree is dirty", changed, err, "commit the changes with native Git, or inspect them with native Git", "if inspection selected discarding, discard the changes explicitly with native Git", "retry ordinary removal")
 			}
 			if exact != nil {
 				if err := m.git.WorktreeRemove(ctx, path); err != nil {
-					return Result{}, refusalCause("removal", "native Git worktree removal failed", changed, "inspect actual topology and retry ordinary removal", err)
+					return Result{}, refusalCause("operation", "native Git worktree removal failed", changed, err, "inspect actual topology", "retry ordinary removal")
 				}
 			} else {
 				if err := os.RemoveAll(path); err != nil { // coverage-ignore: path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault
-					return Result{}, refusalCause("removal", "proven unregistered managed path cleanup failed", changed, "inspect the path and retry ordinary removal", err)
+					return Result{}, refusalCause("operation", "proven unregistered managed path cleanup failed", changed, err, "inspect the path", "retry ordinary removal")
 				}
 			}
 			changed = true
@@ -503,23 +560,16 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		}
 		if exact != nil {
 			if err := m.git.WorktreePrune(ctx); err != nil {
-				return Result{}, refusalCause("removal", "prunable registration cleanup failed", changed, "inspect `git worktree list --porcelain` and retry", err)
+				return Result{}, refusalCause("operation", "prunable registration cleanup failed", changed, err, "inspect `git worktree list --porcelain`", "retry ordinary removal")
 			}
 			changed = true
 			continue
 		}
 		if branchPresent {
 			if err := m.git.BranchDelete(ctx, branch(slug)); err != nil {
-				return Result{}, refusalCause("removal", "safe managed branch deletion failed", changed, "inspect branch ancestry and retry without force", err)
+				return Result{}, refusalCause("operation", "safe managed branch deletion failed", changed, err, "inspect branch ancestry", "retry without force")
 			}
 			changed = true
 		}
 	}
-}
-
-func yesNo(value bool) string {
-	if value {
-		return "yes"
-	}
-	return "no"
 }

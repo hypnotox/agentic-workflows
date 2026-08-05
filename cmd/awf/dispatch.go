@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -34,8 +35,29 @@ type cmdCtx struct {
 	stdin  io.Reader
 }
 
+// handlerResult states whether a handler produced a complete failing report.
+// A report is a terminal command outcome, not an observation of output bytes.
+type handlerResult struct {
+	err            error
+	producedReport bool
+}
+
+func handlerFailure(err error) handlerResult { return handlerResult{err: err} }
+func handlerReport(err error) handlerResult {
+	return handlerResult{err: err, producedReport: completeProducedReport(err)}
+}
+
+type producedReportError struct{ error }
+
+func (e *producedReportError) Unwrap() error { return e.error }
+
+func completeProducedReport(err error) bool {
+	var report *producedReportError
+	return errors.As(err, &report)
+}
+
 // handler runs one resolved command against its parsed invocation.
-type handler func(*cmdCtx) error
+type handler func(*cmdCtx) handlerResult
 
 // firstPos returns the first positional or "" - the optional-argument shape of
 // list, config, and `check staged commit`.
@@ -103,29 +125,41 @@ func runCheckGroup(c *cmdCtx) error {
 // has a single handler that dispatches on c.sub; children are NOT separate keys.
 // TestHandlerRegistryParity asserts these keys match the clispec top-level names.
 var handlers = map[string]handler{
-	"init": func(c *cmdCtx) error {
-		return runInit(c.ctx, c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout)
+	"init": func(c *cmdCtx) handlerResult {
+		return handlerFailure(runInit(c.ctx, c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout))
 	},
-	"render": func(c *cmdCtx) error { return runSync(c.ctx, c.root, c.stdout) },
-	"check":  runCheckGroup,
-	"read": func(c *cmdCtx) error {
-		if c.sub != "plan" { // coverage-ignore: clispec admits only the declared plan child before dispatch
-			return &usageErr{"usage: awf read plan <plan> <P[.T]>"}
+	"render": func(c *cmdCtx) handlerResult { return handlerFailure(runSync(c.ctx, c.root, c.stdout)) },
+	"check": func(c *cmdCtx) handlerResult {
+		result := runCheckGroup(c)
+		if c.sub == "staged commit" {
+			return handlerFailure(result)
 		}
-		return runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout)
+		return handlerReport(result)
 	},
-	"audit":  func(c *cmdCtx) error { return runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
-	"effort": func(c *cmdCtx) error { return runEffort(c, openEffortComposition) },
-	"adr":    runADR,
-	"list":   func(c *cmdCtx) error { return runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
-	"config": func(c *cmdCtx) error { return runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
-	"context": func(c *cmdCtx) error {
-		return runContext(c.ctx, c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout)
+	"read": func(c *cmdCtx) handlerResult {
+		if c.sub != "plan" { // coverage-ignore: clispec admits only the declared plan child before dispatch
+			return handlerFailure(&usageErr{"usage: awf read plan <plan> <P[.T]>"})
+		}
+		return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
 	},
-	"topic": func(c *cmdCtx) error {
-		return runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.inv.bools["--json"], c.stdout)
+	"audit": func(c *cmdCtx) handlerResult {
+		return handlerReport(runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
 	},
-	"new": func(c *cmdCtx) error {
+	"effort": func(c *cmdCtx) handlerResult { return handlerFailure(runEffort(c, openEffortComposition)) },
+	"adr":    func(c *cmdCtx) handlerResult { return handlerFailure(runADR(c)) },
+	"list": func(c *cmdCtx) handlerResult {
+		return handlerFailure(runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+	},
+	"config": func(c *cmdCtx) handlerResult {
+		return handlerFailure(runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+	},
+	"context": func(c *cmdCtx) handlerResult {
+		return handlerFailure(runContext(c.ctx, c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout))
+	},
+	"topic": func(c *cmdCtx) handlerResult {
+		return handlerFailure(runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
+	},
+	"new": func(c *cmdCtx) handlerResult {
 		// For a recognized child, sub is the kind and positionals are the child's
 		// args; for an absent or unrecognized child, the typed token (if any) is
 		// the first positional. Reunite them so runNew's kind switch owns every
@@ -134,30 +168,30 @@ var handlers = map[string]handler{
 		if kind == "" && len(args) > 0 {
 			kind, args = args[0], args[1:]
 		}
-		return runNew(c.ctx, c.root, kind, args, c.stdout)
+		return handlerFailure(runNew(c.ctx, c.root, kind, args, c.stdout))
 	},
-	"enable": func(c *cmdCtx) error {
+	"enable": func(c *cmdCtx) handlerResult {
 		kind, name, err := enableDisableArgs(c.inv.positionals, true)
 		if err != nil {
-			return err
+			return handlerFailure(err)
 		}
-		return runEnable(c.ctx, c.root, kind, name, c.inv.bools["--dry-run"], c.stdout)
+		return handlerFailure(runEnable(c.ctx, c.root, kind, name, c.inv.bools["--dry-run"], c.stdout))
 	},
-	"disable": func(c *cmdCtx) error {
+	"disable": func(c *cmdCtx) handlerResult {
 		kind, name, err := enableDisableArgs(c.inv.positionals, false)
 		if err != nil {
-			return err
+			return handlerFailure(err)
 		}
-		return runDisable(c.ctx, c.root, kind, name, c.inv.bools["--with-dependents"], c.inv.bools["--dry-run"], c.stdout)
+		return handlerFailure(runDisable(c.ctx, c.root, kind, name, c.inv.bools["--with-dependents"], c.inv.bools["--dry-run"], c.stdout))
 	},
-	"upgrade": func(c *cmdCtx) error {
-		return runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], c.stdout)
+	"upgrade": func(c *cmdCtx) handlerResult {
+		return handlerFailure(runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], c.stdout))
 	},
-	"uninstall": func(c *cmdCtx) error { return runUninstall(c.ctx, c.root, c.stdout) },
-	"changelog": func(c *cmdCtx) error {
-		return runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout)
+	"uninstall": func(c *cmdCtx) handlerResult { return handlerFailure(runUninstall(c.ctx, c.root, c.stdout)) },
+	"changelog": func(c *cmdCtx) handlerResult {
+		return handlerFailure(runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout))
 	},
-	"version": func(c *cmdCtx) error { runVersion(c.stdout); return nil },
+	"version": func(c *cmdCtx) handlerResult { return handlerFailure(runVersion(c.stdout)) },
 }
 
 // enableDisableArgs resolves the shared positional forms of enable/disable -

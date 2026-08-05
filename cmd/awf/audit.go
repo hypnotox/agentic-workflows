@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hypnotox/agentic-workflows/internal/audit"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) error {
-	// The range is required and has no default (ADR-0127 Decision 2): an audit
-	// that silently reports over nothing is worse than one that refuses.
 	if rangeArg == "" {
 		return &usageErr{"awf audit: a range is required: <base> (meaning <base>..HEAD) or <a>..<b>"}
 	}
@@ -24,42 +23,23 @@ func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) erro
 	if err != nil {
 		return err
 	}
-	// The command boundary has already bounded the whole invocation, including
-	// the live cleanliness rule's native Git call and the object walk here.
 	findings, commits, err := p.Audit(ctx, base, head)
 	if err != nil {
 		return err
 	}
-	errs := 0
-	for _, f := range findings {
-		if f.Severity == severity.Error {
-			errs++
-		}
-		loc := f.Commit
-		if loc == "" {
-			loc = "branch"
-		}
-		fmt.Fprintf(stdout, "  %-7s %-22s %s: %s\n", f.Severity, f.Rule, loc, f.Detail)
+	report, err := audit.Report(findings, commits, base, head)
+	if err != nil { // coverage-ignore: audit owns fixed grammar-valid semantic fields
+		return err
 	}
-	// Every verdict carries the scope that produced it (ADR-0127 Decision 9): a
-	// bare "clean" cannot distinguish forty commits examined from none.
-	scope := fmt.Sprintf("%d commit(s) in %s..%s", commits, base, head)
-	if commits == 0 {
-		// An empty range announces itself rather than reading as a clean audit
-		// (Decision 10). Exit stays zero, so ADR-0017's audit-empty-range-clean
-		// survives; the range-independent rules below still report.
-		fmt.Fprintf(stdout, "awf audit: %s..%s resolved to 0 commit(s); no history rule evaluated\n", base, head)
+	document, err := report.Document()
+	if err != nil { // coverage-ignore: the audit mapping has already validated every shape
+		return err
 	}
-	if len(findings) == 0 {
-		if commits > 0 {
-			fmt.Fprintf(stdout, "awf audit: clean over %s\n", scope)
-		}
-		return nil
+	if err := presentation.Render(stdout, document); err != nil {
+		return err
 	}
-	warns := len(findings) - errs
-	if errs == 0 {
-		fmt.Fprintf(stdout, "awf audit: %d warning(s), 0 errors over %s\n", warns, scope)
-		return nil // warnings never set non-zero exit
+	if report.Status == "failed" {
+		return &producedReportError{fmt.Errorf("awf audit: error-ranked findings over %d commit(s) in %s..%s", commits, base, head)}
 	}
-	return fmt.Errorf("awf audit: %d error(s), %d warning(s) over %s", errs, warns, scope)
+	return nil
 }

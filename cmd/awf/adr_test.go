@@ -32,7 +32,7 @@ func TestRunADRNumbersAPendingRecord(t *testing.T) {
 	if err := runADR(&cmdCtx{ctx: testContext(t), root: root, sub: "number", stdout: &out}); err != nil {
 		t.Fatalf("runADR: %v", err)
 	}
-	if got := out.String(); got != "pending-one -> 0001\n" {
+	if got := out.String(); got != "status: ADR numbering completed\n\ncollection:\n  assignments:\n    pending-one | 0001\n" {
 		t.Errorf("runADR printed %q", got)
 	}
 	numbered, err := os.ReadFile(filepath.Join(root, "docs/decisions/0001-pending-one.md"))
@@ -63,7 +63,7 @@ func TestRunADRNumberThroughTheDriver(t *testing.T) {
 	if code := run([]string{"awf", "adr", "number", "pending-two", "pending-one"}, &out, &errb); code != 0 {
 		t.Fatalf("exit %d: %s", code, errb.String())
 	}
-	if got, want := out.String(), "pending-two -> 0001\npending-one -> 0002\n"; got != want {
+	if got, want := out.String(), "status: ADR numbering completed\n\ncollection:\n  assignments:\n    pending-two | 0001\n    pending-one | 0002\n"; got != want {
 		t.Errorf("driver printed %q, want %q", got, want)
 	}
 	for _, name := range []string{"0001-pending-two.md", "0002-pending-one.md"} {

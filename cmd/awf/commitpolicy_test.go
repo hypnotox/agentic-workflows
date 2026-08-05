@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
@@ -18,6 +19,21 @@ func TestRunCommitPolicyDisabledPolicySucceeds(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "commit policy is disabled") {
 		t.Fatalf("output = %q", out.String())
+	}
+}
+
+func TestRunCommitPolicyPropagatesVerificationFailure(t *testing.T) {
+	root := scaffoldProject(t)
+	testsupport.WriteAwfConfig(t, root, "not: [valid")
+	if err := runCommitPolicy(testContext(t), root, []string{"HEAD"}, io.Discard); err == nil {
+		t.Fatal("verification failure accepted")
+	}
+}
+
+func TestRunCommitPolicyPropagatesPresentationWriteFailure(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runCommitPolicy(testContext(t), root, []string{"HEAD"}, errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("write error = %v", err)
 	}
 }
 
@@ -68,7 +84,7 @@ func TestCommitPolicyCommandUsesRealSignedCommitsAndTypedExits(t *testing.T) {
 	out.Reset()
 	errb.Reset()
 	code = runAt(t, root, []string{"awf", "check", "commit-policy", "HEAD"}, &out, &errb)
-	if code != 1 || !strings.Contains(out.String(), "commits must be signed") || !strings.Contains(out.String(), "allowed signers:") || errb.Len() != 0 {
+	if code != 1 || !strings.Contains(out.String(), "signature") || !strings.Contains(out.String(), "not signed by an allowed signer") || errb.Len() != 0 {
 		t.Fatalf("violation command: exit=%d stdout=%q stderr=%q", code, out.String(), errb.String())
 	}
 
@@ -76,7 +92,7 @@ func TestCommitPolicyCommandUsesRealSignedCommitsAndTypedExits(t *testing.T) {
 	out.Reset()
 	errb.Reset()
 	code = runAt(t, root, []string{"awf", "check", "commit-policy", "missing-target"}, &out, &errb)
-	if code != 1 || !strings.Contains(out.String(), "revision-resolution") || !strings.Contains(out.String(), "refs changed: false") || errb.Len() != 0 {
+	if code != 1 || !strings.Contains(out.String(), "revision-resolution") || !strings.Contains(out.String(), "refs: false") || errb.Len() != 0 {
 		t.Fatalf("refusal command: exit=%d stdout=%q stderr=%q", code, out.String(), errb.String())
 	}
 }

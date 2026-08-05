@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -45,11 +47,12 @@ func TestRunChangelogNoFlags(t *testing.T) {
 		t.Fatalf("runChangelog: %v", err)
 	}
 	got := out.String()
-	if !strings.HasPrefix(got, "# Changelog") {
-		t.Errorf("no-flags output should start with the file title, got:\n%s", got[:min(40, len(got))])
+	want, err := changelogfs.FS.ReadFile("CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(got, "[0.1.0]") || !strings.Contains(got, "[0.5.1]") {
-		t.Errorf("no-flags output should contain every backfilled version, got:\n%s", got)
+	if got != string(want) {
+		t.Errorf("no-flags payload differs from authored changelog")
 	}
 }
 
@@ -100,6 +103,26 @@ func TestRunChangelogSince(t *testing.T) {
 	}
 	if !strings.Contains(got, "[0.4.0]") || !strings.Contains(got, "[0.5.1]") {
 		t.Errorf("expected every version after 0.3.1, got:\n%s", got)
+	}
+}
+
+type changelogErrorWriter struct{}
+
+func (changelogErrorWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
+
+func TestRunChangelogPayloadWriteFailures(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		since, rng string
+	}{
+		{name: "since", since: "0.3.1"},
+		{name: "range", rng: "0.2.0..0.4.0"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := runChangelog("", test.since, test.rng, changelogErrorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
+				t.Fatalf("write error = %v", err)
+			}
+		})
 	}
 }
 
@@ -184,14 +207,52 @@ func TestRunChangelogFlagsExclusive(t *testing.T) {
 	}
 }
 
-func TestDispatchChangelog(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "changelog", "--version", "0.1.0"}, &out, &errb); code != 0 {
-		t.Fatalf("dispatch changelog: code=%d err=%s", code, errb.String())
+// TestChangelogPublicPayloadContracts pins every public payload form at the
+// driver boundary: authored bytes go only to stdout and successful payloads
+// never add diagnostics or alter the exit status.
+func TestChangelogPublicPayloadContracts(t *testing.T) {
+	readGolden := func(t *testing.T, name string) []byte {
+		t.Helper()
+		got, err := os.ReadFile(filepath.Join("testdata", "changelog", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
 	}
-	if !strings.Contains(out.String(), "[0.1.0]") {
-		t.Errorf("dispatch changelog --version 0.1.0 missing its entry, got:\n%s", out.String())
+	full, err := changelogfs.FS.ReadFile("CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := changelog.Load(changelogfs.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest := entries[0].Version
+	sinceEntries, err := changelog.Since(entries, "0.18.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sincePayload strings.Builder
+	for _, entry := range sinceEntries {
+		sincePayload.WriteString(entry.Raw)
+		sincePayload.WriteByte('\n')
+	}
+	for _, tc := range []struct {
+		name string
+		args []string
+		want []byte
+	}{
+		{"full", []string{"awf", "changelog"}, full},
+		{"version", []string{"awf", "changelog", "--version", "0.2.0"}, readGolden(t, "version-0.2.0.md")},
+		{"since", []string{"awf", "changelog", "--since", "0.18.0"}, []byte(sincePayload.String())},
+		{"range", []string{"awf", "changelog", "--range", "0.2.0..0.4.0"}, append(readGolden(t, "range-0.2.0-0.4.0.md"), '\n')},
+		{"empty-since", []string{"awf", "changelog", "--since", latest}, []byte("status: no releases since " + latest + "\n")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := run(tc.args, &stdout, &stderr); code != 0 || !bytes.Equal(stdout.Bytes(), tc.want) || stderr.Len() != 0 {
+				t.Fatalf("run(%v): exit=%d stdout=%q stderr=%q", tc.args, code, stdout.String(), stderr.String())
+			}
+		})
 	}
 }

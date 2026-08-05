@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -39,10 +40,10 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 	slug := strings.Repeat("r", 63)
 	writePersistedEffortFixture(t, root, slug)
 
-	if shown := runEffortCommand(t, root, "show", []string{slug}, map[string]bool{"--json": true}); !strings.Contains(shown, slug) {
+	if shown := runEffortCommand(t, root, "show", []string{slug}); !strings.Contains(shown, slug) {
 		t.Fatalf("show omitted resident slug: %q", shown)
 	}
-	if listed := runEffortCommand(t, root, "list", nil, map[string]bool{"--json": true}); !strings.Contains(listed, slug) {
+	if listed := runEffortCommand(t, root, "list", nil); !strings.Contains(listed, slug) {
 		t.Fatalf("list omitted resident slug: %q", listed)
 	}
 	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "update", slug, "--phase", "Still operable")
@@ -59,13 +60,13 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 			t.Fatalf("%q code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
 		}
 	}
-	if output := runEffortCommand(t, root, "worktree", []string{"add", slug}, nil); !strings.Contains(output, slug) {
+	if output := runEffortCommand(t, root, "worktree", []string{"add", slug}); !strings.Contains(output, slug) {
 		t.Fatalf("worktree add omitted slug: %q", output)
 	}
-	if output := runEffortCommand(t, root, "worktree", []string{"remove", slug}, nil); !strings.Contains(output, "managed worktree topology is absent") {
+	if output := runEffortCommand(t, root, "worktree", []string{"remove", slug}); !strings.Contains(output, "managed worktree topology is absent") {
 		t.Fatalf("worktree remove did not settle topology: %q", output)
 	}
-	if output := runEffortCommand(t, root, "finish", []string{slug}, nil); !strings.Contains(output, "changed cleanup: yes") {
+	if output := runEffortCommand(t, root, "finish", []string{slug}); !strings.Contains(output, "finishing cleanup") {
 		t.Fatalf("finish did not clean resident: %q", output)
 	}
 }
@@ -73,20 +74,15 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 // invariant: tooling/cli:effort-command-contract (TestEffortNewExplicitSlugGrammarAndFlagCombinations)
 func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 	for _, args := range [][]string{
-		{"effort", "new", "--slug", "ordered-input", "--json", "Ordered title", "--no-worktree"},
-		{"effort", "new", "Ordered title", "--no-worktree", "--json", "--slug", "ordered-input"},
-		{"effort", "new", "--slug", "ordered-input", "--base", "HEAD", "Ordered title", "--json"},
-		{"effort", "new", "Ordered title", "--json", "--base", "HEAD", "--slug", "ordered-input"},
+		{"effort", "new", "--slug", "ordered-input", "Ordered title", "--no-worktree"},
+		{"effort", "new", "Ordered title", "--no-worktree", "--slug", "ordered-input"},
+		{"effort", "new", "--slug", "ordered-input", "--base", "HEAD", "Ordered title"},
+		{"effort", "new", "Ordered title", "--base", "HEAD", "--slug", "ordered-input"},
 	} {
 		root := commandRepo(t)
 		code, stdout, stderr := runEffortCLI(t, root, args...)
-		var reply struct {
-			SchemaVersion int           `json:"schemaVersion"`
-			Effort        effort.Record `json:"effort"`
-		}
-		decodeErr := json.Unmarshal([]byte(stdout), &reply)
-		if code != 0 || stderr != "" || decodeErr != nil || reply.SchemaVersion != 2 || reply.Effort.Slug != "ordered-input" || reply.Effort.Title != "Ordered title" {
-			t.Fatalf("%q code=%d stdout=%q stderr=%q reply=%#v decode=%v", args, code, stdout, stderr, reply, decodeErr)
+		if code != 0 || stderr != "" || !strings.Contains(stdout, "effort: ordered-input") || !strings.Contains(stdout, "title: Ordered title") {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
 		}
 	}
 	root := commandRepo(t)
@@ -118,22 +114,89 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 			t.Fatalf("%q code=%d stdout=%q stderr=%q, want %q", test.args, code, stdout, stderr, test.want)
 		}
 	}
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"effort", "new", "--json", "--slug", "json-new", "JSON new", "--no-worktree"}, "condition: awf: awf new: unknown flag \"--json\"\n"},
+		{[]string{"effort", "list", "--json"}, "condition: awf: awf list: unknown flag \"--json\"\n"},
+		{[]string{"effort", "show", "ordered-input", "--json"}, "condition: awf: awf show: unknown flag \"--json\"\n"},
+	} {
+		code, stdout, stderr := runEffortCLI(t, root, test.args...)
+		if code != 2 || stdout != "" || stderr != test.want {
+			t.Fatalf("%q code=%d stdout=%q stderr=%q want=%q", test.args, code, stdout, stderr, test.want)
+		}
+	}
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "readable", "Readable contract", "--no-worktree")
+	newWant := "status: no managed worktree\n\nmutation:\n  identity:\n    effort: readable\n    title: Readable contract\n    memory: .awf/efforts/readable/memory.md\n  next actions:\n    step 1: continue the effort in " + root + "\n"
+	if code != 0 || stderr != "" || stdout != newWant {
+		t.Fatalf("readable new code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"effort", "list"}, "effort list:\n  efforts:\n    readable: Readable contract\n"},
+		{[]string{"effort", "show", "readable"}, "slug: readable\ntitle: Readable contract\nmemory: .awf/efforts/readable/memory.md\n"},
+	} {
+		code, stdout, stderr = runEffortCLI(t, root, test.args...)
+		if code != 0 || stderr != "" || stdout != test.want {
+			t.Fatalf("readable %q code=%d stdout=%q stderr=%q", test.args, code, stdout, stderr)
+		}
+	}
 	overlong := strings.Repeat("s", 33)
-	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
-	if code == 0 || stdout != "" || !strings.Contains(stderr, "1-32 bytes") || !strings.Contains(stderr, "changed bytes: no") || !strings.Contains(stderr, "--slug") {
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
+	overlongRefusal := "condition: explicit effort slug \"" + overlong + "\" is invalid\nstate: input\ncause: slug must contain 1-32 bytes\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: provide a different canonical value with `--slug`\n"
+	if code != 1 || stdout != "" || stderr != overlongRefusal {
 		t.Fatalf("33-byte slug code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", overlong)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("33-byte new slug changed residents: %v", err)
 	}
 	writePersistedEffortFixture(t, root, overlong)
-	if shown := runEffortCommand(t, root, "show", []string{overlong}, map[string]bool{"--json": true}); !strings.Contains(shown, overlong) {
+	if shown := runEffortCommand(t, root, "show", []string{overlong}); !strings.Contains(shown, overlong) {
 		t.Fatalf("same 33-byte persisted slug is not selectable: %q", shown)
 	}
 }
 
 // invariant: tooling/cli:effort-command-contract (TestEffortMemoryAndActivityCLIContract)
 func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
+	// The protocol writer, rather than a decoded map, owns these bytes. Fixed
+	// values prove its field order, all transport values, JSON escaping, and
+	// newline framing independently of clock-backed CLI activity mutations.
+	at := time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)
+	for name, reply := range map[string]struct {
+		reply effort.ActivityReply
+		want  string
+	}{
+		"attach": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityAttached, Effort: &effort.ActivityEffort{Slug: "demo", Title: "Demo \\\"quoted\\\" <tag>"}, Memory: &effort.MemoryMetadata{Effort: "demo", Phase: "Phase  4", Next: "Next\tstep", Updated: "2024-01-02T03:04:05Z"}, Activity: &effort.Activity{SchemaVersion: 2, Owner: "00000000-0000-4000-8000-000000000001", AttachedAt: at, HeartbeatAt: at}},
+			want:  "{\"schemaVersion\":2,\"condition\":\"attached\",\"effort\":{\"slug\":\"demo\",\"title\":\"Demo \\\\\\\"quoted\\\\\\\" \\u003ctag\\u003e\"},\"memory\":{\"effort\":\"demo\",\"phase\":\"Phase  4\",\"next\":\"Next\\tstep\",\"updated\":\"2024-01-02T03:04:05Z\"},\"activity\":{\"schemaVersion\":2,\"owner\":\"00000000-0000-4000-8000-000000000001\",\"attachedAt\":\"2024-01-02T03:04:05Z\",\"heartbeatAt\":\"2024-01-02T03:04:05Z\"}}\n",
+		},
+		"heartbeat": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityHeartbeat, Effort: &effort.ActivityEffort{Slug: "demo", Title: "Demo"}, Memory: &effort.MemoryMetadata{Effort: "demo", Phase: "Phase", Next: "Next", Updated: "2024-01-02T03:04:05Z"}, Activity: &effort.Activity{SchemaVersion: 2, Owner: "00000000-0000-4000-8000-000000000001", AttachedAt: at, HeartbeatAt: at.Add(time.Second)}},
+			want:  "{\"schemaVersion\":2,\"condition\":\"heartbeat\",\"effort\":{\"slug\":\"demo\",\"title\":\"Demo\"},\"memory\":{\"effort\":\"demo\",\"phase\":\"Phase\",\"next\":\"Next\",\"updated\":\"2024-01-02T03:04:05Z\"},\"activity\":{\"schemaVersion\":2,\"owner\":\"00000000-0000-4000-8000-000000000001\",\"attachedAt\":\"2024-01-02T03:04:05Z\",\"heartbeatAt\":\"2024-01-02T03:04:06Z\"}}\n",
+		},
+		"detach": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityDetached},
+			want:  "{\"schemaVersion\":2,\"condition\":\"detached\"}\n",
+		},
+		"refusal": {
+			reply: effort.ActivityReply{SchemaVersion: 2, Condition: effort.ActivityInvalidMemory, Outcome: &effort.ActionableOutcome{Category: "operation", Condition: "memory cannot be \\\"read\\\"", ChangedActivity: false, NextActions: []string{"inspect <resident>", "repair\\now"}, Cause: "read <failure>"}},
+			want:  "{\"schemaVersion\":2,\"condition\":\"invalid-memory\",\"outcome\":{\"category\":\"operation\",\"condition\":\"memory cannot be \\\\\\\"read\\\\\\\"\",\"changedActivity\":false,\"nextActions\":[\"inspect \\u003cresident\\u003e\",\"repair\\\\now\"],\"cause\":\"read \\u003cfailure\\u003e\"}}\n",
+		},
+	} {
+		t.Run("protocol bytes/"+name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := writeActivityReply(&out, reply.reply); err != nil {
+				t.Fatal(err)
+			}
+			if got := out.String(); got != reply.want {
+				t.Fatalf("reply bytes = %q, want %q", got, reply.want)
+			}
+		})
+	}
+
 	root := commandRepo(t)
 	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "demo", "Demo", "--no-worktree")
 	if code != 0 {
@@ -299,11 +362,9 @@ func runNewEffortCommand(t *testing.T, root, slug, title string, bools map[strin
 	return out.String()
 }
 
-func runEffortCommand(t *testing.T, root, sub string, positionals []string, bools map[string]bool) string {
+func runEffortCommand(t *testing.T, root, sub string, positionals []string) string {
 	t.Helper()
-	if bools == nil {
-		bools = map[string]bool{}
-	}
+	bools := map[string]bool{}
 	var out bytes.Buffer
 	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: invocation{positionals: positionals, bools: bools, values: map[string]string{}}, stdout: &out}
 	if err := runEffort(ctx, openEffortComposition); err != nil {
@@ -371,26 +432,18 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 		t.Fatal("absent value present")
 	}
 	record := effort.Record{SchemaVersion: effort.SchemaVersion, Slug: "presentation", Title: "Presentation", MemoryPath: ".awf/efforts/presentation/memory.md"}
-	for _, jsonOutput := range []bool{false, true} {
-		var out bytes.Buffer
-		if err := writeEffort(&out, record, jsonOutput); err != nil {
-			t.Fatal(err)
-		}
-		if out.Len() == 0 {
-			t.Fatal("empty effort output")
-		}
+	var out bytes.Buffer
+	if err := writeEffort(&out, record); err != nil {
+		t.Fatal(err)
 	}
-	if err := writeEffortText(effortErrorWriter{}, record); err == nil {
+	if out.Len() == 0 {
+		t.Fatal("empty effort output")
+	}
+	if err := writeEffort(effortErrorWriter{}, record); err == nil {
 		t.Fatal("text writer error ignored")
 	}
-	if err := writeEffortJSON(effortErrorWriter{}, record); err == nil {
+	if err := writeEffortActivityProtocol(effortErrorWriter{}, record); err == nil {
 		t.Fatal("JSON writer error ignored")
-	}
-	if got := yesNo(true); got != "yes" {
-		t.Fatalf("yes = %q", got)
-	}
-	if got := yesNo(false); got != "no" {
-		t.Fatalf("no = %q", got)
 	}
 	if err := writeWorktreeResult(&bytes.Buffer{}, worktree.Result{}, os.ErrInvalid); !errors.Is(err, os.ErrInvalid) {
 		t.Fatalf("result error = %v", err)
@@ -399,11 +452,9 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 		t.Fatal("worktree writer error ignored")
 	}
 	for _, args := range [][]string{
-		{"effort", "new", "--slug", "command-branches", "Command branches", "--no-worktree", "--json"},
+		{"effort", "new", "--slug", "command-branches", "Command branches", "--no-worktree"},
 		{"effort", "show", "command-branches"},
-		{"effort", "show", "command-branches", "--json"},
 		{"effort", "list"},
-		{"effort", "list", "--json"},
 		{"effort", "memory", "update", "command-branches", "--phase", "one", "--next", "two"},
 		{"effort", "finish", "command-branches"},
 	} {
@@ -431,6 +482,42 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 		if sub == "list" && err == nil {
 			t.Fatal("list writer error ignored")
 		}
+	}
+}
+
+func TestEffortPublicTextProtocol(t *testing.T) {
+	root := commandRepo(t)
+	run := func(args ...string) string {
+		t.Helper()
+		code, stdout, stderr := runEffortCLI(t, root, args...)
+		if code != 0 || stderr != "" {
+			t.Fatalf("%v: code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
+		}
+		return stdout
+	}
+	if got, want := run("effort", "new", "--slug", "public-output", "Public output", "--no-worktree"), fmt.Sprintf("status: no managed worktree\n\nmutation:\n  identity:\n    effort: public-output\n    title: Public output\n    memory: .awf/efforts/public-output/memory.md\n  next actions:\n    step 1: continue the effort in %s\n", root); got != want {
+		t.Fatalf("initial new output = %q, want %q", got, want)
+	}
+	managed := filepath.Join(root, ".awf", "worktrees", "public-output")
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"effort", "list"}, "effort list:\n  efforts:\n    public-output: Public output\n"},
+		{[]string{"effort", "show", "public-output"}, "slug: public-output\ntitle: Public output\nmemory: .awf/efforts/public-output/memory.md\n"},
+		{[]string{"effort", "worktree", "add", "public-output"}, fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in %s\n", managed, managed)},
+		{[]string{"effort", "integrate", "public-output"}, "status: effort tip is already integrated into the target\n\nmutation:\n  next actions:\n    step 1: run `awf effort worktree remove public-output` after terminal review is settled\n"},
+		{[]string{"effort", "worktree", "remove", "public-output"}, "status: managed worktree topology is absent\n\nmutation:\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue to retrospective, then finish the effort\n"},
+		{[]string{"effort", "finish", "public-output"}, "status: completed\n\nmutation:\n  identity:\n    effort: public-output\n  changes:\n    completed:\n      active resident\n      finishing cleanup\n  next actions:\n    step 1: continue without this finished effort\n"},
+	} {
+		if got := run(test.args...); got != test.want {
+			t.Fatalf("%v output = %q, want %q", test.args, got, test.want)
+		}
+	}
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "finish", "public-output")
+	const restart = "condition: effort \"public-output\" has no active resident or finishing reservation\nstate: resident\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: run `awf effort list` and use an active slug\n"
+	if code != 1 || stdout != "" || stderr != restart {
+		t.Fatalf("restarted finish: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 }
 

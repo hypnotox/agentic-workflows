@@ -52,19 +52,19 @@ func runContext(ctx context.Context, cwd string, paths []string, staged bool, rn
 	}
 	options := contextq.ContextOptions{Selection: selection, Range: rng, Facets: facets}
 	result := contextq.ContextResult{Selection: selection, Range: rng}
-	header := "context: live state for this project"
+	header := "live state for this project"
 	var state project.ContextState
 	if staged {
 		if err := gateStaged(ctx, cwd); err != nil {
 			return err
 		}
 		state, err = project.StagedContextState(ctx, cwd)
-		header = "context: staged state for this project"
+		header = "staged state for this project"
 	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
 		if !errors.Is(statErr, fs.ErrNotExist) {
 			return statErr
 		}
-		return deliverContext([]byte(contextq.RenderContextText(result, "context (static: not inside an awf project; live classification and authority require an adopted project)", facets)), cwd, stdout)
+		return deliverContext([]byte(contextq.RenderContextText(result, "static: not inside an awf project; live classification and authority require an adopted project", facets)), cwd, stdout)
 	} else {
 		if err := gate(ctx, cwd); err != nil {
 			return err
@@ -85,20 +85,20 @@ func runUncovered(ctx context.Context, cwd string, roots []string, staged bool, 
 	if rng != "" {
 		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --range"}
 	}
-	header := "context --uncovered: coverage gaps for this project"
+	header := "coverage gaps for this project"
 	var state project.ContextState
 	var err error
 	if staged {
 		if err = gateStaged(ctx, cwd); err == nil {
 			state, err = project.StagedContextState(ctx, cwd)
 		}
-		header = "context --uncovered: staged coverage gaps for this project"
+		header = "staged coverage gaps for this project"
 	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
 		if !errors.Is(statErr, fs.ErrNotExist) {
 			return statErr
 		}
 		static := contextq.UncoveredResult{ScanRoots: contextq.NormalizeContextPaths(roots)}
-		return deliverContext([]byte(contextq.RenderUncoveredText(static, "context --uncovered (static: not inside an awf project; live coverage appears inside one)")), cwd, stdout)
+		return deliverContext([]byte(contextq.RenderUncoveredText(static, "static: not inside an awf project; live coverage appears inside one")), cwd, stdout)
 	} else {
 		if err = gate(ctx, cwd); err == nil {
 			var p *project.Project
