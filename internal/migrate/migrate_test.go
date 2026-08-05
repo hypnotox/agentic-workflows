@@ -667,6 +667,86 @@ func TestAwfRelocationNoopWhenAbsent(t *testing.T) {
 	}
 }
 
+func TestAwfRelocationStatFailureIsNotTreatedAsAbsence(t *testing.T) {
+	root := t.TempDir()
+	old := filepath.Join(root, ".claude", "awf")
+	failure := &os.PathError{Op: "stat", Path: old, Err: os.ErrPermission}
+	operation := productionAwfRelocationOperation()
+	operation.stat = func(path string) (os.FileInfo, error) {
+		if path == old {
+			return nil, failure
+		}
+		return os.Stat(path)
+	}
+	var changes Changes
+	err := applyAwfRelocationWith(root, &changes, operation)
+	if !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("error = %v, want wrapped permission failure", err)
+	}
+	if !strings.Contains(err.Error(), "inspect legacy awf directory "+old) {
+		t.Fatalf("error = %q, want legacy path context", err)
+	}
+	if got := changes.String(); got != "" {
+		t.Fatalf("changes = %q, want none after stat failure", got)
+	}
+}
+
+func TestAwfRelocationAuthorityProbeFailureIsNotTreatedAsAbsence(t *testing.T) {
+	root := t.TempDir()
+	old := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(old, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	lock := filepath.Join(old, "awf.lock")
+	failure := &os.PathError{Op: "stat", Path: lock, Err: os.ErrPermission}
+	operation := productionAwfRelocationOperation()
+	operation.stat = func(path string) (os.FileInfo, error) {
+		if path == lock {
+			return nil, failure
+		}
+		return os.Stat(path)
+	}
+	var changes Changes
+	err := applyAwfRelocationWith(root, &changes, operation)
+	if !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("error = %v, want wrapped permission failure", err)
+	}
+	if !strings.Contains(err.Error(), "inspect legacy authority lock "+lock) {
+		t.Fatalf("error = %q, want authority-lock path context", err)
+	}
+	if got := changes.String(); got != "" {
+		t.Fatalf("changes = %q, want none after authority probe failure", got)
+	}
+}
+
+func TestAwfRelocationDestinationProbeFailureIsNotTreatedAsAbsence(t *testing.T) {
+	root := t.TempDir()
+	old := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(old, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	destination := config.RootDir(root)
+	failure := &os.PathError{Op: "stat", Path: destination, Err: os.ErrPermission}
+	operation := productionAwfRelocationOperation()
+	operation.stat = func(path string) (os.FileInfo, error) {
+		if path == destination {
+			return nil, failure
+		}
+		return os.Stat(path)
+	}
+	var changes Changes
+	err := applyAwfRelocationWith(root, &changes, operation)
+	if !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("error = %v, want wrapped permission failure", err)
+	}
+	if !strings.Contains(err.Error(), "inspect relocation destination "+destination) {
+		t.Fatalf("error = %q, want destination path context", err)
+	}
+	if got := changes.String(); got != "" {
+		t.Fatalf("changes = %q, want none after destination probe failure", got)
+	}
+}
+
 func TestAwfRelocationRenameFailurePublishesNoChanges(t *testing.T) {
 	root := t.TempDir()
 	old := filepath.Join(root, ".claude", "awf")
@@ -674,8 +754,10 @@ func TestAwfRelocationRenameFailurePublishesNoChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	failure := errors.New("rename failed")
+	operation := productionAwfRelocationOperation()
+	operation.rename = func(string, string) error { return failure }
 	var changes Changes
-	if err := applyAwfRelocationWithRename(root, &changes, func(string, string) error { return failure }); !errors.Is(err, failure) {
+	if err := applyAwfRelocationWith(root, &changes, operation); !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
 	if got := changes.String(); got != "" {

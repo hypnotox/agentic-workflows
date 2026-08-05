@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -111,7 +112,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 		t.Fatalf("repeat Proposed plan check: %v\n%s", err, proposedSecond.String())
 	}
 	proposedNote := "advisory | 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
-	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 2 {
+	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 1 {
 		t.Fatalf("Proposed plan assignment advisories must deterministically join the repo universe without failing; first=%q second=%q", proposedFirst.String(), proposedSecond.String())
 	}
 
@@ -147,16 +148,16 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 
 	// The index now carries the Proposed source while working bytes restore the
-	// Implemented source. Both source-ordered universes retain their evidence;
-	// a working edit can neither remove nor add the staged note.
+	// Implemented source. The plan-note sink retains the staged advisory once;
+	// a working edit can neither remove nor duplicate it.
 	gitfixture.Stage(t, gitfixture.At(implementedRoot), map[string]string{planPath: validPlan})
 	testsupport.WriteFile(t, filepath.Join(implementedRoot, planPath), strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1))
 	var stagedProposed bytes.Buffer
 	if err := runCheck(ctx, implementedRoot, &stagedProposed); err != nil {
 		t.Fatalf("staged Proposed plan advisory must stay green: %v\n%s", err, stagedProposed.String())
 	}
-	if got := strings.Count(stagedProposed.String(), proposedNote); got != 2 {
-		t.Fatalf("staged Proposed advisory note count = %d, want 2: %q", got, stagedProposed.String())
+	if got := strings.Count(stagedProposed.String(), proposedNote); got != 1 {
+		t.Fatalf("staged Proposed advisory note count = %d, want 1: %q", got, stagedProposed.String())
 	}
 
 	// Hand-edit the rendered skill.
@@ -881,12 +882,45 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	}
 }
 
-func TestCollectCheckStagedPropagatesDriftCategoryFailure(t *testing.T) {
+func TestCollectCheckStagedEmitsPlanNotesOnce(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
-	failure := errors.New("drift category mapping failed")
 	dependencies := productionCheckStagedDependencies()
-	dependencies.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure }
-	if _, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, false, true, dependencies); !errors.Is(err, failure) {
-		t.Fatalf("category mapping failure = %v, want %v", err, failure)
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{PlanNotes: []string{"staged-plan-note-sentinel"}}, nil
+	}
+	dependencies.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) { return nil, nil }
+	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	if err := renderCheckCollection(&stdout, collection); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(stdout.String(), "staged-plan-note-sentinel"); got != 1 {
+		t.Fatalf("plan note occurrences = %d, want 1 in %q", got, stdout.String())
+	}
+}
+
+func TestCollectCheckStagedRetainsStateFailureWhenDriftCategoryMappingFails(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	driftFailure := errors.New("drift category mapping failed")
+	dependencies := productionCheckStagedDependencies()
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{Static: []currentstate.Finding{{Message: "state-failure-sentinel"}}}, nil
+	}
+	dependencies.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, driftFailure }
+	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, true, dependencies)
+	if err != nil {
+		t.Fatalf("collection error = %v, want retained operational failures", err)
+	}
+	if len(collection.failures) != 1 || collection.failures[0].Error() != "check staged state failed" {
+		t.Fatalf("state failures = %v, want staged state failure", collection.failures)
+	}
+	if len(collection.categories) == 0 {
+		t.Fatal("state categories were discarded")
+	}
+	if len(collection.operational) != 1 || !errors.Is(collection.operational[0], driftFailure) {
+		t.Fatalf("operational failures = %v, want drift category failure", collection.operational)
 	}
 }

@@ -2,6 +2,7 @@ package presentation
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -43,5 +44,29 @@ func TestReportDocument(t *testing.T) {
 		if _, err := report.Document(); err == nil {
 			t.Fatal("invalid report accepted")
 		}
+	}
+
+	category := func(label string) ReportCategory {
+		return ReportCategory{Label: label, Schema: []string{"check", "detail"}, Records: []Record{record}}
+	}
+	for _, tc := range []struct {
+		name       string
+		categories []ReportCategory
+		want       string
+	}{
+		{"unknown label", []ReportCategory{category("notices")}, "unknown report category"},
+		{"warnings before errors", []ReportCategory{category("warnings"), category("errors")}, "ordered errors then warnings"},
+		{"duplicate errors", []ReportCategory{category("errors"), category("errors")}, "ordered errors then warnings"},
+		{"duplicate warnings", []ReportCategory{category("warnings"), category("warnings")}, "ordered errors then warnings"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := (Report{Status: "ready", Categories: tc.categories}).Document()
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Document() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+	if _, err := (Report{Status: "ready"}).Document(); err != nil {
+		t.Fatalf("report without categories = %v, want valid empty-category shape", err)
 	}
 }

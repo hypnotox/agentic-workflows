@@ -59,7 +59,9 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		} else {
-			collection.notes = append(collection.notes, report.Notes()...)
+			ordinary := report
+			ordinary.PlanNotes = nil
+			collection.notes = append(collection.notes, ordinary.Notes()...)
 			for _, note := range report.PlanNotes {
 				if _, seen := planNotes[note]; !seen {
 					planNotes[note] = struct{}{}
@@ -84,9 +86,10 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 		} else {
 			categories, err := dependencies.driftCategories(findings, true)
 			if err != nil {
-				return checkCollection{}, err
+				collection.operational = append(collection.operational, err)
+			} else {
+				collection.categories = append(collection.categories, categories...)
 			}
-			collection.categories = append(collection.categories, categories...)
 			if len(findings) > 0 {
 				collection.failures = append(collection.failures, errors.New("check staged drift failed"))
 			}

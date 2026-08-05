@@ -486,7 +486,24 @@ func TestClassifyLegacyResidentsGitFailures(t *testing.T) {
 // conditions: it propagates any preflight refusal untouched, and it refuses a
 // checkout whose residents belong to a different root than the lock it would
 // commit.
-func TestApplyUnifiedEffortResidentsRetainsTerminalResetFactsOnTransactionFailure(t *testing.T) {
+func TestApplyUnifiedEffortResidentsPresentsResetOutcomeAtItsSemanticBoundary(t *testing.T) {
+	t.Run("success-preserves-evidence-order-without-terminal-duplication", func(t *testing.T) {
+		operation := unifiedEffortResidentsOperation{reset: func(string, []string, int) (upgrade.Outcome, error) {
+			return upgrade.Outcome{
+				Evidence: []upgrade.Evidence{{Action: "quarantined", Path: ".awf/memory"}, {Action: "committed", Path: upgrade.LockRel()}},
+				Changed:  []upgrade.Evidence{{Action: "committed", Path: upgrade.LockRel()}},
+			}, nil
+		}}
+		var out Changes
+		if err := applyUnifiedEffortResidentsWith(testContext(t), residentTree(t), &out, operation); err != nil {
+			t.Fatal(err)
+		}
+		want := "unified-effort-residents: committed reset of proven legacy residents\nunified-effort-residents: quarantined .awf/memory\nunified-effort-residents: committed .awf/awf.lock\n"
+		if got := out.String(); got != want {
+			t.Fatalf("successful reset facts = %q, want %q", got, want)
+		}
+	})
+
 	failure := errors.New("reset failed")
 	t.Run("empty-outcome", func(t *testing.T) {
 		operation := unifiedEffortResidentsOperation{reset: func(string, []string, int) (upgrade.Outcome, error) {
@@ -511,7 +528,7 @@ func TestApplyUnifiedEffortResidentsRetainsTerminalResetFactsOnTransactionFailur
 		if err := applyUnifiedEffortResidentsWith(testContext(t), residentTree(t), &out, operation); !errors.Is(err, failure) {
 			t.Fatalf("migration error = %v, want reset failure", err)
 		}
-		want := "unified-effort-residents: applied .awf/memory\nunified-effort-residents: restored .awf/memory\nunified-effort-residents: terminal committed .awf/awf.lock\n"
+		want := "unified-effort-residents: terminal committed .awf/awf.lock\n"
 		if got := out.String(); got != want {
 			t.Fatalf("failed reset facts = %q, want %q", got, want)
 		}

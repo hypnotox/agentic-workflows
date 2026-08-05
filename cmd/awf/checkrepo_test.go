@@ -140,14 +140,9 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)
 		}
-		text := out.String()
-		for _, sentinel := range []string{"working-advisory-sentinel", "working-drift-sentinel", "current-state-sentinel", "prose-index-sentinel.txt", "memory-index-sentinel.md"} {
-			if !strings.Contains(text, sentinel) {
-				t.Fatalf("output omitted collected finding %q: %q", sentinel, text)
-			}
-		}
-		if strings.Index(text, "errors:") > strings.Index(text, "warnings:") {
-			t.Fatalf("report categories are not deterministically ordered: %q", text)
+		const want = "status: failed\n\nsummary:\n  findings: 4 errors, 1 warnings\n\nfindings:\n  errors:\n    drift | changed: working-drift-sentinel: working bytes\n    current-state | current-state-sentinel\n    prose | prose-index-sentinel.txt: em-dash (U+2014) appears 1 time(s); use plain punctuation\n    memory | docs/decisions/memory-index-sentinel.md: 1 effort-owned memory citation(s) on line(s) 1; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation\n  warnings:\n    advisory | working-advisory-sentinel\n"
+		if got := out.String(); got != want {
+			t.Fatalf("output = %q, want %q", got, want)
 		}
 	})
 

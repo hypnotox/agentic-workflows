@@ -125,20 +125,22 @@ func applyUnifiedEffortResidentsWith(ctx context.Context, root string, out *Chan
 			"run `awf upgrade` from "+classified.PrimaryRoot,
 		)
 	}
-	// The journal outcome is authoritative. Its proven history and terminal
-	// axes remain reportable even when reset returns an error; the committed
-	// summary is reserved for the error-free result.
+	// A failed reset reports only the terminal axes that remain changed. Its
+	// evidence is historical journal detail, not a current partial-upgrade axis.
 	outcome, err := operation.reset(root, classified.Quarantine, 22)
-	if err == nil && len(outcome.Evidence) > 0 {
+	if err != nil {
+		for _, changed := range outcome.Changed {
+			out.Add("unified-effort-residents: terminal " + changed.Action + " " + changed.Path)
+		}
+		return err
+	}
+	if len(outcome.Evidence) > 0 {
 		out.Add("unified-effort-residents: committed reset of proven legacy residents")
 	}
 	for _, evidence := range outcome.Evidence {
 		out.Add("unified-effort-residents: " + evidence.Action + " " + evidence.Path)
 	}
-	for _, changed := range outcome.Changed {
-		out.Add("unified-effort-residents: terminal " + changed.Action + " " + changed.Path)
-	}
-	return err
+	return nil
 }
 
 // ClassifyLegacyResidents inspects every schema-1 binary-owned leaf and every

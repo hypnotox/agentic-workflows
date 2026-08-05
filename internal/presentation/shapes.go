@@ -1,5 +1,10 @@
 package presentation
 
+import (
+	"errors"
+	"fmt"
+)
+
 // ReportCategory is one semantic category of same-schema findings in a report.
 type ReportCategory struct {
 	Label   string
@@ -43,7 +48,16 @@ func (r Report) Document() (Document, error) {
 	}
 	if len(r.Categories) > 0 {
 		children := make([]Node, 0, len(r.Categories))
+		lastCategory := -1
 		for _, category := range r.Categories {
+			categoryOrder, ok := reportCategoryOrder(category.Label)
+			if !ok {
+				return Document{}, fmt.Errorf("unknown report category %q", category.Label)
+			}
+			if categoryOrder <= lastCategory {
+				return Document{}, errors.New("report categories must be ordered errors then warnings")
+			}
+			lastCategory = categoryOrder
 			group, err := NewRecordGroup(category.Label, category.Schema, category.Records...)
 			if err != nil {
 				return Document{}, err
@@ -198,6 +212,17 @@ func (m Mutation) Document() (Document, error) {
 		return Document{}, err
 	}
 	return NewDocument(status, section)
+}
+
+func reportCategoryOrder(label string) (int, bool) {
+	switch label {
+	case "errors":
+		return 0, true
+	case "warnings":
+		return 1, true
+	default:
+		return 0, false
+	}
 }
 
 func fieldsAsNodes(fields []Field) []Node {
