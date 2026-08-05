@@ -13,7 +13,8 @@ HEAD-to-index transition it currently treats one Git commit as exactly one autho
 one ADR may append at most one application batch, one claim may be targeted by at most one
 operation occurrence, and Status history may grow only by a fixed one- or two-event shape.
 The first and third restrictions reject a transaction even when every appended event forms
-a legal ordered history and every operation has its own observable claim mutation.
+a legal ordered history and every operation has its independently observable required claim
+result, including the empty mutation set required for a dominated update.
 
 [ADR-0182](0182-validate-a-merge-transition-as-an-ordered-aggregate.md) introduced an
 ordered aggregate contract for merges. It preserves an exact history prefix, replays every
@@ -27,8 +28,9 @@ an observable boundary between authored applications: without the intermediate c
 the checker can prove only a net endpoint, not that every update or corrective re-application
 made its own material change. The one-batch cap and fixed event-count shape do not supply that
 proof when operation targets are distinct. Each distinct operation still maps independently
-to its matching before-to-after mutation, and the governed history parser can replay several
-status and application events without inventing claim state.
+to its required before-to-after result, which is empty for a dominated update, and the
+governed history parser can replay several status and application events without inventing
+claim state.
 
 This difference matters beyond staging. Historical audit selects the authored contract for
 every non-merge parent-to-commit pair, so changing it also changes how the current binary
@@ -37,7 +39,7 @@ boundary, not merely make a current command more convenient.
 
 ## Decision
 
-1. `decision: observable-authored-transaction` An authored HEAD-to-index transaction may append any number of application or re-application batches and any number of Status-history events when the prior history remains an exact prefix, the appended events replay as a legal ordered lifecycle, and every operation occurrence has its matching claim mutation in that same transaction. A Git commit is an authority transaction, not a required one-event workflow step.
+1. `decision: observable-authored-transaction` An authored HEAD-to-index transaction may append any number of application or re-application batches and any number of Status-history events when the prior history remains an exact prefix, the appended events replay as a legal ordered lifecycle, and every operation occurrence has its matching required claim result in that same transaction. A dominated update's matching result is the empty mutation set. A Git commit is an authority transaction, not a required one-event workflow step.
 
 2. `decision: same-claim-authored-boundary` One claim ID may still be the target of at most one operation occurrence in an authored transaction. This boundary is load-bearing: it preserves an observable before and after for every authored update and corrective re-application, so each occurrence proves its own material effect rather than borrowing one net endpoint for several recorded operations. Multiple batches in one authored transaction are therefore legal only across distinct claim IDs.
 
@@ -80,6 +82,7 @@ required intermediate bytes are observable.
 | Keep the authored contract unchanged | The one-batch and fixed-event caps enforce workflow choreography even when every durable operation and lifecycle edge remains independently verifiable. |
 | Apply the full merge aggregate contract to every transaction | Same-claim chains and repeated corrective events would prove only one net endpoint, weakening operation atomicity and per-occurrence substance. |
 | Relax batches but retain the fixed Status-event shape | Leaves the same one-commit-one-step proxy in a second form and still rejects histories the parser can replay completely. |
+| Relax Status-event cardinality but retain the one-batch cap | Leaves the batch-count proxy refusing independently observable operations without adding evidence about any operation. |
 | Reconstruct intermediate claim states from Status events | Operations do not carry claim bodies, so the missing intermediate bytes cannot be derived from the ADR history. |
 
 ## Status history
