@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Planning and implementation review now carry focused human checks for contradictory generated prose, concept-preserving paraphrase, and intentional literal placeholder syntax at each affected output boundary. The guidance requires concrete examples and expected readings without introducing semantic inference or a universal output validator.
+
 - Render completeness now derives conditional config-tree units and live template identities from their existing catalog, kind, target, and singleton declarations. Config-reference live values use one exhaustive typed classification for generated documentation and CLI presentation, and singleton template conditionals are checked against their artifact-specific live contexts.
 
 - Authored current-state transactions may now append several distinct-target Applied or Reapplied batches and any exact-prefix legal Status progression, while repeated same-claim occurrences remain separately observable and merge-only folding stays provenance-gated. Historical audit applies the same rule to retained non-merge commits.

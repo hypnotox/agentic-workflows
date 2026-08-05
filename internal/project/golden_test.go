@@ -261,21 +261,27 @@ func TestSemanticRenderingReviewEmptyDataAndLiteralPlaceholder(t *testing.T) {
 		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
 	}
 	for _, tc := range []struct {
-		name string
-		path string
-		want string
+		name        string
+		path        string
+		instruction string
+		fallback    string
 	}{
-		{"planning", "skills/writing-plans/SKILL.md.tmpl", "<literal-placeholder>"},
-		{"plan reviewer", "agents/plan-reviewer.md.tmpl", "<literal-placeholder>"},
-		{"code reviewer", "agents/code-reviewer.md.tmpl", "literal-placeholder-intent"},
+		{"planning", "skills/writing-plans/SKILL.md.tmpl", semanticPlanningInstruction, "the project's gate"},
+		{"plan reviewer", "agents/plan-reviewer.md.tmpl", semanticPlanReviewInstruction, "Independent, lens-diverse reviewer for plans under `docs/plans/`."},
+		{"code reviewer", "agents/code-reviewer.md.tmpl", semanticCodeReviewInstruction, "Independent reviewer for implementation diffs, separate from the implementer."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out := renderGolden(t, tc.path, data)
-			if !strings.Contains(out, tc.want) {
-				t.Errorf("empty-data render missing %q:\n%s", tc.want, out)
+			if !strings.Contains(out, tc.instruction) {
+				t.Errorf("empty-data render missing exact instruction %q:\n%s", tc.instruction, out)
 			}
-			if strings.Contains(out, "<no value>") {
-				t.Errorf("empty-data render contains unresolved no-value token:\n%s", out)
+			if !strings.Contains(out, tc.fallback) {
+				t.Errorf("empty-data render missing coherent generic fallback %q:\n%s", tc.fallback, out)
+			}
+			for _, residue := range []string{"<no value>", "{{ ."} {
+				if strings.Contains(out, residue) {
+					t.Errorf("empty-data render contains unresolved token %q:\n%s", residue, out)
+				}
 			}
 		})
 	}

@@ -119,24 +119,27 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 }
 
 func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
+	const (
+		planningInstruction   = "- **Semantic rendering review:** when a task changes generated prose, schedule a focused human check at each affected output boundary for contradictory fragments, concept-preserving paraphrase, and whether literal placeholder syntax such as `<literal-placeholder>` is intentional. Name concrete examples and the expected reading; this is a meaning review, not a general output validator."
+		planReviewInstruction = "1. **semantic-rendering-review**: when generated prose changes, require the plan to schedule a focused human check at each affected output boundary for contradictory fragments, concept-preserving paraphrase, and intentional literal placeholder syntax such as `<literal-placeholder>`, with concrete examples and expected reading. This is a meaning review, not a general output validator."
+		codeReviewInstruction = "1. **semantic-rendering-review**: for generated prose changes, inspect the produced outputs and focused tests for the scheduled contradictory-fragment, concept-preserving-paraphrase, and literal-placeholder-intent examples. Keep this as human meaning review, not a general output validator or new deterministic inference."
+	)
 	cat := loadCatalog(t)
 	for _, target := range []string{"claude", "pi"} {
 		t.Run(target, func(t *testing.T) {
 			root := syncFullCatalogForTarget(t, cat, target)
 			base := filepath.Join(root, "."+target)
 			for _, tc := range []struct {
-				path string
-				want []string
+				path        string
+				instruction string
 			}{
-				{filepath.Join(base, "skills", evalPrefix+"-writing-plans", "SKILL.md"), []string{"Semantic rendering review", "contradictory fragments", "concept-preserving paraphrase", "<literal-placeholder>"}},
-				{filepath.Join(base, "agents", "plan-reviewer.md"), []string{"semantic-rendering-review", "contradictory fragments", "concept-preserving paraphrase", "<literal-placeholder>"}},
-				{filepath.Join(base, "agents", "code-reviewer.md"), []string{"semantic-rendering-review", "produced outputs", "focused tests", "literal-placeholder-intent"}},
+				{filepath.Join(base, "skills", evalPrefix+"-writing-plans", "SKILL.md"), planningInstruction},
+				{filepath.Join(base, "agents", "plan-reviewer.md"), planReviewInstruction},
+				{filepath.Join(base, "agents", "code-reviewer.md"), codeReviewInstruction},
 			} {
 				out := read(t, tc.path)
-				for _, want := range tc.want {
-					if !strings.Contains(out, want) {
-						t.Errorf("%s missing semantic rendering instruction %q:\n%s", tc.path, want, out)
-					}
+				if !strings.Contains(out, tc.instruction) {
+					t.Errorf("%s missing exact semantic rendering instruction %q:\n%s", tc.path, tc.instruction, out)
 				}
 				if strings.Contains(out, "<no value>") {
 					t.Errorf("%s contains unresolved no-value token:\n%s", tc.path, out)
