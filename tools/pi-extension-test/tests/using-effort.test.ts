@@ -3,7 +3,7 @@ import test from "node:test";
 import { mkdir } from "node:fs/promises";
 import { Value } from "typebox/value";
 import { EventEmitter } from "node:events";
-import { activity, createChildMemoryExecutor, EffortProtocolError, MEMORY_KILL_DELAY_MS, MEMORY_STDERR_MAX, MEMORY_STDOUT_MAX, memoryEdit, memoryRead, memoryUpdate, productionChildMemoryDependencies } from "../../../.pi/extensions/awf-effort/client.ts";
+import { activity, createChildMemoryExecutor, EffortProtocolError, MEMORY_CLOSE_DELAY_MS, MEMORY_KILL_DELAY_MS, MEMORY_STDERR_MAX, MEMORY_STDOUT_MAX, memoryEdit, memoryRead, memoryUpdate, productionChildMemoryDependencies } from "../../../.pi/extensions/awf-effort/client.ts";
 import effortExtension, { registerDefaultEffort, registerEffort } from "../../../.pi/extensions/awf-effort/index.ts";
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
@@ -249,7 +249,8 @@ async function decodeMemoryReply(value: unknown, operation: "read" | "edit" | "u
   const exec = async () => ({ code: 0, stdout: line(value), stderr: "" });
   if (operation === "edit") return memoryEdit(exec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }]);
   if (operation === "update") return memoryUpdate(exec, "/repo", "demo", OWNER, { phase: "Done" });
-  return memoryRead(exec, "/repo", "demo", OWNER);
+  const offset = (value as any)?.condition === "offset-out-of-range" ? (value as any).range?.offset : undefined;
+  return memoryRead(exec, "/repo", "demo", OWNER, offset === undefined ? {} : { offset });
 }
 
 test("memory client accepts and recursively freezes every success and refusal shape", async () => {
@@ -293,7 +294,7 @@ test("memory client rejects every closed success and refusal boundary", async ()
 });
 
 test("memory invocation validates arguments, exact argv, stdin, and bounded transport", async () => {
-  const calls: any[] = []; const exec = async (command: string, argv: readonly string[], options: any) => { calls.push([command, argv, options]); const condition = argv[2]; return { code: 0, stdout: line(condition === "read" ? memoryReadReply() : condition === "edit" ? memoryEditReply() : memoryUpdateReply()), stderr: "" }; };
+  const calls: any[] = []; const exec = async (command: string, argv: readonly string[], options: any) => { calls.push([command, argv, options]); const condition = argv[2]; const readReply = argv.includes("--offset") ? { ...memoryReadReply(), range: { startLine: 2, endLine: 2, totalLines: 2, nextOffset: null, truncatedBy: "none" } } : memoryReadReply(); return { code: 0, stdout: line(condition === "read" ? readReply : condition === "edit" ? memoryEditReply() : memoryUpdateReply()), stderr: "" }; };
   const signal = new AbortController().signal;
   await memoryRead(exec, "/repo", "demo", OWNER, { offset: 2, limit: 3 }, signal);
   await memoryEdit(exec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }], signal);
@@ -384,9 +385,10 @@ test("effort runtime guard checks actual version, active-tool methods, and packa
   const guarded = (overrides: any = {}, deps: any = {}) => { const tools: any[] = []; const hooks = new Map<string, any>(); const notices: any[] = []; const pi: any = { on: (name: string, hook: any) => hooks.set(name, hook), registerTool: (tool: any) => tools.push(tool), exec: async () => ({ stdout: "" }), getActiveTools: () => [], setActiveTools: () => {}, ...overrides }; registerEffort(pi, { packageVersion: "0.81.1", fileMutationQueue: async (_path, work) => work(), ...deps }); return { tools, hooks, notices, start: () => hooks.get("session_start")?.({}, { ui: { notify: (...args: any[]) => notices.push(args) } }) }; };
   try {
     delete (globalThis as any)[marker]; const old = guarded({}, { packageVersion: "0.80.0" }); assert.deepEqual(old.tools, []); await old.start(); assert.match(old.notices[0][0], /found 0.80.0/); await old.start(); assert.equal(old.notices.length, 1);
-    delete (globalThis as any)[marker]; const helper = guarded({}, { fileMutationQueue: undefined }); assert.deepEqual(helper.tools, []); await helper.start(); assert.match(helper.notices[0][0], /withFileMutationQueue/);
-    const methods = guarded({ setActiveTools: undefined }); assert.deepEqual(methods.tools, []);
+    delete (globalThis as any)[marker]; const helper = guarded({}, { fileMutationQueue: undefined }); assert.deepEqual(helper.tools, []); await helper.start(); assert.match(helper.notices[0][0], /withFileMutationQueue/); await helper.start(); assert.equal(helper.notices.length, 1);
+    delete (globalThis as any)[marker]; const methods = guarded({ setActiveTools: undefined }); assert.deepEqual(methods.tools, []); await methods.start(); assert.match(methods.notices[0][0], /setActiveTools/);
     const noHook = guarded({ on: undefined }, { packageVersion: "bad", fileMutationQueue: undefined }); assert.deepEqual(noHook.tools, []); assert.equal(noHook.hooks.size, 0);
+    const noSharedHook = guarded({ on: undefined }, { packageVersion: "bad" }); assert.deepEqual(noSharedHook.tools, []); assert.equal(noSharedHook.hooks.size, 0);
   } finally { if (original === undefined) delete (globalThis as any)[marker]; else (globalThis as any)[marker] = original; }
 });
 
@@ -433,4 +435,34 @@ test("child executor terminal guards tolerate close and output races", async () 
 
 test("effort guard treats an omitted package version as incompatible", async () => {
   const hooks = new Map<string, any>(); const tools: any[] = []; let active: string[] = []; registerEffort({ on: (name: string, hook: any) => hooks.set(name, hook), registerTool: (tool: any) => tools.push(tool), exec: async () => ({ stdout: "" }), getActiveTools: () => active, setActiveTools: (value: string[]) => { active = value; } }, { fileMutationQueue: async (_path, work) => work() }); assert.deepEqual(tools, []); assert.equal(typeof hooks.get("session_start"), "function");
+});
+
+test("activity and memory outcomes retain separate cardinality and cause bounds", async () => {
+  const manyActions = Array.from({ length: 9 }, (_, index) => `action ${index}`);
+  assert.equal((await decode(refusal("missing", manyActions))).outcome?.nextActions.length, 9);
+  await assert.rejects(decode(refusal("missing", ["recover"], { cause: "x".repeat(4097) })), /invalid envelope/);
+  await assert.rejects(decodeMemoryReply({ ...memoryOutcome("invalid-memory"), outcome: { ...memoryOutcome("invalid-memory").outcome, nextActions: manyActions } }), /invalid envelope/);
+  const longCause = "x".repeat(4097); const failure = { ...memoryOutcome("memory-failure"), outcome: { ...memoryOutcome("memory-failure").outcome, cause: longCause } }; assert.equal((await decodeMemoryReply(failure)).outcome?.cause, longCause);
+});
+
+test("read decoder ties range facts to the request, selected content, and remaining document", async () => {
+  const exec = (value: unknown) => async () => ({ stdout: line(value), stderr: "" });
+  const valid = { ...memoryReadReply(), content: "second\n", range: { startLine: 2, endLine: 2, totalLines: 3, nextOffset: 3, truncatedBy: "limit" } };
+  assert.equal((await memoryRead(exec(valid), "/repo", "demo", OWNER, { offset: 2, limit: 1 })).range?.startLine, 2);
+  assert.equal((await memoryRead(exec({ ...memoryReadReply(), content: "" }), "/repo", "demo", OWNER)).content, "");
+  assert.equal((await memoryRead(exec({ ...memoryReadReply(), content: "line" }), "/repo", "demo", OWNER)).content, "line");
+  const invalid = [
+    { ...valid, range: { ...valid.range, startLine: 1 } },
+    { ...valid, content: "second\nthird\n" },
+    { ...memoryReadReply(), range: { startLine: 1, endLine: 1, totalLines: 2, nextOffset: null, truncatedBy: "none" } },
+    { ...memoryReadReply(), range: { startLine: 1, endLine: 1, totalLines: 1, nextOffset: 2, truncatedBy: "bytes" } },
+  ];
+  for (const value of invalid) await assert.rejects(memoryRead(exec(value), "/repo", "demo", OWNER, { offset: value === invalid[0] || value === invalid[1] ? 2 : 1 }), /invalid envelope/);
+  const mismatchedOffset = memoryOutcome("offset-out-of-range", false, { range: { offset: 3, totalLines: 1 } }); await assert.rejects(memoryRead(exec(mismatchedOffset), "/repo", "demo", OWNER, { offset: 2 }), /invalid envelope/);
+  const zeroMaximum = memoryOutcome("result-too-large", false, { size: { bytes: 1, maxBytes: 0 } }); assert.equal((await decodeMemoryReply(zeroMaximum)).condition, "result-too-large");
+});
+
+test("SIGKILL keeps the executor pending for close and uses only a final bounded fallback", async () => {
+  const observed = childHarness(); let settled = false; const promise = observed.exec("./awf", [], { cwd: "/repo", timeout: 5 }).catch((error) => { settled = true; throw error; }); observed.timers[0].callback(); observed.timers[1].callback(); await Promise.resolve(); assert.equal(settled, false); assert.deepEqual(observed.kills, ["SIGTERM", "SIGKILL"]); assert.equal(observed.timers[2].delay, MEMORY_CLOSE_DELAY_MS); observed.child.emit("close", null); await assert.rejects(promise, /timed out/);
+  const fallback = childHarness(); const fallbackPromise = fallback.exec("./awf", [], { cwd: "/repo", timeout: 5 }); fallback.timers[0].callback(); fallback.timers[1].callback(); fallback.timers[2].callback(); await assert.rejects(fallbackPromise, /timed out/); assert.equal(fallback.timers.every((timer) => timer.cleared), true);
 });
