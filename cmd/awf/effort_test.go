@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -472,11 +473,11 @@ func TestMemoryProtocolExactSuccessAndRefusalEnvelopes(t *testing.T) {
 		{"read", effort.MemoryOperationResult{Condition: effort.MemoryRead, Memory: metadata, Content: "one\n", Range: &effort.MemoryRange{StartLine: 2, EndLine: 2, TotalLines: 3, NextOffset: &next, TruncatedBy: "limit"}}, `{"schemaVersion":1,"condition":"read","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"},"content":"one\n","range":{"startLine":2,"endLine":2,"totalLines":3,"nextOffset":3,"truncatedBy":"limit"}}` + "\n"},
 		{"edited", effort.MemoryOperationResult{Condition: effort.MemoryEdited, Memory: metadata, ReplacementCount: 2, Diff: &effort.MemoryDiff{Text: "diff", FirstChangedLine: &line, Truncated: true}}, `{"schemaVersion":1,"condition":"edited","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"},"replacementCount":2,"diff":{"text":"diff","firstChangedLine":7,"truncated":true}}` + "\n"},
 		{"updated", effort.MemoryOperationResult{Condition: effort.MemoryUpdated, Memory: metadata}, `{"schemaVersion":1,"condition":"updated","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"}}` + "\n"},
-		{"offset", effort.MemoryOperationResult{Condition: effort.MemoryOffsetOutOfRange, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "outside", NextActions: []effort.RecoveryAction{{Text: "use range"}}}, Offset: &effort.MemoryOffsetFact{Offset: 4, TotalLines: 3}}, `{"schemaVersion":1,"condition":"offset-out-of-range","outcome":{"category":"operation","condition":"outside","changedMemory":false,"nextActions":["use range"]},"range":{"offset":4,"totalLines":3}}` + "\n"},
-		{"no-match", effort.MemoryOperationResult{Condition: effort.MemoryNoMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "absent", NextActions: []effort.RecoveryAction{{Text: "read again"}}}, Edit: &effort.MemoryEditFact{Index: 0}}, `{"schemaVersion":1,"condition":"no-match","outcome":{"category":"operation","condition":"absent","changedMemory":false,"nextActions":["read again"]},"edit":{"index":0}}` + "\n"},
-		{"ambiguous", effort.MemoryOperationResult{Condition: effort.MemoryAmbiguousMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "repeated", NextActions: []effort.RecoveryAction{{Text: "add context"}}}, Edit: &effort.MemoryEditFact{Index: 1, Occurrences: 2}}, `{"schemaVersion":1,"condition":"ambiguous-match","outcome":{"category":"operation","condition":"repeated","changedMemory":false,"nextActions":["add context"]},"edit":{"index":1,"occurrences":2}}` + "\n"},
-		{"overlap", effort.MemoryOperationResult{Condition: effort.MemoryOverlappingEdits, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "overlap", NextActions: []effort.RecoveryAction{{Text: "separate"}}}, Overlap: &effort.MemoryOverlapFact{FirstIndex: 0, SecondIndex: 2}}, `{"schemaVersion":1,"condition":"overlapping-edits","outcome":{"category":"operation","condition":"overlap","changedMemory":false,"nextActions":["separate"]},"edits":{"firstIndex":0,"secondIndex":2}}` + "\n"},
-		{"size", effort.MemoryOperationResult{Condition: effort.MemoryResultTooLarge, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "large", NextActions: []effort.RecoveryAction{{Text: "shrink"}}}, Size: &effort.MemorySizeFact{Bytes: 51201, MaxBytes: 51200}}, `{"schemaVersion":1,"condition":"result-too-large","outcome":{"category":"operation","condition":"large","changedMemory":false,"nextActions":["shrink"]},"size":{"bytes":51201,"maxBytes":51200}}` + "\n"},
+		{"offset", effort.MemoryOperationResult{Condition: effort.MemoryOffsetOutOfRange, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "outside", NextActions: []effort.RecoveryAction{{Text: "use range"}}, Cause: "must be omitted"}, Offset: &effort.MemoryOffsetFact{Offset: 4, TotalLines: 3}}, `{"schemaVersion":1,"condition":"offset-out-of-range","outcome":{"category":"operation","condition":"outside","changedMemory":false,"nextActions":["use range"]},"range":{"offset":4,"totalLines":3}}` + "\n"},
+		{"no-match", effort.MemoryOperationResult{Condition: effort.MemoryNoMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "absent", NextActions: []effort.RecoveryAction{{Text: "read again"}}, Cause: "must be omitted"}, Edit: &effort.MemoryEditFact{Index: 0}}, `{"schemaVersion":1,"condition":"no-match","outcome":{"category":"operation","condition":"absent","changedMemory":false,"nextActions":["read again"]},"edit":{"index":0}}` + "\n"},
+		{"ambiguous", effort.MemoryOperationResult{Condition: effort.MemoryAmbiguousMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "repeated", NextActions: []effort.RecoveryAction{{Text: "add context"}}, Cause: "must be omitted"}, Edit: &effort.MemoryEditFact{Index: 1, Occurrences: 2}}, `{"schemaVersion":1,"condition":"ambiguous-match","outcome":{"category":"operation","condition":"repeated","changedMemory":false,"nextActions":["add context"]},"edit":{"index":1,"occurrences":2}}` + "\n"},
+		{"overlap", effort.MemoryOperationResult{Condition: effort.MemoryOverlappingEdits, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "overlap", NextActions: []effort.RecoveryAction{{Text: "separate"}}, Cause: "must be omitted"}, Overlap: &effort.MemoryOverlapFact{FirstIndex: 0, SecondIndex: 2}}, `{"schemaVersion":1,"condition":"overlapping-edits","outcome":{"category":"operation","condition":"overlap","changedMemory":false,"nextActions":["separate"]},"edits":{"firstIndex":0,"secondIndex":2}}` + "\n"},
+		{"size", effort.MemoryOperationResult{Condition: effort.MemoryResultTooLarge, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "large", NextActions: []effort.RecoveryAction{{Text: "shrink"}}, Cause: "must be omitted"}, Size: &effort.MemorySizeFact{Bytes: 51201, MaxBytes: 51200}}, `{"schemaVersion":1,"condition":"result-too-large","outcome":{"category":"operation","condition":"large","changedMemory":false,"nextActions":["shrink"]},"size":{"bytes":51201,"maxBytes":51200}}` + "\n"},
 		{"failure", effort.MemoryOperationResult{Condition: effort.MemoryFailure, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "uncertain", ChangedMemory: true, NextActions: []effort.RecoveryAction{{Text: "read first"}}, Cause: "disk"}}, `{"schemaVersion":1,"condition":"memory-failure","outcome":{"category":"operation","condition":"uncertain","changedMemory":true,"nextActions":["read first"],"cause":"disk"}}` + "\n"},
 	}
 	for _, test := range cases {
@@ -493,9 +494,19 @@ func TestMemoryProtocolExactSuccessAndRefusalEnvelopes(t *testing.T) {
 	if err := writeEffortMemoryProtocol(effortErrorWriter{}, cases[0].result); err == nil {
 		t.Fatal("protocol writer error ignored")
 	}
-	tooLarge := cases[0].result
-	tooLarge.Content = strings.Repeat("x", 1048576)
-	if err := writeEffortMemoryProtocol(&bytes.Buffer{}, tooLarge); err == nil || !strings.Contains(err.Error(), "exceeds 1 MiB") {
+	if err := writeEffortMemoryProtocol(effortShortWriter{}, cases[0].result); !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("protocol short write error = %v", err)
+	}
+	// This complete, newline-terminated envelope is exactly 1,048,576 bytes.
+	exactLimit := cases[0].result
+	exactLimit.Content = strings.Repeat("x", 1048346)
+	var exactOut bytes.Buffer
+	if err := writeEffortMemoryProtocol(&exactOut, exactLimit); err != nil || exactOut.Len() != 1048576 || !strings.HasSuffix(exactOut.String(), "\n") {
+		t.Fatalf("exact protocol bound bytes=%d newline=%t err=%v", exactOut.Len(), strings.HasSuffix(exactOut.String(), "\n"), err)
+	}
+	overLimit := exactLimit
+	overLimit.Content += "x"
+	if err := writeEffortMemoryProtocol(&bytes.Buffer{}, overLimit); err == nil || !strings.Contains(err.Error(), "exceeds 1 MiB") {
 		t.Fatalf("protocol output bound error = %v", err)
 	}
 }
@@ -509,11 +520,22 @@ func TestMemoryMalformedDiagnosticIsEntirelyBoundedAndUTF8Safe(t *testing.T) {
 	}
 
 	root := commandRepo(t)
+	unknownFlag := "--" + strings.Repeat("é", 30000)
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "read", "missing", unknownFlag)
+	if code != 2 || stdout != "" || len(stderr) > 51200 || !strings.HasPrefix(stderr, "condition: awf: awf read: unknown flag ") || !strings.HasSuffix(stderr, "\n") || !utf8.ValidString(stderr) {
+		t.Fatalf("oversized unknown flag code=%d stdout=%q stderr bytes=%d valid=%t", code, stdout, len(stderr), utf8.ValidString(stderr))
+	}
+
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "read", "bad_slug")
+	if code != 2 || stdout != "" || stderr != "condition: awf: usage: awf effort memory read requires a canonical 1-63-byte slug\n" {
+		t.Fatalf("memory grammar code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+
 	unknownKey := strings.Repeat("é", 30000)
 	oldStdin := stdin
 	stdin = strings.NewReader(`{"edits":[{"oldText":"x","newText":"y"}],"` + unknownKey + `":true}`)
 	t.Cleanup(func() { stdin = oldStdin })
-	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "edit", "missing")
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "missing")
 	if code == 0 || stdout != "" {
 		t.Fatalf("oversized malformed request code=%d stdout=%q", code, stdout)
 	}
@@ -621,6 +643,10 @@ func commandRepo(t *testing.T) string {
 type effortErrorWriter struct{}
 
 func (effortErrorWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
+
+type effortShortWriter struct{}
+
+func (effortShortWriter) Write(value []byte) (int, error) { return len(value) - 1, nil }
 
 func TestEffortOutputAndGrammarBranches(t *testing.T) {
 	root := commandRepo(t)

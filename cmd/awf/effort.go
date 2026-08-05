@@ -81,6 +81,9 @@ func openCheckout(root string) (worktree.Runner, error) { return awfgit.Open(roo
 
 func runEffort(c *cmdCtx, compose composeEffort) error {
 	if err := validateEffortGrammar(c); err != nil {
+		if c.sub == "memory" || strings.HasPrefix(c.sub, "memory ") {
+			return &usageErr{boundedMemoryCommandError(err).Error()}
+		}
 		return err
 	}
 	var editRequest *memoryEditRequest
@@ -595,8 +598,14 @@ func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResul
 	if len(raw) > 1<<20 {
 		return errors.New("memory protocol reply exceeds 1 MiB")
 	}
-	_, err = out.Write(raw)
-	return err
+	n, err := out.Write(raw)
+	if err != nil {
+		return err
+	}
+	if n != len(raw) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 // writeEffortActivityProtocol writes the documented activity JSON protocol.

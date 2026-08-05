@@ -129,7 +129,11 @@ func TestMemoryReadPaginationBoundariesAndLegacyInput(t *testing.T) {
 // invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryEditOriginalBodyMatchingAndAtomicRefusals)
 func TestMemoryEditOriginalBodyMatchingAndAtomicRefusals(t *testing.T) {
 	root := initEffortRepo(t)
-	service := openTestService(t, root, nil)
+	now := time.Date(2026, 8, 6, 7, 8, 9, 0, time.UTC)
+	clockCalls := 0
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.Clock = func() time.Time { clockCalls++; return now }
+	})
 	if _, err := service.New(testContext(t), NewInput{Slug: "exact-edits", Title: "Exact edits"}); err != nil {
 		t.Fatal(err)
 	}
@@ -182,9 +186,18 @@ func TestMemoryEditOriginalBodyMatchingAndAtomicRefusals(t *testing.T) {
 	}
 
 	writeMemoryFixture(t, path, "exact-edits", []byte("unchanged"))
+	clockCalls = 0
 	got, err = service.Memory(MemoryEditInput{Slug: "exact-edits", Edits: []MemoryReplacement{{OldText: "unchanged", NewText: "unchanged"}}})
-	if err != nil || got.Condition != MemoryEdited || got.Diff.FirstChangedLine != nil || got.Diff.Text != "" {
-		t.Fatalf("no-op=%#v err=%v", got, err)
+	if err != nil || got.Condition != MemoryEdited || got.Diff.FirstChangedLine != nil || got.Diff.Text != "" || got.Memory.Updated != now.Format(time.RFC3339Nano) || clockCalls != 1 {
+		t.Fatalf("no-op=%#v clock calls=%d err=%v", got, clockCalls, err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	persisted, _, err := readMemoryMetadata(raw, "exact-edits")
+	if err != nil || persisted.Updated != now.Format(time.RFC3339Nano) {
+		t.Fatalf("no-op persisted metadata=%#v err=%v", persisted, err)
 	}
 }
 
@@ -197,6 +210,10 @@ func TestMemoryOperationOwnerInspectionDoesNotRequireValidMutableMetadata(t *tes
 	}
 	path := service.paths.memoryFile("owner-check")
 
+	absentResident, err := service.Memory(MemoryReadInput{Slug: "absent-owner-check", Owner: testIDA})
+	if err != nil || absentResident.Condition != MemoryMissing {
+		t.Fatalf("absent effort resident=%#v err=%v", absentResident, err)
+	}
 	missing, err := service.Memory(MemoryReadInput{Slug: "owner-check", Owner: testIDA})
 	if err != nil || missing.Condition != MemoryMissing {
 		t.Fatalf("missing activity=%#v err=%v", missing, err)
@@ -224,6 +241,28 @@ func TestMemoryOperationOwnerInspectionDoesNotRequireValidMutableMetadata(t *tes
 	unsafe, err := service.Memory(MemoryReadInput{Slug: "owner-check", Owner: testIDA})
 	if err != nil || unsafe.Condition != MemoryUnsafeActivity {
 		t.Fatalf("unsafe activity=%#v err=%v", unsafe, err)
+	}
+
+	// A staged activity-shaped resident cannot be inspected ahead of effort
+	// resident validation: both absent state and an unsafe extra leaf win.
+	state := service.paths.stateFile("owner-check")
+	if err := os.Remove(state); err != nil {
+		t.Fatal(err)
+	}
+	unsafe, err = service.Memory(MemoryReadInput{Slug: "owner-check", Owner: testIDA})
+	if err != nil || unsafe.Condition != MemoryMissing {
+		t.Fatalf("absent state before unsafe activity=%#v err=%v", unsafe, err)
+	}
+	if err := os.WriteFile(state, []byte(`{"schemaVersion":2,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":"owner-check","title":"Owner check","createdAt":"2026-08-05T14:15:16.123456789Z"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	foreign := filepath.Join(filepath.Dir(path), "foreign")
+	if err := os.WriteFile(foreign, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	unsafe, err = service.Memory(MemoryReadInput{Slug: "owner-check", Owner: testIDA})
+	if err != nil || unsafe.Condition != MemoryUnsafe {
+		t.Fatalf("unsafe effort resident before unsafe activity=%#v err=%v", unsafe, err)
 	}
 }
 
@@ -295,6 +334,22 @@ func TestMemoryEditResultBoundsAndDiffBounds(t *testing.T) {
 	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "OLD", NewText: "NEW"}}})
 	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) != 51200 {
 		t.Fatalf("bounded diff=%#v err=%v", got, err)
+	}
+
+	// These literal fixture sizes make the complete diff exactly 50 KiB, then
+	// one byte over it, without relying on the production bound.
+	exactDiffBody := strings.Repeat("a", 25589) + "OLD"
+	writeMemoryFixture(t, path, "bounded-edit", []byte(exactDiffBody))
+	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "OLD", NewText: "NEW"}}})
+	if err != nil || got.Condition != MemoryEdited || got.Diff.Truncated || len(got.Diff.Text) != 51200 {
+		t.Fatalf("literal exact diff=%#v err=%v", got, err)
+	}
+
+	overDiffBody := strings.Repeat("b", 25591) + "X"
+	writeMemoryFixture(t, path, "bounded-edit", []byte(overDiffBody))
+	got, err = service.Memory(MemoryEditInput{Slug: "bounded-edit", Edits: []MemoryReplacement{{OldText: "X", NewText: "XY"}}})
+	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) != 51200 {
+		t.Fatalf("literal over-limit diff=%#v err=%v", got, err)
 	}
 }
 
