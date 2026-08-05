@@ -12,4 +12,4 @@ The presentation package is the code-design-owned representation boundary for or
 ### `rule: presentation-package-boundary`
 
 `internal/presentation` depends only on the Go standard library and owns presentation representation, syntax validation, and rendering without domain result semantics.
-Origin: ADR-structured-agent-oriented-cli-presentation
+Origin: ADR-0234

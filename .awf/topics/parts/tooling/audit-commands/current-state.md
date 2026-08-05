@@ -48,5 +48,5 @@ Backing: test
 
 Every finding rank awf reports remains exactly error or warn: one shared two-member rank backs the audit findings, the repo-local audit tool, and current-state topic coverage, and no serialized finding rank becomes warning. Readable presentation groups may use only the plural section labels errors and warnings.
 Origin: ADR-0183
-Revised-by: ADR-structured-agent-oriented-cli-presentation
+Revised-by: ADR-0234
 Backing: test

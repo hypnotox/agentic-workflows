@@ -26,7 +26,7 @@ and so on, and a cause present exactly when the condition observes a failed call
 When no axis moved, the steps address only the condition; when any axis moved, the steps
 address the residue before retrying.
 Origin: ADR-0199
-Revised-by: ADR-structured-agent-oriented-cli-presentation
+Revised-by: ADR-0234
 Backing: unbacked
 Verify: For each changed outcome site, check the category against the vocabulary, the condition's tense against observed state, each changed axis against what the operation could move, rendering through central Steps with independently executable numbered entries, and the remedy against the movement rule: condition-only steps when nothing moved, residue-first steps when anything did.
 ### `invariant: typed-outcome-for-caller-branching`

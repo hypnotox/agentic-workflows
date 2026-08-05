@@ -4,7 +4,7 @@ slug: structured-agent-oriented-cli-presentation
 status: Implementing
 date: 2026-08-04
 ---
-# ADR-structured-agent-oriented-cli-presentation: Structured Agent-Oriented CLI Presentation
+# ADR-0234: Structured Agent-Oriented CLI Presentation
 
 
 ## Context
