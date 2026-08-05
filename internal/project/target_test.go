@@ -127,12 +127,12 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 		"remote-pi:display-suffix:set",
 		"remote-pi:display-suffix:request",
 		"displaySuffix",
-		"{value:string|null}",
-		`suffixSupported&&current?current.slug:null`,
-		`pi.on?.("session_start",(_event:any)=>{clear();requestCapabilities()})`,
-		`pi.events?.on?.("remote-pi:display-suffix:request",()=>publishSuffix())`,
-		`pi.events?.on?.("remote-pi:capabilities",(caps:RemotePiCapabilitiesReplyPayload)=>{suffixSupported=supportsDisplaySuffix(caps);publishSuffix()})`,
-		`emit("remote-pi:metadata:set",{namespace:"awf",value:x?`,
+		"value: string | null",
+		`suffixSupported && current ? current.slug : null`,
+		`pi.on?.("session_start", () => { clear(); requestCapabilities(); })`,
+		`pi.events?.on?.("remote-pi:display-suffix:request", () => publishSuffix())`,
+		`pi.events?.on?.("remote-pi:capabilities", (caps: RemotePiCapabilitiesReplyPayload) => { suffixSupported = supportsDisplaySuffix(caps); publishSuffix(); })`,
+		`namespace: "awf", value: snapshot ?`,
 	} {
 		if !strings.Contains(effort, required) {
 			t.Errorf("awf effort extension lacks display-suffix behavior %q", required)

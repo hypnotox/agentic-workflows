@@ -16,8 +16,10 @@ import {
   ModelRuntime,
   SessionManager,
   SettingsManager,
+  withFileMutationQueue,
 } from "@earendil-works/pi-coding-agent";
 import { contextUsageLine, registerContextUsage } from "../../../.pi/extensions/awf-context-usage/index.ts";
+import { registerEffort } from "../../../.pi/extensions/awf-effort/index.ts";
 import { handoffEnvelope } from "../../../.pi/extensions/awf-handoff/index.ts";
 import { registerSubagentTools, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
 import { PREFERENCE_FIELDS } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
@@ -111,6 +113,7 @@ async function runPinnedSession(activeTools: string[], handoffKickoff?: string):
     ? [
       (pi: any) => registerSubagentTools(pi, deps),
       (pi: any) => registerContextUsage(pi, { packageVersion: "0.81.1" }),
+      (pi: any) => registerEffort(pi, { packageVersion: "0.81.1", fileMutationQueue: withFileMutationQueue }),
     ]
     : [
       (pi: any) => pi.registerCommand("runtime-agent-handoff", {
@@ -229,6 +232,12 @@ const expectedRegistrations = [
     handlers: ["session_start", "before_agent_start", "tool_call", "tool_result"],
   },
   { tools: [], commands: [], flags: [], handlers: ["context"] },
+  {
+    tools: ["using_effort", "effort_memory_read", "effort_memory_edit", "effort_memory_update"],
+    commands: [],
+    flags: [],
+    handlers: ["context", "turn_end", "session_start", "session_shutdown"],
+  },
 ];
 
 test("pinned replacement runtime persists and renders agent-owned handoff", async () => {
