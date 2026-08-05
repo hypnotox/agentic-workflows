@@ -149,3 +149,4 @@ and error semantics unchanged.
 - 2026-08-04: Applied; operations: update `tooling/cli:effort-command-contract`
 - 2026-08-04: Applied; operations: update `tooling/audit-commands:severity-single-spelling`
 - 2026-08-05: Amended; content-sha256: 280ce5ee0878e27b8b65d305a8f9bb97840add53a20588027768100227ad5f5b
+- 2026-08-05: Applied; operations: update `tooling/cli:repo-check-capability-plan`

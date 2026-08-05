@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Features
 
-- Checks and audits now collect complete structured reports before rendering, preserving source-ordered findings and separating produced failures from operational diagnostics. Upgrade mutations now identify every applied migration and report proven changed axes with recovery steps if terminal sync fails.
+- Checks and audits now collect complete structured reports before rendering, grouping errors before warnings while preserving source order within each category and separating produced failures from operational diagnostics. Upgrade mutations now identify every applied migration and report proven changed axes with recovery steps if terminal sync fails.
 
 - Render, effort, and managed-worktree commands now use readable typed output. Convenience JSON for `awf effort new`, `list`, and `show` is retired; activity JSON remains the byte-exact protocol.
 
