@@ -12,7 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-// invariant: config/migrations-and-locks:structural-heading-part-migration (TestStructuralHeadingsMigration)
+// invariant: config/migrations-and-locks:structural-heading-part-migration (TestStructuralHeadingsCompleteCutoverFixture)
 // TestStructuralHeadingsCompleteCutoverFixture proves the frozen literal covers
 // the entire declaration-derived cutover population, rather than only the parts
 // this adopter happened to override before schema 36.
@@ -57,8 +57,32 @@ func TestStructuralHeadingsMigration(t *testing.T) {
 		"docs/parts/future/body.md":               "## Future heading\nbody\n",
 	})
 	before := snapshotTree(t, root)
-	if err := applyStructuralHeadings(root, io.Discard); err == nil {
+	err := applyStructuralHeadings(root, io.Discard)
+	if err == nil {
 		t.Fatal("multiple/custom leading headings must refuse")
+	}
+	refusal := err.Error()
+	ordered := []string{
+		"operation:",
+		".awf/docs/parts/development/setup.md",
+		`exact removable heading "## Setup"`,
+		"changed bytes: no",
+		"changed index: no",
+		"changed message: no",
+		"changed merge state: no",
+		"next actions: 1. edit .awf/docs/parts/development/setup.md",
+		"2. run `awf upgrade`",
+	}
+	position := -1
+	for _, clause := range ordered {
+		next := strings.Index(refusal[position+1:], clause)
+		if next < 0 {
+			t.Fatalf("refusal missing ordered clause %q: %s", clause, refusal)
+		}
+		position += next + 1
+	}
+	if strings.Contains(refusal, "cause:") {
+		t.Fatalf("operation refusal must carry no cause: %s", refusal)
 	}
 	if !sameSnapshot(before, snapshotTree(t, root)) {
 		t.Fatal("preflight refusal changed fixture bytes")
@@ -138,5 +162,20 @@ func TestStructuralHeadingsRetryAfterWriteFailure(t *testing.T) {
 	}
 	if err := applyStructuralHeadings(root, io.Discard); err != nil {
 		t.Fatalf("retry = %v", err)
+	}
+}
+
+type structuralHeadingFailWriter struct{ err error }
+
+func (w structuralHeadingFailWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func TestStructuralHeadingsReportsAnnouncementFailure(t *testing.T) {
+	root := closeFixture(t, "prefix: ex\n", map[string]string{
+		"docs/parts/testing/gate.md": "## The gate\nbody\n",
+	})
+	injected := errors.New("announcement failed")
+	err := applyStructuralHeadings(root, structuralHeadingFailWriter{err: injected})
+	if !errors.Is(err, injected) || !strings.Contains(err.Error(), "announce structural-heading update") {
+		t.Fatalf("announcement failure = %v", err)
 	}
 }

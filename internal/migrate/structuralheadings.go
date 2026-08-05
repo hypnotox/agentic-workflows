@@ -213,7 +213,7 @@ func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structu
 			var err error
 			paths, err = filepath.Glob(pattern)
 			if err != nil { // coverage-ignore: the frozen migration contains only compile-time-valid glob patterns
-				return err
+				return fmt.Errorf("expand structural-heading part pattern %s: %w", entry.path, err)
 			}
 		}
 		for _, path := range paths {
@@ -222,7 +222,7 @@ func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structu
 				continue
 			}
 			if err != nil { // coverage-ignore: a path read immediately above can only fail here through an OS-specific directory or permission fault; migration callers surface it unchanged
-				return err
+				return fmt.Errorf("read structural-heading part %s: %w", path, err)
 			}
 			start := leadingStructuralOffset(source)
 			remaining := source[start:]
@@ -243,7 +243,7 @@ func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structu
 				}
 				info, err := os.Stat(path)
 				if err != nil { // coverage-ignore: the file was read in this preflight and no concurrent filesystem mutation is representable by migration input
-					return err
+					return fmt.Errorf("stat structural-heading part %s: %w", path, err)
 				}
 				updated := append([]byte{}, source[:start]...)
 				updated = append(updated, after...)
@@ -257,10 +257,15 @@ func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structu
 	}
 	for _, e := range edits {
 		if err := write(e.path, e.updated, e.mode); err != nil {
-			return err
+			return fmt.Errorf("write structural-heading part %s: %w", e.path, err)
 		}
-		rel, _ := filepath.Rel(root, e.path)
-		fmt.Fprintf(out, "structural-headings: updated %s\n", filepath.ToSlash(rel))
+		rel, err := filepath.Rel(root, e.path)
+		if err != nil { // coverage-ignore: every edit path is constructed below root from a frozen relative path or its rooted glob matches
+			return fmt.Errorf("relativize structural-heading part %s: %w", e.path, err)
+		}
+		if _, err := fmt.Fprintf(out, "structural-headings: updated %s\n", filepath.ToSlash(rel)); err != nil {
+			return fmt.Errorf("announce structural-heading update for %s: %w", e.path, err)
+		}
 	}
 	return nil
 }
@@ -298,7 +303,10 @@ func firstLineIsATX(source []byte) bool {
 }
 
 func structuralHeadingRefusal(root, path, heading string) error {
-	rel, _ := filepath.Rel(root, path)
+	rel, err := filepath.Rel(root, path)
+	if err != nil { // coverage-ignore: migration paths are rooted descendants, so Rel cannot fail for supported filesystem inputs
+		rel = path
+	}
 	rel = filepath.ToSlash(rel)
 	return fmt.Errorf("operation: structural-heading migration refuses because %s must begin with the exact removable heading %q or unambiguously body content; changed bytes: no; changed index: no; changed message: no; changed merge state: no; next actions: 1. edit %s so its leading heading is %q or body content 2. run `awf upgrade`", rel, heading, rel, heading)
 }

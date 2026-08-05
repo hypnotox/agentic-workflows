@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -146,5 +147,56 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	}
 	if strings.Contains(string(b), directive) || strings.Contains(string(b), "awf:comment") {
 		t.Errorf("the embedded template's qualified authoring comment leaked into rendered output:\n%s", b)
+	}
+}
+
+func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part := p.Cfg.PartPath("docs", "architecture", "overview")
+	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(part, []byte("PART BODY\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sc, err := p.Cfg.Sidecar("docs", "architecture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := p.Cat.Docs["architecture"]
+	cases := []struct {
+		name        string
+		options     *renderOutputOptions
+		wantHeading bool
+	}{
+		{"ordinary Markdown", nil, true},
+		{"generated Markdown", &renderOutputOptions{encoder: MarkdownAgentDialect}, true},
+		{"Markdown target", &renderOutputOptions{encoder: MarkdownAgentDialect, bannerStyle: render.HTMLComment}, true},
+		{"plain target", &renderOutputOptions{encoder: PlainAgentDialect, bannerStyle: render.SlashComment}, false},
+		{"plain conditional", &renderOutputOptions{encoder: PlainAgentDialect}, false},
+		{"plain resident", &renderOutputOptions{encoder: PlainAgentDialect}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := []*renderOutputOptions{}
+			if tc.options != nil {
+				args = append(args, tc.options)
+			}
+			file, err := p.renderTarget("docs", "architecture", entry.TID, entry.Sections, sc,
+				p.data(sc, map[string]bool{}), "out.md", map[string]bool{}, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Contains(file.Content, "## Overview"); got != tc.wantHeading {
+				t.Fatalf("structural heading present = %v, want %v:\n%s", got, tc.wantHeading, file.Content)
+			}
+			if !strings.Contains(file.Content, "PART BODY") {
+				t.Fatalf("part body missing:\n%s", file.Content)
+			}
+		})
 	}
 }
