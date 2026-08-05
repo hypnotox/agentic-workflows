@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Render completeness now derives conditional config-tree units and live template identities from their existing catalog, kind, target, and singleton declarations. Config-reference live values use one exhaustive typed classification for generated documentation and CLI presentation, and singleton template conditionals are checked against their artifact-specific live contexts.
+
 - Authored current-state transactions may now append several distinct-target Applied or Reapplied batches and any exact-prefix legal Status progression, while repeated same-claim occurrences remain separately observable and merge-only folding stays provenance-gated. Historical audit applies the same rule to retained non-merge commits.
 
 - Plan authoring and review now scope material verification to its actual lifecycle snapshot, require demonstrated negative cases for mechanical checks, and distinguish authority, state, and choreography constraints so durable properties are preserved without enforcing unnecessary process shape.
