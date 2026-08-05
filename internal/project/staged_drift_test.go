@@ -14,27 +14,47 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftDetectsBinaryDerivedOutput)
-func TestStagedDriftDetectsBinaryDerivedOutput(t *testing.T) {
+// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftClassifiesFreshnessBeforeObservation)
+func TestStagedDriftClassifiesFreshnessBeforeObservation(t *testing.T) {
 	const path = "ordinary-output"
-	tree, err := snapshot.NewTree([]snapshot.File{{Path: path, Mode: snapshot.Regular, Bytes: []byte("hand edit")}})
-	if err != nil {
-		t.Fatal(err)
-	}
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		path: {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
 	}}
 	rendered := map[string]RenderedFile{
 		path: {Path: path, Content: "fresh render", TemplateHash: "template", ConfigHash: "config"},
 	}
-	got, err := checkStagedRenderedFiles(lock, rendered, snapshotTreeReader{tree: tree}, true)
-	if err != nil {
-		t.Fatal(err)
-	}
 	want := []manifest.Drift{{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"}}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("staged binary-derived drift = %#v, want %#v", got, want)
+	assertStale := func(t *testing.T, reader ProjectTreeReader) {
+		t.Helper()
+		got, err := checkStagedRenderedFiles(lock, rendered, reader, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("staged binary-derived drift = %#v, want %#v", got, want)
+		}
 	}
+	t.Run("before hand edit", func(t *testing.T) {
+		tree, err := snapshot.NewTree([]snapshot.File{{Path: path, Mode: snapshot.Regular, Bytes: []byte("hand edit")}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertStale(t, snapshotTreeReader{tree: tree})
+	})
+	t.Run("before missing", func(t *testing.T) {
+		tree, err := snapshot.NewTree(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertStale(t, snapshotTreeReader{tree: tree})
+	})
+	t.Run("before read failure", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.Mkdir(filepath.Join(root, path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		assertStale(t, filesystemProjectReader{root: root})
+	})
 }
 
 func TestCheckStagedDriftErrorPaths(t *testing.T) {
@@ -95,6 +115,7 @@ func TestCheckStagedDriftErrorPaths(t *testing.T) {
 }
 
 // invariant: rendering/sync-and-drift:staged-drift-rendered-output (TestStagedDriftRenderedOutputInvariant)
+// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestStagedDriftRenderedOutputInvariant)
 func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: ".awf/efforts/.gitignore", Mode: snapshot.Regular, Bytes: []byte("resident edit")},
@@ -139,7 +160,7 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 		"ordinary-binary":         {Path: "ordinary-binary", Content: "fresh", TemplateHash: "template", ConfigHash: "config"},
 		"ordinary-edit":           {Path: "ordinary-edit", Content: "same", TemplateHash: "template", ConfigHash: "config"},
 		"ordinary-clean":          {Path: "ordinary-clean", Content: "same", TemplateHash: "template", ConfigHash: "config"},
-		"ordinary-missing":        {Path: "ordinary-missing", TemplateHash: "template", ConfigHash: "config"},
+		"ordinary-missing":        {Path: "ordinary-missing", Content: "same", TemplateHash: "template", ConfigHash: "config"},
 		"dead-reference.md":       {Path: "dead-reference.md", Content: "[missing](absent.md)", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ScanReferences: true}},
 		"invalid-frontmatter.md":  {Path: "invalid-frontmatter.md", Content: "not frontmatter", TemplateHash: "template", ConfigHash: "config", Policy: OutputPolicy{ValidateFrontmatter: true}},
 		"missing-provenance.md":   {Path: "missing-provenance.md", Content: "no generated banner", TemplateHash: "template", ConfigHash: "config"},
@@ -168,10 +189,15 @@ func TestStagedDriftRenderedOutputInvariant(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "fault"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	faultLock := &manifest.Lock{Files: map[string]manifest.Entry{"fault": {}}}
+	faultLock := &manifest.Lock{Files: map[string]manifest.Entry{"fault": {OutputHash: manifest.Hash(nil)}}}
+	faultReader := filesystemProjectReader{root: root}
 	faultRendered := map[string]RenderedFile{"fault": {Path: "fault"}}
-	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, filesystemProjectReader{root: root}, true); err == nil {
-		t.Fatal("staged comparison erased an output read fault")
+	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, faultReader, true); err == nil {
+		t.Fatal("staged comparison erased an ordinary output read fault")
+	}
+	faultRendered["fault"] = RenderedFile{Path: "fault", Policy: OutputPolicy{Regenerate: true}}
+	if _, err := checkStagedRenderedFiles(faultLock, faultRendered, faultReader, true); err == nil {
+		t.Fatal("staged comparison erased a regenerated output read fault")
 	}
 
 	// Dirty working output and config must not contaminate the staged comparison.

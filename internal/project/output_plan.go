@@ -443,13 +443,16 @@ type OutputNode struct {
 // sync, manifest/prune, checks, and planned-output reporting.
 type OutputPlan struct{ Nodes []OutputNode }
 
-// classifyFrozenOutputDrift compares an ordinary planned output to its locked
-// bytes before attributing an observed difference to a hand edit. Both ordinary
-// and staged drift consume this one classification.
-func classifyFrozenOutputDrift(file RenderedFile, entry manifest.Entry, observed []byte, observedDetail string) (manifest.Drift, bool) {
+// classifyFrozenOutputFreshness compares an ordinary planned output to its
+// locked bytes before either drift surface observes a worktree or staged file.
+func classifyFrozenOutputFreshness(file RenderedFile, entry manifest.Entry) (manifest.Drift, bool) {
 	if manifest.Hash([]byte(file.Content)) != entry.OutputHash {
 		return manifest.Drift{Path: file.Path, Kind: "stale", Detail: "rendered output out of date; run awf render"}, true
 	}
+	return manifest.Drift{}, false
+}
+
+func classifyFrozenObservedDrift(file RenderedFile, entry manifest.Entry, observed []byte, observedDetail string) (manifest.Drift, bool) {
 	if manifest.Hash(observed) != entry.OutputHash {
 		return manifest.Drift{Path: file.Path, Kind: "hand-edited", Detail: observedDetail}, true
 	}

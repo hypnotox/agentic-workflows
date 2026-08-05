@@ -615,12 +615,16 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"})
 			continue
 		}
+		if finding, found := classifyFrozenOutputFreshness(rf, e); found {
+			drift = append(drift, finding)
+			continue
+		}
 		onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 		if err != nil {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 			continue
 		}
-		if finding, found := classifyFrozenOutputDrift(rf, e, onDisk, "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
+		if finding, found := classifyFrozenObservedDrift(rf, e, onDisk, "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
 			drift = append(drift, finding)
 			continue
 		}

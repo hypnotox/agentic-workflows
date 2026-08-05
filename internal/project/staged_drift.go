@@ -71,11 +71,11 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 		if !produced {
 			continue
 		}
-		staged, present, err := read.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
 		if file.Policy.Regenerate {
+			staged, present, err := read.ReadFile(path)
+			if err != nil {
+				return nil, err
+			}
 			if present && manifest.Hash(staged) != manifest.Hash([]byte(file.Content)) {
 				kind, detail := "stale", "generated output out of date; run awf render"
 				if file.TemplateID != "" {
@@ -89,8 +89,16 @@ func checkStagedRenderedFiles(lock *manifest.Lock, rendered map[string]RenderedF
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"})
 			continue
 		}
+		if finding, found := classifyFrozenOutputFreshness(file, entry); found {
+			drift = append(drift, finding)
+			continue
+		}
+		staged, present, err := read.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
 		if present {
-			if finding, found := classifyFrozenOutputDrift(file, entry, staged, "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
+			if finding, found := classifyFrozenObservedDrift(file, entry, staged, "staged output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
 				drift = append(drift, finding)
 			}
 		}

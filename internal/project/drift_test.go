@@ -69,23 +69,80 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestCheckLockedFilesDetectsBinaryDerivedDrift)
-func TestCheckLockedFilesDetectsBinaryDerivedDrift(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
+// invariant: rendering/sync-and-drift:ordinary-render-freshness (TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation)
+func TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation(t *testing.T) {
 	const path = "ordinary-output"
-	testsupport.WriteFile(t, filepath.Join(root, path), "hand edit")
-	file := RenderedFile{Path: path, Content: "fresh render", TemplateHash: "template", ConfigHash: "config"}
-	lock := &manifest.Lock{Files: map[string]manifest.Entry{
-		path: {TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
-	}}
-	got := p.checkLockedFiles(lock, map[string]RenderedFile{path: file})
-	want := []manifest.Drift{{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"}}
-	if !slices.Equal(got, want) {
-		t.Fatalf("binary-derived drift = %#v, want %#v", got, want)
+	text := func(value string) *string { return &value }
+	tests := []struct {
+		name     string
+		observed *string
+		file     RenderedFile
+		entry    manifest.Entry
+		want     []manifest.Drift
+	}{
+		{
+			name:     "binary-derived stale precedes hand edit",
+			observed: text("hand edit"),
+			file:     RenderedFile{Path: path, Content: "fresh render", TemplateHash: "template", ConfigHash: "config"},
+			entry:    manifest.Entry{TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
+			want:     []manifest.Drift{{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"}},
+		},
+		{
+			name:  "binary-derived stale precedes missing",
+			file:  RenderedFile{Path: path, Content: "fresh render", TemplateHash: "template", ConfigHash: "config"},
+			entry: manifest.Entry{TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
+			want:  []manifest.Drift{{Path: path, Kind: "stale", Detail: "rendered output out of date; run awf render"}},
+		},
+		{
+			name:     "hand edited",
+			observed: text("hand edit"),
+			file:     RenderedFile{Path: path, Content: "locked output", TemplateHash: "template", ConfigHash: "config"},
+			entry:    manifest.Entry{TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
+			want:     []manifest.Drift{{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"}},
+		},
+		{
+			name:     "clean",
+			observed: text("locked output"),
+			file:     RenderedFile{Path: path, Content: "locked output", TemplateHash: "template", ConfigHash: "config"},
+			entry:    manifest.Entry{TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
+		},
+		{
+			name:  "missing after fresh match",
+			file:  RenderedFile{Path: path, Content: "locked output", TemplateHash: "template", ConfigHash: "config"},
+			entry: manifest.Entry{TemplateHash: "template", ConfigHash: "config", OutputHash: manifest.Hash([]byte("locked output"))},
+			want:  []manifest.Drift{{Path: path, Kind: "missing", Detail: "file absent; run awf render"}},
+		},
+		{
+			name:     "regenerated policy retained",
+			observed: text("old"),
+			file:     RenderedFile{Path: path, Content: "new", Policy: OutputPolicy{Regenerate: true}},
+			entry:    manifest.Entry{},
+			want:     []manifest.Drift{{Path: path, Kind: "stale", Detail: "generated output out of date; run awf render"}},
+		},
+		{
+			name:     "in-place policy retained",
+			observed: text("old"),
+			file:     RenderedFile{Path: path, Content: "new", TemplateID: "template", Policy: OutputPolicy{Regenerate: true}},
+			entry:    manifest.Entry{},
+			want:     []manifest.Drift{{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf render to restore awf-owned regions"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.observed != nil {
+				testsupport.WriteFile(t, filepath.Join(root, path), *tt.observed)
+			}
+			lock := &manifest.Lock{Files: map[string]manifest.Entry{path: tt.entry}}
+			got := p.checkLockedFiles(lock, map[string]RenderedFile{path: tt.file})
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("drift = %#v, want %#v", got, tt.want)
+			}
+		})
 	}
 }
 
