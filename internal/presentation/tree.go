@@ -256,7 +256,7 @@ func validateList(list List) error {
 	return nil
 }
 func validateSteps(steps Steps) error {
-	if err := validateLabel(steps.label); err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+	if err := validateLabel(steps.label); err != nil {
 		return err
 	}
 	if len(steps.values) == 0 {

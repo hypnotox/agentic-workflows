@@ -3,6 +3,7 @@ package presentation
 import (
 	"bytes"
 	"errors"
+	"io"
 	"testing"
 )
 
@@ -13,12 +14,24 @@ type promptWriter struct {
 }
 type failingPromptWriter struct{}
 type failSecondWrite struct{ writes int }
+type shortPromptWriter struct {
+	writes  int
+	shortAt int
+}
 
 func (failingPromptWriter) Write([]byte) (int, error) { return 0, errors.New("write") }
 func (w *failSecondWrite) Write(p []byte) (int, error) {
 	w.writes++
 	if w.writes == 2 {
 		return 0, errors.New("tail write")
+	}
+	return len(p), nil
+}
+
+func (w *shortPromptWriter) Write(p []byte) (int, error) {
+	w.writes++
+	if w.writes == w.shortAt {
+		return len(p) - 1, nil
 	}
 	return len(p), nil
 }
@@ -64,6 +77,11 @@ func TestPrompt(t *testing.T) {
 	}
 	if err := Prompt(&failSecondWrite{}, document, value); err == nil {
 		t.Fatal("tail write error accepted")
+	}
+	for _, shortAt := range []int{1, 2} {
+		if err := Prompt(&shortPromptWriter{shortAt: shortAt}, document, value); !errors.Is(err, io.ErrShortWrite) {
+			t.Errorf("short write %d error = %v", shortAt, err)
+		}
 	}
 	writer.flushErr = errors.New("flush")
 	if err := Prompt(writer, document, value); !errors.Is(err, writer.flushErr) {

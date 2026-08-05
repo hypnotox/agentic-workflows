@@ -19,11 +19,16 @@ func Prompt(dst io.Writer, prelude Document, tail Value) error {
 	if err := tail.validate(); err != nil {
 		return fmt.Errorf("presentation prompt tail: %w", err)
 	}
-	if _, err := dst.Write(rendered.Bytes()); err != nil {
+	if written, err := dst.Write(rendered.Bytes()); err != nil {
 		return fmt.Errorf("write presentation: %w", err)
+	} else if written != rendered.Len() {
+		return fmt.Errorf("write presentation: %w", io.ErrShortWrite)
 	}
-	if _, err := io.WriteString(dst, "prompt: "+tail.text); err != nil {
+	prompt := "prompt: " + tail.text
+	if written, err := io.WriteString(dst, prompt); err != nil {
 		return fmt.Errorf("write prompt: %w", err)
+	} else if written != len(prompt) {
+		return fmt.Errorf("write prompt: %w", io.ErrShortWrite)
 	}
 	if flush, ok := dst.(interface{ Flush() error }); ok {
 		if err := flush.Flush(); err != nil {

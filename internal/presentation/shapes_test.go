@@ -137,6 +137,7 @@ func TestPresentationTreeContract(t *testing.T) {
 		func() error { _, e := NewRecord(); return e }(),
 		func() error { _, e := NewSection("Bad", f); return e }(),
 		func() error { _, e := NewList("Bad", v("one")); return e }(),
+		func() error { _, e := NewSteps("Bad", v("one")); return e }(),
 		func() error { _, e := NewRecordGroup("Bad", []string{"one", "two"}, r1); return e }(),
 		func() error { _, e := NewRecord(value{}); return e }(),
 		func() error { _, e := NewDocument(badNode{}); return e }(),
