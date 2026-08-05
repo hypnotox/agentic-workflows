@@ -38,17 +38,15 @@ func TestOneSpellingAcrossEveryRankSurface(t *testing.T) {
 	for _, tc := range []struct {
 		what string
 		got  string
+		want string
 	}{
-		{"severity.Error", severity.Error.String()},
-		{"severity.Warn", severity.Warn.String()},
-		{"audit.Finding", audit.Finding{Severity: severity.Warn}.Severity.String()},
-		{"topic.CoverageFinding", topic.CoverageFinding{Severity: severity.Error}.Severity.String()},
+		{"severity.Error", severity.Error.String(), "error"},
+		{"severity.Warn", severity.Warn.String(), "warn"},
+		{"audit.Finding", audit.Finding{Severity: severity.Warn}.Severity.String(), "warn"},
+		{"topic.CoverageFinding", topic.CoverageFinding{Severity: severity.Error}.Severity.String(), "error"},
 	} {
-		if tc.got != "error" && tc.got != "warn" {
-			t.Errorf("%s renders %q, want error or warn", tc.what, tc.got)
-		}
-		if tc.got == "warning" {
-			t.Errorf("%s renders the retired warning spelling", tc.what)
+		if tc.got != tc.want {
+			t.Errorf("%s renders %q, want %q", tc.what, tc.got, tc.want)
 		}
 	}
 	report, err := audit.Report([]audit.Finding{

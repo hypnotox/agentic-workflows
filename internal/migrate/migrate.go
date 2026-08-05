@@ -5,10 +5,9 @@
 // compile-time catalog (internal/catalog) for the ADR-0081 close-enabled-set
 // migration - a leaf import that keeps this package off the render path.
 //
-// Output convention: a migration that mutates the tree prints one line per
-// performed operation to its out writer, prefixed with its registry Name
-// (`<name>: <op>`), so an upgrade's config changes are readable from the
-// command output rather than git archaeology; a no-op run prints nothing.
+// Migrations collect ordered typed Change values for every performed operation.
+// The command owner presents only terminal results; a no-op run collects no
+// changes.
 package migrate
 
 import (
@@ -325,8 +324,8 @@ func GateState(root string) (string, int, error) {
 }
 
 // Upgrade applies every registered migration with To > Generation(root), in
-// ascending To order, and returns applied names and ordered changes only after
-// the migration run completes. It never accepts a presentation writer.
+// ascending To order, and returns applied names and ordered changes, including
+// facts collected before a migration failure.
 func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
 	from, err := Generation(root)
 	if err != nil {

@@ -48,7 +48,7 @@ func TestRunUpgradeRejectsCorruptOrMissingAuthority(t *testing.T) {
 
 func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
 	failure := errors.New("terminal sync failed")
-	partial := upgradeFailure{applied: []string{"first", "second"}, cause: failure}
+	partial := upgradeFailure{applied: []string{"first", "second"}, changes: []migrate.Change{{Text: "first: changed config"}, {Text: "second: wrote lock"}}, cause: failure}
 	if got := partial.Error(); got != failure.Error() {
 		t.Fatalf("Error() = %q", got)
 	}
@@ -64,9 +64,156 @@ func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
 	if err := presentation.Render(&out, document); err != nil {
 		t.Fatal(err)
 	}
-	want := "condition: upgrade did not reach terminal sync\nstate: partial mutation\ncause: terminal sync failed\n\ndiagnostic:\n  changed:\n    migration: applied: first\n    migration: applied: second\n  steps:\n    step 1: inspect the changed migration axes\n    step 2: run awf upgrade --recover if an upgrade journal exists\n    step 3: restore the project from version control if recovery cannot complete\n"
+	want := "condition: upgrade did not reach terminal sync\nstate: partial mutation\ncause: terminal sync failed\n\ndiagnostic:\n  changed:\n    migration: applied: first\n    migration: applied: second\n    migration: change: first: changed config\n    migration: change: second: wrote lock\n  steps:\n    step 1: inspect the changed migration axes\n    step 2: run awf upgrade --recover if an upgrade journal exists\n    step 3: restore the project from version control if recovery cannot complete\n"
 	if out.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
+	}
+	if _, err := (upgradeFailure{changes: []migrate.Change{{Text: "\n"}}, cause: failure}).Diagnostic(); err == nil {
+		t.Fatal("invalid collected change accepted in diagnostic")
+	}
+}
+
+func TestRunUpgradeFailureRetainsChangesBeforeMigrationFailure(t *testing.T) {
+	root := scaffoldProject(t)
+	failure := errors.New("migration failed")
+	testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
+		return []string{"first"}, []migrate.Change{{Text: "first: changed config"}}, failure
+	})
+	var stdout bytes.Buffer
+	err := runUpgrade(testContext(t), root, &stdout)
+	if !errors.Is(err, failure) {
+		t.Fatalf("upgrade error = %v, want %v", err, failure)
+	}
+	var partial upgradeFailure
+	if !errors.As(err, &partial) {
+		t.Fatalf("upgrade error = %T, want upgradeFailure", err)
+	}
+	if got := partial.applied; len(got) != 1 || got[0] != "first" {
+		t.Fatalf("applied = %v, want [first]", got)
+	}
+	if got := partial.changes; len(got) != 1 || got[0].Text != "first: changed config" {
+		t.Fatalf("changes = %v, want migration fact before failure", got)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want no partial success mutation", stdout.String())
+	}
+}
+
+func TestRunUpgradeGateFailureIsPartialDiagnostic(t *testing.T) {
+	root := scaffoldProject(t)
+	gateFailure := errors.New("post-migration gate failed")
+	testsupport.SwapVar(t, &upgradeMigrate, func(context.Context, string) ([]string, []migrate.Change, error) {
+		return []string{"first", "second"}, []migrate.Change{{Text: "first: changed config"}, {Text: "second: wrote lock"}}, nil
+	})
+	testsupport.SwapVar(t, &upgradeGate, func(context.Context, string) error { return gateFailure })
+	var stdout bytes.Buffer
+	err := runUpgrade(testContext(t), root, &stdout)
+	if !errors.Is(err, gateFailure) {
+		t.Fatalf("upgrade error = %v, want %v", err, gateFailure)
+	}
+	var partial upgradeFailure
+	if !errors.As(err, &partial) {
+		t.Fatalf("upgrade error = %T, want upgradeFailure", err)
+	}
+	if got := partial.applied; strings.Join(got, ",") != "first,second" {
+		t.Fatalf("applied = %v, want [first second]", got)
+	}
+	if got := partial.changes; len(got) != 2 || got[0].Text != "first: changed config" || got[1].Text != "second: wrote lock" {
+		t.Fatalf("changes = %v, want ordered migration facts", got)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want no partial success mutation", stdout.String())
+	}
+	diagnostic, diagnosticErr := partial.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	if diagnostic.Cause != gateFailure.Error() || len(diagnostic.Steps) != 3 {
+		t.Fatalf("diagnostic = %#v, want cause and ordered recovery", diagnostic)
+	}
+}
+
+func TestRunUpgradeRelocatedLockFailuresArePartialDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ name string }{
+		{"load"},
+		{"save"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffoldProject(t)
+			lockBytes, err := os.ReadFile(config.LockPath(root))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.RemoveAll(filepath.Join(root, ".awf")); err != nil {
+				t.Fatal(err)
+			}
+			testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.yaml"), minimalYAML)
+			testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.lock"), string(lockBytes))
+			failure := errors.New(tc.name + " relocated lock failed")
+			testsupport.SwapVar(t, &upgradeMigrate, func(_ context.Context, gotRoot string) ([]string, []migrate.Change, error) {
+				if err := os.MkdirAll(config.RootDir(gotRoot), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				return []string{"relocate"}, []migrate.Change{{Text: "relocate: moved config"}}, nil
+			})
+			switch tc.name {
+			case "load":
+				testsupport.SwapVar(t, &upgradeLoadOptional, func(string) (*manifest.Lock, bool, error) { return nil, false, failure })
+			case "save":
+				testsupport.SwapVar(t, &upgradeSaveLock, func(*manifest.Lock, string) error { return failure })
+			}
+			err = runUpgrade(testContext(t), root, io.Discard)
+			if !errors.Is(err, failure) {
+				t.Fatalf("upgrade error = %v, want %v", err, failure)
+			}
+			var partial upgradeFailure
+			if !errors.As(err, &partial) || len(partial.changes) != 1 || partial.changes[0].Text != "relocate: moved config" {
+				t.Fatalf("upgrade failure = %#v, want retained migration fact", err)
+			}
+		})
+	}
+}
+
+func TestRunUpgradeCompletionMigrationFailureIsPartialDiagnostic(t *testing.T) {
+	root := scaffoldProject(t)
+	lockBytes, err := os.ReadFile(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(root, ".awf")); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.yaml"), minimalYAML)
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.lock"), string(lockBytes))
+	completionFailure := errors.New("completion migration failed")
+	calls := 0
+	testsupport.SwapVar(t, &upgradeMigrate, func(_ context.Context, gotRoot string) ([]string, []migrate.Change, error) {
+		calls++
+		if calls == 1 {
+			if err := os.MkdirAll(config.RootDir(gotRoot), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			return []string{"relocate"}, []migrate.Change{{Text: "relocate: moved config"}}, nil
+		}
+		return []string{"complete"}, []migrate.Change{{Text: "complete: wrote lock"}}, completionFailure
+	})
+	var stdout bytes.Buffer
+	err = runUpgrade(testContext(t), root, &stdout)
+	if !errors.Is(err, completionFailure) {
+		t.Fatalf("upgrade error = %v, want %v", err, completionFailure)
+	}
+	var partial upgradeFailure
+	if !errors.As(err, &partial) {
+		t.Fatalf("upgrade error = %T, want upgradeFailure", err)
+	}
+	if got := strings.Join(partial.applied, ","); got != "relocate,complete" {
+		t.Fatalf("applied = %q, want ordered completion identities", got)
+	}
+	if len(partial.changes) != 2 || partial.changes[1].Text != "complete: wrote lock" {
+		t.Fatalf("changes = %v, want completion fact before failure", partial.changes)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want no partial success mutation", stdout.String())
 	}
 }
 

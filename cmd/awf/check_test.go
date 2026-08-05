@@ -802,26 +802,36 @@ func TestRunCheckStagedError(t *testing.T) {
 	}
 }
 
-func TestCollectCheckStagedPropagatesCategoryFailures(t *testing.T) {
+func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
-	for _, tc := range []struct {
-		name         string
-		state, drift bool
-		set          func(error)
-	}{
-		{"state", true, false, func(failure error) {
-			testsupport.SwapVar(t, &checkStagedCurrentStateCategories, func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) { return nil, failure })
-		}},
-		{"drift", false, true, func(failure error) {
-			testsupport.SwapVar(t, &checkStagedDriftCategories, func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure })
-		}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			failure := errors.New(tc.name + " category mapping failed")
-			tc.set(failure)
-			if _, err := collectCheckStagedSelection(testContext(t), root, planNoteSink{}, tc.state, tc.drift); !errors.Is(err, failure) {
-				t.Fatalf("category mapping failure = %v, want %v", err, failure)
-			}
-		})
+	stateFailure := errors.New("state category mapping failed")
+	driftFailure := errors.New("staged drift failed")
+	testsupport.SwapVar(t, &checkStagedCurrentStateCategories, func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) {
+		return nil, stateFailure
+	})
+	driftRan := false
+	testsupport.SwapVar(t, &checkStagedDriftRoot, func(context.Context, string) ([]manifest.Drift, error) {
+		driftRan = true
+		return nil, driftFailure
+	})
+	var stdout bytes.Buffer
+	err := runCheckStaged(testContext(t), root, &stdout)
+	if !driftRan {
+		t.Fatal("staged drift did not run after state presentation failure")
+	}
+	if !errors.Is(err, stateFailure) || !errors.Is(err, driftFailure) {
+		t.Fatalf("operational error = %v, want joined state and drift failures", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want suppressed partial report", stdout.String())
+	}
+}
+
+func TestCollectCheckStagedPropagatesDriftCategoryFailure(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	failure := errors.New("drift category mapping failed")
+	testsupport.SwapVar(t, &checkStagedDriftCategories, func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, failure })
+	if _, err := collectCheckStagedSelection(testContext(t), root, planNoteSink{}, false, true); !errors.Is(err, failure) {
+		t.Fatalf("category mapping failure = %v, want %v", err, failure)
 	}
 }

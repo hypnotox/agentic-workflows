@@ -51,11 +51,12 @@ func collectCheckStagedSelection(ctx context.Context, root string, planNotes pla
 			}
 			categories, err := checkStagedCurrentStateCategories(report, true)
 			if err != nil {
-				return checkCollection{}, err
-			}
-			collection.categories = append(collection.categories, categories...)
-			if len(report.Findings()) > 0 {
-				collection.failures = append(collection.failures, errors.New("check staged state failed"))
+				collection.operational = append(collection.operational, err)
+			} else {
+				collection.categories = append(collection.categories, categories...)
+				if len(report.Findings()) > 0 {
+					collection.failures = append(collection.failures, errors.New("check staged state failed"))
+				}
 			}
 		}
 	}

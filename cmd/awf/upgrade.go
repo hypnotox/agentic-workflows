@@ -35,7 +35,13 @@ func runRecover(root string, stdout io.Writer) error {
 	return upgrade.Recover(root, stdout)
 }
 
-var upgradeSync = upgradeSyncMutation
+var (
+	upgradeSync         = upgradeSyncMutation
+	upgradeMigrate      = migrate.Upgrade
+	upgradeGate         = gate
+	upgradeLoadOptional = manifest.LoadOptional
+	upgradeSaveLock     = func(lock *manifest.Lock, path string) error { return lock.Save(path) }
+)
 
 // runUpgrade consumes a sealed attestation when the lock carries one: the final
 // current-state cutover verifies only the sealed facts and journals the approval
@@ -77,21 +83,24 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	if state == "ahead" {
 		return schemaAheadError(gen)
 	}
-	applied, changes, err := migrate.Upgrade(ctx, root)
+	applied, changes, err := upgradeMigrate(ctx, root)
 	if err != nil {
-		return newUpgradeFailure(applied, err)
+		return newUpgradeFailure(applied, changes, err)
 	}
 	_ = gen
 	if authorityPath != config.LockPath(root) {
-		if _, found, err := manifest.LoadOptional(config.LockPath(root)); err != nil { // coverage-ignore: migrations either leave this path absent or write it through validated manifest serialization
-			return err
+		if _, found, err := upgradeLoadOptional(config.LockPath(root)); err != nil {
+			return newUpgradeFailure(applied, changes, err)
 		} else if !found {
 			lock.SchemaVersion = 14
-			if err := lock.Save(config.LockPath(root)); err != nil { // coverage-ignore: migration just created the writable current config directory
-				return err
+			if err := upgradeSaveLock(lock, config.LockPath(root)); err != nil {
+				return newUpgradeFailure(applied, changes, err)
 			}
-			if _, _, err := migrate.Upgrade(ctx, root); err != nil { // coverage-ignore: the first migration pass validated the same migrated config and ADR corpus before this relocated-lock completion pass
-				return err
+			completionApplied, completionChanges, completionErr := upgradeMigrate(ctx, root)
+			applied = append(applied, completionApplied...)
+			changes = append(changes, completionChanges...)
+			if completionErr != nil {
+				return newUpgradeFailure(applied, changes, completionErr)
 			}
 		}
 	}
@@ -99,20 +108,20 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	// binary behind the lock's awfVersion (version axis, schema equal) must still
 	// refuse rather than re-stamp a downgraded version. runSync no longer self-gates,
 	// so upgrade re-asserts it here (schema-ahead is already refused above).
-	if err := gate(ctx, root); err != nil {
-		return err
+	if err := upgradeGate(ctx, root); err != nil {
+		return newUpgradeFailure(applied, changes, err)
 	}
 	sync, err := upgradeSync(ctx, root)
 	if err != nil {
-		return newUpgradeFailure(applied, err)
+		return newUpgradeFailure(applied, changes, err)
 	}
 	mutation, err := upgradeMutation(sync, applied, changes)
 	if err != nil { // coverage-ignore: registered migration descriptions are validated fixed prose
-		return err
+		return newUpgradeFailure(applied, changes, err)
 	}
 	document, err := mutation.Document()
 	if err != nil { // coverage-ignore: typed sync and migration mutations compose only grammar-valid presentation values
-		return err
+		return newUpgradeFailure(applied, changes, err)
 	}
 	return presentation.Render(stdout, document)
 }

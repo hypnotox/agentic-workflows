@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -222,5 +223,24 @@ func TestRunAuditDispatch(t *testing.T) {
 	var outb, errb bytes.Buffer
 	if code := run([]string{"awf", "audit", base}, &outb, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
+	}
+}
+
+func TestRunAuditDispatchFailingReport(t *testing.T) {
+	repo, base := auditProject(t)
+	root := repo.Root()
+	commit := gitfixture.Commit(t, repo, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"awf", "audit", base}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty after produced report", stderr.String())
+	}
+	want := fmt.Sprintf("status: failed\n\ncontext:\n  scope: 1 commit(s) in %s..HEAD\n\nsummary:\n  findings: 1 errors, 0 warnings\n\nfindings:\n  errors:\n    conventional-commits | %s | subject is not Conventional Commits (type(scope)?: subject)\n", base, commit[:8])
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 }
