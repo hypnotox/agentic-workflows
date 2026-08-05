@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -119,6 +121,117 @@ func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 	}
 	for name := range catalog.Standard.Agents {
 		check(fmt.Sprintf("agents/%s.md.tmpl", name))
+	}
+}
+
+var singletonConditionalPathRe = regexp.MustCompile(`\{\{-?\s*(?:if|with|range)\s+\.([A-Za-z][A-Za-z0-9_]*)(?:\.([A-Za-z][A-Za-z0-9_]*))?`)
+
+func cloneRenderData(in map[string]any) map[string]any {
+	out := make(map[string]any, len(in))
+	for key, value := range in {
+		if nested, ok := value.(map[string]any); ok {
+			copy := make(map[string]any, len(nested))
+			for nestedKey, nestedValue := range nested {
+				copy[nestedKey] = nestedValue
+			}
+			out[key] = copy
+			continue
+		}
+		out[key] = value
+	}
+	return out
+}
+
+// TestSingletonConditionalKeysUseLiveRenderContext derives the conditional
+// config-tree singleton population from conditionalUnits, extracts every
+// direct condition path from the shipped templates, proves that path belongs
+// to the real render data authority, and renders both outcomes.
+// invariant: rendering/templates:singleton-conditional-key-live (TestSingletonConditionalKeysUseLiveRenderContext)
+func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, eff, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := p.data(config.Sidecar{}, eff)
+	seenTemplates, seenConditions := 0, 0
+	for _, unit := range conditionalUnits() {
+		raw, err := fs.ReadFile(templates.FS, unit.tid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expanded, err := render.ExpandIncludes(string(raw), templates.FS)
+		if err != nil {
+			t.Fatal(err)
+		}
+		matches := singletonConditionalPathRe.FindAllStringSubmatch(expanded, -1)
+		if len(matches) == 0 {
+			continue
+		}
+		seenTemplates++
+		seen := map[string]bool{}
+		for _, match := range matches {
+			path := match[1]
+			if match[2] != "" {
+				path += "." + match[2]
+			}
+			if seen[path] {
+				continue
+			}
+			seen[path] = true
+			seenConditions++
+
+			rootValue, rootExists := base[match[1]]
+			if !rootExists {
+				t.Errorf("%s conditional %s has no root on the real render context", unit.tid, path)
+				continue
+			}
+			if match[2] != "" {
+				if _, ok := rootValue.(map[string]any); !ok {
+					t.Errorf("%s conditional %s traverses non-map render data", unit.tid, path)
+					continue
+				}
+				declared := false
+				for _, descriptor := range catalog.Standard.Vars {
+					if descriptor.Key == match[2] {
+						declared = true
+						break
+					}
+				}
+				if !declared {
+					t.Errorf("%s conditional %s names no declared config var", unit.tid, path)
+					continue
+				}
+			}
+
+			zero, set := cloneRenderData(base), cloneRenderData(base)
+			if zeroVars, ok := zero["vars"].(map[string]any); ok {
+				setVars := set["vars"].(map[string]any)
+				for key := range zeroVars {
+					zeroVars[key], setVars[key] = "", ""
+				}
+			}
+			if match[2] == "" {
+				zero[match[1]], set[match[1]] = false, true
+			} else {
+				zeroVars := zero[match[1]].(map[string]any)
+				setVars := set[match[1]].(map[string]any)
+				zeroVars[match[2]], setVars[match[2]] = "", "fixture-value"
+			}
+			if without, with := renderGolden(t, unit.tid, zero), renderGolden(t, unit.tid, set); without == with {
+				t.Errorf("%s conditional %s did not exercise distinct outcomes", unit.tid, path)
+			}
+		}
+	}
+	if seenTemplates == 0 || seenConditions == 0 {
+		t.Fatalf("conditional singleton census was vacuous: templates=%d conditions=%d", seenTemplates, seenConditions)
 	}
 }
 

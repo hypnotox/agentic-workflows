@@ -28,23 +28,66 @@ const (
 	LiveStateProjection
 )
 
-// LiveStateClassifications is exhaustive over Keys. It is kept beside the
-// config-spec authority so a newly documented key cannot silently fall through
-// the reference's presentation switch.
+// LiveStateClassifications is an explicit exhaustive classification beside the
+// config-spec authority. No generated static default is allowed: adding a key
+// requires choosing its live or not-applicable representation here.
 func LiveStateClassifications() map[string]LiveStateClass {
-	out := make(map[string]LiveStateClass, len(keys))
-	for _, e := range keys {
-		out[e.Path] = StaticNotApplicable
+	return map[string]LiveStateClass{
+		"prefix":                                 LiveStateProjection,
+		"integrationBranch":                      LiveStateProjection,
+		"docsDir":                                LiveStateProjection,
+		"vars":                                   LiveStateProjection,
+		"skills":                                 LiveStateProjection,
+		"agents":                                 LiveStateProjection,
+		"docs":                                   LiveStateProjection,
+		"domains":                                LiveStateProjection,
+		"targets":                                LiveStateProjection,
+		"tags":                                   StaticNotApplicable,
+		"contextIgnore":                          StaticNotApplicable,
+		"commitPolicy.grandfatheredThrough":      StaticNotApplicable,
+		"commitPolicy.allowedIdentities":         StaticNotApplicable,
+		"commitPolicy.allowedIdentities[].name":  StaticNotApplicable,
+		"commitPolicy.allowedIdentities[].email": StaticNotApplicable,
+		"commitPolicy.requireSignedCommits":      StaticNotApplicable,
+		"commitPolicy.allowedSigners":            StaticNotApplicable,
+		"commitPolicy.allowedSigners[].principal": StaticNotApplicable,
+		"commitPolicy.allowedSigners[].key":       StaticNotApplicable,
+		"currentState.sources":                    LiveStateProjection,
+		"currentState.sources[].globs":            StaticNotApplicable,
+		"currentState.sources[].marker":           StaticNotApplicable,
+		"currentState.sources[].close":            StaticNotApplicable,
+		"currentState.testGlobs":                  LiveStateProjection,
+		"currentState.maxTopicsPerPath":           LiveStateProjection,
+		"audit.allowedTypes":                      LiveStateProjection,
+		"audit.allowedScopes":                     LiveStateProjection,
+		"audit.allowedScopes[].name":              StaticNotApplicable,
+		"audit.allowedScopes[].meaning":           StaticNotApplicable,
+		"audit.subjectMaxLength":                  LiveStateProjection,
+		"audit.dependencyManifests":               LiveStateProjection,
+		"audit.diffThreshold":                     LiveStateProjection,
+		"audit.domainDocStaleness":                LiveStateProjection,
+		"audit.domainCodeStaleness":               LiveStateProjection,
+		"audit.undocumentedDomain":                LiveStateProjection,
+		"audit.plainPunctuation":                  LiveStateProjection,
+		"audit.uncommittedChanges":                LiveStateProjection,
+		"bootstrap.enabled":                       LiveStateProjection,
+		"hooks.enabled":                           LiveStateProjection,
+		"runner.enabled":                          LiveStateProjection,
+		"proseGate.enabled":                       LiveStateProjection,
+		"proseGate.exemptions":                    LiveStateProjection,
+		"proseGate.exemptions[].path":             StaticNotApplicable,
+		"proseGate.exemptions[].codepoint":        StaticNotApplicable,
+		"proseGate.exemptions[].count":            StaticNotApplicable,
+		"memoryCite.enabled":                      LiveStateProjection,
+		"memoryCite.exemptions":                   LiveStateProjection,
+		"memoryCite.exemptions[].path":            StaticNotApplicable,
+		"memoryCite.exemptions[].count":           StaticNotApplicable,
+		"sidecar.data":                            StaticNotApplicable,
+		"sidecar.sections":                        StaticNotApplicable,
+		"sidecar.sections.<name>.drop":            StaticNotApplicable,
+		"sidecar.local":                           StaticNotApplicable,
+		"sidecar.paths":                           StaticNotApplicable,
 	}
-	for _, path := range []string{
-		"prefix", "integrationBranch", "docsDir", "vars", "skills", "agents", "docs", "domains", "targets",
-		"currentState.sources", "currentState.testGlobs", "currentState.maxTopicsPerPath",
-		"audit.allowedTypes", "audit.allowedScopes", "audit.subjectMaxLength", "audit.dependencyManifests", "audit.diffThreshold", "audit.domainDocStaleness", "audit.domainCodeStaleness", "audit.undocumentedDomain", "audit.plainPunctuation", "audit.uncommittedChanges",
-		"bootstrap.enabled", "hooks.enabled", "runner.enabled", "proseGate.enabled", "proseGate.exemptions", "memoryCite.enabled", "memoryCite.exemptions",
-	} {
-		out[path] = LiveStateProjection
-	}
-	return out
 }
 
 // VarEntry describes one config var. Description text is carried verbatim

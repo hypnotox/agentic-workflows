@@ -272,7 +272,6 @@ func fixtureConformingBase() string { return baseTID("agents") }
 // TestLiveTemplateIDsResolve derives the complete live identity population from
 // its existing owners and verifies every live entry resolves in the embedded FS.
 // coOwnedRunnerTID is recognition-only and must not enter this population.
-// invariant: rendering/templates:singleton-conditional-key-live (TestLiveTemplateIDsResolve)
 func TestLiveTemplateIDsResolve(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -21,6 +22,40 @@ skills:
 agents:
   - code-reviewer
 `
+
+// invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
+func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolvers := p.currentValueResolvers()
+	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), resolvers); err != nil {
+		t.Fatal(err)
+	}
+
+	omitted := configspec.LiveStateClassifications()
+	delete(omitted, "prefix")
+	if err := validateLiveStateAuthority(omitted, resolvers); err == nil || !strings.Contains(err.Error(), "has no classification") {
+		t.Fatalf("omitted classification error = %v", err)
+	}
+	wrongStatic := configspec.LiveStateClassifications()
+	wrongStatic["prefix"] = configspec.StaticNotApplicable
+	if err := validateLiveStateAuthority(wrongStatic, resolvers); err == nil || !strings.Contains(err.Error(), "static live-state key") {
+		t.Fatalf("wrong static classification error = %v", err)
+	}
+	wrongLive := configspec.LiveStateClassifications()
+	wrongLive["tags"] = configspec.LiveStateProjection
+	if err := validateLiveStateAuthority(wrongLive, resolvers); err == nil || !strings.Contains(err.Error(), "has no resolver") {
+		t.Fatalf("wrong live classification error = %v", err)
+	}
+	unknown := configspec.LiveStateClassifications()
+	unknown["tags"] = configspec.LiveStateClass(99)
+	if err := validateLiveStateAuthority(unknown, resolvers); err == nil || !strings.Contains(err.Error(), "unknown class") {
+		t.Fatalf("unknown classification error = %v", err)
+	}
+}
 
 func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *Project) {
 	t.Helper()

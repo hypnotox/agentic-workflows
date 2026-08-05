@@ -611,7 +611,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		rf, err := p.renderTarget(unit.kind, "", unit.tid, unit.sections,
 			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff)
-		if err != nil { // coverage-ignore: these embedded units have fixed, publication-safe inputs
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
