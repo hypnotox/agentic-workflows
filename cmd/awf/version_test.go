@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"testing"
@@ -14,9 +16,29 @@ func TestRunVersion(t *testing.T) {
 	if code := run([]string{"awf", "version"}, &out, &errb); code != 0 {
 		t.Fatalf("version exited %d: %s", code, errb.String())
 	}
-	want := "version: " + project.Version
-	if !strings.HasPrefix(out.String(), want) || !strings.HasSuffix(out.String(), "\n") {
-		t.Errorf("version output = %q, want labeled version beginning %q and one newline", out.String(), want)
+	want := "version: " + project.Version + "\n"
+	if out.String() != want || errb.Len() != 0 {
+		t.Errorf("version streams stdout=%q stderr=%q, want stdout=%q", out.String(), errb.String(), want)
+	}
+}
+
+func TestReleaseConsumerParsesOnlyLabeledVersionContract(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, contract := range []string{
+		"go run ./cmd/awf version | awk '",
+		"/^version: [^[:space:]()]+( \\([^[:cntrl:]]+\\))?$/",
+		"value = substr($0, 10)",
+	} {
+		if !strings.Contains(text, contract) {
+			t.Errorf("release consumer lacks version-label contract %q", contract)
+		}
+	}
+	if strings.Contains(text, "awk '{print $2}'") {
+		t.Error("release consumer still parses incidental version whitespace")
 	}
 }
 

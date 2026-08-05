@@ -66,6 +66,23 @@ func TestRunSafeLogAdvisory(t *testing.T) {
 	}
 }
 
+func TestXContextConsumerUsesOnlySpillNoticeProtocol(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, contract := range []string{
+		"./awf context \"$@\" >\"$capture\"",
+		"--notice-file \"$capture\" -- ./x context \"$@\"",
+		"cat \"$capture\"",
+	} {
+		if !strings.Contains(text, contract) {
+			t.Errorf("x context consumer lacks spill contract %q", contract)
+		}
+	}
+}
+
 func TestRunUnrecognizedIsSilent(t *testing.T) {
 	capture := filepath.Join(t.TempDir(), "capture")
 	// This is ordinary presentation output, not a protocol sentinel. The x

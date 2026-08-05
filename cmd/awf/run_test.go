@@ -563,6 +563,34 @@ func TestRunHelp(t *testing.T) {
 	}
 }
 
+// TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures keeps every
+// registered public command family on the presentation boundary. It derives
+// coverage from the command registry rather than freezing a corpus count.
+func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) {
+	for _, command := range clispec.Commands {
+		t.Run(command.Name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := run([]string{"awf", command.Name, "--help"}, &stdout, &stderr); code != 0 {
+				t.Fatalf("help exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+			wantPrefix := "command: awf " + command.Name + "\nsummary: " + command.Summary + "\n\nhelp:\n"
+			if got := stdout.String(); !strings.HasPrefix(got, wantPrefix) || !strings.HasSuffix(got, "\n") || strings.HasSuffix(got, "\n\n") || stderr.Len() != 0 {
+				t.Fatalf("help streams stdout=%q stderr=%q, want structured stdout with one terminal newline", got, stderr.String())
+			}
+
+			stdout.Reset()
+			stderr.Reset()
+			if code := run([]string{"awf", command.Name, "--presentation-contract-invalid"}, &stdout, &stderr); code != 2 {
+				t.Fatalf("usage exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+			wantUsage := "condition: awf: awf " + command.Name + ": unknown flag \"--presentation-contract-invalid\"\n"
+			if stdout.Len() != 0 || stderr.String() != wantUsage {
+				t.Fatalf("usage streams stdout=%q stderr=%q, want stderr=%q", stdout.String(), stderr.String(), wantUsage)
+			}
+		})
+	}
+}
+
 func TestRunGetwdError(t *testing.T) {
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
 	var out, errb bytes.Buffer

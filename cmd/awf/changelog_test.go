@@ -45,11 +45,12 @@ func TestRunChangelogNoFlags(t *testing.T) {
 		t.Fatalf("runChangelog: %v", err)
 	}
 	got := out.String()
-	if !strings.HasPrefix(got, "# Changelog") {
-		t.Errorf("no-flags output should start with the file title, got:\n%s", got[:min(40, len(got))])
+	want, err := changelogfs.FS.ReadFile("CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(got, "[0.1.0]") || !strings.Contains(got, "[0.5.1]") {
-		t.Errorf("no-flags output should contain every backfilled version, got:\n%s", got)
+	if got != string(want) {
+		t.Errorf("no-flags payload differs from authored changelog")
 	}
 }
 

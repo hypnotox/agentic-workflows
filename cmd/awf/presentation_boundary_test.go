@@ -28,6 +28,25 @@ func TestCommandOutputBoundary(t *testing.T) {
 	if stdout.Len() != 0 || stderr.Len() == 0 {
 		t.Fatalf("usage output streams stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
+
+	value, err := presentation.Prose("one finding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	field, err := presentation.NewField("status", value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := presentation.NewDocument(field)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	outcome := commandOutcome{document: document, stream: commandStdout, exit: 1, err: errors.New("report failed")}
+	if code := writeOutcome(&stdout, &stderr, outcome); code != 1 || stdout.String() != "status: one finding\n" || stderr.Len() != 0 {
+		t.Fatalf("produced report streams exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
 }
 
 type typedDiagnosticError struct {
