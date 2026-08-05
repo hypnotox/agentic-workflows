@@ -174,7 +174,7 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 // invariant: config/migrations-and-locks:list-replacement-fixed-snapshot (TestLayerCatalogListsRefusalPreflightsEverySidecar)
 func TestLayerCatalogListsRefusalPreflightsEverySidecar(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{
-		"skills/tdd.yaml":           "data:\n  testSurfaces:\n    - valid\n",
+		"agents/adr-reviewer.yaml":  "data:\n  focusItems:\n    - valid\n",
 		"agents/code-reviewer.yaml": "data:\n  focusItems: wrong\n",
 	})
 	before := snapshotTree(t, root)

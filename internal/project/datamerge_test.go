@@ -42,6 +42,11 @@ func TestWithDefaultData(t *testing.T) {
 			want:     map[string]any{"a": nil},
 		},
 		{
+			name:     "absent authored list keeps catalog list",
+			defaults: map[string]any{"a": []any{"default"}},
+			want:     map[string]any{"a": []any{"default"}},
+		},
+		{
 			name:     "empty authored list keeps catalog list",
 			sidecar:  map[string]any{"a": []any{}},
 			defaults: map[string]any{"a": []any{"default"}},
