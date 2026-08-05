@@ -36,10 +36,17 @@ func TestReadBackInPlaceBodyChangedStructuralHeading(t *testing.T) {
 	if !ok || got != "body" {
 		t.Fatalf("changed heading = %q, found %v", got, ok)
 	}
-	out = "<!-- awf:edit-in-place body: pointer -->\n### Body heading\nbody\n"
+	for _, changed := range []string{"### Changed heading", "# Changed heading"} {
+		out = "<!-- awf:edit-in-place body: pointer -->\n" + changed + "\nbody\n"
+		got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+		if got != "body" {
+			t.Fatalf("changed structural heading %q = %q", changed, got)
+		}
+	}
+	out = "<!-- awf:edit-in-place body: pointer -->\nbody heading is absent\n### Body heading\n"
 	got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
-	if got != "### Body heading\nbody" {
-		t.Fatalf("subordinate body heading = %q", got)
+	if got != "body heading is absent\n### Body heading" {
+		t.Fatalf("missing structural slot must preserve subordinate body heading = %q", got)
 	}
 	out = "<!-- awf:edit-in-place body: pointer -->\n#not a heading\nbody\n"
 	got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
@@ -370,6 +377,16 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 	}
 	if d := drift(headingRegen); len(d) != 1 || d[0].Kind != "hand-edited" {
 		t.Fatalf("a changed structural heading must report hand-edited drift, got %v", d)
+	}
+	for _, changed := range []string{"### Tampered heading", "# Tampered heading"} {
+		write(strings.Replace(resynced, "## Owned heading", changed, 1))
+		levelRegen := regenerate()
+		if strings.Contains(levelRegen, changed) || strings.Count(levelRegen, "## Owned heading") != 1 {
+			t.Fatalf("%q must be consumed as owned-slot tamper:\n%s", changed, levelRegen)
+		}
+		if d := drift(levelRegen); len(d) != 1 || d[0].Kind != "hand-edited" {
+			t.Fatalf("%q drift = %v", changed, d)
+		}
 	}
 
 	write(strings.Replace(resynced, "## Owned heading\n", "", 1))

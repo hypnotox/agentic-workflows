@@ -319,31 +319,22 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 	}
 	body := lines[start+1 : end]
 	if len(expectedHeading) > 0 && expectedHeading[0] != "" && len(body) > 0 {
-		// A structural slot is awf-owned. Consume the expected heading, and also
-		// a changed heading at the same level so tampering cannot become body.
-		// Compare the rendered expected line byte-for-byte before applying the
-		// deliberately broader same-level tamper classification. In particular,
-		// whitespace produced by a placeholder belongs to the awf-owned heading,
-		// not to the adopter body on the next render.
-		if body[0] == expectedHeading[0] || sameATXLevel(strings.TrimSpace(body[0]), strings.TrimSpace(expectedHeading[0])) {
+		// A structural slot is awf-owned. Any ATX heading occupying it is tamper,
+		// regardless of level; a body heading is preserved only when that slot is
+		// genuinely absent.
+		if body[0] == expectedHeading[0] || atxHeadingLine(strings.TrimSpace(body[0])) {
 			body = body[1:]
 		}
 	}
 	return trimBlankFraming(body), true
 }
 
-func sameATXLevel(a, b string) bool {
-	level := func(s string) int {
-		i := 0
-		for i < len(s) && s[i] == '#' {
-			i++
-		}
-		if i == 0 || i > 6 || i == len(s) || (s[i] != ' ' && s[i] != '\t') {
-			return 0
-		}
-		return i
+func atxHeadingLine(s string) bool {
+	i := 0
+	for i < len(s) && s[i] == '#' {
+		i++
 	}
-	return level(a) != 0 && level(a) == level(b)
+	return i > 0 && i <= 6 && i < len(s) && (s[i] == ' ' || s[i] == '\t')
 }
 
 // trimBlankFraming drops leading and trailing blank (whitespace-only) lines - the
@@ -694,14 +685,18 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	}
 	segs := render.ParseSections(stripped, encoder == MarkdownAgentDialect)
 	style := render.CommentStyleForSource(stripped)
-	headings := map[string]string{}
-	for _, s := range segs {
-		if s.IsSection && s.Heading != "" {
-			headings[s.Name], err = render.Execute(s.Heading, data, nil, tid+" heading")
-			if err != nil { // coverage-ignore: a structural heading shares the already-executed skeleton template source, so a template error has already returned above
-				return RenderedFile{}, fmt.Errorf("render %s heading: %w", tid, err)
-			}
-		}
+	// Capture headings by executing a marker-free copy of the complete skeleton,
+	// not each heading as an independent template. This retains surrounding dot,
+	// variables, and control context while producing the expected line needed for
+	// in-place read-back before the final assembled execution.
+	headingSkeleton, headingTokens := render.StructuralHeadingCapture(segs)
+	headingOutput, err := render.Execute(headingSkeleton, data, nil, tid+" headings")
+	if err != nil { // coverage-ignore: embedded skeleton parse and execute errors are covered by the final execution and render-layer tests
+		return RenderedFile{}, fmt.Errorf("render %s headings: %w", tid, err)
+	}
+	headings, err := render.ExtractStructuralHeadings(headingOutput, headingTokens)
+	if err != nil { // coverage-ignore: capture tokens are assembled from parsed sections and can only be incomplete if the embedded skeleton execution already failed
+		return RenderedFile{}, fmt.Errorf("render %s headings: %w", tid, err)
 	}
 	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style, headings)
 	if err != nil {

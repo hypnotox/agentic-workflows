@@ -2,8 +2,10 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -197,6 +199,16 @@ type structuralHeadingEdit struct {
 }
 type structuralHeadingWriter func(string, []byte, os.FileMode) error
 
+type structuralHeadingFile interface {
+	io.Reader
+	Stat() (fs.FileInfo, error)
+	Close() error
+}
+
+type structuralHeadingOpener func(string) (structuralHeadingFile, error)
+
+func openStructuralHeadingFile(path string) (structuralHeadingFile, error) { return os.Open(path) }
+
 // applyStructuralHeadings removes only the exact legacy structural line. It
 // performs complete preflight before replacing any file, so ambiguity leaves the
 // tree untouched; each replacement itself is atomic and a retry is a no-op.
@@ -205,6 +217,10 @@ func applyStructuralHeadings(root string, out io.Writer) error {
 }
 
 func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structuralHeadingWriter) error {
+	return applyStructuralHeadingsWithWriterAndOpen(root, out, write, openStructuralHeadingFile)
+}
+
+func applyStructuralHeadingsWithWriterAndOpen(root string, out io.Writer, write structuralHeadingWriter, open structuralHeadingOpener) error {
 	var edits []structuralHeadingEdit
 	for _, entry := range structuralHeadingSnapshot {
 		pattern := filepath.Join(root, config.DirName, filepath.FromSlash(entry.path))
@@ -217,12 +233,25 @@ func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structu
 			}
 		}
 		for _, path := range paths {
-			source, err := os.ReadFile(path)
-			if os.IsNotExist(err) {
+			file, err := open(path)
+			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
-			if err != nil { // coverage-ignore: a path read immediately above can only fail here through an OS-specific directory or permission fault; migration callers surface it unchanged
+			if err != nil {
+				return fmt.Errorf("open structural-heading part %s: %w", path, err)
+			}
+			source, err := io.ReadAll(file)
+			if err != nil {
+				_ = file.Close()
 				return fmt.Errorf("read structural-heading part %s: %w", path, err)
+			}
+			info, err := file.Stat()
+			if err != nil {
+				_ = file.Close()
+				return fmt.Errorf("stat structural-heading part %s: %w", path, err)
+			}
+			if err := file.Close(); err != nil {
+				return fmt.Errorf("close structural-heading part %s: %w", path, err)
 			}
 			start := leadingStructuralOffset(source)
 			remaining := source[start:]
@@ -243,10 +272,6 @@ func applyStructuralHeadingsWithWriter(root string, out io.Writer, write structu
 				// through them while preserving their bytes in the eventual edit.
 				if firstLineIsATX(after[leadingStructuralOffset(after):]) {
 					return structuralHeadingRefusal(root, path, entry.heading)
-				}
-				info, err := os.Stat(path)
-				if err != nil { // coverage-ignore: the file was read in this preflight and no concurrent filesystem mutation is representable by migration input
-					return fmt.Errorf("stat structural-heading part %s: %w", path, err)
 				}
 				updated := append([]byte{}, source[:start]...)
 				updated = append(updated, after...)

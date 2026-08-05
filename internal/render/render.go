@@ -257,6 +257,49 @@ func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error
 	return nil
 }
 
+// StructuralHeadingCapture returns a marker-free copy of the complete template
+// skeleton with each structural heading bracketed by inert tokens. Executing this
+// source preserves the template parse tree's surrounding variables, dot, and
+// control flow while exposing the rendered heading lines to the project layer.
+func StructuralHeadingCapture(segs []Segment) (string, map[string][2]string) {
+	var b strings.Builder
+	tokens := make(map[string][2]string)
+	for _, s := range segs {
+		if !s.IsSection {
+			b.WriteString(s.Text)
+			continue
+		}
+		if s.Heading != "" {
+			start := "\x00awf:heading:" + s.Name + ":start\x00"
+			end := "\x00awf:heading:" + s.Name + ":end\x00"
+			tokens[s.Name] = [2]string{start, end}
+			b.WriteString(start)
+			b.WriteString(s.Heading)
+			b.WriteString(end)
+		}
+		b.WriteString(s.Text)
+	}
+	return b.String(), tokens
+}
+
+// ExtractStructuralHeadings recovers each heading captured during execution.
+func ExtractStructuralHeadings(output string, tokens map[string][2]string) (map[string]string, error) {
+	headings := make(map[string]string, len(tokens))
+	for name, pair := range tokens {
+		start := strings.Index(output, pair[0])
+		if start < 0 {
+			continue
+		}
+		bodyStart := start + len(pair[0])
+		end := strings.Index(output[bodyStart:], pair[1])
+		if end < 0 {
+			return nil, fmt.Errorf("structural heading %q capture is incomplete", name)
+		}
+		headings[name] = output[bodyStart : bodyStart+end]
+	}
+	return headings, nil
+}
+
 // Execute runs text/template over the awf-owned skeleton (part bodies stood in by
 // sentinels) under missingkey=zero, then restores each raw part body verbatim - so
 // a convention part is never parsed or executed as a template. name labels parse

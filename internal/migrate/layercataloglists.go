@@ -2,8 +2,10 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -41,6 +43,16 @@ type sidecarListEdit struct {
 
 type atomicSidecarWriter func(string, []byte, os.FileMode) error
 
+type sidecarFile interface {
+	io.Reader
+	Stat() (fs.FileInfo, error)
+	Close() error
+}
+
+type sidecarOpener func(string) (sidecarFile, error)
+
+func openSidecarFile(path string) (sidecarFile, error) { return os.Open(path) }
+
 func applyLayerCatalogLists(root string, out io.Writer) error {
 	return applyLayerCatalogListsWithWriter(root, out, manifest.WriteFileAtomicMode)
 }
@@ -49,19 +61,32 @@ func applyLayerCatalogLists(root string, out io.Writer) error {
 // dependency so interruption tests can fail a later replacement without a
 // mutable package-global seam.
 func applyLayerCatalogListsWithWriter(root string, out io.Writer, write atomicSidecarWriter) error {
+	return applyLayerCatalogListsWithWriterAndOpen(root, out, write, openSidecarFile)
+}
+
+func applyLayerCatalogListsWithWriterAndOpen(root string, out io.Writer, write atomicSidecarWriter, open sidecarOpener) error {
 	edits := make([]sidecarListEdit, 0, len(layerCatalogListSnapshot))
 	for _, artifact := range layerCatalogListSnapshot {
 		path := filepath.Join(root, config.DirName, artifact.kind, artifact.artifact+".yaml")
-		source, err := os.ReadFile(path)
-		if os.IsNotExist(err) {
+		file, err := open(path)
+		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("open sidecar %s: %w", filepath.ToSlash(path), err)
 		}
-		info, err := os.Stat(path)
-		if err != nil { // coverage-ignore: the file was read immediately above
-			return err
+		source, err := io.ReadAll(file)
+		if err != nil {
+			_ = file.Close()
+			return fmt.Errorf("read sidecar %s: %w", filepath.ToSlash(path), err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			_ = file.Close()
+			return fmt.Errorf("stat sidecar %s: %w", filepath.ToSlash(path), err)
+		}
+		if err := file.Close(); err != nil {
+			return fmt.Errorf("close sidecar %s: %w", filepath.ToSlash(path), err)
 		}
 		var decoded struct {
 			Data map[string]any `yaml:"data"`

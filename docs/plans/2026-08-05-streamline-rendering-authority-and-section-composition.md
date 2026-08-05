@@ -416,3 +416,7 @@ feat(rendering): separate section headings (applies ADR batch)
 
 - All three ADRs remain `Implementing` after their last explicit Applied batch. Terminal implementation review owns the later status-only `Implemented` events, plan `status: Implemented`, decision-index regeneration, managed-worktree integration/removal, and retrospective ordering.
 - Any migration preflight refusal is a blocker, not permission to weaken the snapshot or auto-resolve custom content. Record the affected path and operator resolution here before resuming the same phase.
+- D8: the singleton parse-tree census widened to the complete declaration-owned live population so every render path is classified before acceptance.
+- D9: executable range and else template fallbacks were rewritten to preserve missingkey-zero output behavior while making both branches explicit and testable.
+- D10: Phase 2's controlled-render fixture and path assertions were revised to match the resolved output declaration seam.
+- Phase 5 settlement: terminal review required snapshot/census/encoder/migration follow-through, including same-execution structural-heading capture, all-ATX owned-slot tamper classification, and deterministic one-handle migration reads.

@@ -180,6 +180,60 @@ type structuralHeadingFailWriter struct{ err error }
 
 func (w structuralHeadingFailWriter) Write([]byte) (int, error) { return 0, w.err }
 
+func TestStructuralHeadingsReadAndStatFailures(t *testing.T) {
+	t.Run("directory at frozen path", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		path := filepath.Join(root, ".awf", "docs", "parts", "testing", "gate.md")
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		err := applyStructuralHeadings(root, io.Discard)
+		if err == nil || !strings.Contains(err.Error(), "read structural-heading part "+path) {
+			t.Fatalf("directory read error = %v", err)
+		}
+	})
+	t.Run("injected read", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("read failed")
+		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+			return migrationFaultFile{reader: migrationFailedReader{injected}}, nil
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "read structural-heading part") {
+			t.Fatalf("read error = %v", err)
+		}
+	})
+	t.Run("open", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("open failed")
+		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+			return nil, injected
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "open structural-heading part") {
+			t.Fatalf("open error = %v", err)
+		}
+	})
+	t.Run("stat", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("stat failed")
+		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+			return migrationFaultFile{reader: strings.NewReader(""), stat: injected}, nil
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "stat structural-heading part") {
+			t.Fatalf("stat error = %v", err)
+		}
+	})
+	t.Run("close", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("close failed")
+		err := applyStructuralHeadingsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (structuralHeadingFile, error) {
+			return migrationFaultFile{reader: strings.NewReader(""), close: injected}, nil
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "close structural-heading part") {
+			t.Fatalf("close error = %v", err)
+		}
+	})
+}
+
 func TestStructuralHeadingsReportsAnnouncementFailure(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\n", map[string]string{
 		"docs/parts/testing/gate.md": "## The gate\nbody\n",

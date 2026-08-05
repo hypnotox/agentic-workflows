@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -151,6 +152,21 @@ func TestLayerCatalogListSnapshotExact(t *testing.T) {
 	}
 }
 
+type migrationFaultFile struct {
+	reader io.Reader
+	info   fs.FileInfo
+	stat   error
+	close  error
+}
+
+func (f migrationFaultFile) Read(p []byte) (int, error) { return f.reader.Read(p) }
+func (f migrationFaultFile) Stat() (fs.FileInfo, error) { return f.info, f.stat }
+func (f migrationFaultFile) Close() error               { return f.close }
+
+type migrationFailedReader struct{ err error }
+
+func (r migrationFailedReader) Read([]byte) (int, error) { return 0, r.err }
+
 func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 	t.Run("read", func(t *testing.T) {
 		root := closeFixture(t, "prefix: ex\n", nil)
@@ -160,6 +176,46 @@ func TestLayerCatalogListsReadAndParseErrors(t *testing.T) {
 		}
 		if err := applyLayerCatalogLists(root, io.Discard); err == nil {
 			t.Fatal("expected sidecar read error")
+		}
+	})
+	t.Run("injected read", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("read failed")
+		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+			return migrationFaultFile{reader: migrationFailedReader{injected}}, nil
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "read sidecar") {
+			t.Fatalf("read error = %v", err)
+		}
+	})
+	t.Run("open", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("open failed")
+		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+			return nil, injected
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "open sidecar") {
+			t.Fatalf("open error = %v", err)
+		}
+	})
+	t.Run("stat", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("stat failed")
+		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+			return migrationFaultFile{reader: strings.NewReader(""), stat: injected}, nil
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "stat sidecar") {
+			t.Fatalf("stat error = %v", err)
+		}
+	})
+	t.Run("close", func(t *testing.T) {
+		root := closeFixture(t, "prefix: ex\n", nil)
+		injected := errors.New("close failed")
+		err := applyLayerCatalogListsWithWriterAndOpen(root, io.Discard, manifest.WriteFileAtomicMode, func(string) (sidecarFile, error) {
+			return migrationFaultFile{reader: strings.NewReader(""), close: injected}, nil
+		})
+		if !errors.Is(err, injected) || !strings.Contains(err.Error(), "close sidecar") {
+			t.Fatalf("close error = %v", err)
 		}
 	})
 	t.Run("parse", func(t *testing.T) {
