@@ -207,6 +207,51 @@ func TestHistoryOperationPreservesStreamFindingOrderAcrossGraphReplay(t *testing
 	})
 }
 
+func TestHistoryOperationConsumesOrderedOctopusParents(t *testing.T) {
+	commits := []replayCommit{{
+		Hash:     "octopus",
+		Revision: "result",
+		IsMerge:  true,
+		Parents:  []string{"first", "incoming-one", "incoming-two", "incoming-three"},
+	}}
+	var loads []string
+	op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
+		loads = append(loads, revision)
+		return fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	if findings, err := op.run(testContext(t)); err != nil || len(findings) != 0 {
+		t.Fatalf("octopus replay findings = %#v, error = %v", findings, err)
+	}
+	if want := []string{"result", "first", "incoming-one", "incoming-two", "incoming-three"}; !slices.Equal(loads, want) {
+		t.Fatalf("octopus revision loads = %v, want ordered roles %v", loads, want)
+	}
+}
+
+func TestHistoryOperationUsesGraphOrderForCoexistingFatalFailures(t *testing.T) {
+	graphFirst := errors.New("graph-first failure")
+	streamFirst := errors.New("stream-first failure")
+	var loads []string
+	op := newHistoryOperationFromCompact([]replayCommit{
+		{Ordinal: 0, Hash: "stream-first", Revision: "z-result", IsMerge: true},
+		{Ordinal: 1, Hash: "graph-first", Revision: "a-result", IsMerge: true},
+	}, nil, 2, func(_ context.Context, revision string) (*revisionState, error) {
+		loads = append(loads, revision)
+		if revision == "a-result" {
+			return nil, graphFirst
+		}
+		return nil, streamFirst
+	}, nil, func(context.Context) ([]Finding, error) {
+		t.Fatal("fatal replay ran live evaluation")
+		return nil, nil
+	})
+	if _, err := op.run(testContext(t)); !errors.Is(err, graphFirst) || errors.Is(err, streamFirst) {
+		t.Fatalf("coexisting fatal error = %v, want graph-first identity", err)
+	}
+	if !slices.Equal(loads, []string{"a-result"}) {
+		t.Fatalf("fatal replay loads = %v, want only graph-first revision", loads)
+	}
+}
+
 func TestHistoryOperationChecksCancellationBetweenCachedConsumers(t *testing.T) {
 	t.Run("between stale and transition", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(testContext(t))
