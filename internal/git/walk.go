@@ -96,7 +96,7 @@ func (r *Repo) WalkRangeCommits(ctx context.Context, base, head string, visit fu
 			return err
 		}
 		nc, err := toCommit(ctx, c, r.prefix)
-		if err != nil { // coverage-ignore: every branch toCommit can fail on is itself unreachable from a walk that already enumerated this commit's ancestry (see its own ignored branches)
+		if err != nil {
 			return err
 		}
 		include := r.prefix == "" || len(nc.Changes) != 0
@@ -279,10 +279,13 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 	}
 	nc := Commit{Hash: c.Hash.String()[:8], Revision: c.Hash.String(), Subject: subject, Body: body, Message: c.Message, Parents: parents, IsMerge: c.NumParents() > 1}
 	if nc.IsMerge {
-		return nc, nil
+		return nc, checkContext(ctx)
 	}
 	curTree, err := c.Tree()
-	if err != nil { // coverage-ignore: a commit's own tree resolves for any valid commit
+	if err != nil {
+		return Commit{}, err
+	}
+	if err := validateChangedPathTree(ctx, curTree); err != nil {
 		return Commit{}, err
 	}
 	var parentTree *object.Tree
@@ -292,7 +295,10 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 			return Commit{}, err
 		}
 		parentTree, err = parent.Tree()
-		if err != nil { // coverage-ignore: a valid parent commit's tree resolves
+		if err != nil {
+			return Commit{}, err
+		}
+		if err := validateChangedPathTree(ctx, parentTree); err != nil {
 			return Commit{}, err
 		}
 	}

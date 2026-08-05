@@ -72,7 +72,7 @@ var entrypointSuites = map[string]suite{
 	"MergeNoCommit":    {"internal/git", "TestMergeEntrypointsAdvanceAndStageWithoutCommitting"},
 
 	// Commit-range walking.
-	"WalkRangeCommits":        {"internal/git", "TestWalkRangeCommitsStopsAtVisitorError"},
+	"WalkRangeCommits":        {"internal/git", "TestWalkRangeCommitsContract"},
 	"FirstParentChangedPaths": {"internal/git", "TestFirstParentChangedPathsContracts"},
 	"RangeChangedPaths":       {"internal/git", "TestRangeNativeReadOperations"},
 	"RangeDiffText":           {"internal/git", "TestRangeNativeReadOperations"},

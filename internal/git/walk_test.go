@@ -95,17 +95,101 @@ func TestWalkRangeRichConstructionPreservesCancellation(t *testing.T) {
 	head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"nested/a.md": "head\n"})
 	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
-	if _, err := toCommit(ctx, walkCommitObject(t, repo.Root(), head), ""); !errors.Is(err, context.Canceled) {
+	headCommit := walkCommitObject(t, repo.Root(), head)
+	if _, err := toCommit(ctx, headCommit, ""); !errors.Is(err, context.Canceled) {
 		t.Fatalf("rich commit cancellation = %v", err)
+	}
+	parent, cancelDuringDiff := context.WithCancel(testContext(t))
+	duringDiff := &cancelOnDoneContext{Context: parent, cancel: cancelDuringDiff}
+	if _, err := toCommit(duringDiff, headCommit, ""); !errors.Is(err, context.Canceled) || !duringDiff.observed {
+		t.Fatalf("rich commit diff cancellation = %v, diff observed %t", err, duringDiff.observed)
 	}
 
 	gitfixture.CheckoutNewBranch(t, repo, "feature", base)
 	feature := gitfixture.Commit(t, repo, "feat(awf): feature", map[string]string{"nested/feature.md": "feature\n"})
 	gitfixture.StageFile(t, repo, "nested/a.md", "head\n", 0o644)
 	merge := gitfixture.Merge(t, repo, "Merge head", feature, head)
-	if _, err := mergeTouchesPrefix(ctx, walkCommitObject(t, repo.Root(), merge), "nested"); !errors.Is(err, context.Canceled) {
+	mergeCommit := walkCommitObject(t, repo.Root(), merge)
+	if _, err := toCommit(ctx, mergeCommit, ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("merge rich commit cancellation = %v", err)
+	}
+	if _, err := mergeTouchesPrefix(ctx, mergeCommit, "nested"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("merge prefix cancellation = %v", err)
 	}
+}
+
+func TestWalkRangeCommitsReportsOrdinaryCorruptTrees(t *testing.T) {
+	for _, target := range []string{"current tree", "parent tree", "current subtree", "parent subtree"} {
+		t.Run(target, func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"nested/a.md": "base\n"})
+			head := gitfixture.Commit(t, repo, "feat(awf): head", map[string]string{"nested/a.md": "head\n"})
+			removeHash := ""
+			switch target {
+			case "current tree":
+				removeHash = gitfixture.TreeHash(t, repo, head)
+			case "parent tree":
+				removeHash = gitfixture.TreeHash(t, repo, base)
+			case "current subtree":
+				backend := openWalkRepo(t, repo.Root())
+				top := &object.Tree{Entries: []object.TreeEntry{{Name: "nested", Mode: filemode.Dir, Hash: plumbing.NewHash(strings.Repeat("1", 40))}}}
+				encodedTree := backend.Storer.NewEncodedObject()
+				if err := top.Encode(encodedTree); err != nil {
+					t.Fatal(err)
+				}
+				treeHash, err := backend.Storer.SetEncodedObject(encodedTree)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commit := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "corrupt subtree\n", TreeHash: treeHash, ParentHashes: []plumbing.Hash{plumbing.NewHash(base)}}
+				encodedCommit := backend.Storer.NewEncodedObject()
+				if err := commit.Encode(encodedCommit); err != nil {
+					t.Fatal(err)
+				}
+				commitHash, err := backend.Storer.SetEncodedObject(encodedCommit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head = commitHash.String()
+			case "parent subtree":
+				tree, err := walkCommitObject(t, repo.Root(), base).Tree()
+				if err != nil {
+					t.Fatal(err)
+				}
+				subtree, err := tree.Tree("nested")
+				if err != nil {
+					t.Fatal(err)
+				}
+				removeHash = subtree.Hash.String()
+			}
+			if removeHash != "" {
+				if err := os.Remove(filepath.Join(repo.Root(), ".git", "objects", removeHash[:2], removeHash[2:])); err != nil {
+					t.Fatal(err)
+				}
+			}
+			visits := 0
+			count, err := walkRepo(t, repo.Root()).WalkRangeCommits(testContext(t), base, head, func(Commit) error {
+				visits++
+				return nil
+			})
+			if err == nil || count != 0 || visits != 0 {
+				t.Fatalf("corrupt %s = (%d, %v), visits %d; want (0, error), 0", target, count, err, visits)
+			}
+			if errors.Is(err, plumbing.ErrObjectNotFound) {
+				t.Fatalf("corrupt %s leaked backend error identity: %v", target, err)
+			}
+		})
+	}
+}
+
+func TestWalkRangeCommitsContract(t *testing.T) {
+	t.Run("visit count failure and cancellation", TestWalkRangeCommitsStopsAtVisitorError)
+	t.Run("rich linear evidence", TestRangeCommitsLinearRangeCarriesChangesAndText)
+	t.Run("merge evidence", TestRangeCommitsMergedRangeKeepsMergeAndNoChanges)
+	t.Run("prefix filtering and rerooting", TestRangeCommitsNestedScopeFiltersAndReroots)
+	t.Run("root and boundary errors", TestRangeCommitsBoundaryErrorsAndRoot)
+	t.Run("unrelated boundary", TestRangeCommitsUnrelatedHistoryAndWorktreeConfig)
+	t.Run("corrupt tree evidence", TestWalkRangeCommitsReportsOrdinaryCorruptTrees)
 }
 
 func TestRangeCommitsLinearRangeCarriesChangesAndText(t *testing.T) {
@@ -664,6 +748,18 @@ func TestSplitWalkMessage(t *testing.T) {
 	if subject, body := splitMessage("subject"); subject != "subject" || body != "" {
 		t.Fatalf("single line = %q / %q", subject, body)
 	}
+}
+
+type cancelOnDoneContext struct {
+	context.Context
+	cancel   context.CancelFunc
+	observed bool
+}
+
+func (c *cancelOnDoneContext) Done() <-chan struct{} {
+	c.observed = true
+	c.cancel()
+	return c.Context.Done()
 }
 
 type cancelAtDiffContext struct {
