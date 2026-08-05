@@ -52,8 +52,12 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 		enabled[catalog.Node{Kind: "doc", Name: d}] = true
 	}
 
-	// Step 1: drop dormant non-local doc-gated skills.
-	var drops []catalog.Node
+	// Step 1: drop dormant non-local doc-gated skills. Facts stay local until
+	// the atomic config edit proves that the planned changes took effect.
+	var (
+		drops   []catalog.Node
+		planned Changes
+	)
 	for _, s := range slices.Sorted(slices.Values(cfg.Skills)) {
 		req := cat.Skills[s].RequiresDoc
 		if req == "" || local("skills", s) || enabled[catalog.Node{Kind: "doc", Name: req}] {
@@ -62,7 +66,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 		n := catalog.Node{Kind: "skill", Name: s}
 		delete(enabled, n)
 		drops = append(drops, n)
-		out.Add(fmt.Sprintf("close-enabled-set: dropped dormant skill %q (its %q doc is disabled)\n", s, req))
+		planned.Add(fmt.Sprintf("close-enabled-set: dropped dormant skill %q (its %q doc is disabled)\n", s, req))
 	}
 
 	// Step 2: additive fixed point over the direct requirement edges of every
@@ -87,7 +91,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 				}
 				enabled[r] = true
 				adds = append(adds, r)
-				out.Add(fmt.Sprintf("close-enabled-set: enabled %s %q (required by %q)\n", r.Kind, r.Name, n.Name))
+				planned.Add(fmt.Sprintf("close-enabled-set: enabled %s %q (required by %q)\n", r.Kind, r.Name, n.Name))
 				changed = true
 			}
 		}
@@ -95,7 +99,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 	if len(drops) == 0 && len(adds) == 0 {
 		return nil
 	}
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	if err := editConfig(root, func(src []byte) ([]byte, error) {
 		b := src
 		var err error
 		for _, n := range drops {
@@ -109,5 +113,11 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
 			}
 		}
 		return b, nil
-	})
+	}); err != nil {
+		return err
+	}
+	for _, change := range planned.Items() {
+		out.Add(change.Text)
+	}
+	return nil
 }

@@ -41,6 +41,10 @@ func loadForMigration(root string) (*config.Config, error) {
 	return cfg, nil
 }
 
+// writeConfigAtomic is replaceable in migration tests to prove callers do not
+// publish planned facts when their config write fails.
+var writeConfigAtomic = manifest.WriteFileAtomic
+
 // editConfig applies mutate to the project's config.yaml, routing serialization
 // through internal/config (ADR-0026). A config absent on disk is a no-op
 // (idempotent re-run safe) - the shared skeleton of the scalar-edit migrations.
@@ -58,5 +62,5 @@ func editConfig(root string, mutate func(src []byte) ([]byte, error)) error {
 		return err
 	}
 	// touches-state: config/migrations-and-locks:lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
-	return manifest.WriteFileAtomic(cfgPath, out)
+	return writeConfigAtomic(cfgPath, out)
 }

@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -96,13 +97,10 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if err := applyCloseEnabledSet(root, &out); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	got := out.String()
-	for _, want := range []string{
-		`close-enabled-set: dropped dormant skill "roadmap-graduation" (its "roadmap" doc is disabled)`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("output missing %q:\n%s", want, got)
-		}
+	const want = "close-enabled-set: dropped dormant skill \"roadmap-graduation\" (its \"roadmap\" doc is disabled)\n" +
+		"close-enabled-set: enabled agent \"grounding-checker\" (required by \"brainstorming\")\n"
+	if got := out.String(); got != want {
+		t.Errorf("changes = %q, want %q", got, want)
 	}
 	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 	if err != nil {
@@ -118,8 +116,9 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if strings.Contains(string(cfg), "- roadmap-graduation") {
 		t.Errorf("dormant skill not dropped:\n%s", cfg)
 	}
-	// Idempotence: a second run changes nothing.
-	if err := applyCloseEnabledSet(root, &out); err != nil {
+	// Idempotence: a second run changes neither config nor collected facts.
+	var second Changes
+	if err := applyCloseEnabledSet(root, &second); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	again, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
@@ -128,6 +127,25 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	}
 	if !bytes.Equal(cfg, again) {
 		t.Errorf("re-run must be a byte-identical no-op:\n%s", again)
+	}
+	if got := second.String(); got != "" {
+		t.Errorf("second-run changes = %q, want none", got)
+	}
+}
+
+func TestCloseEnabledSetWriteFailurePublishesNoChanges(t *testing.T) {
+	root := closeFixture(t, "prefix: ex\nskills: [brainstorming, roadmap-graduation]\nagents: []\n", nil)
+	failure := errors.New("atomic write failed")
+	prior := writeConfigAtomic
+	writeConfigAtomic = func(string, []byte) error { return failure }
+	t.Cleanup(func() { writeConfigAtomic = prior })
+
+	var changes Changes
+	if err := applyCloseEnabledSet(root, &changes); !errors.Is(err, failure) {
+		t.Fatalf("applyCloseEnabledSet error = %v, want %v", err, failure)
+	}
+	if got := changes.String(); got != "" {
+		t.Errorf("changes = %q, want no facts after failed write", got)
 	}
 }
 
