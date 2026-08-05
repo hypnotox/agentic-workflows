@@ -317,6 +317,55 @@ type memoryEditItem struct {
 	NewText string `json:"newText"`
 }
 
+func rejectDuplicateJSONKeys(raw []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	var walk func() error
+	walk = func() error {
+		token, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		delim, ok := token.(json.Delim)
+		if !ok {
+			return nil
+		}
+		switch delim {
+		case '{':
+			seen := map[string]struct{}{}
+			for decoder.More() {
+				keyToken, err := decoder.Token()
+				if err != nil {
+					return err
+				}
+				key, ok := keyToken.(string)
+				if !ok { // coverage-ignore: json.Decoder guarantees object member tokens are strings after More
+					return errors.New("JSON object key is not a string")
+				}
+				if _, duplicate := seen[key]; duplicate {
+					return fmt.Errorf("duplicate JSON key %q", key)
+				}
+				seen[key] = struct{}{}
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+			return err
+		case '[':
+			for decoder.More() {
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+			return err
+		default: // coverage-ignore: json.Decoder yields only object or array opening delimiters at a value position
+			return fmt.Errorf("unexpected JSON delimiter %q", delim)
+		}
+	}
+	return walk()
+}
+
 func decodeMemoryEditRequest(input io.Reader) (memoryEditRequest, error) {
 	limited := io.LimitReader(input, maxMemoryEditRequestBytes+1)
 	raw, err := io.ReadAll(limited)
@@ -325,6 +374,9 @@ func decodeMemoryEditRequest(input io.Reader) (memoryEditRequest, error) {
 	}
 	if len(raw) > maxMemoryEditRequestBytes {
 		return memoryEditRequest{}, errors.New("memory edit request exceeds 16 MiB")
+	}
+	if err := rejectDuplicateJSONKeys(raw); err != nil {
+		return memoryEditRequest{}, fmt.Errorf("decode memory edit request: %w", err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()

@@ -409,3 +409,10 @@ feat(rendering): back memory tools (applies memory tools batch)
   primitive with a private analogue.
 - The terminal implementation review later owns the plan status flip and the ADR's status-only
   Implemented transition; no implementation phase performs either freeze.
+- Implementation deviations: Phase 1's planned transaction required settlement commit `b69d0fc7`
+  for bounded diagnostics, presentation facts, public documentation, and protocol-proof gaps, including
+  a Reapplied correction for the two CLI operations. Phase 2 required settlement commits `96fab200`,
+  `4f220489`, and `ac937033` for strict decoding, process lifecycle, runtime activation, guidance,
+  rendering, documentation, and proof gaps. Phase 3 required settlement commit `78547685` for stale
+  protocol prose and stronger behavioral contract proof. Each settlement remained a focused follow-up
+  to its reviewed phase commit rather than rewriting an integrated transaction.

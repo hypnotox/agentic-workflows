@@ -413,10 +413,15 @@ func TestMemoryEditDecoderAndGrammarRefuseBeforeComposition(t *testing.T) {
 		t.Fatalf("stdin read error = %v", err)
 	}
 	for _, payload := range []string{
+		``,
+		`{"unterminated`,
 		`{"edits":[]}`,
 		`{"edits":[{"oldText":"","newText":"x"}]}`,
 		`{"edits":[{"oldText":"x","newText":"y","extra":true}]}`,
 		`{"edits":[{"oldText":"x","newText":"y"}],"extra":true}`,
+		`{"edits":[{"oldText":"x","newText":"y"}],"edits":[{"oldText":"a","newText":"b"}]}`,
+		`{"edits":[{"oldText":"x","oldText":"a","newText":"y"}]}`,
+		`{"edits":[{"oldText":"x","newText":"y","newText":"b"}]}`,
 		`{"edits":[{"oldText":"x","newText":"y"}]} {}`,
 		`{"edits":[{"oldText":"x","newText":"y"}]} trailing`,
 	} {

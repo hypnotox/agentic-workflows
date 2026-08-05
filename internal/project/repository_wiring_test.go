@@ -103,8 +103,8 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 	}
 	for _, want := range []string{
 		"env -u AWF_PI_RUNTIME_SMOKE go test ./...",
-		"env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1",
-		`"Action":"pass".*"Test":"TestPiRealRuntimeSmoke"`,
+		"env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$' -count=1",
+		`"Action":"pass".*"Test":"'"$proving_unit"'"`,
 	} {
 		if !strings.Contains(script, want) {
 			t.Errorf("./x Pi runtime ownership lost %q", want)

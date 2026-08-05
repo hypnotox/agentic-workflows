@@ -39,7 +39,7 @@ run_deadcode_gate() {
 
 run_pi_runtime_smoke() {
   local output status
-  if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPiRealRuntimeSmoke$' -count=1)"; then
+  if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/project -run '^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$' -count=1)"; then
     status=0
   else
     status=$?
@@ -48,10 +48,12 @@ run_pi_runtime_smoke() {
   if [ "$status" -ne 0 ]; then
     return "$status"
   fi
-  if ! grep -q '"Action":"pass".*"Test":"TestPiRealRuntimeSmoke"' <<<"$output"; then
-    echo "gate: Pi runtime smoke did not run and pass" >&2
-    return 1
-  fi
+  for proving_unit in TestPiEffortMemoryToolContract TestPiRealRuntimeSmoke; do
+    if ! grep -q '"Action":"pass".*"Test":"'"$proving_unit"'"' <<<"$output"; then
+      echo "gate: Pi runtime smoke proving units did not run and pass" >&2
+      return 1
+    fi
+  done
 }
 
 cmd="${1:-}"
@@ -70,7 +72,8 @@ case "$cmd" in
     # enabled uncached Pi runtime smoke + vet + lint. The coverage step
     # (ADR-0012) fails below 100% of non-ignored statements; -coverpkg=./... so
     # every package contributes. Ordinary Go runs skip the Docker-backed smoke;
-    # this gate invokes that proving unit exactly once below.
+    # this gate invokes both proving units below while their shared helper runs
+    # the container exactly once.
     # The profile is durable (gitignored via *.out) so CI can upload it to
     # Codecov without rerunning the suite, and an interrupted run leaks no
     # tmpfs file (ADR-0196).

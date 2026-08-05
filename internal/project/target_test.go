@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -87,7 +88,6 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 }
 
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
-// invariant: rendering/pi-workflows:using-effort-skill (TestPiRuntimeTargetRender)
 func TestPiRuntimeTargetRender(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)
@@ -191,6 +191,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
+// invariant: rendering/pi-workflows:using-effort-skill (TestPiEffortMemoryToolContract)
 func TestPiEffortMemoryToolContract(t *testing.T) {
 	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
 	index := selected[".pi/extensions/awf-effort/index.ts"]
@@ -231,6 +232,9 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 	}
 	fallback := renderSkillGolden(t, "using-effort", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
 	assertNoLeaks(t, fallback)
+	if os.Getenv("AWF_PI_RUNTIME_SMOKE") == "1" {
+		assertPiRuntimeSmoke(t)
+	}
 }
 
 func TestPiMinimumRuntime(t *testing.T) {
@@ -269,16 +273,30 @@ func TestPiContextUsageInjection(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-context-usage-injection (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
+var (
+	piRuntimeSmokeOnce   sync.Once
+	piRuntimeSmokeOutput []byte
+	piRuntimeSmokeErr    error
+)
+
+func assertPiRuntimeSmoke(t *testing.T) {
+	t.Helper()
+	piRuntimeSmokeOnce.Do(func() {
+		root := repoRootDir(t)
+		cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
+		cmd.Dir = root
+		piRuntimeSmokeOutput, piRuntimeSmokeErr = cmd.CombinedOutput()
+	})
+	if piRuntimeSmokeErr != nil {
+		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", piRuntimeSmokeErr, piRuntimeSmokeOutput)
+	}
+}
+
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	if os.Getenv("AWF_PI_RUNTIME_SMOKE") != "1" {
 		t.Skip("Pi container skipped; run './x pi-test run' alone or './x gate' to include it")
 	}
-	root := repoRootDir(t)
-	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
-	cmd.Dir = root
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", err, output)
-	}
+	assertPiRuntimeSmoke(t)
 }
 
 func TestTargetOutputRenderError(t *testing.T) {

@@ -266,12 +266,16 @@ test("memory client accepts and recursively freezes every success and refusal sh
     memoryOutcome("no-match", false, { edit: { index: 0 } }),
     memoryOutcome("ambiguous-match", false, { edit: { index: 0, occurrences: 2 } }),
     memoryOutcome("overlapping-edits", false, { edits: { firstIndex: 0, secondIndex: 1 } }),
-    memoryOutcome("result-too-large", false, { size: { bytes: 2, maxBytes: 1 } }), memoryOutcome("memory-failure"), memoryOutcome("memory-failure", false),
+    memoryOutcome("result-too-large", false, { size: { bytes: MEMORY_STDERR_MAX + 1, maxBytes: MEMORY_STDERR_MAX } }), memoryOutcome("memory-failure"), memoryOutcome("memory-failure", false),
   ];
   for (const value of refusals) {
     const reply = await decodeMemoryReply(value);
     assert.equal(reply.condition, value.condition); assert.equal(Object.isFrozen(reply.outcome), true); assert.equal(Object.isFrozen(reply.outcome?.nextActions), true);
     for (const key of ["range", "edit", "edits", "size"] as const) if ((reply as any)[key]) assert.equal(Object.isFrozen((reply as any)[key]), true);
+  }
+  for (const operation of ["edit", "update"] as const) {
+    const reply = await decodeMemoryReply(memoryOutcome("result-too-large", false, { size: { bytes: MEMORY_STDOUT_MAX + 1, maxBytes: MEMORY_STDOUT_MAX } }), operation);
+    assert.equal(reply.condition, "result-too-large"); assert.equal(Object.isFrozen(reply.size), true);
   }
 });
 
@@ -288,9 +292,13 @@ test("memory client rejects every closed success and refusal boundary", async ()
     { ...memoryUpdateReply(), extra: true }, { ...memoryUpdateReply(), memory: { ...memoryFact(), effort: "other" } },
     memoryOutcome("not-owner", true), { ...memoryOutcome("missing"), outcome: { ...memoryOutcome("missing").outcome, cause: "forbidden" } }, { ...memoryOutcome("memory-failure"), outcome: { ...memoryOutcome("memory-failure").outcome, cause: undefined } },
     { ...memoryOutcome("missing"), extra: true }, memoryOutcome("offset-out-of-range"), memoryOutcome("offset-out-of-range", false, { range: { offset: 1, totalLines: 1 } }), memoryOutcome("offset-out-of-range", false, { range: { offset: 2, totalLines: 0 } }),
-    memoryOutcome("no-match", false, { edit: { index: -1 } }), memoryOutcome("ambiguous-match", false, { edit: { index: 0, occurrences: 1 } }), memoryOutcome("overlapping-edits", false, { edits: { firstIndex: 0, secondIndex: 0 } }), memoryOutcome("result-too-large", false, { size: { bytes: 1, maxBytes: 1 } }),
+    memoryOutcome("no-match", false, { edit: { index: -1 } }), memoryOutcome("ambiguous-match", false, { edit: { index: 0, occurrences: 1 } }), memoryOutcome("overlapping-edits", false, { edits: { firstIndex: 0, secondIndex: 0 } }),
+    memoryOutcome("result-too-large", false, { size: { bytes: MEMORY_STDERR_MAX, maxBytes: MEMORY_STDERR_MAX } }), memoryOutcome("result-too-large", false, { size: { bytes: MEMORY_STDERR_MAX + 1, maxBytes: 0 } }), memoryOutcome("result-too-large", false, { size: { bytes: MEMORY_STDOUT_MAX + 1, maxBytes: MEMORY_STDOUT_MAX } }),
   ];
   for (const value of invalid) await assert.rejects(decodeMemoryReply(value), /invalid envelope/);
+  for (const operation of ["edit", "update"] as const) {
+    await assert.rejects(decodeMemoryReply(memoryOutcome("result-too-large", false, { size: { bytes: MEMORY_STDERR_MAX + 1, maxBytes: MEMORY_STDERR_MAX } }), operation), /invalid envelope/);
+  }
 });
 
 test("memory invocation validates arguments, exact argv, stdin, and bounded transport", async () => {
@@ -439,7 +447,7 @@ test("memory client covers optional argument branches, aggregate request cap, an
 });
 
 test("child executor ignores repeated terminal triggers and production group killing falls back safely", async () => {
-  const h = childHarness(); const promise = h.exec("./awf", [], { cwd: "/repo", timeout: 5 }); h.child.stdout.emit("data", "x".repeat(MEMORY_STDOUT_MAX + 1)); h.child.stderr.emit("data", "x".repeat(MEMORY_STDERR_MAX + 1)); h.child.stdin.destroy = () => { throw new Error("destroy"); }; h.child.stdin.emit("error", new Error("late")); const killTimer = h.timers.at(-1)!; h.child.emit("close", null); await assert.rejects(promise, /stdout exceeded/); killTimer.callback(); assert.deepEqual(h.kills, ["SIGTERM"]);
+  const h = childHarness(); const promise = h.exec("./awf", [], { cwd: "/repo", timeout: 5 }); h.child.stdout.emit("data", "x".repeat(MEMORY_STDOUT_MAX + 1)); h.child.stderr.emit("data", "x".repeat(MEMORY_STDERR_MAX + 1)); h.child.stdin.destroy = () => { throw new Error("destroy"); }; h.child.stdin.emit("error", new Error("late stdin")); h.child.emit("error", new Error("late process")); const killTimer = h.timers.at(-1)!; h.child.emit("close", null); await assert.rejects(promise, /stdout exceeded/); killTimer.callback(); assert.deepEqual(h.kills, ["SIGTERM"]);
   const noPid = new FakeChild(); noPid.pid = undefined; productionChildMemoryDependencies.kill(noPid as any, "SIGTERM"); assert.deepEqual(noPid.signals, ["SIGTERM"]);
   const missingPid = new FakeChild(); missingPid.pid = 2147483647; productionChildMemoryDependencies.kill(missingPid as any, "SIGKILL"); assert.deepEqual(missingPid.signals, ["SIGKILL"]);
 });
@@ -480,10 +488,10 @@ test("read decoder ties range facts to the request, selected content, and remain
   const overLineCap = { ...memoryReadReply(), content: "\n".repeat(2001), range: { startLine: 1, endLine: 2001, totalLines: 2002, nextOffset: 2002, truncatedBy: "lines" } }; await assert.rejects(memoryRead(exec(overLineCap), "/repo", "demo", OWNER), /invalid envelope/);
   const exactLineCap = { ...memoryReadReply(), content: "\n".repeat(2000), range: { startLine: 1, endLine: 2000, totalLines: 2001, nextOffset: 2001, truncatedBy: "lines" } }; assert.equal((await memoryRead(exec(exactLineCap), "/repo", "demo", OWNER)).range?.endLine, 2000);
   const limitWithoutRequest = { ...memoryReadReply(), range: { startLine: 1, endLine: 1, totalLines: 2, nextOffset: 2, truncatedBy: "limit" } }; await assert.rejects(memoryRead(exec(limitWithoutRequest), "/repo", "demo", OWNER), /invalid envelope/);
-  const zeroMaximum = memoryOutcome("result-too-large", false, { size: { bytes: 1, maxBytes: 0 } }); assert.equal((await decodeMemoryReply(zeroMaximum)).condition, "result-too-large");
+  const zeroMaximum = memoryOutcome("result-too-large", false, { size: { bytes: 1, maxBytes: 0 } }); await assert.rejects(decodeMemoryReply(zeroMaximum), /invalid envelope/);
 });
 
 test("SIGKILL keeps the executor pending for close and uses only a final bounded fallback", async () => {
-  const observed = childHarness(); let settled = false; const promise = observed.exec("./awf", [], { cwd: "/repo", timeout: 5 }).catch((error) => { settled = true; throw error; }); observed.timers[0].callback(); observed.timers[1].callback(); observed.child.emit("error", new Error("after kill")); await Promise.resolve(); assert.equal(settled, false); assert.deepEqual(observed.kills, ["SIGTERM", "SIGKILL"]); assert.equal(observed.timers[2].delay, MEMORY_CLOSE_DELAY_MS); observed.child.emit("close", null); await assert.rejects(promise, /after kill/);
+  const observed = childHarness(); let settled = false; const promise = observed.exec("./awf", [], { cwd: "/repo", timeout: 5 }).catch((error) => { settled = true; throw error; }); observed.timers[0].callback(); observed.timers[1].callback(); observed.child.emit("error", new Error("after kill")); await Promise.resolve(); assert.equal(settled, false); assert.deepEqual(observed.kills, ["SIGTERM", "SIGKILL"]); assert.equal(observed.timers[2].delay, MEMORY_CLOSE_DELAY_MS); observed.child.emit("close", null); await assert.rejects(promise, /timed out/);
   const fallback = childHarness(); const fallbackPromise = fallback.exec("./awf", [], { cwd: "/repo", timeout: 5 }); fallback.timers[0].callback(); fallback.timers[1].callback(); fallback.timers[2].callback(); await assert.rejects(fallbackPromise, /timed out/); assert.equal(fallback.timers.every((timer) => timer.cleared), true);
 });
