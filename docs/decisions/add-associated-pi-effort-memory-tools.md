@@ -55,8 +55,8 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
    one-indexed `offset` and `limit`; `effort_memory_edit` accepts only a nonempty `edits` array of
    `oldText` and `newText` pairs; and `effort_memory_update` accepts only optional `phase` and
    `next`, with at least one required at execution. No tool accepts an effort slug or filesystem
-   path. Read includes the complete memory document, frontmatter included. Edit changes only the
-   Markdown body. Update changes only mutable frontmatter. Direct use of Pi's generic file tools
+   path. Read pagination selects from the complete memory document rather than the body alone, so
+   frontmatter appears when the selected range includes it. Edit changes only the Markdown body. Update changes only mutable frontmatter. Direct use of Pi's generic file tools
    and ordinary awf commands remains permitted.
 
 2. `decision: binary-owned-memory-operations` Keep safe memory semantics in the awf binary. Add a
