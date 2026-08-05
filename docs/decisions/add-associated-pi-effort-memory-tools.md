@@ -104,6 +104,9 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
    and the complete stdin request is bounded to 16 MiB. Read selection is capped at 2,000 lines or
    50 KiB after honoring its optional line limit.
 
+   A syntactically valid read offset beyond the document's total line count returns the handled
+   `offset-out-of-range` refusal rather than an empty success or malformed-bound failure.
+
    JSON mode writes exactly one newline-terminated protocol-1 envelope, with stdout bounded to one
    MiB and stderr bounded to 50 KiB. Every memory fact uses a canonical slug through 63 bytes,
    phase and next strings through 500 bytes, and an updated value that is either RFC3339Nano UTC or
@@ -130,8 +133,9 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
    ```
 
    Handled refusal conditions are `not-owner`, `missing`, `unsafe-activity`, `invalid-memory`,
-   `unsafe-memory`, `no-match`, `ambiguous-match`, `overlapping-edits`, `result-too-large`, and
-   `memory-failure`. Every refusal has exactly `schemaVersion`, `condition`, and `outcome`, except
+   `unsafe-memory`, `offset-out-of-range`, `no-match`, `ambiguous-match`, `overlapping-edits`,
+   `result-too-large`, and `memory-failure`. Every refusal has exactly `schemaVersion`, `condition`,
+   and `outcome`, except
    for the condition-specific extra fact stated below. `outcome` has exactly string
    `category:"operation"`, nonempty present-tense string `condition` through 4 KiB, boolean
    `changedMemory`, and `nextActions` containing 1 through 8 nonempty strings through 4 KiB each.
@@ -142,12 +146,13 @@ This changes terminal ADR-0225 forward through current-state claims. Its history
    {"schemaVersion":1,"condition":"not-owner","outcome":{"category":"operation","condition":"observed state","changedMemory":false,"nextActions":["independently executable action"]}}
    ```
 
-   `no-match` adds exactly `"edit":{"index":0}`. `ambiguous-match` adds exactly
-   `"edit":{"index":0,"occurrences":2}`. `overlapping-edits` adds exactly
-   `"edits":{"firstIndex":0,"secondIndex":1}`. `result-too-large` adds exactly
-   `"size":{"bytes":1048577,"maxBytes":1048576}`. Indexes and byte counts are nonnegative
-   integers, and an occurrence count is an integer greater than one. No other refusal carries an
-   extra fact. `changedMemory` is false for every refusal except `memory-failure` after atomic
+   `offset-out-of-range` adds exactly `"range":{"offset":2,"totalLines":1}`, where `offset` is a
+   positive integer greater than the positive integer `totalLines`. `no-match` adds exactly
+   `"edit":{"index":0}`. `ambiguous-match` adds exactly `"edit":{"index":0,"occurrences":2}`.
+   `overlapping-edits` adds exactly `"edits":{"firstIndex":0,"secondIndex":1}`.
+   `result-too-large` adds exactly `"size":{"bytes":1048577,"maxBytes":1048576}`. Indexes and byte
+   counts are nonnegative integers, and an occurrence count is an integer greater than one. No other
+   refusal carries an extra fact. `changedMemory` is false for every refusal except `memory-failure` after atomic
    replacement, where it is true. Handled refusals exit zero. Malformed grammar or stdin, invalid
    bounds, and failures before managed state is observed use nonzero exit, empty stdout, and bounded
    actionable stderr. Human mode uses the same typed results and refusals through effort-package
