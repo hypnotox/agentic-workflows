@@ -134,8 +134,11 @@ func TestRepoCheckCapabilityPlan(t *testing.T) {
 		deps := repoCheckTestDependencies(t, cfg, p, check, state, tree, counts)
 		var out bytes.Buffer
 		err = runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, deps)
-		if err == nil || !strings.Contains(err.Error(), "execute step \"drift\"") {
-			t.Fatalf("error = %v, want collected drift action error", err)
+		if err == nil {
+			t.Fatal("aggregate error = nil, want first drift action error")
+		}
+		if got, want := err.Error(), `execute step "drift": check repo drift failed`; got != want {
+			t.Fatalf("aggregate error = %q, want first failure only %q", got, want)
 		}
 		if got, want := *counts, (repoCheckCounters{loads: 1, opens: 1, reports: 1, states: 1, indexes: 1}); got != want {
 			t.Fatalf("capability counts = %+v, want %+v", got, want)

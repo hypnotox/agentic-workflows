@@ -269,7 +269,7 @@ func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
 		return err
 	}
 	if len(collection.failures) > 0 {
-		return &producedReportError{errors.Join(collection.failures...)}
+		return &producedReportError{collection.failures[0]}
 	}
 	return nil
 }
