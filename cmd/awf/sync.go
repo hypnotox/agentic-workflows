@@ -35,18 +35,22 @@ func runSync(ctx context.Context, root string, stdout io.Writer) error {
 	return runSyncPrinting(ctx, loader, root, nil, stdout)
 }
 
-func runSyncInitialized(ctx context.Context, root string, seed project.InitAuthority, stdout io.Writer) error {
-	loader, err := newProjectLoader(root)
+func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
+	mutation, err := syncMutation(ctx, loader, root, seed)
 	if err != nil {
 		return err
 	}
-	return runSyncPrinting(ctx, loader, root, &seed, stdout)
+	document, err := mutation.Document()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
+	}
+	return presentation.Render(stdout, document)
 }
 
-func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
+func syncMutation(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority) (presentation.Mutation, error) {
 	p, err := loader.Open(ctx, root)
 	if err != nil {
-		return err
+		return presentation.Mutation{}, err
 	}
 	var backups []project.Backup
 	var changes []project.Change
@@ -57,15 +61,11 @@ func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, s
 		backups, changes, pruned, err = p.InitializeReport(ctx, *seed)
 	}
 	if err != nil {
-		return err
+		return presentation.Mutation{}, err
 	}
 	mutation, err := project.SyncMutation(backups, changes, pruned)
 	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
+		return presentation.Mutation{}, err
 	}
-	document, err := mutation.Document()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
-		return err
-	}
-	return presentation.Render(stdout, document)
+	return mutation, nil
 }

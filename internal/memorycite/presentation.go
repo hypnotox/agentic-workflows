@@ -1,6 +1,10 @@
 package memorycite
 
-import "github.com/hypnotox/agentic-workflows/internal/presentation"
+import (
+	"fmt"
+
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
+)
 
 // Categories maps memory-citation scan results into their check-report vocabulary.
 func Categories(findings []Finding) ([]presentation.ReportCategory, error) {
@@ -16,6 +20,28 @@ func Categories(findings []Finding) ([]presentation.ReportCategory, error) {
 		return nil, nil
 	}
 	return []presentation.ReportCategory{{Label: "errors", Schema: []string{"check", "detail"}, Records: records}}, nil
+}
+
+// CommitGateDocument maps commit-message memory citations into the gate's
+// complete ordinary presentation. Scan ownership and finding wording remain here.
+func CommitGateDocument(findings []Reference) (presentation.Document, error) {
+	values := make([]presentation.Value, 0, len(findings))
+	for _, finding := range findings {
+		value, err := presentation.Prose(fmt.Sprintf("%s line %d names the effort-owned memory file %q", finding.Path, finding.Line, finding.Segment))
+		if err != nil { // coverage-ignore: fixed finding prose remains nonempty after normalization
+			return presentation.Document{}, err
+		}
+		values = append(values, value)
+	}
+	list, err := presentation.NewList("errors", values...)
+	if err != nil { // coverage-ignore: every reference value is validated above and errors is a fixed grammar-valid label
+		return presentation.Document{}, err
+	}
+	section, err := presentation.NewSection("check staged commit", list)
+	if err != nil { // coverage-ignore: the validated List is always an admitted Section child
+		return presentation.Document{}, err
+	}
+	return presentation.NewDocument(section)
 }
 
 // DisabledCategory describes an explicitly disabled memory-citation gate.

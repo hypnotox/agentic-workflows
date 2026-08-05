@@ -34,6 +34,20 @@ func readInitConfig(t *testing.T, root string) string {
 // TestInitDescribeReadOnly asserts `awf init --describe` prints the descriptor
 // schema as JSON and writes nothing (no .awf/ created).
 // invariant: tooling/context-and-topic:describe-read-only (TestInitDescribeReadOnly)
+func TestWriteInitDescriptorProtocolBytesAndErrors(t *testing.T) {
+	const payload = `{"descriptors":["x"]}`
+	var out bytes.Buffer
+	if err := writeInitDescriptorProtocol(&out, []byte(payload+"\n")); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), payload+"\n"; got != want {
+		t.Fatalf("descriptor protocol = %q, want exact %q", got, want)
+	}
+	if err := writeInitDescriptorProtocol(errorWriter{}, []byte(payload)); err == nil {
+		t.Fatal("descriptor write error was not propagated")
+	}
+}
+
 func TestInitDescribeReadOnly(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -204,7 +218,7 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	if strings.Contains(out.String(), "gateCmd:") {
 		t.Errorf("init prompted for descriptors it cannot apply:\n%s", out.String())
 	}
-	if !strings.Contains(out.String(), "keeping it") {
+	if !strings.Contains(out.String(), "config action: kept and re-rendered") {
 		t.Errorf("init did not say the existing config is kept:\n%s", out.String())
 	}
 	if cfg := readInitConfig(t, root); strings.Contains(cfg, "answered") {
@@ -263,8 +277,8 @@ func TestInitCatalogTrimClosesChainSelection(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "note: also enabled skill exploring") {
-		t.Errorf("expected advisory closure note, got %q", out.String())
+	if !strings.Contains(out.String(), "enabled dependencies:\n") || !strings.Contains(out.String(), "      skill exploring\n") {
+		t.Errorf("expected dependency closure change, got %q", out.String())
 	}
 	cfg := readInitConfig(t, root)
 	for _, want := range []string{"- brainstorming", "- exploring"} {
@@ -324,10 +338,10 @@ func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
 		sets   []string
 		failAt int
 	}{
-		{name: "existing config status", root: scaffoldProject, failAt: 1},
-		{name: "ignored answers note", root: scaffoldProject, sets: []string{"gateCmd=go test ./..."}, failAt: 2},
-		{name: "scaffold status", root: (*testing.T).TempDir, failAt: 1},
-		{name: "closure note", root: (*testing.T).TempDir, sets: []string{"skills=brainstorming"}, failAt: 2},
+		{name: "existing config outcome", root: scaffoldProject, failAt: 1},
+		{name: "ignored answers outcome", root: scaffoldProject, sets: []string{"gateCmd=go test ./..."}, failAt: 1},
+		{name: "scaffold outcome", root: (*testing.T).TempDir, failAt: 1},
+		{name: "closure outcome", root: (*testing.T).TempDir, sets: []string{"skills=brainstorming"}, failAt: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			writer := &nthInitErrorWriter{failAt: test.failAt}
@@ -336,12 +350,6 @@ func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
 				t.Fatalf("write error = %v after %d writes", err, writer.writes)
 			}
 		})
-	}
-}
-
-func TestInitOrientationRejectsEmptyAdvisory(t *testing.T) {
-	if err := writeInitOrientation(io.Discard, []string{" \n\t"}); err == nil {
-		t.Fatal("empty normalized advisory accepted")
 	}
 }
 
@@ -357,10 +365,11 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		"status: initialization completed",
 		"references unset vars",
 		"next actions:",
-		"step 1: fill the Identity section at .awf/parts/agents-doc/identity.md",
-		"step 2: set still-empty vars in .awf/config.yaml",
-		"step 3: wire rendered hooks under .awf/hooks/",
-		"step 4: commit .awf and rendered files together",
+		"step 1: continue with the rendered project state",
+		"step 2: fill the Identity section at .awf/parts/agents-doc/identity.md",
+		"step 3: set still-empty vars in .awf/config.yaml",
+		"step 4: wire rendered hooks under .awf/hooks/",
+		"step 5: commit .awf and rendered files together",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("init output missing %q:\n%s", want, out.String())

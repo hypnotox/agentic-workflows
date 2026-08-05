@@ -81,7 +81,7 @@ func TestRunNewScaffoldsTopicWithoutSyncMutation(t *testing.T) {
 	if err := runNew(ctx, root, "topic", []string{"rendering", "Scheduling", "Contracts"}, &out); err != nil {
 		t.Fatal(err)
 	}
-	wantOut := "status: created: .awf/topics/metadata/rendering/scheduling-contracts.yaml, .awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
+	wantOut := "topic:\n  created files:\n    .awf/topics/metadata/rendering/scheduling-contracts.yaml\n    .awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
 	if out.String() != wantOut {
 		t.Errorf("output = %q, want %q", out.String(), wantOut)
 	}

@@ -1,9 +1,13 @@
 package main
 
-import "io"
+import (
+	"io"
 
-func fixtureRendererFailure(w io.Writer, render func(io.Writer) error) {
-	if err := render(w); err != nil {
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
+)
+
+func writeOutcome(w io.Writer, document presentation.Document) {
+	if err := presentation.Render(w, document); err != nil {
 		writeRendererFailure(w, err)
 	}
 }

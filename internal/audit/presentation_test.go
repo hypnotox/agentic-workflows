@@ -8,6 +8,24 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
+func TestConventionalCommitDocumentOwnsGatePresentation(t *testing.T) {
+	document, err := ConventionalCommitDocument([]Finding{{Detail: "subject must use Conventional Commits"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	const want = "check staged commit:\n  errors:\n    subject must use Conventional Commits\n"
+	if out.String() != want {
+		t.Fatalf("document = %q, want %q", out.String(), want)
+	}
+	if _, err := ConventionalCommitDocument([]Finding{{Detail: " \n\t"}}); err == nil {
+		t.Fatal("invalid finding detail accepted")
+	}
+}
+
 func TestReportOwnsExactCategoriesAndStatus(t *testing.T) {
 	for _, tc := range []struct {
 		name, want string

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"gopkg.in/yaml.v3"
@@ -105,11 +106,11 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 			return rollbackTopicScaffold(err, createdFiles, createdDirs)
 		}
 	}
-	paths := make([]string, len(files))
-	for i, file := range files {
-		paths[i] = file.Path
+	document, err := topic.CreatedDocument(files)
+	if err != nil { // coverage-ignore: ScaffoldFiles returns validated repository-relative single-line paths
+		return err
 	}
-	return writeStatus(stdout, "created: "+strings.Join(paths, ", "))
+	return presentation.Render(stdout, document)
 }
 
 type topicWriteCloser interface {

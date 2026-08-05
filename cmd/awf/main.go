@@ -466,20 +466,16 @@ func writeStatus(stdout io.Writer, status string) error {
 	return presentation.Render(stdout, document)
 }
 
-func writeOutcomeWithRenderer(stdout, stderr io.Writer, outcome commandOutcome, render func(io.Writer, presentation.Document) error) int {
+func writeOutcome(stdout, stderr io.Writer, outcome commandOutcome) int {
 	dst := stdout
 	if outcome.stream == commandStderr {
 		dst = stderr
 	}
-	if err := render(dst, outcome.document); err != nil {
+	if err := presentation.Render(dst, outcome.document); err != nil {
 		writeRendererFailure(stderr, err)
 		return 1
 	}
 	return outcome.exit
-}
-
-func writeOutcome(stdout, stderr io.Writer, outcome commandOutcome) int {
-	return writeOutcomeWithRenderer(stdout, stderr, outcome, presentation.Render)
 }
 
 func dispatchFailure(stdout, stderr io.Writer, err error) int {

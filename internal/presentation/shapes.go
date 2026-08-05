@@ -24,6 +24,7 @@ type CollectionCategory struct {
 	Label   string
 	Schema  []string
 	Records []Record
+	Values  []Value
 }
 
 // Document lowers a collection into the closed presentation tree.
@@ -38,6 +39,14 @@ func (c Collection) Document() (Document, error) {
 	}
 	categories := make([]Node, 0, len(c.Categories))
 	for _, category := range c.Categories {
+		if len(category.Values) > 0 {
+			list, err := NewList(category.Label, category.Values...)
+			if err != nil {
+				return Document{}, err
+			}
+			categories = append(categories, list)
+			continue
+		}
 		group, err := NewRecordGroup(category.Label, category.Schema, category.Records...)
 		if err != nil {
 			return Document{}, err

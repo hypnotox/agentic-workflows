@@ -32,6 +32,7 @@ func TestCollectionDocumentValidationAndEmptyResult(t *testing.T) {
 	for _, collection := range []Collection{
 		{Status: " \n\t"},
 		{Status: "ready", Categories: []CollectionCategory{{Label: "Bad", Schema: []string{"value"}, Records: []Record{record}}}},
+		{Status: "ready", Categories: []CollectionCategory{{Label: "values", Values: []Value{{}}}}},
 	} {
 		if _, err := collection.Document(); err == nil {
 			t.Fatal("invalid collection accepted")

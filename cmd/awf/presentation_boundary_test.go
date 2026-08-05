@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"go/ast"
+	"go/importer"
+	"go/parser"
+	"go/token"
+	"go/types"
 	"io"
 	"os"
 	"path/filepath"
@@ -112,12 +116,12 @@ func TestWriteOutcomeRendererFailureIsSingleDiagnostic(t *testing.T) {
 	value, _ := presentation.Prose("ready")
 	field, _ := presentation.NewField("condition", value)
 	document, _ := presentation.NewDocument(field)
-	var stdout, stderr bytes.Buffer
-	if got := writeOutcomeWithRenderer(&stdout, &stderr, commandOutcome{document: document}, func(_ io.Writer, _ presentation.Document) error { return errors.New("render failed") }); got != 1 {
+	var stderr bytes.Buffer
+	if got := writeOutcome(errorWriter{}, &stderr, commandOutcome{document: document}); got != 1 {
 		t.Fatalf("exit = %d", got)
 	}
-	if stdout.Len() != 0 || stderr.String() != "awf: render failed\n" {
-		t.Fatalf("streams stdout=%q stderr=%q", stdout.String(), stderr.String())
+	if stderr.String() != "awf: write presentation: write failed\n" {
+		t.Fatalf("stderr=%q", stderr.String())
 	}
 }
 
@@ -128,12 +132,21 @@ func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 	if findings := ordinaryOutputFindings(t, nil); len(findings) != 0 {
 		t.Fatalf("ordinary output bypasses:\n%s", strings.Join(findings, "\n"))
 	}
-	for _, fixture := range []string{"negative-direct-write.go", "negative-builder.go", "negative-format.go", "negative-markdown.go", "negative-renderer.go"} {
-		if findings := fixtureFindings(t, fixture); len(findings) == 0 {
-			t.Errorf("%s produced no finding", fixture)
+	negativeFixtures := map[string]string{
+		"negative-direct-write.go": "direct output",
+		"negative-builder.go":      "direct output",
+		"negative-format.go":       "ad hoc presentation construction",
+		"negative-markdown.go":     "raw Markdown presentation",
+		"negative-renderer.go":     "direct output",
+		"negative-alias.go":        "direct output",
+	}
+	for fixture, want := range negativeFixtures {
+		findings := fixtureFindings(t, fixture)
+		if len(findings) != 1 || !strings.Contains(findings[0], want) {
+			t.Errorf("%s findings = %v, want exactly one %q finding", fixture, findings, want)
 		}
 	}
-	for _, fixture := range []string{"positive-read-plan.go", "positive-changelog.go", "positive-activity.go", "positive-init.go", "positive-context-delivery.go"} {
+	for _, fixture := range []string{"positive-read-plan.go", "positive-changelog.go", "positive-activity.go", "positive-init.go", "positive-context-delivery.go", "positive-shadow.go"} {
 		if findings := fixtureFindings(t, fixture); len(findings) != 0 {
 			t.Errorf("%s findings: %v", fixture, findings)
 		}
@@ -149,11 +162,14 @@ func TestExplicitOutputBypasses(t *testing.T) {
 	if findings := rendererFailureFindings(t, nil); len(findings) != 0 {
 		t.Fatalf("renderer fallback reachability: %s", strings.Join(findings, "; "))
 	}
-	if findings := fixtureRendererFindings(t, "negative-renderer-fallback.go"); len(findings) == 0 {
-		t.Fatal("negative renderer fallback fixture produced no finding")
-	}
 	if findings := fixtureRendererFindings(t, "positive-renderer-fallback.go"); len(findings) != 0 {
 		t.Fatalf("positive renderer fallback findings: %v", findings)
+	}
+	for _, fixture := range []string{"negative-renderer-fallback.go", "negative-nonpresentation-renderer.go"} {
+		findings := fixtureRendererFindings(t, fixture)
+		if len(findings) != 1 || !strings.Contains(findings[0], "not dominated by renderer failure") {
+			t.Fatalf("%s findings = %v", fixture, findings)
+		}
 	}
 }
 
@@ -179,8 +195,28 @@ var successfulBypasses = map[string]bool{
 // These exact helpers write authored files or spill-file storage rather than a
 // user-visible presentation. They are serialization sinks, not output bypasses.
 var nonPresentationWrites = map[string]bool{
-	modulePath + "/cmd/awf.writeAndCloseTopicFile":     true,
-	modulePath + "/internal/contextdelivery.writeFull": true,
+	modulePath + "/cmd/awf.writeAndCloseTopicFile":          true,
+	modulePath + "/internal/contextdelivery.writeFull":      true,
+	modulePath + "/internal/contextq.contextGroupKey":       true,
+	modulePath + "/internal/effort.replaceResidentExpected": true,
+	modulePath + "/internal/effort.replaceMemory":           true,
+	modulePath + "/internal/effort.publishNew":              true,
+	modulePath + "/internal/project.encodeMarkdownAgent":    true,
+	modulePath + "/internal/project.glossaryRows":           true,
+	modulePath + "/internal/project.pitfallsMarkdown":       true,
+	modulePath + "/internal/project.commitScopeTable":       true,
+	modulePath + "/internal/upgrade.treeDigest":             true,
+}
+
+// These owners create authored payload bytes rather than user-facing text.
+// Their literals are not presentation syntax and must remain distinguishable
+// from a raw CLI presentation literal.
+var nonPresentationLiteralOwners = map[string]bool{
+	modulePath + "/internal/topic.ScaffoldFiles":      true,
+	modulePath + "/internal/topic.ParsePart":          true,
+	modulePath + "/internal/effort.memoryBody":        true,
+	modulePath + "/internal/project.pitfallsMarkdown": true,
+	modulePath + "/internal/project.commitScopeTable": true,
 }
 
 func loadPresentationPackages(t *testing.T, overlay map[string][]byte) []*packages.Package {
@@ -191,7 +227,7 @@ func loadPresentationPackages(t *testing.T, overlay map[string][]byte) []*packag
 		"./internal/memorycite", "./internal/project", "./internal/prosegate", "./internal/topic",
 		"./internal/upgrade", "./internal/worktree",
 	}
-	pkgs, err := packages.Load(&packages.Config{Dir: repoRoot(t), Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax, Overlay: overlay}, patterns...)
+	pkgs, err := packages.Load(&packages.Config{Dir: repoRoot(t), Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo, Overlay: overlay}, patterns...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,9 +241,13 @@ func loadPresentationPackages(t *testing.T, overlay map[string][]byte) []*packag
 
 func ordinaryOutputFindings(t *testing.T, overlay map[string][]byte) []string {
 	t.Helper()
+	return ordinaryOutputFindingsInPackages(loadPresentationPackages(t, overlay), overlay == nil)
+}
+
+func ordinaryOutputFindingsInPackages(pkgs []*packages.Package, requireBypasses bool) []string {
 	var findings []string
 	declaredBypasses := map[string]bool{}
-	for _, pkg := range loadPresentationPackages(t, overlay) {
+	for _, pkg := range pkgs {
 		for _, file := range pkg.Syntax {
 			if !presentationOwnerFile(pkg, file) {
 				continue
@@ -224,14 +264,14 @@ func ordinaryOutputFindings(t *testing.T, overlay map[string][]byte) []string {
 				ast.Inspect(fn.Body, func(n ast.Node) bool {
 					switch node := n.(type) {
 					case *ast.CallExpr:
-						if ordinaryWriteCall(node) && !successfulBypasses[identity] && !nonPresentationWrites[identity] && identity != modulePath+"/cmd/awf.writeRendererFailure" {
+						if ordinaryWriteCall(pkg, node) && !successfulBypasses[identity] && !nonPresentationWrites[identity] && identity != modulePath+"/cmd/awf.writeRendererFailure" {
 							findings = append(findings, presentationSite(pkg, node)+" direct output in "+identity)
 						}
 						if forbiddenPresentationConstruction(node) {
 							findings = append(findings, presentationSite(pkg, node)+" ad hoc presentation construction in "+identity)
 						}
 					case *ast.BasicLit:
-						if !successfulBypasses[identity] && forbiddenPresentationLiteral(node) {
+						if !successfulBypasses[identity] && !nonPresentationLiteralOwners[identity] && forbiddenPresentationLiteral(node) {
 							findings = append(findings, presentationSite(pkg, node)+" raw Markdown presentation in "+identity)
 						}
 					}
@@ -240,7 +280,7 @@ func ordinaryOutputFindings(t *testing.T, overlay map[string][]byte) []string {
 			}
 		}
 	}
-	if overlay == nil {
+	if requireBypasses {
 		for identity := range successfulBypasses {
 			if !declaredBypasses[identity] {
 				findings = append(findings, "missing successful bypass symbol "+identity)
@@ -251,32 +291,53 @@ func ordinaryOutputFindings(t *testing.T, overlay map[string][]byte) []string {
 	return findings
 }
 
-func presentationOwnerFile(pkg *packages.Package, file *ast.File) bool {
-	if pkg.PkgPath == modulePath+"/cmd/awf" || pkg.PkgPath == modulePath+"/internal/contextdelivery" {
-		return true
-	}
-	for _, spec := range file.Imports {
-		path, err := strconv.Unquote(spec.Path.Value)
-		if err == nil && path == modulePath+"/internal/presentation" {
-			return true
-		}
-	}
-	return false
+func presentationOwnerFile(_ *packages.Package, _ *ast.File) bool {
+	// The declared owner-package set is the boundary. Do not make scanning
+	// conditional on an import: a file that has lost presentation usage is the
+	// precise regression this proof must find.
+	return true
 }
 
 func functionIdentity(pkg *packages.Package, fn *ast.FuncDecl) string {
+	if object, ok := pkg.TypesInfo.Defs[fn.Name]; ok {
+		return objectIdentity(object)
+	}
 	return pkg.PkgPath + "." + fn.Name.Name
 }
 
-func ordinaryWriteCall(call *ast.CallExpr) bool {
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
+func objectIdentity(object types.Object) string {
+	if object == nil || object.Pkg() == nil {
+		return ""
+	}
+	return object.Pkg().Path() + "." + object.Name()
+}
+
+func calledObject(pkg *packages.Package, call *ast.CallExpr) types.Object {
+	switch fun := call.Fun.(type) {
+	case *ast.Ident:
+		return pkg.TypesInfo.Uses[fun]
+	case *ast.SelectorExpr:
+		return pkg.TypesInfo.Uses[fun.Sel]
+	}
+	return nil
+}
+
+func ordinaryWriteCall(pkg *packages.Package, call *ast.CallExpr) bool {
+	identity := objectIdentity(calledObject(pkg, call))
+	switch identity {
+	case "fmt.Fprint", "fmt.Fprintf", "fmt.Fprintln", "fmt.Print", "fmt.Printf", "fmt.Println", "io.WriteString", "io.Copy":
+		return true
+	}
+	// A resolved Write-like selector catches aliases and receivers without
+	// mistaking an ident named Write for a writer method.
+	if _, ok := call.Fun.(*ast.SelectorExpr); !ok {
 		return false
 	}
-	if id, ok := sel.X.(*ast.Ident); ok && (id.Name == "fmt" || id.Name == "io") {
-		return strings.HasPrefix(sel.Sel.Name, "Fprint") || strings.HasPrefix(sel.Sel.Name, "Print") || sel.Sel.Name == "WriteString" || sel.Sel.Name == "Copy"
+	object := calledObject(pkg, call)
+	if function, ok := object.(*types.Func); ok {
+		return function.Name() == "Write" || function.Name() == "WriteString" || function.Name() == "WriteByte"
 	}
-	return sel.Sel.Name == "Write" || sel.Sel.Name == "WriteString" || sel.Sel.Name == "WriteByte"
+	return false
 }
 
 func forbiddenPresentationConstruction(call *ast.CallExpr) bool {
@@ -323,22 +384,72 @@ func presentationSite(pkg *packages.Package, node ast.Node) string {
 
 func fixtureFindings(t *testing.T, name string) []string {
 	t.Helper()
+	return ordinaryOutputFindingsInPackages([]*packages.Package{loadBoundaryFixture(t, name, false)}, false)
+}
+
+func loadBoundaryFixture(t *testing.T, name string, renderer bool) *packages.Package {
+	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", "presentation-boundary", name))
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(repoRoot(t), "cmd", "awf")
-	if name == "positive-context-delivery.go" {
-		dir = filepath.Join(repoRoot(t), "internal", "contextdelivery")
+	fileSet := token.NewFileSet()
+	file, err := parser.ParseFile(fileSet, name, data, 0)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return ordinaryOutputFindings(t, map[string][]byte{filepath.Join(dir, "zz_presentation_fixture.go"): data})
+	files := []*ast.File{file}
+	if renderer {
+		stub, parseErr := parser.ParseFile(fileSet, "renderer_stub.go", "package main\nimport \"io\"\nfunc writeRendererFailure(io.Writer, error) {}\n", 0)
+		if parseErr != nil {
+			t.Fatal(parseErr)
+		}
+		files = append(files, stub)
+	}
+	pkgPath := modulePath + "/cmd/awf"
+	if file.Name.Name == "contextdelivery" {
+		pkgPath = modulePath + "/internal/contextdelivery"
+	}
+	info := &types.Info{Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Types: map[ast.Expr]types.TypeAndValue{}, Selections: map[*ast.SelectorExpr]*types.Selection{}}
+	checked, err := (&types.Config{Importer: boundaryFixtureImporter{fallback: importer.Default()}}).Check(pkgPath, fileSet, files, info)
+	if err != nil {
+		t.Fatalf("type-check fixture %s: %v", name, err)
+	}
+	return &packages.Package{Name: file.Name.Name, PkgPath: pkgPath, Fset: fileSet, Syntax: files, Types: checked, TypesInfo: info}
+}
+
+type boundaryFixtureImporter struct {
+	fallback types.Importer
+}
+
+func (i boundaryFixtureImporter) Import(path string) (*types.Package, error) {
+	if path != modulePath+"/internal/presentation" {
+		return i.fallback.Import(path)
+	}
+	ioPackage, err := i.fallback.Import("io")
+	if err != nil {
+		return nil, err
+	}
+	pkg := types.NewPackage(path, "presentation")
+	document := types.NewNamed(types.NewTypeName(token.NoPos, pkg, "Document", nil), types.NewStruct(nil, nil), nil)
+	pkg.Scope().Insert(document.Obj())
+	writer := ioPackage.Scope().Lookup("Writer").Type()
+	params := types.NewTuple(types.NewParam(token.NoPos, pkg, "w", writer), types.NewParam(token.NoPos, pkg, "document", document))
+	results := types.NewTuple(types.NewParam(token.NoPos, pkg, "err", types.Universe.Lookup("error").Type()))
+	pkg.Scope().Insert(types.NewFunc(token.NoPos, pkg, "Render", types.NewSignatureType(nil, nil, nil, params, results, false)))
+	pkg.MarkComplete()
+	return pkg, nil
 }
 
 func rendererFailureFindings(t *testing.T, overlay map[string][]byte) []string {
 	t.Helper()
+	return rendererFailureFindingsInPackages(loadPresentationPackages(t, overlay), overlay == nil)
+}
+
+func rendererFailureFindingsInPackages(pkgs []*packages.Package, requireProductionCall bool) []string {
 	var findings []string
 	productionCalls := 0
-	for _, pkg := range loadPresentationPackages(t, overlay) {
+	for _, pkg := range pkgs {
 		if pkg.PkgPath != modulePath+"/cmd/awf" {
 			continue
 		}
@@ -351,13 +462,11 @@ func rendererFailureFindings(t *testing.T, overlay map[string][]byte) []string {
 				identity := functionIdentity(pkg, fn)
 				ast.Inspect(fn.Body, func(n ast.Node) bool {
 					call, ok := n.(*ast.CallExpr)
-					if !ok || calledName(call) != "writeRendererFailure" {
+					if !ok || objectIdentity(calledObject(pkg, call)) != modulePath+"/cmd/awf.writeRendererFailure" {
 						return true
 					}
-					if identity == modulePath+"/cmd/awf.writeOutcomeWithRenderer" {
-						productionCalls++
-					}
-					if !rendererFailureDominates(fn, call) {
+					productionCalls++
+					if !rendererFailureDominates(pkg, fn, call) {
 						findings = append(findings, presentationSite(pkg, call)+" writeRendererFailure is not dominated by renderer failure in "+identity)
 					}
 					return true
@@ -365,23 +474,15 @@ func rendererFailureFindings(t *testing.T, overlay map[string][]byte) []string {
 			}
 		}
 	}
-	if overlay == nil && productionCalls != 1 {
+	if requireProductionCall && productionCalls != 1 {
 		findings = append(findings, "writeRendererFailure production call count = "+strconv.Itoa(productionCalls)+", want 1")
 	}
 	sort.Strings(findings)
 	return findings
 }
 
-func calledName(call *ast.CallExpr) string {
-	if id, ok := call.Fun.(*ast.Ident); ok {
-		return id.Name
-	}
-	return ""
-}
-
-func rendererFailureDominates(fn *ast.FuncDecl, target *ast.CallExpr) bool {
-	identityAllowed := fn.Name.Name == "writeOutcomeWithRenderer" || fn.Name.Name == "fixtureRendererFailure"
-	if !identityAllowed || len(target.Args) < 2 {
+func rendererFailureDominates(pkg *packages.Package, fn *ast.FuncDecl, target *ast.CallExpr) bool {
+	if functionIdentity(pkg, fn) != modulePath+"/cmd/awf.writeOutcome" || len(target.Args) < 2 {
 		return false
 	}
 	cause, ok := target.Args[len(target.Args)-1].(*ast.Ident)
@@ -403,7 +504,7 @@ func rendererFailureDominates(fn *ast.FuncDecl, target *ast.CallExpr) bool {
 		condition, conditionOK := stmt.Cond.(*ast.BinaryExpr)
 		left, leftOK := condition.X.(*ast.Ident)
 		right, rightOK := condition.Y.(*ast.Ident)
-		if ok && renderOK && conditionOK && leftOK && rightOK && bound.Name == cause.Name && left.Name == bound.Name && right.Name == "nil" && condition.Op.String() == "!=" && calledName(renderCall) == "render" {
+		if ok && renderOK && conditionOK && leftOK && rightOK && bound.Name == cause.Name && left.Name == bound.Name && right.Name == "nil" && condition.Op.String() == "!=" && objectIdentity(calledObject(pkg, renderCall)) == modulePath+"/internal/presentation.Render" {
 			valid = true
 		}
 		return true
@@ -425,9 +526,5 @@ func containsNode(root, target ast.Node) bool {
 
 func fixtureRendererFindings(t *testing.T, name string) []string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("testdata", "presentation-boundary", name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return rendererFailureFindings(t, map[string][]byte{filepath.Join(repoRoot(t), "cmd", "awf", "zz_renderer_fixture.go"): data})
+	return rendererFailureFindingsInPackages([]*packages.Package{loadBoundaryFixture(t, name, true)}, false)
 }

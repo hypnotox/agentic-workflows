@@ -7,6 +7,27 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
+// ConventionalCommitDocument maps conventional-commit findings for the commit gate.
+func ConventionalCommitDocument(findings []Finding) (presentation.Document, error) {
+	values := make([]presentation.Value, 0, len(findings))
+	for _, finding := range findings {
+		value, err := presentation.Prose(finding.Detail)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		values = append(values, value)
+	}
+	list, err := presentation.NewList("errors", values...)
+	if err != nil { // coverage-ignore: every finding value is validated above and errors is a fixed grammar-valid label
+		return presentation.Document{}, err
+	}
+	section, err := presentation.NewSection("check staged commit", list)
+	if err != nil { // coverage-ignore: the validated List is always an admitted Section child
+		return presentation.Document{}, err
+	}
+	return presentation.NewDocument(section)
+}
+
 // Report maps audit-owned findings into the shared representation without
 // changing rank tokens or evaluation order.
 func Report(findings []Finding, commits int, base, head string) (presentation.Report, error) {

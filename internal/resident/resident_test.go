@@ -4,12 +4,29 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+func TestUninstallReportOwnsCompletePresentation(t *testing.T) {
+	document, err := (UninstallReport{Removed: 2, PreservedRoots: []string{"efforts"}}).Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	const want = "status: uninstall completed\n\nmutation:\n  identity:\n    generated files removed: 2\n  notes:\n    the authored .awf config remains in place; delete it to fully remove\n    preserved resident data under .awf/efforts\n"
+	if out.String() != want {
+		t.Fatalf("report = %q, want %q", out.String(), want)
+	}
+}
 
 // A lock entry escaping the repo root (corrupted or malicious lock) must be
 // skipped: the out-of-tree target survives and the empty-dir ancestor walk

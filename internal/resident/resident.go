@@ -15,11 +15,13 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 // roots is the closed set of repository-wide resident-root names awf owns
@@ -112,6 +114,31 @@ func CollisionsAt(root string, planned []string) ([]string, error) {
 type UninstallReport struct {
 	Removed        int
 	PreservedRoots []string
+}
+
+// Document maps an uninstall result into its complete ordinary presentation.
+func (r UninstallReport) Document() (presentation.Document, error) {
+	removed, err := presentation.Literal(strconv.Itoa(r.Removed))
+	if err != nil { // coverage-ignore: decimal formatting always produces a nonempty literal without line breaks
+		return presentation.Document{}, err
+	}
+	removedField, err := presentation.NewField("generated files removed", removed)
+	if err != nil { // coverage-ignore: Literal validated the value and the label is fixed and grammar-valid
+		return presentation.Document{}, err
+	}
+	note, err := presentation.Prose("the authored .awf config remains in place; delete it to fully remove")
+	if err != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+		return presentation.Document{}, err
+	}
+	notes := []presentation.Value{note}
+	for _, root := range r.PreservedRoots {
+		value, err := presentation.Prose("preserved resident data under .awf/" + root)
+		if err != nil { // coverage-ignore: the fixed prefix remains nonempty after normalization of a validated resident-root name
+			return presentation.Document{}, err
+		}
+		notes = append(notes, value)
+	}
+	return (presentation.Mutation{Status: "uninstall completed", Identity: []presentation.Field{removedField}, Notes: notes}).Document()
 }
 
 // InspectRoots examines direct children only. It never traverses a

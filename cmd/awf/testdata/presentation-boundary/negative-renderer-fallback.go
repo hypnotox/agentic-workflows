@@ -5,4 +5,6 @@ import (
 	"io"
 )
 
-func writeUnexpectedFallback(w io.Writer) { writeRendererFailure(w, errors.New("not a renderer failure")) }
+func writeOutcome(w io.Writer) {
+	writeRendererFailure(w, errors.New("not a renderer failure"))
+}

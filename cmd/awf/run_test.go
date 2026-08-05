@@ -38,7 +38,12 @@ agents: []
 // it, leaving a drift-clean project. The base commit gives the working Tree a
 // HEAD, which the commands that read one (check, invariants) require.
 func initializeProject(ctx context.Context, root string, out io.Writer) error {
-	return runSyncInitialized(ctx, root, project.InitAuthority{InitializedWithVersion: project.Version}, out)
+	loader, err := newProjectLoader(root)
+	if err != nil {
+		return err
+	}
+	seed := &project.InitAuthority{InitializedWithVersion: project.Version}
+	return runSyncPrinting(ctx, loader, root, seed, out)
 }
 
 func scaffoldProject(t *testing.T) string {
@@ -160,17 +165,8 @@ func TestRunSyncEntryPointsRejectMalformedRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := testContext(t)
-	for name, run := range map[string]func() error{
-		"sync": func() error { return runSync(ctx, root, io.Discard) },
-		"initialized": func() error {
-			return runSyncInitialized(ctx, root, project.InitAuthority{}, io.Discard)
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := run(); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
-				t.Fatalf("malformed repository error = %v", err)
-			}
-		})
+	if err := runSync(ctx, root, io.Discard); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("malformed repository error = %v", err)
 	}
 }
 
@@ -235,7 +231,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 			name := ""
 			switch fun := ce.Fun.(type) {
 			case *ast.Ident:
-				if fun.Name == "runSync" || fun.Name == "runSyncInitialized" || fun.Name == "runSyncPrinting" || fun.Name == "newProjectLoader" {
+				if fun.Name == "runSync" || fun.Name == "runSyncPrinting" || fun.Name == "syncMutation" || fun.Name == "newProjectLoader" {
 					name = fun.Name
 				}
 			case *ast.SelectorExpr:
@@ -263,14 +259,13 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	want := map[call]int{
 		{file: "sync.go", owner: "runSync", name: "newProjectLoader"}:                                                     1,
 		{file: "sync.go", owner: "runSync", name: "runSyncPrinting"}:                                                      1,
-		{file: "sync.go", owner: "runSyncInitialized", name: "newProjectLoader"}:                                          1,
-		{file: "sync.go", owner: "runSyncInitialized", name: "runSyncPrinting"}:                                           1,
-		{file: "sync.go", owner: "runSyncPrinting", name: "loader.Open"}:                                                  1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "syncMutation"}:                                                 1,
+		{file: "sync.go", owner: "syncMutation", name: "loader.Open"}:                                                     1,
 		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoader"}:                                           1,
 		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoaderWithoutRepository"}:                          1,
 		{file: "dispatch.go", owner: "", name: "runSync"}:                                                                 1,
-		{file: "init.go", owner: "runInit", name: "runSync"}:                                                              1,
-		{file: "init.go", owner: "runInit", name: "runSyncInitialized"}:                                                   1,
+		{file: "init.go", owner: "runInit", name: "newProjectLoader"}:                                                     1,
+		{file: "init.go", owner: "runInit", name: "syncMutation"}:                                                         1,
 		{file: "list_add.go", owner: "enableDisableSingleton", name: "runSync"}:                                           1,
 		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:                                              1,
 		{file: "list_add.go", owner: "toggle", name: "runSync"}:                                                           2,
@@ -990,6 +985,7 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 
 // invariant: tooling/init-and-enablement:init-collision-guard (TestInitGuardBlocksAndForceOverrides)
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
+	forceNonInteractive(t)
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
@@ -1025,9 +1021,9 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
 		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
 	}
-	const initForceMutation = "status: completed\n\nmutation:\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  next actions:\n    step 1: continue with the rendered project state\n"
-	if !strings.Contains(out.String(), initForceMutation) {
-		t.Errorf("init --force output = %q, want mutation %q", out.String(), initForceMutation)
+	initForceMutation := fmt.Sprintf("status: initialization completed\n\nmutation:\n  identity:\n    config: %s/.awf/config.yaml\n    config action: scaffolded\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  notes:\n    agent adr-reviewer references unset vars: invariantTestPath; set a value, or delete the key to accept the generic prose\n    agent implementer references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    agents-doc references unset vars: checkCmd, gateCmd, testCmd; set a value, or delete the key to accept the generic prose\n    doc workflow references unset vars: checkCmd, gateCmd, gateCmdFull, testCmd; set a value, or delete the key to accept the generic prose\n    hooks commit-msg references unset vars: commitGateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-commit references unset vars: checkCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-merge-commit references unset vars: checkCmd; set a value, or delete the key to accept the generic prose\n    hooks pre-push references unset vars: checkCmd, gateCmd, gateCmdFull; set a value, or delete the key to accept the generic prose\n    plans-template references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill adr-lifecycle references unset vars: activeMdRegenCmd, gateCmd; set a value, or delete the key to accept the generic prose\n    skill executing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill proposing-adr references unset vars: activeMdRegenCmd; set a value, or delete the key to accept the generic prose\n    skill retrospective references unset vars: gateCmd, invariantTestPath; set a value, or delete the key to accept the generic prose\n    skill reviewing-impl references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill subagent-driven-development references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    skill writing-plans references unset vars: gateCmd; set a value, or delete the key to accept the generic prose\n    AGENTS.md has unauthored stub content: sections at stub default: identity\n  next actions:\n    step 1: continue with the rendered project state\n    step 2: fill the Identity section at .awf/parts/agents-doc/identity.md\n    step 3: set still-empty vars in .awf/config.yaml\n    step 4: wire rendered hooks under .awf/hooks/\n    step 5: commit .awf and rendered files together\n", root)
+	if out.String() != initForceMutation {
+		t.Errorf("init --force output = %q, want exact %q", out.String(), initForceMutation)
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
 	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.

@@ -11,6 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -119,19 +120,13 @@ func checkGraphFlags(kind string, dryRun, withDependents bool) error {
 	return &usageErr{fmt.Sprintf("graph flags (--dry-run, --with-dependents) apply to skill, agent, and doc only, not %q", kind)}
 }
 
-// printPlan prints one provenance line per resolver plan op.
-func printPlan(stdout io.Writer, plan []project.PlanOp) {
-	for _, op := range plan {
-		sign := "+"
-		if !op.Enable {
-			sign = "-"
-		}
-		suffix := ""
-		if op.RequiredBy != "" {
-			suffix = fmt.Sprintf(" (required by %s)", op.RequiredBy)
-		}
-		_ = writeStatus(stdout, fmt.Sprintf("plan: %s %s %s%s", sign, op.Node.Kind, op.Node.Name, suffix))
+// printPlan renders one model-owned homogeneous plan collection.
+func printPlan(stdout io.Writer, plan []project.PlanOp) error {
+	document, err := project.PlanDocument(plan)
+	if err != nil {
+		return err
 	}
+	return presentation.Render(stdout, document)
 }
 
 // planEdits converts a resolver plan into enable-array edits (every op in a
@@ -220,7 +215,9 @@ func toggle(ctx context.Context, root, kind, name string, dir direction, flags t
 			// guard (the reverse walk's length-1 case).
 			plan = p.ResolveDisable(kind, name)
 		}
-		printPlan(stdout, plan)
+		if err := printPlan(stdout, plan); err != nil { // coverage-ignore: resolver plans contain only validated catalog nodes and fixed provenance syntax
+			return err
+		}
 		if flags.dryRun {
 			return nil
 		}
@@ -240,17 +237,31 @@ func toggle(ctx context.Context, root, kind, name string, dir direction, flags t
 		}
 		return runSync(ctx, root, stdout)
 	}
+	var notes []string
 	for _, op := range plan {
 		pl, _ := project.PluralKind(op.Node.Kind)
 		if hasSidecarOrParts(root, pl, op.Node.Name) {
-			_ = writeStatus(stdout, fmt.Sprintf("note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", op.Node.Kind, op.Node.Name))
+			notes = append(notes, fmt.Sprintf("%s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", op.Node.Kind, op.Node.Name))
 		}
 	}
 	if project.IsFreeformDomainKind(kind) && hasSidecarOrParts(root, key, name) {
-		_ = writeStatus(stdout, fmt.Sprintf("note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", kind, name))
+		notes = append(notes, fmt.Sprintf("%s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", kind, name))
 	}
-	noteUnrequiredAgents(p, plan, stdout)
+	notes = append(notes, unrequiredAgentNotes(p, plan)...)
+	if len(notes) > 0 {
+		if err := printEnablementNotes(stdout, notes); err != nil { // coverage-ignore: notes are synthesized from validated single-line artifact names and fixed prose
+			return err
+		}
+	}
 	return runSync(ctx, root, stdout)
+}
+
+func printEnablementNotes(stdout io.Writer, notes []string) error {
+	document, err := project.EnablementNotesDocument(notes)
+	if err != nil {
+		return err
+	}
+	return presentation.Render(stdout, document)
 }
 
 // domainCurrentStateStub is the starter content for a new domain's current-state
@@ -280,16 +291,16 @@ func runDisable(ctx context.Context, root, kind, name string, withDependents, dr
 	return toggle(ctx, root, kind, name, disableDir, toggleFlags{dryRun: dryRun, withDependents: withDependents}, stdout)
 }
 
-// noteUnrequiredAgents prints, after a cascade, a note for each still-enabled
+// unrequiredAgentNotes returns, after a cascade, a note for each still-enabled
 // agent that a removed skill required and no remaining enabled, non-local
 // skill still requires - agents are legal standalone (ADR-0050 Decision
 // item 3), so they stay enabled (ADR-0081). Restricting to agents a removed
 // skill required keeps "no longer" honest (a pre-existing standalone agent is
 // not this cascade's doing), and local-sidecar agents mirror the resolver's
 // skip.
-func noteUnrequiredAgents(p *project.Project, plan []project.PlanOp, stdout io.Writer) {
+func unrequiredAgentNotes(p *project.Project, plan []project.PlanOp) []string {
 	if len(plan) < 2 {
-		return
+		return nil
 	}
 	removed := map[catalog.Node]bool{}
 	wasRequiredBy := map[string]bool{}
@@ -301,6 +312,7 @@ func noteUnrequiredAgents(p *project.Project, plan []project.PlanOp, stdout io.W
 			}
 		}
 	}
+	var notes []string
 	for _, agent := range p.Cfg.Agents {
 		if removed[catalog.Node{Kind: "agent", Name: agent}] || !wasRequiredBy[agent] {
 			continue
@@ -322,9 +334,10 @@ func noteUnrequiredAgents(p *project.Project, plan []project.PlanOp, stdout io.W
 			}
 		}
 		if !required {
-			_ = writeStatus(stdout, fmt.Sprintf("note: agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)", agent))
+			notes = append(notes, fmt.Sprintf("agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)", agent))
 		}
 	}
+	return notes
 }
 
 // enableEdit is one enable-array edit for rewriteConfig: the config key and
@@ -363,117 +376,15 @@ func hasSidecarOrParts(root, key, name string) bool {
 	return false
 }
 
-// listTargets, listBootstrap, and listHooks print the three non-catalog kind
-// blocks; runList shares them between the single-kind filters and the bare
-// all-kinds listing.
-func listTargets(p *project.Project, stdout io.Writer) {
-	for _, n := range project.KnownTargets() {
-		state := "available"
-		if slices.Contains(p.Cfg.Targets, n) {
-			state = "enabled"
-		}
-		_ = writeStatus(stdout, "target: "+n+" | "+state)
-	}
-}
-
-func listBootstrap(p *project.Project, stdout io.Writer) {
-	state := "available"
-	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
-		state = "enabled"
-	}
-	_ = writeStatus(stdout, "bootstrap: .awf/bootstrap.sh | "+state)
-	_ = writeStatus(stdout, "bootstrap: .awf/upgrade.sh | "+state)
-}
-
-func listHooks(p *project.Project, stdout io.Writer) {
-	state := "available"
-	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
-		state = "enabled"
-	}
-	for _, n := range project.HookNames() {
-		_ = writeStatus(stdout, "hook: .awf/hooks/"+n+".sh | "+state)
-	}
-}
-
-func listRunner(p *project.Project, stdout io.Writer) {
-	state := "available"
-	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
-		state = "enabled"
-	}
-	_ = writeStatus(stdout, "runner: awf | "+state)
-}
-
+// runList selects streams and renders the complete model-owned collection.
 func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) error {
 	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	switch kindFilter {
-	case "target":
-		listTargets(p, stdout)
-		return nil
-	case "bootstrap":
-		listBootstrap(p, stdout)
-		return nil
-	case "hooks":
-		listHooks(p, stdout)
-		return nil
-	case "runner":
-		listRunner(p, stdout)
-		return nil
+	document, err := p.ListDocument(kindFilter)
+	if err != nil { // coverage-ignore: Open validates every configured name and dispatch admits only known list kinds
+		return err
 	}
-	kinds := project.Kinds()
-	if kindFilter != "" {
-		if _, ok := project.PluralKind(kindFilter); !ok {
-			return unknownKind(kindFilter)
-		}
-		kinds = []string{kindFilter}
-	}
-	for _, kind := range kinds {
-		pl, _ := project.PluralKind(kind)
-		pool, catalogBacked := catalogNames(p.Cat, kind)
-		if !catalogBacked { // domains: configured set only
-			names := slices.Sorted(slices.Values(p.Cfg.Domains))
-			if len(names) == 0 {
-				_ = writeStatus(stdout, pl+": none")
-			}
-			for _, n := range names {
-				_ = writeStatus(stdout, pl+": "+n+" | configured")
-			}
-			continue
-		}
-		for _, n := range pool {
-			_ = writeStatus(stdout, pl+": "+n+" | "+artifactState(p, kind, n))
-		}
-	}
-	// Bare list covers every kind: append the non-catalog blocks last.
-	if kindFilter == "" {
-		listTargets(p, stdout)
-		listBootstrap(p, stdout)
-		listHooks(p, stdout)
-	}
-	return nil
-}
-
-// artifactState returns the display state of a catalog-backed artifact: "available"
-// when not enabled, else "local"/"tuned"/"enabled" from its sidecar. A name
-// outside the standard catalog is a project-local artifact (ADR-0068) - its
-// synthesized pool entry lists as "local", not as a tuned catalog skill.
-func artifactState(p *project.Project, kind, name string) string {
-	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
-		return "available"
-	}
-	if std, _ := project.CatalogNames(catalog.Standard, kind); !slices.Contains(std, name) {
-		return "local"
-	}
-	// project.Open pre-validated every enabled sidecar, so a read here cannot fail.
-	pl, _ := project.PluralKind(kind)
-	sc, _ := p.Cfg.Sidecar(pl, name)
-	switch {
-	case sc.Local:
-		return "local"
-	case sc.Data != nil || sc.Sections != nil:
-		return "tuned"
-	}
-	return "enabled"
+	return presentation.Render(stdout, document)
 }

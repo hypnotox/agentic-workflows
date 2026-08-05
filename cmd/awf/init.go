@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -85,17 +86,10 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	var vars map[string]string
 	var trim *config.CatalogTrim
 	var scopes []string
+	ignoredAnswers := configExists && len(answers) > 0
 	if configExists {
 		// Descriptor answers only feed the scaffold; resolving them here would
 		// prompt for (or silently accept) values init then discards.
-		if err := writeStatus(stdout, cfgPath+" exists: keeping it and re-rendering only"); err != nil {
-			return err
-		}
-		if len(answers) > 0 {
-			if err := writeStatus(stdout, "note: --set/--answers values were ignored; edit .awf/config.yaml instead"); err != nil {
-				return err
-			}
-		}
 	} else {
 		var rerr error
 		vars, trim, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive(), project.NeededVars)
@@ -105,27 +99,20 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	}
 
 	scaffolded := false
+	var added []string
 	if !configExists {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, added, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
+		scaffold, scaffoldAdded, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}
+		added = scaffoldAdded
 		if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write; fails only on a permission fault that root bypasses
 			return err
 		}
 		scaffolded = true
-		if err := writeStatus(stdout, "scaffolded: "+cfgPath); err != nil {
-			return err
-		}
-		// A trimmed selection is closure-completed (ADR-0081 Decision 9).
-		for _, a := range added {
-			if err := writeStatus(stdout, "note: also enabled "+a+" (required by your selection)"); err != nil {
-				return err
-			}
-		}
 	}
 	p, err := project.Open(ctx, root)
 	if err != nil {
@@ -157,12 +144,15 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	}
 	// Under --force, the selected sync path backs up every foreign file via the
 	// shared BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
-	var syncErr error
-	if !configExists && !lockExists {
-		syncErr = runSyncInitialized(ctx, root, project.InitAuthority{InitializedWithVersion: project.Version}, stdout)
-	} else {
-		syncErr = runSync(ctx, root, stdout)
+	loader, syncErr := newProjectLoader(root)
+	if syncErr != nil { // coverage-ignore: the gate above has already opened and validated the same repository boundary
+		return syncErr
 	}
+	var seed *project.InitAuthority
+	if !configExists && !lockExists {
+		seed = &project.InitAuthority{InitializedWithVersion: project.Version}
+	}
+	syncResult, syncErr := syncMutation(ctx, loader, root, seed)
 	if syncErr != nil {
 		if scaffolded { // coverage-ignore: the first-adoption boundary, scaffold, collision plan, and gate all succeeded; a failure now requires a concurrent mutation or filesystem fault
 			_ = os.Remove(cfgPath)
@@ -177,10 +167,14 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 		return err
 	}
 	notes, err := np.AdvisoryNotes(ctx)
-	if err != nil { // coverage-ignore: runSync just rendered this same tree and generated its domain docs - both AdvisoryNotes inputs succeeded moments ago
+	if err != nil { // coverage-ignore: sync just rendered this same tree and generated its domain docs - both AdvisoryNotes inputs succeeded moments ago
 		return err
 	}
-	return writeInitOrientation(stdout, notes)
+	document, err := (initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Added: added, Sync: syncResult, Advisories: notes, NextActions: initNextActions}).Document()
+	if err != nil { // coverage-ignore: config, sync, scaffold closure, advisories, and fixed actions were validated by their owning producers
+		return err
+	}
+	return presentation.Render(stdout, document)
 }
 
 // collisionRefusal is the shared refusal for both collision checks, so the
@@ -229,32 +223,6 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	return resident.CollisionsAt(root, planned)
 }
 
-// writeInitOrientation presents post-init advisories and independently
-// executable next actions without compressing their semantic boundaries.
-func writeInitOrientation(stdout io.Writer, advisories []string) error {
-	notes := make([]presentation.Value, 0, len(advisories))
-	for _, advisory := range advisories {
-		value, err := presentation.Prose(advisory)
-		if err != nil {
-			return err
-		}
-		notes = append(notes, value)
-	}
-	actions := make([]presentation.Value, len(initNextActions))
-	for i, action := range initNextActions {
-		value, err := presentation.Prose(action)
-		if err != nil { // coverage-ignore: fixed nonempty action prose contains no forbidden line break
-			return err
-		}
-		actions[i] = value
-	}
-	document, err := (presentation.Mutation{Status: "initialization completed", Notes: notes, NextActions: actions}).Document()
-	if err != nil { // coverage-ignore: values are validated above and Mutation uses fixed grammar-valid labels
-		return err
-	}
-	return presentation.Render(stdout, document)
-}
-
 var initNextActions = []string{
 	"fill the Identity section at .awf/parts/agents-doc/identity.md",
 	"set still-empty vars in .awf/config.yaml",
@@ -265,6 +233,7 @@ var initNextActions = []string{
 // writeInitDescriptorProtocol writes the documented init descriptor JSON
 // unchanged. It is one of the closed successful protocol bypasses.
 func writeInitDescriptorProtocol(stdout io.Writer, payload []byte) error {
+	payload = bytes.TrimRight(payload, "\n")
 	_, err := stdout.Write(append(payload, '\n'))
 	return err
 }
