@@ -13,6 +13,32 @@ import (
 // readBackInPlaceBody extracts the interior between an in-place section's pointer
 // and awf's next registered section pointer, verbatim (internal blank lines kept),
 // trimming only the awf-owned leading/trailing framing.
+func TestReadBackInPlaceBodyExcludesStructuralHeading(t *testing.T) {
+	out := "<!-- awf:edit-in-place body: pointer -->\n## Owned heading\nuser body\n"
+	got, ok := readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Owned heading")
+	if !ok || got != "user body" {
+		t.Fatalf("read-back = %q, found %v; want body without structural heading", got, ok)
+	}
+}
+
+func TestReadBackInPlaceBodyChangedStructuralHeading(t *testing.T) {
+	out := "<!-- awf:edit-in-place body: pointer -->\n## Tampered heading\nbody\n"
+	got, ok := readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+	if !ok || got != "body" {
+		t.Fatalf("changed heading = %q, found %v", got, ok)
+	}
+	out = "<!-- awf:edit-in-place body: pointer -->\n### Body heading\nbody\n"
+	got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+	if got != "### Body heading\nbody" {
+		t.Fatalf("subordinate body heading = %q", got)
+	}
+	out = "<!-- awf:edit-in-place body: pointer -->\n#not a heading\nbody\n"
+	got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+	if got != "#not a heading\nbody" {
+		t.Fatalf("non-heading body line = %q", got)
+	}
+}
+
 func TestReadBackInPlaceBody(t *testing.T) {
 	// invariant: rendering/inplace-and-placeholders:in-place-readback (exact interior, internal blank preserved)
 	t.Run("exact interior, internal blank preserved", func(t *testing.T) {

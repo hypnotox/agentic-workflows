@@ -1,4 +1,3 @@
-## Command runner
 
 `./x` at the repo root carries the repo-local project verbs; run it with no argument
 for the usage line. awf verbs go through the rendered `./awf` wrapper, which runs awf

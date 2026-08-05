@@ -1,4 +1,3 @@
-## Composing the gate
 
 The gate is one command (`./x gate`) that must be green before every commit. Here it runs the
 profiled test suite (`go test ./... -coverpkg=./...`, writing the durable `coverage.out` CI

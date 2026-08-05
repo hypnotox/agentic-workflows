@@ -3,7 +3,7 @@
 
 - [ADR-derive-render-completeness-from-output-authority: Derive render completeness from output authority](derive-render-completeness-from-output-authority.md) (Implementing)
 - [ADR-layer-catalog-list-defaults-and-project-entries: Layer catalog list defaults and project entries](layer-catalog-list-defaults-and-project-entries.md) (Implementing)
-- [ADR-separate-structural-markdown-headings-from-section-bodies: Separate structural Markdown headings from section bodies](separate-structural-markdown-headings-from-section-bodies.md) (Proposed)
+- [ADR-separate-structural-markdown-headings-from-section-bodies: Separate structural Markdown headings from section bodies](separate-structural-markdown-headings-from-section-bodies.md) (Implementing)
 
 ## History
 

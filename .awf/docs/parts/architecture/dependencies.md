@@ -1,4 +1,3 @@
-## Key dependencies
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
   unknown keys fail fast.

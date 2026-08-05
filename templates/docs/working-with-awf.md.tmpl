@@ -122,7 +122,9 @@ To change one section of a
 rendered artifact, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a
 doc, `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton,
 `.awf/parts/<kind>/<section>.md`). A part **replaces that section's body** and inherits the rest of
-the template default. To *extend* a default instead of discarding it, re-inject it inside your part
+the template default. A declared Markdown structural heading is awf-owned: a part cannot replace it,
+in-place read-back excludes it, and it disappears only when the complete section drops. To *extend* a
+default instead of discarding it, re-inject it inside your part
 with the {{ "{{=awf:sectionDefault}}" }} placeholder (below): text before the token becomes a
 preamble, text after it an appendix. Convention parts are raw input: their content renders verbatim and is never
 run through the template engine. See [the documentation standard](doc-standard.md) for the

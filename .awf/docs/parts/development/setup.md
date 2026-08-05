@@ -1,4 +1,3 @@
-## Setup
 
 A working checkout needs Go 1.26+ (see `go.mod`), native Git, and Docker. No host Node, npm,
 `node_modules`, services, environment variables, or model credentials are required. Clone the

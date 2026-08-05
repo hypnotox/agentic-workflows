@@ -1,4 +1,3 @@
-## Ideas
 
 - Design concurrent same-checkout batch helpers only after scope enforcement, incidental-write
   attribution, failure attribution, and deterministic integration are specified; worktree-isolated

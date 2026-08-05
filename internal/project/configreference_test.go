@@ -424,8 +424,8 @@ func TestConfigReferenceIntroOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(b)
-	if !strings.Contains(got, "# My Config Guide") || strings.Contains(got, "# Configuration Reference") {
-		t.Errorf("intro part did not replace the default:\n%s", got)
+	if !strings.Contains(got, "# My Config Guide") || !strings.Contains(got, "# Configuration Reference") {
+		t.Errorf("intro part did not replace the body while retaining the owned heading:\n%s", got)
 	}
 	if !strings.Contains(got, "## config.yaml keys") || !strings.Contains(got, "## Vars") {
 		t.Errorf("generated tables lost under an intro override:\n%s", got)

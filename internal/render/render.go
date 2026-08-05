@@ -117,8 +117,10 @@ func PointerLinePrefixes(name string, style CommentStyle) []string {
 // tripping the residual-marker guards (ADR-0100). Only the comment delimiters
 // vary by style; the token and phrasing are constant.
 // touches-state: rendering/render-engine:section-edit-pointer - awf:edit provenance pointer emission; proof in render_test.go
-func editPointer(name string, stub bool, p SectionPlan, style CommentStyle) string {
+func editPointer(name string, stub bool, headed bool, p SectionPlan, style CommentStyle) string {
 	switch {
+	case p.InPlace && headed:
+		return style.wrap(fmt.Sprintf("awf:edit-in-place %s: the heading immediately below is awf-owned; only the body after it is preserved across syncs", name))
 	case p.InPlace:
 		return style.wrap(fmt.Sprintf("awf:edit-in-place %s: your edits below are preserved across syncs; awf owns the rest", name))
 	case p.HasPart:
@@ -163,7 +165,11 @@ func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (
 		if p.Drop {
 			continue
 		}
-		b.WriteString(editPointer(s.Name, s.Stub, p, style))
+		b.WriteString(editPointer(s.Name, s.Stub, s.Heading != "", p, style))
+		if s.Heading != "" {
+			b.WriteString(s.Heading)
+			b.WriteByte('\n')
+		}
 		switch {
 		case p.InPlace:
 			// touches-state: rendering/render-engine:in-place-pointer-distinct - distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go

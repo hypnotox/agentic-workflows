@@ -101,6 +101,12 @@ The singleton-standard-docs migration relocates each promoted standard doc's sid
 Origin: ADR-0043
 Backing: test
 
+### `invariant: structural-heading-part-migration`
+
+Schema generation 36 uses a frozen part-path and heading snapshot, preflights every matching part, removes only an exact leading legacy heading after authoring comments while preserving every other byte and mode, and refuses custom or multiple leading headings before any mutation with an actionable operation outcome. Changed parts are atomically written and announced; no-heading parts are untouched, retry is safe, and later headings remain out of scope.
+Origin: ADR-separate-structural-markdown-headings-from-section-bodies
+Backing: test
+
 ### `invariant: unified-effort-resident-migration`
 
 Schema generation 22 resets the protocol-1 residents rather than migrating them, as one journaled transaction whose final lock replacement is the commit point. A complete read-only preflight first classifies every legacy leaf, the UUID `<uuid>.json` records, the efforts `.lock`, each `.<uuid>.<worktree|integration|removal>.partial` evidence file, and the whole standalone `.awf/memory/` root, keeping each governed `.gitignore` and every protocol-2 effort directory untouched. The preflight refuses before the journal exists, reporting that no bytes changed and naming the required next action, while any legacy managed worktree path, Git registration, `awf/<uuid>` branch, or partial-evidence checkout remains, and equally for any unknown, malformed, symlinked, hard-linked, non-directory, foreign-owned, or unconfinable resident. Proven residents are quarantined by rename, restored whole if the transaction fails before the lock commits, and discarded only after it, so the reset and the new generation become true together or not at all.

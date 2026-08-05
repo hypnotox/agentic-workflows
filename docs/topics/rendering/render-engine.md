@@ -89,8 +89,9 @@ Backing: test
 
 ### `invariant: section-default-splice`
 
-When a convention part body carries the section-default split marker, assembly splits the part at that marker and emits the overridden section's default template source between the two verbatim part fragments, so the default is rendered in place while the surrounding part prose is restored verbatim.
+When a convention part body carries the section-default split marker, assembly splits the part at that marker and emits only the overridden section's default body template source between the two verbatim part fragments, so the structural heading remains awf-owned while surrounding part prose is restored verbatim.
 Origin: ADR-0072
+Revised-by: ADR-separate-structural-markdown-headings-from-section-bodies
 Backing: test
 
 ### `invariant: section-default-stub-error`
@@ -99,10 +100,17 @@ A section-default re-injection reference inside a part that overrides a section 
 Origin: ADR-0072
 Backing: test
 
+### `invariant: structural-heading-owned`
+
+For a Markdown output, an optional first ATX heading in a declared section is template-owned structure, rendered after its edit pointer and before every body source; headingless and non-Markdown sections remain body-only.
+Origin: ADR-separate-structural-markdown-headings-from-section-bodies
+Backing: test
+
 ### `invariant: section-edit-pointer`
 
-Every rendered, non-dropped section is immediately preceded by an awf:edit pointer naming the winning source and its conventional part path; a dropped section emits nothing.
+Every rendered, non-dropped section is immediately preceded by an awf:edit pointer naming the winning source and its conventional part path; a dropped section emits no pointer, structural heading, or body.
 Origin: ADR-0015
+Revised-by: ADR-separate-structural-markdown-headings-from-section-bodies
 Backing: test
 
 ### `invariant: sidecar-optional`

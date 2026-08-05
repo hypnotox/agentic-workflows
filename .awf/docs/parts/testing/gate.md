@@ -1,4 +1,3 @@
-## The gate
 
 `./x gate` runs the project's checks and must be green before every commit: the test suite
 with a coverage profile (written durably to `coverage.out` for CI's Codecov upload, ADR-0196),

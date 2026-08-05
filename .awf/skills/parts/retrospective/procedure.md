@@ -1,4 +1,3 @@
-## Procedure
 
 1. **Validate closure context.** This skill operates only inside an existing already-confirmed effort and never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Carry the fixed identity, exact effort slug, and `.awf/efforts/<slug>/memory.md`, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, and remain the one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden.
 

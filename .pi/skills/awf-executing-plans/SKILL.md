@@ -46,8 +46,8 @@ If an implementer stops dirty, first inventory `git status --short`, diff, compl
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->
 6. After all settled phases, invoke `awf-reviewing-impl`.
 
-## Notes
 <!-- awf:edit project-invariants: default; create .awf/skills/parts/executing-plans/project-invariants.md to override -->
+## Notes
 - Expected output is non-negotiable. Never weaken assertions or adjust a golden merely to pass.
 <!-- awf:edit notes-gate: default; create .awf/skills/parts/executing-plans/notes-gate.md to override -->
 - Gates are mandatory; fix the root cause.

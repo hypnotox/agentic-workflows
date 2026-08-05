@@ -22,6 +22,39 @@ func TestParseSectionsSplitsLiteralAndSections(t *testing.T) {
 	}
 }
 
+// invariant: rendering/render-engine:structural-heading-owned (TestStructuralHeadingPolicyAndAssembly)
+func TestStructuralHeadingPolicyAndAssembly(t *testing.T) {
+	src := "<!-- awf:section headed -->\n## Owned {{ .missing }}\nbody\n<!-- awf:end -->\n"
+	markdown := ParseSections(src, true)
+	if markdown[0].Heading != "## Owned {{ .missing }}" || markdown[0].Text != "body" {
+		t.Fatalf("Markdown heading split = %#v", markdown[0])
+	}
+	nonMarkdown := ParseSections(src, false)
+	if nonMarkdown[0].Heading != "" || nonMarkdown[0].Text != "## Owned {{ .missing }}\nbody" {
+		t.Fatalf("non-Markdown must keep hash line as body: %#v", nonMarkdown[0])
+	}
+	asm, parts := Assemble(markdown, map[string]SectionPlan{"headed": {HasPart: true, PartBody: "part body", EditPath: ".awf/part.md"}}, HTMLComment)
+	out, err := Execute(asm, map[string]any{"missing": ""}, parts, "heading")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "## Owned ") || !strings.Contains(out, "part body") || strings.Contains(out, "<no value>") {
+		t.Fatalf("headed part output = %q", out)
+	}
+	inPlace, inPlaceParts := Assemble(markdown, map[string]SectionPlan{"headed": {InPlace: true, InPlaceFound: true, InPlaceBody: "preserved"}}, HTMLComment)
+	inPlaceOut, err := Execute(inPlace, map[string]any{"missing": ""}, inPlaceParts, "heading")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(inPlaceOut, "the heading immediately below is awf-owned") {
+		t.Fatalf("headed in-place pointer = %q", inPlaceOut)
+	}
+	dropped, _ := Assemble(markdown, map[string]SectionPlan{"headed": {Drop: true}}, HTMLComment)
+	if strings.Contains(dropped, "Owned") || strings.Contains(dropped, "body") || strings.Contains(dropped, "awf:edit") {
+		t.Fatalf("drop must omit pointer, heading, and body: %q", dropped)
+	}
+}
+
 func TestParseSectionsNoSections(t *testing.T) {
 	segs := ParseSections("plain text\n")
 	if len(segs) != 1 || segs[0].IsSection || segs[0].Text != "plain text\n" {

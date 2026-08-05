@@ -1,4 +1,3 @@
-## Current state
 
 Pi renders native discoverable skills, the subagent extension, and the lifecycle-independent handoff extension. Workflow templates exclusively own mandatory checkpoint persistence, approval stops, safe resumability, and truthful handoff-log timing; Pi replacement is discretionary only after an eligible persisted boundary. A replacement kickoff that restricts work to a managed worktree scopes that restriction to pre-integration execution and preserves the governed target-checkout switch for integration, deferred lifecycle closure, worktree removal, and retrospective. Every enabled standard and local skill uses the normal `.pi/skills/<prefix>-<name>/SKILL.md` layout; no router or hidden workflow body participates in selection.
 

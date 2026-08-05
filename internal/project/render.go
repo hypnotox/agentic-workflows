@@ -189,7 +189,11 @@ func (p *Project) partRel(kind, artifact, section string) string {
 // template default renders. Precedence: drop > in-place read-back > convention
 // part > default. In-place and part sourcing are mutually exclusive per section
 // (ADR-0100 section-source-exclusive).
-func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle) (map[string]render.SectionPlan, error) {
+func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle, expectedHeadings ...map[string]string) (map[string]render.SectionPlan, error) {
+	headings := map[string]string{}
+	if len(expectedHeadings) > 0 && expectedHeadings[0] != nil {
+		headings = expectedHeadings[0]
+	}
 	plan := map[string]render.SectionPlan{}
 	reg, err := p.placeholderRegistry()
 	if err != nil {
@@ -241,7 +245,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
 			// in Assemble (ADR-0100 in-place-readback).
-			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style)
+			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style, headings[s])
 			plan[s] = sp
 			continue
 		}
@@ -287,7 +291,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 // or a deleted anchor), so the caller falls back to the template default.
 // touches-state: rendering/inplace-and-placeholders:in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
 // touches-state: rendering/inplace-and-placeholders:in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
-func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle) (string, bool) {
+func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle, expectedHeading ...string) (string, bool) {
 	lines := strings.Split(output, "\n")
 	ownPrefixes := render.PointerLinePrefixes(name, style)
 	start := -1
@@ -313,7 +317,30 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 			break
 		}
 	}
-	return trimBlankFraming(lines[start+1 : end]), true
+	body := lines[start+1 : end]
+	if len(expectedHeading) > 0 && expectedHeading[0] != "" && len(body) > 0 {
+		// A structural slot is awf-owned. Consume the expected heading, and also
+		// a changed heading at the same level so tampering cannot become body.
+		first := strings.TrimSpace(body[0])
+		if first == expectedHeading[0] || sameATXLevel(first, expectedHeading[0]) {
+			body = body[1:]
+		}
+	}
+	return trimBlankFraming(body), true
+}
+
+func sameATXLevel(a, b string) bool {
+	level := func(s string) int {
+		i := 0
+		for i < len(s) && s[i] == '#' {
+			i++
+		}
+		if i == 0 || i > 6 || i == len(s) || (s[i] != ' ' && s[i] != '\t') {
+			return 0
+		}
+		return i
+	}
+	return level(a) != 0 && level(a) == level(b)
 }
 
 // trimBlankFraming drops leading and trailing blank (whitespace-only) lines - the
@@ -650,9 +677,19 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	segs := render.ParseSections(stripped)
+	markdown := options == nil || options.target == nil || options.target.AgentDialect == MarkdownAgentDialect
+	segs := render.ParseSections(stripped, markdown)
 	style := render.CommentStyleForSource(stripped)
-	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style)
+	headings := map[string]string{}
+	for _, s := range segs {
+		if s.IsSection && s.Heading != "" {
+			headings[s.Name], err = render.Execute(s.Heading, data, nil, tid+" heading")
+			if err != nil { // coverage-ignore: a structural heading shares the already-executed skeleton template source, so a template error has already returned above
+				return RenderedFile{}, fmt.Errorf("render %s heading: %w", tid, err)
+			}
+		}
+	}
+	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style, headings)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
