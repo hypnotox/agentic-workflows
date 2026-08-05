@@ -34,9 +34,17 @@ func runRecover(root string, stdout io.Writer) error {
 	}
 	outcome, err := upgradeRecover(root)
 	if err != nil {
-		return newJournalFailure("recovery did not reach terminal state", outcome, err)
+		return newJournalFailure("recovery has not reached terminal state", outcome, err)
 	}
-	return renderJournalMutation(stdout, "upgrade recovered", outcome)
+	mutation, err := outcome.RecoveredMutation()
+	if err != nil { // coverage-ignore: Outcome formats evidence with fixed valid syntax
+		return err
+	}
+	document, err := mutation.Document()
+	if err != nil { // coverage-ignore: Outcome supplies a fixed valid status and validated values
+		return err
+	}
+	return presentation.Render(stdout, document)
 }
 
 var (
@@ -78,9 +86,17 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 	case manifest.AuthorityBridge:
 		outcome, finalErr := upgradeFinal(ctx, root, lock)
 		if finalErr != nil {
-			return newJournalFailure("upgrade did not reach terminal state", outcome, finalErr)
+			return newJournalFailure("upgrade has not reached terminal state", outcome, finalErr)
 		}
-		return renderJournalMutation(stdout, "upgrade completed", outcome)
+		mutation, err := outcome.CompletedMutation()
+		if err != nil { // coverage-ignore: Outcome formats evidence with fixed valid syntax
+			return err
+		}
+		document, err := mutation.Document()
+		if err != nil { // coverage-ignore: Outcome supplies a fixed valid status and validated values
+			return err
+		}
+		return presentation.Render(stdout, document)
 	case manifest.AuthorityPermanent:
 		// Continue with ordinary schema migration and sync.
 	default: // coverage-ignore: AuthorityState returns only the closed enum values
@@ -106,6 +122,7 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) error {
 			if err := upgradeSaveLock(lock, config.LockPath(root)); err != nil {
 				return newUpgradeFailure(applied, changes, err)
 			}
+			changes = append(changes, migrate.Change{Text: "created and schema-stamped .awf/awf.lock"})
 			completionApplied, completionChanges, completionErr := upgradeMigrate(ctx, root)
 			applied = append(applied, completionApplied...)
 			changes = append(changes, completionChanges...)

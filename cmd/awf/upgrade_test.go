@@ -46,7 +46,7 @@ func TestRunUpgradeRejectsCorruptOrMissingAuthority(t *testing.T) {
 	}
 }
 
-func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
+func TestUpgradeFailureDiagnosticCarriesChangedAxisRecovery(t *testing.T) {
 	failure := errors.New("terminal sync failed")
 	partial := upgradeFailure{applied: []string{"first", "second"}, changes: []migrate.Change{{Text: "first: changed config"}, {Text: "second: wrote lock"}}, cause: failure}
 	if got := partial.Error(); got != failure.Error() {
@@ -64,7 +64,7 @@ func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
 	if err := presentation.Render(&out, document); err != nil {
 		t.Fatal(err)
 	}
-	want := "condition: upgrade did not reach terminal sync\nstate: partial mutation\ncause: terminal sync failed\n\ndiagnostic:\n  changed:\n    migration: applied: first\n    migration: applied: second\n    migration: change: first: changed config\n    migration: change: second: wrote lock\n  steps:\n    step 1: inspect the changed migration axes\n    step 2: run awf upgrade --recover if an upgrade journal exists\n    step 3: restore the project from version control if recovery cannot complete\n"
+	want := "condition: upgrade has not reached terminal sync\nstate: operation\ncause: terminal sync failed\n\ndiagnostic:\n  changed:\n    migration: applied: first\n    migration: applied: second\n    migration: change: first: changed config\n    migration: change: second: wrote lock\n  steps:\n    step 1: run awf upgrade --recover if an upgrade journal exists\n    step 2: inspect the listed changed axes\n    step 3: restore the project from version control if recovery cannot complete\n"
 	if out.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
 	}
@@ -73,7 +73,7 @@ func TestUpgradeFailureDiagnosticCarriesPartialMutationRecovery(t *testing.T) {
 	}
 }
 
-func TestUpgradeFailureDiagnosticOmitsPartialStateBeforeAnyChange(t *testing.T) {
+func TestUpgradeFailureDiagnosticUsesRetryBeforeAnyChange(t *testing.T) {
 	failure := errors.New("first migration pre-write sync failed")
 	diagnostic, err := (upgradeFailure{cause: failure}).Diagnostic()
 	if err != nil {
@@ -87,13 +87,13 @@ func TestUpgradeFailureDiagnosticOmitsPartialStateBeforeAnyChange(t *testing.T) 
 	if err := presentation.Render(&out, document); err != nil {
 		t.Fatal(err)
 	}
-	want := "condition: upgrade did not reach terminal sync\ncause: first migration pre-write sync failed\n\ndiagnostic:\n  steps:\n    step 1: inspect the changed migration axes\n    step 2: run awf upgrade --recover if an upgrade journal exists\n    step 3: restore the project from version control if recovery cannot complete\n"
+	want := "condition: upgrade has not reached terminal sync\nstate: operation\ncause: first migration pre-write sync failed\n\ndiagnostic:\n  steps:\n    step 1: correct the reported cause and retry\n"
 	if out.String() != want {
 		t.Fatalf("diagnostic = %q, want %q", out.String(), want)
 	}
 }
 
-func TestRunUpgradeFailuresBeforeChangesOmitPartialMutation(t *testing.T) {
+func TestRunUpgradeFailuresBeforeChangesUseOperationState(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		set  func(t *testing.T, failure error)
@@ -134,8 +134,8 @@ func TestRunUpgradeFailuresBeforeChangesOmitPartialMutation(t *testing.T) {
 			if diagnosticErr != nil {
 				t.Fatal(diagnosticErr)
 			}
-			if diagnostic.State != "" || len(diagnostic.Changed) != 0 {
-				t.Fatalf("diagnostic = %#v, want no partial state or changed axes", diagnostic)
+			if diagnostic.State != "operation" || len(diagnostic.Changed) != 0 || len(diagnostic.Steps) != 1 {
+				t.Fatalf("diagnostic = %#v, want operation state, no changed axes, and one retry remedy", diagnostic)
 			}
 		})
 	}
@@ -175,28 +175,27 @@ func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
 	}
 }
 
-func TestJournalPresentationCollectsOneTerminalResult(t *testing.T) {
-	outcome := upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "applied", Path: ".awf/config.yaml"}}}
-	var stdout bytes.Buffer
-	if err := renderJournalMutation(&stdout, "upgrade completed", outcome); err != nil {
-		t.Fatal(err)
-	}
-	if got, want := stdout.String(), "status: upgrade completed\n\nmutation:\n  changes:\n    journal:\n      applied: .awf/config.yaml\n"; got != want {
-		t.Fatalf("mutation = %q, want %q", got, want)
-	}
-	if err := renderJournalMutation(effortErrorWriter{}, "upgrade completed", outcome); !errors.Is(err, os.ErrClosed) {
-		t.Fatalf("writer error = %v, want closed writer", err)
-	}
-	if err := renderJournalMutation(io.Discard, "", outcome); err == nil {
-		t.Fatal("empty journal status accepted")
-	}
-	failure := journalFailure{condition: "recovery did not reach terminal state", outcome: outcome, cause: errors.New("recovery failed")}
+func TestJournalFailureUsesTerminalChangedAxes(t *testing.T) {
+	outcome := upgrade.Outcome{Evidence: []upgrade.Evidence{{Action: "applied", Path: ".awf/config.yaml"}}, Changed: []upgrade.Evidence{}}
+	failure := journalFailure{condition: "recovery has not reached terminal state", outcome: outcome, cause: errors.New("recovery failed")}
 	diagnostic, err := failure.Diagnostic()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(diagnostic.Changed) != 1 {
-		t.Fatalf("diagnostic facts = %#v", diagnostic.Changed)
+	if diagnostic.State != "operation" || len(diagnostic.Changed) != 0 || len(diagnostic.Steps) != 1 {
+		t.Fatalf("diagnostic = %#v, want terminal operation state with only a retry remedy", diagnostic)
+	}
+	document, err := diagnostic.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered bytes.Buffer
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	want := "condition: recovery has not reached terminal state\nstate: operation\ncause: recovery failed\n\ndiagnostic:\n  steps:\n    step 1: correct the reported cause and retry\n"
+	if got := rendered.String(); got != want {
+		t.Fatalf("diagnostic = %q, want %q", got, want)
 	}
 	syncValue, err := presentation.Prose("changed docs/AGENTS.md")
 	if err != nil {
@@ -277,7 +276,7 @@ func TestRunUpgradeGateFailureIsPartialDiagnostic(t *testing.T) {
 	}
 }
 
-func TestRunUpgradeRelocatedLockFailuresArePartialDiagnostics(t *testing.T) {
+func TestRunUpgradeRelocatedLockFailuresRetainMigrationDiagnostics(t *testing.T) {
 	for _, tc := range []struct{ name string }{
 		{"load"},
 		{"save"},
@@ -318,7 +317,7 @@ func TestRunUpgradeRelocatedLockFailuresArePartialDiagnostics(t *testing.T) {
 	}
 }
 
-func TestRunUpgradeCompletionMigrationFailureIsPartialDiagnostic(t *testing.T) {
+func TestRunUpgradeCompletionMigrationFailureRetainsCreatedLockAxis(t *testing.T) {
 	root := scaffoldProject(t)
 	lockBytes, err := os.ReadFile(config.LockPath(root))
 	if err != nil {
@@ -339,7 +338,7 @@ func TestRunUpgradeCompletionMigrationFailureIsPartialDiagnostic(t *testing.T) {
 			}
 			return []string{"relocate"}, []migrate.Change{{Text: "relocate: moved config"}}, nil
 		}
-		return []string{"complete"}, []migrate.Change{{Text: "complete: wrote lock"}}, completionFailure
+		return nil, nil, completionFailure
 	})
 	var stdout bytes.Buffer
 	err = runUpgrade(testContext(t), root, &stdout)
@@ -350,11 +349,29 @@ func TestRunUpgradeCompletionMigrationFailureIsPartialDiagnostic(t *testing.T) {
 	if !errors.As(err, &partial) {
 		t.Fatalf("upgrade error = %T, want upgradeFailure", err)
 	}
-	if got := strings.Join(partial.applied, ","); got != "relocate,complete" {
-		t.Fatalf("applied = %q, want ordered completion identities", got)
+	if got := strings.Join(partial.applied, ","); got != "relocate" {
+		t.Fatalf("applied = %q, want only the initial migration identity", got)
 	}
-	if len(partial.changes) != 2 || partial.changes[1].Text != "complete: wrote lock" {
-		t.Fatalf("changes = %v, want completion fact before failure", partial.changes)
+	if len(partial.changes) != 2 || partial.changes[0].Text != "relocate: moved config" || partial.changes[1].Text != "created and schema-stamped .awf/awf.lock" {
+		t.Fatalf("changes = %v, want proven lock creation before the empty completion failure", partial.changes)
+	}
+	diagnostic, diagnosticErr := partial.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	if len(diagnostic.Changed) != 3 {
+		t.Fatalf("diagnostic changed = %#v, want the proven created lock axis", diagnostic.Changed)
+	}
+	document, err := diagnostic.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered bytes.Buffer
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered.String(), "migration: change: created and schema-stamped .awf/awf.lock") {
+		t.Fatalf("diagnostic = %q, want the created lock axis", rendered.String())
 	}
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q, want no partial success mutation", stdout.String())

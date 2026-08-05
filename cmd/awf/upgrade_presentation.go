@@ -38,26 +38,6 @@ func upgradeSyncMutation(ctx context.Context, root string) (upgradeSyncOutcome, 
 	return upgradeSyncOutcome{mutation: mutation}, syncErr
 }
 
-func renderJournalMutation(dst interface{ Write([]byte) (int, error) }, status string, outcome upgrade.Outcome) error {
-	values := make([]presentation.Value, 0, len(outcome.Evidence))
-	for _, evidence := range outcome.Evidence {
-		value, err := presentation.Prose(evidence.Action + ": " + evidence.Path)
-		if err != nil { // coverage-ignore: the fixed separator keeps every journal fact presentation-valid
-			return err
-		}
-		values = append(values, value)
-	}
-	mutation := presentation.Mutation{Status: status}
-	if len(values) > 0 {
-		mutation.Changes = []presentation.MutationChange{{Label: "journal", Values: values}}
-	}
-	document, err := mutation.Document()
-	if err != nil {
-		return err
-	}
-	return presentation.Render(dst, document)
-}
-
 type journalFailure struct {
 	condition string
 	outcome   upgrade.Outcome
@@ -72,38 +52,7 @@ func (e journalFailure) Error() string { return e.cause.Error() }
 func (e journalFailure) Unwrap() error { return e.cause }
 
 func (e journalFailure) Diagnostic() (presentation.Diagnostic, error) {
-	terminal := e.outcome.Changed
-	// Nil is retained for direct callers compiled against the initial outcome
-	// shape; transaction owners always set Changed, including an explicit empty
-	// set after a complete rollback.
-	if terminal == nil {
-		terminal = e.outcome.Evidence
-	}
-	changed := make([]presentation.Field, 0, len(terminal))
-	for _, evidence := range terminal {
-		value, err := presentation.Prose(evidence.Action + ": " + evidence.Path)
-		if err != nil { // coverage-ignore: the fixed separator keeps every journal fact presentation-valid
-			return presentation.Diagnostic{}, err
-		}
-		field, err := presentation.NewField("journal", value)
-		if err != nil { // coverage-ignore: the fixed grammar-valid journal label receives validated prose
-			return presentation.Diagnostic{}, err
-		}
-		changed = append(changed, field)
-	}
-	steps := []presentation.Value{}
-	for _, text := range []string{"inspect the changed journal axes", "run awf upgrade --recover if an upgrade journal exists", "restore the project from version control if recovery cannot complete"} {
-		value, err := presentation.Prose(text)
-		if err != nil { // coverage-ignore: every closed recovery-step literal is nonempty and Prose-normalized
-			return presentation.Diagnostic{}, err
-		}
-		steps = append(steps, value)
-	}
-	state := "no partial mutation"
-	if len(changed) > 0 {
-		state = "partial mutation"
-	}
-	return presentation.Diagnostic{Condition: e.condition, State: state, Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
+	return e.outcome.FailureDiagnostic(e.condition, e.cause)
 }
 
 func upgradeMutation(sync presentation.Mutation, applied []string, changes []migrate.Change) (presentation.Mutation, error) {
@@ -187,17 +136,21 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 			changed = append(changed, field)
 		}
 	}
-	steps := []presentation.Value{}
-	for _, step := range []string{"inspect the changed migration axes", "run awf upgrade --recover if an upgrade journal exists", "restore the project from version control if recovery cannot complete"} {
-		value, err := presentation.Prose(step)
+	stepTexts := []string{"correct the reported cause and retry"}
+	if len(changed) > 0 {
+		stepTexts = []string{
+			"run awf upgrade --recover if an upgrade journal exists",
+			"inspect the listed changed axes",
+			"restore the project from version control if recovery cannot complete",
+		}
+	}
+	steps := make([]presentation.Value, 0, len(stepTexts))
+	for _, text := range stepTexts {
+		value, err := presentation.Prose(text)
 		if err != nil { // coverage-ignore: every closed recovery-step literal is nonempty and Prose-normalized
 			return presentation.Diagnostic{}, err
 		}
 		steps = append(steps, value)
 	}
-	state := ""
-	if len(changed) > 0 {
-		state = "partial mutation"
-	}
-	return presentation.Diagnostic{Condition: "upgrade did not reach terminal sync", State: state, Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
+	return presentation.Diagnostic{Condition: "upgrade has not reached terminal sync", State: "operation", Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
 }
