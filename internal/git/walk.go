@@ -285,9 +285,6 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 	if err != nil {
 		return Commit{}, err
 	}
-	if err := validateChangedPathTree(ctx, curTree); err != nil {
-		return Commit{}, err
-	}
 	var parentTree *object.Tree
 	if c.NumParents() > 0 {
 		parent, err := c.Parent(0)
@@ -298,16 +295,16 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 		if err != nil {
 			return Commit{}, err
 		}
-		if err := validateChangedPathTree(ctx, parentTree); err != nil {
-			return Commit{}, err
-		}
+	}
+	if err := validateChangedTreeFrontier(ctx, parentTree, curTree); err != nil {
+		return Commit{}, err
 	}
 	changes, err := object.DiffTreeContext(ctx, parentTree, curTree)
 	if err != nil {
 		if contextErr := ctx.Err(); contextErr != nil {
 			return Commit{}, contextErr
 		}
-		return Commit{}, err // coverage-ignore: resolved valid trees leave cancellation as the only reachable diff failure
+		return Commit{}, err // coverage-ignore: the validated change frontier leaves cancellation as the only reachable diff failure
 	}
 	patch, err := changes.PatchContext(ctx)
 	if err != nil {
@@ -345,12 +342,15 @@ func mergeTouchesPrefix(ctx context.Context, c *object.Commit, prefix string) (b
 	if err != nil {
 		return false, err
 	}
+	if err := validateChangedTreeFrontier(ctx, parentTree, curTree); err != nil {
+		return false, err
+	}
 	changes, err := object.DiffTreeContext(ctx, parentTree, curTree)
 	if err != nil {
 		if contextErr := ctx.Err(); contextErr != nil {
 			return false, contextErr
 		}
-		return false, err // coverage-ignore: resolved valid trees leave cancellation as the only reachable diff failure
+		return false, err // coverage-ignore: the validated change frontier leaves cancellation as the only reachable diff failure
 	}
 	for _, change := range changes {
 		_, oldInside := scopedPath(change.From.Name, prefix)
@@ -360,6 +360,60 @@ func mergeTouchesPrefix(ctx context.Context, c *object.Commit, prefix string) (b
 		}
 	}
 	return false, checkContext(ctx)
+}
+
+func validateChangedTreeFrontier(ctx context.Context, before, after *object.Tree) error {
+	beforeEntries, afterEntries := map[string]object.TreeEntry{}, map[string]object.TreeEntry{}
+	names := map[string]bool{}
+	if before != nil {
+		for _, entry := range before.Entries {
+			beforeEntries[entry.Name], names[entry.Name] = entry, true
+		}
+	}
+	if after != nil {
+		for _, entry := range after.Entries {
+			afterEntries[entry.Name], names[entry.Name] = entry, true
+		}
+	}
+	for _, name := range sortedPaths(names) {
+		if err := checkContext(ctx); err != nil {
+			return err
+		}
+		oldEntry, oldOK := beforeEntries[name]
+		newEntry, newOK := afterEntries[name]
+		if oldOK && newOK && oldEntry.Mode == newEntry.Mode && oldEntry.Hash == newEntry.Hash {
+			continue
+		}
+		var oldTree, newTree *object.Tree
+		var err error
+		if oldOK && oldEntry.Mode == filemode.Dir {
+			oldTree, err = before.Tree(name)
+			if err != nil {
+				return err
+			}
+		}
+		if newOK && newEntry.Mode == filemode.Dir {
+			newTree, err = after.Tree(name)
+			if err != nil {
+				return err
+			}
+		}
+		switch {
+		case oldTree != nil && newTree != nil:
+			if err := validateChangedTreeFrontier(ctx, oldTree, newTree); err != nil {
+				return err
+			}
+		case oldTree != nil:
+			if err := validateChangedPathTree(ctx, oldTree); err != nil {
+				return err
+			}
+		case newTree != nil:
+			if err := validateChangedPathTree(ctx, newTree); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map[string]object.FileStat, prefix string) (FileChange, bool, error) {
