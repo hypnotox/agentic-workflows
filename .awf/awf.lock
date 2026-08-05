@@ -433,7 +433,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:51f623515960f5114d743f5eef7802a7601e4ff183d0710991db06c5c75da924",
+      "outputHash": "sha256:8c13bee96f227cd20531327e010177f5bed6839265237e8d188611595c48ebfd",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -661,8 +661,8 @@
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:0ee85852ec1385693de07e54c6e0f6b9e965e126edec6b7a10cd48c790f817c7",
-      "outputHash": "sha256:bcf1e1bd4540a359dbf166cbbf6d76900f40a9adc5af3d78e51db193f4989c6b"
+      "configHash": "sha256:edad010001b66a923d0b29aabf0784a3d6209df07c8b0865c19337733a7f3ee8",
+      "outputHash": "sha256:34845483aafb83b94858804317cf8b2daf57ac67bad51c0636ffe746f3273903"
     },
     "docs/topics/invariants/index.md": {
       "templateId": "topics/index.md.tmpl",

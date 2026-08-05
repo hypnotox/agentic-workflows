@@ -4,7 +4,7 @@ slug: validate-authored-transactions-by-observable-operations
 status: Implementing
 date: 2026-08-05
 ---
-# ADR-validate-authored-transactions-by-observable-operations: Validate Authored Transactions by Observable Operations
+# ADR-0233: Validate Authored Transactions by Observable Operations
 
 ## Context
 
