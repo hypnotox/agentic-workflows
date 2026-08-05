@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
@@ -26,8 +27,7 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 		if err != nil { // coverage-ignore: descriptors marshal to JSON; cannot fail
 			return err
 		}
-		fmt.Fprintln(stdout, string(out))
-		return nil
+		return writeInitDescriptorProtocol(stdout, out)
 	}
 	cfgPath := config.ConfigPath(root)
 	lockPath := config.LockPath(root)
@@ -88,9 +88,13 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	if configExists {
 		// Descriptor answers only feed the scaffold; resolving them here would
 		// prompt for (or silently accept) values init then discards.
-		fmt.Fprintf(stdout, "%s exists: keeping it and re-rendering only\n", cfgPath)
+		if err := writeStatus(stdout, cfgPath+" exists: keeping it and re-rendering only"); err != nil {
+			return err
+		}
 		if len(answers) > 0 {
-			fmt.Fprintln(stdout, "note: --set/--answers values were ignored; edit .awf/config.yaml instead")
+			if err := writeStatus(stdout, "note: --set/--answers values were ignored; edit .awf/config.yaml instead"); err != nil {
+				return err
+			}
 		}
 	} else {
 		var rerr error
@@ -113,11 +117,14 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 			return err
 		}
 		scaffolded = true
-		fmt.Fprintf(stdout, "scaffolded %s\n", cfgPath)
-		// A trimmed selection is closure-completed (ADR-0081 Decision 9);
-		// note each artifact enabled beyond the explicit trim.
+		if err := writeStatus(stdout, "scaffolded: "+cfgPath); err != nil {
+			return err
+		}
+		// A trimmed selection is closure-completed (ADR-0081 Decision 9).
 		for _, a := range added {
-			fmt.Fprintf(stdout, "note: also enabled %s (required by your selection)\n", a)
+			if err := writeStatus(stdout, "note: also enabled "+a+" (required by your selection)"); err != nil {
+				return err
+			}
 		}
 	}
 	p, err := project.Open(ctx, root)
@@ -173,11 +180,7 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	if err != nil { // coverage-ignore: runSync just rendered this same tree and generated its domain docs - both AdvisoryNotes inputs succeeded moments ago
 		return err
 	}
-	for _, n := range notes {
-		fmt.Fprintf(stdout, "note: %s\n", n)
-	}
-	fmt.Fprint(stdout, initNextSteps)
-	return nil
+	return writeInitOrientation(stdout, notes)
 }
 
 // collisionRefusal is the shared refusal for both collision checks, so the
@@ -226,12 +229,42 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	return resident.CollisionsAt(root, planned)
 }
 
-// initNextSteps is the fixed orientation block init prints after a
-// successful render.
-const initNextSteps = `
-next steps:
-  1. Fill the Identity section: edit .awf/parts/agents-doc/identity.md, then run awf render.
-  2. Set any still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render.
-  3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself.
-  4. Commit .awf/ and the rendered files together.
-`
+// writeInitOrientation presents post-init advisories and independently
+// executable next actions without compressing their semantic boundaries.
+func writeInitOrientation(stdout io.Writer, advisories []string) error {
+	notes := make([]presentation.Value, 0, len(advisories))
+	for _, advisory := range advisories {
+		value, err := presentation.Prose(advisory)
+		if err != nil {
+			return err
+		}
+		notes = append(notes, value)
+	}
+	actions := make([]presentation.Value, len(initNextActions))
+	for i, action := range initNextActions {
+		value, err := presentation.Prose(action)
+		if err != nil { // coverage-ignore: fixed nonempty action prose contains no forbidden line break
+			return err
+		}
+		actions[i] = value
+	}
+	document, err := (presentation.Mutation{Status: "initialization completed", Notes: notes, NextActions: actions}).Document()
+	if err != nil { // coverage-ignore: values are validated above and Mutation uses fixed grammar-valid labels
+		return err
+	}
+	return presentation.Render(stdout, document)
+}
+
+var initNextActions = []string{
+	"fill the Identity section at .awf/parts/agents-doc/identity.md",
+	"set still-empty vars in .awf/config.yaml",
+	"wire rendered hooks under .awf/hooks/",
+	"commit .awf and rendered files together",
+}
+
+// writeInitDescriptorProtocol writes the documented init descriptor JSON
+// unchanged. It is one of the closed successful protocol bypasses.
+func writeInitDescriptorProtocol(stdout io.Writer, payload []byte) error {
+	_, err := stdout.Write(append(payload, '\n'))
+	return err
+}

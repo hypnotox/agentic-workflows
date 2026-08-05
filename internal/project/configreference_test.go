@@ -35,6 +35,28 @@ func syncedProject(t *testing.T, configYAML string, files map[string]string) (st
 	return root, p
 }
 
+func TestConfigReferencePresentationRejectsInvalidRows(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		model ConfigReference
+	}{
+		{name: "config key", model: ConfigReference{ConfigKeys: []ConfigKeyRow{{}}}},
+		{name: "var", model: ConfigReference{VarEntries: []VarRow{{}}}},
+		{name: "sidecar field", model: ConfigReference{SidecarFields: []ConfigKeyRow{{}}}},
+		{name: "data key", model: ConfigReference{DataKeys: []DataKeyRow{{}}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ConfigReferencePresentation("", &test.model, "reference"); err == nil {
+				t.Fatal("invalid reference row produced a presentation")
+			}
+		})
+	}
+	valid := ConfigReference{ConfigKeys: []ConfigKeyRow{{Path: "key", Type: "string", Default: "none", Description: "description", Availability: "always"}}}
+	if _, err := ConfigReferencePresentation("", &valid, " \n\t"); err == nil {
+		t.Fatal("empty normalized status accepted")
+	}
+}
+
 // The generated reference renders per-project state: key rows with resolved
 // defaults, the three-way var states, consumer/dormant hints, per-artifact
 // data keys - and the document map cites it.

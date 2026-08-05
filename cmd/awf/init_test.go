@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -300,8 +301,50 @@ func TestInitCommitScopesAnswer(t *testing.T) {
 	}
 }
 
-// After the chained sync succeeds, init prints the render-completeness notes
-// (same rendering as awf check, ADR-0045) and a fixed next-steps block.
+// After the chained sync succeeds, init presents render-completeness notes
+// and each fixed next action as its own ordered step.
+type nthInitErrorWriter struct {
+	writes int
+	failAt int
+}
+
+func (w *nthInitErrorWriter) Write(p []byte) (int, error) {
+	w.writes++
+	if w.writes == w.failAt {
+		return 0, errors.New("write failed")
+	}
+	return len(p), nil
+}
+
+func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
+	forceNonInteractive(t)
+	for _, test := range []struct {
+		name   string
+		root   func(*testing.T) string
+		sets   []string
+		failAt int
+	}{
+		{name: "existing config status", root: scaffoldProject, failAt: 1},
+		{name: "ignored answers note", root: scaffoldProject, sets: []string{"gateCmd=go test ./..."}, failAt: 2},
+		{name: "scaffold status", root: (*testing.T).TempDir, failAt: 1},
+		{name: "closure note", root: (*testing.T).TempDir, sets: []string{"skills=brainstorming"}, failAt: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			writer := &nthInitErrorWriter{failAt: test.failAt}
+			err := runInit(testContext(t), test.root(t), true, false, test.sets, "", writer)
+			if err == nil || !strings.Contains(err.Error(), "write failed") {
+				t.Fatalf("write error = %v after %d writes", err, writer.writes)
+			}
+		})
+	}
+}
+
+func TestInitOrientationRejectsEmptyAdvisory(t *testing.T) {
+	if err := writeInitOrientation(io.Discard, []string{" \n\t"}); err == nil {
+		t.Fatal("empty normalized advisory accepted")
+	}
+}
+
 func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -311,10 +354,13 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		t.Fatalf("init: exit %d (%s)", code, errb.String())
 	}
 	for _, want := range []string{
+		"status: initialization completed",
 		"references unset vars",
-		"next steps:",
-		".awf/parts/agents-doc/identity.md",
-		".awf/hooks/",
+		"next actions:",
+		"step 1: fill the Identity section at .awf/parts/agents-doc/identity.md",
+		"step 2: set still-empty vars in .awf/config.yaml",
+		"step 3: wire rendered hooks under .awf/hooks/",
+		"step 4: commit .awf and rendered files together",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("init output missing %q:\n%s", want, out.String())

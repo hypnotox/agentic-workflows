@@ -109,6 +109,28 @@ func numberingFixture(t *testing.T) map[string]string {
 	}
 }
 
+func numberingReportText(report NumberingReport) string {
+	var output strings.Builder
+	for _, assignment := range report.Assignments {
+		output.WriteString(assignment.Slug + " -> " + assignment.Number + "\n")
+	}
+	return output.String()
+}
+
+func TestNumberingReportPresentationValidatesAssignments(t *testing.T) {
+	for _, report := range []NumberingReport{
+		{Assignments: []NumberAssignment{{Slug: "bad\nslug", Number: "0002"}}},
+		{Assignments: []NumberAssignment{{Slug: "slug", Number: "bad\nnumber"}}},
+	} {
+		if _, err := report.Presentation(); err == nil {
+			t.Fatal("invalid numbering assignment produced a presentation")
+		}
+	}
+	if _, err := (NumberingReport{}).Presentation(); err != nil {
+		t.Fatalf("empty report: %v", err)
+	}
+}
+
 // Numbering's whole authored effect surface in one run: each named record takes
 // the next number in argument order, its filename and heading follow, the
 // retained slug key stays, and the authored provenance lines take the
@@ -124,7 +146,7 @@ func TestNumberPendingADRsAssignsAndSubstitutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NumberPendingADRs: %v", err)
 	}
-	if got := report.String(); got != "early -> 0002\nlate -> 0003\n" {
+	if got := numberingReportText(report); got != "early -> 0002\nlate -> 0003\n" {
 		t.Errorf("report = %q", got)
 	}
 	for _, gone := range []string{"docs/decisions/early.md", "docs/decisions/late.md"} {
@@ -208,7 +230,7 @@ func TestNumberPendingADRsBareInvocationNumbersTheOnlyRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NumberPendingADRs: %v", err)
 	}
-	if got := report.String(); got != "only -> 0002\n" {
+	if got := numberingReportText(report); got != "only -> 0002\n" {
 		t.Errorf("report = %q", got)
 	}
 	if _, err := os.Stat(filepath.Join(root, "docs/decisions/0002-only.md")); err != nil {
@@ -234,7 +256,7 @@ func TestNumberPendingADRsReportsTheMappingWhenTheRerenderFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "cites missing ADR-nowhere") {
 		t.Fatalf("re-render failure = %v", err)
 	}
-	if got := report.String(); got != "only -> 0002\n" {
+	if got := numberingReportText(report); got != "only -> 0002\n" {
 		t.Errorf("mapping lost on a failed re-render: %q", got)
 	}
 	if _, err := os.Stat(filepath.Join(root, "docs/decisions/0002-only.md")); err != nil {
@@ -420,7 +442,7 @@ func TestNumberPendingADRsIgnoresUnrelatedDrift(t *testing.T) {
 	if err != nil {
 		t.Fatalf("numbering must not require a green check: %v", err)
 	}
-	if got := report.String(); got != "only -> 0002\n" {
+	if got := numberingReportText(report); got != "only -> 0002\n" {
 		t.Errorf("mapping = %q", got)
 	}
 }

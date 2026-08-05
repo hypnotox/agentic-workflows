@@ -85,8 +85,30 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 			// the staged diff below a scissors line, and a diff may legitimately carry
 			// text git itself discards.
 			refs := memorycite.ScanText("commit message", []byte(msg.Text))
-			for _, r := range refs {
-				fmt.Fprintf(stdout, "check staged commit: %s line %d names the effort-owned memory file %q\n", r.Path, r.Line, r.Segment)
+			if len(refs) > 0 {
+				values := make([]presentation.Value, 0, len(refs))
+				for _, r := range refs {
+					value, valueErr := presentation.Prose(fmt.Sprintf("%s line %d names the effort-owned memory file %q", r.Path, r.Line, r.Segment))
+					if valueErr != nil { // coverage-ignore: scanner findings are single-line and the fixed prose keeps the value nonempty
+						return valueErr
+					}
+					values = append(values, value)
+				}
+				list, listErr := presentation.NewList("errors", values...)
+				if listErr != nil { // coverage-ignore: at least one validated finding and a fixed grammar-valid label are supplied
+					return listErr
+				}
+				section, sectionErr := presentation.NewSection("check staged commit", list)
+				if sectionErr != nil { // coverage-ignore: the validated List is always an admitted Section child
+					return sectionErr
+				}
+				document, documentErr := presentation.NewDocument(section)
+				if documentErr != nil { // coverage-ignore: the validated Section is always an admitted root node
+					return documentErr
+				}
+				if renderErr := dependencies.render(stdout, document); renderErr != nil {
+					return renderErr
+				}
 			}
 			if len(refs) > 0 {
 				return errors.New("check staged commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
@@ -98,8 +120,28 @@ func runCommitGateWithDependencies(ctx context.Context, root, msgPath string, st
 			findings := audit.CheckConventionalCommit(
 				git.Commit{Subject: msg.Subject}, audit.Resolve(p.Cfg.Audit))
 			if len(findings) > 0 {
-				for _, f := range findings {
-					fmt.Fprintf(stdout, "check staged commit: %s\n", f.Detail)
+				values := make([]presentation.Value, 0, len(findings))
+				for _, finding := range findings {
+					value, valueErr := presentation.Prose(finding.Detail)
+					if valueErr != nil { // coverage-ignore: conventional-commit findings have fixed nonempty single-line detail
+						return valueErr
+					}
+					values = append(values, value)
+				}
+				list, listErr := presentation.NewList("errors", values...)
+				if listErr != nil { // coverage-ignore: at least one validated finding and a fixed grammar-valid label are supplied
+					return listErr
+				}
+				section, sectionErr := presentation.NewSection("check staged commit", list)
+				if sectionErr != nil { // coverage-ignore: the validated List is always an admitted Section child
+					return sectionErr
+				}
+				document, documentErr := presentation.NewDocument(section)
+				if documentErr != nil { // coverage-ignore: the validated Section is always an admitted root node
+					return documentErr
+				}
+				if renderErr := dependencies.render(stdout, document); renderErr != nil {
+					return renderErr
 				}
 				return fmt.Errorf("check staged commit: rejected %q", msg.Subject)
 			}

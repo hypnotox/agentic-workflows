@@ -329,7 +329,7 @@ func TestRunCommitGateRejectsNonConventional(t *testing.T) {
 	if err := runCommitGate(ctx, root, writeMsg(t, "just some words\n"), nil, &out); err == nil {
 		t.Fatal("a non-Conventional-Commits subject must be rejected")
 	}
-	want := "check staged commit: subject is not Conventional Commits (type(scope)?: subject)\n"
+	want := "check staged commit:\n  errors:\n    subject is not Conventional Commits (type(scope)?: subject)\n"
 	if out.String() != want {
 		t.Fatalf("refusal output = %q, want %q", out.String(), want)
 	}
@@ -386,7 +386,7 @@ func TestDispatchCommitGate(t *testing.T) {
 	if code := run([]string{"awf", "check", "staged", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code != 1 {
 		t.Fatalf("dispatch refusal exit = %d, want 1", code)
 	}
-	if out.String() != "check staged commit: subject is not Conventional Commits (type(scope)?: subject)\n" || errb.String() != "condition: awf: check staged commit: rejected \"nope not conventional\"\n" {
+	if out.String() != "check staged commit:\n  errors:\n    subject is not Conventional Commits (type(scope)?: subject)\n" || errb.String() != "condition: awf: check staged commit: rejected \"nope not conventional\"\n" {
 		t.Fatalf("dispatch refusal streams stdout=%q stderr=%q", out.String(), errb.String())
 	}
 }
@@ -553,6 +553,20 @@ func TestRunCommitGateMechanismFailuresPreserveIdentity(t *testing.T) {
 		dependencies := authorizationResult()
 		dependencies.render = func(io.Writer, presentation.Document) error { return failure }
 		assertFailure(t, dependencies, message(), nil)
+	})
+	t.Run("conventional report render", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.render = func(io.Writer, presentation.Document) error { return failure }
+		assertFailure(t, dependencies, writeMsg(t, "not conventional\n"), nil)
+	})
+	t.Run("citation report render", func(t *testing.T) {
+		dependencies := defaultCommitGateDependencies()
+		dependencies.render = func(io.Writer, presentation.Document) error { return failure }
+		citationRoot := citingProject(t)
+		err := runCommitGateWithDependencies(testContext(t), citationRoot, writeMsg(t, "feat: cite\n\nsee "+cite()+"\n"), nil, &bytes.Buffer{}, dependencies)
+		if !errors.Is(err, failure) {
+			t.Fatalf("error = %v, want identity %v", err, failure)
+		}
 	})
 }
 

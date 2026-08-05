@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -17,6 +18,13 @@ func TestUninstallRemovesGeneratedFilesAndLock(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
 		t.Fatalf("expected AGENTS.md before uninstall: %v", err)
 	}
+	preserved := filepath.Join(root, ".awf", "efforts", "active", "memory.md")
+	if err := os.MkdirAll(filepath.Dir(preserved), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(preserved, []byte("resident"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := runUninstall(ctx, root, io.Discard); err != nil {
 		t.Fatalf("runUninstall: %v", err)
 	}
@@ -24,6 +32,9 @@ func TestUninstallRemovesGeneratedFilesAndLock(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
 			t.Errorf("expected %s removed, stat err = %v", rel, err)
 		}
+	}
+	if _, err := os.Stat(preserved); err != nil {
+		t.Errorf("dynamic resident data should remain: %v", err)
 	}
 	// The authored config is left in place.
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
@@ -42,6 +53,13 @@ func TestRunUninstallDispatch(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(err) {
 		t.Errorf("AGENTS.md should be removed after uninstall dispatch")
+	}
+}
+
+func TestUninstallPropagatesPresentationWriteFailure(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runUninstall(testContext(t), root, errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("write error = %v", err)
 	}
 }
 

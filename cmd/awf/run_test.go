@@ -1026,10 +1026,8 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
 	}
 	const initForceMutation = "status: completed\n\nmutation:\n  changes:\n    backups:\n      CLAUDE.md to CLAUDE.md.awf-bak\n  next actions:\n    step 1: continue with the rendered project state\n"
-	mutationStart := strings.Index(out.String(), "status: completed\n")
-	mutationEnd := strings.Index(out.String()[mutationStart:], "note: ")
-	if got := out.String()[mutationStart : mutationStart+mutationEnd]; got != initForceMutation {
-		t.Errorf("init --force mutation = %q, want %q", got, initForceMutation)
+	if !strings.Contains(out.String(), initForceMutation) {
+		t.Errorf("init --force output = %q, want mutation %q", out.String(), initForceMutation)
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
 	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.

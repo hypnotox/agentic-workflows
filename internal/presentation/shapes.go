@@ -12,6 +12,48 @@ type ReportCategory struct {
 	Records []Record
 }
 
+// Collection is a representation-only ordered set of semantic record
+// categories. Its owner supplies category labels, schemas, records, and order.
+type Collection struct {
+	Status     string
+	Categories []CollectionCategory
+}
+
+// CollectionCategory is one same-schema category in a Collection.
+type CollectionCategory struct {
+	Label   string
+	Schema  []string
+	Records []Record
+}
+
+// Document lowers a collection into the closed presentation tree.
+func (c Collection) Document() (Document, error) {
+	statusValue, err := Prose(c.Status)
+	if err != nil {
+		return Document{}, err
+	}
+	status, err := NewField("status", statusValue)
+	if err != nil { // coverage-ignore: Prose validated status and the fixed label is grammar-valid
+		return Document{}, err
+	}
+	categories := make([]Node, 0, len(c.Categories))
+	for _, category := range c.Categories {
+		group, err := NewRecordGroup(category.Label, category.Schema, category.Records...)
+		if err != nil {
+			return Document{}, err
+		}
+		categories = append(categories, group)
+	}
+	if len(categories) == 0 {
+		return NewDocument(status)
+	}
+	section, err := NewSection("collection", categories...)
+	if err != nil { // coverage-ignore: each record group was validated above
+		return Document{}, err
+	}
+	return NewDocument(status, section)
+}
+
 // Report is a representation-only complete check or audit result. Its owner
 // supplies the status, context, summary, categories, schemas, and ordering.
 type Report struct {

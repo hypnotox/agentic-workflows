@@ -1,67 +1,26 @@
 package commitpolicy
 
 import (
-	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-// Render produces the single human presentation for policy outcomes.
-func Render(policy Policy, outcome Outcome) string {
-	if outcome.Refusal != nil {
-		document, err := Presentation(policy, outcome)
-		if err == nil {
-			var rendered bytes.Buffer
-			if presentation.Render(&rendered, document) == nil {
-				return rendered.String()
-			}
-		}
-	}
-	var b strings.Builder
-	if outcome.Disabled {
-		return "note: commit policy is disabled; author commitPolicy to preview exact commit provenance\n"
-	}
-	if outcome.Refusal != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
-		return "commit policy presentation failed\n"
-	}
-	if len(outcome.Violations) == 0 {
-		return "commit policy: all selected commits conform\n"
-	}
-	identityViolation := false
-	signatureViolation := false
-	for _, violation := range outcome.Violations {
-		fmt.Fprintf(&b, "commit %s %s: ", violation.Commit, violation.Field)
-		if violation.Field == SignatureField {
-			signatureViolation = true
-			fmt.Fprintf(&b, "%s; commits must be signed by an allowed signer\n", violation.Observed)
-		} else {
-			identityViolation = true
-			fmt.Fprintf(&b, "identity %s is not allowed\n", violation.Observed)
-		}
-	}
-	if len(policy.AllowedIdentities) > 0 {
-		fmt.Fprintf(&b, "allowed identities: %s\n", identities(policy.AllowedIdentities))
-	}
-	if len(policy.AllowedSigners) > 0 {
-		fmt.Fprintf(&b, "allowed signers: %s\n", signers(policy.AllowedSigners))
-	}
-	if identityViolation {
-		b.WriteString("correct the author or committer identity to one allowed identity\n")
-	}
-	if signatureViolation {
-		b.WriteString("configure commit.gpgSign, gpg.format, and user.signingKey for an allowed signer\n")
-	}
-	b.WriteString("refs changed: false\nindex changed: false\n")
-	b.WriteString("reconcile the listed commits, then rerun awf check commit-policy with the same explicit targets\n")
-	return b.String()
-}
-
-// Presentation maps the policy-owned outcome into the representation-only
-// diagnostic shape. Rendering remains exclusively presentation's concern.
+// Presentation maps the policy-owned outcome into representation-only shapes.
+// Rendering remains exclusively presentation's concern.
 func Presentation(policy Policy, outcome Outcome) (presentation.Document, error) {
+	if outcome.Disabled {
+		value, err := presentation.Prose("commit policy is disabled; author commitPolicy to preview exact commit provenance")
+		if err != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+			return presentation.Document{}, err
+		}
+		field, err := presentation.NewField("status", value)
+		if err != nil { // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label
+			return presentation.Document{}, err
+		}
+		return presentation.NewDocument(field)
+	}
 	if outcome.Refusal != nil {
 		r := outcome.Refusal
 		refsValue, err := presentation.Literal(strconv.FormatBool(r.RefsChanged))
@@ -93,29 +52,101 @@ func Presentation(policy Policy, outcome Outcome) (presentation.Document, error)
 		}
 		return (presentation.Diagnostic{Condition: r.Observed, State: string(r.Category), Changed: []presentation.Field{refs, index}, Cause: cause, Steps: steps}).Document()
 	}
-	value, err := presentation.Prose("all selected commits conform")
-	if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+	if len(outcome.Violations) == 0 {
+		value, err := presentation.Prose("all selected commits conform")
+		if err != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+			return presentation.Document{}, err
+		}
+		field, err := presentation.NewField("status", value)
+		if err != nil { // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label
+			return presentation.Document{}, err
+		}
+		return presentation.NewDocument(field)
+	}
+	records := make([]presentation.Record, 0, len(outcome.Violations))
+	identityViolation := false
+	signatureViolation := false
+	for _, violation := range outcome.Violations {
+		commit, err := presentation.Literal(violation.Commit)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		field, err := presentation.Literal(string(violation.Field))
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		observed, err := presentation.Prose(violation.Observed)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		record, err := presentation.NewRecord(commit, field, observed)
+		if err != nil { // coverage-ignore: three validated nonempty values always form a valid record
+			return presentation.Document{}, err
+		}
+		records = append(records, record)
+		if violation.Field == SignatureField {
+			signatureViolation = true
+		} else {
+			identityViolation = true
+		}
+	}
+	refs, err := policyField("refs changed", "false")
+	if err != nil { // coverage-ignore: fixed label and value are grammar-valid
 		return presentation.Document{}, err
 	}
-	field, err := presentation.NewField("commit policy", value)
-	if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+	index, err := policyField("index changed", "false")
+	if err != nil { // coverage-ignore: fixed label and value are grammar-valid
 		return presentation.Document{}, err
 	}
-	return presentation.NewDocument(field)
+	summary := make([]presentation.Field, 0, 5)
+	if len(policy.AllowedIdentities) > 0 {
+		values := make([]string, len(policy.AllowedIdentities))
+		for i, identity := range policy.AllowedIdentities {
+			values[i] = identity.Name + " <" + identity.Email + ">"
+		}
+		allowed, fieldErr := policyField("allowed identities", strings.Join(values, ", "))
+		if fieldErr != nil { // coverage-ignore: each identity spelling contains literal angle brackets and the label is fixed
+			return presentation.Document{}, fieldErr
+		}
+		summary = append(summary, allowed)
+	}
+	if len(policy.AllowedSigners) > 0 {
+		values := make([]string, len(policy.AllowedSigners))
+		for i, signer := range policy.AllowedSigners {
+			values[i] = signer.Principal + " " + signer.Key
+		}
+		allowed, fieldErr := policyField("allowed signers", strings.Join(values, ", "))
+		if fieldErr != nil {
+			return presentation.Document{}, fieldErr
+		}
+		summary = append(summary, allowed)
+	}
+	if identityViolation {
+		remedy, fieldErr := policyField("identity remedy", "correct the author or committer identity to one allowed identity")
+		if fieldErr != nil { // coverage-ignore: fixed label and value are grammar-valid
+			return presentation.Document{}, fieldErr
+		}
+		summary = append(summary, remedy)
+	}
+	if signatureViolation {
+		remedy, fieldErr := policyField("signature remedy", "configure commit.gpgSign, gpg.format, and user.signingKey for an allowed signer")
+		if fieldErr != nil { // coverage-ignore: fixed label and value are grammar-valid
+			return presentation.Document{}, fieldErr
+		}
+		summary = append(summary, remedy)
+	}
+	retry, err := policyField("retry", "reconcile the listed commits, then rerun awf check commit-policy with the same explicit targets")
+	if err != nil { // coverage-ignore: fixed label and value are grammar-valid
+		return presentation.Document{}, err
+	}
+	summary = append(summary, retry)
+	return (presentation.Report{Status: "commit policy violations", Context: []presentation.Field{refs, index}, Summary: summary, Categories: []presentation.ReportCategory{{Label: "errors", Schema: []string{"commit", "field", "observed"}, Records: records}}}).Document()
 }
 
-func identities(values []Identity) string {
-	out := make([]string, len(values))
-	for i, value := range values {
-		out[i] = value.Name + " <" + value.Email + ">"
+func policyField(label, text string) (presentation.Field, error) {
+	value, err := presentation.Prose(text)
+	if err != nil {
+		return presentation.Field{}, err
 	}
-	return strings.Join(out, ", ")
-}
-
-func signers(values []Signer) string {
-	out := make([]string, len(values))
-	for i, value := range values {
-		out[i] = value.Principal + " " + value.Key
-	}
-	return strings.Join(out, ", ")
+	return presentation.NewField(label, value)
 }

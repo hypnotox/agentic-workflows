@@ -457,18 +457,18 @@ func testCommitPolicyHooksNative(t *testing.T) {
 				}
 				return output
 			}
-			if output := linkedRun(false, "-c", "user.name=Allowed", "-c", "user.email=allowed@example.test", "-c", "gpg.format=ssh", "-c", "user.signingKey="+privateKey, "commit", "--allow-empty", "-S", "-m", "wrong worktree policy"); !strings.Contains(output, "identity Allowed <allowed@example.test> is not allowed") {
+			if output := linkedRun(false, "-c", "user.name=Allowed", "-c", "user.email=allowed@example.test", "-c", "gpg.format=ssh", "-c", "user.signingKey="+privateKey, "commit", "--allow-empty", "-S", "-m", "wrong worktree policy"); !strings.Contains(output, "author | Allowed <allowed@example.test>") {
 				t.Fatalf("linked worktree used wrong policy: %q", output)
 			}
 			linkedRun(true, "-c", "user.name=Linked", "-c", "user.email=linked@example.test", "-c", "gpg.format=ssh", "-c", "user.signingKey="+privateKey, "commit", "--allow-empty", "-S", "-m", "linked allowed")
 
-			if output := run(false, "commit", "--allow-empty", "--no-gpg-sign", "-m", "unsigned"); !strings.Contains(output, "commits must be signed") {
+			if output := run(false, "commit", "--allow-empty", "--no-gpg-sign", "-m", "unsigned"); !strings.Contains(output, "signature | missing") {
 				t.Fatalf("unsigned refusal = %q", output)
 			}
 			if got := strings.TrimSpace(run(true, "rev-parse", "HEAD")); got != allowed {
 				t.Fatalf("unsigned commit moved ref: %s -> %s", allowed, got)
 			}
-			if output := run(false, "-c", "user.name=Wrong", "-c", "user.email=wrong@example.test", "commit", "--allow-empty", "-S", "-m", "wrong identity"); !strings.Contains(output, "identity Wrong <wrong@example.test> is not allowed") {
+			if output := run(false, "-c", "user.name=Wrong", "-c", "user.email=wrong@example.test", "commit", "--allow-empty", "-S", "-m", "wrong identity"); !strings.Contains(output, "author | Wrong <wrong@example.test>") {
 				t.Fatalf("identity refusal = %q", output)
 			}
 			if got := strings.TrimSpace(run(true, "rev-parse", "HEAD")); got != allowed {
@@ -480,7 +480,7 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			remote := filepath.Join(t.TempDir(), "remote")
 			gitfixture.InitNativeAt(t, remote)
 			run(true, "remote", "add", "origin", remote)
-			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "commits must be signed") {
+			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "signature | missing") {
 				t.Fatalf("pre-push refusal = %q", output)
 			}
 			if _, err := os.Stat(gateLog); !os.IsNotExist(err) {

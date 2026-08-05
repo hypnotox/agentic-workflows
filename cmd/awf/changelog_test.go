@@ -103,6 +103,26 @@ func TestRunChangelogSince(t *testing.T) {
 	}
 }
 
+type changelogErrorWriter struct{}
+
+func (changelogErrorWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
+
+func TestRunChangelogPayloadWriteFailures(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		since, rng string
+	}{
+		{name: "since", since: "0.3.1"},
+		{name: "range", rng: "0.2.0..0.4.0"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := runChangelog("", test.since, test.rng, changelogErrorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
+				t.Fatalf("write error = %v", err)
+			}
+		})
+	}
+}
+
 func TestRunChangelogSinceLatest(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -21,8 +21,13 @@ func (e *renderedCommitPolicyError) Error() string { return "commit policy " + s
 
 // runCommitPolicy resolves the invoking worktree once and emits only model-owned policy rendering.
 func runCommitPolicy(ctx context.Context, root string, targets []string, stdout io.Writer) error {
-	text, outcome := project.VerifyCommitPolicyAt(ctx, root, targets)
-	fmt.Fprint(stdout, text)
+	document, outcome, err := project.VerifyCommitPolicyAt(ctx, root, targets)
+	if err != nil { // coverage-ignore: project and policy validation constrain every mapped outcome to the fixed presentation grammar
+		return err
+	}
+	if err := presentation.Render(stdout, document); err != nil {
+		return err
+	}
 	if outcome.Disabled || outcome.OK() {
 		return nil
 	}

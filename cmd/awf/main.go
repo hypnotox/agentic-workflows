@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -435,15 +436,43 @@ func genericDiagnosticOutcome(err error, exit int) commandOutcome {
 	return commandOutcome{document: document, stream: commandStderr, exit: exit, err: err}
 }
 
+// writeRendererFailure is the sole terminal fallback after presentation
+// rendering fails. It deliberately is not a presentation renderer or a
+// successful-output bypass: it reports that the renderer could not produce a
+// document at all.
+func writeRendererFailure(stderr io.Writer, cause error) {
+	text := strings.Join(strings.FieldsFunc(cause.Error(), unicode.IsSpace), " ")
+	if text == "" {
+		text = "renderer failed"
+	}
+	_, _ = io.WriteString(stderr, "awf: "+text+"\n")
+}
+
+// writeStatus presents a complete ordinary scalar result. Callers own the
+// semantic status text; presentation owns validation and rendering.
+func writeStatus(stdout io.Writer, status string) error {
+	value, err := presentation.Prose(status)
+	if err != nil {
+		return err
+	}
+	field, err := presentation.NewField("status", value)
+	if err != nil { // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label
+		return err
+	}
+	document, err := presentation.NewDocument(field)
+	if err != nil { // coverage-ignore: the validated Field is always a valid root node
+		return err
+	}
+	return presentation.Render(stdout, document)
+}
+
 func writeOutcomeWithRenderer(stdout, stderr io.Writer, outcome commandOutcome, render func(io.Writer, presentation.Document) error) int {
 	dst := stdout
 	if outcome.stream == commandStderr {
 		dst = stderr
 	}
 	if err := render(dst, outcome.document); err != nil {
-		// A renderer failure has no valid presentation to duplicate. Keep the
-		// mechanism failure on stderr exactly once.
-		fmt.Fprintln(stderr, "awf:", err)
+		writeRendererFailure(stderr, err)
 		return 1
 	}
 	return outcome.exit

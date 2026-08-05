@@ -130,7 +130,7 @@ func printPlan(stdout io.Writer, plan []project.PlanOp) {
 		if op.RequiredBy != "" {
 			suffix = fmt.Sprintf(" (required by %s)", op.RequiredBy)
 		}
-		fmt.Fprintf(stdout, "plan: %s %s %s%s\n", sign, op.Node.Kind, op.Node.Name, suffix)
+		_ = writeStatus(stdout, fmt.Sprintf("plan: %s %s %s%s", sign, op.Node.Kind, op.Node.Name, suffix))
 	}
 }
 
@@ -243,11 +243,11 @@ func toggle(ctx context.Context, root, kind, name string, dir direction, flags t
 	for _, op := range plan {
 		pl, _ := project.PluralKind(op.Node.Kind)
 		if hasSidecarOrParts(root, pl, op.Node.Name) {
-			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them\n", op.Node.Kind, op.Node.Name)
+			_ = writeStatus(stdout, fmt.Sprintf("note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", op.Node.Kind, op.Node.Name))
 		}
 	}
 	if project.IsFreeformDomainKind(kind) && hasSidecarOrParts(root, key, name) {
-		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
+		_ = writeStatus(stdout, fmt.Sprintf("note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them", kind, name))
 	}
 	noteUnrequiredAgents(p, plan, stdout)
 	return runSync(ctx, root, stdout)
@@ -322,7 +322,7 @@ func noteUnrequiredAgents(p *project.Project, plan []project.PlanOp, stdout io.W
 			}
 		}
 		if !required {
-			fmt.Fprintf(stdout, "note: agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)\n", agent)
+			_ = writeStatus(stdout, fmt.Sprintf("note: agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)", agent))
 		}
 	}
 }
@@ -367,13 +367,12 @@ func hasSidecarOrParts(root, key, name string) bool {
 // blocks; runList shares them between the single-kind filters and the bare
 // all-kinds listing.
 func listTargets(p *project.Project, stdout io.Writer) {
-	fmt.Fprintln(stdout, "targets:")
 	for _, n := range project.KnownTargets() {
 		state := "available"
 		if slices.Contains(p.Cfg.Targets, n) {
 			state = "enabled"
 		}
-		fmt.Fprintf(stdout, "  %-28s %s\n", n, state)
+		_ = writeStatus(stdout, "target: "+n+" | "+state)
 	}
 }
 
@@ -382,9 +381,8 @@ func listBootstrap(p *project.Project, stdout io.Writer) {
 	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
 		state = "enabled"
 	}
-	fmt.Fprintln(stdout, "bootstrap:")
-	fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/bootstrap.sh", state)
-	fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/upgrade.sh", state)
+	_ = writeStatus(stdout, "bootstrap: .awf/bootstrap.sh | "+state)
+	_ = writeStatus(stdout, "bootstrap: .awf/upgrade.sh | "+state)
 }
 
 func listHooks(p *project.Project, stdout io.Writer) {
@@ -392,9 +390,8 @@ func listHooks(p *project.Project, stdout io.Writer) {
 	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
 		state = "enabled"
 	}
-	fmt.Fprintln(stdout, "hooks:")
 	for _, n := range project.HookNames() {
-		fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/hooks/"+n+".sh", state)
+		_ = writeStatus(stdout, "hook: .awf/hooks/"+n+".sh | "+state)
 	}
 }
 
@@ -403,8 +400,7 @@ func listRunner(p *project.Project, stdout io.Writer) {
 	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
 		state = "enabled"
 	}
-	fmt.Fprintln(stdout, "runner:")
-	fmt.Fprintf(stdout, "  %-28s %s\n", "awf", state)
+	_ = writeStatus(stdout, "runner: awf | "+state)
 }
 
 func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) error {
@@ -435,20 +431,19 @@ func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) err
 	}
 	for _, kind := range kinds {
 		pl, _ := project.PluralKind(kind)
-		fmt.Fprintf(stdout, "%s:\n", pl)
 		pool, catalogBacked := catalogNames(p.Cat, kind)
 		if !catalogBacked { // domains: configured set only
 			names := slices.Sorted(slices.Values(p.Cfg.Domains))
 			if len(names) == 0 {
-				fmt.Fprintln(stdout, "  (none)")
+				_ = writeStatus(stdout, pl+": none")
 			}
 			for _, n := range names {
-				fmt.Fprintf(stdout, "  %-28s %s\n", n, "configured")
+				_ = writeStatus(stdout, pl+": "+n+" | configured")
 			}
 			continue
 		}
 		for _, n := range pool {
-			fmt.Fprintf(stdout, "  %-28s %s\n", n, artifactState(p, kind, n))
+			_ = writeStatus(stdout, pl+": "+n+" | "+artifactState(p, kind, n))
 		}
 	}
 	// Bare list covers every kind: append the non-catalog blocks last.

@@ -441,7 +441,7 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 	if err := writeEffort(effortErrorWriter{}, record); err == nil {
 		t.Fatal("text writer error ignored")
 	}
-	if err := writeEffortJSON(effortErrorWriter{}, record); err == nil {
+	if err := writeEffortActivityProtocol(effortErrorWriter{}, record); err == nil {
 		t.Fatal("JSON writer error ignored")
 	}
 	if err := writeWorktreeResult(&bytes.Buffer{}, worktree.Result{}, os.ErrInvalid); !errors.Is(err, os.ErrInvalid) {

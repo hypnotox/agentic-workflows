@@ -377,7 +377,7 @@ func TestRunHooksCLI(t *testing.T) {
 	if err := runList(ctx, root, "hooks", &buf); err != nil {
 		t.Fatal(err)
 	}
-	if out := buf.String(); !strings.Contains(out, "hooks:") ||
+	if out := buf.String(); !strings.Contains(out, "status: hook:") ||
 		!strings.Contains(out, ".awf/hooks/pre-commit.sh") ||
 		!strings.Contains(out, ".awf/hooks/commit-msg.sh") ||
 		!strings.Contains(out, ".awf/hooks/pre-push.sh") ||
@@ -957,9 +957,9 @@ func TestRunListBareShowsAllKinds(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 	for _, want := range []string{
-		"skills:", "agents:", "docs:", "domains:\n  (none)",
-		"targets:", "bootstrap:", ".awf/bootstrap.sh", ".awf/upgrade.sh",
-		"hooks:", ".awf/hooks/pre-commit.sh",
+		"status: skills:", "status: agents:", "status: docs:", "status: domains: none",
+		"status: target:", "status: bootstrap:", ".awf/bootstrap.sh", ".awf/upgrade.sh",
+		"status: hook:", ".awf/hooks/pre-commit.sh",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("bare list missing %q:\n%s", want, out.String())

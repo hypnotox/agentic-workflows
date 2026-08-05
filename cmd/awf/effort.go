@@ -182,7 +182,7 @@ func runEffortActivity(c *cmdCtx, service *effort.Service) effort.ActivityReply 
 	}
 }
 func writeActivityReply(out io.Writer, reply effort.ActivityReply) error {
-	return writeEffortJSON(out, reply)
+	return writeEffortActivityProtocol(out, reply)
 }
 
 func integrationGateCommand(root string) (string, error) {
@@ -319,7 +319,9 @@ func writeEffortNew(out io.Writer, record effort.Record, result worktree.Result)
 	return presentation.Render(out, document)
 }
 
-func writeEffortJSON(out io.Writer, value any) error {
+// writeEffortActivityProtocol writes the documented activity JSON protocol.
+// It is a closed successful protocol bypass.
+func writeEffortActivityProtocol(out io.Writer, value any) error {
 	raw, err := json.Marshal(value)
 	if err != nil { // coverage-ignore: fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary
 		return err

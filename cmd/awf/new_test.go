@@ -27,8 +27,8 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 	}
 	want := filepath.Join(root, "docs", "decisions", "0001-my-new-title.md")
 	got := strings.TrimSpace(out.String())
-	if got != want {
-		t.Errorf("runNew printed %q, want %q", got, want)
+	if got != "status: created: "+want {
+		t.Errorf("runNew printed %q, want created status for %q", got, want)
 	}
 	data, err := os.ReadFile(want)
 	if err != nil {
@@ -81,7 +81,7 @@ func TestRunNewScaffoldsTopicWithoutSyncMutation(t *testing.T) {
 	if err := runNew(ctx, root, "topic", []string{"rendering", "Scheduling", "Contracts"}, &out); err != nil {
 		t.Fatal(err)
 	}
-	wantOut := ".awf/topics/metadata/rendering/scheduling-contracts.yaml\n.awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
+	wantOut := "status: created: .awf/topics/metadata/rendering/scheduling-contracts.yaml, .awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
 	if out.String() != wantOut {
 		t.Errorf("output = %q, want %q", out.String(), wantOut)
 	}
@@ -453,7 +453,7 @@ func TestRunNewScaffoldsPlan(t *testing.T) {
 	if err := runNew(ctx, root, "plan", []string{"Some", "Plan", "Title"}, &out); err != nil {
 		t.Fatalf("runNew: %v", err)
 	}
-	got := strings.TrimSpace(out.String())
+	got := strings.TrimPrefix(strings.TrimSpace(out.String()), "status: created: ")
 	// Date-prefixed under docs/plans (no sequential number); the date is today's,
 	// so match on shape rather than couple the test to the wall clock.
 	if dir := filepath.Dir(got); dir != filepath.Join(root, "docs", "plans") {

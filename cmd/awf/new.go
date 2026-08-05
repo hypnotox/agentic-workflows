@@ -51,8 +51,7 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(stdout, path)
-	return nil
+	return writeStatus(stdout, "created: "+path)
 }
 
 func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Writer) error {
@@ -70,8 +69,7 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(stdout, path)
-	return nil
+	return writeStatus(stdout, "created: "+path)
 }
 
 func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) error {
@@ -107,10 +105,11 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 			return rollbackTopicScaffold(err, createdFiles, createdDirs)
 		}
 	}
-	for _, file := range files {
-		fmt.Fprintln(stdout, file.Path)
+	paths := make([]string, len(files))
+	for i, file := range files {
+		paths[i] = file.Path
 	}
-	return nil
+	return writeStatus(stdout, "created: "+strings.Join(paths, ", "))
 }
 
 type topicWriteCloser interface {

@@ -20,6 +20,36 @@ type badNode struct{}
 
 func (badNode) presentationNode() {}
 
+func TestCollectionDocumentValidationAndEmptyResult(t *testing.T) {
+	value, err := Prose("value")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := NewRecord(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, collection := range []Collection{
+		{Status: " \n\t"},
+		{Status: "ready", Categories: []CollectionCategory{{Label: "Bad", Schema: []string{"value"}, Records: []Record{record}}}},
+	} {
+		if _, err := collection.Document(); err == nil {
+			t.Fatal("invalid collection accepted")
+		}
+	}
+	document, err := (Collection{Status: "none"}).Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := Render(&output, document); err != nil {
+		t.Fatal(err)
+	}
+	if output.String() != "status: none\n" {
+		t.Fatalf("empty collection = %q", output.String())
+	}
+}
+
 func TestReportDocumentRejectsConstructibleZeroFields(t *testing.T) {
 	for _, report := range []Report{{Context: []Field{{}}}, {Summary: []Field{{}}}} {
 		if _, err := report.Document(); err == nil {
