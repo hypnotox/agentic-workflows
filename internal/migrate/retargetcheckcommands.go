@@ -3,7 +3,6 @@ package migrate
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"regexp"
 	"sort"
 
@@ -167,14 +166,14 @@ func retargetCheckCommandBytes(src []byte) ([]byte, []string, error) {
 // whose rendered consumers no longer exist, retargets surviving awf check
 // invocations to their universe paths, and clears values naming the removed
 // invariants report. The schema-19 migration remains frozen historical input.
-func applyRetargetCheckCommands(root string, out io.Writer) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+func applyRetargetCheckCommands(root string, out *Changes) error {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		edited, changes, err := retargetCheckCommandBytes(src)
 		if err != nil { // coverage-ignore: editConfig supplies bytes already read intact, and the helper's editor faults are unreachable after its parse
 			return nil, err
 		}
 		for _, change := range changes {
-			fmt.Fprintf(out, "retarget-check-commands: %s\n", change)
+			planned.Add(fmt.Sprintf("retarget-check-commands: %s\n", change))
 		}
 		return edited, nil
 	})

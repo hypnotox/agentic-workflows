@@ -236,7 +236,7 @@ func TestCheckStagedMarksOlderIntroductionsProvisionalWithoutSuppressingFindings
 		"was removed with no ADR remove operation",
 		"internal/bar.go",
 		"changed governed format across this transition",
-		"appends 2 application batches",
+		"adds claim alpha/one:x, which has no active claim",
 	} {
 		if !strings.Contains(findings, wantFinding) {
 			t.Fatalf("unrelated blocking finding %q was suppressed:\n%s", wantFinding, findings)
@@ -255,19 +255,19 @@ func TestCheckStagedNestedAdopter(t *testing.T) {
 	dir := repo.Root()
 	files := map[string]string{}
 	for path, body := range stagedHeadFiles() {
-		files["examples/sundial/"+path] = body
+		files["fixtures/nested-adopter/"+path] = body
 	}
 	lockBytes, err := attestedLock().Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	files["examples/sundial/.awf/awf.lock"] = string(lockBytes)
+	files["fixtures/nested-adopter/.awf/awf.lock"] = string(lockBytes)
 	gitfixture.Stage(t, repo, files)
 	gitfixture.Commit(t, repo, "nested head", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		"examples/sundial/.awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
+		"fixtures/nested-adopter/.awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
 	})
-	p := openStaged(t, filepath.Join(dir, "examples", "sundial"))
+	p := openStaged(t, filepath.Join(dir, "fixtures", "nested-adopter"))
 	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("nested CheckStaged: %v", err)
@@ -899,10 +899,10 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 
 	ops3 := "- add `alpha/one:a`\n- add `alpha/one:b`\n- add `alpha/one:c`"
 	first3 := publicV2ADR(t, "0003", "Incremental", "Implementing", ops3,
-		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`")
-	checkAndCommit("feat(invariants): apply first batch", map[string]string{
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:c`, add `alpha/one:b`")
+	checkAndCommit("feat(invariants): apply out-of-order first batch", map[string]string{
 		"docs/decisions/0003-incremental.md":           first3,
-		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a"),
+		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "b", "c"),
 	})
 	corpus, err := adr.LoadCorpus(filepath.Join(dir, "docs", "decisions"))
 	if err != nil {
@@ -918,21 +918,20 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 		"- 2026-07-21: Implemented; content-sha256: %s")
 	checkAndCommit("feat(invariants): interleave direct batch", map[string]string{
 		"docs/decisions/0004-interleave.md":            direct4,
-		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "x"),
+		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "b", "c", "x"),
 	})
 
-	middle3 := publicV2ADR(t, "0003", "Incremental", "Implementing", ops3,
-		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`\n- 2026-07-22: Applied; operations: add `alpha/one:b`")
-	checkAndCommit("feat(invariants): apply middle batch", map[string]string{
-		"docs/decisions/0003-incremental.md":           middle3,
-		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "x"),
-	})
-
-	final3 := publicV2ADR(t, "0003", "Incremental", "Implemented", ops3,
-		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:a`\n- 2026-07-22: Applied; operations: add `alpha/one:b`\n- 2026-07-23: Applied; operations: add `alpha/one:c`\n- 2026-07-23: Implemented; content-sha256: %s")
-	checkAndCommit("feat(invariants): apply final batch", map[string]string{
+	final3 := publicV2ADR(t, "0003", "Incremental", "Implementing", ops3,
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:c`, add `alpha/one:b`\n- 2026-07-22: Applied; operations: add `alpha/one:a`")
+	checkAndCommit("feat(invariants): apply earlier-declared final batch", map[string]string{
 		"docs/decisions/0003-incremental.md":           final3,
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "x"),
+	})
+
+	implemented3 := publicV2ADR(t, "0003", "Incremental", "Implemented", ops3,
+		"- 2026-07-21: Implementing; content-sha256: %s\n- 2026-07-21: Applied; operations: add `alpha/one:c`, add `alpha/one:b`\n- 2026-07-22: Applied; operations: add `alpha/one:a`\n- 2026-07-24: Implemented; content-sha256: %s")
+	checkAndCommit("docs(adr): record settled terminal review", map[string]string{
+		"docs/decisions/0003-incremental.md": implemented3,
 	})
 
 	ops5 := "- add `alpha/one:y`\n- add `alpha/one:z`"

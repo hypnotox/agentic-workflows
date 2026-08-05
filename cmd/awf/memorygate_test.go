@@ -70,7 +70,7 @@ func TestMemoryGateClean(t *testing.T) {
 	if err := runMemoryGate(ctx, root, &out); err != nil {
 		t.Fatalf("clean: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check repo memory: clean") {
+	if out.String() != completedCheckReport {
 		t.Errorf("clean: output %q", out.String())
 	}
 }
@@ -104,7 +104,7 @@ func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 	if err := runMemoryGate(ctx, root, &out); err != nil {
 		t.Fatalf("a citation outside the scanned prefixes must be ignored: %v", err)
 	}
-	if !strings.Contains(out.String(), "check repo memory: clean") {
+	if out.String() != completedCheckReport {
 		t.Errorf("output %q", out.String())
 	}
 }
@@ -136,7 +136,7 @@ func TestMemoryGateExemptionPermits(t *testing.T) {
 	if err := runMemoryGate(ctx, root, &out); err != nil {
 		t.Fatalf("exempt path: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "check repo memory: clean") {
+	if out.String() != completedCheckReport {
 		t.Errorf("exempt path: output %q", out.String())
 	}
 }
@@ -209,7 +209,7 @@ func TestMemoryGateDispatch(t *testing.T) {
 	if code := run([]string{"awf", "check", "repo", "memory"}, &out, &errb); code != 0 {
 		t.Fatalf("check repo memory exited %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "check repo memory: clean") {
+	if out.String() != completedCheckReport {
 		t.Errorf("dispatch: output %q", out.String())
 	}
 }

@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	"fmt"
 
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -28,6 +28,12 @@ func runADR(c *cmdCtx) error {
 	// renames are on disk, and the operator needs the mapping for the
 	// integration commit message whatever failed afterwards.
 	report, numberErr := p.NumberPendingADRs(c.ctx, c.inv.positionals)
-	_, writeErr := fmt.Fprint(c.stdout, report.String())
-	return errors.Join(numberErr, writeErr)
+	if len(report.Assignments) == 0 {
+		return numberErr
+	}
+	document, presentationErr := report.Presentation()
+	if presentationErr != nil { // coverage-ignore: numbering emits validated slugs and four-digit numeric assignments
+		return errors.Join(numberErr, presentationErr)
+	}
+	return errors.Join(numberErr, presentation.Render(c.stdout, document))
 }

@@ -132,6 +132,22 @@ func TestContextRequestUniverse(t *testing.T) {
 	}
 }
 
+func TestContextForOptionsDetectsNestedAdopter(t *testing.T) {
+	t.Parallel()
+	files := ctxFiles()
+	files["nested/.awf/config.yaml"] = "prefix: nested\nintegrationBranch: main\n"
+	files["nested/internal/x.go"] = "package internal\n"
+	p := ctxRepo(t, ctxConfig, files)
+	res := queryFor(t, p).ContextForOptions([]string{"nested/internal/x.go"}, ContextOptions{Selection: SelectionExplicit})
+	if len(res.Requests) != 1 || res.Requests[0].Exact == nil {
+		t.Fatalf("requests=%#v", res.Requests)
+	}
+	impact := res.Requests[0].Exact.Context
+	if impact.Classification != pathNestedAdopter || impact.NestedRoot != "nested/.awf/config.yaml" {
+		t.Fatalf("nested impact=%#v", impact)
+	}
+}
+
 func TestContextWorkingIndexDivergenceAndErrors(t *testing.T) {
 	t.Parallel()
 	p := ctxRepo(t, ctxConfig, ctxFiles())

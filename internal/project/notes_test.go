@@ -397,7 +397,7 @@ func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
 }
 
 // An empty/absent vocabulary makes the whole tag-health producer inert - the
-// example-adopter safety case (sundial carries free-form tags but no vocabulary).
+// empty-vocabulary safety case (a fixture carries free-form tags but no vocabulary).
 func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))

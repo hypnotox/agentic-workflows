@@ -128,7 +128,6 @@ func parseQualifiedOperations(list string, declared []Operation, event string) (
 		declaredAt[op] = i
 	}
 	seen := map[Operation]bool{}
-	previous := -1
 	ops := make([]Operation, 0, len(parts))
 	for _, part := range parts {
 		m := appliedOpRe.FindStringSubmatch(part)
@@ -136,18 +135,14 @@ func parseQualifiedOperations(list string, declared []Operation, event string) (
 			return nil, fmt.Errorf("malformed %s operation %q", event, part)
 		}
 		op := Operation{Verb: OpVerb(m[1]), ID: m[2], Slug: localSlug(m[2])}
-		position, ok := declaredAt[op]
+		_, ok := declaredAt[op]
 		if !ok {
 			return nil, fmt.Errorf("%s operation %s `%s` is not declared", strings.ToLower(event), op.Verb, op.ID)
 		}
 		if seen[op] {
 			return nil, fmt.Errorf("%s operation %s `%s` is duplicated", strings.ToLower(event), op.Verb, op.ID)
 		}
-		if position <= previous {
-			return nil, fmt.Errorf("%s operations do not follow State changes declaration order", strings.ToLower(event))
-		}
 		seen[op] = true
-		previous = position
 		ops = append(ops, op)
 	}
 	return ops, nil

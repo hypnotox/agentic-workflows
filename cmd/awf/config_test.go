@@ -26,20 +26,20 @@ func TestRunConfigStaticFallback(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"static: not inside an awf project",
-		"## config.yaml keys",
-		"audit.diffThreshold (int)",
-		"gateCmd (var)",
+		"status: config reference static (not inside an awf project)",
+		"config keys:",
+		"audit.diffThreshold | int",
+		"gateCmd | Command that runs the full pre-commit gate",
 		"Catalog consumers:",
-		"sidecar.local (bool)",
-		"data.testSurfaces",
-		"local skills · data.description",
+		"sidecar.local | bool",
+		"testSurfaces",
+		"local skills | description",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("static reference missing %q", want)
 		}
 	}
-	if strings.Contains(got, "current:") || strings.Contains(got, "state:") {
+	if strings.Contains(got, "set (`") {
 		t.Error("static reference must carry no live state")
 	}
 	if strings.Contains(got, "_base") {
@@ -62,9 +62,9 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"live state for this project",
-		"current: `example`", // prefix
-		"state: set (`make gate`)",
+		"status: config reference live",
+		"`example`", // prefix
+		"set (`make gate`)",
 		"Consumed by:",
 	} {
 		if !strings.Contains(got, want) {
@@ -73,10 +73,10 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 	}
 
 	for key, want := range map[string]string{
-		"audit.diffThreshold": "current: 400 (default)",
-		"gateCmd":             "state: set (`make gate`)",
+		"audit.diffThreshold": "400 (default)",
+		"gateCmd":             "set (`make gate`)",
 		"sidecar.local":       "renders nothing",
-		"testSurfaces":        "skill tdd · data.testSurfaces",
+		"testSurfaces":        "skill tdd | testSurfaces",
 	} {
 		out.Reset()
 		if err := runConfig(ctx, root, key, &out); err != nil {
@@ -97,7 +97,7 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 	if err := runConfig(ctx, t.TempDir(), "gateCmd", &out); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out.String(), "state:") {
+	if strings.Contains(out.String(), "set (`") {
 		t.Error("static single-key output must carry no state")
 	}
 }

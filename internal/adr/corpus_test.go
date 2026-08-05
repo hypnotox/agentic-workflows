@@ -532,9 +532,22 @@ func TestApplicationProjectionContracts(t *testing.T) {
 	if err != nil || len(progress.Applied) != 1 || len(progress.Remaining) != 0 || len(progress.Canceled) != 1 {
 		t.Fatalf("Abandoned progress = %#v, err=%v", progress, err)
 	}
-	explicitDone := implementing
+	noApplied := implementing
+	noApplied.History = []adr.HistoryEvent{status("Proposed"), status("Implementing")}
+	if _, err := noApplied.OperationProgress(); err == nil || !strings.Contains(err.Error(), "requires applied operations") {
+		t.Fatalf("no-Applied Implementing error = %v", err)
+	}
+
+	allApplied := implementing
+	allApplied.History = append(slices.Clone(implementing.History), applied(update))
+	progress, err = allApplied.OperationProgress()
+	if err != nil || len(progress.Applied) != 2 || len(progress.Remaining) != 0 || len(progress.Canceled) != 0 {
+		t.Fatalf("all-Applied Implementing progress = %#v, err=%v", progress, err)
+	}
+
+	explicitDone := allApplied
 	explicitDone.Status = "Implemented"
-	explicitDone.History = append(slices.Clone(implementing.History), applied(update), status("Implemented"))
+	explicitDone.History = append(slices.Clone(allApplied.History), status("Implemented"))
 	progress, err = explicitDone.OperationProgress()
 	if err != nil || len(progress.Applied) != 2 || len(progress.Remaining) != 0 {
 		t.Fatalf("explicit Implemented progress = %#v, err=%v", progress, err)
@@ -570,7 +583,6 @@ func TestApplicationProjectionContracts(t *testing.T) {
 		{Number: "0014", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{applied(update)}},
 		{Number: "0015", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{applied(add), applied(add)}},
 		{Number: "0016", Format: adr.CurrentStateV2, Status: "Proposed", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{applied(add)}},
-		{Number: "0017", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{applied(add)}},
 		{Number: "0018", Format: adr.CurrentStateV2, Status: "Implemented", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{applied(add)}},
 		{Number: "0019", Format: adr.CurrentStateV2, Status: "Unknown", Operations: []adr.Operation{add}},
 	}
@@ -612,27 +624,26 @@ func TestOperationProgressReapplied(t *testing.T) {
 		Operations: []adr.Operation{add, update},
 		History: []adr.HistoryEvent{
 			status("Proposed"), status("Implementing"),
-			batch(adr.HistoryApplied, add),
-			batch(adr.HistoryReapplied, add),
-			batch(adr.HistoryReapplied, add),
+			batch(adr.HistoryApplied, update, add),
+			batch(adr.HistoryReapplied, update, add),
 		},
 	}
 	batches, err := record.ApplicationBatches()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(batches) != 3 || batches[0].Kind != adr.HistoryApplied || batches[1].Kind != adr.HistoryReapplied || batches[2].Kind != adr.HistoryReapplied {
+	if len(batches) != 2 || batches[0].Kind != adr.HistoryApplied || batches[1].Kind != adr.HistoryReapplied {
 		t.Fatalf("application batches = %#v", batches)
 	}
-	if batches[0].HistoryIndex == batches[1].HistoryIndex || batches[1].HistoryIndex == batches[2].HistoryIndex {
+	if batches[0].HistoryIndex == batches[1].HistoryIndex {
 		t.Fatalf("corrective occurrences lost identity: %#v", batches)
 	}
 	progress, err := record.OperationProgress()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(progress.Applied) != 1 || progress.Applied[0].Operation != add || len(progress.Remaining) != 1 || progress.Remaining[0] != update {
-		t.Fatalf("progress = %#v", progress)
+	if len(progress.Applied) != 2 || progress.Applied[0].Operation != add || progress.Applied[1].Operation != update || len(progress.Remaining) != 0 {
+		t.Fatalf("all-applied corrective progress = %#v", progress)
 	}
 
 	duplicateApplied := record

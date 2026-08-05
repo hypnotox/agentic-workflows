@@ -171,74 +171,43 @@ func FrozenContentEqual(before, after ADR) bool {
 	return before.Status == statusProposed || ContentDigest(before.Sections) == ContentDigest(after.Sections)
 }
 
-// HistoryTransitionValidAggregate reports whether a merge's Status history is a
-// legal ordered append: the before history survives as an exact prefix of the
-// after history. The fixed one-or-two-event shape HistoryTransitionValid
-// enforces is deliberately not applied, because that shape encodes "one commit
-// is one authoring step", which a merge is not (ADR-0182 item 7).
-//
-// Prefix preservation is the whole obligation, and that is not a weakening.
-// validateV2History already replays every parsed record's complete history:
-// each transition must be legal in the state its predecessors produce, every
-// digest and sequence must be well-formed, and the terminal event must match the
-// frontmatter status. The appended events are therefore already proven a legal
-// ordered chain by parsing, and what a pair uniquely establishes is that nothing
-// preceding them was rewritten.
-func HistoryTransitionValidAggregate(before, after ADR) bool {
-	return len(after.History) >= len(before.History) &&
-		historiesEqual(before.History, after.History[:len(before.History)])
-}
-
-// HistoryTransitionValid reports whether a pair preserves append-only Status
-// history: equal histories at the same status, one same-status Applied batch
-// while Implementing, one same-status Amended event while Accepted or
-// Implementing (ADR-0188), or an exact before prefix plus the required event
-// shape when the status follows a legal lifecycle edge. One same-status
-// Reapplied event is also legal while Implementing.
+// HistoryTransitionValid reports whether the before history survives as an
+// exact prefix of the after history and the appended events form a legal ordered
+// lifecycle. Parsing owns complete digest, operation, progress, and terminal
+// validation; this pair helper replays the event kinds and status edges so its
+// direct unit fixtures preserve the same lifecycle boundary.
 func HistoryTransitionValid(before, after ADR) bool {
-	if !after.HasV2Semantics() {
-		if before.Status == after.Status {
-			return historiesEqual(before.History, after.History)
-		}
-		return v1TransitionLegal(before.Status, after.Status) &&
-			len(after.History) == len(before.History)+1 &&
-			historiesEqual(before.History, after.History[:len(before.History)])
-	}
 	if len(after.History) < len(before.History) || !historiesEqual(before.History, after.History[:len(before.History)]) {
 		return false
 	}
-	added := after.History[len(before.History):]
-	if before.Status == after.Status {
-		if len(added) == 0 {
-			return true
-		}
-		if len(added) != 1 {
-			return false
-		}
-		switch added[0].Kind {
+	status := before.Status
+	for _, event := range after.History[len(before.History):] {
+		switch event.Kind {
+		case 0, HistoryStatus:
+			if after.HasV2Semantics() && event.Kind != HistoryStatus {
+				return false
+			}
+			legal := v1TransitionLegal(status, event.Status)
+			if after.HasV2Semantics() {
+				legal = v2TransitionLegal(status, event.Status)
+			}
+			if !legal {
+				return false
+			}
+			status = event.Status
 		case HistoryApplied, HistoryReapplied:
-			return before.Status == statusImplementing
+			if !after.HasV2Semantics() || status != statusImplementing {
+				return false
+			}
 		case HistoryAmended:
-			return before.Status == statusAccepted || before.Status == statusImplementing
+			if !after.HasV2Semantics() || (status != statusAccepted && status != statusImplementing) {
+				return false
+			}
 		default:
 			return false
 		}
 	}
-	if !v2TransitionLegal(before.Status, after.Status) {
-		return false
-	}
-	switch after.Status {
-	case statusAccepted, statusAbandoned:
-		return len(added) == 1 && added[0].Kind == HistoryStatus
-	case statusImplementing:
-		return len(added) == 2 && added[0].Kind == HistoryStatus && added[1].Kind == HistoryApplied
-	case statusImplemented:
-		if before.Status == statusImplementing {
-			return len(added) == 2 && added[0].Kind == HistoryApplied && added[1].Kind == HistoryStatus
-		}
-		return len(added) == 1 && added[0].Kind == HistoryStatus
-	}
-	return false // coverage-ignore: every legal V2 transition target is handled by the closed switch
+	return status == after.Status
 }
 
 // HistoriesEqual reports whether a pair's Status history is byte-identical.
@@ -578,16 +547,8 @@ func validateV2History(a ADR) error {
 		}
 		current, lastStatus = event.Status, event.Status
 		if event.Status == statusImplementing {
-			if len(a.Operations) < 2 {
-				return errors.New("implementing requires at least two declared operations")
-			}
 			if i+1 >= len(h) || h[i+1].Kind != HistoryApplied {
 				return errors.New("implementing status event must be followed by the first Applied event")
-			}
-		}
-		if event.Status == statusImplemented && explicit {
-			if i == 0 || h[i-1].Kind != HistoryApplied {
-				return errors.New("explicit Implemented transition requires a final Applied event immediately before it")
 			}
 		}
 	}
@@ -599,8 +560,8 @@ func validateV2History(a ADR) error {
 	}
 	switch a.Status {
 	case statusImplementing:
-		if len(applied) == 0 || len(applied) >= len(a.Operations) {
-			return errors.New("implementing requires at least one applied and one remaining operation")
+		if len(applied) == 0 {
+			return errors.New("implementing requires at least one applied operation")
 		}
 	case statusImplemented:
 		if explicit && len(applied) != len(a.Operations) {

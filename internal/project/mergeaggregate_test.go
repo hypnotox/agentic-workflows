@@ -11,9 +11,8 @@ import (
 )
 
 // TestCheckStagedMergeUsesTheAggregateContract proves the MERGE_HEAD wiring end
-// to end: one staged pair, refused as an authored commit and accepted as a merge.
-// Without this the aggregate contract could be correct in isolation and never
-// reach the command that needs it.
+// to end with the remaining semantic distinction: same-claim chains are refused
+// as authored transactions and folded only for a merge.
 // invariant: invariants/current-state-authority:merge-transition-ordered-aggregate (TestCheckStagedMergeUsesTheAggregateContract)
 func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
@@ -21,26 +20,20 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	files := stagedHeadFiles()
 	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}})
 
-	// A fourth declared operation stays unapplied so the record is legally
-	// Implementing at both ends: that status requires applied AND remaining work.
-	ops := "- add `alpha/one:a`\n- add `alpha/one:b`\n- add `alpha/one:c`\n- add `alpha/one:d`"
-	oneBatch := "- 2026-07-21: Implementing; content-sha256: %s\n" +
-		"- 2026-07-21: Applied; operations: add `alpha/one:a`"
-	threeBatches := oneBatch +
-		"\n- 2026-07-22: Applied; operations: add `alpha/one:b`" +
-		"\n- 2026-07-23: Applied; operations: add `alpha/one:c`"
+	ops := "- add `alpha/one:c`\n- add `alpha/one:d`"
+	corrected := "- 2026-07-21: Implementing; content-sha256: %s\n" +
+		"- 2026-07-21: Applied; operations: add `alpha/one:c`\n" +
+		"- 2026-07-22: Reapplied; operations: add `alpha/one:c`"
 
 	// ADR numbering must stay contiguous, so 0002 exists purely as a filler.
 	files["docs/decisions/0002-filler.md"] = publicV2ADR(t, "0002", "Filler", "Proposed", "None.", "")
-	files["docs/decisions/0003-incremental.md"] = publicV2ADR(t, "0003", "Incremental", "Implementing", ops, oneBatch)
-	files[".awf/topics/parts/alpha/one/current-state.md"] = publicTopicClaims("a")
+	files["docs/decisions/0003-corrected.md"] = publicV2ADR(t, "0003", "Corrected", "Proposed", ops, "")
 	gitfixture.Stage(t, repo, files)
-	gitfixture.Commit(t, repo, "feat(invariants): apply the first batch", nil)
+	gitfixture.Commit(t, repo, "feat(invariants): propose a corrected add", nil)
 
-	// The index carries the two further batches the branch applied.
 	gitfixture.Stage(t, repo, map[string]string{
-		"docs/decisions/0003-incremental.md":           publicV2ADR(t, "0003", "Incremental", "Implementing", ops, threeBatches),
-		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("a", "b", "c"),
+		"docs/decisions/0003-corrected.md":             publicV2ADR(t, "0003", "Corrected", "Implementing", ops, corrected),
+		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("c"),
 	})
 
 	p := openStaged(t, dir)
@@ -48,8 +41,8 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
-	if got := strings.Join(authored.Findings(), "\n"); !strings.Contains(got, "at most one new batch") {
-		t.Fatalf("an authored commit must refuse the extra batches, got:\n%s", got)
+	if got := strings.Join(authored.Findings(), "\n"); !strings.Contains(got, "target of more than one operation") {
+		t.Fatalf("an authored commit must refuse the same-claim chain, got:\n%s", got)
 	}
 
 	// The same index, now carrying merge provenance.
@@ -61,7 +54,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 		t.Fatalf("CheckStaged during a merge: %v", err)
 	}
 	if got := merged.Findings(); len(got) != 0 {
-		t.Fatalf("a merge must accept the aggregate, got: %v", got)
+		t.Fatalf("a merge must accept the same-claim aggregate, got: %v", got)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,6 +18,27 @@ import (
 type ScaffoldFile struct {
 	Path    string
 	Content []byte
+}
+
+// CreatedDocument maps successfully created topic files into one path per line.
+func CreatedDocument(files []ScaffoldFile) (presentation.Document, error) {
+	values := make([]presentation.Value, 0, len(files))
+	for _, file := range files {
+		value, err := presentation.Literal(file.Path)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		values = append(values, value)
+	}
+	list, err := presentation.NewList("created files", values...)
+	if err != nil { // coverage-ignore: every path is validated above and created-files is a fixed grammar-valid label
+		return presentation.Document{}, err
+	}
+	section, err := presentation.NewSection("topic", list)
+	if err != nil { // coverage-ignore: the validated List is always an admitted Section child
+		return presentation.Document{}, err
+	}
+	return presentation.NewDocument(section)
 }
 
 type scaffoldMetadata struct {

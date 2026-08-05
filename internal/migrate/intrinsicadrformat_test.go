@@ -1,10 +1,8 @@
 package migrate
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,7 +35,7 @@ func TestIntrinsicADRFormatMigrationDiscardsPermanentRoutingPayload(t *testing.T
 		}
 		adrDigests[adrPath] = manifest.Hash([]byte(body))
 	}
-	var out bytes.Buffer
+	var out Changes
 	if err := applyIntrinsicADRFormat(context.Background(), root, &out); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +71,7 @@ func TestIntrinsicADRFormatMigrationDiscardsPermanentRoutingPayload(t *testing.T
 
 func TestIntrinsicADRFormatMigrationSkipsAbsentAndCurrentLock(t *testing.T) {
 	root := t.TempDir()
-	var out bytes.Buffer
+	var out Changes
 	if err := applyIntrinsicADRFormat(context.Background(), root, &out); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +100,7 @@ func TestIntrinsicADRFormatMigrationWriteFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := errors.New("save failed")
-	err := applyIntrinsicADRFormatWithSave(context.Background(), root, io.Discard, func(*manifest.Lock, string) error { return want })
+	err := applyIntrinsicADRFormatWithSave(context.Background(), root, &Changes{}, func(*manifest.Lock, string) error { return want })
 	if !errors.Is(err, want) {
 		t.Fatalf("error = %v, want %v", err, want)
 	}

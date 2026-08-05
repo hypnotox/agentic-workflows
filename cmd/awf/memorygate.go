@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
@@ -18,10 +18,9 @@ func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
 	return runRepoCheckSelection(ctx, root, stdout, []execution.StepID{repoStepMemory}, execution.StopOnFailure, false, productionRepoCheckDependencies())
 }
 
-func runMemoryAction(stdout io.Writer, cfg *config.Config, tree *snapshot.Tree) error {
+func memoryCheckFindings(cfg *config.Config, tree *snapshot.Tree) ([]presentation.ReportCategory, error) {
 	if cfg.MemoryCite == nil || !cfg.MemoryCite.Enabled {
-		fmt.Fprintln(stdout, "note: memory: disabled (memoryCite.enabled)")
-		return nil
+		return memorycite.DisabledCategory()
 	}
 	exemptions := make([]memorycite.Exemption, 0, len(cfg.MemoryCite.Exemptions))
 	for _, e := range cfg.MemoryCite.Exemptions {
@@ -42,12 +41,12 @@ func runMemoryAction(stdout io.Writer, cfg *config.Config, tree *snapshot.Tree) 
 		}
 	}
 	findings := memorycite.Scan(files, exemptions)
-	for _, finding := range findings {
-		fmt.Fprintln(stdout, memorycite.Format(finding))
+	categories, err := memorycite.Categories(findings)
+	if err != nil { // coverage-ignore: Categories receives only scanner Findings and builds every nonempty record from fixed templates
+		return nil, err
 	}
 	if len(findings) > 0 {
-		return errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")
+		return categories, producedCheckFailure{errors.New("check repo memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")}
 	}
-	fmt.Fprintln(stdout, "check repo memory: clean")
-	return nil
+	return categories, nil
 }

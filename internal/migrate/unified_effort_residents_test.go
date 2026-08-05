@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
 const (
@@ -486,11 +486,63 @@ func TestClassifyLegacyResidentsGitFailures(t *testing.T) {
 // conditions: it propagates any preflight refusal untouched, and it refuses a
 // checkout whose residents belong to a different root than the lock it would
 // commit.
+func TestApplyUnifiedEffortResidentsPresentsResetOutcomeAtItsSemanticBoundary(t *testing.T) {
+	t.Run("success-preserves-evidence-order-without-terminal-duplication", func(t *testing.T) {
+		operation := unifiedEffortResidentsOperation{reset: func(string, []string, int) (upgrade.Outcome, error) {
+			return upgrade.Outcome{
+				Evidence: []upgrade.Evidence{{Action: "quarantined", Path: ".awf/memory"}, {Action: "committed", Path: upgrade.LockRel()}},
+				Changed:  []upgrade.Evidence{{Action: "committed", Path: upgrade.LockRel()}},
+			}, nil
+		}}
+		var out Changes
+		if err := applyUnifiedEffortResidentsWith(testContext(t), residentTree(t), &out, operation); err != nil {
+			t.Fatal(err)
+		}
+		want := "unified-effort-residents: committed reset of proven legacy residents\nunified-effort-residents: quarantined .awf/memory\nunified-effort-residents: committed .awf/awf.lock\n"
+		if got := out.String(); got != want {
+			t.Fatalf("successful reset facts = %q, want %q", got, want)
+		}
+	})
+
+	failure := errors.New("reset failed")
+	t.Run("empty-outcome", func(t *testing.T) {
+		operation := unifiedEffortResidentsOperation{reset: func(string, []string, int) (upgrade.Outcome, error) {
+			return upgrade.Outcome{}, failure
+		}}
+		var out Changes
+		if err := applyUnifiedEffortResidentsWith(testContext(t), residentTree(t), &out, operation); !errors.Is(err, failure) {
+			t.Fatalf("migration error = %v, want reset failure", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("empty failed reset collected facts: %q", out.String())
+		}
+	})
+	t.Run("terminal-outcome", func(t *testing.T) {
+		operation := unifiedEffortResidentsOperation{reset: func(string, []string, int) (upgrade.Outcome, error) {
+			return upgrade.Outcome{
+				Evidence: []upgrade.Evidence{{Action: "applied", Path: ".awf/memory"}, {Action: "restored", Path: ".awf/memory"}},
+				Changed:  []upgrade.Evidence{{Action: "committed", Path: upgrade.LockRel()}},
+			}, failure
+		}}
+		var out Changes
+		if err := applyUnifiedEffortResidentsWith(testContext(t), residentTree(t), &out, operation); !errors.Is(err, failure) {
+			t.Fatalf("migration error = %v, want reset failure", err)
+		}
+		want := "unified-effort-residents: terminal committed .awf/awf.lock\n"
+		if got := out.String(); got != want {
+			t.Fatalf("failed reset facts = %q, want %q", got, want)
+		}
+		if strings.Contains(out.String(), "committed reset") {
+			t.Fatalf("failed reset claimed success: %q", out.String())
+		}
+	})
+}
+
 func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 	t.Run("propagates-a-preflight-refusal", func(t *testing.T) {
 		root := residentTree(t)
 		path := writeLeaf(t, root, legacyEffortsRel+"/stray.txt", []byte("x"))
-		var out bytes.Buffer
+		var out Changes
 		requireRefusal(t, applyUnifiedEffortResidents(testContext(t), root, &out), "unknown resident leaf", preserveManually)
 		if out.Len() != 0 {
 			t.Fatalf("a refused migration announced the reset: %q", out.String())
@@ -512,7 +564,7 @@ func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 		}
 		linked := filepath.Join(filepath.Dir(primary), "linked")
 		gitfixture.NativeWorktreeAddDetached(t, repo, linked, "HEAD")
-		var out bytes.Buffer
+		var out Changes
 		// One journal spans one root, so the split is refused rather than
 		// half-applied across two checkouts.
 		requireRefusal(t, applyUnifiedEffortResidents(testContext(t), linked, &out), "belong to the primary checkout", "run `awf upgrade` from "+primary)

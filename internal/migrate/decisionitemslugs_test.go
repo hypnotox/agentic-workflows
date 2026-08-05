@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,8 +25,8 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	ordinary := []byte("ordinary authored bytes\n")
 	testsupport.WriteFile(t, filepath.Join(root, "notes.txt"), string(ordinary))
 
-	var out bytes.Buffer
-	applied, err := Upgrade(testContext(t), root, &out)
+	var out Changes
+	applied, _, err := Upgrade(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +47,7 @@ func TestDecisionItemSlugsMigrationPreservesAuthoredBytes(t *testing.T) {
 	if generation, err := Generation(root); err != nil || generation != Current() {
 		t.Fatalf("generation = %d, %v; want Current()=%d", generation, err, Current())
 	}
-	if err := applyDecisionItemSlugs(testContext(t), root, io.Discard); err != nil {
+	if err := applyDecisionItemSlugs(testContext(t), root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 }

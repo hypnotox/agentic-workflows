@@ -2,10 +2,10 @@ package project
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 // StaticConfigReference projects configspec (plus catalog-wide potential
@@ -19,10 +19,7 @@ func StaticConfigReference() (ConfigReference, error) {
 	}
 	var ref ConfigReference
 	for _, e := range configspec.Keys() {
-		row := ConfigKeyRow{
-			Path: e.Path, Type: e.Type, Default: e.Default,
-			Description: e.Description, Availability: e.Availability,
-		}
+		row := ConfigKeyRow{Path: e.Path, Type: e.Type, Default: e.Default, Description: e.Description, Availability: e.Availability}
 		if strings.HasPrefix(e.Path, "sidecar.") {
 			ref.SidecarFields = append(ref.SidecarFields, row)
 		} else {
@@ -34,17 +31,14 @@ func StaticConfigReference() (ConfigReference, error) {
 		if c := potential[v.Key]; len(c) > 0 {
 			consumers = "Catalog consumers: " + strings.Join(c, ", ") + "."
 		}
-		ref.VarEntries = append(ref.VarEntries, VarRow{
-			Key: v.Key, Description: v.Description, Availability: v.Availability,
-			Consumers: consumers,
-		})
+		ref.VarEntries = append(ref.VarEntries, VarRow{Key: v.Key, Description: v.Description, Availability: v.Availability, Consumers: consumers})
 	}
 	for _, d := range configspec.DataKeys() {
 		artifact := strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
 		switch d.Artifact {
 		case "agents-doc":
 			artifact = "agents-doc"
-		case "_base": // internal token - adopters know these as their local artifacts
+		case "_base":
 			artifact = "local " + d.Kind
 		}
 		ref.DataKeys = append(ref.DataKeys, DataKeyRow{Artifact: artifact, Key: d.Key, Description: d.Description})
@@ -52,88 +46,98 @@ func StaticConfigReference() (ConfigReference, error) {
 	return ref, nil
 }
 
-// PrintConfigReference prints the model (or the static catalog reference when
-// model is nil): every section, or the single entry matching key. An unknown
-// key is an error (exit 1 - the CLI shape was valid). It is the typed
-// counterpart to the removed map[string]any renderer: every field access
-// below is a struct field, so a renamed field is a compile error, never a
-// silently empty render.
-func PrintConfigReference(stdout io.Writer, key string, model *ConfigReference, header string) error {
+// ConfigReferencePresentation maps the typed reference into Collection. The
+// reference model remains project-owned; presentation owns only the grammar.
+func ConfigReferencePresentation(key string, model *ConfigReference, status string) (presentation.Document, error) {
 	ref := model
 	if ref == nil {
-		m, err := StaticConfigReference()
-		if err != nil { // coverage-ignore: StaticConfigReference fails only on embedded-FS faults
-			return err
+		static, err := StaticConfigReference()
+		if err != nil { // coverage-ignore: embedded configspec catalog decoding is validated at build and package-test time
+			return presentation.Document{}, err
 		}
-		ref = &m
+		ref = &static
 	}
-	printKeyRow := func(row ConfigKeyRow) {
-		fmt.Fprintf(stdout, "%s (%s)\n", row.Path, row.Type)
-		fmt.Fprintf(stdout, "  default: %s\n", row.Default)
-		if row.Current != "" {
-			fmt.Fprintf(stdout, "  current: %s\n", row.Current)
-		}
-		fmt.Fprintf(stdout, "  %s %s\n", row.Description, row.Availability)
-	}
-	printVarRow := func(row VarRow) {
-		fmt.Fprintf(stdout, "%s (var)\n", row.Key)
-		if row.State != "" {
-			fmt.Fprintf(stdout, "  state: %s\n", row.State)
-		}
-		fmt.Fprintf(stdout, "  %s %s\n  %s\n", row.Description, row.Availability, row.Consumers)
-	}
-	printDataRow := func(row DataKeyRow) {
-		fmt.Fprintf(stdout, "%s · data.%s%s\n  %s\n", row.Artifact, row.Key, row.State, row.Description)
-	}
-
-	if key != "" {
-		found := false
-		for _, row := range ref.ConfigKeys {
-			if row.Path == key {
-				printKeyRow(row)
-				found = true
+	categories := []presentation.CollectionCategory{}
+	addConfigRows := func(label string, rows []ConfigKeyRow) error {
+		records := make([]presentation.Record, 0, len(rows))
+		for _, row := range rows {
+			if key != "" && row.Path != key {
+				continue
 			}
-		}
-		for _, row := range ref.VarEntries {
-			if row.Key == key {
-				printVarRow(row)
-				found = true
+			current := row.Current
+			if current == "" {
+				current = "none"
 			}
-		}
-		for _, row := range ref.SidecarFields {
-			if row.Path == key {
-				printKeyRow(row)
-				found = true
+			values := []string{row.Path, row.Type, row.Default, row.Description, row.Availability, current}
+			record, err := configReferenceRecord(values...)
+			if err != nil {
+				return err
 			}
+			records = append(records, record)
 		}
-		for _, row := range ref.DataKeys {
-			if row.Key == key {
-				printDataRow(row)
-				found = true
-			}
-		}
-		if !found {
-			return fmt.Errorf("unknown key or var %q; run `awf config` for the full reference", key)
+		if len(records) > 0 {
+			categories = append(categories, presentation.CollectionCategory{Label: label, Schema: []string{"path", "type", "default", "description", "availability", "current"}, Records: records})
 		}
 		return nil
 	}
-
-	fmt.Fprintln(stdout, header)
-	fmt.Fprintln(stdout, "\n## config.yaml keys")
-	for _, row := range ref.ConfigKeys {
-		printKeyRow(row)
+	if err := addConfigRows("config keys", ref.ConfigKeys); err != nil {
+		return presentation.Document{}, err
 	}
-	fmt.Fprintln(stdout, "\n## Vars")
+	varRows := make([]presentation.Record, 0, len(ref.VarEntries))
 	for _, row := range ref.VarEntries {
-		printVarRow(row)
+		if key != "" && row.Key != key {
+			continue
+		}
+		state := row.State
+		if state == "" {
+			state = "none"
+		}
+		values := []string{row.Key, row.Description, row.Availability, row.Consumers, state}
+		record, err := configReferenceRecord(values...)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		varRows = append(varRows, record)
 	}
-	fmt.Fprintln(stdout, "\n## Sidecar fields")
-	for _, row := range ref.SidecarFields {
-		printKeyRow(row)
+	if len(varRows) > 0 {
+		categories = append(categories, presentation.CollectionCategory{Label: "vars", Schema: []string{"key", "description", "availability", "consumers", "state"}, Records: varRows})
 	}
-	fmt.Fprintln(stdout, "\n## Per-artifact data keys")
+	if err := addConfigRows("sidecar fields", ref.SidecarFields); err != nil {
+		return presentation.Document{}, err
+	}
+	dataRows := make([]presentation.Record, 0, len(ref.DataKeys))
 	for _, row := range ref.DataKeys {
-		printDataRow(row)
+		if key != "" && row.Key != key {
+			continue
+		}
+		state := row.State
+		if state == "" {
+			state = "none"
+		}
+		values := []string{row.Artifact, row.Key, row.Description, state}
+		record, err := configReferenceRecord(values...)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		dataRows = append(dataRows, record)
 	}
-	return nil
+	if len(dataRows) > 0 {
+		categories = append(categories, presentation.CollectionCategory{Label: "data keys", Schema: []string{"artifact", "key", "description", "state"}, Records: dataRows})
+	}
+	if len(categories) == 0 {
+		return presentation.Document{}, fmt.Errorf("unknown key or var %q; run `awf config` for the full reference", key)
+	}
+	return (presentation.Collection{Status: status, Categories: categories}).Document()
+}
+
+func configReferenceRecord(fields ...string) (presentation.Record, error) {
+	values := make([]presentation.Value, len(fields))
+	for i, field := range fields {
+		value, err := presentation.Prose(field)
+		if err != nil {
+			return presentation.Record{}, err
+		}
+		values[i] = value
+	}
+	return presentation.NewRecord(values...)
 }

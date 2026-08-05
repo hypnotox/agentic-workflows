@@ -2,7 +2,7 @@ package migrate
 
 import (
 	"bytes"
-	"io"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +45,7 @@ func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
 	} {
 		t.Run(tc.consumer, func(t *testing.T) {
 			root := closeFixture(t, "prefix: ex\nskills: ["+tc.consumer+"]\nagents: []\ndocs: [roadmap]\n", nil)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyCloseEnabledSet(root, &out); err != nil {
 				t.Fatalf("applyCloseEnabledSet: %v", err)
 			}
@@ -65,7 +65,7 @@ func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
 			if !strings.Contains(string(before), "skills: ["+tc.consumer+"]") {
 				t.Errorf("config changed unexpectedly:\n%s", before)
 			}
-			var second bytes.Buffer
+			var second Changes
 			if err := applyCloseEnabledSet(root, &second); err != nil {
 				t.Fatalf("second applyCloseEnabledSet: %v", err)
 			}
@@ -82,28 +82,25 @@ func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
 
 func TestCloseEnabledSetScansEnabledAgents(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\nskills: []\nagents: [plan-reviewer]\n", nil)
-	if err := applyCloseEnabledSet(root, io.Discard); err != nil {
+	if err := applyCloseEnabledSet(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-// Dormant doc-gated skills are dropped (printed), missing requirements are
-// added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
+// Dormant doc-gated skills are dropped and collected as ordered change facts,
+// missing requirements are added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
 // Decision 8).
 // invariant: config/migrations-and-locks:close-enabled-set-migration (TestCloseEnabledSetDropsDormantAndCloses)
 func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\nskills: [brainstorming, roadmap-graduation, tdd]\nagents: []\n", nil)
-	var out bytes.Buffer
+	var out Changes
 	if err := applyCloseEnabledSet(root, &out); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	got := out.String()
-	for _, want := range []string{
-		`close-enabled-set: dropped dormant skill "roadmap-graduation" (its "roadmap" doc is disabled)`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("output missing %q:\n%s", want, got)
-		}
+	const want = "close-enabled-set: dropped dormant skill \"roadmap-graduation\" (its \"roadmap\" doc is disabled)\n" +
+		"close-enabled-set: enabled agent \"grounding-checker\" (required by \"brainstorming\")\n"
+	if got := out.String(); got != want {
+		t.Errorf("changes = %q, want %q", got, want)
 	}
 	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 	if err != nil {
@@ -119,8 +116,9 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if strings.Contains(string(cfg), "- roadmap-graduation") {
 		t.Errorf("dormant skill not dropped:\n%s", cfg)
 	}
-	// Idempotence: a second run changes nothing.
-	if err := applyCloseEnabledSet(root, &out); err != nil {
+	// Idempotence: a second run changes neither config nor collected facts.
+	var second Changes
+	if err := applyCloseEnabledSet(root, &second); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	again, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
@@ -130,6 +128,23 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if !bytes.Equal(cfg, again) {
 		t.Errorf("re-run must be a byte-identical no-op:\n%s", again)
 	}
+	if got := second.String(); got != "" {
+		t.Errorf("second-run changes = %q, want none", got)
+	}
+}
+
+func TestCloseEnabledSetWriteFailurePublishesNoChanges(t *testing.T) {
+	root := closeFixture(t, "prefix: ex\nskills: [brainstorming, roadmap-graduation]\nagents: []\n", nil)
+	failure := errors.New("atomic write failed")
+	editor := configEditor{writeAtomic: func(string, []byte) error { return failure }}
+
+	var changes Changes
+	if err := closeEnabledSetWithEditor(root, catalog.Standard, &changes, editor); !errors.Is(err, failure) {
+		t.Fatalf("closeEnabledSetWithEditor error = %v, want %v", err, failure)
+	}
+	if got := changes.String(); got != "" {
+		t.Errorf("changes = %q, want no facts after failed write", got)
+	}
 }
 
 // A local:-owned doc-gated skill renders today even without its doc, so the
@@ -137,7 +152,7 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 func TestCloseEnabledSetKeepsLocalDormantSkill(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\nskills: [roadmap-graduation]\nagents: []\n",
 		map[string]string{"skills/roadmap-graduation.yaml": "local: true\n"})
-	if err := applyCloseEnabledSet(root, io.Discard); err != nil {
+	if err := applyCloseEnabledSet(root, &Changes{}); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
@@ -151,7 +166,7 @@ func TestCloseEnabledSetKeepsLocalDormantSkill(t *testing.T) {
 
 // An absent config is a no-op (idempotent re-run safe, the editConfig skeleton).
 func TestCloseEnabledSetNoConfigNoop(t *testing.T) {
-	if err := applyCloseEnabledSet(t.TempDir(), io.Discard); err != nil {
+	if err := applyCloseEnabledSet(t.TempDir(), &Changes{}); err != nil {
 		t.Fatalf("absent config must be a no-op, got %v", err)
 	}
 }
@@ -159,7 +174,7 @@ func TestCloseEnabledSetNoConfigNoop(t *testing.T) {
 // A malformed config surfaces the load error rather than mutating anything.
 func TestCloseEnabledSetMalformedConfig(t *testing.T) {
 	root := closeFixture(t, ": : not valid : :\n", nil)
-	if err := applyCloseEnabledSet(root, io.Discard); err == nil {
+	if err := applyCloseEnabledSet(root, &Changes{}); err == nil {
 		t.Fatal("expected a parse error for a malformed config")
 	}
 }
@@ -174,7 +189,7 @@ func TestCloseEnabledSetReAddsDemandedDormantSkillWithDoc(t *testing.T) {
 		"gated":  {RequiresDoc: "roadmap"},
 	}}
 	root := closeFixture(t, "prefix: ex\nskills: [gated, keeper]\nagents: []\n", nil)
-	var out bytes.Buffer
+	var out Changes
 	if err := closeEnabledSet(root, cat, &out); err != nil {
 		t.Fatalf("apply: %v", err)
 	}

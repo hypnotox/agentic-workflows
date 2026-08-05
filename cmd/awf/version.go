@@ -1,26 +1,59 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"runtime/debug"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// runVersion prints the awf version plus display-only build provenance.
-func runVersion(stdout io.Writer) {
+// runVersion renders the awf version plus display-only build provenance.
+func runVersion(stdout io.Writer) error {
 	info, ok := debug.ReadBuildInfo()
-	fmt.Fprintln(stdout, versionLine(info, ok))
+	return writeVersion(stdout, info, ok)
 }
 
-// versionLine renders the "awf <version>" line, appending display-only build
+// writeVersion selects the value mode for the complete version presentation.
+func writeVersion(stdout io.Writer, info *debug.BuildInfo, ok bool) error {
+	line := versionLine(info, ok)
+	if ok && formatProvenance(info) != "" {
+		value, err := presentation.Literal(line)
+		if err != nil { // coverage-ignore: normalized provenance and the fixed version prefix cannot produce an invalid literal
+			return err
+		}
+		field, err := presentation.NewField("version", value)
+		if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
+			return err
+		}
+		document, err := presentation.NewDocument(field)
+		if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
+			return err
+		}
+		return presentation.Render(stdout, document)
+	}
+	value, err := presentation.Prose(line)
+	if err != nil { // coverage-ignore: the fixed version prefix remains nonempty after normalization
+		return err
+	}
+	field, err := presentation.NewField("version", value)
+	if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
+		return err
+	}
+	document, err := presentation.NewDocument(field)
+	if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
+		return err
+	}
+	return presentation.Render(stdout, document)
+}
+
+// versionLine renders the version value, appending display-only build
 // provenance when present (ADR-0049 Decision 2). Split from runVersion so
 // every branch is reachable from tests regardless of what the test binary's
 // own build info carries.
 func versionLine(info *debug.BuildInfo, ok bool) string {
-	line := "awf " + awfVersion()
+	line := awfVersion()
 	if !ok {
 		return line
 	}
@@ -43,12 +76,15 @@ func awfVersion() string {
 // (ADR-0049 Decision 2).
 func formatProvenance(info *debug.BuildInfo) string {
 	var parts []string
-	if v := info.Main.Version; v != "" && v != "(devel)" && v != "v"+project.Version {
+	if v := normalizeProvenance(info.Main.Version); v != "" && v != "(devel)" && v != "v"+project.Version {
 		parts = append(parts, v)
 	}
 	for _, s := range info.Settings {
-		if s.Key == "vcs.revision" && s.Value != "" {
-			rev := s.Value
+		if s.Key == "vcs.revision" {
+			rev := normalizeProvenance(s.Value)
+			if rev == "" {
+				continue
+			}
 			if len(rev) > 12 {
 				rev = rev[:12]
 			}
@@ -57,4 +93,8 @@ func formatProvenance(info *debug.BuildInfo) string {
 		}
 	}
 	return strings.Join(parts, ", ")
+}
+
+func normalizeProvenance(value string) string {
+	return strings.Join(strings.Fields(value), " ")
 }

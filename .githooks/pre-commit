@@ -12,18 +12,13 @@ repo_root=$(pwd -P)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 git checkout-index --prefix="$tmp/" -a
-staged_helper="$tmp/.githooks/check-nested-staged"
-if [ ! -f "$staged_helper" ]; then
-  echo "pre-commit: the staged slice is missing .githooks/check-nested-staged" >&2
-  exit 1
-fi
 # Hooks inherit GIT_DIR/GIT_WORK_TREE for the caller. Clear those before using
 # Git inside the foreign temporary repository; later commands rediscover this
 # linked worktree from its .git file.
 unset $(git rev-parse --local-env-vars)
 # Current-state checks read one Git snapshot. Give the exact staged slice its
-# own temporary identity so both the root project and nested Sundial can resolve
-# a HEAD without observing the caller's unstaged worktree.
+# own temporary identity so it can resolve a HEAD without observing the caller's
+# unstaged worktree.
 # The slice repository is initialized on a branch that is deliberately NOT the
 # configured integrationBranch. A fresh init lands on main, and a pending
 # slug-identified ADR is refused on the integration branch by design, so the
@@ -45,11 +40,6 @@ check_slice() {
   fi
 }
 check_slice "$tmp" "the repository"
-# The example adopter is part of the slice too: a template/configspec hunk whose
-# sundial re-render is left unstaged committed clean three times (a85bd6a, the
-# ADR-0080 flip, the ADR-0121 phase 1) before this check existed.
-check_slice "$tmp/examples/sundial" "examples/sundial"
-bash "$staged_helper" "$repo_root" "$awf_slice"
 rm -rf -- "$tmp"
 trap - EXIT
 exec bash .awf/hooks/pre-commit.sh "$@"

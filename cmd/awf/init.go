@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,11 +15,16 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 func runInit(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
+	return runInitWithProjectLoader(ctx, root, force, describe, sets, answersFile, stdout, newProjectLoader)
+}
+
+func runInitWithProjectLoader(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer, loadProject func(string) (*project.Loader, error)) error {
 	cat := catalog.Standard
 	descs := initspec.CatalogVars(cat)
 	if describe {
@@ -26,8 +32,7 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 		if err != nil { // coverage-ignore: descriptors marshal to JSON; cannot fail
 			return err
 		}
-		fmt.Fprintln(stdout, string(out))
-		return nil
+		return writeInitDescriptorProtocol(stdout, out)
 	}
 	cfgPath := config.ConfigPath(root)
 	lockPath := config.LockPath(root)
@@ -85,13 +90,10 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	var vars map[string]string
 	var trim *config.CatalogTrim
 	var scopes []string
+	ignoredAnswers := configExists && len(answers) > 0
 	if configExists {
 		// Descriptor answers only feed the scaffold; resolving them here would
 		// prompt for (or silently accept) values init then discards.
-		fmt.Fprintf(stdout, "%s exists: keeping it and re-rendering only\n", cfgPath)
-		if len(answers) > 0 {
-			fmt.Fprintln(stdout, "note: --set/--answers values were ignored; edit .awf/config.yaml instead")
-		}
 	} else {
 		var rerr error
 		vars, trim, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive(), project.NeededVars)
@@ -101,24 +103,20 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	}
 
 	scaffolded := false
+	var added []string
 	if !configExists {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, added, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
+		scaffold, scaffoldAdded, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}
+		added = scaffoldAdded
 		if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write; fails only on a permission fault that root bypasses
 			return err
 		}
 		scaffolded = true
-		fmt.Fprintf(stdout, "scaffolded %s\n", cfgPath)
-		// A trimmed selection is closure-completed (ADR-0081 Decision 9);
-		// note each artifact enabled beyond the explicit trim.
-		for _, a := range added {
-			fmt.Fprintf(stdout, "note: also enabled %s (required by your selection)\n", a)
-		}
 	}
 	p, err := project.Open(ctx, root)
 	if err != nil {
@@ -139,6 +137,10 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 		}
 		return collisionRefusal(collisions)
 	}
+	loader, syncErr := initProjectLoader(root, loadProject)
+	if syncErr != nil {
+		return syncErr
+	}
 	// Gate before the chained sync: init is Ungated at the driver, but re-rendering
 	// an existing schema- or version-behind tree must still refuse rather than
 	// re-stamp the current schema over an unmigrated config (ADR-0039). runSync no
@@ -150,34 +152,44 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 	}
 	// Under --force, the selected sync path backs up every foreign file via the
 	// shared BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
-	var syncErr error
+	var seed *project.InitAuthority
 	if !configExists && !lockExists {
-		syncErr = runSyncInitialized(ctx, root, project.InitAuthority{InitializedWithVersion: project.Version}, stdout)
-	} else {
-		syncErr = runSync(ctx, root, stdout)
+		seed = &project.InitAuthority{InitializedWithVersion: project.Version}
 	}
+	syncResult, syncedProject, syncErr := syncMutation(ctx, loader, root, seed)
 	if syncErr != nil {
-		if scaffolded { // coverage-ignore: the first-adoption boundary, scaffold, collision plan, and gate all succeeded; a failure now requires a concurrent mutation or filesystem fault
-			_ = os.Remove(cfgPath)
-			_ = os.Remove(filepath.Dir(cfgPath))
-		}
-		return syncErr
+		return finishInitSyncFailure(cfgPath, scaffolded, syncErr)
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
-	np, err := project.Open(ctx, root)
-	if err != nil { // coverage-ignore: the chained runSync just opened this same tree
+	return renderInitOutcome(ctx, syncedProject, initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Added: added, Sync: syncResult, NextActions: initNextActions}, stdout, func(ctx context.Context, p *project.Project) ([]string, error) {
+		return p.AdvisoryNotes(ctx)
+	})
+}
+
+func initProjectLoader(root string, load func(string) (*project.Loader, error)) (*project.Loader, error) {
+	return load(root)
+}
+
+func finishInitSyncFailure(cfgPath string, scaffolded bool, syncErr error) error {
+	if scaffolded {
+		_ = os.Remove(cfgPath)
+		_ = os.Remove(filepath.Dir(cfgPath))
+	}
+	return syncErr
+}
+
+func renderInitOutcome(ctx context.Context, p *project.Project, outcome initspec.Outcome, stdout io.Writer, advisoryNotes func(context.Context, *project.Project) ([]string, error)) error {
+	notes, err := advisoryNotes(ctx, p)
+	if err != nil {
 		return err
 	}
-	notes, err := np.AdvisoryNotes(ctx)
-	if err != nil { // coverage-ignore: runSync just rendered this same tree and generated its domain docs - both AdvisoryNotes inputs succeeded moments ago
+	outcome.Advisories = notes
+	document, err := outcome.Document()
+	if err != nil {
 		return err
 	}
-	for _, n := range notes {
-		fmt.Fprintf(stdout, "note: %s\n", n)
-	}
-	fmt.Fprint(stdout, initNextSteps)
-	return nil
+	return presentation.Render(stdout, document)
 }
 
 // collisionRefusal is the shared refusal for both collision checks, so the
@@ -226,12 +238,17 @@ func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	return resident.CollisionsAt(root, planned)
 }
 
-// initNextSteps is the fixed orientation block init prints after a
-// successful render.
-const initNextSteps = `
-next steps:
-  1. Fill the Identity section: edit .awf/parts/agents-doc/identity.md, then run awf render.
-  2. Set any still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render.
-  3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself.
-  4. Commit .awf/ and the rendered files together.
-`
+var initNextActions = []string{
+	"fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render",
+	"set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render",
+	"wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself",
+	"commit .awf/ and the rendered files together",
+}
+
+// writeInitDescriptorProtocol writes the documented init descriptor JSON
+// unchanged. It is one of the closed successful protocol bypasses.
+func writeInitDescriptorProtocol(stdout io.Writer, payload []byte) error {
+	payload = bytes.TrimRight(payload, "\n")
+	_, err := stdout.Write(append(payload, '\n'))
+	return err
+}

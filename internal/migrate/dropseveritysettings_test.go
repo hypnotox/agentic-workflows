@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,7 +72,7 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 			root := t.TempDir()
 			p := filepath.Join(root, ".awf", "config.yaml")
 			testsupport.WriteFile(t, p, tc.src)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyDropSeveritySettings(root, &out); err != nil {
 				t.Fatal(err)
 			}
@@ -105,7 +104,7 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 				t.Errorf("announced %d lines, want %d: %q", n, wantLines, out.String())
 			}
 			// A replay must neither change the file again nor re-announce.
-			var second bytes.Buffer
+			var second Changes
 			if err := applyDropSeveritySettings(root, &second); err != nil {
 				t.Fatal(err)
 			}
@@ -134,7 +133,7 @@ func TestApplyDropSeveritySettingsPreservesValuesNotLayout(t *testing.T) {
 	p := filepath.Join(root, ".awf", "config.yaml")
 	testsupport.WriteFile(t, p, "prefix: ex\ncurrentState:\n    topicCoverage: error\n"+
 		"    testGlobs: ['**/*_test.go']\n    maxTopicsPerPath:   8\n")
-	if err := applyDropSeveritySettings(root, &bytes.Buffer{}); err != nil {
+	if err := applyDropSeveritySettings(root, &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(p)
@@ -160,7 +159,7 @@ func TestApplyDropSeveritySettingsPreservesValuesNotLayout(t *testing.T) {
 }
 
 func TestApplyDropSeveritySettingsNoConfig(t *testing.T) {
-	var out bytes.Buffer
+	var out Changes
 	if err := applyDropSeveritySettings(t.TempDir(), &out); err != nil {
 		t.Fatalf("an absent config.yaml must be a no-op, got %v", err)
 	}
@@ -172,7 +171,7 @@ func TestApplyDropSeveritySettingsNoConfig(t *testing.T) {
 func TestApplyDropSeveritySettingsMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "currentState: [a, b\n")
-	if err := applyDropSeveritySettings(root, &bytes.Buffer{}); err == nil {
+	if err := applyDropSeveritySettings(root, &Changes{}); err == nil {
 		t.Fatal("a malformed config must surface the parse error, not be swallowed")
 	}
 }

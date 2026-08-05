@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,9 +32,13 @@ var (
 // multi-line key fail loudly, naming the file. Edits are raw-byte string
 // surgery, never a frontmatter re-serialization, so untouched lines survive
 // byte-identical and meaning-preservation is checkable by diff. Idempotent: a
-// corpus with no keys prints nothing.
+// corpus with no keys collects no change facts.
 // touches-state: config/migrations-and-locks:upgrade-migrates-retirements - the migration itself; proof in retirementtokens_test.go
-func applyRetirementTokens(root string, out io.Writer) error {
+func applyRetirementTokens(root string, out *Changes) error {
+	return applyRetirementTokensWithWriteFile(root, out, os.WriteFile)
+}
+
+func applyRetirementTokensWithWriteFile(root string, out *Changes, writeFile func(string, []byte, os.FileMode) error) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}
@@ -63,7 +66,16 @@ func applyRetirementTokens(root string, out io.Writer) error {
 		}
 	}
 
-	edited := map[string][]byte{} // path -> pending content
+	edited := map[string][]byte{}    // path -> pending content
+	planned := map[string][]string{} // path -> facts published only after its write
+	var editOrder []string
+	remember := func(path string, content []byte) {
+		if _, exists := edited[path]; !exists {
+			editOrder = append(editOrder, path)
+		}
+		edited[path] = content
+	}
+	plan := func(path, fact string) { planned[path] = append(planned[path], fact) }
 	// Raw access goes through the view's enumerated accessor (ADR-0130 item 6):
 	// this migration performs offset surgery and so legitimately works below the
 	// semantic layer.
@@ -97,7 +109,7 @@ func applyRetirementTokens(root string, out io.Writer) error {
 		}
 		removed := loc[1] - loc[0]
 		raw = raw[:loc[0]] + raw[loc[1]:]
-		fmt.Fprintf(out, "retirement-tokens: %s: stripped retires_invariants\n", a.Filename)
+		plan(a.Path, fmt.Sprintf("retirement-tokens: %s: stripped retires_invariants", a.Filename))
 
 		// The slug list comes from the raw line, not the parsed struct: the
 		// schema no longer carries the field (ADR-0120 item 7), and this
@@ -137,9 +149,9 @@ func applyRetirementTokens(root string, out io.Writer) error {
 			} else {
 				raw = raw[:at] + item + "\n" + raw[at:]
 			}
-			fmt.Fprintf(out, "retirement-tokens: %s: appended Decision item %d (%s)\n", a.Filename, n, strings.Join(slugs, ", "))
+			plan(a.Path, fmt.Sprintf("retirement-tokens: %s: appended Decision item %d (%s)", a.Filename, n, strings.Join(slugs, ", ")))
 		}
-		edited[a.Path] = []byte(raw)
+		remember(a.Path, []byte(raw))
 	}
 
 	// Back-pointers: each token target's related: gains the carrier's number
@@ -170,13 +182,16 @@ func applyRetirementTokens(root string, out io.Writer) error {
 			entry = existing + ", " + entry
 		}
 		raw = raw[:m[2]] + entry + raw[m[3]:]
-		edited[target.Path] = []byte(raw)
-		fmt.Fprintf(out, "retirement-tokens: %s: related: gains %d (back-pointer for ADR-%s)\n", target.Filename, carrier, e.carrier)
+		remember(target.Path, []byte(raw))
+		plan(target.Path, fmt.Sprintf("retirement-tokens: %s: related: gains %d (back-pointer for ADR-%s)", target.Filename, carrier, e.carrier))
 	}
 
-	for path, b := range edited {
-		if err := os.WriteFile(path, b, 0o644); err != nil { // coverage-ignore: writing back a file just read fails only on a permission fault that root bypasses (chmod fixtures are unportable and root-fragile)
+	for _, path := range editOrder {
+		if err := writeFile(path, edited[path], 0o644); err != nil {
 			return err
+		}
+		for _, fact := range planned[path] {
+			out.Add(fact)
 		}
 	}
 	return nil

@@ -30,15 +30,14 @@ func (l Loaded) Universe() Universe {
 type TransitionMode int
 
 const (
-	// AuthoredCommit is the strict per-step contract: one commit is one
-	// authoring step, so an ADR appends at most one batch, a claim is the
-	// target of at most one operation, and a Status history grows by the fixed
-	// one-or-two-event shape.
+	// AuthoredCommit requires every operation occurrence to be independently
+	// observable in the before/after pair, so one claim may be targeted only
+	// once. Distinct-target batches and legal ordered Status history are not
+	// otherwise capped.
 	AuthoredCommit TransitionMode = iota
-	// MergeAggregate is the contract for a merge, which is one Git commit but
-	// the aggregate of a branch's commits. Several batches, a claim's ordered
-	// operation chain, and a multi-step Status history are each legal when they
-	// form a legal ordered chain (ADR-0182).
+	// MergeAggregate permits a claim's ordered operation chain to be folded to
+	// its net effect because recorded merge provenance preserves the authored
+	// transactions that made each occurrence observable (ADR-0182).
 	MergeAggregate
 )
 
@@ -60,7 +59,7 @@ func CheckPair(before, after Universe, mode TransitionMode) []Finding {
 	var findings []Finding
 	pairs := newPairing(before.ADRs, after.ADRs)
 	findings = append(findings, Check(after.ADRs, after.Topics)...)
-	findings = append(findings, checkTransitions(before.ADRs, after.ADRs, pairs, mode)...)
+	findings = append(findings, checkTransitions(before.ADRs, after.ADRs, pairs)...)
 	findings = append(findings, checkMutations(before, after, pairs, mode)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
@@ -93,9 +92,10 @@ func OlderIntroductions(before, after Universe, current adr.Format) []Introducti
 	return out
 }
 
-// checkTransitions enforces frozen content, stable-history prefix preservation,
-// and the format-specific event shape for every governed record pair.
-func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMode) []Finding {
+// checkTransitions enforces frozen content and stable-history exact-prefix
+// preservation for every governed record pair. Parsed after records already
+// prove that appended events form a legal ordered lifecycle.
+func checkTransitions(before, after []adr.ADR, pairs pairing) []Finding {
 	var findings []Finding
 	for _, b := range before {
 		if b.IsGoverned() {
@@ -147,12 +147,8 @@ func checkTransitions(before, after []adr.ADR, pairs pairing, mode TransitionMod
 			}
 			continue
 		}
-		if !historyTransitionValid(b, a, mode) {
-			shape := "Status history must remain equal at the same status or append exactly one entry for a legal transition"
-			if a.HasV2Semantics() {
-				shape = "prior events must remain an exact prefix and the transition must append the required status/Applied event shape"
-			}
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the history-prefix rule: %s", a.Identity(), shape)})
+		if !historyTransitionValid(b, a) {
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the history-prefix rule: prior events must remain an exact prefix and appended events must form a legal ordered lifecycle", a.Identity())})
 		}
 		if !b.HasSameStatus(a) && !adr.TransitionLegal(b.Status, a.Status, a.Format) {
 			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal %s transition", a.Identity(), b.Status, a.Status, adr.FormatMarker(a.Format))})
@@ -259,9 +255,10 @@ type appendedBatch struct {
 	ops        []adr.Operation
 }
 
-// pairOps derives only newly appended batches. It validates one batch per ADR
-// in authored mode and cross-batch target uniqueness; cross-ADR order is
-// ascending ADR number then intra-ADR history position (ADR-0191).
+// pairOps derives only newly appended batches. Authored mode retains
+// cross-batch target uniqueness so every occurrence has an observable endpoint;
+// cross-ADR order is ascending ADR number then intra-ADR history position
+// (ADR-0191).
 func pairOps(after []adr.ADR, pairs pairing, mode TransitionMode) (map[string]pairOp, []string, map[string]bool, []Finding) {
 	var batches []appendedBatch
 	var findings []Finding
@@ -285,9 +282,6 @@ func pairOps(after []adr.ADR, pairs pairing, mode TransitionMode) (map[string]pa
 			continue
 		}
 		added := afterBatches[beforeCount:]
-		if len(added) > 1 && mode == AuthoredCommit {
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Identity(), len(added))})
-		}
 		for j, batch := range added {
 			batches = append(batches, appendedBatch{
 				adr: a.Identity(), order: adr.IdentityOrder(a.Identity()), batchIdx: beforeCount + j,
@@ -345,14 +339,9 @@ func pairOps(after []adr.ADR, pairs pairing, mode TransitionMode) (map[string]pa
 	return ops, dups, rejected, findings
 }
 
-// historyTransitionValid applies the Status-history contract the mode selects:
-// the fixed one-or-two-event shape for an authored commit, append-only prefix
-// preservation for a merge, whose appended events were already proven a legal
-// ordered chain when the record parsed (ADR-0182 item 7).
-func historyTransitionValid(before, after adr.ADR, mode TransitionMode) bool {
-	if mode == MergeAggregate {
-		return adr.HistoryTransitionValidAggregate(before, after)
-	}
+// historyTransitionValid requires exact-prefix preservation. The parsed after
+// record already proves that every appended event forms a legal ordered chain.
+func historyTransitionValid(before, after adr.ADR) bool {
 	return adr.HistoryTransitionValid(before, after)
 }
 

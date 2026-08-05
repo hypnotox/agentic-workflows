@@ -15,6 +15,8 @@ function make(options: any = {}) {
   const emitted: any[] = [];
   const notice: any[] = [];
   const editor: string[] = [];
+  const replacementNotice: any[] = [];
+  const replacementEditor: string[] = [];
   const sessions: any[] = [];
   const entries: any[] = [];
   const components: any[] = [];
@@ -24,6 +26,7 @@ function make(options: any = {}) {
   const clearedTimeouts: any[] = [];
   const renderRequests: any[] = [];
   const sends: string[] = [];
+  const customSends: any[] = [];
   let component: any;
   let done: any;
   let queueFails = Boolean(options.queueFail);
@@ -72,7 +75,10 @@ function make(options: any = {}) {
   registerHandoff(pi, deps);
   const ui: any = {
     notify: (...args: any[]) => notice.push(args),
-    setEditorText: (value: string) => editor.push(value),
+    setEditorText: (value: string) => {
+      if (options.editorFail) throw Error("editor");
+      editor.push(value);
+    },
     custom: async (factory: any) =>
       new Promise((resolve) => {
         done = resolve;
@@ -91,6 +97,16 @@ function make(options: any = {}) {
         components.push(component);
       }),
   };
+  const replacementUI: any = options.distinctReplacementUI ? {
+    notify: (...args: any[]) => {
+      if (options.replacementNotifyFail) throw Error("replacement notify");
+      replacementNotice.push(args);
+    },
+    setEditorText: (value: string) => {
+      if (options.replacementEditorFail) throw Error("replacement editor");
+      replacementEditor.push(value);
+    },
+  } : ui;
   const ctx: any = {
     mode: options.mode ?? "tui",
     ui,
@@ -110,11 +126,16 @@ function make(options: any = {}) {
       await request.setup(manager);
       if (options.newFail) throw Error("new");
       await request.withSession({
-        ui,
+        ui: replacementUI,
         sendUserMessage: async (value: string) => {
           sends.push(value);
           if (sendFails) throw Error("send");
           editor.push("sent:" + value);
+        },
+        sendMessage: async (message: any, options: any) => {
+          customSends.push([message, options]);
+          if (sendFails) throw Error("send");
+          editor.push("sent:" + message.content);
         },
       });
     },
@@ -127,6 +148,8 @@ function make(options: any = {}) {
     emitted,
     notice,
     editor,
+    replacementNotice,
+    replacementEditor,
     sessions,
     entries,
     components,
@@ -136,6 +159,7 @@ function make(options: any = {}) {
     clearedTimeouts,
     renderRequests,
     sends,
+    customSends,
     ctx,
     deps,
     get component() {
@@ -224,8 +248,17 @@ test("handoff preserves exact kickoff through submission and editor fallback", a
   const pending = continueHandoff(h);
   h.complete();
   await pending;
-  assert.deepEqual(h.sends, [kickoff]);
-  assert.deepEqual(h.editor, ["sent:" + kickoff]);
+  const envelope = `Agent-authored handoff context; this is not user input:\n\n${kickoff}`;
+  assert.deepEqual(h.sends, []);
+  assert.deepEqual(h.customSends, [[{
+    customType: "agent-handoff",
+    content: envelope,
+    display: true,
+  }, { triggerTurn: true }]]);
+  const submitted = h.customSends[0]![0]! as { content: string };
+  assert.equal(submitted.content.endsWith(`\n\n${kickoff}`), true);
+  assert.equal(submitted.content.includes("[agent-handoff]"), false);
+  assert.deepEqual(h.editor, ["sent:" + envelope]);
   assert.equal(h.sessions.length, 1);
 
   const fallback = make();
@@ -234,12 +267,30 @@ test("handoff preserves exact kickoff through submission and editor fallback", a
   const fallbackPending = continueHandoff(fallback);
   fallback.complete();
   await fallbackPending;
-  assert.deepEqual(fallback.sends, [kickoff]);
-  assert.deepEqual(fallback.editor, [kickoff]);
+  assert.deepEqual(fallback.sends, []);
+  assert.deepEqual(fallback.customSends, [[{
+    customType: "agent-handoff",
+    content: envelope,
+    display: true,
+  }, { triggerTurn: true }]]);
+  assert.deepEqual(fallback.editor, [envelope]);
   assert.deepEqual(fallback.notice, [
     ["Automatic kickoff failed; submit the prepared editor text.", "warning"],
   ]);
   assert.equal(fallback.sessions.length, 1);
+});
+
+test("replacement editor failure never reuses the old session context", async () => {
+  const h = make({ distinctReplacementUI: true, replacementEditorFail: true, replacementNotifyFail: true });
+  h.sendFails();
+  await execute(h);
+  const pending = continueHandoff(h);
+  h.complete();
+  await pending;
+  assert.deepEqual(h.editor, []);
+  assert.deepEqual(h.notice, []);
+  assert.deepEqual(h.replacementEditor, []);
+  assert.deepEqual(h.replacementNotice, []);
 });
 
 test("handoff preserves exact kickoff through replacement failure recovery", async () => {
@@ -250,7 +301,7 @@ test("handoff preserves exact kickoff through replacement failure recovery", asy
   h.complete();
   await assert.rejects(pending, /new/);
   assert.deepEqual(h.entries, [["cleanup"]]);
-  assert.deepEqual(h.editor, [kickoff]);
+  assert.deepEqual(h.editor, [`Agent-authored handoff context; this is not user input:\n\n${kickoff}`]);
   assert.deepEqual(h.notice, [
     ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
   ]);
@@ -352,7 +403,7 @@ test("handoff revalidates persisted session only after countdown", async () => {
   const pending = continueHandoff(h);
   h.complete();
   await assert.rejects(pending, /no longer persisted/);
-  assert.deepEqual(h.editor, ["go"]);
+  assert.deepEqual(h.editor, ["Agent-authored handoff context; this is not user input:\n\ngo"]);
   assert.deepEqual(h.notice, [
     ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
   ]);
@@ -367,7 +418,12 @@ test("handoff preserves lineage and does not silently retry", async () => {
   await successPending;
   assert.equal(success.sessions[0].parentSession, "old");
   assert.equal(success.sessions.length, 1);
-  assert.deepEqual(success.sends, ["go"]);
+  assert.deepEqual(success.sends, []);
+  assert.deepEqual(success.customSends, [[{
+    customType: "agent-handoff",
+    content: "Agent-authored handoff context; this is not user input:\n\ngo",
+    display: true,
+  }, { triggerTurn: true }]]);
 
   const failure = make({ newFail: true });
   await execute(failure);
@@ -376,6 +432,7 @@ test("handoff preserves lineage and does not silently retry", async () => {
   await assert.rejects(failedPending, /new/);
   assert.equal(failure.sessions.length, 1);
   assert.deepEqual(failure.sends, []);
+  assert.deepEqual(failure.customSends, []);
 });
 
 test("queue failure clears pending so a later request can succeed", async () => {
@@ -413,7 +470,22 @@ test("countdown timer, key, and cleanup faults retain the original boundary", as
   cleanupFailure.complete();
   await assert.rejects(cleanupPending, /new/);
   assert.deepEqual(cleanupFailure.entries, [["cleanup"]]);
+  assert.deepEqual(cleanupFailure.editor, [
+    "Agent-authored handoff context; this is not user input:\n\ngo",
+  ]);
+  assert.deepEqual(cleanupFailure.notice, [
+    ["Fresh-session handoff failed; recovery text is in the editor.", "error"],
+  ]);
   assert.equal(cleanupFailure.sessions.length, 1);
+
+  const editorFailure = make({ newFail: true, editorFail: true });
+  await execute(editorFailure);
+  const editorPending = continueHandoff(editorFailure);
+  editorFailure.complete();
+  await assert.rejects(editorPending, /new/);
+  assert.deepEqual(editorFailure.entries, [["cleanup"]]);
+  assert.deepEqual(editorFailure.editor, []);
+  assert.deepEqual(editorFailure.notice, []);
 });
 
 test("handoff exercises runtime guard and generated entrypoint", async () => {

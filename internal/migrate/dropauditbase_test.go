@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +10,7 @@ import (
 )
 
 // applyDropAuditBase is the schema 10 -> 11 migration. Neither this repo's
-// config nor examples/sundial sets audit.baseBranch, so no sync or check run
+// config sets audit.baseBranch, so no sync or check run
 // exercises it (ADR-0127 Consequences): these fixtures are its only coverage.
 func TestApplyDropAuditBase(t *testing.T) {
 	cases := []struct {
@@ -46,7 +45,7 @@ func TestApplyDropAuditBase(t *testing.T) {
 			root := t.TempDir()
 			p := filepath.Join(root, ".awf", "config.yaml")
 			testsupport.WriteFile(t, p, tc.src)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyDropAuditBase(root, &out); err != nil {
 				t.Fatal(err)
 			}
@@ -62,7 +61,7 @@ func TestApplyDropAuditBase(t *testing.T) {
 				t.Errorf("announcement = %v, want %v (output %q)", msg, tc.wantMsg, out.String())
 			}
 			// A replay must neither change the file again nor re-announce.
-			var second bytes.Buffer
+			var second Changes
 			if err := applyDropAuditBase(root, &second); err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +80,7 @@ func TestApplyDropAuditBase(t *testing.T) {
 }
 
 func TestApplyDropAuditBaseNoConfig(t *testing.T) {
-	var out bytes.Buffer
+	var out Changes
 	if err := applyDropAuditBase(t.TempDir(), &out); err != nil {
 		t.Fatalf("an absent config.yaml must be a no-op, got %v", err)
 	}
@@ -93,7 +92,7 @@ func TestApplyDropAuditBaseNoConfig(t *testing.T) {
 func TestApplyDropAuditBaseMalformedConfig(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "audit: [a, b\n")
-	if err := applyDropAuditBase(root, &bytes.Buffer{}); err == nil {
+	if err := applyDropAuditBase(root, &Changes{}); err == nil {
 		t.Fatal("a malformed config must surface the parse error, not be swallowed")
 	}
 }

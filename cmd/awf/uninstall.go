@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
@@ -17,10 +17,9 @@ func runUninstall(ctx context.Context, root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "awf uninstall: removed %d generated file(s) and the lock\n", report.Removed)
-	for _, root := range report.PreservedRoots { // coverage-ignore: Uninstall's generated-root report has no preserved roots in command scaffolds; resident preservation is tested at project layer
-		fmt.Fprintf(stdout, "preserved resident data under .awf/%s\n", root)
+	document, err := report.Document()
+	if err != nil { // coverage-ignore: Uninstall returns a count and validated resident-root names; the owner mapping uses fixed grammar
+		return err
 	}
-	fmt.Fprintln(stdout, "awf uninstall: left the .awf/ config in place (delete it to fully remove)")
-	return nil
+	return presentation.Render(stdout, document)
 }

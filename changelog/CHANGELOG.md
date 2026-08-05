@@ -10,6 +10,28 @@ query a single version or a range.
 
 ### Features
 
+- Ordinary CLI mutations, details, collections, refusals, and commit-policy reports now use the deterministic readable-text presentation contract. Convenience JSON remains removed from effort and topic commands; authored plan and changelog payloads plus effort activity, init descriptor, and context spill protocols retain their exact bytes.
+
+- Checks and audits now collect complete structured reports before rendering, grouping errors before warnings while preserving source order within each category and separating produced failures from operational diagnostics. Upgrade mutations now identify every applied migration and report proven changed axes with recovery steps if terminal sync fails.
+
+- Render, effort, and managed-worktree commands now use readable typed output. Convenience JSON for `awf effort new`, `list`, and `show` is retired; activity JSON remains the byte-exact protocol.
+
+- CLI help now derives from structured command specifications, command diagnostics use the typed output boundary, commit authorization uses actionable steps, and init prompts validate completely before their single flushed prompt tail.
+
+- `awf context` and `awf topic` now present structured readable text through the shared presentation grammar; context authority categories retain fixed-schema records, and `awf topic --json` is removed.
+
+- Authored current-state transactions may now append several distinct-target Applied or Reapplied batches and any exact-prefix legal Status progression, while repeated same-claim occurrences remain separately observable and merge-only folding stays provenance-gated. Historical audit applies the same rule to retained non-merge commits.
+
+- Plan authoring and review now scope material verification to its actual lifecycle snapshot, require demonstrated negative cases for mechanical checks, and distinguish authority, state, and choreography constraints so durable properties are preserved without enforcing unnecessary process shape.
+
+- Execution and integration guidance now verifies checkout identity after commit-capable work, reconciles plan deviations before freeze, revalidates workflow prose after divergent integration, keeps one writer per checkout, preserves gate status while logging, and stages each render manifest atomically with its outputs.
+
+- Rendered workflow guidance now makes the simplest sufficient solution the default: brainstorming approves a proportionate scope and design boundary before implementation, material deviations stop for user approval, planning is used only when it materially helps, and reviewers reject speculative additions.
+
+- Pi effort association now keeps complete metadata independent while capability-gated display suffix publication sends only the canonical slug or null. It never overrides, reads, or composes routing identity, and degrades to metadata-only behavior.
+
+- Pi fresh-session handoff now persists accepted kickoff as one visible default-rendered `agent-handoff` custom message with an explicit agent-authored envelope and replacement-bound turn trigger. The public bounded `{kickoff}` input remains unchanged; Pi's current provider adapter still receives the custom content as a user-role message.
+
 - Release verification now pins the root project to the canonical AGPL-3.0-only license bytes, matching README references, and license inclusion in every GoReleaser archive, without recategorizing dependency metadata or retained third-party notices as project-license inputs.
 
 - `awf check commit-policy <revision-or-range>...` previews configured exact author, committer, and optional SSH-signature provenance for explicit commits after a full baseline. Ranges use the shared exact two-sided grammar, so three-dot, empty-sided, and multi-range forms are refused rather than treated as clean history. Disabled policy succeeds with one note; complete violations and operational refusals are actionable. The hooks singleton now renders a fifth inert payload, `reference-transaction.sh`, which rejects nonconforming introduced branch commits before refs move; pre-push expands branch and recursively peeled tag targets through the same verifier before its gate. Adopter-owned stubs resolve the invoking worktree, and awf never activates hooks or replaces remote branch policy.
@@ -24,7 +46,7 @@ query a single version or a range.
 
 - `awf audit` now enumerates committed metadata without eager blob reads, then loads only its exact configuration, ADR, and topic authority into a type-distinct immutable selection. Repository and staged checks retain complete snapshots and the full marker, coverage, and domain-sidecar validation boundary, while revisions outside historical authority can reuse their first-parent state. Context cancellation and deadline expiry abort immediately with preserved error identity instead of becoming transition warnings.
 
-- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata. Advisory Pi activity is now protocol 2: JSON-only attach, heartbeat, and detach carry owner/timestamp facts, and explicit attach safely replaces a bounded old v1 resident. The removed checkout and CWD fields and operations have no compatibility execution path. Pi directly associates at repository root, supplies fixed relative effort paths in transient context, and retains advisory Remote Pi metadata and temporary naming without local TUI presentation. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the companion skill and extension. Activity remains advisory and non-locking.
+- `awf effort memory update` now maintains canonical memory frontmatter while migrating exact legacy metadata. Advisory Pi activity is now protocol 2: JSON-only attach, heartbeat, and detach carry owner/timestamp facts, and explicit attach safely replaces a bounded old v1 resident. The removed checkout and CWD fields and operations have no compatibility execution path. Pi directly associates at repository root, supplies fixed relative effort paths in transient context, and retains complete advisory Remote Pi metadata plus capability-gated display-only suffix publication without local TUI presentation or routing-name replacement. Core `effort-workflow` is selected by new untrimmed scaffolds, while existing adopters opt in explicitly; every target receives its cross-runtime existing-worktree guide, and Pi alone derives the companion skill and extension. Activity remains advisory and non-locking.
 
 - Schema generation 33 activates V4 ADR scaffolds with stable per-Decision slugs while preserving every historical ADR and ordinary authored file byte-for-byte during upgrade.
 
@@ -36,7 +58,7 @@ query a single version or a range.
 
 - New plans are parsed `plan-v1` artifacts with mechanically validated phase, task, field, path, phase-close, and Definition of done structure. `awf read plan <plan> <P[.T]>` resolves exact filenames or stems and prints a source-ordered executable phase or task closure, while marker-absent historical plans retain legacy checks.
 
-- Implementing V2 and V3 ADRs can now correct an already-applied add or update through explicit `Reapplied` history events while another operation remains. Each correction is material and atomic, preserves first-application provenance, retains its own occurrence in merge ordering, and leaves declaration progress counted once.
+- V2, V3, and V4 ADR State changes now form an unordered exact-once completion set: explicit batches may exhaust Remaining while status stays Implementing, `Reapplied` corrections remain available throughout Implementing, and settled review later appends only the terminal status event. Direct implicit completion remains atomic with all matching claim mutations.
 
 - Plan authoring now treats qualifying implementation-ready instructions as the default, marks contract-bearing tasks with `Latitude: exact`, supports explicit spike and batch fields with affected-path and post-check contracts, and retires the duplicated whole-plan File structure section.
 
@@ -69,6 +91,8 @@ query a single version or a range.
   on upgrade.
 
 ### Bug fixes
+
+- Pi handoff kickoffs now scope managed-worktree-only execution to the pre-integration phase and preserve the governed switch to the target checkout for integration, deferred lifecycle closure, worktree removal, and retrospective.
 
 - ADR-authoring guidance now requires `awf new adr` before any ADR-file mutation, followed by capturing and reading the generated scaffold and editing it in place rather than creating or replacing the record through another mechanism.
 
@@ -496,6 +520,10 @@ query a single version or a range.
 - `awf context` now classifies an absolute request as outside the repository on Windows. The check
   asked only `filepath.IsAbs`, which answers false there for a slash-rooted path, so such a request
   was reported as merely not found. Unix behaviour is unchanged.
+
+### Others
+
+- The repository no longer carries the committed `examples/sundial` adopter or its fixed-path runner and hook orchestration. Focused temporary fixtures now preserve catalog-derived Claude and Pi rendering and drift checks, representative authored-adoption repair, governed Pi output directives, legacy upgrade-through-check composition, and generic nested-adopter behavior without maintaining a second generated tree.
 
 ## [0.22.0] - 2026-07-24
 

@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -8,18 +9,104 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
+
+func TestTopologyDiagnostics(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		err  interface {
+			Diagnostic() (presentation.Diagnostic, error)
+		}
+		want string
+	}{
+		{
+			name: "unchanged refusal",
+			err:  &RefusalError{Category: "topology", Condition: "path exists", ChangedTopology: false, NextActions: []string{"inspect the existing path", "perform safe manual cleanup", "retry add"}},
+			want: "condition: path exists\nstate: topology\n\ndiagnostic:\n  changed:\n    managed topology: no\n  steps:\n    step 1: inspect the existing path\n    step 2: perform safe manual cleanup\n    step 3: retry add\n",
+		},
+		{
+			name: "changed refusal",
+			err:  &RefusalError{Category: "operation", Condition: "removal probe failed", ChangedTopology: true, NextActions: []string{"run `git worktree list --porcelain`", "inspect the managed path and branch", "resolve the reported probe failure", "retry ordinary removal"}, Err: errors.New("probe failed")},
+			want: "condition: removal probe failed\nstate: operation\ncause: probe failed\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: run `git worktree list --porcelain`\n    step 2: inspect the managed path and branch\n    step 3: resolve the reported probe failure\n    step 4: retry ordinary removal\n",
+		},
+		{
+			name: "creation with rollback cause",
+			err:  &CreationError{Message: "creation", Condition: "creation failed", ChangedEffort: true, ChangedTopology: true, Cause: errors.New("add failed"), RollbackCause: errors.New("rollback failed"), Steps: []string{"inspect", "retry `awf effort new --slug demo \"Title  With  Spaces\"`"}},
+			want: "condition: creation failed\nstate: operation\ncause: add failed | rollback failed\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect\n    step 2: retry `awf effort new --slug demo \"Title  With  Spaces\"`\n",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			diagnostic, diagnosticErr := test.err.Diagnostic()
+			if diagnosticErr != nil {
+				t.Fatal(diagnosticErr)
+			}
+			document, documentErr := diagnostic.Document()
+			if documentErr != nil {
+				t.Fatal(documentErr)
+			}
+			var out bytes.Buffer
+			if renderErr := presentation.Render(&out, document); renderErr != nil {
+				t.Fatal(renderErr)
+			}
+			if out.String() != test.want {
+				t.Fatalf("diagnostic = %q, want %q", out.String(), test.want)
+			}
+		})
+	}
+	if _, err := (&CreationError{Steps: []string{"retry\nnow"}}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "line break") {
+		t.Fatalf("creation action line break diagnostic error = %v", err)
+	}
+	for _, action := range []string{"retry\nnow", "retry\rnow"} {
+		if _, err := (&RefusalError{NextActions: []string{action}}).Diagnostic(); err == nil || err.Error() != "presentation value contains a line break" {
+			t.Fatalf("refusal action %q diagnostic error = %v", action, err)
+		}
+	}
+	if (&CreationError{}).Unwrap() != nil {
+		t.Fatal("nil creation cause unwrap was non-nil")
+	}
+	addCause := errors.New("add failed")
+	rollbackCause := errors.New("rollback failed")
+	creation := &CreationError{Cause: addCause, RollbackCause: rollbackCause}
+	if !errors.Is(creation, addCause) || !errors.Is(creation, rollbackCause) {
+		t.Fatalf("creation error lost mechanism identity: %v", creation)
+	}
+	if !errors.Is(&CreationError{Cause: addCause}, addCause) {
+		t.Fatal("creation error lost its sole add mechanism identity")
+	}
+}
+
+func TestDiagnosticsExposeOnlyTypedMechanismCauses(t *testing.T) {
+	mechanism := errors.New("failed Git call")
+	inner := &RefusalError{Category: "operation", Condition: "inner", Err: mechanism}
+	outer := &RefusalError{Category: "operation", Condition: "outer", Err: inner}
+	creation := &CreationError{
+		Message: "legacy creation envelope", Condition: "creation failed", Cause: outer,
+		RollbackCause: &effort.PartialFinishError{Cause: errors.New("failed rollback mechanism")},
+		Steps:         []string{"retry"},
+	}
+	if got, want := mechanismCauseText(creation), "failed Git call | failed rollback mechanism"; got != want {
+		t.Fatalf("mechanism causes = %q, want %q", got, want)
+	}
+	if got := mechanismCauseText(effort.ErrManagedTopologyPresent); got != "" {
+		t.Fatalf("managed topology cause = %q, want empty", got)
+	}
+}
 
 func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
 	cause := errors.New("cause")
-	refused := refusalCause("test", "condition", false, "next", cause)
+	refused := refusalCause("test", "condition", false, cause, "next")
 	if !errors.Is(refused, cause) || !strings.Contains(refused.Error(), "changed topology: no") {
 		t.Fatalf("refusal = %v", refused)
 	}
 	var nilRefusal *RefusalError
 	if nilRefusal.Unwrap() != nil {
 		t.Fatal("nil refusal unwrap was non-nil")
+	}
+	if _, err := (&RefusalError{}).Diagnostic(); err == nil || !strings.Contains(err.Error(), "modeled recovery actions") {
+		t.Fatalf("refusal without modeled actions diagnostic error = %v", err)
 	}
 
 	registered := func(regs ...awfgit.WorktreeRegistration) Runner {

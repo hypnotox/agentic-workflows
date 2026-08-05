@@ -3,6 +3,7 @@ package contextdelivery
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,6 +38,10 @@ func testDeliverBoundaryAndSpill(t *testing.T) {
 	lines := strings.Split(out.String(), "\n")
 	if len(lines) != 3 || lines[0] != "AWF_CONTEXT_SPILL_V1 bytes=8193 format=text" || !filepath.IsAbs(lines[1]) {
 		t.Fatalf("notice %q", out.String())
+	}
+	wantNotice := []byte(fmt.Sprintf("AWF_CONTEXT_SPILL_V1 bytes=8193 format=text\n%s\n", lines[1]))
+	if !bytes.Equal(out.Bytes(), wantNotice) {
+		t.Fatalf("spill protocol bytes = %q, want %q", out.Bytes(), wantNotice)
 	}
 	info, err := os.Stat(lines[1])
 	if err != nil || info.Mode().Perm() != 0o600 {

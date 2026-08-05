@@ -22,6 +22,58 @@ func runOn(t *testing.T, fsys fstest.MapFS) (int, string, string) {
 	return code, out.String(), errb.String()
 }
 
+func TestReleaseVersionProbeContract(t *testing.T) {
+	workflow, err := os.ReadFile("../../.github/workflows/release.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const start = "want=\"$(go run ./cmd/awf version | awk '\n"
+	startAt := strings.Index(string(workflow), start)
+	if startAt < 0 {
+		t.Fatal("release workflow is missing the labeled version parser")
+	}
+	rest := string(workflow[startAt+len(start):])
+	program, _, ok := strings.Cut(rest, "\n          ')\"")
+	if !ok {
+		t.Fatal("release workflow version parser has no closing command substitution")
+	}
+
+	for _, tc := range []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"core version", "version: " + project.Version + "\n", project.Version + "\n"},
+		{"display provenance", "version: " + project.Version + " (v9.9.9-pre, rev abc123)\n", project.Version + "\n"},
+		{"missing", "", ""},
+		{"duplicate", "version: " + project.Version + "\nversion: " + project.Version + "\n", ""},
+		{"malformed label", "version : " + project.Version + "\n", ""},
+		{"legacy unlabeled", "awf " + project.Version + "\n", ""},
+		{"malformed provenance", "version: " + project.Version + " provenance\n", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command("awk", program)
+			cmd.Stdin = strings.NewReader(tc.input)
+			got, runErr := cmd.Output()
+			if tc.want == "" {
+				if runErr == nil {
+					t.Fatal("invalid version output was accepted")
+				}
+				if len(got) != 0 {
+					t.Errorf("invalid version output produced %q", got)
+				}
+				return
+			}
+			if runErr != nil {
+				t.Fatalf("valid version output failed: %v", runErr)
+			}
+			if string(got) != tc.want {
+				t.Errorf("parsed version = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRunRefusesIncompleteBridgeTranche(t *testing.T) {
 	var out, errb bytes.Buffer
 	// Exercise run's incomplete-tranche refusal branch directly with a literal

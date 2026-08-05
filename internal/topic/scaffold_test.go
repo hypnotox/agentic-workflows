@@ -8,10 +8,29 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func scaffoldConfig() *config.Config { return &config.Config{Domains: []string{"rendering"}} }
+
+func TestCreatedDocumentOwnsExactPathList(t *testing.T) {
+	document, err := CreatedDocument([]ScaffoldFile{{Path: "one.yaml"}, {Path: "two.md"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	const want = "topic:\n  created files:\n    one.yaml\n    two.md\n"
+	if out.String() != want {
+		t.Fatalf("document = %q, want %q", out.String(), want)
+	}
+	if _, err := CreatedDocument([]ScaffoldFile{{Path: "bad\npath"}}); err == nil {
+		t.Fatal("invalid created path accepted")
+	}
+}
 
 func TestScaffoldFilesExactPairAndSlug(t *testing.T) {
 	files, err := ScaffoldFiles(t.TempDir(), scaffoldConfig(), "rendering", "  Current State: Topics!  ")

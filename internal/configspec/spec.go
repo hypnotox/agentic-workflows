@@ -125,7 +125,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "contextIgnore", Type: "string list", Default: "none",
-		Description:  "Anchored doublestar globs for tracked paths that context and coverage should exclude (config source, docs, the example adopter, top-level non-code files). Matching paths are ineligible for directory expansion and coverage, including staged queries, alongside awf's own generated outputs. An empty or absent list adds no exclusion.",
+		Description:  "Anchored doublestar globs for tracked paths that context and coverage should exclude (config source, docs, top-level non-code files). Matching paths are ineligible for directory expansion and coverage, including staged queries, alongside awf's own generated outputs. An empty or absent list adds no exclusion.",
 		Availability: "Always; consulted by working and staged context path expansion and coverage.",
 	},
 	{

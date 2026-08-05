@@ -68,8 +68,7 @@ instead of rotting.
 - **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
   script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
   is marked edit-in-place, so the verbs you add there survive every `awf render` while awf
-  keeps the rest current. awf itself keeps a from-source runner instead; the
-  [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
+  keeps the rest current. awf itself keeps a from-source runner instead.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
 - **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state, `memory.md`, and optional mutable protocol-2 `activity.json`; optional managed worktrees use Git-authoritative path, registration, and branch topology. Activity is fallible Pi presence, never authority or a lock, and older binaries need not read an effort after it exists. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
@@ -87,9 +86,9 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. Selecting core `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes advisory Remote Pi metadata plus a negotiated temporary effort name. No checkout validation, CWD replacement, queue, or local TUI presentation is involved; detach and restart restore base identity. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree. Existing adopters opt in with `awf enable skill effort-workflow`.
+activity stays outside parent model content. Selecting core `effort-workflow` renders a target-neutral guide for entering the exact existing awf-managed worktree through native persistent checkout tooling. Pi additionally derives the `using_effort` tool and companion skill: direct attach or detach leaves the runtime at repository root, heartbeats after turns, and injects fixed relative memory and optional managed-worktree paths before model calls. It publishes complete advisory Remote Pi metadata independently from a capability-gated display-only effort suffix, answers replay requests, and clears the suffix on lifecycle boundaries without reading or changing routing identity. Missing or withdrawn suffix support degrades to metadata-only behavior. No checkout validation, CWD replacement, queue, or local TUI presentation is involved. Non-Pi targets never receive this tool, claim activity, or create a parallel harness-owned worktree. Existing adopters opt in with `awf enable skill effort-workflow`.
 
-A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose for a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history, and submits the kickoff unchanged through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
+A separate `handoff_session` tool accepts only exact bounded `{kickoff}` prose for a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history, and submits one visible default-rendered `agent-handoff` custom message whose content is `Agent-authored handoff context; this is not user input:` followed by two newlines and the unchanged kickoff. Replacement-bound `sendMessage` triggers the turn; Pi's current provider adapter still converts custom content to a user-role request. Unsupported modes reject, cleanup is manual, and automatic or replacement failure leaves that same envelope in the editor.
 
 ## The workflow it renders
 
@@ -254,14 +253,6 @@ files are drift-checked; use `awf render` to restore missing or modified copies.
 the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
 
-## Worked example
-
-A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
-a small fictional Go CLI with every catalog artifact enabled (authored parts,
-domains, ADRs, a plan) and every rendered file committed, kept in sync by this
-repository's own checks. Browse it to see exactly what an adoption looks like on
-disk.
-
 ## Commands
 
 | Command | Purpose |
@@ -276,13 +267,13 @@ disk.
 | `awf new plan "<title>"` | Scaffold a dated `plan-v2` plan under `docs/plans/`. |
 | `awf read plan <plan> <P[.T]>` | Resolve an exact plan filename/stem and print one phase or task executable closure with selected Decisions and phase outcomes; marker-absent historical plans remain legacy and are not projected. |
 | `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
-| `awf effort new --slug <slug> "<outcome>" [--json]` | Require a caller-supplied canonical new slug through 32 bytes and publish unchanged schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; existing residents through 63 bytes remain usable, and `list` and `show` expose the same protocol. |
+| `awf effort new --slug <slug> "<outcome>" [--no-worktree] [--base <ref>]` | Require a caller-supplied canonical new slug through 32 bytes and publish unchanged schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; existing residents through 63 bytes remain usable, and `list` and `show` provide readable text. Activity remains the JSON-only protocol. |
 | `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. Pi's derived `using_effort` support remains capability-gated and advisory. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. It also replays stale-ADR authorization for schema-31-and-later merge commits. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report tier-0 directory orientation and tier-1 exact/staged/range file relationships (`State`, `Touches`, `Proofs`), with per-topic counts and eight named `--show` facets. Only `artifacts` refines groups; `--full` is the facet union. Human output is capped at 8 KiB with secure caller-owned spill delivery above it; `--uncovered` shares the cap. |
-| `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
+| `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim as deterministic labeled text; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`. |
 | `awf check repo prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf check repo memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
 | `awf check staged state` | Validate current-state authority over the HEAD-to-index transition. |

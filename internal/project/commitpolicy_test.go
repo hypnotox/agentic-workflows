@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -12,9 +13,28 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitpolicy"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
+
+func documentText(t *testing.T, document presentation.Document) string {
+	t.Helper()
+	var output bytes.Buffer
+	if err := presentation.Render(&output, document); err != nil {
+		t.Fatal(err)
+	}
+	return output.String()
+}
+
+func commitPolicyPresentationText(t *testing.T, p *Project, outcome commitpolicy.Outcome) string {
+	t.Helper()
+	document, err := p.CommitPolicyPresentation(outcome)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return documentText(t, document)
+}
 
 type policyRepoStub struct {
 	commits   []commitpolicy.Commit
@@ -46,12 +66,12 @@ func TestVerifyCommitPolicyDisabledAndConfigured(t *testing.T) {
 	if !out.OK() || out.Disabled {
 		t.Fatalf("configured outcome = %#v", out)
 	}
-	if !strings.Contains(p.CommitPolicyText(out), "conform") {
-		t.Fatal(p.CommitPolicyText(out))
+	if !strings.Contains(commitPolicyPresentationText(t, p, out), "conform") {
+		t.Fatal(commitPolicyPresentationText(t, p, out))
 	}
 	p.Cfg.CommitPolicy = nil
 	out = p.VerifyCommitPolicy(ctx, []string{head})
-	if !out.Disabled || !strings.Contains(p.CommitPolicyText(out), "disabled") {
+	if !out.Disabled || !strings.Contains(commitPolicyPresentationText(t, p, out), "disabled") {
 		t.Fatalf("disabled outcome = %#v", out)
 	}
 	p.Cfg.CommitPolicy = &config.CommitPolicyConfig{GrandfatheredThrough: base, AllowedIdentities: []config.CommitPolicyIdentity{{Name: "T", Email: "t@example.com"}}}
@@ -70,8 +90,8 @@ func TestVerifyCommitPolicyDisabledAndConfigured(t *testing.T) {
 	if len(out.Violations) != 1 || out.Violations[0].Field != commitpolicy.SignatureField {
 		t.Fatalf("signature outcome = %#v", out)
 	}
-	if !strings.Contains(p.CommitPolicyText(out), "allowed signers") {
-		t.Fatal(p.CommitPolicyText(out))
+	if !strings.Contains(commitPolicyPresentationText(t, p, out), "signature") {
+		t.Fatal(commitPolicyPresentationText(t, p, out))
 	}
 	p.repo = nil
 	out = p.VerifyCommitPolicy(ctx, []string{head})
@@ -160,7 +180,11 @@ func TestExactCommitEnforcement(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		text, outcome := VerifyCommitPolicyAt(ctx, linkedRoot, targets)
+		document, outcome, err := VerifyCommitPolicyAt(ctx, linkedRoot, targets)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := documentText(t, document)
 		if afterHead := gitfixture.NativeRevParse(t, linked, "HEAD"); afterHead != beforeHead {
 			t.Fatalf("verifier moved HEAD: %s -> %s", beforeHead, afterHead)
 		}
@@ -199,14 +223,18 @@ func TestExactCommitEnforcement(t *testing.T) {
 	if rangeCommitOne == rangeCommitTwo || tagCommit == directCommit {
 		t.Fatal("distinct target fixtures collapsed")
 	}
-	text, outcome := VerifyCommitPolicyAt(ctx, primary.Root(), []string{primaryHead})
-	if outcome.OK() || len(outcome.Violations) != 2 || !strings.Contains(text, "identity") {
+	document, outcome, err := VerifyCommitPolicyAt(ctx, primary.Root(), []string{primaryHead})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := documentText(t, document)
+	if outcome.OK() || len(outcome.Violations) != 2 || !strings.Contains(text, "author") {
 		t.Fatalf("primary policy = %#v, %q", outcome, text)
 	}
 	_, wrongKey := gitfixture.NativeSSHKey(t)
 	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(allowedProvenance{"Direct", "direct@example.com", wrongKey}))
 	text, outcome = assertUnchanged([]string{directCommit})
-	if outcome.OK() || len(outcome.Violations) != 1 || outcome.Violations[0].Field != commitpolicy.SignatureField || !strings.Contains(text, "allowed signers") {
+	if outcome.OK() || len(outcome.Violations) != 1 || outcome.Violations[0].Field != commitpolicy.SignatureField || !strings.Contains(text, "signature") {
 		t.Fatalf("wrong signer = %#v, %q", outcome, text)
 	}
 	testsupport.WriteAwfConfig(t, linkedRoot, linkedPolicy(directPolicy))
@@ -238,7 +266,11 @@ func TestExactCommitEnforcement(t *testing.T) {
 			testsupport.WriteAwfConfig(t, fixture.Root(), "prefix: x\nintegrationBranch: master\ntargets: [pi]\ncommitPolicy:\n  grandfatheredThrough: "+formatBase+"\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n")
 			beforeHead := gitfixture.NativeRevParse(t, fixture, "HEAD")
 			beforeIndex := gitfixture.NativeWriteTree(t, fixture)
-			text, outcome := VerifyCommitPolicyAt(ctx, fixture.Root(), []string{"HEAD", formatBase + "..HEAD"})
+			document, outcome, err := VerifyCommitPolicyAt(ctx, fixture.Root(), []string{"HEAD", formatBase + "..HEAD"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := documentText(t, document)
 			if !outcome.OK() || !strings.Contains(text, "conform") {
 				t.Fatalf("%s project verifier = %#v, %q", format, outcome, text)
 			}
@@ -254,14 +286,22 @@ func TestExactCommitEnforcement(t *testing.T) {
 }
 
 func TestVerifyCommitPolicyAtReturnsTypedRootAndConfigRefusals(t *testing.T) {
-	text, out := VerifyCommitPolicyAt(testContext(t), t.TempDir(), []string{"HEAD"})
-	if out.Refusal == nil || out.Refusal.Category != commitpolicy.LinkedWorktreeFailure || !strings.Contains(text, "refs changed: false") {
+	document, out, err := VerifyCommitPolicyAt(testContext(t), t.TempDir(), []string{"HEAD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := documentText(t, document)
+	if out.Refusal == nil || out.Refusal.Category != commitpolicy.LinkedWorktreeFailure || !strings.Contains(text, "refs: false") {
 		t.Fatalf("root refusal = %#v, %q", out, text)
 	}
 	fixture := gitfixture.InitNativeAt(t, t.TempDir())
 	gitfixture.NativeCommitAllowEmpty(t, fixture, "base")
 	testsupport.WriteFile(t, filepath.Join(fixture.Root(), ".awf", "config.yaml"), "bad: [")
-	text, out = VerifyCommitPolicyAt(testContext(t), fixture.Root(), []string{"HEAD"})
+	document, out, err = VerifyCommitPolicyAt(testContext(t), fixture.Root(), []string{"HEAD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text = documentText(t, document)
 	if out.Refusal == nil || out.Refusal.Category != commitpolicy.ConfigFailure || !strings.Contains(text, "load commitPolicy") {
 		t.Fatalf("config refusal = %#v, %q", out, text)
 	}

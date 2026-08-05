@@ -34,7 +34,7 @@ func runChangelog(version, since, rng string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(stdout, e.Raw)
+		return writeChangelogPayload(stdout, e.Raw)
 	case since != "":
 		entries, err := changelog.Load(changelogfs.FS)
 		if err != nil { // coverage-ignore: changelog.Load over the embedded FS cannot fail at runtime
@@ -45,11 +45,12 @@ func runChangelog(version, since, rng string, stdout io.Writer) error {
 			return err
 		}
 		if len(matched) == 0 {
-			fmt.Fprintf(stdout, "no releases since %s\n", since)
-			return nil
+			return writeStatus(stdout, "no releases since "+since)
 		}
 		for _, e := range matched {
-			fmt.Fprintln(stdout, e.Raw)
+			if err := writeChangelogPayload(stdout, e.Raw+"\n"); err != nil {
+				return err
+			}
 		}
 	case rng != "":
 		from, to, perr := awfgit.ParseRange(rng, false)
@@ -65,14 +66,23 @@ func runChangelog(version, since, rng string, stdout io.Writer) error {
 			return err
 		}
 		for _, e := range matched {
-			fmt.Fprintln(stdout, e.Raw)
+			if err := writeChangelogPayload(stdout, e.Raw+"\n"); err != nil {
+				return err
+			}
 		}
 	default:
 		b, err := fs.ReadFile(changelogfs.FS, "CHANGELOG.md")
 		if err != nil { // coverage-ignore: same embedded-asset guarantee as changelog.Load above
 			return err
 		}
-		fmt.Fprint(stdout, string(b))
+		return writeChangelogPayload(stdout, string(b))
 	}
 	return nil
+}
+
+// writeChangelogPayload writes authored changelog bytes unchanged. It is a
+// deliberately closed successful payload bypass.
+func writeChangelogPayload(stdout io.Writer, payload string) error {
+	_, err := io.WriteString(stdout, payload)
+	return err
 }

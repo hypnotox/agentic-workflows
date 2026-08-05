@@ -2,14 +2,18 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/initspec"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -33,6 +37,20 @@ func readInitConfig(t *testing.T, root string) string {
 // TestInitDescribeReadOnly asserts `awf init --describe` prints the descriptor
 // schema as JSON and writes nothing (no .awf/ created).
 // invariant: tooling/context-and-topic:describe-read-only (TestInitDescribeReadOnly)
+func TestWriteInitDescriptorProtocolBytesAndErrors(t *testing.T) {
+	const payload = `{"descriptors":["x"]}`
+	var out bytes.Buffer
+	if err := writeInitDescriptorProtocol(&out, []byte(payload+"\n")); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), payload+"\n"; got != want {
+		t.Fatalf("descriptor protocol = %q, want exact %q", got, want)
+	}
+	if err := writeInitDescriptorProtocol(errorWriter{}, []byte(payload)); err == nil {
+		t.Fatal("descriptor write error was not propagated")
+	}
+}
+
 func TestInitDescribeReadOnly(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -40,25 +58,12 @@ func TestInitDescribeReadOnly(t *testing.T) {
 	if code := run([]string{"awf", "init", "--describe"}, &out, &errb); code != 0 {
 		t.Fatalf("init --describe: exit %d (%s)", code, errb.String())
 	}
-	var parsed struct {
-		Descriptors []map[string]any `json:"descriptors"`
+	want, err := os.ReadFile(filepath.Join("testdata", "init-describe.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := json.Unmarshal(out.Bytes(), &parsed); err != nil {
-		t.Fatalf("describe output is not valid JSON: %v\n%s", err, out.String())
-	}
-	if len(parsed.Descriptors) == 0 {
-		t.Error("describe emitted no descriptors")
-	}
-	var hasTrimOptions bool
-	for _, d := range parsed.Descriptors {
-		if d["target"] == "catalog-skills" {
-			if opts, ok := d["options"].([]any); ok && len(opts) > 0 {
-				hasTrimOptions = true
-			}
-		}
-	}
-	if !hasTrimOptions {
-		t.Errorf("describe missing computed catalog-skills options:\n%s", out.String())
+	if !bytes.Equal(out.Bytes(), want) || errb.Len() != 0 {
+		t.Fatalf("init --describe streams stdout=%q stderr=%q, want exact checked-in protocol", out.String(), errb.String())
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf")); !os.IsNotExist(err) {
 		t.Errorf(".awf/ should not exist after --describe (err=%v)", err)
@@ -203,7 +208,7 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	if strings.Contains(out.String(), "gateCmd:") {
 		t.Errorf("init prompted for descriptors it cannot apply:\n%s", out.String())
 	}
-	if !strings.Contains(out.String(), "keeping it") {
+	if !strings.Contains(out.String(), "config action: kept and re-rendered") {
 		t.Errorf("init did not say the existing config is kept:\n%s", out.String())
 	}
 	if cfg := readInitConfig(t, root); strings.Contains(cfg, "answered") {
@@ -262,8 +267,8 @@ func TestInitCatalogTrimClosesChainSelection(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "note: also enabled skill exploring") {
-		t.Errorf("expected advisory closure note, got %q", out.String())
+	if !strings.Contains(out.String(), "enabled dependencies:\n") || !strings.Contains(out.String(), "      skill exploring\n") {
+		t.Errorf("expected dependency closure change, got %q", out.String())
 	}
 	cfg := readInitConfig(t, root)
 	for _, want := range []string{"- brainstorming", "- exploring"} {
@@ -300,8 +305,96 @@ func TestInitCommitScopesAnswer(t *testing.T) {
 	}
 }
 
-// After the chained sync succeeds, init prints the render-completeness notes
-// (same rendering as awf check, ADR-0045) and a fixed next-steps block.
+// After the chained sync succeeds, init presents render-completeness notes
+// and each fixed next action as its own ordered step.
+type nthInitErrorWriter struct {
+	writes int
+	failAt int
+}
+
+func (w *nthInitErrorWriter) Write(p []byte) (int, error) {
+	w.writes++
+	if w.writes == w.failAt {
+		return 0, errors.New("write failed")
+	}
+	return len(p), nil
+}
+
+func TestFinishInitSyncFailureRollsBackOnlyScaffoldedConfig(t *testing.T) {
+	for _, scaffolded := range []bool{false, true} {
+		t.Run(strconv.FormatBool(scaffolded), func(t *testing.T) {
+			cfgPath := filepath.Join(t.TempDir(), ".awf", "config.yaml")
+			if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(cfgPath, []byte("config"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			want := errors.New("sync failed")
+			if err := finishInitSyncFailure(cfgPath, scaffolded, want); !errors.Is(err, want) {
+				t.Fatalf("sync error = %v, want %v", err, want)
+			}
+			_, err := os.Stat(cfgPath)
+			if scaffolded && !os.IsNotExist(err) {
+				t.Fatalf("scaffolded config survived rollback: %v", err)
+			}
+			if !scaffolded && err != nil {
+				t.Fatalf("existing config was removed: %v", err)
+			}
+		})
+	}
+}
+
+func TestInitProjectLoaderPropagatesFailure(t *testing.T) {
+	forceNonInteractive(t)
+	want := errors.New("loader failed")
+	err := runInitWithProjectLoader(testContext(t), scaffoldProject(t), true, false, nil, "", io.Discard, func(string) (*project.Loader, error) {
+		return nil, want
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("loader error = %v, want %v", err, want)
+	}
+}
+
+func TestRenderInitOutcomePropagatesFailures(t *testing.T) {
+	want := errors.New("advisory failed")
+	if err := renderInitOutcome(testContext(t), nil, initspec.Outcome{ConfigPath: "config"}, io.Discard, func(context.Context, *project.Project) ([]string, error) {
+		return nil, want
+	}); !errors.Is(err, want) {
+		t.Fatalf("advisory error = %v, want %v", err, want)
+	}
+	advisories := func(context.Context, *project.Project) ([]string, error) { return nil, nil }
+	if err := renderInitOutcome(testContext(t), nil, initspec.Outcome{ConfigPath: "bad\npath"}, io.Discard, advisories); err == nil {
+		t.Fatal("invalid outcome accepted")
+	}
+	if err := renderInitOutcome(testContext(t), nil, initspec.Outcome{ConfigPath: "config"}, errorWriter{}, advisories); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("writer error = %v", err)
+	}
+}
+
+func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
+	forceNonInteractive(t)
+	for _, test := range []struct {
+		name   string
+		root   func(*testing.T) string
+		sets   []string
+		failAt int
+	}{
+		{name: "existing config outcome", root: scaffoldProject, failAt: 1},
+		{name: "ignored answers outcome", root: scaffoldProject, sets: []string{"gateCmd=go test ./..."}, failAt: 1},
+		{name: "scaffold outcome", root: (*testing.T).TempDir, failAt: 1},
+		{name: "closure outcome", root: (*testing.T).TempDir, sets: []string{"skills=brainstorming"}, failAt: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			writer := &nthInitErrorWriter{failAt: test.failAt}
+			err := runInit(testContext(t), test.root(t), true, false, test.sets, "", writer)
+			if err == nil || !strings.Contains(err.Error(), "write failed") {
+				t.Fatalf("write error = %v after %d writes", err, writer.writes)
+			}
+		})
+	}
+}
+
 func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -311,10 +404,14 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		t.Fatalf("init: exit %d (%s)", code, errb.String())
 	}
 	for _, want := range []string{
+		"status: initialization completed",
 		"references unset vars",
-		"next steps:",
-		".awf/parts/agents-doc/identity.md",
-		".awf/hooks/",
+		"next actions:",
+		"step 1: continue with the rendered project state",
+		"step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render",
+		"step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render",
+		"step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself",
+		"step 5: commit .awf/ and the rendered files together",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("init output missing %q:\n%s", want, out.String())

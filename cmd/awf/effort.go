@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -14,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
@@ -94,43 +94,43 @@ func runEffort(c *cmdCtx, compose composeEffort) error {
 				return err
 			}
 			absent := worktree.Result{Condition: "no managed worktree", ChangedTopology: false, NextAction: "continue the effort in " + service.InvokingRoot()}
-			return writeEffortNew(c.stdout, record, absent, c.inv.bools["--json"])
+			return writeEffortNew(c.stdout, record, absent)
 		}
 		record, result, err := manager.NewEffort(c.ctx, input, c.inv.values["--base"])
 		if err != nil {
 			return err
 		}
-		return writeEffortNew(c.stdout, record, result, c.inv.bools["--json"])
+		return writeEffortNew(c.stdout, record, result)
 	case "list":
 		records, err := service.List()
 		if err != nil {
 			return err
 		}
-		if c.inv.bools["--json"] {
-			return writeEffortJSON(c.stdout, struct {
-				SchemaVersion int             `json:"schemaVersion"`
-				Efforts       []effort.Record `json:"efforts"`
-			}{SchemaVersion: effort.SchemaVersion, Efforts: records})
+		document, err := effort.ListDocument(records)
+		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+			return err
 		}
-		for _, record := range records {
-			if err := writeEffortText(c.stdout, record); err != nil {
-				return err
-			}
-		}
-		return nil
+		return presentation.Render(c.stdout, document)
 	case "show":
 		record, err := service.Show(selected)
 		if err != nil {
 			return err
 		}
-		return writeEffort(c.stdout, record, c.inv.bools["--json"])
+		return writeEffort(c.stdout, record)
 	case "finish":
 		result, err := service.Finish(c.ctx, selected)
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(c.stdout, "effort %s finished; changed active rename: %s; changed cleanup: %s; next action: continue without this finished effort\n", selected, yesNo(result.Renamed), yesNo(result.Cleaned))
-		return err
+		mutation, err := result.FinishMutation(selected)
+		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+			return err
+		}
+		document, err := mutation.Document()
+		if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+			return err
+		}
+		return presentation.Render(c.stdout, document)
 	case "worktree":
 		action, selected := c.inv.positionals[0], c.inv.positionals[1]
 		var result worktree.Result
@@ -182,7 +182,7 @@ func runEffortActivity(c *cmdCtx, service *effort.Service) effort.ActivityReply 
 	}
 }
 func writeActivityReply(out io.Writer, reply effort.ActivityReply) error {
-	return writeEffortJSON(out, reply)
+	return writeEffortActivityProtocol(out, reply)
 }
 
 func integrationGateCommand(root string) (string, error) {
@@ -276,59 +276,52 @@ func activityRequiredFlags(action string) []string {
 		return nil
 	}
 }
-func writeWorktreeResult(out io.Writer, result worktree.Result, err error) error {
+func writeWorktreeResult(out io.Writer, result worktree.Result, operationErr error) error {
+	if operationErr != nil {
+		return operationErr
+	}
+	mutation, err := result.Mutation()
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(out, result.String())
-	return err
-}
-
-func writeEffort(out io.Writer, record effort.Record, jsonOutput bool) error {
-	if jsonOutput {
-		return writeEffortJSON(out, struct {
-			SchemaVersion int           `json:"schemaVersion"`
-			Effort        effort.Record `json:"effort"`
-		}{SchemaVersion: effort.SchemaVersion, Effort: record})
+	document, err := mutation.Document()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
 	}
-	return writeEffortText(out, record)
+	return presentation.Render(out, document)
 }
 
-// writeEffortNew emits the `new` reply: the effort facts with the managed
-// worktree facts, then the mutation-protocol line from the one Result
-// formatter. An empty Result.Path is the explicit-absence form that
-// --no-worktree produces: text `worktree=none`, JSON `"worktree":null`.
-func writeEffortNew(out io.Writer, record effort.Record, result worktree.Result, jsonOutput bool) error {
-	if jsonOutput {
-		reply := struct {
-			SchemaVersion int                  `json:"schemaVersion"`
-			Effort        effort.Record        `json:"effort"`
-			Worktree      *effortWorktreeFacts `json:"worktree"`
-		}{SchemaVersion: effort.SchemaVersion, Effort: record}
-		if result.Path != "" {
-			reply.Worktree = &effortWorktreeFacts{Path: result.Path, Branch: result.Branch}
-		}
-		return writeEffortJSON(out, reply)
+func writeEffort(out io.Writer, record effort.Record) error {
+	detail, err := record.Detail()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
 	}
-	facts := "worktree=none"
-	if result.Path != "" {
-		facts = "worktree=" + result.Path + " branch=" + result.Branch
+	document, err := detail.Document()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
 	}
-	_, err := fmt.Fprintf(out, "effort %s title=%q memory=%s %s\n%s\n", record.Slug, record.Title, record.MemoryPath, facts, result.String())
-	return err
+	return presentation.Render(out, document)
 }
 
-type effortWorktreeFacts struct {
-	Path   string `json:"path"`
-	Branch string `json:"branch"`
+func writeEffortNew(out io.Writer, record effort.Record, result worktree.Result) error {
+	mutation, err := result.Mutation()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
+	}
+	mutation, err = record.NewEffortMutation(mutation)
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
+	}
+	document, err := mutation.Document()
+	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+		return err
+	}
+	return presentation.Render(out, document)
 }
 
-func writeEffortText(out io.Writer, record effort.Record) error {
-	_, err := fmt.Fprintf(out, "effort %s title=%q memory=%s\n", record.Slug, record.Title, record.MemoryPath)
-	return err
-}
-
-func writeEffortJSON(out io.Writer, value any) error {
+// writeEffortActivityProtocol writes the documented activity JSON protocol.
+// It is a closed successful protocol bypass.
+func writeEffortActivityProtocol(out io.Writer, value any) error {
 	raw, err := json.Marshal(value)
 	if err != nil { // coverage-ignore: fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary
 		return err
@@ -336,11 +329,4 @@ func writeEffortJSON(out io.Writer, value any) error {
 	raw = append(raw, '\n')
 	_, err = out.Write(raw)
 	return err
-}
-
-func yesNo(value bool) string {
-	if value {
-		return "yes"
-	}
-	return "no"
 }

@@ -3,7 +3,6 @@ package migrate
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -18,9 +17,9 @@ const defaultMaxTopicsPerPath = 8
 // and currentState.topicFanout are removed (ADR-0183), so topic coverage and
 // fan-out always evaluate at ranks fixed in code. config.yaml is strict-parsed,
 // so a surviving key would hard-fail on the new binary rather than warn. Each
-// removal is announced for the applyDropAuditBase reason: deleting a value an
-// adopter deliberately set must be readable from command output rather than
-// recovered by git archaeology. The edit routes through RemoveMappingKey because
+// removal collects a change fact for the applyDropAuditBase reason: deleting a
+// value an adopter deliberately set must remain available to terminal-owner
+// presentation rather than recovered by git archaeology. The edit routes through RemoveMappingKey because
 // both keys are nested under currentState, which RemoveKey cannot reach.
 //
 // When the two keys were the block's only children, RemoveMappingKey drops the
@@ -34,17 +33,17 @@ const defaultMaxTopicsPerPath = 8
 //
 // The announcement below still says the seed keeps coverage and fan-out
 // evaluating. That wording is stale for the same reason and is retained
-// deliberately: it is command output and therefore behaviour, frozen by ADR-0192
+// deliberately: terminal-owner presentation is behaviour, frozen by ADR-0192
 // item 7. Nothing would go red if it were reworded, because the migration test
 // pins only the announcement prefix by substring and never the trailing clause,
 // which is precisely why retaining it has to be a recorded choice rather than
 // something the suite backstops.
-func applyDropSeveritySettings(root string, w io.Writer) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+func applyDropSeveritySettings(root string, w *Changes) error {
+	return editConfig(root, w, func(src []byte, planned *Changes) ([]byte, error) {
 		// The removals run first so a malformed config surfaces its parse error
 		// here, on the path every tree takes, rather than from one of the
 		// presence probes below.
-		out, err := dropSeverityKeys(src, w)
+		out, err := dropSeverityKeys(src, planned)
 		if err != nil {
 			return nil, err
 		}
@@ -70,11 +69,11 @@ func applyDropSeveritySettings(root string, w io.Writer) error {
 		if err != nil { // coverage-ignore: src parsed above and its currentState is a mapping, so neither error path is reachable
 			return nil, err
 		}
-		out, err = dropSeverityKeys(seeded, io.Discard) // already announced on the first pass
+		out, err = dropSeverityKeys(seeded, &Changes{}) // already announced on the first pass
 		if err != nil {                                 // coverage-ignore: seeded is a re-encode of bytes whose removals already succeeded
 			return nil, err
 		}
-		fmt.Fprintf(w, "drop-severity-settings: set currentState.%s to %d, keeping coverage and fan-out evaluating\n", defaultMaxTopicsPerPathKey, defaultMaxTopicsPerPath)
+		planned.Add(fmt.Sprintf("drop-severity-settings: set currentState.%s to %d, keeping coverage and fan-out evaluating\n", defaultMaxTopicsPerPathKey, defaultMaxTopicsPerPath))
 		return out, nil
 	})
 }
@@ -84,7 +83,7 @@ const defaultMaxTopicsPerPathKey = "maxTopicsPerPath"
 
 // dropSeverityKeys removes both retired keys, announcing each removal it makes.
 // It is shared by the announcing first pass and the silent re-run the seed needs.
-func dropSeverityKeys(src []byte, w io.Writer) ([]byte, error) {
+func dropSeverityKeys(src []byte, w *Changes) ([]byte, error) {
 	out := src
 	for _, key := range []string{"topicCoverage", "topicFanout"} {
 		next, err := config.RemoveMappingKey(out, "currentState", key)
@@ -92,7 +91,7 @@ func dropSeverityKeys(src []byte, w io.Writer) ([]byte, error) {
 			return nil, err
 		}
 		if !bytes.Equal(next, out) {
-			fmt.Fprintf(w, "drop-severity-settings: removed currentState.%s\n", key)
+			w.Add(fmt.Sprintf("drop-severity-settings: removed currentState.%s\n", key))
 		}
 		out = next
 	}

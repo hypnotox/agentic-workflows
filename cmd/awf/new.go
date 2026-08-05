@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"gopkg.in/yaml.v3"
@@ -51,8 +52,7 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(stdout, path)
-	return nil
+	return writeStatus(stdout, "created: "+path)
 }
 
 func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Writer) error {
@@ -70,8 +70,7 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(stdout, path)
-	return nil
+	return writeStatus(stdout, "created: "+path)
 }
 
 func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) error {
@@ -107,10 +106,11 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 			return rollbackTopicScaffold(err, createdFiles, createdDirs)
 		}
 	}
-	for _, file := range files {
-		fmt.Fprintln(stdout, file.Path)
+	document, err := topic.CreatedDocument(files)
+	if err != nil { // coverage-ignore: ScaffoldFiles returns validated repository-relative single-line paths
+		return err
 	}
-	return nil
+	return presentation.Render(stdout, document)
 }
 
 type topicWriteCloser interface {

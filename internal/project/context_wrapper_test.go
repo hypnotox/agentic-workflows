@@ -50,7 +50,8 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T, helpe
 	}
 
 	stdout, stderr, status := run("normal")
-	if stdout != "context: normal\n\n" || stderr != "" || status != 0 {
+	const ordinaryContext = "context: normal\nselection: explicit\n\nrequests:\n  status: none\n\nauthority:\n  topics: none\n"
+	if stdout != ordinaryContext || stderr != "" || status != 0 {
 		t.Fatalf("normal stdout=%q stderr=%q status=%d", stdout, stderr, status)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "local", "context-spills.log")); !os.IsNotExist(err) {
@@ -166,9 +167,6 @@ func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T, helper stri
 	if err := os.WriteFile(filepath.Join(fakeBin, "go"), []byte(goScript), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(root, "examples", "sundial"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	local := filepath.Join(root, ".awf", "local")
 	if err := os.Mkdir(local, 0o700); err != nil {
 		t.Fatal(err)
@@ -232,7 +230,7 @@ func contextRunnerFixture(t *testing.T, helper string) string {
 	}
 	fakeAwf := `#!/usr/bin/env bash
 case "${FAKE_MODE:-normal}" in
-  normal) printf 'context: normal\n\n' ;;
+  normal) printf 'context: normal\nselection: explicit\n\nrequests:\n  status: none\n\nauthority:\n  topics: none\n' ;;
   spill)
     : >"$PWD/spill.txt"
     printf 'AWF_CONTEXT_SPILL_V1 bytes=9000 format=text\n%s\n' "$PWD/spill.txt"

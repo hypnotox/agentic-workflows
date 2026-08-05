@@ -3,7 +3,7 @@
 
 How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
 
-**Applicability:** Global topic within owning domain selectors `internal/execution/**`. Run `awf topic code-design/outcome-modeling --coverage` for current matched paths and marker sites.
+**Applicability:** Global topic within owning domain selectors `internal/execution/**`, `internal/presentation/**`. Run `awf topic code-design/outcome-modeling --coverage` for current matched paths and marker sites.
 
 This topic governs outcomes introduced by new work and sites deliberately converted under
 its authority, failure and success alike. Existing message-text identities, shallow
@@ -28,13 +28,14 @@ from the closed state-kind vocabulary (`cleanliness`, `operation`, `topology`, `
 state rather than what the command attempted (a failed mechanism call is itself an
 observed state whose detail rides along as the cause), one boolean changed-observation per
 axis whose movement would make a naive retry unsafe, an ordered remedy whose steps are
-each independently executable and render on one line (numbered `1) ... 2) ...` only when
-more than one), and a cause present exactly when the condition observes a failed call.
+each independently executable and render through central `Steps` as `step 1: ...`, `step 2: ...`,
+and so on, and a cause present exactly when the condition observes a failed call.
 When no axis moved, the steps address only the condition; when any axis moved, the steps
 address the residue before retrying.
 Origin: ADR-0199
+Revised-by: ADR-0234
 Backing: unbacked
-Verify: For each changed outcome site, check the category against the vocabulary, the condition's tense against observed state, each changed axis against what the operation could move, the rendering against the one-line numbered form, and the remedy against the movement rule: condition-only steps when nothing moved, residue-first steps when anything did.
+Verify: For each changed outcome site, check the category against the vocabulary, the condition's tense against observed state, each changed axis against what the operation could move, rendering through central Steps with independently executable numbered entries, and the remedy against the movement rule: condition-only steps when nothing moved, residue-first steps when anything did.
 ### `invariant: typed-outcome-for-caller-branching`
 
 A cause a caller must branch on in new or deliberately converted code is a distinct error

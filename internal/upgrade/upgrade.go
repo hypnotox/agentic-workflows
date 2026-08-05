@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 
@@ -63,23 +62,23 @@ func verifyWithFilesystem(ctx context.Context, root string, att *manifest.Bridge
 // consumed attestation and discards its historical routing payload. The lock
 // replacement is the transaction commit point; a pre-commit
 // failure rolls back, a post-commit failure leaves a recoverable journal.
-func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock, log io.Writer) error {
+func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock) (Outcome, error) {
 	state, err := lock.AuthorityState()
 	if err != nil {
-		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; run `awf upgrade --recover` if a journal exists: %w", err)
+		return Outcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; run `awf upgrade --recover` if a journal exists: %w", err)
 	}
 	if state != manifest.AuthorityBridge {
-		return errors.New("no current-state attestation to consume")
+		return Outcome{}, errors.New("no current-state attestation to consume")
 	}
 	att := lock.BridgeAttestation
 	if err := Verify(ctx, root, att); err != nil {
-		return err
+		return Outcome{}, err
 	}
 	ops, err := cutoverOperations(root, lock)
 	if err != nil { // coverage-ignore: Verify already required the approval file present via the sealed digest, so cutoverOperations' only reachable error branch cannot fire here
-		return err
+		return Outcome{}, err
 	}
-	return commitTransaction(root, ops, log)
+	return commitTransaction(root, ops)
 }
 
 // ResetLegacyResidents commits a schema advance that discards resident state,
@@ -96,10 +95,10 @@ func FinalUpgrade(ctx context.Context, root string, lock *manifest.Lock, log io.
 // the schema generation is stamped, exactly as every other migration leaves the
 // release version to the terminal sync; the generation alone is what makes an
 // older binary refuse this tree.
-func ResetLegacyResidents(root string, residents []string, schema int, log io.Writer) error {
+func ResetLegacyResidents(root string, residents []string, schema int) (Outcome, error) {
 	lockPrior, err := imageOf(root, LockRel())
 	if err != nil { // coverage-ignore: the caller loaded this same lock immediately before
-		return err
+		return Outcome{}, err
 	}
 	if !lockPrior.Present {
 		// A tree with no lock yet is the legacy layout port's output, whose
@@ -107,20 +106,20 @@ func ResetLegacyResidents(root string, residents []string, schema int, log io.Wr
 		// current. There is nothing to advance and, on such a tree, nothing a
 		// modern binary could have left behind to reset.
 		if len(residents) == 0 {
-			return nil
+			return Outcome{}, nil
 		}
 		// Residents without a lock have no commit point to hang the reset on,
 		// so the transaction refuses rather than discarding them unprotected.
-		return fmt.Errorf("cannot reset %d legacy resident(s) because %s is absent; %s", len(residents), LockRel(), gitRestorationGuidance)
+		return Outcome{}, fmt.Errorf("cannot reset %d legacy resident(s) because %s is absent; %s", len(residents), LockRel(), gitRestorationGuidance)
 	}
 	lock, err := manifest.Parse(lockPrior.Content)
 	if err != nil { // coverage-ignore: the caller parsed this same lock immediately before
-		return fmt.Errorf("invalid authority: restore %s from version control: %w", LockRel(), err)
+		return Outcome{}, fmt.Errorf("invalid authority: restore %s from version control: %w", LockRel(), err)
 	}
 	lock.SchemaVersion = schema
 	finalBytes, err := lock.Marshal()
 	if err != nil { // coverage-ignore: the lock marshals cleanly; see manifest.Marshal
-		return err
+		return Outcome{}, err
 	}
 	ops := make([]Operation, 0, len(residents)+1)
 	for _, resident := range residents {
@@ -129,9 +128,9 @@ func ResetLegacyResidents(root string, residents []string, schema int, log io.Wr
 	sort.Slice(ops, func(i, j int) bool { return ops[i].Path < ops[j].Path })
 	ops = append(ops, Operation{Path: LockRel(), Prior: lockPrior, Replacement: Image{Present: true, Mode: 0o644, Content: finalBytes}})
 	if err := validateOperations(ops); err != nil {
-		return fmt.Errorf("invalid resident reset plan: %w; %s", err, gitRestorationGuidance)
+		return Outcome{}, fmt.Errorf("invalid resident reset plan: %w; %s", err, gitRestorationGuidance)
 	}
-	return commitTransaction(root, ops, log)
+	return commitTransaction(root, ops)
 }
 
 // quarantinePath maps a resident path to its destination under the quarantine

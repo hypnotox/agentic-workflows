@@ -42,6 +42,10 @@ func TestCatalogDefaultDataIsGeneric(t *testing.T) {
 			t.Fatalf("V2 adrStates[%d] = %#v", i, state)
 		}
 	}
+	implementing := states[2].(map[string]any)
+	if !strings.Contains(implementing["meaning"].(string), "Remaining may be empty") || !strings.Contains(implementing["mutability"].(string), "every explicit Applied batch belongs to implementation") {
+		t.Fatalf("Implementing lifecycle guidance = %#v", implementing)
+	}
 	if empty := (map[string]any{})["adrStates"]; empty != nil {
 		t.Fatalf("empty catalog override unexpectedly supplies V2 data: %#v", empty)
 	}

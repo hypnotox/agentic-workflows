@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 
 	"gopkg.in/yaml.v3"
 )
 
 // applyWorkflowTelemetry is retained exclusively as the schema-17 historical
 // upgrade. Generation 20 subsequently removes the block it materializes.
-func applyWorkflowTelemetry(root string, out io.Writer) error {
-	return editConfig(root, func(src []byte) ([]byte, error) {
+func applyWorkflowTelemetry(root string, out *Changes) error {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		var doc yaml.Node
 		if err := yaml.Unmarshal(src, &doc); err != nil {
 			return nil, fmt.Errorf("config: parse: %w", err)
@@ -38,7 +37,7 @@ func applyWorkflowTelemetry(root string, out io.Writer) error {
 			return nil, err
 		}
 		_ = enc.Close()
-		fmt.Fprintln(out, "workflow-telemetry: added workflowTelemetry defaults")
+		planned.Add("workflow-telemetry: added workflowTelemetry defaults")
 		return b.Bytes(), nil
 	})
 }

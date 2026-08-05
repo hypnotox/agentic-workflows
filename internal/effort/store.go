@@ -78,26 +78,30 @@ func normalizeTitle(title string) (string, error) {
 
 func validateNewSlug(ctx context.Context, validateRef func(context.Context, string) (bool, error), slug string) error {
 	if len(slug) < 1 || len(slug) > maxNewSlugBytes {
-		return newSlugRefusal("slug must contain 1-32 bytes")
+		return newSlugRefusal(slug, "slug must contain 1-32 bytes")
 	}
 	if err := validateSlug(slug); err != nil {
-		return newSlugRefusal(err.Error())
+		return newSlugRefusal(slug, err.Error())
 	}
 	// The ref probe runs once at minting time. Resident reads intentionally use
 	// only validateSlug so listing never forks Git once per effort.
 	branch := "awf/" + slug
 	valid, err := validateRef(ctx, branch)
 	if err != nil {
-		return fmt.Errorf("validate Git ref for explicit effort slug %q: %w; changed bytes: no; next action: repair the Git installation and retry with `--slug %q`", slug, err, slug)
+		return refusal(fmt.Sprintf("validate Git ref for explicit effort slug %q: %v; changed bytes: no; next action: repair the Git installation and retry with `--slug %q`", slug, err, slug), "explicit effort slug could not be validated", "git", err.Error(), []RecoveryAction{{Text: fmt.Sprintf("repair the Git installation and retry with `--slug %q`", slug)}}, err)
 	}
 	if !valid {
-		return newSlugRefusal("refs/heads/" + branch + " is not a valid Git ref")
+		return newSlugRefusal(slug, "refs/heads/"+branch+" is not a valid Git ref")
 	}
 	return nil
 }
 
-func newSlugRefusal(condition string) error {
-	return fmt.Errorf("invalid explicit effort slug: %s; changed bytes: no; next action: provide a different canonical value with `--slug`", condition)
+func newSlugRefusal(slug, condition string) error {
+	return refusal("invalid explicit effort slug: "+condition+"; changed bytes: no; next action: provide a different canonical value with `--slug`", fmt.Sprintf("explicit effort slug %q is invalid", slug), "input", condition, []RecoveryAction{{Text: "provide a different canonical value with `--slug`"}}, nil)
+}
+
+func invalidSlugRefusal(slug string, err error) error {
+	return refusal(fmt.Sprintf("invalid effort slug %q: %v; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err), fmt.Sprintf("effort slug %q is invalid", slug), "input", err.Error(), []RecoveryAction{{Text: "use the exact slug from `awf effort list`"}}, err)
 }
 
 func validateSlug(slug string) error {
@@ -170,7 +174,7 @@ func (s store) reserve(record Record) (string, error) {
 	if tombstone, err := s.findTombstones(slug); err != nil {
 		return "", err
 	} else if len(tombstone) > 0 {
-		return "", fmt.Errorf("effort slug %q is reserved by finishing cleanup; changed bytes: no; next action: run `awf effort finish %s`", slug, slug)
+		return "", refusal(fmt.Sprintf("effort slug %q is reserved by finishing cleanup; changed bytes: no; next action: run `awf effort finish %s`", slug, slug), fmt.Sprintf("effort slug %q is reserved by finishing cleanup", slug), "resident", "", []RecoveryAction{{Text: fmt.Sprintf("run `awf effort finish %s`", slug)}}, nil)
 	}
 	dir := s.paths.effort(slug)
 	if err := os.Mkdir(dir, 0o700); err != nil {
@@ -179,7 +183,7 @@ func (s store) reserve(record Record) (string, error) {
 			if _, statErr := os.Lstat(s.paths.stateFile(slug)); statErr == nil {
 				condition = "an active effort already exists"
 			}
-			return "", fmt.Errorf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", slug, condition, slug, record.Title, dir)
+			return "", refusal(fmt.Sprintf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", slug, condition, slug, record.Title, dir), fmt.Sprintf("effort slug %q collides", slug), "resident", condition, []RecoveryAction{{Text: "choose a distinct explicit slug"}, {Text: fmt.Sprintf("retry `awf effort new --slug %q %q` after replacing the quoted slug", slug, record.Title)}, {Text: "inspect " + dir}}, nil)
 		}
 		return "", fmt.Errorf("reserve effort directory %s: %w", dir, err) // coverage-ignore: ensure and tombstone enumeration just proved the parent usable; a non-collision failure requires a concurrent namespace or storage fault
 	}
@@ -333,7 +337,7 @@ func syncDirectory(path string) error {
 
 func (s store) load(slug string) (Record, error) {
 	if err := validateSlug(slug); err != nil {
-		return Record{}, fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
+		return Record{}, invalidSlugRefusal(slug, err)
 	}
 	return s.loadDirectory(s.paths.effort(slug), slug, true)
 }

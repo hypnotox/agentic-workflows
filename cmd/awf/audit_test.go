@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -46,10 +47,17 @@ func TestRunAuditWarningsExitZero(t *testing.T) {
 	if err := runAudit(testContext(t), root, base, &out); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
-	// Assert the rendered rank on the finding line, not the "%d warning(s)" verdict
-	// summary: the summary would satisfy a bare "warn" substring check on its own.
-	if !strings.Contains(out.String(), "warn    dependency-adr") {
+	// The readable category is plural while the domain rank remains warn.
+	if !strings.Contains(out.String(), "warnings:\n    dependency-adr |") {
 		t.Errorf("expected a warn-ranked dependency-adr finding, got: %q", out.String())
+	}
+}
+
+func TestRunAuditPropagatesWriterFailure(t *testing.T) {
+	repo, base := auditProject(t)
+	gitfixture.Commit(t, repo, "feat(awf): clean change", map[string]string{"main.go": "package x\nvar z int\n"})
+	if err := runAudit(testContext(t), repo.Root(), base, &failOnWrite{failAt: 1, err: io.ErrClosedPipe}); err == nil {
+		t.Fatal("writer failure accepted")
 	}
 }
 
@@ -86,7 +94,7 @@ func TestRunAuditCleanRange(t *testing.T) {
 	if err := runAudit(testContext(t), root, base, &buf); err != nil {
 		t.Fatalf("clean range should exit zero, got: %v", err)
 	}
-	if !strings.Contains(buf.String(), "awf audit: clean") {
+	if !strings.Contains(buf.String(), "status: clean") {
 		t.Errorf("expected clean message, got: %q", buf.String())
 	}
 }
@@ -118,7 +126,7 @@ func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 		t.Fatalf("clean range should exit zero, got: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "clean over 1 commit(s) in "+base+"..HEAD") {
+	if !strings.Contains(got, "scope: 1 commit(s) in "+base+"..HEAD") {
 		t.Errorf("the clean verdict must name its scope, got: %q", got)
 	}
 }
@@ -132,15 +140,12 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	root := repo.Root()
 	// Warn path: touches go.mod with no ADR -> dependency-adr warn, exit zero.
 	gitfixture.Commit(t, repo, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
-	scope := "over 1 commit(s) in " + base + "..HEAD"
+	scope := "scope: 1 commit(s) in " + base + "..HEAD"
 	var warnBuf bytes.Buffer
 	if err := runAudit(testContext(t), root, base, &warnBuf); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
-	// Match the full verdict, not the bare scope: the scope substring alone also
-	// appears in the clean line, so a mutation routing a findings-bearing run
-	// through the clean branch would keep a looser assertion green.
-	if !strings.Contains(warnBuf.String(), "1 warning(s), 0 errors "+scope) {
+	if !strings.Contains(warnBuf.String(), "status: warnings") || !strings.Contains(warnBuf.String(), scope) {
 		t.Errorf("the warning verdict must name its scope, got: %q", warnBuf.String())
 	}
 	// Error path: a malformed subject is an Error finding, so runAudit returns
@@ -166,10 +171,11 @@ func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
 		t.Fatalf("an empty range still exits zero, got: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "HEAD..HEAD resolved to 0 commit(s); no history rule evaluated") {
-		t.Errorf("an empty range must announce itself, got: %q", got)
+	const want = "status: empty\n\ncontext:\n  scope: 0 commit(s) in HEAD..HEAD\n  notice: HEAD..HEAD resolved to 0 commit(s); no history rule evaluated\n\nsummary:\n  findings: 0 errors, 0 warnings\n"
+	if got != want {
+		t.Errorf("empty report = %q, want %q", got, want)
 	}
-	if strings.Contains(got, "awf audit: clean") {
+	if strings.Contains(got, "status: clean") {
 		t.Errorf("an empty range must not read as a clean audit, got: %q", got)
 	}
 }
@@ -218,5 +224,24 @@ func TestRunAuditDispatch(t *testing.T) {
 	var outb, errb bytes.Buffer
 	if code := run([]string{"awf", "audit", base}, &outb, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
+	}
+}
+
+func TestRunAuditDispatchFailingReport(t *testing.T) {
+	repo, base := auditProject(t)
+	root := repo.Root()
+	commit := gitfixture.Commit(t, repo, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"awf", "audit", base}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty after produced report", stderr.String())
+	}
+	want := fmt.Sprintf("status: failed\n\ncontext:\n  scope: 1 commit(s) in %s..HEAD\n\nsummary:\n  findings: 1 errors, 0 warnings\n\nfindings:\n  errors:\n    conventional-commits | %s | subject is not Conventional Commits (type(scope)?: subject)\n", base, commit[:8])
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 }

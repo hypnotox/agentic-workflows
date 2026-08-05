@@ -48,6 +48,7 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 
 	root := testsupport.RepoRoot(t)
 	for _, surface := range []planPolicySurface{
+		{name: ".claude/skills/awf-writing-plans/SKILL.md", start: "- **Phases and tasks:**", end: "- **Self-contained"},
 		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Phases and tasks:**", end: "- **Self-contained"},
 		{name: ".pi/agents/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
 		{name: "docs/plans/README.md", start: "- Each phase independently declares", end: "A plan stays"},
@@ -83,6 +84,46 @@ var planTaskDetailContractClauses = []string{
 	"ordered steps",
 	"one independently green coherent implementation transaction",
 	"any helper partition exhaustively assigns every affected site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the assigned subset",
+}
+
+func TestPlanningVerificationGuidanceStayAligned(t *testing.T) {
+	defaultWriter := renderSkillGolden(t, "writing-plans", map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans", "plansTemplate": "docs/plans/template.md"},
+		"data":   map[string]any{},
+	})
+	root := testsupport.RepoRoot(t)
+	surfaces := []planPolicySurface{
+		{name: "default writing skill", output: defaultWriter, start: "- **Phases and tasks:**", end: "- **Self-contained"},
+		{name: ".claude/skills/awf-writing-plans/SKILL.md", output: readPlanPolicyFile(t, root, ".claude/skills/awf-writing-plans/SKILL.md"), start: "- **Phases and tasks:**", end: "- **Self-contained"},
+		{name: ".pi/skills/awf-writing-plans/SKILL.md", output: readPlanPolicyFile(t, root, ".pi/skills/awf-writing-plans/SKILL.md"), start: "- **Phases and tasks:**", end: "- **Self-contained"},
+	}
+	clauses := []string{
+		"each material `post-check:` names its input population, exclusions, lifecycle snapshot, and expected terminal set or lifecycle-authorized residual findings",
+		"empty output proves absence only after a probe success sentinel or checked exit status establishes that the probe ran",
+		"after a compound mutating command, read back every mutation target before trusting the result",
+		"classify each material check as an authority, state, or choreography check",
+		"preserve authority checks",
+		"use the least restrictive state validation that proves the durable property",
+		"omit a choreography-only constraint unless a named authority or state property requires it",
+	}
+	for _, surface := range surfaces {
+		policy := strings.ToLower(planPolicySection(t, surface))
+		for _, clause := range clauses {
+			if count := strings.Count(policy, clause); count != 1 {
+				t.Errorf("%s planning-verification clause %q occurs %d times, want exactly once:\n%s", surface.name, clause, count, policy)
+			}
+		}
+	}
+
+	convention := strings.ToLower(readPlanPolicyFile(t, root, ".awf/skills/parts/writing-plans/conventions-tasks.md"))
+	if !strings.Contains(convention, "{{=awf:sectiondefault}}") {
+		t.Errorf("writing-plans convention must preserve the generic section through sectionDefault")
+	}
+	if strings.Contains(convention, "each material `post-check:` names its input population") {
+		t.Errorf("writing-plans convention duplicates the generic material-verification policy")
+	}
 }
 
 func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {

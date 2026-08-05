@@ -57,7 +57,8 @@ type OperationRecord struct {
 }
 
 // ClaimOperationHistory is the implemented add/update/remove history for one
-// qualified claim identity.
+// qualified claim identity. LegacyBaseline is true when a retained removal has
+// no recorded add, so the history has an unrecorded pre-operation baseline.
 type ClaimOperationHistory struct {
 	Origin         *OperationRecord
 	LegacyBaseline bool

@@ -41,10 +41,21 @@ func loadForMigration(root string) (*config.Config, error) {
 	return cfg, nil
 }
 
+// configEditor owns one config edit's volatile write dependency. Each migration
+// creates its own production editor; tests compose a faulting editor into the
+// operation they exercise rather than replacing package state.
+type configEditor struct {
+	writeAtomic func(string, []byte) error
+}
+
+func productionConfigEditor() configEditor {
+	return configEditor{writeAtomic: manifest.WriteFileAtomic}
+}
+
 // editConfig applies mutate to the project's config.yaml, routing serialization
 // through internal/config (ADR-0026). A config absent on disk is a no-op
 // (idempotent re-run safe) - the shared skeleton of the scalar-edit migrations.
-func editConfig(root string, mutate func(src []byte) ([]byte, error)) error {
+func (e configEditor) editConfig(root string, out *Changes, mutate func(src []byte, planned *Changes) ([]byte, error)) error {
 	cfgPath := config.ConfigPath(root)
 	src, err := os.ReadFile(cfgPath)
 	if os.IsNotExist(err) {
@@ -53,10 +64,21 @@ func editConfig(root string, mutate func(src []byte) ([]byte, error)) error {
 	if err != nil { // coverage-ignore: ReadFile faults only on a permission error that the test root bypasses
 		return err
 	}
-	out, err := mutate(src)
+	planned := &Changes{}
+	updated, err := mutate(src, planned)
 	if err != nil {
 		return err
 	}
 	// touches-state: config/migrations-and-locks:lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
-	return manifest.WriteFileAtomic(cfgPath, out)
+	if err := e.writeAtomic(cfgPath, updated); err != nil {
+		return err
+	}
+	for _, change := range planned.Items() {
+		out.Add(change.Text)
+	}
+	return nil
+}
+
+func editConfig(root string, out *Changes, mutate func(src []byte, planned *Changes) ([]byte, error)) error {
+	return productionConfigEditor().editConfig(root, out, mutate)
 }

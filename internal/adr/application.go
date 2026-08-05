@@ -6,7 +6,7 @@ import (
 )
 
 // ApplicationBatch is one implicit or explicit application of declared state
-// operations. Operations are retained in declaration/event order.
+// operations. Operations retain their authored event order.
 type ApplicationBatch struct {
 	Operations   []Operation
 	Kind         HistoryEventKind
@@ -79,7 +79,7 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 	for i, op := range a.Operations {
 		declared[op] = i
 	}
-	applied := make(map[Operation]bool, len(a.Operations))
+	applied := make(map[Operation]int, len(a.Operations))
 	for i, batch := range batches {
 		if len(batch.Operations) == 0 {
 			return OperationProgress{}, fmt.Errorf("ADR-%s has an invalid application batch", a.Identity())
@@ -90,13 +90,12 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 			}
 			switch batch.Kind {
 			case HistoryApplied:
-				if applied[op] {
+				if _, ok := applied[op]; ok {
 					return OperationProgress{}, fmt.Errorf("ADR-%s applies operation %s `%s` more than once; use a Reapplied event for a correction", a.Identity(), op.Verb, op.ID)
 				}
-				applied[op] = true
-				progress.Applied = append(progress.Applied, AppliedOperation{Operation: op, BatchIndex: i})
+				applied[op] = i
 			case HistoryReapplied:
-				if !applied[op] {
+				if _, ok := applied[op]; !ok {
 					return OperationProgress{}, fmt.Errorf("ADR-%s reapplies operation %s `%s` without an earlier Applied occurrence", a.Identity(), op.Verb, op.ID)
 				}
 				if op.Verb == OpRemove {
@@ -109,7 +108,9 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 	}
 	var complement []Operation
 	for _, op := range a.Operations {
-		if !applied[op] {
+		if batchIndex, ok := applied[op]; ok {
+			progress.Applied = append(progress.Applied, AppliedOperation{Operation: op, BatchIndex: batchIndex})
+		} else {
 			complement = append(complement, op)
 		}
 	}
@@ -120,8 +121,8 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 		}
 		progress.Remaining = slices.Clone(a.Operations)
 	case statusImplementing:
-		if len(progress.Applied) == 0 || len(complement) == 0 {
-			return OperationProgress{}, fmt.Errorf("ADR-%s Implementing status requires applied and remaining operations", a.Identity())
+		if len(progress.Applied) == 0 {
+			return OperationProgress{}, fmt.Errorf("ADR-%s Implementing status requires applied operations", a.Identity())
 		}
 		progress.Remaining = slices.Clone(complement)
 	case statusImplemented:

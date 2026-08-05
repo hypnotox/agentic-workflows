@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"testing"
 
@@ -21,7 +20,7 @@ func TestApplyTopicClaimBudget(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			testsupport.WriteAwfConfig(t, root, tc.source)
-			var out bytes.Buffer
+			var out Changes
 			if err := applyTopicClaimBudget(root, &out); err != nil {
 				t.Fatal(err)
 			}
@@ -53,12 +52,12 @@ func TestApplyTopicClaimBudget(t *testing.T) {
 }
 
 func TestApplyTopicClaimBudgetAbsentAndMalformed(t *testing.T) {
-	if err := applyTopicClaimBudget(t.TempDir(), io.Discard); err != nil {
+	if err := applyTopicClaimBudget(t.TempDir(), &Changes{}); err != nil {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: [bad\n")
-	if err := applyTopicClaimBudget(root, io.Discard); err == nil {
+	if err := applyTopicClaimBudget(root, &Changes{}); err == nil {
 		t.Fatal("malformed config accepted")
 	}
 }

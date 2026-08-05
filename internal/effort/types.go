@@ -12,15 +12,36 @@ import (
 // errors.Is; the prose stays the user-facing protocol.
 var ErrManagedTopologyPresent = errors.New("managed topology present")
 
-// managedTopologyError carries one refusal message unchanged while
-// classifying it, so callers never inspect the prose.
-type managedTopologyError struct{ message string }
+// managedTopologyError preserves the legacy error message while carrying
+// model-owned recovery actions, so callers never inspect the prose.
+type managedTopologyError struct {
+	message string
+	actions []RecoveryAction
+}
 
 func (e *managedTopologyError) Error() string { return e.message }
 func (e *managedTopologyError) Unwrap() error { return ErrManagedTopologyPresent }
 
-func managedTopologyRefusal(format string, args ...any) error {
-	return &managedTopologyError{message: fmt.Sprintf(format, args...)}
+// refusalError preserves established effort refusal prose and cause identity
+// while carrying the semantic facts needed for ordinary CLI presentation.
+type refusalError struct {
+	message   string
+	condition string
+	state     string
+	cause     string
+	actions   []RecoveryAction
+	err       error
+}
+
+func (e *refusalError) Error() string { return e.message }
+func (e *refusalError) Unwrap() error { return e.err }
+
+func refusal(message, condition, state, cause string, actions []RecoveryAction, err error) error {
+	return &refusalError{message: message, condition: condition, state: state, cause: cause, actions: actions, err: err}
+}
+
+func managedTopologyRefusal(actions []RecoveryAction, format string, args ...any) error {
+	return &managedTopologyError{message: fmt.Sprintf(format, args...), actions: actions}
 }
 
 const SchemaVersion = 2
@@ -48,3 +69,21 @@ type FinishResult struct {
 	Renamed bool
 	Cleaned bool
 }
+
+// RecoveryAction is one independently executable ordered remedy for a failed
+// effort operation. Its meaning remains model-owned until presentation maps it.
+type RecoveryAction struct{ Text string }
+
+// PartialFinishError preserves a failed restartable finish's observed state,
+// mechanism cause, and site-specific recovery actions.
+type PartialFinishError struct {
+	Result  FinishResult
+	Cause   error
+	Actions []RecoveryAction
+}
+
+// Error preserves the failed mechanism's message for legacy error callers.
+func (e *PartialFinishError) Error() string { return e.Cause.Error() }
+
+// Unwrap exposes the failed mechanism for identity-aware callers.
+func (e *PartialFinishError) Unwrap() error { return e.Cause }

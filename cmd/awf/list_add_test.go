@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -581,6 +582,57 @@ func TestRunAddRemoveFlowStyle(t *testing.T) {
 	}
 }
 
+func TestTogglePropagatesLoaderAndPostRewriteSyncFailures(t *testing.T) {
+	malformedRepo := t.TempDir()
+	testsupport.WriteAwfConfig(t, malformedRepo, minimalYAML)
+	if err := os.WriteFile(filepath.Join(malformedRepo, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runEnable(testContext(t), malformedRepo, "domain", "payments", false, io.Discard); err == nil {
+		t.Fatal("malformed repository loader error was not propagated")
+	}
+
+	loaderRoot := scaffoldedProject(t)
+	want := errors.New("loader failed")
+	err := toggleWithProjectLoader(testContext(t), loaderRoot, "domain", "payments", enableDir, toggleFlags{}, io.Discard, func(string) (*project.Loader, error) {
+		return nil, want
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("injected loader error = %v, want %v", err, want)
+	}
+
+	root := scaffoldedProject(t)
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "domains", "payments.yaml"), []byte("local: [invalid\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runEnable(testContext(t), root, "domain", "payments", false, io.Discard); err == nil {
+		t.Fatal("post-rewrite sync error was not propagated")
+	}
+}
+
+func TestEnablementAndListPresentationWriteFailures(t *testing.T) {
+	plan := []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "reviewing-impl"}, Enable: true}}
+	if err := printPlan(io.Discard, []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "bad\nname"}, Enable: true}}); err == nil {
+		t.Fatal("invalid plan presentation accepted")
+	}
+	if err := printPlan(errorWriter{}, plan); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("plan writer error = %v", err)
+	}
+	if err := printEnablementNotes(io.Discard, []project.EnablementNote{{Reason: project.EnablementNoteReason(99)}}); err == nil {
+		t.Fatal("invalid notes presentation accepted")
+	}
+	validNote := project.EnablementNote{Reason: project.EnablementNoteAgentNoLongerRequired, Kind: "agent", Name: "code-reviewer"}
+	if err := printEnablementNotes(errorWriter{}, []project.EnablementNote{validNote}); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("notes writer error = %v", err)
+	}
+	if err := runList(testContext(t), scaffoldedProject(t), "skill", errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("list writer error = %v", err)
+	}
+}
+
 // Adding an unclosed skill enables its full missing forward closure in one
 // rewrite, printing a provenance plan (ADR-0081 Decision 4). This replaces
 // the ADR-0050 pairing note and the ADR-0013 doc advisory.
@@ -595,9 +647,8 @@ func TestRunAddAppliesClosurePlan(t *testing.T) {
 	}
 	// invariant: tooling/init-and-enablement:add-skill-pairs-agent (TestRunAddAppliesClosurePlan)
 	for _, line := range []string{
-		"plan: + skill reviewing-impl\n",
-
-		"plan: + agent code-reviewer (required by reviewing-impl)\n",
+		"    + skill reviewing-impl\n",
+		"    + agent code-reviewer (required by reviewing-impl)\n",
 	} {
 		if !strings.Contains(out.String(), line) {
 			t.Errorf("plan output missing %q, got:\n%s", line, out.String())
@@ -618,7 +669,7 @@ func TestRunAddAppliesClosurePlan(t *testing.T) {
 	if err := runEnable(ctx, root, "skill", "roadmap-graduation", false, &out); err != nil {
 		t.Fatalf("add roadmap-graduation: %v", err)
 	}
-	if !strings.Contains(out.String(), "plan: + doc roadmap (required by roadmap-graduation)") {
+	if !strings.Contains(out.String(), "    + doc roadmap (required by roadmap-graduation)") {
 		t.Errorf("expected the doc plan op, got %q", out.String())
 	}
 	if cfg := readConfig(t, root); !strings.Contains(cfg, "- roadmap") {
@@ -637,7 +688,7 @@ func TestRunAddRemoveDryRunAndFlagGuard(t *testing.T) {
 	if err := runEnable(ctx, root, "skill", "roadmap-graduation", true, &out); err != nil {
 		t.Fatalf("add --dry-run: %v", err)
 	}
-	if !strings.Contains(out.String(), "plan: + skill roadmap-graduation") {
+	if !strings.Contains(out.String(), "    + skill roadmap-graduation") {
 		t.Errorf("dry-run should print the plan, got %q", out.String())
 	}
 	if got := readConfig(t, root); got != before {
@@ -647,7 +698,7 @@ func TestRunAddRemoveDryRunAndFlagGuard(t *testing.T) {
 	if err := runDisable(ctx, root, "skill", "retrospective", false, true, &out); err != nil {
 		t.Fatalf("remove --dry-run: %v", err)
 	}
-	if !strings.Contains(out.String(), "plan: - skill retrospective") {
+	if !strings.Contains(out.String(), "    - skill retrospective") {
 		t.Errorf("remove dry-run should print the plan, got %q", out.String())
 	}
 	if got := readConfig(t, root); got != before {
@@ -687,7 +738,7 @@ func TestRunRemoveCascade(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"plan: - skill executing-plans\n",
+		"    - skill executing-plans\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("cascade output missing %q:\n%s", want, got)
@@ -706,6 +757,27 @@ func TestRunRemoveCascade(t *testing.T) {
 	}
 }
 
+func TestRunRemoveNoteWriteFailureLeavesGeneratedStateSynchronized(t *testing.T) {
+	ctx := testContext(t)
+	root := scaffoldedProject(t)
+	if err := runEnable(ctx, root, "domain", "payments", false, io.Discard); err != nil {
+		t.Fatalf("add domain: %v", err)
+	}
+	rendered := filepath.Join(root, "docs", "domains", "payments.md")
+	if _, err := os.Stat(rendered); err != nil {
+		t.Fatalf("rendered domain before removal: %v", err)
+	}
+	if err := runDisable(ctx, root, "domain", "payments", false, false, errorWriter{}); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("note writer error = %v", err)
+	}
+	if strings.Contains(readConfig(t, root), "- payments") {
+		t.Fatal("domain remained enabled after synchronized removal")
+	}
+	if _, err := os.Stat(rendered); !os.IsNotExist(err) {
+		t.Fatalf("generated domain survived synchronized removal: %v", err)
+	}
+}
+
 // Removing a domain with authored parts prints the orphan note (the domain
 // path is outside the graph plan loop).
 func TestRunRemoveDomainNotesOrphan(t *testing.T) {
@@ -719,7 +791,7 @@ func TestRunRemoveDomainNotesOrphan(t *testing.T) {
 	if err := runDisable(ctx, root, "domain", "payments", false, false, &out); err != nil {
 		t.Fatalf("remove domain: %v", err)
 	}
-	if !strings.Contains(out.String(), `note: domain "payments" still has a sidecar`) {
+	if !strings.Contains(out.String(), `    domain "payments" still has a sidecar`) {
 		t.Errorf("expected the domain orphan note, got %q", out.String())
 	}
 }
@@ -844,8 +916,8 @@ func TestRunRemoveAgentPairingGuard(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "re-run with --with-dependents") {
 		t.Fatalf("expected dependent-plan refusal, got %v", err)
 	}
-	if !strings.Contains(out.String(), "plan: - agent code-reviewer\n") ||
-		!strings.Contains(out.String(), "plan: - skill reviewing-impl (required by code-reviewer)") {
+	if !strings.Contains(out.String(), "    - agent code-reviewer\n") ||
+		!strings.Contains(out.String(), "    - skill reviewing-impl (required by code-reviewer)") {
 		t.Errorf("expected the dependent plan printed before the refusal, got:\n%s", out.String())
 	}
 	if got := readConfig(t, root); got != before {
@@ -957,7 +1029,7 @@ func TestRunListBareShowsAllKinds(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 	for _, want := range []string{
-		"skills:", "agents:", "docs:", "domains:\n  (none)",
+		"collection:", "skills:", "agents:", "docs:", "domains:\n    none",
 		"targets:", "bootstrap:", ".awf/bootstrap.sh", ".awf/upgrade.sh",
 		"hooks:", ".awf/hooks/pre-commit.sh",
 	} {
@@ -974,7 +1046,7 @@ func TestRunListBareShowsAllKinds(t *testing.T) {
 	}
 }
 
-// noteUnrequiredAgents edge cases unreachable through the CLI with the
+// unrequiredAgentNotes edge cases unreachable through the CLI with the
 // shipped catalog (the reviewing-plan/resync pair is mutually requiring, so a
 // real cascade never splits an agent's requirers): an agent still required by
 // a remaining non-local skill gets no note, and a local-sidecar agent is
@@ -997,13 +1069,12 @@ func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 		{Node: catalog.Node{Kind: "skill", Name: "reviewing-adr"}, Enable: false},
 		{Node: catalog.Node{Kind: "skill", Name: "reviewing-plan"}, Enable: false, RequiredBy: "reviewing-adr"},
 	}
-	var out bytes.Buffer
-	noteUnrequiredAgents(p, plan, &out)
+	notes := unrequiredAgentNotes(p, plan)
 	// adr-reviewer: required by the removed reviewing-adr, but local - skipped.
 	// plan-reviewer: required by the removed reviewing-plan, but the remaining
 	// reviewing-plan-resync still requires it - no note.
-	if out.String() != "" {
-		t.Errorf("expected no notes, got %q", out.String())
+	if len(notes) != 0 {
+		t.Errorf("expected no notes, got %#v", notes)
 	}
 
 	// A remaining local skill is skipped rather than treated as a requirer.
@@ -1017,9 +1088,8 @@ func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 	p.Cfg.Skills = []string{"removed", "local"}
 	p.Cat.Skills["removed"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
 	p.Cat.Skills["local"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
-	out.Reset()
-	noteUnrequiredAgents(p, []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "removed"}}, {Node: catalog.Node{Kind: "skill", Name: "other"}}}, &out)
-	if !strings.Contains(out.String(), "plan-reviewer") {
-		t.Fatalf("local skill should be skipped, allowing note: %q", out.String())
+	notes = unrequiredAgentNotes(p, []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "removed"}}, {Node: catalog.Node{Kind: "skill", Name: "other"}}})
+	if len(notes) != 1 || notes[0].Reason != project.EnablementNoteAgentNoLongerRequired || notes[0].Name != "plan-reviewer" {
+		t.Fatalf("local skill should be skipped, allowing note: %#v", notes)
 	}
 }

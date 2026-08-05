@@ -2,7 +2,8 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"context"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -11,9 +12,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/prosegate"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -43,6 +50,37 @@ func (w *mutatingWriter) Write(p []byte) (int, error) {
 
 // invariant: tooling/cli:check-universe-groups (TestRunCheckCleanThenDirty)
 // invariant: adr-system/plan-artifacts:plan-v2-assignment-advisories (TestRunCheckCleanThenDirty)
+func TestRunCheckPropagatesOperationalGitAndStagedDriftFailures(t *testing.T) {
+	ctx := testContext(t)
+	root := syncedGitProject(t, checkYAML)
+
+	gitFailure := errors.New("git lookup failed")
+	dependencies := productionCheckDependencies()
+	dependencies.openContaining = func(string) (*awfgit.Repo, string, error) { return nil, "", gitFailure }
+	if err := runCheckWith(ctx, root, io.Discard, dependencies); !errors.Is(err, gitFailure) {
+		t.Fatalf("git failure = %v, want %v", err, gitFailure)
+	}
+
+	stagedFailure := errors.New("staged collection failed")
+	dependencies = productionCheckDependencies()
+	dependencies.collectStaged = func(context.Context, string, planNoteSink) (checkCollection, error) {
+		return checkCollection{}, stagedFailure
+	}
+	if err := runCheckWith(ctx, root, io.Discard, dependencies); !errors.Is(err, stagedFailure) {
+		t.Fatalf("staged collection failure = %v, want %v", err, stagedFailure)
+	}
+	driftFailure := errors.New("staged drift failed")
+	stagedDependencies := productionCheckStagedDependencies()
+	stagedDependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) { return nil, driftFailure }
+	dependencies = productionCheckDependencies()
+	dependencies.collectStaged = func(ctx context.Context, root string, notes planNoteSink) (checkCollection, error) {
+		return collectCheckStagedWith(ctx, root, notes, stagedDependencies)
+	}
+	if err := runCheckWith(ctx, root, io.Discard, dependencies); !errors.Is(err, driftFailure) {
+		t.Fatalf("staged drift failure = %v, want %v", err, driftFailure)
+	}
+}
+
 func TestRunCheckCleanThenDirty(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -51,10 +89,8 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if err := runCheck(ctx, root, &clean); err != nil {
 		t.Errorf("expected clean check, got %v", err)
 	}
-	for _, want := range []string{"awf check repo drift: clean", "awf check repo state: clean", "check repo prose: clean", "check repo memory: clean", "awf check staged: clean"} {
-		if !strings.Contains(clean.String(), want) {
-			t.Errorf("bare check omitted %q from its universe aggregates:\n%s", want, clean.String())
-		}
+	if !strings.HasPrefix(clean.String(), "status: ") || !strings.Contains(clean.String(), "summary:\n  findings:") {
+		t.Errorf("bare check did not render one structured aggregate:\n%s", clean.String())
 	}
 	if strings.Contains(clean.String(), "check staged commit") {
 		t.Errorf("bare check must not aggregate staged commit:\n%s", clean.String())
@@ -75,7 +111,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if err := runCheck(ctx, artifactRoot, &proposedSecond); err != nil {
 		t.Fatalf("repeat Proposed plan check: %v\n%s", err, proposedSecond.String())
 	}
-	proposedNote := "note: 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
+	proposedNote := "advisory | 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
 	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 1 {
 		t.Fatalf("Proposed plan assignment advisories must deterministically join the repo universe without failing; first=%q second=%q", proposedFirst.String(), proposedSecond.String())
 	}
@@ -112,8 +148,8 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 
 	// The index now carries the Proposed source while working bytes restore the
-	// Implemented source. The one surviving note proves the staged universe reads
-	// its own bytes; a working edit can neither remove nor add that staged note.
+	// Implemented source. The plan-note sink retains the staged advisory once;
+	// a working edit can neither remove nor duplicate it.
 	gitfixture.Stage(t, gitfixture.At(implementedRoot), map[string]string{planPath: validPlan})
 	testsupport.WriteFile(t, filepath.Join(implementedRoot, planPath), strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1))
 	var stagedProposed bytes.Buffer
@@ -131,6 +167,21 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 	if err := runCheck(ctx, root, io.Discard); err == nil {
 		t.Errorf("expected drift error after hand-edit")
+	}
+}
+
+func TestProseCheckFindingsPropagatesScannerFailure(t *testing.T) {
+	failure := errors.New("scan failed")
+	dependencies := productionProseDependencies()
+	dependencies.scan = func([]prosegate.File, []prosegate.Exemption) ([]prosegate.Finding, []string, error) {
+		return nil, nil, failure
+	}
+	tree, err := snapshot.NewTree(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := proseCheckFindingsWith(&config.Config{ProseGate: &config.ProseGateConfig{Enabled: true}}, tree, dependencies); !errors.Is(err, failure) {
+		t.Fatalf("scanner failure = %v, want %v", err, failure)
 	}
 }
 
@@ -185,8 +236,8 @@ func TestRunCheckReportsStagedUniverseAvailability(t *testing.T) {
 		if err := runCheck(testContext(t), root, w); err != nil {
 			t.Fatalf("bare check did not degrade after repository became unavailable: %v", err)
 		}
-		if !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
-			t.Fatalf("missing staged-unavailable note:\n%s", out.String())
+		if strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
+			t.Fatalf("collection must finish before its one atomic render, got:\n%s", out.String())
 		}
 	})
 	t.Run("repository becomes malformed", func(t *testing.T) {
@@ -196,8 +247,8 @@ func TestRunCheckReportsStagedUniverseAvailability(t *testing.T) {
 				t.Fatal(err)
 			}
 		}}
-		if err := runCheck(testContext(t), root, w); err == nil {
-			t.Fatal("bare check accepted malformed git metadata before the staged universe")
+		if err := runCheck(testContext(t), root, w); err != nil {
+			t.Fatalf("the atomic post-collection mutation must not affect the completed report: %v", err)
 		}
 	})
 }
@@ -238,7 +289,7 @@ func TestRunCheckOutsideGitDegrades(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("bare check outside git: %v", err)
 	}
-	if !strings.Contains(out.String(), "awf check repo state: clean") || !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
+	if !strings.Contains(out.String(), "status: warnings") || !strings.Contains(out.String(), "staged check universe unavailable outside a git repository") {
 		t.Fatalf("outside-git output omitted repo execution or staged disclosure:\n%s", out.String())
 	}
 }
@@ -271,7 +322,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("expected clean check, got %v", err)
 	}
-	if !strings.Contains(out.String(), "awf check repo drift: clean") || !strings.Contains(out.String(), "awf check staged: clean") {
+	if !strings.Contains(out.String(), "status: warnings") || !strings.Contains(out.String(), "summary:") {
 		t.Errorf("expected both universe clean outputs, got %q", out.String())
 	}
 	if !strings.Contains(out.String(), "is ahead of this project (rendered by 0.3.0)") {
@@ -353,8 +404,8 @@ func TestRunCheckSurfacesCurrentStateFinding(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected runCheck to fail on the current-state coverage finding")
 	}
-	if !strings.Contains(err.Error(), "current-state issue") {
-		t.Errorf("expected a current-state issue error, got: %v", err)
+	if !strings.Contains(err.Error(), "check repo state failed") {
+		t.Errorf("expected a collected current-state error, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "current-state") || !strings.Contains(out.String(), "internal/bar.go") {
 		t.Errorf("expected the finding line, got: %q", out.String())
@@ -371,11 +422,11 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail runCheck, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a fan-out warn note, got: %q", out.String())
+	if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "internal/bar.go") {
+		t.Errorf("expected a structured fan-out warning, got: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "awf check repo state: clean") || !strings.Contains(out.String(), "awf check staged: clean") {
-		t.Errorf("expected universe clean statuses alongside the note, got: %q", out.String())
+	if strings.Contains(out.String(), "note:") {
+		t.Errorf("ordinary check report must not contain legacy notes, got: %q", out.String())
 	}
 }
 
@@ -423,8 +474,8 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 		if code := runAt(t, root, []string{"awf", "check", "staged"}, &out, &errOut); code != 1 {
 			t.Fatalf("staged drift exit = %d, want 1; stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if !strings.Contains(out.String(), "stale") || !strings.Contains(errOut.String(), "awf check staged drift") {
-			t.Fatalf("staged drift did not report stale rendered output; stdout=%q stderr=%q", out.String(), errOut.String())
+		if !strings.Contains(out.String(), "stale") || errOut.Len() != 0 {
+			t.Fatalf("staged drift report streams stdout=%q stderr=%q", out.String(), errOut.String())
 		}
 	})
 
@@ -439,7 +490,7 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 		if code := runAt(t, root, []string{"awf", "check", "staged", "drift"}, &out, &errOut); code != 0 {
 			t.Fatalf("staged drift exit = %d, want 0; stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if !strings.Contains(out.String(), "awf check staged drift: clean") {
+		if out.String() != completedCheckReport {
 			t.Fatalf("clean staged drift output = %q", out.String())
 		}
 	})
@@ -459,6 +510,53 @@ func TestRunCheckRunsStagedAfterRepoFailure(t *testing.T) {
 	}
 }
 
+func TestRunCheckRetainsRepositoryFailureWhenGitLookupFails(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	repoFailure := errors.New("repository collection failed")
+	gitFailure := errors.New("git lookup failed")
+	dependencies := productionCheckDependencies()
+	dependencies.collectRepo = func(context.Context, string, planNoteSink) (checkCollection, error) {
+		return checkCollection{}, repoFailure
+	}
+	dependencies.openContaining = func(string) (*awfgit.Repo, string, error) {
+		return nil, "", gitFailure
+	}
+	var out bytes.Buffer
+	err := runCheckWith(testContext(t), root, &out, dependencies)
+	if !errors.Is(err, repoFailure) || !errors.Is(err, gitFailure) {
+		t.Fatalf("bare check error = %v, want repository and git lookup failures", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("stdout = %q, want no partial report for operational failures", out.String())
+	}
+}
+
+func TestRunCheckRetainsOperationalFailuresAcrossUniverses(t *testing.T) {
+	root := syncedGitProject(t, checkYAML)
+	repoFailure := errors.New("repository collection failed")
+	stagedFailure := errors.New("staged collection failed")
+	stagedRan := false
+	dependencies := productionCheckDependencies()
+	dependencies.collectRepo = func(context.Context, string, planNoteSink) (checkCollection, error) {
+		return checkCollection{}, repoFailure
+	}
+	dependencies.collectStaged = func(context.Context, string, planNoteSink) (checkCollection, error) {
+		stagedRan = true
+		return checkCollection{}, stagedFailure
+	}
+	var out bytes.Buffer
+	err := runCheckWith(testContext(t), root, &out, dependencies)
+	if !stagedRan {
+		t.Fatal("staged collection did not run after repository collection failed")
+	}
+	if !errors.Is(err, repoFailure) || !errors.Is(err, stagedFailure) {
+		t.Fatalf("bare check error = %v, want both collection failures", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("stdout = %q, want no partial report for operational failures", out.String())
+	}
+}
+
 // TestRunCheckStagedSurfacesFinding covers the staged route of runCheck: an
 // error-severity index coverage finding prints the finding line and fails.
 func TestRunCheckStagedSurfacesFinding(t *testing.T) {
@@ -469,8 +567,8 @@ func TestRunCheckStagedSurfacesFinding(t *testing.T) {
 		map[string]string{"internal/bar.go": "package internalx\n"})
 	var out bytes.Buffer
 	err := runCheckStaged(ctx, root, &out)
-	if err == nil || !strings.Contains(err.Error(), "current-state issue") {
-		t.Fatalf("expected a staged current-state issue error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "check staged state failed") {
+		t.Fatalf("expected a collected staged current-state error, got %v", err)
 	}
 	if !strings.Contains(out.String(), "current-state") || !strings.Contains(out.String(), "internal/bar.go") {
 		t.Errorf("expected the finding line, got: %q", out.String())
@@ -491,11 +589,11 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 	if err := runCheckStaged(ctx, root, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail the staged check, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a fan-out warn note, got: %q", out.String())
+	if !strings.Contains(out.String(), "warnings:") || !strings.Contains(out.String(), "internal/bar.go") {
+		t.Errorf("expected a structured fan-out warning, got: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "awf check staged: clean") {
-		t.Errorf("expected the clean staged status, got: %q", out.String())
+	if strings.Contains(out.String(), "note:") {
+		t.Errorf("staged report must not contain legacy notes, got: %q", out.String())
 	}
 }
 
@@ -590,7 +688,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		if code := run([]string{"awf", "check", "staged"}, &out, &errOut); code != 0 {
 			t.Fatalf("staged check exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
 		}
-		if !strings.Contains(out.String(), "awf check staged: clean") {
+		if out.String() != completedCheckReport {
 			t.Fatalf("staged check output = %q", out.String())
 		}
 	})
@@ -665,7 +763,7 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 		t.Fatal("pre-commit still carries preparation-only bridge behavior")
 	}
 	last := -1
-	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "check_slice \"$tmp/examples/sundial\"", "bash \"$staged_helper\"", "rm -rf -- \"$tmp\"", "trap - EXIT", "exec bash .awf/hooks/pre-commit.sh"} {
+	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "rm -rf -- \"$tmp\"", "trap - EXIT", "exec bash .awf/hooks/pre-commit.sh"} {
 		index := strings.Index(body, required)
 		if index == -1 {
 			t.Errorf("pre-commit missing permanent step %q", required)
@@ -678,44 +776,13 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 	}
 }
 
-func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	gitfixture.Stage(t, repo, map[string]string{"README.md": "staged\n"})
-	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("bash", hook)
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		t.Fatalf("pre-commit accepted a staged slice missing its nested helper: %s", out)
-	}
-	if !strings.Contains(string(out), "staged slice is missing .githooks/check-nested-staged") {
-		t.Fatalf("missing-helper diagnostic = %q", out)
-	}
-}
-
 func TestRepositoryPreCommitRemovesSliceBeforePayload(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
-	helperPath, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "check-nested-staged"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	helper, err := os.ReadFile(helperPath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	marker := filepath.Join(t.TempDir(), "payload-ran")
-	gitfixture.StageFile(t, repo, ".githooks/check-nested-staged", string(helper), 0o755)
 	gitfixture.Stage(t, repo, map[string]string{
-		"examples/sundial/.keep":   "\n",
 		".awf/hooks/pre-commit.sh": "#!/bin/sh\nif [ -n \"$(find \"$TMPDIR\" -mindepth 1 -maxdepth 1 -print -quit)\" ]; then\n  echo \"payload inherited staged slice\" >&2\n  exit 1\nfi\ntouch \"$AWF_PAYLOAD_MARKER\"\n",
 	})
 
@@ -762,100 +829,6 @@ chmod +x "$out"
 	}
 }
 
-func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-	lockBytes, err := lock.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	prefix := "examples/sundial/"
-	helperPath, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "check-nested-staged"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	helperBody, err := os.ReadFile(helperPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files := map[string]string{
-		".githooks/check-nested-staged":                         string(helperBody),
-		prefix + ".awf/awf.lock":                                string(lockBytes),
-		prefix + ".awf/config.yaml":                             "prefix: sundial\nintegrationBranch: main\nskills: []\nagents: []\ndomains: [alpha]\n",
-		prefix + ".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
-		prefix + ".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
-		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
-		prefix + "docs/decisions/0001-first.md":                 testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First")),
-	}
-	gitfixture.Stage(t, repo, files)
-	gitfixture.Commit(t, repo, "nested head", nil)
-	gitfixture.Stage(t, repo, map[string]string{
-		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n",
-	})
-
-	testBinary, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	tools := t.TempDir()
-	wrapper := filepath.Join(tools, "awf-helper")
-	wrapperBody := "#!/bin/sh\nif [ \"$#\" -eq 1 ] && [ \"$1\" = check ]; then exit 0; fi\nAWF_HOOK_COMMAND_HELPER=1 exec \"" + testBinary + "\" -test.run=TestHookCommandHelper -- \"$@\"\n"
-	if err := os.WriteFile(wrapper, []byte(wrapperBody), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	fakeGo := filepath.Join(tools, "go")
-	fakeGoBody := `#!/bin/sh
-out=
-while [ "$#" -gt 0 ]; do
-	if [ "$1" = -o ]; then out="$2"; shift 2; continue; fi
-	shift
-done
-if [ -z "$out" ]; then exit 0; fi
-cp "$AWF_HOOK_WRAPPER" "$out"
-chmod +x "$out"
-`
-	if err := os.WriteFile(fakeGo, []byte(fakeGoBody), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("bash", hook)
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "AWF_HOOK_WRAPPER="+wrapper, "AWF_PREP_BRIDGE=/removed", "AWF_PREP_BRIDGE_SHA256=removed", "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		t.Fatalf("pre-commit accepted an unmatched nested claim removal: %s", out)
-	}
-	text := string(out)
-	if !strings.Contains(text, "was removed with no ADR remove operation") ||
-		!strings.Contains(text, "pre-commit: the staged slice fails examples/sundial's HEAD-to-index current-state transition check") {
-		t.Fatalf("pre-commit nested staged diagnostic = %q", text)
-	}
-}
-
-func TestHookCommandHelper(t *testing.T) {
-	ctx := testContext(t)
-	if os.Getenv("AWF_HOOK_COMMAND_HELPER") == "" {
-		return
-	}
-	var err error
-	if len(os.Args) < 3 || os.Args[len(os.Args)-2] != "check" || os.Args[len(os.Args)-1] != "staged" {
-		err = fmt.Errorf("unexpected helper arguments: %v", os.Args)
-	} else if err = gateStaged(ctx, "."); err == nil {
-		err = runCheckStaged(ctx, ".", os.Stdout)
-	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "awf:", err)
-		os.Exit(1)
-	}
-	os.Exit(0)
-}
-
 // TestRunCheckStagedError covers the error return of the staged route: the index
 // carries no config, so CheckStaged fails.
 func TestRunCheckStagedError(t *testing.T) {
@@ -876,5 +849,78 @@ func TestRunCheckStagedError(t *testing.T) {
 	})
 	if err := runCheckStaged(ctx, dir, io.Discard); err == nil {
 		t.Fatal("expected the staged check to fail with no staged config")
+	}
+}
+
+func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	stateFailure := errors.New("state category mapping failed")
+	driftFailure := errors.New("staged drift failed")
+	dependencies := productionCheckStagedDependencies()
+	dependencies.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) {
+		return nil, stateFailure
+	}
+	driftRan := false
+	dependencies.driftRoot = func(context.Context, string) ([]manifest.Drift, error) {
+		driftRan = true
+		return nil, driftFailure
+	}
+	var stdout bytes.Buffer
+	collection, err := collectCheckStagedWith(testContext(t), root, planNoteSink{}, dependencies)
+	if err != nil {
+		t.Fatalf("collection error = %v, want operational failures retained in the collection", err)
+	}
+	err = renderCheckCollection(&stdout, collection)
+	if !driftRan {
+		t.Fatal("staged drift did not run after state presentation failure")
+	}
+	if !errors.Is(err, stateFailure) || !errors.Is(err, driftFailure) {
+		t.Fatalf("operational error = %v, want joined state and drift failures", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want suppressed partial report", stdout.String())
+	}
+}
+
+func TestCollectCheckStagedEmitsPlanNotesOnce(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	dependencies := productionCheckStagedDependencies()
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{PlanNotes: []string{"staged-plan-note-sentinel"}}, nil
+	}
+	dependencies.currentStateCategories = func(project.CurrentStateReport, bool) ([]presentation.ReportCategory, error) { return nil, nil }
+	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, false, dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	if err := renderCheckCollection(&stdout, collection); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(stdout.String(), "staged-plan-note-sentinel"); got != 1 {
+		t.Fatalf("plan note occurrences = %d, want 1 in %q", got, stdout.String())
+	}
+}
+
+func TestCollectCheckStagedRetainsStateFailureWhenDriftCategoryMappingFails(t *testing.T) {
+	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML}, nil)
+	driftFailure := errors.New("drift category mapping failed")
+	dependencies := productionCheckStagedDependencies()
+	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
+		return project.CurrentStateReport{Static: []currentstate.Finding{{Message: "state-failure-sentinel"}}}, nil
+	}
+	dependencies.driftCategories = func([]manifest.Drift, bool) ([]presentation.ReportCategory, error) { return nil, driftFailure }
+	collection, err := collectCheckStagedSelectionWith(testContext(t), root, planNoteSink{}, true, true, dependencies)
+	if err != nil {
+		t.Fatalf("collection error = %v, want retained operational failures", err)
+	}
+	if len(collection.failures) != 1 || collection.failures[0].Error() != "check staged state failed" {
+		t.Fatalf("state failures = %v, want staged state failure", collection.failures)
+	}
+	if len(collection.categories) == 0 {
+		t.Fatal("state categories were discarded")
+	}
+	if len(collection.operational) != 1 || !errors.Is(collection.operational[0], driftFailure) {
+		t.Fatalf("operational failures = %v, want drift category failure", collection.operational)
 	}
 }

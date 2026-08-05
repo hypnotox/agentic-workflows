@@ -120,7 +120,7 @@ func TestProductionNeverImportsTestSupport(t *testing.T) {
 	}{
 		{name: "root testsupport", path: "cmd/tool/main.go", source: "package main\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\"", violations: 1},
 		{name: "testsupport subpackage", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture\"", violations: 1},
-		{name: "example adopter", path: "examples/sundial/internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\"", violations: 1},
+		{name: "nested fixture", path: "fixtures/nested-adopter/internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\"", violations: 1},
 		{name: "standard library", path: "internal/tool/tool.go", source: "package tool\nimport \"strings\""},
 		{name: "other repository package", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/config\""},
 		{name: "test file", path: "internal/tool/tool_test.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/testsupport\""},

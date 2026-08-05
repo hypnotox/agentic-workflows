@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -20,18 +22,23 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-func TestCommitAuthorizationResultString(t *testing.T) {
-	success := CommitAuthorizationResult{Category: "operation", Condition: "stale merge authorization satisfied"}
-	if got, want := success.String(), "operation: stale merge authorization satisfied; changed index: no; changed message: no; changed merge state: no; next actions: none"; got != want {
-		t.Fatalf("success String = %q, want %q", got, want)
+func TestCommitAuthorizationResultDiagnostic(t *testing.T) {
+	result := CommitAuthorizationResult{Category: "operation", Condition: "non-merge", ChangedIndex: true, NextActions: []string{"correct the message trailers", "run git commit"}}
+	diagnostic, err := result.Diagnostic()
+	if err != nil {
+		t.Fatal(err)
 	}
-	changed := CommitAuthorizationResult{Category: "operation", Condition: "test", ChangedIndex: true, ChangedMessage: true, ChangedMergeState: true}
-	if got := changed.String(); !strings.Contains(got, "changed index: yes; changed message: yes; changed merge state: yes") {
-		t.Fatalf("changed String = %q", got)
+	document, err := diagnostic.Document()
+	if err != nil {
+		t.Fatal(err)
 	}
-	refusal := CommitAuthorizationResult{Category: "operation", Condition: "non-merge: provisional older-format introduction without merge parents", NextActions: []string{"correct the message trailers", "run git commit to finish the existing merge"}}
-	if got, want := refusal.String(), "operation: non-merge: provisional older-format introduction without merge parents; changed index: no; changed message: no; changed merge state: no; next actions: 1. correct the message trailers 2. run git commit to finish the existing merge"; got != want {
-		t.Fatalf("refusal String = %q, want %q", got, want)
+	var got bytes.Buffer
+	if err := presentation.Render(&got, document); err != nil {
+		t.Fatal(err)
+	}
+	want := "condition: non-merge\nstate: operation\n\ndiagnostic:\n  changed:\n    index: yes\n    message: no\n    merge state: no\n  steps:\n    step 1: correct the message trailers\n    step 2: run git commit\n"
+	if got.String() != want {
+		t.Fatalf("diagnostic = %q, want %q", got.String(), want)
 	}
 }
 
@@ -93,6 +100,20 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	}
 	if got := reader.Paths(""); len(got) != 1 || got[0] != "config.yaml" {
 		t.Fatalf("snapshot config paths=%v", got)
+	}
+}
+
+func TestEligiblePathsExcludeNestedAdopter(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: "nested/.awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: nested\nintegrationBranch: main\n")},
+		{Path: "nested/internal/x.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
+		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := eligiblePaths(tree, nil, nil), []string{"internal/owned.go"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("eligible paths=%v, want %v", got, want)
 	}
 }
 
@@ -337,5 +358,12 @@ func TestCheckCurrentStateLoadError(t *testing.T) {
 	})
 	if _, err := p.CheckCurrentState(testContext(t)); err == nil {
 		t.Fatal("expected a corpus load error from the malformed ADR")
+	}
+}
+
+func TestCommitAuthorizationResultDiagnosticRejectsInvalidAction(t *testing.T) {
+	result := CommitAuthorizationResult{Category: "operation", Condition: "refused", NextActions: []string{""}}
+	if _, err := result.Diagnostic(); err == nil {
+		t.Fatal("invalid action accepted")
 	}
 }

@@ -93,8 +93,9 @@ domains are derived from the `## State changes` operations. Any other key fails 
 V2, V3, and V4 recognize `Proposed`, `Accepted`, `Implementing`, `Implemented`, and `Abandoned`.
 Proposed may move to any later state; Accepted may move to Implementing, Implemented, or
 Abandoned; Implementing may move only to Implemented or Abandoned. Implemented and Abandoned
-are terminal. Implementing means a nonempty strict subset is applied. Abandonment keeps applied
-operations historical and cancels the remainder; its terminal event carries a rationale.
+are terminal. Implementing means a nonempty Applied set and permits zero or more Remaining operations.
+Implemented requires every declaration Applied. Abandonment keeps applied operations historical and
+cancels the remainder; its terminal event carries a rationale.
 
 Every ADR is routed by its authored format, independent of its number: markerless records use the
 frozen legacy parser, and `current-state-v1`, `current-state-v2`, `current-state-v3`, and `current-state-v4` select
@@ -111,15 +112,15 @@ establishes the first), and the latest stamp always equals the current content, 
 at Implemented or Abandoned. V1 records instead freeze once they leave Proposed. An application
 batch uses exactly
 `- YYYY-MM-DD: Applied; operations: <verb> `<qualified-id>`[, ...]`.
-Operations are nonempty, previously unapplied, and declaration-ordered. Entering Implementing
-appends its status then the first Applied event; a middle pair appends one Applied event; the final
-pair appends the last Applied event then Implemented. Direct Implemented transitions use one
-implicit batch. While operations remain, an already-applied add or update may be corrected with
-`- YYYY-MM-DD: Reapplied; operations: <verb> `<qualified-id>`[, ...]`. The operation must have an
-earlier Applied occurrence, each correction is one material checked batch, and provenance stays
-unchanged; Reapplied removes, terminal corrections, and corrections after the final Applied batch
-are refused. Per-claim provenance is ordered by ascending final ADR number. Stable history is
-corrected forward through a successor ADR, never by deleting or mutating a retained event.
+Operations are nonempty, previously unapplied, duplicate-free membership in any authored order.
+Entering Implementing appends its status then the first Applied event; every later Applied event,
+including the final batch, leaves status Implementing, and settled review later appends only
+Implemented. Direct Implemented transitions use one implicit batch. Throughout Implementing, an
+already-applied add or update may be corrected with `- YYYY-MM-DD: Reapplied; operations: <verb>
+`<qualified-id>`[, ...]`. The operation must have an earlier Applied occurrence, each correction is
+one material checked batch, and provenance stays unchanged; Reapplied removes and terminal
+corrections are refused. Per-claim provenance is ordered by ascending final ADR number. Stable
+history is corrected forward through a successor ADR, never by deleting or mutating a retained event.
 <!-- awf:end -->
 
 <!-- awf:section state-changes -->

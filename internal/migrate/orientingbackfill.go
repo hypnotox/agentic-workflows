@@ -1,8 +1,6 @@
 package migrate
 
 import (
-	"fmt"
-	"io"
 	"os"
 	"slices"
 
@@ -16,7 +14,7 @@ import (
 // declares no agent or doc requirement), so applyCloseEnabledSet cannot reach
 // it. Any config with brainstorming enabled gains orienting; a config without
 // brainstorming is untouched. Idempotent; the addition is announced.
-func applyOrientingSkillBackfill(root string, out io.Writer) error {
+func applyOrientingSkillBackfill(root string, out *Changes) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to backfill (idempotent re-run safe)
 	}
@@ -27,12 +25,12 @@ func applyOrientingSkillBackfill(root string, out io.Writer) error {
 	if !slices.Contains(cfg.Skills, "brainstorming") || slices.Contains(cfg.Skills, "orienting") {
 		return nil
 	}
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		b, err := config.SetArrayMember(src, "skills", "orienting", true)
 		if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot error here
 			return nil, err
 		}
-		fmt.Fprintln(out, "orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)")
+		planned.Add("orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)")
 		return b, nil
 	})
 }

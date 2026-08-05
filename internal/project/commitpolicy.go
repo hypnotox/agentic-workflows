@@ -7,6 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitpolicy"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 type commitPolicyRepository interface {
@@ -97,26 +98,30 @@ func policyFromConfig(cfg *config.CommitPolicyConfig) commitpolicy.Policy {
 	return policy
 }
 
-// CommitPolicyText renders one verifier outcome using the project configuration.
-func (p *Project) CommitPolicyText(outcome commitpolicy.Outcome) string {
+// CommitPolicyPresentation maps one verifier outcome using the project configuration.
+func (p *Project) CommitPolicyPresentation(outcome commitpolicy.Outcome) (presentation.Document, error) {
 	if p.Cfg.CommitPolicy == nil {
-		return commitpolicy.Render(commitpolicy.Policy{}, outcome)
+		return commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
 	}
-	return commitpolicy.Render(policyFromConfig(p.Cfg.CommitPolicy), outcome)
+	return commitpolicy.Presentation(policyFromConfig(p.Cfg.CommitPolicy), outcome)
 }
 
-// VerifyCommitPolicyAt resolves the invoking worktree before loading its policy and returns one rendered operation.
-func VerifyCommitPolicyAt(ctx context.Context, root string, targets []string) (string, commitpolicy.Outcome) {
+// VerifyCommitPolicyAt resolves the invoking worktree and returns its typed outcome
+// together with its model-owned presentation.
+func VerifyCommitPolicyAt(ctx context.Context, root string, targets []string) (presentation.Document, commitpolicy.Outcome, error) {
 	roots, err := awfgit.ResolveControlRoots(ctx, root)
 	if err != nil {
 		outcome := refused(commitpolicy.LinkedWorktreeFailure, "resolve invoking worktree", err)
-		return commitpolicy.Render(commitpolicy.Policy{}, outcome), outcome
+		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
+		return document, outcome, presentationErr
 	}
 	p, err := Open(ctx, roots.InvokingRoot)
 	if err != nil {
 		outcome := refused(commitpolicy.ConfigFailure, "load commitPolicy from "+roots.InvokingRoot, err)
-		return commitpolicy.Render(commitpolicy.Policy{}, outcome), outcome
+		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
+		return document, outcome, presentationErr
 	}
 	outcome := p.VerifyCommitPolicy(ctx, targets)
-	return p.CommitPolicyText(outcome), outcome
+	document, presentationErr := p.CommitPolicyPresentation(outcome)
+	return document, outcome, presentationErr
 }

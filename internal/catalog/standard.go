@@ -80,7 +80,7 @@ var Standard = &Catalog{
 				"adrStates": []any{
 					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable; body and status may both change"},
 					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet started", "mutability": "Status and append-only Status history; the body stays amendable, each amendment appending an Amended event; a schema retrofit may migrate the encoding"},
-					map[string]any{"name": "Implementing", "meaning": "A nonempty strict subset of declared operations is applied", "mutability": "Status and append-only Status history; Applied events append while operations remain, and the body stays amendable via Amended events"},
+					map[string]any{"name": "Implementing", "meaning": "A nonempty set of declared operations is applied; Remaining may be empty", "mutability": "Status and append-only Status history; every explicit Applied batch belongs to implementation, and the body stays amendable via Amended events"},
 					map[string]any{"name": "Implemented", "meaning": "All declared claim operations are applied", "mutability": "Terminal; status and append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
 					map[string]any{"name": "Abandoned", "meaning": "Execution stopped; applied operations remain historical and unapplied operations are canceled", "mutability": "Terminal; status and append-only Status history only; the final entry carries a rationale; the body is frozen"},
 				},
@@ -144,6 +144,8 @@ var Standard = &Catalog{
 				"focusItems": []any{
 					map[string]any{"name": "step-exactness", "description": "every phase declares independent inline or subagent-driven ownership, one coherent green transaction, and one closing subject; tasks are ordered steps with exact paths, symbols, commands, terminal states, exact content/diffs or implementation-ready pseudocode. The batch task retains representative, edge, exhaustive sites, deterministic post-check, and optional exhaustive path-disjoint helper partitions with parent-owned shared files and command-confined helpers. Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders."},
 					map[string]any{"name": "dependency-order", "description": "tasks are ordered so each builds only on already-completed work"},
+					map[string]any{"name": "snapshot-scoped-verification", "description": "execute material census and post-check commands against the exact intermediate snapshot declared by the plan; require the expected terminal set or lifecycle-authorized residual findings, and reject a premature zero requirement"},
+					map[string]any{"name": "check-authority-taxonomy", "description": "classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation"},
 				},
 				"docCurrencyItems": []any{
 					map[string]any{"check": "the plan schedules updates for every document its changes invalidate, in the same commits"},
@@ -166,6 +168,8 @@ var Standard = &Catalog{
 				"focusItems": []any{
 					map[string]any{"name": "plan-adherence", "description": "the diff matches the plan's stated file paths and content; unexplained drift is a finding"},
 					map[string]any{"name": "test-coverage", "description": "behaviour changes carry tests in the same commit; no assertion is weakened to pass"},
+					map[string]any{"name": "verification-instrument-can-fail", "description": "for every added or changed mechanical check, require a negative case and a temporary falsification that proves the mutation landed before its passing verdict counts; restore only the temporary mutation, and never use a whole-file reset that can erase unrelated uncommitted work"},
+					map[string]any{"name": "check-authority-taxonomy", "description": "classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation"},
 				},
 				"docCurrencyItems": []any{
 					map[string]any{"check": "the change updates every document that states the old behaviour, in the same commit"},

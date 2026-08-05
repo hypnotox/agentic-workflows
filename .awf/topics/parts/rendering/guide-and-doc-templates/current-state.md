@@ -86,7 +86,7 @@ Backing: test
 
 ### `invariant: maintainable-code-design-guide`
 
-The standard catalog renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with ordered convention-part sections for decision posture, contextual heuristics, semantic modeling, readability, boundaries and dependencies, an illustrative pattern toolbox, preparatory refactoring, and failure modes; empty project data remains coherent, adopter-neutral, language-agnostic, and free of repository-specific content.
+The standard catalog renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with ordered convention-part sections for decision posture, contextual heuristics, semantic modeling, readability, boundaries and dependencies, an illustrative pattern toolbox, preparatory refactoring, and failure modes. Its canonical language-agnostic, adopter-neutral decision posture makes the simplest sufficient solution the default and permits added abstraction, indirection, validation, test machinery, tooling, cleanup, or process only for requested behavior, a reproduced defect, an existing documented contract, or a clearly applicable project invariant; the agent guide projects this rule concisely. Workflow plan selection is proportionate: plans are for sequencing, coordination, or resumability that materially helps and record approved choices rather than invent speculative work. Empty project data remains coherent and free of repository-specific content.
 Origin: ADR-0168
-Revised-by: ADR-0200
+Revised-by: ADR-0200, ADR-0232
 Backing: test

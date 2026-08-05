@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"slices"
@@ -16,20 +15,24 @@ import (
 // (ADR-0081 Decision 8), in two ordered steps: first every dormant doc-gated
 // skill - enabled while its doc is disabled, the pre-schema-8 valid
 // silent-suppression state - is dropped, preserving the adopter's observed
-// rendered output (the drop skips `local:`-owned skills, symmetric with the
+// rendered artifacts (the drop skips `local:`-owned skills, symmetric with the
 // validator: a local doc-gated skill renders today even without its doc);
 // then an additive fixed point over all three Requires* edge kinds enables
 // every remaining enabled artifact's missing skills, agents, and docs - so a
 // dormant skill something still requires re-enters with its doc. Idempotent;
-// every addition and drop is printed; the config write is atomic.
-func applyCloseEnabledSet(root string, out io.Writer) error {
+// every addition and drop collects an ordered change fact; the config write is atomic.
+func applyCloseEnabledSet(root string, out *Changes) error {
 	return closeEnabledSet(root, catalog.Standard, out)
 }
 
 // closeEnabledSet is the catalog-parameterized seam behind applyCloseEnabledSet,
 // so the demanded-dormant re-add interplay (unreachable in the shipped catalog -
 // nothing requires a doc-gated skill today) stays testable synthetically.
-func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
+func closeEnabledSet(root string, cat *catalog.Catalog, out *Changes) error {
+	return closeEnabledSetWithEditor(root, cat, out, productionConfigEditor())
+}
+
+func closeEnabledSetWithEditor(root string, cat *catalog.Catalog, out *Changes, editor configEditor) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to close (idempotent re-run safe)
 	}
@@ -53,8 +56,12 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 		enabled[catalog.Node{Kind: "doc", Name: d}] = true
 	}
 
-	// Step 1: drop dormant non-local doc-gated skills.
-	var drops []catalog.Node
+	// Step 1: drop dormant non-local doc-gated skills. Facts stay local until
+	// the atomic config edit proves that the planned changes took effect.
+	var (
+		drops   []catalog.Node
+		planned Changes
+	)
 	for _, s := range slices.Sorted(slices.Values(cfg.Skills)) {
 		req := cat.Skills[s].RequiresDoc
 		if req == "" || local("skills", s) || enabled[catalog.Node{Kind: "doc", Name: req}] {
@@ -63,12 +70,12 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 		n := catalog.Node{Kind: "skill", Name: s}
 		delete(enabled, n)
 		drops = append(drops, n)
-		fmt.Fprintf(out, "close-enabled-set: dropped dormant skill %q (its %q doc is disabled)\n", s, req)
+		planned.Add(fmt.Sprintf("close-enabled-set: dropped dormant skill %q (its %q doc is disabled)\n", s, req))
 	}
 
 	// Step 2: additive fixed point over the direct requirement edges of every
-	// enabled, non-local skill and agent. Iteration is sorted so the printed
-	// plan and the resulting enable arrays are deterministic.
+	// enabled, non-local skill and agent. Iteration is sorted so the collected
+	// change facts and resulting enable arrays are deterministic.
 	var adds []catalog.Node
 	for changed := true; changed; {
 		changed = false
@@ -88,7 +95,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 				}
 				enabled[r] = true
 				adds = append(adds, r)
-				fmt.Fprintf(out, "close-enabled-set: enabled %s %q (required by %q)\n", r.Kind, r.Name, n.Name)
+				planned.Add(fmt.Sprintf("close-enabled-set: enabled %s %q (required by %q)\n", r.Kind, r.Name, n.Name))
 				changed = true
 			}
 		}
@@ -96,7 +103,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 	if len(drops) == 0 && len(adds) == 0 {
 		return nil
 	}
-	return editConfig(root, func(src []byte) ([]byte, error) {
+	if err := editor.editConfig(root, out, func(src []byte, committed *Changes) ([]byte, error) {
 		b := src
 		var err error
 		for _, n := range drops {
@@ -109,6 +116,12 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 				return nil, err
 			}
 		}
+		for _, change := range planned.Items() {
+			committed.Add(change.Text)
+		}
 		return b, nil
-	})
+	}); err != nil {
+		return err
+	}
+	return nil
 }

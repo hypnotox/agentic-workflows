@@ -53,6 +53,7 @@ Backing: test
 
 ### `invariant: severity-single-spelling`
 
-Every finding rank awf reports renders as exactly error or warn: one shared two-member rank backs the audit findings, the repo-local audit tool, and current-state topic coverage, and no finding rank renders as warning.
+Every finding rank awf reports remains exactly error or warn: one shared two-member rank backs the audit findings, the repo-local audit tool, and current-state topic coverage, and no serialized finding rank becomes warning. Readable presentation groups may use only the plural section labels errors and warnings.
 Origin: ADR-0183
+Revised-by: ADR-0234
 Backing: test

@@ -17,9 +17,9 @@ Backing: test
 
 ### `invariant: cli-command-spec-single-source`
 
-The top-level usage line, awf help overview and order, and generated gated-command list all derive from the clispec command table, with no parallel command-order or gated-command list.
+The top-level usage line, awf help overview and order, structured command help model data (usage forms, descriptions, details, positionals, options, examples, and related commands), and generated gated-command list all derive from the clispec command table, with no parallel command-order or gated-command list.
 Origin: ADR-0094
-Revised-by: ADR-0144, ADR-0156
+Revised-by: ADR-0144, ADR-0156, ADR-0234
 Backing: test
 
 ### `invariant: help-lists-group-children`
@@ -45,6 +45,12 @@ Backing: test
 
 Run outside an adopted project, where no config file is present, the config command prints the static catalog-wide reference labeled as a static, not-inside-a-project reference and returns success instead of refusing. The static output lists catalog keys, vars, sidecar fields, and consumers but carries no live project state.
 Origin: ADR-0088
+Backing: test
+
+### `invariant: explicit-output-bypasses`
+
+Only authored plan projections, selected changelog content, effort activity JSON, init descriptor JSON, and the context spill notice bypass the presentation tree on successful output, each under byte-exact tests. The exact `writeRendererFailure` terminal mechanism diagnostic is separate, is reachable only after presentation rendering fails, and is not an alternate successful renderer.
+Origin: ADR-0234
 Backing: test
 
 ### `invariant: gated-commands-generated`
@@ -88,10 +94,17 @@ Origin: ADR-0213
 Revised-by: ADR-0217
 Backing: test
 
+### `invariant: readable-text-output`
+
+Every ordinary awf command surface, including help, prompts, results, advisories, reports, refusals, and partial outcomes, uses the central deterministic readable-text presentation contract with stable labels, semantic grouping, ordering, escaping, stream selection, and newline behavior.
+Origin: ADR-0234
+Backing: test
+
 ### `invariant: repo-check-capability-plan`
 
-The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index for enabled scanners; disabled or scanner-only selections acquire no unrelated capability. The aggregate preserves version, advisory, and step output order, continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
+The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index for enabled scanners; disabled or scanner-only selections acquire no unrelated capability. The aggregate preserves version and advisory order, executes selected steps in capability-plan order, and presents their findings in deterministic `errors` then `warnings` categories with source order preserved within each category rather than across categories. It continues after action errors and returns the first, while any preparation failure executes no step; the three working, current-state, and index universes never substitute for one another.
 Origin: ADR-0223
+Revised-by: ADR-0234
 Backing: test
 
 ### `invariant: single-os-exit`
@@ -124,6 +137,12 @@ The add, remove, and list target commands mutate and read the config targets arr
 Origin: ADR-0037
 Backing: test
 
+### `invariant: typed-command-output-boundary`
+
+The command boundary carries typed presentation and exit information: complete produced reports write once to stdout even when their status requires nonzero exit, usage and operational failures render one diagnostic to stderr, and renderer failures alone use the exact terminal mechanism fallback without duplicate output.
+Origin: ADR-0234
+Backing: test
+
 ### `invariant: upgrade-always-syncs`
 
 `awf upgrade` runs a full sync on every successful invocation, including the zero-migrations case, where it reports that the config is already at the current schema and still re-renders every managed file.
@@ -139,7 +158,7 @@ Backing: test
 
 ### `invariant: effort-command-contract`
 
-`awf effort` exposes schema-2 `new --slug <slug> <outcome-title> [--json] [--no-worktree] [--base <ref>]`, `list [--json]`, `show <slug> [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, `integrate <slug>`, `memory update <slug> [--phase <text>] [--next <text>]`, and protocol-v2 JSON-only `activity attach|heartbeat|detach`, each with one canonical slug, `--owner <uuid>`, and `--json`; no resolve, checkout, destination, CWD, role, or receiving-checkout activity action or flag exists. New requires the nonrepeatable explicit slug value flag around the one independent title positional through interspersed ordering and validates grammar before composition; other flags and subcommands retain their combinations. Memory update requires at least one mutable field, preserves matching identity/body, migrates exact legacy metadata, and updates UTC time. Activity handled replies use exact condition-specific newline-terminated envelopes and the sole `changedActivity` mutation axis; malformed or pre-state failures use nonzero exit, empty stdout, and bounded actionable stderr, while state-observing mechanism failures use structured outcomes with cause. Existing protocol-2 new/show/list shapes, worktree behavior, primary-root-qualified memory paths, and unrelated command availability remain unchanged; there is no rename, standalone memory, lifecycle ledger, manual integration, authoritative assignment, or force command.
+`awf effort` exposes schema-2 readable-text `new --slug <slug> <outcome-title> [--no-worktree] [--base <ref>]`, `list`, `show <slug>`, `finish <slug>`,  `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, `integrate <slug>`, `memory update <slug> [--phase <text>] [--next <text>]`, and protocol-v2 JSON-only `activity attach|heartbeat|detach`, each with one canonical slug, `--owner <uuid>`, and `--json`; no resolve, checkout, destination, CWD, role, or receiving-checkout activity action or flag exists. New requires the nonrepeatable explicit slug value flag around the one independent title positional through interspersed ordering and validates grammar before composition; other flags and subcommands retain their combinations. Memory update requires at least one mutable field, preserves matching identity/body, migrates exact legacy metadata, and updates UTC time. Activity handled replies use exact condition-specific newline-terminated envelopes and the sole `changedActivity` mutation axis; malformed or pre-state failures use nonzero exit, empty stdout, and bounded actionable stderr, while state-observing mechanism failures use structured outcomes with cause. Readable new/show/list presentations preserve schema-2 resident facts, worktree behavior, primary-root-qualified memory paths, and unrelated command availability; there is no rename, standalone memory, lifecycle ledger, manual integration, authoritative assignment, or force command.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218, ADR-0225, ADR-0226
+Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218, ADR-0225, ADR-0226, ADR-0234
 Backing: test

@@ -3,7 +3,6 @@ package project
 import (
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"os/exec"
@@ -299,7 +298,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "retained", "resident"), name)
 	}
 
-	if _, err := migrate.Upgrade(testContext(t), root, io.Discard); err != nil {
+	if _, _, err := migrate.Upgrade(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"metrics", "assignments"} {
@@ -842,6 +841,157 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 // entry against the fresh render, so a tweaked stored hash simulates the
 // corresponding real change (an upstream template edit, a config edit, a
 // non-hashed input) without mutating the embedded templates.
+func TestSyncReportRetainsWrittenOutputWhenChmodFails(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(p.lockPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := lock.Files["AGENTS.md"]
+	e.OutputHash = "different"
+	lock.Files["AGENTS.md"] = e
+	if err := lock.Save(p.lockPath()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	operation := productionSyncOperation()
+	operation.chmod = func(path string, _ os.FileMode) error {
+		if filepath.Base(path) == "AGENTS.md" {
+			return errors.New("chmod failed")
+		}
+		return nil
+	}
+	corpus, topics, eff, deriveErr := p.deriveOperationState()
+	if deriveErr != nil {
+		t.Fatal(deriveErr)
+	}
+	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	if err == nil || len(changes) == 0 || changes[0].Path != "AGENTS.md" {
+		t.Fatalf("changes = %v, err = %v", changes, err)
+	}
+}
+
+func TestSyncReportRetainsModeCorrectionWhenLaterWriteFails(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Chmod(agents, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	operation := productionSyncOperation()
+	priorWrite := operation.writeFile
+	failure := errors.New("later write failed")
+	operation.writeFile = func(path string, content []byte, mode os.FileMode) error {
+		if filepath.Base(path) == "CLAUDE.md" {
+			return failure
+		}
+		return priorWrite(path, content, mode)
+	}
+	corpus, topics, eff, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if want := []Change{{Path: "AGENTS.md", Cause: "internal"}}; !reflect.DeepEqual(changes, want) {
+		t.Fatalf("changes = %v, want %v", changes, want)
+	}
+	assertPerm(t, agents, 0o644)
+}
+
+func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Chmod(agents, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(agents, []byte("hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	_, changes, _, err := p.SyncReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []Change{{Path: "AGENTS.md", Cause: "internal"}}; !reflect.DeepEqual(changes, want) {
+		t.Fatalf("changes = %v, want one record for both corrections: %v", changes, want)
+	}
+	assertPerm(t, agents, 0o644)
+}
+
+func TestSyncReportStopsOnOutputStatFailure(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Remove(agents); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("AGENTS.md", agents); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	p, _ = Open(testContext(t), root)
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil {
+		t.Fatal("SyncReport succeeded with an unreadable output path")
+	}
+}
+
+func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, "AGENTS.md")
+	if err := os.WriteFile(output, []byte("hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	operation := productionSyncOperation()
+	priorWrite := operation.writeFile
+	failure := errors.New("write failed")
+	operation.writeFile = func(path string, content []byte, mode os.FileMode) error {
+		if filepath.Base(path) == "AGENTS.md" {
+			return failure
+		}
+		return priorWrite(path, content, mode)
+	}
+	corpus, topics, eff, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if len(changes) != 0 {
+		t.Fatalf("changes = %v, want no output evidence before the failed write", changes)
+	}
+	got, readErr := os.ReadFile(output)
+	if readErr != nil || string(got) != "hand edit\n" {
+		t.Fatalf("output = %q, err = %v; want original bytes", got, readErr)
+	}
+}
+
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(testContext(t), root)
@@ -879,6 +1029,11 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	delete(lock.Files, "docs/workflow.md")
 	if err := lock.Save(p.lockPath()); err != nil {
 		t.Fatal(err)
+	}
+	for _, path := range []string{"AGENTS.md", ".claude/skills/example-tdd/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/decisions/INDEX.md", "docs/workflow.md"} {
+		if err := os.WriteFile(filepath.Join(root, path), []byte("stale output\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	p2, _ := Open(testContext(t), root)
 	_, changes, _, err = p2.SyncReport(testContext(t))

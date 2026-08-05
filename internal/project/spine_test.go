@@ -213,7 +213,8 @@ func TestPlanReviewerAgent(t *testing.T) {
 		"bounded to the failure they prevent",
 		"deterministically verifiable",
 		"approved, deferred, or declined disposition",
-		"needless indirection and pattern mandates",
+		"needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process",
+		"Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 	}
 	for _, phrase := range planPhrases {
 		if !strings.Contains(out, phrase) {
@@ -281,6 +282,61 @@ func TestCodeReviewerAgent(t *testing.T) {
 	}
 }
 
+func TestRenderedReviewerVerificationGuidance(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	contracts := map[string][]string{
+		"plan-reviewer": {
+			"material census and post-check commands",
+			"exact intermediate snapshot",
+			"terminal set or lifecycle-authorized residual findings",
+			"reject a premature zero requirement",
+			"authority, state, or choreography check",
+			"preserve authority checks",
+			"no stricter than the durable property",
+			"no named authority or state obligation",
+		},
+		"code-reviewer": {
+			"added or changed mechanical check",
+			"negative case",
+			"temporary falsification",
+			"mutation landed",
+			"verdict counts",
+			"restore only the temporary mutation",
+			"whole-file reset",
+			"unrelated uncommitted work",
+			"authority, state, or choreography check",
+			"preserve authority checks",
+			"no stricter than the durable property",
+			"no named authority or state obligation",
+		},
+	}
+	for agent, clauses := range contracts {
+		surfaces := map[string]string{
+			"generic " + agent: renderAgentGolden(t, agent, map[string]any{
+				"prefix": "example",
+				"vars":   map[string]any{},
+				"layout": map[string]any{"plansDir": "docs/plans"},
+				"data":   catalog.Standard.Agents[agent].Data,
+			}),
+		}
+		for _, target := range []string{".claude", ".pi"} {
+			path := filepath.Join(root, target, "agents", agent+".md")
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			surfaces[path] = string(body)
+		}
+		for surface, body := range surfaces {
+			for _, clause := range clauses {
+				if !strings.Contains(body, clause) {
+					t.Errorf("%s missing reviewer verification clause %q", surface, clause)
+				}
+			}
+		}
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:implementer-role-contract (TestImplementerAgent)
 func TestImplementerAgent(t *testing.T) {
 	data := map[string]any{
@@ -321,7 +377,10 @@ func TestImplementerAgent(t *testing.T) {
 		"the exact output of `git status --short`",
 		"what you completed",
 		"what remains",
-		"the failing check, named, with its actual output",
+		"either the failing check, named, with its actual output",
+		"or the complete approval-requiring invalidating-source report",
+		"changed fact, why the approved approach no longer fits, affected approved categories, and simplest viable options",
+		"stop before any further mutation",
 		"what you already tried, so the next attempt does not repeat it",
 		"There is no third outcome",
 		"The invariants, conventions, and commands in the repository's agent guide bind you",
@@ -476,12 +535,12 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 		"plan": {
 			"model", "ownership", "representations", "translation boundaries", "dependency direction", "test seams",
 			"ordered before dependent behavior", "bounded to the failure they prevent", "deterministically verifiable",
-			"approved, deferred, or declined disposition", "needless indirection", "pattern mandates",
+			"approved, deferred, or declined disposition", "needless indirection", "pattern mandates", "unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process", "Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 		},
 		"code": {
 			"cohesion", "coupling", "dependency direction", "representation leakage", "duplicated policy", "testability",
 			"needless indirection", "conformance to the settled design", "behavior bolted onto an unsuitable abstraction",
-			"refactoring scope silently broadened",
+			"refactoring scope silently broadened", "unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process", "Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
 		},
 		"adr": {
 			"semantic model", "representation", "module/package boundary", "dependency direction", "ownership boundary",
@@ -524,6 +583,7 @@ func TestExecutingDirectTemplate(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMaintainableCodeStageCoverage)
 // invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage (TestMaintainableCodeStageCoverage)
 func TestMaintainableCodeStageCoverage(t *testing.T) {
 	allSkills := map[string]bool{
@@ -544,7 +604,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 	}
 	cases := map[string]stageContract{
 		"brainstorming": {wants: []string{
-			"docs/maintainable-code-design.md", "semantic model and ownership", "representation boundaries", "dependency direction", "test seams", "preparatory-refactor decision", "before approving an approach",
+			"docs/maintainable-code-design.md", "semantic model and ownership", "representation boundaries", "dependency direction", "test seams", "preparatory-refactor decision", "proportionate simplicity contract", "scope and exclusions", "structural approach and dependencies", "patterns or abstractions", "checks and testing strategy", "few sentences rather than a fixed checklist", "final approved design becomes the implementation boundary",
 		}},
 		"proposing-adr": {wants: []string{
 			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, constraints, and enabling work", "here and in Decision", "do not replace them with a pattern name",
@@ -553,22 +613,22 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "duplication, coupling, representation leakage, or a workaround", "bounded enabling-refactor or larger-work result", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "ADR scope", "Context section before", "Decision is drafted", "Scope shrink rule", "defer X",
 		}},
 		"writing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context",
+			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context", "sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work",
 		}},
 		"tdd": {wants: []string{
-			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass",
+			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy", "stop before further mutation", "return to the user", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"executing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan",
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan", "affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy", "stop before further mutation", "return to the user", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"executing-direct": {wants: []string{
-			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design",
+			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design", "affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy", "stop before further mutation", "return to the user", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"subagent-driven-development": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "allowCommits: true",
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "allowCommits: true", "affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy", "stop before further mutation", "return to the user", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 		"bugfix": {wants: []string{
-			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit",
+			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy", "stop before further mutation", "return to the user", "changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options", "Equivalent mechanical choices remain autonomous",
 		}},
 	}
 	for skill, contract := range cases {
@@ -1040,6 +1100,8 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"generated task scope notice",
 		"phase-owner context only",
 		"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
+		"every explicit batch of the ADR's declared State changes operations",
+		"Terminal review owns only the status-only Implemented flip",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1076,6 +1138,8 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"example-reviewing-impl",
 		"example-executing-plans",
 		"dirty-state inventory",
+		"every explicit V2 batch, including the final batch",
+		"Terminal review owns only the status-only Implemented flip",
 		"generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
 		"never transfer commit, review, checkpoint, handoff, helper, or outcome authority",
 	}
@@ -1416,12 +1480,39 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"status transition",
 		"regenerate",
 		"Append-only",
+		"every explicit Applied batch, including the final batch",
+		"direct implicit completion with its matching claim mutations",
+		"status-only terminal transaction after explicit application",
 		"V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker",
 		"use canonical `#N` only after their authored-format lifecycle freezes the record",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+
+	observable := []string{"distinct claim IDs", "separately observable authored transaction", "exact prefix", "legal ordered lifecycle"}
+	scaffold := renderGolden(t, "adr-template/template.md.tmpl", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
+	})
+	for name, body := range map[string]string{"generic ADR scaffold": scaffold, "generic lifecycle skill": out} {
+		for _, phrase := range observable {
+			if !strings.Contains(body, phrase) {
+				t.Errorf("%s missing observable authored-transaction phrase %q:\n%s", name, phrase, body)
+			}
+		}
+	}
+	root := testsupport.RepoRoot(t)
+	for _, rel := range []string{".claude/skills/awf-adr-lifecycle/SKILL.md", ".pi/skills/awf-adr-lifecycle/SKILL.md"} {
+		body, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, phrase := range observable {
+			if !bytes.Contains(body, []byte(phrase)) {
+				t.Errorf("%s missing observable authored-transaction phrase %q", rel, phrase)
+			}
 		}
 	}
 }
@@ -1593,6 +1684,9 @@ func TestReviewingImplTemplate(t *testing.T) {
 		"user-decision",
 		"SHA range",
 		"docs/decisions/",
+		"explicit history has already applied every batch",
+		"direct `Proposed`-to-`Implemented` or `Accepted`-to-`Implemented` transition",
+		"atomic implicit batch, matching claim mutations, and Implemented event",
 		"example-retrospective",
 	}
 	for _, phrase := range loadBearing {
@@ -1667,6 +1761,7 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 }
 
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocGuide)
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestAgentsDocGuide)
 func TestAgentsDocGuide(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -1687,6 +1782,8 @@ func TestAgentsDocGuide(t *testing.T) {
 		"## Commands",
 		"## Document map",
 		"Route settled content by authority lifetime",
+		"Preserve the user-approved material design boundary",
+		"docs/maintainable-code-design.md",
 		"make gate",
 	} {
 		if !strings.Contains(out, phrase) {
@@ -2244,7 +2341,7 @@ var unsetFallbackCases = []fallbackCase{
 	// invariant: rendering/workflow-skill-templates:reviewers-report-only (agents/adr-reviewer.md.tmpl)
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
-		want: []string{"post-implementation", "counterfactual", "reasoned finding"},
+		want: []string{"post-implementation", "counterfactual", "reasoned finding", "unordered membership within each batch"},
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
@@ -2262,7 +2359,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/adr-lifecycle/SKILL.md.tmpl",
-		want: []string{"the multi-state lifecycle", "Run `awf render` to regenerate"},
+		want: []string{"the multi-state lifecycle", "Run `awf render` to regenerate", "whose members may appear in any order", "settled review later appends only Implemented"},
 	},
 	{
 		tmpl: "skills/brainstorming/SKILL.md.tmpl",
@@ -2400,6 +2497,109 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 				t.Errorf("empty-data render is not coherent:\n%s", out)
 			}
 		})
+	}
+}
+
+func TestExecutionBoundaryGuidanceSurfaces(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{},
+	}
+	genericRoot := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n")
+	genericProject, err := Open(testContext(t), genericRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	genericFiles, err := genericProject.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	genericWorkingWithAwf := renderedByPath(t, genericFiles, "docs/working-with-awf.md")
+	for _, unresolved := range []string{"<no value>", "{{ if ", "{{ with ", "{{ range ", "{{ ."} {
+		if strings.Contains(genericWorkingWithAwf, unresolved) {
+			t.Errorf("generic working-with-awf render retains unresolved action %q", unresolved)
+		}
+	}
+
+	type contract struct {
+		generic    string
+		paths      []string
+		start, end string
+		clauses    []string
+		ordered    []string
+	}
+	contracts := []contract{
+		{
+			generic: renderSkillGolden(t, "subagent-driven-development", data),
+			paths:   []string{".claude/skills/awf-subagent-driven-development/SKILL.md", ".pi/skills/awf-subagent-driven-development/SKILL.md"},
+			start:   "5. Before review", end: "If an owner stops dirty",
+			clauses: []string{"explicitly intended worktree", "confirm its branch", "reported commit", "branch tip", "`git status --short`", "Before review"},
+		},
+		{
+			generic: renderSkillGolden(t, "reviewing-impl", data),
+			paths:   []string{".claude/skills/awf-reviewing-impl/SKILL.md", ".pi/skills/awf-reviewing-impl/SKILL.md"},
+			start:   "8. **Route settled terminal review", end: "## Notes",
+			clauses: []string{"implemented public shapes", "execution deviations", "mutable plan Notes", "Before the deferred terminal transaction", "After a divergent integration", "re-read enumerative workflow prose", "contracts changed on the other side", "renewed review can settle"},
+			ordered: []string{"After a divergent integration", "Before the deferred terminal transaction", "Only after the applicable terminal review"},
+		},
+		{
+			generic: renderSkillGolden(t, "effort-workflow", data),
+			paths:   []string{".claude/skills/awf-effort-workflow/SKILL.md", ".pi/skills/awf-effort-workflow/SKILL.md"},
+			start:   "Use ordinary `awf effort` commands", end: "Update checkpoints",
+			clauses: []string{"Treat one checkout as one writer boundary", "parallel work uses separate worktrees", "Before the first mutation", "exact managed-worktree prefix", "suspected path slip", "inspect the primary checkout", "residual shared-checkout commit", "fresh status", "staged and worktree copies", "shared generated files"},
+		},
+		{
+			generic: renderGolden(t, "docs/workflow.md.tmpl", data),
+			paths:   []string{"docs/workflow.md"},
+			start:   "## Composing the gate", end: "## Local git hooks",
+			clauses: []string{"To preserve long gate output", "direct log redirect", "capture the command status separately", "gate_status=$?", "before inspecting the log", "exit \"$gate_status\"", "status-losing pipeline"},
+		},
+		{
+			generic: genericWorkingWithAwf,
+			paths:   []string{"docs/working-with-awf.md"},
+			start:   "## Keeping in sync", end: "## Upgrading awf",
+			clauses: []string{"stage `.awf/awf.lock` with every regenerated output", "atomic manifest", "one render transaction", "independent commits"},
+		},
+	}
+	for _, contract := range contracts {
+		surfaces := map[string]string{"generic render": contract.generic}
+		for _, path := range contract.paths {
+			body, err := os.ReadFile(filepath.Join(root, path))
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			surfaces[path] = string(body)
+		}
+		for surface, body := range surfaces {
+			start := strings.Index(body, contract.start)
+			if start < 0 {
+				t.Errorf("%s missing owning-section start %q", surface, contract.start)
+				continue
+			}
+			endOffset := strings.Index(body[start+len(contract.start):], contract.end)
+			if endOffset < 0 {
+				t.Errorf("%s missing owning-section end %q", surface, contract.end)
+				continue
+			}
+			section := strings.Join(strings.Fields(body[start:start+len(contract.start)+endOffset]), " ")
+			for _, clause := range contract.clauses {
+				if !strings.Contains(section, clause) {
+					t.Errorf("%s owning section missing execution-boundary clause %q", surface, clause)
+				}
+			}
+			position := -1
+			for _, anchor := range contract.ordered {
+				next := strings.Index(section, anchor)
+				if next < 0 || next <= position {
+					t.Errorf("%s owning section does not order %q after its predecessor", surface, anchor)
+				}
+				position = next
+			}
+			if strings.Contains(section, "<no value>") {
+				t.Errorf("%s leaked unresolved render data", surface)
+			}
+		}
 	}
 }
 
