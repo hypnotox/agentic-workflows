@@ -40,9 +40,9 @@ surfaces first.
 Phase 1 authorizes the reviewed ADR. Phase 2 streams the rich range through incremental ordinary
 rules. Phase 3 lands compact graph scheduling and interleaved replay while retaining the existing
 revision cache. Phase 4 splits light and heavy state, resolves aliases, and releases final-consumer
-evidence. Phase 5 proves the bound, applies the current-state claim, and publishes architecture and
-operator-facing documentation. The terminal review flow later owns the status-only ADR and plan
-completion transitions.
+evidence. Phases 2-4 update architecture alongside the code that makes each statement true. Phase 5
+proves the bound, applies the current-state claim, and publishes operator-facing documentation. The
+terminal review flow later owns the status-only ADR and plan completion transitions.
 
 ## Phase 1: Authorize lifetime-bounded replay
 
