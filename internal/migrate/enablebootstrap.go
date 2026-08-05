@@ -20,6 +20,13 @@ func applyEnableBootstrap(root string, out *Changes) error {
 				return src, nil
 			}
 		}
-		return config.SetMappingScalar(src, "bootstrap", "enabled", true)
+		updated, err := config.SetMappingScalar(src, "bootstrap", "enabled", true)
+		if err != nil {
+			return nil, err
+		}
+		if string(updated) != string(src) {
+			planned.Add("enable-bootstrap: enabled bootstrap")
+		}
+		return updated, nil
 	})
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -16,7 +17,7 @@ import (
 // fields), per-target sidecars for everything non-prose, every replaceWith part
 // copied to its convention path, and the agents-doc prose re-modelled into
 // convention parts. Idempotent: a no-op (nil) when .claude/awf.yaml is absent.
-func applyTreeLayout(root string, _ *Changes) error {
+func applyTreeLayout(root string, out *Changes) error {
 	claudeDir := filepath.Join(root, ".claude")
 	legacyPath := filepath.Join(claudeDir, "awf.yaml")
 	if _, err := os.Stat(legacyPath); errors.Is(err, os.ErrNotExist) {
@@ -45,9 +46,11 @@ func applyTreeLayout(root string, _ *Changes) error {
 	if len(lc.Hooks) > 0 {
 		skeleton["hooks"] = lc.Hooks
 	}
-	if err := writeYAML(filepath.Join(awfDir, "config.yaml"), skeleton); err != nil {
+	configPath := filepath.Join(awfDir, "config.yaml")
+	if err := writeYAML(configPath, skeleton); err != nil {
 		return err
 	}
+	out.Add("tree-layout: wrote .claude/awf/config.yaml")
 
 	// Per-kind sidecars + convention parts.
 	for _, kv := range []struct {
@@ -57,7 +60,7 @@ func applyTreeLayout(root string, _ *Changes) error {
 		{"skills", lc.Skills}, {"agents", lc.Agents}, {"docs", lc.Docs},
 	} {
 		for _, name := range slices.Sorted(maps.Keys(kv.set)) {
-			if err := portSidecar(awfDir, kv.kind, name, kv.set[name]); err != nil {
+			if err := portSidecar(awfDir, kv.kind, name, kv.set[name], out); err != nil {
 				return err
 			}
 		}
@@ -65,7 +68,7 @@ func applyTreeLayout(root string, _ *Changes) error {
 
 	// agents-doc: prose → convention parts, the rest → agents-doc.yaml sidecar.
 	if lc.AgentsDoc != nil {
-		if err := portAgentsDoc(awfDir, *lc.AgentsDoc); err != nil {
+		if err := portAgentsDoc(awfDir, *lc.AgentsDoc, out); err != nil {
 			return err
 		}
 	}
@@ -74,7 +77,10 @@ func applyTreeLayout(root string, _ *Changes) error {
 	if err := os.Remove(legacyPath); err != nil { // coverage-ignore: post-port removal of the legacy file we just stat'd and read; fails only on a permission fault that root bypasses
 		return err
 	}
-	if err := os.Remove(filepath.Join(claudeDir, "awf.lock")); err != nil && !errors.Is(err, os.ErrNotExist) {
+	out.Add("tree-layout: removed .claude/awf.yaml")
+	if err := os.Remove(filepath.Join(claudeDir, "awf.lock")); err == nil {
+		out.Add("tree-layout: removed .claude/awf.lock")
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	return nil
@@ -84,25 +90,31 @@ func applyTreeLayout(root string, _ *Changes) error {
 // sections out to convention parts (.claude/awf/<kind>/parts/<name>/<sec>.md),
 // dropping those sections from the sidecar (the convention binds them). drop
 // overrides and data/local stay in the sidecar.
-func portSidecar(awfDir, kind, name string, sc legacySidecar) error {
+func portSidecar(awfDir, kind, name string, sc legacySidecar, out *Changes) error {
 	kept, err := portSectionOverrides(sc.Sections, awfDir, func(sec string) string {
 		return filepath.Join(awfDir, kind, "parts", name, sec+".md")
-	})
+	}, out)
 	if err != nil {
 		return err
 	}
-	return writeSidecarDoc(filepath.Join(awfDir, kind, name+".yaml"), sc.Data, kept, sc.Local, false)
+	if err := writeSidecarDoc(filepath.Join(awfDir, kind, name+".yaml"), sc.Data, kept, sc.Local, false); err != nil {
+		return err
+	}
+	if len(sc.Data) > 0 || len(kept) > 0 || sc.Local {
+		out.Add(fmt.Sprintf("tree-layout: wrote %s/%s.yaml", kind, name))
+	}
+	return nil
 }
 
 // portSectionOverrides walks a legacy sidecar's section overrides: each replaceWith
 // section is copied out to the convention part at dst(sec); each drop is preserved
 // in the returned kept map. The shared body of portSidecar and portAgentsDoc.
-func portSectionOverrides(sections map[string]legacySectionOverride, awfDir string, dst func(sec string) string) (map[string]any, error) {
+func portSectionOverrides(sections map[string]legacySectionOverride, awfDir string, dst func(sec string) string, out *Changes) (map[string]any, error) {
 	kept := map[string]any{}
 	for _, sec := range slices.Sorted(maps.Keys(sections)) {
 		ov := sections[sec]
 		if ov.ReplaceWith != "" {
-			if err := copyPart(filepath.Join(awfDir, ov.ReplaceWith), dst(sec)); err != nil {
+			if err := copyPart(awfDir, filepath.Join(awfDir, ov.ReplaceWith), dst(sec), out); err != nil {
 				return nil, err
 			}
 			continue
@@ -119,7 +131,7 @@ func portSectionOverrides(sections map[string]legacySectionOverride, awfDir stri
 // AGENTS.md stays byte-identical - the section body the template emits includes
 // the heading), explicit replaceWith sections become convention parts under
 // parts/agents-doc/, and the remaining data/drops land in agents-doc.yaml.
-func portAgentsDoc(awfDir string, ad legacySidecar) error {
+func portAgentsDoc(awfDir string, ad legacySidecar, out *Changes) error {
 	data := map[string]any{}
 	for k, v := range ad.Data {
 		data[k] = v
@@ -141,19 +153,26 @@ func portAgentsDoc(awfDir string, ad legacySidecar) error {
 		if err := writeFile(dst, []byte(body)); err != nil {
 			return err
 		}
+		out.Add(fmt.Sprintf("tree-layout: wrote parts/agents-doc/%s.md", p.section))
 	}
 	kept, err := portSectionOverrides(ad.Sections, awfDir, func(sec string) string {
 		return filepath.Join(awfDir, "parts", "agents-doc", sec+".md")
-	})
+	}, out)
 	if err != nil {
 		return err
 	}
-	return writeSidecarDoc(filepath.Join(awfDir, "agents-doc.yaml"), data, kept, ad.Local, false)
+	if err := writeSidecarDoc(filepath.Join(awfDir, "agents-doc.yaml"), data, kept, ad.Local, false); err != nil {
+		return err
+	}
+	if len(data) > 0 || len(kept) > 0 || ad.Local {
+		out.Add("tree-layout: wrote agents-doc.yaml")
+	}
+	return nil
 }
 
 // copyPart reads a legacy part body and writes it verbatim to its convention
 // path, then removes the legacy source so the old flat parts/ dir is cleaned up.
-func copyPart(src, dst string) error {
+func copyPart(awfDir, src, dst string, out *Changes) error {
 	b, err := os.ReadFile(src)
 	if err != nil {
 		return fmt.Errorf("read part %s: %w", src, err)
@@ -161,7 +180,13 @@ func copyPart(src, dst string) error {
 	if err := writeFile(dst, b); err != nil {
 		return err
 	}
-	if err := os.Remove(src); err != nil && !errors.Is(err, os.ErrNotExist) { // coverage-ignore: removal of the legacy part src we just read and copied; a non-NotExist error needs a permission fault that root bypasses
+	root := filepath.ToSlash(filepath.Dir(filepath.Dir(awfDir)))
+	relative := func(path string) string { return strings.TrimPrefix(filepath.ToSlash(path), root+"/") }
+	srcRelative := relative(src)
+	out.Add(fmt.Sprintf("tree-layout: copied %s to %s", srcRelative, relative(dst)))
+	if err := os.Remove(src); err == nil {
+		out.Add("tree-layout: removed " + srcRelative)
+	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: removal of the legacy part src we just read and copied; a non-NotExist error needs a permission fault that root bypasses
 		return err
 	}
 	return nil

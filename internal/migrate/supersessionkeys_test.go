@@ -374,17 +374,15 @@ func TestSupersessionKeysPublishesOnlyWrittenArtifacts(t *testing.T) {
 	})
 	failure := errors.New("write failed")
 	writes := 0
-	prior := supersessionKeysWriteFile
-	supersessionKeysWriteFile = func(path string, b []byte, mode os.FileMode) error {
+	writeFile := func(path string, b []byte, mode os.FileMode) error {
 		writes++
 		if writes == 2 {
 			return failure
 		}
-		return prior(path, b, mode)
+		return os.WriteFile(path, b, mode)
 	}
-	t.Cleanup(func() { supersessionKeysWriteFile = prior })
 	var changes Changes
-	if err := applySupersessionKeys(root, &changes); !errors.Is(err, failure) {
+	if err := applySupersessionKeysWithWriteFile(root, &changes, writeFile); !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
 	want := "supersession-keys: 0001-target.md: stripped supersedes:/superseded_by:\n" +

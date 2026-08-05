@@ -260,22 +260,23 @@ func ProjectPresentFromFiles(has func(string) bool) bool {
 	return false
 }
 
-var stampLockSave = func(lock *manifest.Lock, path string) error { return lock.Save(path) }
-
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
 // missing lock (e.g. just after the legacy tree-layout port, before the first
 // sync) is a no-op - Generation's no-lock branch already reports Current().
-func stampLockSchema(root string) error {
+func stampLockSchemaWithSave(root string, save func(*manifest.Lock, string) error) (bool, error) {
 	lockPath := config.LockPath(root)
 	if !fileExists(lockPath) {
-		return nil // no lock yet; the terminal sync stamps it
+		return false, nil // no lock yet; the terminal sync stamps it
 	}
 	l, err := manifest.Load(lockPath)
 	if err != nil { // coverage-ignore: reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly
-		return err
+		return false, err
 	}
 	l.SchemaVersion = Current()
-	return stampLockSave(l, lockPath)
+	if err := save(l, lockPath); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // registryTos returns the To values of every registered migration.
@@ -329,6 +330,10 @@ func GateState(root string) (string, int, error) {
 // ascending To order, and returns applied names and ordered changes, including
 // facts collected before a migration failure.
 func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
+	return upgradeWithStampSave(ctx, root, func(lock *manifest.Lock, path string) error { return lock.Save(path) })
+}
+
+func upgradeWithStampSave(ctx context.Context, root string, save func(*manifest.Lock, string) error) ([]string, []Change, error) {
 	from, err := Generation(root)
 	if err != nil {
 		return nil, nil, err
@@ -347,8 +352,12 @@ func Upgrade(ctx context.Context, root string) ([]string, []Change, error) {
 		highestApplied = m
 	}
 	if len(applied) > 0 && !highestApplied.OwnsSchemaStamp {
-		if err := stampLockSchema(root); err != nil {
+		stamped, err := stampLockSchemaWithSave(root, save)
+		if err != nil {
 			return applied, changes.Items(), err
+		}
+		if stamped {
+			changes.Add("schema-stamp: updated awf.lock schema version")
 		}
 	}
 	return applied, changes.Items(), nil

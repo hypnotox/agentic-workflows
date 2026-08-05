@@ -857,18 +857,61 @@ func TestSyncReportRetainsWrittenOutputWhenChmodFails(t *testing.T) {
 	if err := lock.Save(p.lockPath()); err != nil {
 		t.Fatal(err)
 	}
-	prior := syncChmod
-	syncChmod = func(path string, _ os.FileMode) error {
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	operation := productionSyncOperation()
+	operation.chmod = func(path string, _ os.FileMode) error {
 		if filepath.Base(path) == "AGENTS.md" {
 			return errors.New("chmod failed")
 		}
 		return nil
 	}
-	t.Cleanup(func() { syncChmod = prior })
-	p, _ = Open(testContext(t), root)
-	_, changes, _, err := p.SyncReport(testContext(t))
+	corpus, topics, eff, deriveErr := p.deriveOperationState()
+	if deriveErr != nil {
+		t.Fatal(deriveErr)
+	}
+	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
 	if err == nil || len(changes) == 0 || changes[0].Path != "AGENTS.md" {
 		t.Fatalf("changes = %v, err = %v", changes, err)
+	}
+}
+
+func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(testContext(t), root)
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, "AGENTS.md")
+	if err := os.WriteFile(output, []byte("hand edit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = Open(testContext(t), root)
+	operation := productionSyncOperation()
+	priorWrite := operation.writeFile
+	failure := errors.New("write failed")
+	operation.writeFile = func(path string, content []byte, mode os.FileMode) error {
+		if filepath.Base(path) == "AGENTS.md" {
+			return failure
+		}
+		return priorWrite(path, content, mode)
+	}
+	corpus, topics, eff, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, changes, _, err := p.syncReportWith(testContext(t), nil, operation, corpus, topics, eff)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if len(changes) != 0 {
+		t.Fatalf("changes = %v, want no output evidence before the failed write", changes)
+	}
+	got, readErr := os.ReadFile(output)
+	if readErr != nil || string(got) != "hand edit\n" {
+		t.Fatalf("output = %q, err = %v; want original bytes", got, readErr)
 	}
 }
 
@@ -909,6 +952,11 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	delete(lock.Files, "docs/workflow.md")
 	if err := lock.Save(p.lockPath()); err != nil {
 		t.Fatal(err)
+	}
+	for _, path := range []string{"AGENTS.md", ".claude/skills/example-tdd/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/decisions/INDEX.md", "docs/workflow.md"} {
+		if err := os.WriteFile(filepath.Join(root, path), []byte("stale output\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	p2, _ := Open(testContext(t), root)
 	_, changes, _, err = p2.SyncReport(testContext(t))

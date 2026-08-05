@@ -34,9 +34,11 @@ var (
 // byte-identical and meaning-preservation is checkable by diff. Idempotent: a
 // corpus with no keys collects no change facts.
 // touches-state: config/migrations-and-locks:upgrade-migrates-retirements - the migration itself; proof in retirementtokens_test.go
-var retirementWriteFile = os.WriteFile
-
 func applyRetirementTokens(root string, out *Changes) error {
+	return applyRetirementTokensWithWriteFile(root, out, os.WriteFile)
+}
+
+func applyRetirementTokensWithWriteFile(root string, out *Changes, writeFile func(string, []byte, os.FileMode) error) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}
@@ -185,7 +187,7 @@ func applyRetirementTokens(root string, out *Changes) error {
 	}
 
 	for _, path := range editOrder {
-		if err := retirementWriteFile(path, edited[path], 0o644); err != nil {
+		if err := writeFile(path, edited[path], 0o644); err != nil {
 			return err
 		}
 		for _, fact := range planned[path] {

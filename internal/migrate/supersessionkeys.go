@@ -65,9 +65,11 @@ var (
 // by diff. Idempotency rests on the generation gate: appending an item is not
 // naturally idempotent the way stripping a key is.
 // touches-state: config/migrations-and-locks:upgrade-migrates-supersession-keys - the migration itself; proof in supersessionkeys_test.go
-var supersessionKeysWriteFile = os.WriteFile
-
 func applySupersessionKeys(root string, out *Changes) error {
+	return applySupersessionKeysWithWriteFile(root, out, os.WriteFile)
+}
+
+func applySupersessionKeysWithWriteFile(root string, out *Changes, writeFile func(string, []byte, os.FileMode) error) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}
@@ -306,7 +308,7 @@ func applySupersessionKeys(root string, out *Changes) error {
 	}
 
 	for _, path := range editOrder {
-		if err := supersessionKeysWriteFile(path, edited[path], 0o644); err != nil {
+		if err := writeFile(path, edited[path], 0o644); err != nil {
 			return err
 		}
 		for _, fact := range planned[path] {

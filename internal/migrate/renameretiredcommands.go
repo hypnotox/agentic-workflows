@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -86,6 +87,7 @@ func applyRenameRetiredCommands(root string, out *Changes) error {
 					return nil, err
 				}
 				out = edited
+				planned.Add(fmt.Sprintf("rename-retired-commands: vars.%s: rewrote %q to %q", k, s, next))
 			}
 		}
 		return out, nil

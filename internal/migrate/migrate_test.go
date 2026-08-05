@@ -191,8 +191,30 @@ func stampLockAt(t *testing.T, lockPath string, schema int) {
 
 func TestTreeLayoutPortsMonolith(t *testing.T) {
 	root := writeMonolith(t)
-	if err := applyTreeLayout(root, &Changes{}); err != nil {
+	var changes Changes
+	if err := applyTreeLayout(root, &changes); err != nil {
 		t.Fatalf("applyTreeLayout: %v", err)
+	}
+	wantFacts := []string{
+		"tree-layout: wrote .claude/awf/config.yaml",
+		"tree-layout: wrote skills/tdd.yaml",
+		"tree-layout: copied .claude/awf/parts/debugging-surfaces.md to .claude/awf/skills/parts/debugging/debugging-surfaces.md",
+		"tree-layout: removed .claude/awf/parts/debugging-surfaces.md",
+		"tree-layout: wrote skills/refactor-coupling-audit.yaml",
+		"tree-layout: wrote skills/local-skill.yaml",
+		"tree-layout: wrote agents/code-reviewer.yaml",
+		"tree-layout: copied .claude/awf/parts/doc-architecture.md to .claude/awf/docs/parts/architecture/body.md",
+		"tree-layout: removed .claude/awf/parts/doc-architecture.md",
+		"tree-layout: wrote parts/agents-doc/you-and-this-project.md",
+		"tree-layout: wrote parts/agents-doc/identity.md",
+		"tree-layout: wrote agents-doc.yaml",
+		"tree-layout: removed .claude/awf.yaml",
+		"tree-layout: removed .claude/awf.lock",
+	}
+	for _, want := range wantFacts {
+		if !strings.Contains(changes.String(), want+"\n") {
+			t.Errorf("changes missing proven fact %q:\n%s", want, changes.String())
+		}
 	}
 	awfDir := filepath.Join(root, ".claude", "awf")
 
@@ -380,8 +402,12 @@ func TestApplyTreeLayoutSidecarMkdirError(t *testing.T) {
 	// A regular file squatting on the skills/ dir makes the sidecar MkdirAll fail.
 	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  alpha:\n    data:\n      k: v\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "skills"), "not a dir\n")
-	if err := applyTreeLayout(root, &Changes{}); err == nil {
+	var changes Changes
+	if err := applyTreeLayout(root, &changes); err == nil {
 		t.Fatal("applyTreeLayout with skills/ as a file = nil, want a mkdir error")
+	}
+	if got, want := changes.String(), "tree-layout: wrote .claude/awf/config.yaml\n"; got != want {
+		t.Fatalf("changes = %q, want only the successful config write %q", got, want)
 	}
 }
 
@@ -461,6 +487,22 @@ func TestPortAgentsDocSectionsLocalAndData(t *testing.T) {
 	}
 	if !ad.Local {
 		t.Errorf("agents-doc.yaml local = false, want true")
+	}
+}
+
+func TestPortAgentsDocRetainsEarlierWriteEvidenceWhenSidecarWriteFails(t *testing.T) {
+	root := writeLegacyRoot(t, "prefix: ex\nagentsDoc:\n  data:\n    ownership: \"Own.\"\n    extra: keep\n")
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "agents-doc.yaml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var changes Changes
+	if err := applyTreeLayout(root, &changes); err == nil {
+		t.Fatal("applyTreeLayout with agents-doc sidecar directory = nil, want a write error")
+	}
+	want := "tree-layout: wrote .claude/awf/config.yaml\n" +
+		"tree-layout: wrote parts/agents-doc/you-and-this-project.md\n"
+	if got := changes.String(); got != want {
+		t.Fatalf("changes = %q, want successful writes before the failed sidecar write %q", got, want)
 	}
 }
 
@@ -630,11 +672,8 @@ func TestAwfRelocationRenameFailurePublishesNoChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	failure := errors.New("rename failed")
-	prior := relocationRename
-	relocationRename = func(string, string) error { return failure }
-	t.Cleanup(func() { relocationRename = prior })
 	var changes Changes
-	if err := applyAwfRelocation(root, &changes); !errors.Is(err, failure) {
+	if err := applyAwfRelocationWithRename(root, &changes, func(string, string) error { return failure }); !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
 	if got := changes.String(); got != "" {
@@ -831,6 +870,27 @@ func TestDropReplaceWithConverts(t *testing.T) {
 	}
 }
 
+func TestDropReplaceWithRetainsMovedEvidenceWhenSidecarRewriteFails(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
+	awfFile(t, root, "skills/parts/x/legacy.md", "BODY\n")
+	failure := errors.New("rewrite sidecar")
+	var changes Changes
+	err := applyDropReplaceWithSidecarWrite(root, &changes, func(string, map[string]any, map[string]any, bool, bool) error {
+		return failure
+	})
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if got, want := changes.String(), "drop-replacewith: moved skills/parts/x/legacy.md to .claude/awf/skills/parts/x/s.md\n"; got != want {
+		t.Fatalf("changes = %q, want %q", got, want)
+	}
+	if got := readFile(t, filepath.Join(root, ".claude", "awf", "skills", "parts", "x", "s.md")); got != "BODY\n" {
+		t.Fatalf("moved part = %q", got)
+	}
+}
+
 func TestDropReplaceWithIdempotent(t *testing.T) {
 	root := t.TempDir()
 	awfFile(t, root, "config.yaml", "prefix: ex\n")
@@ -928,8 +988,8 @@ func TestUpgradeAppliesExactlyTheMigrationsAboveTheDetectedGeneration(t *testing
 // A tree→tree upgrade keeps its lock; Upgrade must restamp it to Current() so the
 // terminal sync's schema gate passes.
 func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) {
-	if err := stampLockSchema(t.TempDir()); err != nil {
-		t.Fatalf("missing-lock stamp: %v", err)
+	if stamped, err := stampLockSchemaWithSave(t.TempDir(), func(lock *manifest.Lock, path string) error { return lock.Save(path) }); err != nil || stamped {
+		t.Fatalf("missing-lock stamp = %t, %v; want false, nil", stamped, err)
 	}
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
@@ -954,13 +1014,28 @@ func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) 
 	}
 }
 
+func TestStampLockSchemaWritesExistingLock(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 0)
+	if stamped, err := stampLockSchemaWithSave(root, func(lock *manifest.Lock, path string) error { return lock.Save(path) }); err != nil || !stamped {
+		t.Fatalf("existing-lock stamp = %t, %v; want true, nil", stamped, err)
+	}
+	lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lock.SchemaVersion != Current() {
+		t.Fatalf("schema = %d, want %d", lock.SchemaVersion, Current())
+	}
+}
+
 func TestUpgradeReturnsAppliedChangesWhenFallbackStampSaveFails(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), 0)
 
 	originalRegistry := registry
-	originalSave := stampLockSave
 	registry = []Migration{
 		{To: 1, Name: "first", Apply: func(_ context.Context, _ string, changes *Changes) error {
 			changes.Add("first: changed config")
@@ -972,13 +1047,9 @@ func TestUpgradeReturnsAppliedChangesWhenFallbackStampSaveFails(t *testing.T) {
 		}},
 	}
 	failure := errors.New("save stamped lock")
-	stampLockSave = func(*manifest.Lock, string) error { return failure }
-	t.Cleanup(func() {
-		registry = originalRegistry
-		stampLockSave = originalSave
-	})
+	t.Cleanup(func() { registry = originalRegistry })
 
-	applied, changes, err := Upgrade(testContext(t), root)
+	applied, changes, err := upgradeWithStampSave(testContext(t), root, func(*manifest.Lock, string) error { return failure })
 	if !errors.Is(err, failure) {
 		t.Fatalf("Upgrade error = %v, want %v", err, failure)
 	}

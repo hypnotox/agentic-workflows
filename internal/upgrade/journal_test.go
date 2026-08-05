@@ -351,16 +351,16 @@ func TestJournalCommitApplyingPhaseWriteFailure(t *testing.T) {
 	mustMkdir(t, filepath.Join(root, ".awf"))
 	failure := errors.New("applying phase write failed")
 	writes := 0
-	prior := journalWrite
-	journalWrite = func(root string, j Journal) error {
+	operation := productionJournalOperation()
+	priorWrite := operation.write
+	operation.write = func(root string, j Journal) error {
 		writes++
 		if writes == 2 {
 			return failure
 		}
-		return prior(root, j)
+		return priorWrite(root, j)
 	}
-	t.Cleanup(func() { journalWrite = prior })
-	if _, err := commitTransaction(root, []Operation{{Path: LockRel(), Replacement: presentImg("final")}}); !errors.Is(err, failure) {
+	if _, err := commitTransactionWith(root, []Operation{{Path: LockRel(), Replacement: presentImg("final")}}, operation); !errors.Is(err, failure) {
 		t.Fatalf("commit error = %v, want applying phase-write failure", err)
 	}
 }
@@ -370,20 +370,20 @@ func TestJournalCommitRetainsEvidenceWhenLockPhaseWriteFails(t *testing.T) {
 	mustMkdir(t, filepath.Join(root, ".awf"))
 	failure := errors.New("phase write failed")
 	writes := 0
-	prior := journalWrite
-	journalWrite = func(root string, j Journal) error {
+	operation := productionJournalOperation()
+	priorWrite := operation.write
+	operation.write = func(root string, j Journal) error {
 		writes++
 		if writes == 3 {
 			return failure
 		}
-		return prior(root, j)
+		return priorWrite(root, j)
 	}
-	t.Cleanup(func() { journalWrite = prior })
 	ops := []Operation{
 		{Path: "a.txt", Prior: Image{}, Replacement: presentImg("alpha")},
 		{Path: LockRel(), Prior: Image{}, Replacement: presentImg("lock-final")},
 	}
-	outcome, err := commitTransaction(root, ops)
+	outcome, err := commitTransactionWith(root, ops, operation)
 	if !errors.Is(err, failure) {
 		t.Fatalf("commit error = %v, want phase-write failure", err)
 	}
@@ -408,10 +408,9 @@ func TestRecoverPropagatesAppliedImageInspectionFailure(t *testing.T) {
 	root := t.TempDir()
 	writeRawJournal(t, root, lockJournal(phaseApplying))
 	failure := errors.New("inspect applied image")
-	prior := appliedImageOf
-	appliedImageOf = func(string, string) (Image, error) { return Image{}, failure }
-	t.Cleanup(func() { appliedImageOf = prior })
-	outcome, err := Recover(root)
+	operation := productionJournalOperation()
+	operation.imageOf = func(string, string) (Image, error) { return Image{}, failure }
+	outcome, err := recoverWith(root, operation)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
@@ -427,10 +426,9 @@ func TestRecoverPropagatesLockInspectionFailure(t *testing.T) {
 	root := t.TempDir()
 	writeRawJournal(t, root, lockJournal(phaseApplying))
 	failure := errors.New("inspect lock")
-	prior := lockImageOf
-	lockImageOf = func(string, string) (Image, error) { return Image{}, failure }
-	t.Cleanup(func() { lockImageOf = prior })
-	outcome, err := Recover(root)
+	operation := productionJournalOperation()
+	operation.imageOf = func(string, string) (Image, error) { return Image{}, failure }
+	outcome, err := recoverWith(root, operation)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}
@@ -441,12 +439,41 @@ func TestRecoverPropagatesLockInspectionFailure(t *testing.T) {
 
 func TestAppliedOperationsPropagatesResidentInspectionFailure(t *testing.T) {
 	failure := errors.New("inspect quarantine")
-	prior := appliedLstat
-	appliedLstat = func(string) (os.FileInfo, error) { return nil, failure }
-	t.Cleanup(func() { appliedLstat = prior })
+	operation := productionJournalOperation()
+	operation.lstat = func(string) (os.FileInfo, error) { return nil, failure }
 	journal := Journal{Operations: []Operation{{Kind: KindResidentTree, Path: ".awf/efforts", Quarantine: ".awf/.upgrade-quarantine/efforts"}}}
-	if _, err := appliedOperations(t.TempDir(), journal); !errors.Is(err, failure) {
+	if _, err := appliedOperations(t.TempDir(), journal, operation); !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
+	}
+}
+
+func TestAppliedOperationsPropagatesFileInspectionFailure(t *testing.T) {
+	failure := errors.New("inspect file")
+	operation := productionJournalOperation()
+	operation.imageOf = func(string, string) (Image, error) { return Image{}, failure }
+	journal := Journal{Operations: []Operation{{Path: "a.txt", Prior: Image{}, Replacement: presentImg("new")}}}
+	if _, err := appliedOperations(t.TempDir(), journal, operation); !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+}
+
+func TestRecoverRetainsJournalWhenAppliedInspectionFails(t *testing.T) {
+	root := t.TempDir()
+	writeRawJournal(t, root, lockJournal(phaseApplying))
+	failure := errors.New("inspect applied image")
+	operation := productionJournalOperation()
+	operation.imageOf = func(_ string, path string) (Image, error) {
+		if path == LockRel() {
+			return Image{}, nil
+		}
+		return Image{}, failure
+	}
+	outcome, err := recoverWith(root, operation)
+	if !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want %v", err, failure)
+	}
+	if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
 	}
 }
 
@@ -454,10 +481,9 @@ func TestRecoveryJournalWriteFailureRetainsTerminalJournalAxis(t *testing.T) {
 	root := t.TempDir()
 	writeRawJournal(t, root, lockJournal(phaseApplying))
 	failure := errors.New("recovery journal write")
-	prior := journalWrite
-	journalWrite = func(string, Journal) error { return failure }
-	t.Cleanup(func() { journalWrite = prior })
-	outcome, err := Recover(root)
+	operation := productionJournalOperation()
+	operation.write = func(string, Journal) error { return failure }
+	outcome, err := recoverWith(root, operation)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v", err)
 	}
@@ -481,19 +507,19 @@ func TestJournalWriteFailuresReportTerminalJournalAxis(t *testing.T) {
 			mustMkdir(t, filepath.Join(root, ".awf"))
 			failure := errors.New("journal write")
 			writes := 0
-			prior := journalWrite
-			journalWrite = func(root string, j Journal) error {
+			operation := productionJournalOperation()
+			priorWrite := operation.write
+			operation.write = func(root string, j Journal) error {
 				writes++
 				if writes == tc.failAt {
 					return failure
 				}
-				return prior(root, j)
+				return priorWrite(root, j)
 			}
-			t.Cleanup(func() { journalWrite = prior })
 			ops := []Operation{{Path: "a.txt", Replacement: presentImg("a")}, {Path: "blocked", Prior: Image{}, Replacement: Image{Present: true, Mode: 0o644, Content: nil}}, {Path: LockRel(), Replacement: presentImg("final")}}
 			// A directory makes the second file application fail after the applying phase.
 			mustMkdir(t, filepath.Join(root, "blocked"))
-			outcome, err := commitTransaction(root, ops)
+			outcome, err := commitTransactionWith(root, ops, operation)
 			if !errors.Is(err, failure) && tc.failAt < 3 {
 				t.Fatalf("error = %v", err)
 			}
@@ -1053,17 +1079,18 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		root := t.TempDir()
 		seedResidents(t, root)
 		failure := errors.New("discard second quarantine")
-		prior := quarantineRemoveAll
+		operation := productionJournalOperation()
+		priorRemoveAll := os.RemoveAll
 		calls := 0
-		quarantineRemoveAll = func(path string) error {
+		operation.removeAll = func(path string) error {
 			calls++
 			if calls == 2 {
 				return failure
 			}
-			return prior(path)
+			return priorRemoveAll(path)
 		}
-		t.Cleanup(func() { quarantineRemoveAll = prior })
-		outcome, err := commitTransaction(root, residentJournal(phasePrepared).Operations)
+
+		outcome, err := commitTransactionWith(root, residentJournal(phasePrepared).Operations, operation)
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
@@ -1096,10 +1123,10 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		root := t.TempDir()
 		mustMkdir(t, filepath.Join(root, ".awf"))
 		failure := errors.New("remove committed journal")
-		prior := journalRemove
-		journalRemove = func(string) error { return failure }
-		t.Cleanup(func() { journalRemove = prior })
-		outcome, err := commitTransaction(root, lockJournal(phasePrepared).Operations)
+		operation := productionJournalOperation()
+		operation.remove = func(string) error { return failure }
+
+		outcome, err := commitTransactionWith(root, lockJournal(phasePrepared).Operations, operation)
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
@@ -1117,10 +1144,10 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		mustMkdir(t, filepath.Join(root, ".awf"))
 		mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
 		failure := errors.New("remove rollback journal")
-		prior := journalRemove
-		journalRemove = func(string) error { return failure }
-		t.Cleanup(func() { journalRemove = prior })
-		outcome, err := rollBack(root, lockJournal(phaseApplying), errors.New("apply blocked"), []Evidence{{Action: "applied", Path: "a.txt"}})
+		operation := productionJournalOperation()
+		operation.remove = func(string) error { return failure }
+
+		outcome, err := rollBack(root, lockJournal(phaseApplying), errors.New("apply blocked"), []Evidence{{Action: "applied", Path: "a.txt"}}, operation)
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
@@ -1139,17 +1166,18 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
 		writeRawJournal(t, root, residentJournal(phaseLockCommitted))
 		failure := errors.New("discard second quarantine")
-		prior := quarantineRemoveAll
+		operation := productionJournalOperation()
+		priorRemoveAll := os.RemoveAll
 		calls := 0
-		quarantineRemoveAll = func(path string) error {
+		operation.removeAll = func(path string) error {
 			calls++
 			if calls == 2 {
 				return failure
 			}
-			return prior(path)
+			return priorRemoveAll(path)
 		}
-		t.Cleanup(func() { quarantineRemoveAll = prior })
-		outcome, err := Recover(root)
+
+		outcome, err := recoverWith(root, operation)
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
@@ -1181,12 +1209,12 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 	t.Run("cleanup-journal-failure-retains-input-axes", func(t *testing.T) {
 		root := t.TempDir()
 		failure := errors.New("remove recovery journal")
-		prior := journalRemove
-		journalRemove = func(string) error { return failure }
-		t.Cleanup(func() { journalRemove = prior })
+		operation := productionJournalOperation()
+		operation.remove = func(string) error { return failure }
+
 		evidence := []Evidence{{Action: "applied", Path: "a.txt"}}
 		changed := []Evidence{{Action: "applied", Path: "a.txt"}}
-		outcome, err := cleanupJournal(root, evidence, changed)
+		outcome, err := cleanupJournal(root, evidence, changed, operation)
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
@@ -1206,10 +1234,9 @@ func TestRecoverRestoreWriteHaltRetainsAppliedAxes(t *testing.T) {
 	mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
 	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
 	failure := errors.New("restore image")
-	prior := restoreImage
-	restoreImage = func(string, string, Image) error { return failure }
-	t.Cleanup(func() { restoreImage = prior })
-	outcome, err := Recover(root)
+	operation := productionJournalOperation()
+	operation.applyImage = func(string, string, Image) error { return failure }
+	outcome, err := recoverWith(root, operation)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)
 	}

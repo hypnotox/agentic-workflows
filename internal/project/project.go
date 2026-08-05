@@ -2,6 +2,7 @@
 package project
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -292,20 +293,28 @@ func (p *Project) InitializeReport(ctx context.Context, seed InitAuthority) ([]B
 	return p.syncReport(ctx, &seed)
 }
 
-var (
-	syncWriteFile = os.WriteFile
-	syncChmod     = os.Chmod
-)
+type syncOperation struct {
+	writeFile func(string, []byte, os.FileMode) error
+	chmod     func(string, os.FileMode) error
+}
+
+func productionSyncOperation() syncOperation {
+	return syncOperation{writeFile: os.WriteFile, chmod: os.Chmod}
+}
 
 func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups []Backup, changes []Change, pruned []string, err error) {
-	defer func() {
-		slices.Sort(pruned)
-		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
-	}()
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	return p.syncReportWith(ctx, seed, productionSyncOperation(), corpus, topics, eff)
+}
+
+func (p *Project) syncReportWith(ctx context.Context, seed *InitAuthority, operation syncOperation, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (backups []Backup, changes []Change, pruned []string, err error) {
+	defer func() {
+		slices.Sort(pruned)
+		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
+	}()
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	old, found, err := manifest.LoadOptional(p.lockPath())
@@ -398,16 +407,21 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups 
 		if strings.HasPrefix(f.Content, "#!") {
 			perm = 0o755
 		}
-		if err := syncWriteFile(abs, []byte(f.Content), perm); err != nil {
+		before, readErr := os.ReadFile(abs)
+		if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+			return backups, changes, pruned, readErr
+		}
+		changedOutput := errors.Is(readErr, os.ErrNotExist) || !bytes.Equal(before, []byte(f.Content))
+		if err := operation.writeFile(abs, []byte(f.Content), perm); err != nil {
 			return backups, changes, pruned, err
 		}
 		// The content write is already a proven output axis, even when the
 		// subsequent mode correction fails.
-		if old != nil {
+		if changedOutput && old != nil {
 			oldE, ok := old.Files[f.Path]
 			if !ok {
 				changes = append(changes, Change{Path: f.Path, Cause: "added"})
-			} else if manifest.Hash([]byte(f.Content)) != oldE.OutputHash {
+			} else {
 				tMoved, cMoved := f.TemplateHash != oldE.TemplateHash, f.ConfigHash != oldE.ConfigHash
 				cause := "internal"
 				switch {
@@ -423,7 +437,7 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) (backups 
 				changes = append(changes, Change{Path: f.Path, Cause: cause})
 			}
 		}
-		if err := syncChmod(abs, perm); err != nil {
+		if err := operation.chmod(abs, perm); err != nil {
 			return backups, changes, pruned, err
 		}
 		lock.Files[f.Path] = manifest.Entry{

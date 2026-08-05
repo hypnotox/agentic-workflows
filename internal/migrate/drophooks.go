@@ -12,7 +12,7 @@ import (
 // replay from a degraded lock. The edit routes through config.RemoveKey so
 // config.yaml serialization stays owned by internal/config (ADR-0026).
 func applyDropHooks(root string, out *Changes) error {
-	return editConfig(root, out, func(src []byte, _ *Changes) ([]byte, error) {
+	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		// A typed-probe error on a parseable document means hooks is not the
 		// legacy array (the modern mapping mis-types here) - leave it alone. A
 		// genuinely malformed document falls through so RemoveKey surfaces its
@@ -26,6 +26,13 @@ func applyDropHooks(root string, out *Changes) error {
 				return src, nil
 			}
 		}
-		return config.RemoveKey(src, "hooks")
+		updated, err := config.RemoveKey(src, "hooks")
+		if err != nil {
+			return nil, err
+		}
+		if string(updated) != string(src) {
+			planned.Add("drop-hooks: removed legacy hooks configuration")
+		}
+		return updated, nil
 	})
 }

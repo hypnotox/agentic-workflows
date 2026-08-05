@@ -21,6 +21,13 @@ func applyEnableRunner(root string, out *Changes) error {
 				return src, nil
 			}
 		}
-		return config.SetMappingScalar(src, "runner", "enabled", true)
+		updated, err := config.SetMappingScalar(src, "runner", "enabled", true)
+		if err != nil {
+			return nil, err
+		}
+		if string(updated) != string(src) {
+			planned.Add("enable-runner: enabled runner")
+		}
+		return updated, nil
 	})
 }
