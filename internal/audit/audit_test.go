@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -22,6 +23,47 @@ import (
 type Commit = awfgit.Commit
 type FileChange = awfgit.FileChange
 type Action = awfgit.Action
+
+func ruleFindings(commits []Commit, in Inputs, rule string) []Finding {
+	findings := slices.DeleteFunc(evaluate(commits, in), func(f Finding) bool { return f.Rule != rule })
+	if len(findings) == 0 {
+		return nil
+	}
+	return findings
+}
+
+func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "conventional-commits")
+}
+func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "adr-status-cochange")
+}
+func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "dependency-adr")
+}
+func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "plan-for-large-change")
+}
+func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "domain-doc-staleness")
+}
+func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "undocumented-domain")
+}
+func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "domain-code-staleness")
+}
+func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
+	return ruleFindings(commits, in, "plain-punctuation")
+}
+
+func evaluate(commits []Commit, in Inputs) []Finding {
+	evaluator := newRangeEvaluator(in)
+	for _, commit := range commits {
+		evaluator.observe(commit)
+	}
+	return evaluator.findings()
+}
 
 const (
 	Added    = awfgit.Added
@@ -742,6 +784,49 @@ func TestAuditSnapshotReadersAndErrors(t *testing.T) {
 	}
 	if universe, err := auditUniverseFromTree(t.TempDir(), tree); err != nil || len(universe.ADRs) != 0 {
 		t.Fatalf("full audit universe = %#v, %v", universe, err)
+	}
+}
+
+func TestRangeEvaluatorStreamsEveryOrdinaryRuleState(t *testing.T) {
+	in := Inputs{Settings: Settings{DependencyManifests: []string{"go.mod"}, DiffThreshold: 1, DomainDocStaleness: true, DomainCodeStaleness: true, UndocumentedDomain: true, PlainPunctuation: true}, GeneratedPaths: map[string]bool{"docs/generated.md": true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts", DomainPaths: map[string][]string{"tooling": {"internal/**"}}}
+	evaluator := newRangeEvaluator(in)
+	evaluator.observe(Commit{Hash: "one", Subject: "bad", Changes: []FileChange{
+		{Path: "go.mod", Added: 2},
+		{Path: "docs/decisions/bad.md", Action: Added, NewText: "---\nstatus: [\n---\n"},
+		{Path: "docs/decisions/0137-x.md", Action: Added, NewText: auditV1(t, "Accepted")},
+		adrChange(Added, "Implemented", "tooling, ghost"),
+		{Path: "internal/a.go", Added: 1},
+		{Path: "docs/readme.md", OldText: "plain", NewText: string(rune(0x2014))},
+		{Path: "docs/generated.md", Added: 99, OldText: "plain", NewText: string(rune(0x2014))},
+	}})
+	findings := evaluator.findings()
+	for _, rule := range []string{"adr-frontmatter", "adr-status-cochange", "plan-for-large-change", "domain-doc-staleness", "undocumented-domain", "domain-code-staleness", "plain-punctuation"} {
+		if countRule(findings, rule, severity.Warn)+countRule(findings, rule, severity.Error) == 0 {
+			t.Errorf("missing %s finding: %#v", rule, findings)
+		}
+	}
+	withPlan := newRangeEvaluator(in)
+	withPlan.observe(Commit{Changes: []FileChange{{Path: ".awf/domains/parts/tooling/current-state.md"}, {Path: "docs/plans/p.md", Added: 2}}})
+	if got := withPlan.findings(); countRule(got, "plan-for-large-change", severity.Warn) != 0 {
+		t.Fatalf("plan did not suppress threshold finding: %#v", got)
+	}
+}
+
+func TestRangeEvaluatorPreservesFrozenGroupedFindings(t *testing.T) {
+	in := Inputs{Settings: Settings{DependencyManifests: []string{"go.mod"}, DiffThreshold: 1, PlainPunctuation: true}, ADRDir: "docs/decisions", DocsDir: "docs", IndexMd: "docs/decisions/INDEX.md", PlansDir: "docs/plans"}
+	commits := []Commit{{Hash: "one", Subject: "not conventional", Changes: []FileChange{{Path: "go.mod", Added: 2}, {Path: "docs/readme.md", OldText: "plain", NewText: string(rune(0x2014))}}}}
+	want := []Finding{
+		{Severity: severity.Error, Rule: "conventional-commits", Commit: "one", Subject: "not conventional", Detail: "subject is not Conventional Commits (type(scope)?: subject)"},
+		{Severity: severity.Warn, Rule: "dependency-adr", Commit: "one", Subject: "not conventional", Detail: "dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it"},
+		{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: "branch changes 2 non-generated lines (> 1) with no plan under docs/plans"},
+		{Severity: severity.Warn, Rule: "plain-punctuation", Commit: "one", Subject: "not conventional", Detail: "docs/readme.md adds typographic punctuation: em-dash (U+2014) (0 to 1); authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)"},
+	}
+	evaluator := newRangeEvaluator(in)
+	for _, commit := range commits {
+		evaluator.observe(commit)
+	}
+	if got := evaluator.findings(); !slices.Equal(got, want) {
+		t.Fatalf("incremental findings = %#v, want %#v", got, want)
 	}
 }
 

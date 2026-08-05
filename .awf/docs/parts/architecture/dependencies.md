@@ -11,8 +11,9 @@
   control-root resolution, refs and worktree topology, and working-tree truth. Both are backends
   of `internal/git` and nothing else: no other production package may import the library or
   construct a git subprocess, and `internal/testsupport/gitfixture` is the single exception on
-  the test side, which the zero-internal-deps rule forces rather than permits. Historical audit
-  enumerates committed path and mode metadata through this seam without reading blobs, then reads
+  the test side, which the zero-internal-deps rule forces rather than permits. The seam walks audit
+  ranges through one rich-commit visitor without audit policy. Historical audit enumerates committed
+  path and mode metadata through this seam without reading blobs, then reads
   only its exact configuration, schema, ADR, and topic authority selection and caches the resulting
   state only for its invocation. Exact selected reads reject unsafe, duplicate, missing, outside-root,
   and unsupported paths. First-parent changed paths are separate merge relevance evidence and never

@@ -42,28 +42,28 @@ type Commit struct {
 	Changes  []FileChange
 }
 
-// RangeCommits returns the commits reachable from head but not from base. The
-// range is always caller-supplied. Empty range returns nil, and unrelated
-// histories are errors.
-func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, error) {
+// WalkRangeCommits visits commits reachable from head but not from base. The
+// range is always caller-supplied. It returns the number successfully visited;
+// unrelated histories are errors.
+func (r *Repo) WalkRangeCommits(ctx context.Context, base, head string, visit func(Commit) error) (int, error) {
 	if err := checkContext(ctx); err != nil {
-		return nil, err
+		return 0, err
 	}
 	headHash, err := r.repo.ResolveRevision(plumbing.Revision(head))
 	if err != nil {
-		return nil, opaqueWrap(fmt.Sprintf("resolve head %q", head), err)
+		return 0, opaqueWrap(fmt.Sprintf("resolve head %q", head), err)
 	}
 	headCommit, err := r.repo.CommitObject(*headHash)
 	if err != nil { // coverage-ignore: headHash was just resolved; errors only on a corrupt object store
-		return nil, opaqueError(err)
+		return 0, opaqueError(err)
 	}
 	baseHash, err := r.repo.ResolveRevision(plumbing.Revision(base))
 	if err != nil {
-		return nil, opaqueWrap(fmt.Sprintf("resolve base %q", base), err)
+		return 0, opaqueWrap(fmt.Sprintf("resolve base %q", base), err)
 	}
 	baseCommit, err := r.repo.CommitObject(*baseHash)
 	if err != nil { // coverage-ignore: baseHash was just resolved; errors only on a corrupt object store
-		return nil, opaqueError(err)
+		return 0, opaqueError(err)
 	}
 	bases, err := headCommit.MergeBase(baseCommit)
 	if err != nil {
@@ -71,10 +71,10 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		// an ordinary range inside a shallow clone's fetched window still runs
 		// off its boundary. Unrelated roots are the other case and are NOT an
 		// error; they return an empty slice, handled below.
-		return nil, opaqueError(err)
+		return 0, opaqueError(err)
 	}
 	if len(bases) == 0 {
-		return nil, fmt.Errorf("head %q and base %q have unrelated histories", head, base)
+		return 0, fmt.Errorf("head %q and base %q have unrelated histories", head, base)
 	}
 	seen := map[plumbing.Hash]bool{}
 	if err := object.NewCommitPreorderIter(baseCommit, nil, nil).ForEach(func(c *object.Commit) error {
@@ -84,12 +84,13 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		seen[c.Hash] = true
 		return nil
 	}); err != nil {
-		return nil, opaqueError(err)
+		return 0, opaqueError(err)
 	}
 	if seen[headCommit.Hash] {
-		return nil, nil
+		return 0, nil
 	}
-	var commits []Commit
+	visited := 0
+	var visitorErr error
 	err = object.NewCommitPreorderIter(headCommit, seen, nil).ForEach(func(c *object.Commit) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -106,14 +107,21 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 			}
 		}
 		if include {
-			commits = append(commits, nc)
+			if err := visit(nc); err != nil {
+				visitorErr = err
+				return err
+			}
+			visited++
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, opaqueError(err)
+		if visitorErr != nil {
+			return visited, visitorErr
+		}
+		return visited, opaqueError(err)
 	}
-	return commits, nil
+	return visited, nil
 }
 
 // FirstParentChangedPaths returns sorted, unique paths changed by rev relative

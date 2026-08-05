@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"path/filepath"
 	"slices"
@@ -23,7 +24,37 @@ import (
 const currentStateTransitionRule = "current-state-transition"
 
 type rangeCollector func(context.Context, string, string) ([]awfgit.Commit, error)
+type rangeWalker func(context.Context, string, string, func(awfgit.Commit) error) (int, error)
 type revisionLoader func(context.Context, string) (*revisionState, error)
+
+// replayCommit is the compact evidence historical replay needs after ordinary
+// rules have observed a rich commit.
+type replayCommit struct {
+	Ordinal                 int
+	Hash, Revision, Subject string
+	Parents                 []string
+	IsMerge                 bool
+	Message                 string
+	Paths                   []string
+}
+
+func compactReplayCommit(ordinal int, commit awfgit.Commit) replayCommit {
+	paths := map[string]bool{}
+	for _, change := range commit.Changes {
+		if change.OldPath != "" {
+			paths[change.OldPath] = true
+		}
+		if change.Path != "" {
+			paths[change.Path] = true
+		}
+	}
+	message := ""
+	if commit.IsMerge {
+		message = commit.Message
+	}
+	return replayCommit{Ordinal: ordinal, Hash: commit.Hash, Revision: commit.Revision, Subject: commit.Subject, Parents: slices.Clone(commit.Parents), IsMerge: commit.IsMerge, Message: message, Paths: slices.Sorted(maps.Keys(paths))}
+}
+
 type firstParentPaths func(context.Context, string) ([]string, error)
 type liveEvaluator func(context.Context) ([]Finding, error)
 
@@ -31,7 +62,9 @@ type liveEvaluator func(context.Context) ([]Finding, error)
 // one audit invocation. Nothing on it is retained by Project or shared with a
 // later invocation.
 type historyOperation struct {
-	commits          []awfgit.Commit
+	commits          []replayCommit
+	ordinary         []Finding
+	visited          int
 	inputs           Inputs
 	loadRevision     revisionLoader
 	firstParentPaths firstParentPaths
@@ -66,17 +99,25 @@ type revisionState struct {
 	configErr   error
 }
 
-func newHistoryOperation(ctx context.Context, base, head string, in Inputs, collect rangeCollector, load revisionLoader, paths firstParentPaths, live liveEvaluator) (*historyOperation, error) {
-	commits, err := collect(ctx, base, head)
+func newStreamingHistoryOperation(ctx context.Context, base, head string, in Inputs, walk rangeWalker, load revisionLoader, paths firstParentPaths, live liveEvaluator) (*historyOperation, error) {
+	evaluator := newRangeEvaluator(in)
+	var commits []replayCommit
+	count, err := walk(ctx, base, head, func(commit awfgit.Commit) error {
+		evaluator.observe(commit)
+		commits = append(commits, compactReplayCommit(len(commits), commit))
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("collect audit range: %w", err)
 	}
-	return newHistoryOperationWithRelevance(commits, in, load, paths, live), nil
+	return newHistoryOperationFromCompact(commits, evaluator.findings(), count, in, load, paths, live), nil
 }
 
-func newHistoryOperationWithRelevance(commits []awfgit.Commit, in Inputs, load revisionLoader, paths firstParentPaths, live liveEvaluator) *historyOperation {
+func newHistoryOperationFromCompact(commits []replayCommit, ordinary []Finding, visited int, in Inputs, load revisionLoader, paths firstParentPaths, live liveEvaluator) *historyOperation {
 	return &historyOperation{
 		commits:          slices.Clone(commits),
+		ordinary:         slices.Clone(ordinary),
+		visited:          visited,
 		inputs:           in,
 		loadRevision:     load,
 		firstParentPaths: paths,
@@ -86,7 +127,7 @@ func newHistoryOperationWithRelevance(commits []awfgit.Commit, in Inputs, load r
 }
 
 func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
-	findings := evaluate(h.commits, h.inputs)
+	findings := slices.Clone(h.ordinary)
 	stale, err := h.staleMergeFindings(ctx)
 	if err != nil {
 		return nil, err
@@ -118,7 +159,7 @@ func (h *historyOperation) state(ctx context.Context, revision string) (*revisio
 
 // stateForCommit reuses the first-parent state only after committed path
 // evidence proves this revision cannot affect the reduced policy authority.
-func (h *historyOperation) stateForCommit(ctx context.Context, commit awfgit.Commit) (*revisionState, error) {
+func (h *historyOperation) stateForCommit(ctx context.Context, commit replayCommit) (*revisionState, error) {
 	if cached, ok := h.states[commit.Revision]; ok {
 		return cached.state, cached.err
 	}
@@ -143,7 +184,7 @@ func (h *historyOperation) stateForCommit(ctx context.Context, commit awfgit.Com
 	if commit.IsMerge {
 		paths, err = h.firstParentPaths(ctx, commit.Revision)
 	} else {
-		paths = changedPaths(commit.Changes)
+		paths = commit.Paths
 	}
 	if err != nil {
 		if contextTermination(err) {
@@ -158,19 +199,6 @@ func (h *historyOperation) stateForCommit(ctx context.Context, commit awfgit.Com
 	// neither the value nor its slices/maps are mutated by this operation.
 	h.states[commit.Revision] = h.states[commit.Parents[0]]
 	return parent, nil
-}
-
-func changedPaths(changes []awfgit.FileChange) []string {
-	paths := make([]string, 0, len(changes)*2)
-	for _, change := range changes {
-		if change.OldPath != "" {
-			paths = append(paths, change.OldPath)
-		}
-		if change.Path != "" {
-			paths = append(paths, change.Path)
-		}
-	}
-	return paths
 }
 
 func policyRelevant(paths []string, docsDir string) bool {
@@ -394,7 +422,7 @@ func (h *historyOperation) transitionFindings(ctx context.Context) ([]Finding, e
 			mode = currentstate.MergeAggregate
 		}
 		for _, transition := range currentstate.CheckPair(before, after, mode) {
-			out = append(out, finding(severity.Error, currentStateTransitionRule, commit, transition.Message))
+			out = append(out, replayFinding(severity.Error, currentStateTransitionRule, commit, transition.Message))
 		}
 	}
 	return out, nil
@@ -404,8 +432,8 @@ func contextTermination(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
-func transitionLoadWarning(commit awfgit.Commit, err error) Finding {
-	return finding(severity.Warn, currentStateTransitionRule, commit,
+func transitionLoadWarning(commit replayCommit, err error) Finding {
+	return replayFinding(severity.Warn, currentStateTransitionRule, commit,
 		"could not load the current-state universes for this commit: "+err.Error())
 }
 
@@ -463,7 +491,7 @@ func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, e
 			if syntaxErr != nil { // coverage-ignore: ParseAuthorizations returns only *SyntaxError; the checked fallback protects future implementations
 				return nil, syntaxErr
 			}
-			findings = append(findings, finding(severity.Error, "stale-merge-authorization", commit,
+			findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
 				fmt.Sprintf("malformed reserved trailer at cleaned line %d: %s", syntax.Line, syntax.Reason)))
 			continue
 		}
@@ -474,7 +502,7 @@ func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, e
 		for _, qualification := range currentstate.QualifyIncoming(first, result, incoming, current) {
 			identity := "ADR-" + qualification.Introduction.Identity
 			if !qualification.Qualified {
-				findings = append(findings, finding(severity.Error, "stale-merge-authorization", commit,
+				findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
 					"unqualified incoming-parent record "+identity))
 				continue
 			}
@@ -483,12 +511,16 @@ func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, e
 				version = "legacy"
 			}
 			if !allowed[version] {
-				findings = append(findings, finding(severity.Error, "stale-merge-authorization", commit,
+				findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
 					"missing authorization version "+version+" for "+identity))
 			}
 		}
 	}
 	return findings, nil
+}
+
+func replayFinding(rank severity.Rank, rule string, commit replayCommit, detail string) Finding {
+	return Finding{Severity: rank, Rule: rule, Commit: commit.Hash, Subject: commit.Subject, Detail: detail}
 }
 
 func staleAuthorizationSyntax(err error) (*commitmsg.SyntaxError, error) {

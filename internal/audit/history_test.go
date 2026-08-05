@@ -3,6 +3,7 @@ package audit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -19,6 +20,60 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+func TestStreamingHistoryOperationReportsMalformedMergeAuthorization(t *testing.T) {
+	state := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
+	op := newHistoryOperationFromCompact([]replayCommit{{Hash: "merge", Revision: "merge", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"first", "incoming"}}}, nil, 1, Inputs{}, func(context.Context, string) (*revisionState, error) { return state, nil }, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	findings, err := op.staleMergeFindings(testContext(t))
+	if err != nil || countRule(findings, "stale-merge-authorization", severity.Error) != 1 {
+		t.Fatalf("malformed merge findings = %#v, %v", findings, err)
+	}
+}
+
+func TestStreamingHistoryOperationProjectsCompactReplayEvidence(t *testing.T) {
+	commit := awfgit.Commit{Hash: "short", Revision: "full", Subject: "feat(awf): stream", Message: "full message", Changes: []awfgit.FileChange{{OldPath: "z.md", Path: "a.md", OldText: "large before", NewText: "large after", Added: 9, Deleted: 8}}}
+	walks := 0
+	op, err := newStreamingHistoryOperation(testContext(t), "base", "head", Inputs{}, func(_ context.Context, base, head string, visit func(awfgit.Commit) error) (int, error) {
+		walks++
+		if base != "base" || head != "head" {
+			t.Fatalf("range = %q..%q", base, head)
+		}
+		if err := visit(commit); err != nil {
+			return 0, err
+		}
+		return 1, nil
+	}, func(context.Context, string) (*revisionState, error) {
+		return fixedRevisionState(nil, false, currentstate.Universe{}), nil
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if walks != 1 || op.visited != 1 || len(op.commits) != 1 {
+		t.Fatalf("walks=%d visited=%d commits=%#v", walks, op.visited, op.commits)
+	}
+	record := op.commits[0]
+	if record.Message != "" || !slices.Equal(record.Paths, []string{"a.md", "z.md"}) || record.Subject != commit.Subject || record.Revision != commit.Revision {
+		t.Fatalf("compact record = %#v", record)
+	}
+}
+
+func newHistoryOperation(ctx context.Context, base, head string, _ Inputs, collect rangeCollector, load revisionLoader, _ firstParentPaths, live liveEvaluator) (*historyOperation, error) {
+	commits, err := collect(ctx, base, head)
+	if err != nil {
+		return nil, fmt.Errorf("collect audit range: %w", err)
+	}
+	return newHistoryOperationWithRelevance(commits, Inputs{}, load, nil, live), nil
+}
+
+func newHistoryOperationWithRelevance(commits []awfgit.Commit, _ Inputs, load revisionLoader, paths firstParentPaths, live liveEvaluator) *historyOperation {
+	evaluator := newRangeEvaluator(Inputs{})
+	compact := make([]replayCommit, 0, len(commits))
+	for i, commit := range commits {
+		evaluator.observe(commit)
+		compact = append(compact, compactReplayCommit(i, commit))
+	}
+	return newHistoryOperationFromCompact(compact, evaluator.findings(), len(compact), Inputs{}, load, paths, live)
+}
 
 // invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationCollectsRangeOnceAndCachesStates)
 func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
@@ -872,7 +927,7 @@ func TestHistoricalStateUsesPolicyProjectionAndReusesIrrelevantCommits(t *testin
 		}
 	}
 	op := newHistoryOperationWithRelevance(commits, Inputs{}, load, firstParentPaths, func(context.Context) ([]Finding, error) { return nil, nil })
-	for _, commit := range commits {
+	for _, commit := range op.commits {
 		if _, err := op.stateForCommit(ctx, commit); err != nil {
 			t.Fatalf("state for %s: %v", commit.Revision, err)
 		}
