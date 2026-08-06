@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: add-associated-pi-effort-memory-tools
-status: Implementing
+status: Implemented
 date: 2026-08-04
 ---
 # ADR-0239: Add associated Pi effort memory tools
@@ -268,3 +268,4 @@ avoids a second locking system.
 - 2026-08-05: Reapplied; operations: update `tooling/cli:explicit-output-bypasses`, update `tooling/cli:effort-command-contract`
 - 2026-08-05: Applied; operations: update `rendering/pi-runtime:pi-minimum-runtime`
 - 2026-08-05: Applied; operations: update `rendering/pi-runtime:pi-extension-target-render`, update `rendering/pi-workflows:pi-effort-session-association`, update `rendering/pi-workflows:using-effort-skill`, add `rendering/pi-workflows:pi-effort-memory-tools`
+- 2026-08-06: Implemented; content-sha256: a4263a1323591448c62c8bf4b64c8b469822218f123bd3d8c4a5ac6bfc33fbe9
