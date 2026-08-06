@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 // Template-ID declarations for every render unit that has no catalog DocEntry:
@@ -86,4 +88,77 @@ func buildPlainSingletons() []singletonSpec {
 		})
 	}
 	return out
+}
+
+// conditionalUnit is the bounded shared declaration for config-tree outputs.
+// It deliberately excludes policy, encoding, and data construction: those stay
+// explicit at the render seam, while selection, path, identity, kind, and
+// fixed section facts cannot drift between declaration and dispatch.
+type conditionalUnit struct {
+	enabled  func(*config.Config) bool
+	path     string
+	tid      string
+	kind     string
+	sections []string
+}
+
+// liveTemplateEncoders derives every embedded identity that can participate in
+// render authority together with its declared representation. Recognition-only
+// identities are intentionally absent. This keeps structural parsing and the
+// exhaustive census on the same declaration owners as output planning.
+func (p *Project) liveTemplateEncoders() map[string]AgentDialect {
+	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect}
+	for _, descriptor := range kindDescriptors {
+		if descriptor.baseTID != "" {
+			encoders[descriptor.baseTID] = MarkdownAgentDialect
+		}
+		if descriptor.freeformDomain {
+			encoders[descriptor.tid("")] = MarkdownAgentDialect
+		}
+	}
+	for name := range p.Cat.Skills {
+		encoders[p.skillTID(name)] = MarkdownAgentDialect
+	}
+	for name := range p.Cat.Agents {
+		encoders[p.agentTID(name)] = MarkdownAgentDialect
+	}
+	for _, entry := range p.Cat.Docs {
+		encoders[entry.TID] = MarkdownAgentDialect
+	}
+	for _, target := range p.Targets {
+		if target.BridgeTemplate != "" {
+			encoders[target.BridgeTemplate] = MarkdownAgentDialect
+		}
+		for _, output := range target.Outputs {
+			encoders[output.TemplateID] = output.Encoder
+		}
+	}
+	for _, unit := range conditionalUnits() {
+		encoders[unit.tid] = PlainAgentDialect
+	}
+	for _, root := range resident.RootNames() {
+		encoders[residentGitignoreTID(root)] = PlainAgentDialect
+	}
+	return encoders
+}
+
+// liveTemplateIDs is the identity-only projection used by completeness checks.
+func (p *Project) liveTemplateIDs() map[string]bool {
+	ids := map[string]bool{}
+	for tid := range p.liveTemplateEncoders() {
+		ids[tid] = true
+	}
+	return ids
+}
+
+func conditionalUnits() []conditionalUnit {
+	units := []conditionalUnit{
+		{func(c *config.Config) bool { return c.Bootstrap != nil && c.Bootstrap.Enabled }, config.DirName + "/bootstrap.sh", bootstrapTID, "bootstrap", nil},
+		{func(c *config.Config) bool { return c.Bootstrap != nil && c.Bootstrap.Enabled }, config.DirName + "/upgrade.sh", upgradeTID, "bootstrap", nil},
+		{func(c *config.Config) bool { return c.Runner != nil && c.Runner.Enabled }, "awf", runnerTID, "runner", runnerSections},
+	}
+	for _, name := range hookNames {
+		units = append(units, conditionalUnit{func(c *config.Config) bool { return c.Hooks != nil && c.Hooks.Enabled }, config.DirName + "/hooks/" + name + ".sh", hookTID(name), "hooks", nil})
+	}
+	return units
 }

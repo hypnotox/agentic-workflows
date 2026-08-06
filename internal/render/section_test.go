@@ -22,6 +22,81 @@ func TestParseSectionsSplitsLiteralAndSections(t *testing.T) {
 	}
 }
 
+// invariant: rendering/render-engine:structural-heading-owned (TestStructuralHeadingPolicyAndAssembly)
+func TestStructuralHeadingPolicyAndAssembly(t *testing.T) {
+	src := "<!-- awf:section headed -->\n## Owned {{ .missing }}\nbody\n<!-- awf:end -->\n"
+	markdown := ParseSections(src, true)
+	if markdown[0].Heading != "## Owned {{ .missing }}" || markdown[0].Text != "body" {
+		t.Fatalf("Markdown heading split = %#v", markdown[0])
+	}
+	nonMarkdown := ParseSections(src, false)
+	if nonMarkdown[0].Heading != "" || nonMarkdown[0].Text != "## Owned {{ .missing }}\nbody" {
+		t.Fatalf("non-Markdown must keep hash line as body: %#v", nonMarkdown[0])
+	}
+	asm, parts := Assemble(markdown, map[string]SectionPlan{"headed": {HasPart: true, PartBody: "part body", EditPath: ".awf/part.md"}}, HTMLComment)
+	out, err := Execute(asm, map[string]any{"missing": ""}, parts, "heading")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "## Owned ") || !strings.Contains(out, "part body") || strings.Contains(out, "<no value>") {
+		t.Fatalf("headed part output = %q", out)
+	}
+	inPlace, inPlaceParts := Assemble(markdown, map[string]SectionPlan{"headed": {InPlace: true, InPlaceFound: true, InPlaceBody: "preserved"}}, HTMLComment)
+	inPlaceOut, err := Execute(inPlace, map[string]any{"missing": ""}, inPlaceParts, "heading")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(inPlaceOut, "the heading immediately below is awf-owned") {
+		t.Fatalf("headed in-place pointer = %q", inPlaceOut)
+	}
+	dropped, _ := Assemble(markdown, map[string]SectionPlan{"headed": {Drop: true}}, HTMLComment)
+	if strings.Contains(dropped, "Owned") || strings.Contains(dropped, "body") || strings.Contains(dropped, "awf:edit") {
+		t.Fatalf("drop must omit pointer, heading, and body: %q", dropped)
+	}
+}
+
+// invariant: rendering/render-engine:section-edit-pointer (TestStructuralHeadingAssemblyOrdering)
+// invariant: rendering/render-engine:section-default-splice (TestStructuralHeadingAssemblyOrdering)
+// invariant: rendering/render-engine:structural-heading-owned (TestStructuralHeadingAssemblyOrdering)
+func TestStructuralHeadingAssemblyOrdering(t *testing.T) {
+	segs := ParseSections("<!-- awf:section s -->\n## Owned\nDEFAULT\n<!-- awf:end -->\n")
+	cases := []struct {
+		name string
+		plan SectionPlan
+		want string
+	}{
+		{"default", SectionPlan{EditPath: "part.md"}, "<!-- awf:edit s: default; create part.md to override -->\n## Owned\nDEFAULT\n"},
+		{"part", SectionPlan{HasPart: true, PartBody: "PART", EditPath: "part.md"}, "<!-- awf:edit s: from part.md -->\n## Owned\nPART\n"},
+		{"reinjection", SectionPlan{HasPart: true, PartBody: "before " + SectionDefaultSentinel + " after", EditPath: "part.md"}, "<!-- awf:edit s: from part.md -->\n## Owned\nbefore DEFAULT after\n"},
+		{"in-place", SectionPlan{InPlace: true, InPlaceFound: true, InPlaceBody: "BODY", EditPath: "part.md"}, "<!-- awf:edit-in-place s: the heading immediately below is awf-owned; only the body after it is preserved across syncs -->\n## Owned\nBODY\n"},
+		{"drop", SectionPlan{Drop: true}, "\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			asm, parts := Assemble(segs, map[string]SectionPlan{"s": tc.plan}, HTMLComment)
+			got, err := Execute(asm, nil, parts, tc.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("ordering changed:\ngot  %q\nwant %q", got, tc.want)
+			}
+		})
+	}
+	stub := ParseSections("<!-- awf:section s stub -->\n## Owned\nPROMPT\n<!-- awf:end -->")
+	asm, parts := Assemble(stub, map[string]SectionPlan{"s": {EditPath: "part.md"}}, HTMLComment)
+	got, err := Execute(asm, nil, parts, "stub")
+	if err != nil || got != "<!-- awf:edit s: stub; replace by creating part.md -->\n## Owned\nPROMPT" {
+		t.Fatalf("headed stub = %q, %v", got, err)
+	}
+	headingless := ParseSections("<!-- awf:section s -->\nBODY\n<!-- awf:end -->")
+	asm, parts = Assemble(headingless, map[string]SectionPlan{"s": {EditPath: "part.md"}}, HTMLComment)
+	got, err = Execute(asm, nil, parts, "headingless")
+	if err != nil || got != "<!-- awf:edit s: default; create part.md to override -->\nBODY" {
+		t.Fatalf("headingless = %q, %v", got, err)
+	}
+}
+
 func TestParseSectionsNoSections(t *testing.T) {
 	segs := ParseSections("plain text\n")
 	if len(segs) != 1 || segs[0].IsSection || segs[0].Text != "plain text\n" {

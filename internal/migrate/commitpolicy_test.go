@@ -30,10 +30,10 @@ func TestCommitPolicyMigrationPreservesAbsentConfigBytes(t *testing.T) {
 	found := false
 	for _, migration := range registry {
 		if migration.Name == "commit-policy" {
-			found = migration.To == Current()
+			found = migration.To == 34
 		}
 	}
 	if !found {
-		t.Fatalf("commit-policy migration is not the current generation: %v", registry)
+		t.Fatalf("commit-policy migration generation changed: %v", registry)
 	}
 }

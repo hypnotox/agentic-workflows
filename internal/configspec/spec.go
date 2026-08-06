@@ -17,6 +17,80 @@ type Entry struct {
 	Availability string // when the key has effect: "always", "domain sidecars only", ...
 }
 
+// LiveStateClass declares whether a configuration-reference key has a
+// project-specific current-value projection. Static keys deliberately carry no
+// current value: sidecar fields and structural list leaves have no one project
+// value to display.
+type LiveStateClass uint8
+
+const (
+	StaticNotApplicable LiveStateClass = iota
+	LiveStateProjection
+)
+
+// LiveStateClassifications is an explicit exhaustive classification beside the
+// config-spec authority. No generated static default is allowed: adding a key
+// requires choosing its live or not-applicable representation here.
+func LiveStateClassifications() map[string]LiveStateClass {
+	return map[string]LiveStateClass{
+		"prefix":                                 LiveStateProjection,
+		"integrationBranch":                      LiveStateProjection,
+		"docsDir":                                LiveStateProjection,
+		"vars":                                   LiveStateProjection,
+		"skills":                                 LiveStateProjection,
+		"agents":                                 LiveStateProjection,
+		"docs":                                   LiveStateProjection,
+		"domains":                                LiveStateProjection,
+		"targets":                                LiveStateProjection,
+		"tags":                                   StaticNotApplicable,
+		"contextIgnore":                          StaticNotApplicable,
+		"commitPolicy.grandfatheredThrough":      StaticNotApplicable,
+		"commitPolicy.allowedIdentities":         StaticNotApplicable,
+		"commitPolicy.allowedIdentities[].name":  StaticNotApplicable,
+		"commitPolicy.allowedIdentities[].email": StaticNotApplicable,
+		"commitPolicy.requireSignedCommits":      StaticNotApplicable,
+		"commitPolicy.allowedSigners":            StaticNotApplicable,
+		"commitPolicy.allowedSigners[].principal": StaticNotApplicable,
+		"commitPolicy.allowedSigners[].key":       StaticNotApplicable,
+		"currentState.sources":                    LiveStateProjection,
+		"currentState.sources[].globs":            StaticNotApplicable,
+		"currentState.sources[].marker":           StaticNotApplicable,
+		"currentState.sources[].close":            StaticNotApplicable,
+		"currentState.testGlobs":                  LiveStateProjection,
+		"currentState.maxTopicsPerPath":           LiveStateProjection,
+		"audit.allowedTypes":                      LiveStateProjection,
+		"audit.allowedScopes":                     LiveStateProjection,
+		"audit.allowedScopes[].name":              StaticNotApplicable,
+		"audit.allowedScopes[].meaning":           StaticNotApplicable,
+		"audit.subjectMaxLength":                  LiveStateProjection,
+		"audit.dependencyManifests":               LiveStateProjection,
+		"audit.diffThreshold":                     LiveStateProjection,
+		"audit.domainDocStaleness":                LiveStateProjection,
+		"audit.domainCodeStaleness":               LiveStateProjection,
+		"audit.undocumentedDomain":                LiveStateProjection,
+		"audit.plainPunctuation":                  LiveStateProjection,
+		"audit.uncommittedChanges":                LiveStateProjection,
+		"bootstrap.enabled":                       LiveStateProjection,
+		"hooks.enabled":                           LiveStateProjection,
+		"runner.enabled":                          LiveStateProjection,
+		"proseGate.enabled":                       LiveStateProjection,
+		"proseGate.exemptions":                    LiveStateProjection,
+		"proseGate.exemptions[].path":             StaticNotApplicable,
+		"proseGate.exemptions[].codepoint":        StaticNotApplicable,
+		"proseGate.exemptions[].count":            StaticNotApplicable,
+		"memoryCite.enabled":                      LiveStateProjection,
+		"memoryCite.exemptions":                   LiveStateProjection,
+		"memoryCite.exemptions[].path":            StaticNotApplicable,
+		"memoryCite.exemptions[].count":           StaticNotApplicable,
+		"sidecar.data":                            StaticNotApplicable,
+		"sidecar.dataDefaults":                    StaticNotApplicable,
+		"sidecar.sections":                        StaticNotApplicable,
+		"sidecar.sections.<name>.drop":            StaticNotApplicable,
+		"sidecar.local":                           StaticNotApplicable,
+		"sidecar.paths":                           StaticNotApplicable,
+	}
+}
+
 // VarEntry describes one config var. Description text is carried verbatim
 // from the catalog descriptor - the catalog stays the sole var authority;
 // configspec attaches only the availability clause.
@@ -31,6 +105,7 @@ type DataKey struct {
 	Kind        string // "skills", "agents", "docs"
 	Artifact    string // artifact name; "agents-doc" uses kind "docs"; "_base" covers local artifacts
 	Key         string
+	Fields      []string // declared record fields when the value is a list of mappings
 	Description string
 }
 
@@ -320,8 +395,13 @@ var keys = []Entry{
 	},
 	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",
-		Description:  "Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does.",
+		Description:  "Per-artifact structured render data. A same-key catalog-backed list layers the catalog default followed by project entries; an empty project list keeps the complete default, and null or a non-list value is invalid. Non-list catalog data retains shallow top-level project replacement. Project-only and specialized data retain their owning behavior; see the per-artifact list below.",
 		Availability: "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",
+	},
+	{
+		Path: "sidecar.dataDefaults", Type: "data-key → bool map", Default: "empty: catalog-backed list defaults remain enabled",
+		Description:  "Controls same-key catalog-backed list defaults. An absent key or true keeps the catalog default; false suppresses it so effective content is only the authored project list, or an empty list when none is authored. Explicit true differs from absence only as configuration presence, not effective content.",
+		Availability: "Every entry must name a same-key list default declared by that catalog artifact. Unknown, non-list, local-only, and differently keyed specialized values are invalid.",
 	},
 	{
 		Path: "sidecar.sections", Type: "section-name → override map", Default: "empty",
@@ -383,7 +463,7 @@ var dataKeys = []DataKey{
 	{Kind: "agents", Artifact: "implementer", Key: "prohibitedShortcuts", Description: "The bolt-on shortcuts the implementer must never take (list of {description}); the default names speculative abstraction and misplaced responsibility. Unset, the body omits the list and the rest of the contract renders unchanged."},
 	{Kind: "docs", Artifact: "glossary", Key: "terms", Description: "The glossary's terms as an ordered list of `{term, meaning, domains}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. `domains` (optional) must resolve to configured domains. A term here overrides the standard vocabulary awf ships of the same case-insensitive name, which is how you replace or retire one. Unset, the doc renders the standard vocabulary alone; the pointer telling you where to add terms renders only when neither layer supplies a term. A meaning longer than the terseness guideline raises a non-failing advisory rather than failing the render."},
 	{Kind: "docs", Artifact: "pitfalls", Key: "pitfalls", Description: "The pitfalls as an ordered list of `{title, domains, related, body}` entries; the doc renders each as a `## title` section (an empty/newline title or empty body fails the render), `domains` (optional) must resolve to configured domains, and `related` (optional) ADR numbers must resolve to real ADRs. Unset, the doc renders a pointer telling you where to add entries."},
-	{Kind: "docs", Artifact: "agents-doc", Key: "commands", Description: "Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders."},
-	{Kind: "docs", Artifact: "agents-doc", Key: "docMap", Description: "Extra document-map entries for the agent guide (list rendered after the managed docs); unset, only the managed docs render."},
-	{Kind: "docs", Artifact: "agents-doc", Key: "invariants", Description: "The project's hard-rules list for the agent guide's Invariants section (list of {ref, text} mappings); unset, the section renders its generic invariants prose."},
+	{Kind: "docs", Artifact: "agents-doc", Key: "commands", Fields: []string{"cmd", "desc"}, Description: "Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders."},
+	{Kind: "docs", Artifact: "agents-doc", Key: "docMap", Fields: []string{"path", "desc"}, Description: "Extra document-map entries for the agent guide (list rendered after the managed docs); unset, only the managed docs render."},
+	{Kind: "docs", Artifact: "agents-doc", Key: "invariants", Fields: []string{"kind", "ref", "text"}, Description: "The project's hard-rules list for the agent guide's Invariants section (list of {ref, text} mappings); unset, the section renders its generic invariants prose."},
 }

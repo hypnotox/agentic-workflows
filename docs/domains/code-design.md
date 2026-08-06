@@ -2,6 +2,7 @@
 # code-design
 
 <!-- awf:edit current-state: from .awf/domains/parts/code-design/current-state.md -->
+## Current state
 The code-design domain owns cross-package structure guidance, `internal/execution/**` as its scoped capability-planning implementation surface, and `internal/presentation/**` as the central CLI representation package. Its explicit global topics remain repository-wide guidance and do not gain path ownership. Read the owning scoped and global topics before changing a governed structure rather than copying their claims into local guidance.
 
 

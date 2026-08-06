@@ -10,6 +10,9 @@ type Segment struct {
 	IsSection bool
 	Name      string
 	Text      string
+	// Heading is the optional awf-owned Markdown ATX heading at the section's
+	// leading structural position. It is deliberately separate from the body.
+	Heading string
 	// Stub marks a section whose template default is a must-replace authoring
 	// prompt, declared by the `stub` marker attribute (ADR-0070).
 	Stub bool
@@ -29,8 +32,14 @@ type Segment struct {
 var sectionRE = regexp.MustCompile(`(?s)<!-- awf:section (\S+)( stub| inplace)? -->\n(.*?)\n?<!-- awf:end -->`)
 
 // ParseSections splits src into ordered literal and section segments.
-// Marker lines are consumed; a section segment's Text is the inner body.
-func ParseSections(src string) []Segment {
+// Marker lines are consumed. When markdown is selected, a whole ATX heading on
+// the first body line is structural and is stored separately from Text. The
+// optional argument preserves the historical Markdown default for direct users.
+func ParseSections(src string, markdown ...bool) []Segment {
+	isMarkdown := true
+	if len(markdown) > 0 {
+		isMarkdown = markdown[0]
+	}
 	var segs []Segment
 	idx := sectionRE.FindAllStringSubmatchIndex(src, -1)
 	last := 0
@@ -43,12 +52,24 @@ func ParseSections(src string) []Segment {
 		if m[4] >= 0 {
 			attr = strings.TrimSpace(src[m[4]:m[5]])
 		}
+		body := src[m[6]:m[7]]
+		heading := ""
+		if isMarkdown {
+			if end := strings.IndexByte(body, '\n'); end >= 0 {
+				if atxHeading(body[:end]) {
+					heading, body = body[:end], body[end+1:]
+				}
+			} else if atxHeading(body) {
+				heading, body = body, ""
+			}
+		}
 		segs = append(segs, Segment{
 			IsSection: true,
 			Name:      src[m[2]:m[3]],
 			Stub:      attr == "stub",
 			InPlace:   attr == "inplace",
-			Text:      src[m[6]:m[7]],
+			Heading:   heading,
+			Text:      body,
 		})
 		last = m[1]
 	}
@@ -59,6 +80,19 @@ func ParseSections(src string) []Segment {
 		segs = append(segs, Segment{Text: src})
 	}
 	return segs
+}
+
+// atxHeading recognizes only a complete ATX heading line. Hash-prefixed
+// comments in non-Markdown artifacts remain ordinary body text.
+func atxHeading(line string) bool {
+	if len(line) < 2 || line[0] != '#' {
+		return false
+	}
+	i := 0
+	for i < len(line) && line[i] == '#' {
+		i++
+	}
+	return i <= 6 && i < len(line) && (line[i] == ' ' || line[i] == '\t')
 }
 
 // stubMarkerLine is the whole-line marker a convention part carries to declare

@@ -1336,9 +1336,14 @@ func TestProjectPresent(t *testing.T) {
 func TestMigrationOrderingAscendingAndIdempotent(t *testing.T) {
 	// The registry is the ordering contract: Upgrade walks it in slice order and
 	// skips by To, so an entry appended out of order would silently run early.
-	for i := 1; i < len(registry); i++ {
-		if registry[i].To <= registry[i-1].To {
-			t.Fatalf("registry is not strictly ascending: entry %d targets %d after %d", i, registry[i].To, registry[i-1].To)
+	names := map[string]bool{}
+	for i, migration := range registry {
+		if names[migration.Name] {
+			t.Fatalf("registry migration name %q is duplicated", migration.Name)
+		}
+		names[migration.Name] = true
+		if i > 0 && migration.To <= registry[i-1].To {
+			t.Fatalf("registry is not strictly ascending: entry %d targets %d after %d", i, migration.To, registry[i-1].To)
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -146,5 +147,127 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	}
 	if strings.Contains(string(b), directive) || strings.Contains(string(b), "awf:comment") {
 		t.Errorf("the embedded template's qualified authoring comment leaked into rendered output:\n%s", b)
+	}
+}
+
+func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part := p.Cfg.PartPath("docs", "architecture", "overview")
+	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(part, []byte("PART BODY\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sc, err := p.Cfg.Sidecar("docs", "architecture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := p.Cat.Docs["architecture"]
+	cases := []struct {
+		name        string
+		options     *renderOutputOptions
+		wantHeading bool
+	}{
+		{"ordinary Markdown", nil, true},
+		{"generated Markdown", &renderOutputOptions{encoder: MarkdownAgentDialect}, true},
+		{"Markdown target", &renderOutputOptions{encoder: MarkdownAgentDialect, bannerStyle: render.HTMLComment}, true},
+		{"plain target", &renderOutputOptions{encoder: PlainAgentDialect, bannerStyle: render.SlashComment}, false},
+		{"plain conditional", &renderOutputOptions{encoder: PlainAgentDialect}, false},
+		{"plain resident", &renderOutputOptions{encoder: PlainAgentDialect}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := []*renderOutputOptions{}
+			if tc.options != nil {
+				args = append(args, tc.options)
+			}
+			file, err := p.renderTarget("docs", "architecture", entry.TID, entry.Sections, sc,
+				p.data(sc, map[string]bool{}), "out.md", map[string]bool{}, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Contains(file.Content, "## Overview"); got != tc.wantHeading {
+				t.Fatalf("structural heading present = %v, want %v:\n%s", got, tc.wantHeading, file.Content)
+			}
+			if !strings.Contains(file.Content, "PART BODY") {
+				t.Fatalf("part body missing:\n%s", file.Content)
+			}
+		})
+	}
+}
+
+// TestRenderProducerCallsitesForwardEncoder is the mutation-sensitive wiring
+// complement to the behavior test above: every actual producer family must pass
+// its declaration into the shared renderTarget seam.
+func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *testing.T) {
+	// Capture executes the complete template skeleton before assembly, so this
+	// invalid default expression is observable even though the convention-part
+	// override below would omit it from the final output.
+	segs := render.ParseSections("<!-- awf:section body -->\n## Heading\n{{ .missing.field }}\n<!-- awf:end -->", true)
+	_, err := captureStructuralHeadings(segs, map[string]any{}, "test template")
+	if err == nil || !strings.Contains(err.Error(), "render test template headings: execute template") || !strings.Contains(err.Error(), "nil pointer evaluating") {
+		t.Fatalf("contextual capture error = %v", err)
+	}
+	assembled, parts := render.Assemble(segs, map[string]render.SectionPlan{"body": {HasPart: true, PartBody: "override"}}, render.HTMLComment)
+	if output, assembleErr := render.Execute(assembled, map[string]any{}, parts, "test final assembly"); assembleErr != nil || !strings.Contains(output, "override") {
+		t.Fatalf("override final assembly = %q, %v", output, assembleErr)
+	}
+
+	// Exercise the renderTarget contextual return path with an embedded template:
+	// the capture sees this invalid data before section assembly can substitute a
+	// convention part.
+	root := scaffold(t, sampleYAML)
+	p, openErr := Open(testContext(t), root)
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
+	sc, sidecarErr := p.Cfg.Sidecar("docs", "workflow")
+	if sidecarErr != nil {
+		t.Fatal(sidecarErr)
+	}
+	data := p.data(sc, map[string]bool{})
+	data["layout"] = nil
+	entry := p.Cat.Docs["workflow"]
+	if _, targetErr := p.renderTarget("docs", "workflow", entry.TID, entry.Sections, sc, data, "out.md", map[string]bool{}); targetErr == nil || !strings.Contains(targetErr.Error(), "render "+entry.TID+" headings: execute template") {
+		t.Fatalf("renderTarget capture error = %v", targetErr)
+	}
+
+	collisionSegs := render.ParseSections("<!-- awf:section body -->\n## {{ .heading }}\ndefault\n<!-- awf:end -->", true)
+	_, tokens := render.StructuralHeadingCapture(collisionSegs)
+	if _, collisionErr := captureStructuralHeadings(collisionSegs, map[string]any{"heading": tokens["body"][1]}, "collision template"); collisionErr == nil || !strings.Contains(collisionErr.Error(), "ambiguous framing") {
+		t.Fatalf("contextual collision error = %v", collisionErr)
+	}
+}
+
+func TestRenderProducerCallsitesForwardEncoder(t *testing.T) {
+	renderSource, err := os.ReadFile("render.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(renderSource)
+	for name, fragment := range map[string]string{
+		"catalog target Markdown":  "options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target, encoder: MarkdownAgentDialect}",
+		"agent target encoder":     "options.encoder = spec.target.AgentDialect",
+		"target output encoder":    "encoder:     targetOutput.Encoder,",
+		"generated domain encoder": "Encoder: rf.Encoder,",
+	} {
+		if !strings.Contains(source, fragment) {
+			t.Errorf("%s callsite stopped forwarding its declared encoder", name)
+		}
+	}
+	if got := strings.Count(source, "&renderOutputOptions{encoder: PlainAgentDialect}"); got != 2 {
+		t.Errorf("conditional and resident plain callsites = %d, want 2", got)
+	}
+	configReferenceSource, err := os.ReadFile("configreference.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(configReferenceSource), "Encoder: rf.Encoder") {
+		t.Error("generated config-reference wrapper stopped forwarding its encoder")
 	}
 }

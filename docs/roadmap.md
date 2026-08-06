@@ -257,7 +257,8 @@ commands must remain usable from either checkout.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
-## Historical stale-branch seal-crossing incident
+## Deferred
+### Historical stale-branch seal-crossing incident
 
 The former cutoff-based integration incident is superseded by intrinsic ADR formats and stale-merge authorization. Schema generation 31 retires permanent format cutoffs; a real merge may instead import an exact older-format incoming-parent ADR when its final message has the shared authorization trailer pair. `awf audit` replays that authorization for committed schema-31-and-later merges. The historical account below is retained as the incident record that motivated the successor decision.
 

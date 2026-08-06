@@ -46,6 +46,12 @@ A reader-injected declaration builder enumerates managed writes and local reserv
 Origin: ADR-0148
 Backing: test
 
+### `invariant: ordinary-render-freshness`
+
+After an ordinary frozen output's template and config hashes match, awf check compares its current planned render bytes to the locked output hash before observing the worktree or staged bytes. A changed fresh render reports stale output, while an unchanged fresh render attributes only a differing observed output as hand-edited. Regenerated and in-place outputs retain their declared regeneration policy.
+Origin: ADR-0235
+Backing: test
+
 ### `invariant: part-scopes-in-confighash`
 
 A raw convention-part body referencing a `{{=awf:commitScope...}}` placeholder folds the resolved scope data into its artifact's config hash, so editing `audit.allowedScopes` flags that artifact stale in `awf check` while a non-referencing part stays in sync.

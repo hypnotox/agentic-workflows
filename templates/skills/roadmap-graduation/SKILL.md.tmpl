@@ -7,9 +7,9 @@ description: Use when a {{ .layout.docs.roadmap }} entry graduates to an ADR or 
 
 A support skill for moving an item out of `{{ .layout.docs.roadmap }}` into an ADR or PR. The substance of the protocol lives in `{{ .layout.docs.roadmap }}`'s opening paragraphs. This skill encodes the small procedural sequence that prevents two recurring failure modes: stale roadmap entries that point at already-shipped work, and stale benchmark numbers that migrate into an ADR Context without re-verification.
 
+<!-- awf:section when-fires -->
 ## When this skill fires
 
-<!-- awf:section when-fires -->
 An architectural roadmap item is becoming a Proposed ADR, a smaller "open gap" roadmap item is being implemented in a PR without ADR coverage, or a roadmap item is being explicitly dropped (we decided not to do it).
 
 This is a **support skill**: it sits off the workflow chain.
@@ -58,9 +58,9 @@ Commit with subject `docs(roadmap): drop <item>`; the one-line reason goes in th
 If the graduated entry mentions a state doc or ADR that needs updating, fold that update into the same commit.
 <!-- awf:end -->
 
+<!-- awf:section notes -->
 ## Notes
 
-<!-- awf:section notes -->
 - Does not commit on your behalf.
 - Authoritative source for roadmap conventions: `{{ .layout.docs.roadmap }}` opening paragraph. This skill is a procedural pointer, not a contract restatement.
 - When a roadmap entry's removal lands in the same commit as an ADR, the commit's Conventional Commits scope follows the ADR's domain (e.g. `docs(adr)`), not `(roadmap)`. The roadmap delta is a doc-currency obligation of the ADR, not a separate concern.

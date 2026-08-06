@@ -358,18 +358,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		decisionInputs = append(decisionInputs, OutputInput{Path: strings.TrimRight(cfg.DocsDir, "/") + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
 	}
 	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...), false)
-	if cfg.Runner != nil && cfg.Runner.Enabled {
-		add("awf", runnerTID, runnerTID, inputs(runnerTID, partInputs("runner", "", runnerSections)...), false)
-	}
-	if cfg.Bootstrap != nil && cfg.Bootstrap.Enabled {
-		add(".awf/bootstrap.sh", bootstrapTID, bootstrapTID, inputs(bootstrapTID), false)
-		add(".awf/upgrade.sh", upgradeTID, upgradeTID, inputs(upgradeTID), false)
-	}
-	if cfg.Hooks != nil && cfg.Hooks.Enabled {
-		for _, n := range hookNames {
-			tid := hookTID(n)
-			add(".awf/hooks/"+n+".sh", tid, tid, inputs(tid), false)
+	for _, unit := range conditionalUnits() {
+		if !unit.enabled(cfg) {
+			continue
 		}
+		add(unit.path, unit.tid, unit.tid, inputs(unit.tid, partInputs(unit.kind, "", unit.sections)...), false)
 	}
 	for _, name := range resident.RootNames() {
 		tid := residentGitignoreTID(name)
@@ -449,6 +442,22 @@ type OutputNode struct {
 // OutputPlan is the single desired-output authority consumed by rendering,
 // sync, manifest/prune, checks, and planned-output reporting.
 type OutputPlan struct{ Nodes []OutputNode }
+
+// classifyFrozenOutputFreshness compares an ordinary planned output to its
+// locked bytes before either drift surface observes a worktree or staged file.
+func classifyFrozenOutputFreshness(file RenderedFile, entry manifest.Entry) (manifest.Drift, bool) {
+	if manifest.Hash([]byte(file.Content)) != entry.OutputHash {
+		return manifest.Drift{Path: file.Path, Kind: "stale", Detail: "rendered output out of date; run awf render"}, true
+	}
+	return manifest.Drift{}, false
+}
+
+func classifyFrozenObservedDrift(file RenderedFile, entry manifest.Entry, observed []byte, observedDetail string) (manifest.Drift, bool) {
+	if manifest.Hash(observed) != entry.OutputHash {
+		return manifest.Drift{Path: file.Path, Kind: "hand-edited", Detail: observedDetail}, true
+	}
+	return manifest.Drift{}, false
+}
 
 func (op *OutputPlan) writeFiles() []RenderedFile {
 	files := make([]RenderedFile, 0, len(op.Nodes))
@@ -585,6 +594,9 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 	}
 	base, err := p.renderAllBase(declarations, eff)
 	if err != nil {
+		return nil, err
+	}
+	if err := p.validateLiveTemplates(); err != nil {
 		return nil, err
 	}
 	plan := &OutputPlan{}
@@ -742,6 +754,17 @@ func (p *Project) PlannedOutputs(ctx context.Context) ([]string, error) {
 
 // localReservations validates plan reservation nodes rather than reconstructing
 // local output paths in lifecycle callers.
+// validateLiveTemplates verifies that every identity derived from the live
+// declaration owners resolves in the shipped embedded filesystem.
+func (p *Project) validateLiveTemplates() error {
+	for tid := range p.liveTemplateIDs() {
+		if _, err := fs.Stat(templates.FS, tid); err != nil {
+			return fmt.Errorf("read template %s: %w", tid, err)
+		}
+	}
+	return nil
+}
+
 func (p *Project) localReservations(op *OutputPlan, fail func(string, error)) {
 	for _, n := range op.Nodes {
 		if !n.Reservation || !n.Policy.LocalValidation {

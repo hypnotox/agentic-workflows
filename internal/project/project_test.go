@@ -1401,39 +1401,23 @@ func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 // invariant: rendering/sync-and-drift:check-invalid-frontmatter (TestCheckDetectsInvalidFrontmatter)
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
-	if err := p.Sync(); err != nil {
+	p, err := Open(testContext(t), root)
+	if err != nil {
 		t.Fatal(err)
 	}
-	skillPath := ".claude/skills/example-tdd/SKILL.md"
+	const skillPath = ".claude/skills/example-tdd/SKILL.md"
 	broken := "---\nname: \"\"\ndescription: \"\"\n---\nbody\n"
-	if err := os.WriteFile(filepath.Join(root, skillPath), []byte(broken), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// Re-point the lock OutputHash to the edited content so the file is "in sync"
-	// by hash and the frontmatter check is what fires.
-	lock, err := manifest.Load(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	e := lock.Files[skillPath]
-	e.OutputHash = manifest.Hash([]byte(broken))
-	lock.Files[skillPath] = e
-	if err := lock.Save(lockFile(root)); err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p.Check(testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, d := range drift {
-		if d.Path == skillPath && d.Kind == "invalid-frontmatter" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected invalid-frontmatter drift for %s, got %#v", skillPath, drift)
+	// Fresh planned bytes, the locked hash, and observed bytes all agree, so
+	// frontmatter validation is the first applicable finding.
+	testsupport.WriteFile(t, filepath.Join(root, skillPath), broken)
+	file := RenderedFile{Path: skillPath, Content: broken, Policy: OutputPolicy{ValidateFrontmatter: true}, Encoder: MarkdownAgentDialect}
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{
+		skillPath: {OutputHash: manifest.Hash([]byte(broken))},
+	}}
+	drift := p.checkLockedFiles(lock, map[string]RenderedFile{skillPath: file})
+	want := []manifest.Drift{{Path: skillPath, Kind: "invalid-frontmatter", Detail: "frontmatter name is empty"}}
+	if !slices.Equal(drift, want) {
+		t.Errorf("invalid-frontmatter drift = %#v, want %#v", drift, want)
 	}
 }
 

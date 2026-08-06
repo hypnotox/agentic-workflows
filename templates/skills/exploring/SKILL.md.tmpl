@@ -3,9 +3,9 @@ name: {{ .prefix }}-exploring
 description: Use when a repository information need has both an unknown location and an inline search expected to pollute parent context. Keeps exact-known-file and genuinely trivial lookups inline.
 ---
 
+<!-- awf:section when-to-invoke -->
 # {{ .prefix }}-exploring
 
-<!-- awf:section when-to-invoke -->
 ## When to invoke
 
 Invoke this skill only when both the repository location is unknown and inline search would pollute the parent context. Keep an exact-known-file read or genuinely trivial lookup inline. Send one information need per call.

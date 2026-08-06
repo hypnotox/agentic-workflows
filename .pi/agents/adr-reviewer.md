@@ -43,9 +43,9 @@ Severity is informational only; the dispatching skill routes by classification k
 
 When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the ADR against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating ADR passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
+<!-- awf:edit universal-lenses: default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
 ## Universal lenses
 
-<!-- awf:edit universal-lenses: default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
 Apply all lenses to every ADR:
 
 1. **decision-clarity**: each Decision item must be a discrete durable commitment that remains meaningful after implementation; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items). Apply the post-implementation test (does it still constrain the project after delivery?) and the counterfactual test (could it change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?). A mechanism is valid only when the ADR explains why the mechanism itself is load-bearing. Treat paths, commands, task order, rollout batches, ordinary test transactions, and comparable executor instructions as plan content; report a misplaced directive as a reasoned finding, not a mechanical format failure.
@@ -60,9 +60,9 @@ Apply all lenses to every ADR:
 
 1. **structural-design**: consult `docs/maintainable-code-design.md` only when a Decision changes a semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract. When active, check cohesion, representation isolation, dependency direction, enabling-refactor disposition, testable seams, and justification for indirection. When no trigger is present, skip this lens rather than manufacturing structural requirements.
 
+<!-- awf:edit project-focus: default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->
 ## Project-specific focus items
 
-<!-- awf:edit project-focus: default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->
 
 **Schema stability**: ADRs that change the config-tree schema or the lock format must enumerate all consumers (config, render, manifest, migrate) and confirm backward compatibility or a migration path.
 

@@ -8,9 +8,9 @@ description: >
   when none does.
 ---
 
+<!-- awf:section when-fires -->
 # {{ .prefix }}-reviewing-plan
 
-<!-- awf:section when-fires -->
 ## When this skill fires
 
 Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is written and committed under `{{ .layout.plansDir }}/`. The `plan-reviewer` subagent is a report-only judge: it reads the plan, runs its universal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
@@ -67,9 +67,9 @@ This skill operates only inside an existing confirmed effort and never creates a
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
+<!-- awf:section notes -->
 ## Notes
 
-<!-- awf:section notes -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `{{ .layout.workflowRef }}` for full plan lifecycle rules and the canonical workflow chain.
 - For V2 ADR work, require tasks to assign declared operations to pair-atomic batches and account for Applied, Remaining, and Canceled partitions.

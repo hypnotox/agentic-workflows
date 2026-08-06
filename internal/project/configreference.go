@@ -96,104 +96,141 @@ func enabledVarConsumers(files []RenderedFile) map[string][]string {
 	return out
 }
 
-// currentValue renders a config key's live value for the reference table.
-func (p *Project) currentValue(path string) string {
+// currentValueResolvers couples each live classification to the function that
+// computes its project value. Static keys have no resolver.
+func (p *Project) currentValueResolvers() map[string]func() string {
 	res := audit.Resolve(p.Cfg.Audit)
+	a := p.Cfg.Audit
 	withDefault := func(s string, isDefault bool) string {
 		if isDefault {
 			return s + " (default)"
 		}
 		return s
 	}
-	a := p.Cfg.Audit
-	switch path {
-	case "prefix":
-		return "`" + p.Cfg.Prefix + "`"
-	case "integrationBranch":
-		return "`" + p.Cfg.IntegrationBranch + "`"
-	case "docsDir":
-		return "`" + p.Cfg.DocsDir + "`"
-	case "vars":
-		set := 0
-		for _, v := range p.Cfg.Vars {
-			if v != nil && v != "" {
-				set++
+	return map[string]func() string{
+		"prefix":            func() string { return "`" + p.Cfg.Prefix + "`" },
+		"integrationBranch": func() string { return "`" + p.Cfg.IntegrationBranch + "`" },
+		"docsDir":           func() string { return "`" + p.Cfg.DocsDir + "`" },
+		"vars": func() string {
+			set := 0
+			for _, v := range p.Cfg.Vars {
+				if v != nil && v != "" {
+					set++
+				}
 			}
-		}
-		return fmt.Sprintf("%d keys, %d set", len(p.Cfg.Vars), set)
-	case "skills":
-		return strconv.Itoa(len(p.Cfg.Skills)) + " enabled"
-	case "agents":
-		return strconv.Itoa(len(p.Cfg.Agents)) + " enabled"
-	case "docs":
-		return strconv.Itoa(len(p.Cfg.Docs)) + " enabled"
-	case "domains":
-		return strconv.Itoa(len(p.Cfg.Domains)) + " configured"
-	case "targets":
-		return "`" + strings.Join(p.Cfg.Targets, "`, `") + "`"
-	case "currentState.sources":
-		if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.Sources) == 0 {
-			return "(none)"
-		}
-		return strconv.Itoa(len(p.Cfg.CurrentState.Sources)) + " sources"
-	case "currentState.testGlobs":
-		if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.TestGlobs) == 0 {
-			return "(none)"
-		}
-		return strconv.Itoa(len(p.Cfg.CurrentState.TestGlobs)) + " globs"
-	case "currentState.maxTopicsPerPath":
-		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
-
-	case "audit.allowedTypes":
-		if len(res.AllowedTypes) == 0 {
-			return "accept any"
-		}
-		return withDefault(strconv.Itoa(len(res.AllowedTypes))+" types", a == nil || a.AllowedTypes == nil)
-	case "audit.allowedScopes":
-		if len(res.AllowedScopes) == 0 {
-			return "accept any (default)"
-		}
-		return strconv.Itoa(len(res.AllowedScopes)) + " scopes"
-	case "audit.subjectMaxLength":
-		return withDefault(strconv.Itoa(res.SubjectMaxLength), a == nil || a.SubjectMaxLength == nil)
-	case "audit.dependencyManifests":
-		if len(res.DependencyManifests) == 0 {
-			return "rule off"
-		}
-		return withDefault(strconv.Itoa(len(res.DependencyManifests))+" globs", a == nil || a.DependencyManifests == nil)
-	case "audit.diffThreshold":
-		return withDefault(strconv.Itoa(res.DiffThreshold), a == nil || a.DiffThreshold == nil)
-	case "audit.domainDocStaleness":
-		return withDefault(strconv.FormatBool(res.DomainDocStaleness), a == nil || a.DomainDocStaleness == nil)
-	case "audit.domainCodeStaleness":
-		return withDefault(strconv.FormatBool(res.DomainCodeStaleness), a == nil || a.DomainCodeStaleness == nil)
-	case "audit.undocumentedDomain":
-		return withDefault(strconv.FormatBool(res.UndocumentedDomain), a == nil || a.UndocumentedDomain == nil)
-	case "audit.plainPunctuation":
-		return withDefault(strconv.FormatBool(res.PlainPunctuation), a == nil || a.PlainPunctuation == nil)
-	case "audit.uncommittedChanges":
-		return withDefault(strconv.FormatBool(res.UncommittedChanges), a == nil || a.UncommittedChanges == nil)
-	case "bootstrap.enabled":
-		return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
-	case "hooks.enabled":
-		return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
-	case "proseGate.enabled":
-		return strconv.FormatBool(p.Cfg.ProseGate != nil && p.Cfg.ProseGate.Enabled)
-	case "proseGate.exemptions":
-		if p.Cfg.ProseGate == nil || len(p.Cfg.ProseGate.Exemptions) == 0 {
-			return "(none)"
-		}
-		return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
-	case "memoryCite.enabled":
-		return strconv.FormatBool(p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled)
-	case "memoryCite.exemptions":
-		if p.Cfg.MemoryCite == nil || len(p.Cfg.MemoryCite.Exemptions) == 0 {
-			return "(none)"
-		}
-		return fmt.Sprintf("%d entries", len(p.Cfg.MemoryCite.Exemptions))
-	default: // per-entry leaves (audit.allowedScopes[]....)
-		return "n/a"
+			return fmt.Sprintf("%d keys, %d set", len(p.Cfg.Vars), set)
+		},
+		"skills":  func() string { return strconv.Itoa(len(p.Cfg.Skills)) + " enabled" },
+		"agents":  func() string { return strconv.Itoa(len(p.Cfg.Agents)) + " enabled" },
+		"docs":    func() string { return strconv.Itoa(len(p.Cfg.Docs)) + " enabled" },
+		"domains": func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
+		"targets": func() string { return "`" + strings.Join(p.Cfg.Targets, "`, `") + "`" },
+		"currentState.sources": func() string {
+			if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.Sources) == 0 {
+				return "(none)"
+			}
+			return strconv.Itoa(len(p.Cfg.CurrentState.Sources)) + " sources"
+		},
+		"currentState.testGlobs": func() string {
+			if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.TestGlobs) == 0 {
+				return "(none)"
+			}
+			return strconv.Itoa(len(p.Cfg.CurrentState.TestGlobs)) + " globs"
+		},
+		"currentState.maxTopicsPerPath": func() string {
+			return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
+		},
+		"audit.allowedTypes": func() string {
+			if len(res.AllowedTypes) == 0 {
+				return "accept any"
+			}
+			return withDefault(strconv.Itoa(len(res.AllowedTypes))+" types", a == nil || a.AllowedTypes == nil)
+		},
+		"audit.allowedScopes": func() string {
+			if len(res.AllowedScopes) == 0 {
+				return "accept any (default)"
+			}
+			return strconv.Itoa(len(res.AllowedScopes)) + " scopes"
+		},
+		"audit.subjectMaxLength": func() string {
+			return withDefault(strconv.Itoa(res.SubjectMaxLength), a == nil || a.SubjectMaxLength == nil)
+		},
+		"audit.dependencyManifests": func() string {
+			if len(res.DependencyManifests) == 0 {
+				return "rule off"
+			}
+			return withDefault(strconv.Itoa(len(res.DependencyManifests))+" globs", a == nil || a.DependencyManifests == nil)
+		},
+		"audit.diffThreshold": func() string {
+			return withDefault(strconv.Itoa(res.DiffThreshold), a == nil || a.DiffThreshold == nil)
+		},
+		"audit.domainDocStaleness": func() string {
+			return withDefault(strconv.FormatBool(res.DomainDocStaleness), a == nil || a.DomainDocStaleness == nil)
+		},
+		"audit.domainCodeStaleness": func() string {
+			return withDefault(strconv.FormatBool(res.DomainCodeStaleness), a == nil || a.DomainCodeStaleness == nil)
+		},
+		"audit.undocumentedDomain": func() string {
+			return withDefault(strconv.FormatBool(res.UndocumentedDomain), a == nil || a.UndocumentedDomain == nil)
+		},
+		"audit.plainPunctuation": func() string {
+			return withDefault(strconv.FormatBool(res.PlainPunctuation), a == nil || a.PlainPunctuation == nil)
+		},
+		"audit.uncommittedChanges": func() string {
+			return withDefault(strconv.FormatBool(res.UncommittedChanges), a == nil || a.UncommittedChanges == nil)
+		},
+		"bootstrap.enabled": func() string {
+			return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
+		},
+		"hooks.enabled": func() string {
+			return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
+		},
+		"runner.enabled": func() string {
+			return strconv.FormatBool(p.Cfg.Runner != nil && p.Cfg.Runner.Enabled)
+		},
+		"proseGate.enabled": func() string {
+			return strconv.FormatBool(p.Cfg.ProseGate != nil && p.Cfg.ProseGate.Enabled)
+		},
+		"proseGate.exemptions": func() string {
+			if p.Cfg.ProseGate == nil || len(p.Cfg.ProseGate.Exemptions) == 0 {
+				return "(none)"
+			}
+			return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
+		},
+		"memoryCite.enabled": func() string {
+			return strconv.FormatBool(p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled)
+		},
+		"memoryCite.exemptions": func() string {
+			if p.Cfg.MemoryCite == nil || len(p.Cfg.MemoryCite.Exemptions) == 0 {
+				return "(none)"
+			}
+			return fmt.Sprintf("%d entries", len(p.Cfg.MemoryCite.Exemptions))
+		},
 	}
+}
+
+func validateLiveStateAuthority(classes map[string]configspec.LiveStateClass, resolvers map[string]func() string) error {
+	for path, class := range classes {
+		_, hasResolver := resolvers[path]
+		switch class {
+		case configspec.LiveStateProjection:
+			if !hasResolver {
+				return fmt.Errorf("live-state key %q has no resolver", path)
+			}
+		case configspec.StaticNotApplicable:
+			if hasResolver {
+				return fmt.Errorf("static live-state key %q has a resolver", path)
+			}
+		default:
+			return fmt.Errorf("live-state key %q has unknown class %d", path, class)
+		}
+	}
+	for path := range resolvers {
+		if _, ok := classes[path]; !ok {
+			return fmt.Errorf("live-state resolver %q has no classification", path)
+		}
+	}
+	return nil
 }
 
 // varState renders the three-way var state: set, present-but-empty (an open
@@ -225,8 +262,8 @@ type VarRow struct {
 	Key, Description, Availability, State, Consumers string
 }
 
-// DataKeyRow renders one per-artifact data key. State notes an override or
-// catalog-default source; it is empty when neither applies.
+// DataKeyRow renders one per-artifact data key. State reports its observable
+// catalog/project layering state.
 type DataKeyRow struct {
 	Artifact, Key, Description, State string
 }
@@ -249,6 +286,11 @@ type ConfigReference struct {
 // configReferenceData's map adaptation, the doc generator's template input.
 func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, error) {
 	var ref ConfigReference
+	classes := configspec.LiveStateClassifications()
+	resolvers := p.currentValueResolvers()
+	if err := validateLiveStateAuthority(classes, resolvers); err != nil { // coverage-ignore: production constructs both fixed authorities together; mutation tests exercise every mismatch in validateLiveStateAuthority directly
+		return ConfigReference{}, err
+	}
 	for _, e := range configspec.Keys() {
 		row := ConfigKeyRow{
 			Path: e.Path, Type: e.Type, Default: e.Default,
@@ -258,7 +300,11 @@ func (p *Project) configReferenceRows(files []RenderedFile) (ConfigReference, er
 			ref.SidecarFields = append(ref.SidecarFields, row)
 			continue
 		}
-		row.Current = p.currentValue(e.Path)
+		if classes[e.Path] == configspec.LiveStateProjection {
+			row.Current = resolvers[e.Path]()
+		} else {
+			row.Current = "n/a"
+		}
 		ref.ConfigKeys = append(ref.ConfigKeys, row)
 	}
 
@@ -380,9 +426,26 @@ func (p *Project) dataKeyRowsTyped() ([]DataKeyRow, error) {
 			if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
 				return nil, err
 			}
-			if _, ok := sc.Data[d.Key]; ok {
-				state = " (overridden)"
-			} else if _, ok := declared[d.Key]; ok {
+			_, hasAuthored := sc.Data[d.Key]
+			defaultValue, hasDefault := declared[d.Key]
+			_, catalogList := defaultValue.([]any)
+			catalogList = catalogList && !slices.Contains(specializedListDataKeys(sidecarKind, sidecarName), d.Key)
+			switch {
+			case catalogList:
+				keep, configured := sc.DataDefaults[d.Key]
+				switch {
+				case configured && !keep:
+					state = " (explicitly suppressed default; project entries only)"
+				case hasAuthored:
+					state = " (catalog default + project entries)"
+				case configured:
+					state = " (catalog default; dataDefaults explicitly true)"
+				default:
+					state = " (catalog default)"
+				}
+			case hasAuthored:
+				state = " (project-only/specialized)"
+			case hasDefault:
 				state = " (catalog default)"
 			}
 		}
@@ -462,7 +525,8 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 	return &RenderedFile{Path: rf.Path, Content: rf.Content,
 		stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 		markerParts: rf.markerParts, assembled: rf.assembled,
-		partVarRefs: rf.partVarRefs, RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID,
+		partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
+		RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID, Encoder: rf.Encoder,
 		Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, true, nil
 }
 

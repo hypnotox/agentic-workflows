@@ -585,7 +585,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	want := map[string]AgentDialect{
 		".custom/workflows/example-tdd/SKILL.md":   MarkdownAgentDialect,
 		".custom/reviewers/code-reviewer.agent.md": MarkdownAgentDialect,
-		"CUSTOM.md":            "",
+		"CUSTOM.md":            MarkdownAgentDialect,
 		".custom/extension.ts": PlainAgentDialect,
 	}
 	counts := map[string]int{}
@@ -769,6 +769,59 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 	}
 	if docs != 1 {
 		t.Errorf("maintainable design guide renders %d times, want 1", docs)
+	}
+}
+
+const (
+	semanticPlanningInstruction   = "- **Semantic rendering review:** when a task changes generated prose, schedule a focused human check at each affected output boundary for contradictory fragments, concept-preserving paraphrase, and whether literal placeholder syntax such as `<literal-placeholder>` is intentional. Name concrete examples and the expected reading; this is a meaning review, not a general output validator."
+	semanticPlanReviewInstruction = "1. **semantic-rendering-review**: when generated prose changes, require the plan to schedule a focused human check at each affected output boundary for contradictory fragments, concept-preserving paraphrase, and intentional literal placeholder syntax such as `<literal-placeholder>`, with concrete examples and expected reading. This is a meaning review, not a general output validator."
+	semanticCodeReviewInstruction = "1. **semantic-rendering-review**: for generated prose changes, inspect the produced outputs and focused tests for the scheduled contradictory-fragment, concept-preserving-paraphrase, and literal-placeholder-intent examples. Keep this as human meaning review, not a general output validator or new deterministic inference."
+)
+
+// invariant: rendering/workflow-skill-templates:semantic-rendering-review (TestSemanticRenderingReviewMultiTargetAuthority)
+func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [writing-plans, reviewing-impl, reviewing-plan, reviewing-plan-resync]\nagents: [plan-reviewer, code-reviewer]\ndocs: []\ntargets: [claude, pi]\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]string{}
+	counts := map[string]int{}
+	for _, file := range files {
+		byPath[file.Path] = file.Content
+		counts[file.Path]++
+	}
+	for _, target := range []string{".claude", ".pi"} {
+		for _, artifact := range []struct {
+			path        string
+			instruction string
+		}{
+			{target + "/skills/example-writing-plans/SKILL.md", semanticPlanningInstruction},
+			{target + "/agents/plan-reviewer.md", semanticPlanReviewInstruction},
+			{target + "/agents/code-reviewer.md", semanticCodeReviewInstruction},
+		} {
+			out := byPath[artifact.path]
+			if counts[artifact.path] != 1 || out == "" {
+				t.Fatalf("%s rendered %d times with %d bytes", artifact.path, counts[artifact.path], len(out))
+			}
+			if !strings.Contains(out, artifact.instruction) {
+				t.Errorf("%s missing exact semantic rendering instruction %q:\n%s", artifact.path, artifact.instruction, out)
+			}
+			for _, residue := range []string{"<no value>", "{{ ."} {
+				if strings.Contains(out, residue) {
+					t.Errorf("%s contains unresolved empty-data residue %q:\n%s", artifact.path, residue, out)
+				}
+			}
+			for _, forbidden := range []string{"synonym detection", "contradiction inference", "placeholder-intent inference", "universal output-language validator"} {
+				if strings.Contains(out, forbidden) {
+					t.Errorf("%s claims unsupported semantic validation %q:\n%s", artifact.path, forbidden, out)
+				}
+			}
+		}
 	}
 }
 

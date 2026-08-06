@@ -2,6 +2,7 @@ package project
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -211,6 +212,46 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 // same declaration tables (ADR-0195 item 5), so that axis would compare the
 // derivation with itself. The other five axes are compared exactly as the
 // runtime check did.
+func outputDeclarationParityError(nodes []OutputNode, declarations []OutputDeclaration) error {
+	if len(nodes) != len(declarations) {
+		planPaths, declPaths := map[string]bool{}, map[string]bool{}
+		for _, node := range nodes {
+			planPaths[node.Path] = true
+		}
+		for _, declaration := range declarations {
+			declPaths[declaration.Path] = true
+		}
+		var planOnly, declOnly []string
+		for path := range planPaths {
+			if !declPaths[path] {
+				planOnly = append(planOnly, path)
+			}
+		}
+		for path := range declPaths {
+			if !planPaths[path] {
+				declOnly = append(declOnly, path)
+			}
+		}
+		slices.Sort(planOnly)
+		slices.Sort(declOnly)
+		return fmt.Errorf("declaration parity: plan-only %v, declarations-only %v", planOnly, declOnly)
+	}
+	for i := range nodes {
+		node, declaration := nodes[i], declarations[i]
+		if node.Path != declaration.Path || node.Reservation != declaration.Reservation ||
+			!slices.Equal(node.Declarers, declaration.Declarers) ||
+			!slices.Equal(node.ConsumedInputs, normalizeOutputInputs(declaration.Inputs)) ||
+			!slices.Equal(node.DependsOn, declaration.Dependencies) {
+			return fmt.Errorf("declaration parity at %q: plan declarers=%v consumed=%v dependencies=%v reservation=%t; declaration declarers=%v inputs=%v dependencies=%v reservation=%t",
+				node.Path, node.Declarers, node.ConsumedInputs, node.DependsOn, node.Reservation,
+				declaration.Declarers, declaration.Inputs, declaration.Dependencies, declaration.Reservation)
+		}
+	}
+	return nil
+}
+
+// invariant: rendering/project-output-plan:conditional-unit-single-source (TestOutputDeclarationsMatchThePlan)
+// invariant: rendering/project-output-plan:output-plan-complete (TestOutputDeclarationsMatchThePlan)
 func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -232,39 +273,22 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Nodes) != len(declarations) {
-		planPaths, declPaths := map[string]bool{}, map[string]bool{}
-		for _, n := range plan.Nodes {
-			planPaths[n.Path] = true
-		}
-		for _, d := range declarations {
-			declPaths[d.Path] = true
-		}
-		var planOnly, declOnly []string
-		for path := range planPaths {
-			if !declPaths[path] {
-				planOnly = append(planOnly, path)
-			}
-		}
-		for path := range declPaths {
-			if !planPaths[path] {
-				declOnly = append(declOnly, path)
-			}
-		}
-		slices.Sort(planOnly)
-		slices.Sort(declOnly)
-		t.Fatalf("declaration parity: plan-only %v, declarations-only %v", planOnly, declOnly)
+	if err := outputDeclarationParityError(plan.Nodes, declarations); err != nil {
+		t.Fatal(err)
 	}
-	for i := range plan.Nodes {
-		node, declaration := plan.Nodes[i], declarations[i]
-		if node.Path != declaration.Path || node.Reservation != declaration.Reservation ||
-			!slices.Equal(node.Declarers, declaration.Declarers) ||
-			!slices.Equal(node.ConsumedInputs, normalizeOutputInputs(declaration.Inputs)) ||
-			!slices.Equal(node.DependsOn, declaration.Dependencies) {
-			t.Fatalf("declaration parity at %q: plan declarers=%v consumed=%v dependencies=%v reservation=%t; declaration declarers=%v inputs=%v dependencies=%v reservation=%t",
-				node.Path, node.Declarers, node.ConsumedInputs, node.DependsOn, node.Reservation,
-				declaration.Declarers, declaration.Inputs, declaration.Dependencies, declaration.Reservation)
-		}
+
+	runnerNode := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == "awf" })
+	runnerDeclaration := slices.IndexFunc(declarations, func(declaration OutputDeclaration) bool { return declaration.Path == "awf" })
+	if runnerNode < 0 || runnerDeclaration < 0 {
+		t.Fatal("enabled runner conditional unit missing from parity populations")
+	}
+	planOnly := slices.Delete(slices.Clone(declarations), runnerDeclaration, runnerDeclaration+1)
+	if err := outputDeclarationParityError(plan.Nodes, planOnly); err == nil || !strings.Contains(err.Error(), "plan-only [awf]") {
+		t.Fatalf("declaration-only omission escaped parity: %v", err)
+	}
+	declarationOnly := slices.Delete(slices.Clone(plan.Nodes), runnerNode, runnerNode+1)
+	if err := outputDeclarationParityError(declarationOnly, declarations); err == nil || !strings.Contains(err.Error(), "declarations-only [awf]") {
+		t.Fatalf("render-only omission escaped parity: %v", err)
 	}
 }
 
