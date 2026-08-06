@@ -5,36 +5,27 @@ data:
         - cmd: ./x gate
           desc: run the gate before committing
         - cmd: ./x check
-          desc: check rendered files for drift (also enforces the schema-version gate)
+          desc: check rendered-file drift
         - cmd: awf upgrade
-          desc: migrate the config tree to the current schema after upgrading awf
+          desc: migrate the config tree after upgrading awf
         - cmd: awf audit
-          desc: report workflow-conformance findings over an explicit commit range (advisory)
+          desc: report workflow conformance for a commit range
         - cmd: awf new plan "<Title>"
-          desc: scaffold a dated plan under docs/plans from the rendered plans template
-    # Core-only invariants (ADR-0112): the guide lists only cross-cutting rules
-    # not scoped to a single subsystem's files. Path/subsystem-specific invariants
-    # live as current-state topic claims and are reached via `awf context`;
-    # do not re-add them here. Retention criterion: docs/agents-md-standard.md.
+          desc: scaffold a dated implementation plan
     invariants:
         - ref: ADR-0001, ADR-0045
-          text: '**Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders.'
-        - text: '**`awf check` is the drift oracle.** After any `.awf/` edit run `./x render && ./x check`; commit rendered files with their config and never hand-edit one.'
-        # Typed marker (ADR-0055), not a hand-written ref/text entry: the template's
-        # `kind == "scopes"` branch renders the Conventional-Commits / commit-scope
-        # invariant from audit.allowedScopes so a scopes edit updates the guide.
+          text: '**Publication-safe templates.** Keep unset interpolation coherent and token-free.'
+        - text: '**`awf check` is the drift oracle.** After `.awf/` edits run `./x render && ./x check`; commit generated outputs with their sources.'
         - kind: scopes
         - ref: ADR-0134
-          text: '**Backed invariants.** Every invariant is a current-state topic claim declared with `` `invariant: <slug>` `` in one of two forms and symmetrically enforced: a `Backing: test` claim requires a matching proof `<marker> invariant: <domain>/<topic>:<slug> (<name>)` comment on a test in a `currentState.testGlobs` file, where `<name>` names the unit that proves the claim and must occur verbatim on a line of that same file that does not itself open with the marker token, so a marker whose test is deleted, renamed, or moved fails the check instead of silently backing nothing; while a `Backing: unbacked` claim is a reasoned contract that must carry a `Verify:` line and must NOT have a proof marker. A `touches-state: <domain>/<topic>:<slug>` marker is advisory context for either claim type, never backing, and a `state:` marker narrows selection within an already-applicable topic. The ADR corpus declares no invariants: an ADR creates, changes, or retires an invariant claim through its `State changes` operations, and `awf check` validates the claim provenance and backing against those operations.'
+          text: '**Backed invariants.** Declare and prove current-state invariants; see the current-state contract.'
         - ref: ADR-0115, ADR-0119
-          text: '**Plain punctuation, repo-wide.** No tracked text file carries a typographic punctuation substitute: not the embedded templates or changelog, not a string literal in production Go, and not a Go comment, a test, a sidecar, or the infrastructure scripts. Seven codepoints are banned (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D); use plain ASCII punctuation, a bare hyphen included. Two layers enforce this: ADR-0115 gates the shipped surfaces unconditionally with no exemption list, and the opt-in `awf check repo prose` (ADR-0119, on in this repo, run by the pre-commit hook payload and backstopped by CI per ADR-0196) scans every tracked file, exempting only the handful of genuine depictions pinned in `proseGate.exemptions`. Notation (arrows, mathematical symbols, accented letters) stays legal. A doc that must show a banned glyph names it by codepoint or lands in the exemption list.'
+          text: '**Plain punctuation.** Use ASCII punctuation in tracked prose; see the prose gate contract.'
         - ref: ADR-0158, ADR-0175
-          text: '**No working-memory citation in a durable record.** An ADR, a plan, and a commit-message body may name the `.awf/efforts/` directory or an angle-bracket placeholder path, never a concrete `.awf/efforts/<slug>/memory.md`: the file is ephemeral and deleted at finish, so a citation leaks false authority into a durable record. The opt-in `awf check repo memory` scans scannable staged decisions and plans, and `awf check staged commit` scans the git-cleaned message body without exemptions. Slash, backslash, link, code, prose, and normalized relative spellings are detected without reading resident files.'
+          text: '**No memory citation.** Never cite concrete effort memory paths in durable records.'
         - ref: ADR-0012
-          text: '**100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`.'
+          text: '**100% coverage gate.** Keep `./x gate` at 100% statement coverage.'
         - ref: ADR-0063
-          text: '**Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch.'
-        # `kind == "gated-commands"` renders the list from clispec via the
-        # $.gatedCommands render key, so it cannot drift from the code (ADR-0094).
+          text: '**Dead-code gate.** Keep production code reachable from a `main`.'
         - kind: gated-commands
           ref: ADR-0039

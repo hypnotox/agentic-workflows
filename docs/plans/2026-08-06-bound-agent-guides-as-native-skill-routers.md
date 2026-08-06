@@ -270,6 +270,16 @@ feat(rendering): warn on oversized agent guides (applies ADR batch)
 - Phase 1 review's changelog finding is deferred to Task 3.2, which already owns the single
   adopter-facing Unreleased entry for the complete native-discovery, canonical-home, bounds, and
   advisory change; Phase 1 does not add a partial duplicate.
+- Phase 2 measurements: direct default `AGENTS.md` is 3,287 bytes (limit 8,192; largest sections:
+  Invariants 637, Workflow 521, Working with awf 442); self-hosted `AGENTS.md` changed from
+  16,637 to 6,686 bytes (limit 10,240; final largest sections: Document map 2,127, Invariants
+  1,751, Commands 632). Before census largest sections were Invariants 5,501, Working with
+  awf 2,698, and Document map 2,274 bytes.
+- Phase 2 prose disposition: guide copies of merge authorization, hook resolution, command flags,
+  context spills, effort lifecycle, checkpoint and handoff protocol, ADR lifecycle, and invariant
+  mechanisms were deleted rather than relocated; their canonical homes already remain in the
+  workflow, working-with-awf, current-state, ADR, and native-skill sources. No guide-unique fact
+  required relocation; deviations: none.
 
 Record deviations, rendered-size measurements, prose-disposition findings, review findings, and any
 implementation fact that invalidates an approved bound or canonical-home assumption. Do not relax a

@@ -1,34 +1,35 @@
 # Authoring AGENTS.md
 
-The agent guide (`AGENTS.md`) is the one doc loaded every session. Follow the [Documentation Standard](doc-standard.md) for how to write; this doc adds what is specific to the guide.
+The agent guide (`AGENTS.md`) loads every session. Follow the [Documentation Standard](doc-standard.md); this document defines the guide's narrower role.
 
 <!-- awf:section layout -->
 ## Layout
 
-The guide renders a fixed sequence of sections:
+The guide renders this fixed sequence:
 
-1. **Working with awf**: awf-given; how the config tree renders the project.
-2. **You and this project**: adopter-authored; the agent's standing responsibility.
-3. **Identity**: adopter-authored; what the project is.
-4. **Invariants**: adopter-authored; the hard rules every change respects.
-5. **Workflow**: awf-given; entry-skill triggers only, derived from the catalog.
-6. **Working memory**: awf-given; the resume trigger, ground-rule one-liners, and the canonical-protocol pointer only.
-7. **Commands**: adopter data; the handful of commands an agent runs.
-8. **Document map**: awf-given; the index into the docs, generated from the enabled set.
+1. **Working with awf**: generated-source ownership and render/check route.
+2. **You and this project**: adopter-authored ownership stance.
+3. **Identity**: adopter-authored project identity.
+4. **Invariants**: adopter-authored cross-cutting imperatives.
+5. **Workflow**: native-skill selection and authority routing.
+6. **Working memory**: minimum pre-selection effort/resume route.
+7. **Commands**: routinely executed commands.
+8. **Document map**: canonical navigation.
 
-Override an adopter-authored section with a convention part at `.awf/parts/agents-doc/<section>.md`, or supply `data` (invariants, commands) in `.awf/agents-doc.yaml`.
+Override an adopter-authored section with `.awf/parts/agents-doc/<section>.md`, or provide invariant and command data in `.awf/agents-doc.yaml`.
 <!-- awf:end -->
 
 <!-- awf:section content -->
 ## Content
 
-- **Identity**: one dense paragraph covering what the project is, its stack and module path, its maturity, and who it serves. No history.
-- **You and this project**: two or three sentences on the agent's ownership stance, the project's long-term health, not just the task.
-- **Invariants**: only the cross-cutting hard rules, one terse imperative line each, with the owning ADR in parentheses where one exists. A rule belongs here iff it is *not scoped to a single subsystem's files*: it constrains a whole cross-cutting surface (every commit's process, all code, all rendered output, the toolchain's own preconditions). A path- or subsystem-specific invariant stays out of the guide, in its owning ADR. The mechanism always lives in that ADR.
+- **Identity**: one dense present-tense paragraph covering purpose, stack and module path, maturity, and audience.
+- **You and this project**: two or three sentences stating ownership of the project, not only the task.
+- **Invariants**: one terse imperative per genuinely cross-cutting hard rule, with an owning ADR or canonical pointer where available.
+- **Every sentence**: retain it only when it is needed before native skill selection or points to canonical authority.
 <!-- awf:end -->
 
 <!-- awf:section rules -->
 ## Rules
 
-The guide is loaded every session, so it is held to an extra-terse bar; it pays its word cost on every task. The workflow section names entry skills and their triggers, never procedure: the chain routes itself through skill handoffs, and chain rules live in the workflow doc. The working-memory protocol has one canonical home in the workflow doc's working-memory section; the guide carries the resume trigger and pointers only. State each invariant as a one-line imperative and let its ADR carry the detail. Do not mirror the ADR ledger into the Invariants section: a rule earns a line only when it applies no matter which files a change touches. Reach path-specific orientation on demand by starting with `awf context <paths>` and no `--show` or `--full` detail flags: directories provide tier-0 orientation and exact or Git-selected files add tier-1 direct relationships. Request `relationships`, `invariants`, or `all-rules` for the authority tier the task needs, and reserve `--full` for explicit interactive detail rather than routine managed use. Treat request paths, effective paths, and their primary classifications as navigation facts, not authority by themselves. Use `awf topic <domain>/<topic> --coverage` for the separate domain/topic selectors and their both-must-match evidence. The managed runner is a pure `./awf` wrapper forwarding every CLI verb verbatim; project verbs live in the adopter's own runner. Use the generated ADR status index where the project configures domains, or the ADR index otherwise. `--full --uncovered` is invalid because coverage gaps are not an authority projection. Push anything else not every-session-critical into a doc reached through the document map.
+Do not include a native-skill inventory, procedure, rationale, or mechanism narration. Skills own operative dispatch; workflow, current-state topics, ADRs, and documents own their respective detail. Do not duplicate the working-memory protocol: route to the workflow document. Keep the guide publication-safe with coherent unset values and no unresolved token. Byte budgets are regression signals, not fill targets. Put non-essential detail in canonical documentation reached through the document map.
 <!-- awf:end -->

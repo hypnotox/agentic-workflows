@@ -1783,7 +1783,7 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"## Commands",
 		"## Document map",
 		"Route settled content by authority lifetime",
-		"Preserve the user-approved material design boundary",
+		"Preserve the approved design boundary",
 		"docs/maintainable-code-design.md",
 		"make gate",
 		"Use any enabled native skill whose exposed description fits the current work.",
@@ -1797,15 +1797,8 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 			t.Errorf("guide retains evicted prose or catalog residue %q:\n%s", banned, out)
 		}
 	}
-	// Exactly the invariants-section copy: the workflow section must not
-	// regrow the duplicated gate sentence (ADR-0157 evicted-prose class).
-	// Both counts guard: the sentence opener catches a partial regrowth, the
-	// hook clause is distinctive of the ADR-0196 conditional wording.
 	if got := strings.Count(out, "Stage the complete transaction"); got != 1 {
-		t.Errorf("guide must carry exactly one gate sentence (invariants section), got %d:\n%s", got, out)
-	}
-	if got := strings.Count(out, "wired pre-commit hook enforces both"); got != 1 {
-		t.Errorf("guide must carry exactly one hook-enforcement clause (invariants section), got %d:\n%s", got, out)
+		t.Errorf("guide must carry exactly one concise gate rule, got %d:\n%s", got, out)
 	}
 }
 
@@ -2053,13 +2046,16 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("generic workflow chain confirmation route missing %q", want)
 		}
 	}
-	for label, body := range map[string]string{"workflow": workflow, "guide": guide, "routine": routine, "approval": approval} {
+	for label, body := range map[string]string{"workflow": workflow, "routine": routine, "approval": approval} {
 		if !strings.Contains(body, ".awf/efforts/<slug>/memory.md") {
 			t.Errorf("%s missing unified owned-memory path", label)
 		}
 		if strings.Contains(body, ".awf/memory/") {
 			t.Errorf("%s retains standalone memory path", label)
 		}
+	}
+	if strings.Contains(guide, ".awf/efforts/<slug>/memory.md") || strings.Contains(guide, ".awf/memory/") {
+		t.Error("guide must route rather than duplicate working-memory protocol")
 	}
 	for _, detailed := range []string{"`phase`", "`next`", "`updated`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
 		if !strings.Contains(workflow, detailed) {
@@ -2071,24 +2067,22 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("workflow missing worktree-default execution phrase %q", worktreeDefault)
 		}
 	}
-	for _, worktreeDefault := range []string{"managed worktree is the default execution location", "`--no-worktree` is the explicit exception", "stays under the primary checkout"} {
-		if !strings.Contains(guide, worktreeDefault) {
-			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
-		}
+	if !strings.Contains(guide, "applicable native workflow skill") || !strings.Contains(guide, "working-memory protocol") {
+		t.Error("guide must retain only pre-selection working-memory routing")
 	}
 	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "`Effort slug:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm all three fields again before retrying creation"} {
 		if !strings.Contains(workflow, want) {
 			t.Errorf("workflow confirmation contract missing %q", want)
 		}
 	}
-	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
-		if !strings.Contains(guide, want) {
-			t.Errorf("guide confirmation route missing %q", want)
+	for _, banned := range []string{"Discovery creates no effort", "proposed effort title", "`awf effort new --slug", "only for work inside its confirmed outcome"} {
+		if strings.Contains(guide, banned) {
+			t.Errorf("guide duplicates working-memory procedure %q", banned)
 		}
 	}
 	readProjectSurface := func(path string) string {
 		t.Helper()
-		raw, err := os.ReadFile(filepath.Join("../..", path))
+		raw, err := os.ReadFile(filepath.Join(repoRootDir(t), path))
 		if err != nil {
 			t.Fatalf("read committed project surface %s: %v", path, err)
 		}
@@ -2096,8 +2090,8 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	}
 	projectGuide := readProjectSurface("AGENTS.md")
 	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
-		if !strings.Contains(projectGuide, want) {
-			t.Errorf("committed project guide confirmation route missing %q", want)
+		if strings.Contains(projectGuide, want) {
+			t.Errorf("committed project guide duplicates working-memory procedure %q", want)
 		}
 	}
 	projectWorkflow := readProjectSurface("docs/workflow.md")
