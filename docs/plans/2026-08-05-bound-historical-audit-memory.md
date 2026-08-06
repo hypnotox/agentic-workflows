@@ -456,3 +456,16 @@ BenchmarkAuditHistoryAuthorityHeavy200-12          1 565322210 ns/op      200.0 
 BenchmarkAuditHistoryMergeHeavy50-12               1  14851954 ns/op       51.00 commits  3.000 heavy-frontier    7102672 B/op    82178 allocs/op
 PASS
 ```
+
+Terminal review found that graph construction and recursive alias ownership planning could delay
+context cancellation between dependency calls. Commit `c670b77b` added bounded cancellation
+checkpoints throughout those CPU-only traversals and deterministic coverage for every checkpoint,
+including cancellation while an alias chain unwinds. This strengthens the planned immediate
+cancellation contract without changing the public audit shape or accepted failure precedence.
+
+The bounded proof was tightened after the Phase 5 application commit by `483cacf5` (exact rich-state
+detachment, findings, derivation, and high-water assertions) and `490012909` (cached-error ownership
+across invocations). Terminal verification confirmed these are forward proof strengthening, not an
+unapplied claim correction. Integration then merged the schema-35/36 rendering changes from `main`,
+regenerated the combined lock, preserved both Unreleased changelog categories, numbered the linked
+record as ADR-0238, and passed renewed combined-history review with zero findings.
