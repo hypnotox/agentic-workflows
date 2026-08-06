@@ -298,7 +298,9 @@ feat(rendering): warn on oversized agent guides (applies ADR batch)
   non-overridden Working with awf section, update the self-hosted pointer, and prove the committed
   document contains the definition exactly once. This reasoned section-placement deviation preserves
   the approved ownership and adds no second definition. The same review added the required coherent
-  empty-prefix guide fallback and regression proof.
+  empty-prefix guide fallback and regression proof. The single verify pass found two remaining
+  direct prefix interpolations in default guide prose; the mechanical residual fix applied the same
+  fallback to both and made the empty-render proof reject any empty inline-code token.
 
 Record deviations, rendered-size measurements, prose-disposition findings, review findings, and any
 implementation fact that invalidates an approved bound or canonical-home assumption. Do not relax a

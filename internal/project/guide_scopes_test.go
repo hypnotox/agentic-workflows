@@ -35,7 +35,7 @@ func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 			t.Errorf("empty-prefix guide missing fallback %q", want)
 		}
 	}
-	for _, malformed := range []string{"#  Agent Guide", "the `` repository"} {
+	for _, malformed := range []string{"#  Agent Guide", "``"} {
 		if strings.Contains(emptyPrefix, malformed) {
 			t.Errorf("empty-prefix guide contains malformed fallback %q", malformed)
 		}
