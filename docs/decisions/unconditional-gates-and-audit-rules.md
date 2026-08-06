@@ -55,8 +55,10 @@ construction, and ADR-0051 already established it as the single home for that vo
 ## Decision
 
 1. `decision: gates-always-run` The prose gate and the memory-citation gate always scan. Neither
-   carries an enablement knob, neither exits early unscanned, and the aggregate repository check
-   reports no disabled-child note because no child can be disabled. Their exemption lists survive
+   carries an enablement knob and neither exits early unscanned; that is the whole of the claim
+   this item mints. The aggregate repository check's disabled-child disclosure has nothing left to
+   disclose, and it retires by removing the CLI claim that states it, so the aggregate-presentation
+   subject stays in its own topic. Their exemption lists survive
    untouched: an exemption names a place where a rule is knowingly not applied, which is a fact
    about the repository, not a preference about whether the rule exists.
 
@@ -78,14 +80,16 @@ construction, and ADR-0051 already established it as the single home for that vo
    is written against, named here rather than by reference so the record stays falsifiable as
    defaults evolve: the subject-length limit is 72; the plan diff threshold is 400; the accepted
    commit-type set is the eleven-member Conventional Commits set (build, chore, ci, docs, feat, fix,
-   perf, refactor, revert, style, test); and the dependency-manifest glob set is the
-   language-agnostic default set as it stands at this record. `audit.allowedScopes` remains
-   configured, because a commit-scope vocabulary is a repository fact rather than a tuning
-   preference.
+   perf, refactor, revert, style, test); and the dependency-manifest glob set is the nineteen-member
+   language-agnostic default set, too long to enumerate here and therefore pinned by claim rather
+   than by prose. `audit.allowedScopes` remains configured, because a commit-scope vocabulary is a
+   repository fact rather than a tuning preference.
 
 5. `decision: fan-out-budget-fixed` The path-scoped topic fan-out budget is fixed in the binary at
    8. It is a tuning number rather than a repository fact, it has never been varied, and its finding
-   is a warning, so fixing it neither blocks nor removes a signal.
+   is a warning, so fixing it neither blocks nor removes a signal. The value is pinned by a claim of
+   its own, because today it is pinned only through the configspec table, which the key's removal
+   takes with it.
 
 6. `decision: no-conditional-render-units` The conditional config-tree render unit is retired as a
    concept. With artifact selection retired by the house-standard record, bootstrap retired by the
@@ -119,6 +123,8 @@ construction, and ADR-0051 already established it as the single home for that vo
 - add `tooling/audit-and-snapshots:audit-advisories-always-run`
 - add `tooling/audit-and-snapshots:audit-thresholds-fixed`
 - add `config/migrations-and-locks:toggle-keys-dropped`
+- add `invariants/topics-and-markers:fan-out-budget-fixed`
+- add `rendering/companion-scripts:runner-wrapper-rendered`
 - remove `rendering/companion-scripts:runner-singleton-toggle`
 - remove `rendering/project-output-plan:conditional-unit-single-source`
 - remove `tooling/cli:check-disabled-child-disclosure`
@@ -142,11 +148,12 @@ construction, and ADR-0051 already established it as the single home for that vo
 
 ## Consequences
 
-Fourteen config keys and four singleton toggles disappear, and thirteen claims lose a conditional
-clause. Reading what a repository checks becomes reading awf rather than reading awf intersected
-with a repository's answers.
+Fourteen config keys disappear, four of them the singleton enablement toggles, and fifteen claims
+are rewritten: eleven lose an enablement clause and four lose a reference to a value the config no
+longer supplies. Reading what a repository checks becomes reading awf rather than reading awf
+intersected with a repository's answers.
 
-Three audit claims need no operation despite their toggles retiring. `audit-domain-doc-staleness`
+Three audit claims need no operation despite the configuration behind them retiring. `audit-domain-doc-staleness`
 and `audit-undocumented-domain` never mention a knob in their prose, so they stay true verbatim
 once the knob is gone. `audit-dependency-warn` likewise survives untouched, because it states the
 rule's behaviour without naming the glob set that feeds it, and item 4 fixes that set rather than
@@ -174,9 +181,16 @@ hooks rendered without the runner, becomes unreachable, since the runner always 
 payloads can always use its `./awf` form. Both arms validate at sync and check rather than at init,
 so a freshly scaffolded tree with unanswered vars is unaffected.
 
-The four fixed values gain a claim of their own. Once they leave the config tree they also leave
-the configspec table, so nothing would otherwise pin them and a later silent change to 72 or to the
-type set would break no test. Given the subject limit's severity, that gap is not cosmetic.
+Every value this record fixes gains a claim pinning it. Once a value leaves the config tree it also
+leaves the configspec table, so nothing would otherwise hold it and a later silent change to 72, to
+the type set, or to the fan-out budget would break no test. Given the subject limit's severity,
+that gap is not cosmetic. The audit values are pinned together in the audit topic; the fan-out
+budget is pinned in the topics-and-markers topic that owns it rather than folded in beside them.
+
+Retiring the runner toggle would otherwise drop a fact worth keeping. The claim being removed
+carries both the toggle behaviour and the assertion that a render emits exactly one wrapper at the
+repo-root path. The toggle half retires; the render-existence half is re-minted, mirroring how the
+hook payloads claim states that exactly five payloads render.
 
 Landing this in a repository with an unswept tree fails its next commit. That is the cost ADR-0119
 and ADR-0158 designed the default-off knobs to avoid, and it is now paid once per repository as a
