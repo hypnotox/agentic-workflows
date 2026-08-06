@@ -20,7 +20,7 @@ Stop and report through the active workflow only when authorities conflict or mu
 
 Apply mechanical corrections directly and reasoned corrections with a concise rationale, autonomously. The review spine is the single semantic home of that classification; this workflow routes it rather than redefining it. This workflow treats ambiguity, competing clean options, severity, structural character, and the fact that a finding survived a prior correction as descriptions of a finding; none of them ever transfers the choice to the user.
 
-A review finding stops the workflow only when every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority. A finding that would make a new load-bearing choice material outside approved durable boundaries is not that stop: route it through the existing grounded-design or ADR workflow, which pauses only at that workflow's mandatory approval boundary before the new authority is adopted. A review finding offering competing clean options inside approved durable boundaries is likewise not the unresolved design fork of an adjacent implementation stop list: it is delegated detail this workflow resolves, while a genuinely load-bearing choice takes the grounded-design or ADR route above, which supplies the pause.
+A review finding stops the workflow only when every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority. A finding that would make a new load-bearing choice material outside approved durable boundaries is not that stop: route it through the existing grounded-design or ADR workflow, which pauses only at that workflow's mandatory approval boundary before the new authority is adopted. A review finding offering competing clean options inside approved durable boundaries is not the unresolved design fork that an implementation stop list names: it is delegated detail this workflow resolves, while a genuinely load-bearing choice takes the grounded-design or ADR route above, which supplies the pause.
 
 Exactly one fresh verify-pass dispatch is retained after reasoned fixes or a user-approved ruling. Diagnose every residual finding under the same boundary, apply the authority-preserving mechanical and reasoned residual corrections, run the applicable verification, and report its disposition without dispatching another same-artifact review loop. A consensus deviation remains a user decision.
 
@@ -54,10 +54,9 @@ Call `subagent_review` exactly once with `kind: "code"` and the complete brief i
    own `cmd/repoaudit`, ADR-0073) over the same session range. It mirrors this same finding
    contract: an `Error` finding (for example an adopter-facing change in the range with no
    `changelog/CHANGELOG.md` `[Unreleased]` entry) blocks the review from concluding, so
-   resolve it, escalating only when its remedy would reach the authority-deviation boundary
-   above; `Warning` findings are advisory. It is
-   repo-specific dev tooling, deliberately not a rule in the shipped `awf audit`, and it does
-   not run the gate.
+   resolve it, escalating only when its remedy would reach the authority-guided remediation
+   boundary above; `Warning` findings are advisory. It is repo-specific dev tooling,
+   deliberately not a rule in the shipped `awf audit`, and it does not run the gate.
 
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->

@@ -2636,9 +2636,34 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		"without dispatching another same-artifact review loop",
 		"A consensus deviation remains a user decision.",
 		"A review finding stops the workflow only when",
+		// The reconciling clause that keeps this partial from reading as a
+		// rival to an implementation stop list. Unpinned, the contradiction
+		// the resync round settled could be reinstated with no signal.
+		"is not the unresolved design fork",
 		stopCriterion,
 		nonTriggers,
 		noLoopException,
+	}
+
+	// The pinned non-trigger enumeration deliberately starts at "competing
+	// clean options" because the leading word's case differs between the two
+	// prose homes, so assert the dropped word separately rather than leaving
+	// the claim's ambiguity clause proven by nothing.
+	assertNamesAmbiguity := func(t *testing.T, label, out string) {
+		t.Helper()
+		if !strings.Contains(strings.ToLower(out), "ambiguity") {
+			t.Errorf("%s never names ambiguity as a non-trigger", label)
+		}
+	}
+
+	// Every Latitude: exact routing replacement needs a positive pin. Absence
+	// of the retired predecessor alone lets the replacement be degraded back
+	// toward an unconditioned escalation without turning the suite red.
+	routingWants := map[string]string{
+		"reviewing-plan":        "present to the user with the cited affected authority and wait",
+		"reviewing-adr":         "present to the user with the cited affected authority and wait",
+		"reviewing-plan-resync": "present to the user with the cited affected authority and wait",
+		"reviewing-impl":        "present a `user-decision` finding with the cited affected authority, or a consensus deviation, and stop",
 	}
 
 	skillVariants := map[string]map[string]any{
@@ -2680,10 +2705,14 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 					t.Errorf("%s/%s retains retired escalation phrase %q", variant, skill, reject)
 				}
 			}
-			if skill != "reviewing-plan-resync" {
-				if !strings.Contains(out, residualOpening) {
-					t.Errorf("%s/%s missing residual re-review replacement %q", variant, skill, residualOpening)
-				}
+			assertNamesAmbiguity(t, variant+"/"+skill, out)
+			// The resync step-4 sentence carries this same opening, so the
+			// pin applies to all four skills without an exclusion.
+			if !strings.Contains(out, residualOpening) {
+				t.Errorf("%s/%s missing residual re-review replacement %q", variant, skill, residualOpening)
+			}
+			if want := routingWants[skill]; !strings.Contains(out, want) {
+				t.Errorf("%s/%s missing routing replacement %q", variant, skill, want)
 			}
 			if skill == "reviewing-plan-resync" {
 				for _, want := range []string{
@@ -2758,8 +2787,13 @@ func TestAuthorityGuidedReviewRemediation(t *testing.T) {
 		"cite the affected authority and name the deviation it would require",
 		"is not an unauthorized deviation merely because its proposed future state differs from current state",
 		"would make a new load-bearing choice material outside approved durable boundaries",
-		"mechanical",
-		"reasoned",
+		"a consensus deviation is a `user-decision` under the Consensus adherence rule below",
+		// Pin the surviving classification bullets by their own text. The
+		// bare tokens `mechanical` and `reasoned` also occur in the finding
+		// schema, so asserting those alone lets a whole bullet be deleted
+		// while the suite stays green.
+		"- **mechanical**: the answer is unambiguous from existing rules, docs, or code",
+		"- **reasoned**: a good answer can be reached by reading the relevant code or docs",
 		"user-decision",
 		"suggested_fix",
 	}

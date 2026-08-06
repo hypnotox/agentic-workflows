@@ -4,7 +4,6 @@
    own `cmd/repoaudit`, ADR-0073) over the same session range. It mirrors this same finding
    contract: an `Error` finding (for example an adopter-facing change in the range with no
    `changelog/CHANGELOG.md` `[Unreleased]` entry) blocks the review from concluding, so
-   resolve it, escalating only when its remedy would reach the authority-deviation boundary
-   above; `Warning` findings are advisory. It is
-   repo-specific dev tooling, deliberately not a rule in the shipped `awf audit`, and it does
-   not run the gate.
+   resolve it, escalating only when its remedy would reach the authority-guided remediation
+   boundary above; `Warning` findings are advisory. It is repo-specific dev tooling,
+   deliberately not a rule in the shipped `awf audit`, and it does not run the gate.

@@ -23,7 +23,7 @@ Classify by what acting on the finding requires, not by severity:
 
 - **mechanical**: the answer is unambiguous from existing rules, docs, or code; the fix is direct.
 - **reasoned**: a good answer can be reached by reading the relevant code or docs, but judgment is required; a one-line rationale is warranted. For deferred-to-follow-up cases, the rationale is prefixed with `Deferred to <name>:`.
-- **user-decision**: every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority and name the deviation it would require.
+- **user-decision**: every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority and name the deviation it would require; a consensus deviation is a `user-decision` under the Consensus adherence rule below.
 
 Severity is informational only; the dispatching skill routes by classification kind.
 
