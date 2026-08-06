@@ -165,7 +165,10 @@ func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
 		heavyLoads := map[string]int{}
 		op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
 			state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 30}, lockFound: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
-			state.loadUniverse = func() (currentstate.Universe, error) { heavyLoads[revision]++; return currentstate.Universe{}, nil }
+			state.loadUniverse = func() (currentstate.Universe, error) {
+				heavyLoads[revision]++
+				return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
+			}
 			return state, nil
 		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
 		if err := op.planRevisionOwnership(testContext(t), commits); err != nil {
@@ -183,6 +186,17 @@ func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
 			if entry.sourceUses != 0 || entry.universeUses != 1 || entry.lightUses != 1 {
 				t.Fatalf("pre-schema %s remaining uses = light %d source %d universe %d", revision, entry.lightUses, entry.sourceUses, entry.universeUses)
 			}
+		}
+		resultState, err := op.state(testContext(t), "result")
+		if err != nil {
+			t.Fatal(err)
+		}
+		resultUniverse, err := op.currentState("result", resultState)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resultUniverse.Sources != nil || resultState.universe.Sources != nil || !resultState.heavyLive {
+			t.Fatalf("post-stale materialization retained sources: returned=%#v state=%#v", resultUniverse.Sources, resultState.universe.Sources)
 		}
 		if _, err := op.replayTransition(testContext(t), commits[0]); err != nil {
 			t.Fatal(err)

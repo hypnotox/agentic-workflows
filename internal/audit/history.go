@@ -529,6 +529,10 @@ func (h *historyOperation) currentState(revision string, state *revisionState) (
 		if key := h.store.keys[revision]; key != nil {
 			h.store.retainHeavy(key.entry)
 			state.heavyLive = key.entry.heavyLive
+			if key.entry.sourceUses == 0 {
+				state.universe.Sources = nil
+				universe.Sources = nil
+			}
 		}
 	}
 	return universe, err
