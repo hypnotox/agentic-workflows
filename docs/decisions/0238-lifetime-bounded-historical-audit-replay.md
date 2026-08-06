@@ -4,7 +4,7 @@ slug: lifetime-bounded-historical-audit-replay
 status: Implementing
 date: 2026-08-05
 ---
-# ADR-lifetime-bounded-historical-audit-replay: Lifetime-bounded historical audit replay
+# ADR-0238: Lifetime-bounded historical audit replay
 
 ## Context
 

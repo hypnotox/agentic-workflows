@@ -6,7 +6,7 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 One `awf audit` invocation walks its requested commit range exactly once, feeds each rich commit through audit-owned incremental rule accumulators, and retains only grouped findings and compact graph metadata after the visitor returns. Deterministic interleaved transition and stale-merge replay shares alias-aware revision entries and cached load errors; each required revision outcome derives at most once, source evidence and parsed universes are released after their final scheduled consumers, and logical heavy-state high-water is bounded by the live unique dependency frontier. No cache survives the invocation or lives on Project.
 Origin: ADR-0221
-Revised-by: ADR-lifetime-bounded-historical-audit-replay
+Revised-by: ADR-0238
 Backing: test
 
 ### `invariant: audit-history-policy-projection`
