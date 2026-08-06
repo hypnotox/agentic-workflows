@@ -18,10 +18,12 @@ this checkout, because a repository that did not set them would be describing it
 exceptions are the declined `gateCmdFull` var and the empty `memoryCite.exemptions` list, and a
 declined or empty value is itself a statement about the repository.
 
-The rest express a preference about awf's own behaviour: which catalog skills, agents and docs
-render, which adapter runtimes are targeted, where documentation lives, and whether an artifact is
-hand-maintained instead of rendered. Measured against this checkout, that surface expresses almost
-nothing. Of twenty-one catalog skills, twenty are enabled; of six agents, six; of eight toggleable
+The remaining twenty or so express a preference about awf's own behaviour. This record takes the
+artifact-selection subset: which catalog skills, agents and docs render, which adapter runtimes are
+targeted, where documentation lives, and whether an artifact is hand-maintained instead of
+rendered. The rest of the category, the bootstrap installer and the gate and audit toggles, is
+retired by the companion records, which closes the census. Measured against this checkout, the
+selection surface expresses almost nothing. Of twenty-one catalog skills, twenty are enabled; of six agents, six; of eight toggleable
 docs, seven. The enable arrays distinguish two artifacts in total.
 
 The machinery bought with those two bits is substantial and interlocking: requirement closure over
@@ -73,17 +75,20 @@ would push the same pressure back into the keys this record retires.
    every sync. The render set is the whole catalog. No config-derived selection, no requirement
    closure, no `requiresDoc` gate and no per-artifact suppression stands between the catalog and
    the output plan, so adding a catalog entry changes every served repository's output. The
-   catalog's mandatory flag did double duty, partitioning the toggleable doc pool and defining the
-   singleton set; only the first role is retired. The surviving distinction is structural: a
-   singleton is a catalog document whose output path is fixed by awf rather than derived from a
-   configurable name, and that is the predicate the singleton claims key off once the pool is gone.
+   catalog's mandatory flag did triple duty: it partitioned the toggleable doc pool, it defined the
+   singleton set, and it selected the sidecar location. Only the first role is retired. The
+   surviving predicate is that the catalog entry declares its own output path, as the agent guide
+   and the decisions and plans scaffolding do, rather than rendering at name-derived
+   `<docs-root>/<name>.md`; that is what the singleton claims key off once the pool is gone. The
+   sidecar-location role survives untouched, so collapsing the pool must not also collapse the
+   `.awf/<name>.yaml` versus `.awf/docs/<name>.yaml` derivation.
 
 3. `decision: retire-selection-keys` The `skills`, `agents`, `docs`, `targets` and `docsDir` keys
    and the sidecar `local` field are retired. A tree carrying any of them is rejected by strict
    parsing rather than honoured, on the same footing as the severity keys ADR-0183 retired. The
-   existing strict-decoder rule that rejects a `data`, `sections` or `local` key at the root of
-   `config.yaml` survives this retirement and is carried forward rather than lapsing with the claim
-   that currently states it.
+   existing strict-decoder rule that rejects a `data` or `sections` key at the root of
+   `config.yaml` survives this retirement, narrowed by the loss of `local`, and is rehomed to a
+   claim of its own rather than lapsing with the selection claim that currently states it.
 
 4. `decision: fixed-targets-and-docs-root` The rendered target set is exactly `claude` and `pi`, and
    the documentation root is exactly `docs/`, both fixed in the binary. Descriptor-driven rendering
@@ -107,16 +112,20 @@ would push the same pressure back into the keys this record retires.
    shape of their own generation, including the enable arrays and the documentation root as those
    existed then, and this generation removes the keys afterward.
 
-7. `decision: historical-config-forward-ported` A retired key still parses on the path that reads a
-   historical commit without a lock, where no migration chain runs to strip it. A commit carrying a
-   lock is already forward-ported through the schema chain and needs nothing further. Without this,
-   a staged check or an audit over a range predating this record fails on configuration it is only
-   reading, so retiring a key from the live schema is not retiring it from history.
+7. `decision: historical-config-forward-ported` Every key this record retires is registered for
+   unconditional stripping from historical config bytes before the strict decoder sees them, for
+   every historical commit, whether or not it carries a lock and whatever generation that lock
+   stamps. A stamped generation is not proof the removal ever ran, because concurrent branches
+   allocating generations can leave a tree stamped past a removal it never applied. Without this
+   registration, a staged check or an audit over a range predating this record fails on
+   configuration it is only reading, so retiring a key from the live schema is not retiring it from
+   history.
 
 ## State changes
 
 - add `config/configuration:config-expresses-repo-facts-only`
 - add `config/configuration:no-artifact-selection-surface`
+- add `config/configuration:root-sidecar-keys-rejected`
 - add `rendering/project-output-plan:full-catalog-render`
 - add `rendering/doc-outputs:docs-root-fixed`
 - add `rendering/doc-outputs:layout-docs-full-catalog`
@@ -224,6 +233,11 @@ from the moment the selection keys are retired, `awf enable`, `awf disable` and 
 write a key the next load rejects, and `awf new skill|agent|doc` scaffolds a sidecar field that no
 longer exists. Landing this record alone would leave those commands actively breaking the tree they
 edit rather than merely obsolete.
+
+Empty-ancestor pruning survives the loss of its original trigger. Removing a target from the config
+was the scenario that exercised it, and item 4 makes that unreachable; the rule still fires whenever
+a rendered path disappears from the plan for a surviving reason, which after this record means a
+retired local artifact, a catalog entry removed from the standard, or a changed skill-name prefix.
 
 Residual wording is deliberately left behind. Several claims this record does not operate on still
 phrase themselves around "an enabled target" or a selectable skill; each stays substantively true
