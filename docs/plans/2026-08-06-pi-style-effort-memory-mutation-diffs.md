@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-06
 adrs:
   - render-effort-memory-edits-like-pi
-status: Proposed
+status: Implemented
 ---
 # Plan: Pi-Style Effort Memory Mutation Diffs
 
