@@ -16,7 +16,7 @@ import (
 // the entire declaration-derived cutover population, rather than only the parts
 // this adopter happened to override before schema 36.
 func TestStructuralHeadingsCompleteCutoverFixture(t *testing.T) {
-	const cutoverPopulation = 171
+	const cutoverPopulation = 172
 	if len(structuralHeadingSnapshot) != cutoverPopulation {
 		t.Fatalf("snapshot population = %d, want %d", len(structuralHeadingSnapshot), cutoverPopulation)
 	}

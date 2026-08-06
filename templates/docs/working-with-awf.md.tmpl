@@ -239,7 +239,6 @@ tool batch and sequentially, and may commit only when the orchestrator sets `all
 Pi's current-leaf, tool-call-id-correlated preflight blocks every member of a reconstructable mixed
 implementation batch. When trustworthy batch context is unavailable, only implementation fails
 closed with an actionable retry-alone error.
-<!-- awf:include model-selection -->
 In Pi, omission uses the
 configured role default and an exact tier reference is supplied only for a deliberate override.
 
@@ -272,6 +271,12 @@ When files matching a domain's `paths` change on a branch without a co-change to
 `.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory
 `domain-code-staleness` warning. If anything meaningful changed, document it. Domains without
 `paths` opt out; the rule is disable-able via `audit.domainCodeStaleness: false`.
+<!-- awf:end -->
+
+<!-- awf:section model-selection -->
+## Model selection
+
+<!-- awf:include model-selection -->
 <!-- awf:end -->
 
 <!-- awf:section placeholders -->

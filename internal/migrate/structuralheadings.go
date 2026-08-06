@@ -105,6 +105,7 @@ var structuralHeadingSnapshot = []struct{ path, heading string }{
 	{"parts/workflow/working-memory.md", "## Working memory"},
 	{"parts/working-with-awf/commands.md", "## Commands"},
 	{"parts/working-with-awf/config-and-overrides.md", "## Config and overrides"},
+	{"parts/working-with-awf/model-selection.md", "## Model selection"},
 	{"parts/working-with-awf/overview.md", "# Working with awf"},
 	{"parts/working-with-awf/placeholders.md", "## Placeholders in overrides"},
 	{"parts/working-with-awf/sync-and-drift.md", "## Keeping in sync"},

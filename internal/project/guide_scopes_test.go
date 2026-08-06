@@ -28,6 +28,18 @@ func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 			t.Errorf("guide retains catalog or routing residue %q", banned)
 		}
 	}
+
+	emptyPrefix := renderGuide(t, map[string]any{"prefix": "", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{}})
+	for _, want := range []string{"# Project Agent Guide", "working in this repository"} {
+		if !strings.Contains(emptyPrefix, want) {
+			t.Errorf("empty-prefix guide missing fallback %q", want)
+		}
+	}
+	for _, malformed := range []string{"#  Agent Guide", "the `` repository"} {
+		if strings.Contains(emptyPrefix, malformed) {
+			t.Errorf("empty-prefix guide contains malformed fallback %q", malformed)
+		}
+	}
 }
 
 // invariant: rendering/workflow-skill-templates:workflow-transitions-advisory (TestWorkflowSkillRelationshipsStayAdvisory)

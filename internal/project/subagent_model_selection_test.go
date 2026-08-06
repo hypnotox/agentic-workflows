@@ -1,6 +1,8 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -129,6 +131,14 @@ func TestDeliberateSubagentModelSelectionAcrossGovernedDispatches(t *testing.T) 
 				t.Errorf("%s working-with-awf must carry the full definitional form exactly once", target)
 			}
 		})
+	}
+
+	selfHosted, err := os.ReadFile(filepath.Join(repoRootDir(t), "docs/working-with-awf.md"))
+	if err != nil {
+		t.Fatalf("read self-hosted working-with-awf: %v", err)
+	}
+	if !strings.Contains(string(selfHosted), deliberateSelectionGuideDefinitions) || strings.Count(string(selfHosted), "smallest model expected to complete reliably") != 1 {
+		t.Error("self-hosted working-with-awf must carry the full tier definitions exactly once")
 	}
 
 	empty := map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout()}

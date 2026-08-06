@@ -292,6 +292,13 @@ feat(rendering): warn on oversized agent guides (applies ADR batch)
 - Phase 3 review added an advisory-only aggregate presentation case, exact multi-note presentation
   ordering, and a `Project.CheckReport` assertion that ordinary advisories precede the generated
   guide-size advisory.
+- Terminal review found that awf's full `config-and-overrides` convention part suppressed the shared
+  model-tier include despite the approved canonical-home requirement. Repository rendering authority
+  made the compliant correction deterministic: move the one shared include to a dedicated,
+  non-overridden Working with awf section, update the self-hosted pointer, and prove the committed
+  document contains the definition exactly once. This reasoned section-placement deviation preserves
+  the approved ownership and adds no second definition. The same review added the required coherent
+  empty-prefix guide fallback and regression proof.
 
 Record deviations, rendered-size measurements, prose-disposition findings, review findings, and any
 implementation fact that invalidates an approved bound or canonical-home assumption. Do not relax a

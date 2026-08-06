@@ -1,6 +1,6 @@
-# {{ .prefix }} Agent Guide
+# {{ with .prefix }}{{ . }}{{ else }}Project{{ end }} Agent Guide
 
-This document is the authoritative reference for AI agents working in the `{{ .prefix }}` repository. Read it before acting.
+This document is the authoritative reference for AI agents working in {{ with .prefix }}the `{{ . }}` repository{{ else }}this repository{{ end }}. Read it before acting.
 
 <!-- awf:section awf-setup -->
 ## Working with awf
