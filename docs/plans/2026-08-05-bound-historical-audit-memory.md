@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-05
 adrs:
   - lifetime-bounded-historical-audit-replay
-status: Proposed
+status: Implemented
 ---
 # Plan: Bound historical audit memory
 

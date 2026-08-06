@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: lifetime-bounded-historical-audit-replay
-status: Implementing
+status: Implemented
 date: 2026-08-05
 ---
 # ADR-0238: Lifetime-bounded historical audit replay
@@ -151,3 +151,4 @@ of this decision.
 - 2026-08-05: Accepted; content-sha256: 19db84280c3e343808a838eb72b5a92735c02b44b1bc145dc9560bb1e6ee916b
 - 2026-08-06: Implementing; content-sha256: 19db84280c3e343808a838eb72b5a92735c02b44b1bc145dc9560bb1e6ee916b
 - 2026-08-06: Applied; operations: update `tooling/audit-and-snapshots:audit-history-operation-owned`
+- 2026-08-06: Implemented; content-sha256: 19db84280c3e343808a838eb72b5a92735c02b44b1bc145dc9560bb1e6ee916b
