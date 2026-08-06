@@ -3,7 +3,6 @@
 
 - [ADR-cli-grammar-expresses-creation-and-inventory: CLI Grammar Expresses Creation And Inventory](cli-grammar-expresses-creation-and-inventory.md) (Proposed)
 - [ADR-house-standard-configuration-expresses-repo-facts-only: House Standard: Configuration Expresses Repo Facts Only](house-standard-configuration-expresses-repo-facts-only.md) (Proposed)
-- [ADR-retire-the-bootstrap-installer: Retire The Bootstrap Installer](retire-the-bootstrap-installer.md) (Proposed)
 - [ADR-unconditional-gates-and-audit-rules: Unconditional Gates And Audit Rules](unconditional-gates-and-audit-rules.md) (Proposed)
 
 ## History
@@ -251,3 +250,4 @@
 - [ADR-0241: Bound agent guides as native-skill routers](0241-bound-agent-guides-as-native-skill-routers.md) (Implemented)
 - [ADR-0242: Derive Publication Completeness from Source Authorities](0242-derive-publication-completeness-from-source-authorities.md) (Implemented)
 - [ADR-0243: Independent Judgment-Based Workflow Escalation](0243-independent-judgment-based-workflow-escalation.md) (Implemented)
+- [ADR-retire-the-bootstrap-installer: Retire The Bootstrap Installer](retire-the-bootstrap-installer.md) (Abandoned)

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: retire-the-bootstrap-installer
-status: Proposed
+status: Abandoned
 date: 2026-08-06
 ---
 # ADR-retire-the-bootstrap-installer: Retire The Bootstrap Installer
@@ -162,3 +162,4 @@ for gated commands, so nothing that enforced correctness rested on the pin.
 ## Status history
 
 - 2026-08-06: Proposed
+- 2026-08-07: Abandoned; content-sha256: 79593a99ca807699c02e1a114081b397ac50774d2a23d348a9f73e9390103f01; rationale: the Context's premise is false. It assumed the installer serves a stranger who lacks awf, and that the owner is served by one deliberately installed binary. The repositories awf serves all use the installer and pin a different awf version each, and checking a binary into a repository is not an alternative the owner accepts. Under the house-standard record's own admission test that makes bootstrap.enabled a fact varying durably across served repositories rather than a preference about awf's behaviour, so it survives as a configuration key. The circularity this record identified for awf's own repository is real and is resolved by that same key: awf sets it false because it builds itself from source, which is the one durable difference the value expresses. Every declared operation is canceled; none was applied.
