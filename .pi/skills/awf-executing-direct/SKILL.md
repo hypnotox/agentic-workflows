@@ -6,11 +6,11 @@ description: Implement an understood narrow change directly, verify it, and rout
 
 # awf-executing-direct
 
-The direct implementation chain node for work whose settled design warrants neither an ADR nor a plan.
+The direct implementation chain node for work whose clear outcome, solution shape, boundary, and verification warrant neither an ADR nor a plan.
 
 ## When to invoke
 
-Invoke only after brainstorming has settled the design and concluded that the change is neither load-bearing nor complex. If an ADR or plan is warranted, use that workflow instead.
+Invoke when the outcome, solution shape, boundary, and verification are clear, and no independent need for brainstorming, an ADR, or a plan fires. If a material choice or clarification is needed, invoke brainstorming; if an ADR or plan is warranted, use that workflow instead.
 
 ## Procedure
 
@@ -26,7 +26,7 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 3. Decide whether user attention is required: material authority drift, a materially different choice, significant scope expansion, or a correctness or safety concern, blocker, or failed required verification that remains unresolved after the active workflow's required diagnosis and authority-guided remediation. If so, name the issue, options, recommendation, and blocked next action, then stop.
 4. Otherwise state a one-line continuity notice and continue. For effort-backed work include the exact slug and owned path. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. After an effort-backed persisted formal phase checkpoint, or another safe resumable effort point, judge retained-context relevance and successor work from current context and compaction evidence. Continue autonomously or invoke `handoff_session` alone with kickoff prose directing the replacement to read the effort checkpoint and append the actual boundary to `## Handoff log` before substantive work. Scope any managed-worktree restriction to pre-integration execution and preserve the governed primary-checkout switch for integration, deferred lifecycle closure, worktree removal, and retrospective. Cancellation or failure that leaves the old session active appends no boundary. Repository authority, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc.
 
-6. Evaluate review independently. Invoke `awf-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, substantive verification judgment, or uncertainty. Skip only locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-free skipped work concludes after verification; effort-backed skipped work returns to `awf-effort-workflow`; reviewed effort-backed work returns there after assurance.
+6. Evaluate review independently. Invoke `awf-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, substantive verification judgment, or uncertainty. Skip only locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-backed work returns to `awf-effort-workflow` after assurance settles or is explicitly skipped. For effort-free work, the parent owns any applicable deferred ADR/plan terminal artifact transaction after assurance settles or is explicitly skipped, using `awf-adr-lifecycle`, the gate, and audit obligations; otherwise it concludes after verification.
 
 ## Boundaries
 
@@ -37,6 +37,6 @@ Resolve implementation findings autonomously when applicable ADRs, current-state
 A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
-- Stop and return to brainstorming if implementation exposes a new load-bearing or materially larger choice, rather than silently expanding scope or accepting a workaround.
-- Stop and write a plan if the work becomes multi-step or interdependent.
+- Re-evaluate brainstorming if implementation exposes a material choice or clarification, and return there when it fires rather than silently expanding scope or accepting a workaround.
+- Re-evaluate planning when sequencing, coordination, or resumability may materially help; write a plan only when that independent need fires.
 - Preserve unrelated work in the checkout.

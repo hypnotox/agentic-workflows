@@ -45,10 +45,10 @@ If an owner stops dirty, inventory `git status --short`, diff, completed and rem
 6. Review is report-only and phase-level; review fixes remain parent-owned and do not recreate the original transaction.
 <!-- awf:end -->
 <!-- awf:section final-task-adr-flip -->
-7. Apply every explicit V2 batch, including the final batch, atomically with matching claims and lifecycle events in the owning phase. Terminal review owns only the status-only Implemented flip after the applicable review settles.
+7. Apply every explicit V2 batch, including the final batch, atomically with matching claims and lifecycle events in the owning phase. Do not flip terminal artifact status in a phase.
 <!-- awf:end -->
 <!-- awf:section terminal-step -->
-8. After all settled phases, evaluate implementation-review need independently. Invoke `{{ .prefix }}-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, verification requiring substantive judgment, or uncertainty. Skip it only for locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-free skipped work verifies and concludes; effort-backed skipped work returns to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`. Reviewed effort-free work concludes after assurance; reviewed effort-backed work returns there after assurance.
+8. After all settled phases, evaluate implementation-review need independently. Invoke `{{ .prefix }}-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, verification requiring substantive judgment, or uncertainty. Skip it only for locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. After assurance settles or is explicitly skipped, effort-backed work returns to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` for artifact closure. For effort-free work, the parent performs the deferred ADR/plan terminal transaction: apply only legal status transitions under `{{ .prefix }}-adr-lifecycle`, run the required gate and audit, and then conclude.
 <!-- awf:end -->
 
 <!-- awf:section notes -->

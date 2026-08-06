@@ -48,11 +48,11 @@ If an implementer stops dirty, first inventory `git status --short`, diff, compl
 <!-- awf:edit gate-tier-detail: default; create .awf/skills/parts/executing-plans/gate-tier-detail.md to override -->
 
 <!-- awf:edit procedure-adr-final-commit: default; create .awf/skills/parts/executing-plans/procedure-adr-final-commit.md to override -->
-4. Apply every explicit batch of the ADR's declared State changes operations (V2), including the final batch, atomically with its matching claims and lifecycle event in the owning phase. Terminal review owns only the status-only Implemented flip after the applicable review settles.
+4. Apply every explicit batch of the ADR's declared State changes operations (V2), including the final batch, atomically with its matching claims and lifecycle event in the owning phase. Do not flip terminal artifact status in a phase.
 <!-- awf:edit procedure-non-adr-final-commit: default; create .awf/skills/parts/executing-plans/procedure-non-adr-final-commit.md to override -->
-5. Freeze a plan only in its declared final transaction after review settlement.
+5. Keep the plan mutable through implementation; its terminal status changes only in the deferred artifact transaction.
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->
-6. After all settled phases, evaluate implementation-review need independently. Invoke `awf-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, verification requiring substantive judgment, or uncertainty. Skip it only for locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-free skipped work verifies and concludes; effort-backed skipped work returns to `awf-effort-workflow`. Reviewed effort-free work concludes after assurance; reviewed effort-backed work returns there after assurance.
+6. After all settled phases, evaluate implementation-review need independently. Invoke `awf-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, verification requiring substantive judgment, or uncertainty. Skip it only for locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. After assurance settles or is explicitly skipped, effort-backed work returns to `awf-effort-workflow` for artifact closure. For effort-free work, the parent performs the deferred ADR/plan terminal transaction: apply only legal status transitions under `awf-adr-lifecycle`, run the required gate and audit, and then conclude.
 
 <!-- awf:edit project-invariants: default; create .awf/skills/parts/executing-plans/project-invariants.md to override -->
 ## Notes

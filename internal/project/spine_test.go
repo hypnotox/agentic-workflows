@@ -716,7 +716,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"executing-direct": {wants: []string{
-			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "no independent need for brainstorming", "material choice or clarification", "Re-evaluate planning", "only when that independent need fires", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"subagent-driven-development": {wants: []string{
 			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "allowCommits: true", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
@@ -1234,7 +1234,7 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"phase-owner context only",
 		"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
 		"every explicit batch of the ADR's declared State changes operations",
-		"Terminal review owns only the status-only Implemented flip",
+		"Do not flip terminal artifact status in a phase", "effort-free work, the parent performs", "deferred ADR/plan terminal transaction",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1272,7 +1272,7 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"example-executing-plans",
 		"dirty-state inventory",
 		"every explicit V2 batch, including the final batch",
-		"Terminal review owns only the status-only Implemented flip",
+		"Do not flip terminal artifact status in a phase", "effort-free work, the parent performs", "deferred ADR/plan terminal transaction",
 		"generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
 		"never transfer commit, review, checkpoint, handoff, helper, or outcome authority",
 	}
@@ -2087,8 +2087,32 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 
 // TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
 // detailed protocol home while guides and skills carry executable routing.
-// invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestIndependentWorkflowEscalation)
+// invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestWorkingMemorySingleHomeSurfaces)
 // invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage (TestMemoryLogConsumerCoverage)
+func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
+	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{"effort-workflow": true}}
+	workflow := renderGolden(t, "docs/workflow.md.tmpl", data)
+	assertOrderedPhrases(t, workflow,
+		"## Working memory", "Session context is volatile", "`effort-workflow` alone proposes", "rendered orienting skill's resume-revalidation section is the procedural home", "One effort has one user-managed writer")
+	effort := renderSkillGolden(t, "effort-workflow", data)
+	assertContainsAll := func(body string, wants ...string) {
+		for _, want := range wants {
+			if !strings.Contains(body, want) {
+				t.Errorf("missing %q:\n%s", want, body)
+			}
+		}
+	}
+	assertContainsAll(effort, "sole owner of the effort lifecycle", "all effort checkpoints", "integration, divergence handling, topology removal, retrospective routing, and finish")
+	orienting := renderSkillGolden(t, "orienting", data)
+	assertContainsAll(orienting, "## Resume revalidation", "verify every load-bearing claim against repository truth", "A discrepancy resolves in favor of the repository", "a dispatched child never edits it")
+	for _, other := range []string{"executing-direct", "reviewing-impl"} {
+		body := renderSkillGolden(t, other, data)
+		if strings.Contains(body, "awf effort finish <slug>") {
+			t.Errorf("%s steals effort lifecycle closure", other)
+		}
+	}
+}
+
 func TestMemoryLogConsumerCoverage(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},

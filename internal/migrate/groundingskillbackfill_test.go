@@ -141,8 +141,18 @@ func TestGroundingSkillCollisionDiagnostic(t *testing.T) {
 		if diagnostic.State != "operation" || !strings.Contains(diagnostic.Condition, err.Path) || diagnostic.Cause != "" {
 			t.Fatalf("diagnostic = %#v", diagnostic)
 		}
-		if len(diagnostic.Changed) != len(changes) || len(diagnostic.Steps) != len(changes)+2 {
-			t.Fatalf("diagnostic = %#v", diagnostic)
+		if len(diagnostic.Changed) != len(changes) {
+			t.Fatalf("diagnostic changed = %#v", diagnostic.Changed)
+		}
+		wantSteps := []string{
+			"rename the local grounding artifact at skills/grounding.yaml and update its selected name, or remove the local override to adopt standard grounding",
+			"rerun awf upgrade",
+		}
+		if len(changes) > 0 {
+			wantSteps = append([]string{"inspect the listed changed axes"}, wantSteps...)
+		}
+		if len(diagnostic.Steps) != len(wantSteps) {
+			t.Fatalf("diagnostic steps = %#v, want %v", diagnostic.Steps, wantSteps)
 		}
 	}
 	if _, diagnosticErr := err.Diagnostic([]Change{{Text: "\n"}}); diagnosticErr == nil {

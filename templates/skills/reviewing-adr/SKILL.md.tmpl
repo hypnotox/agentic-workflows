@@ -54,7 +54,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section status-flip -->
-7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition and every explicit Applied batch, while the status-only flip to `Implemented` is owned by the terminal-review flow after the applicable review settles, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
+7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition and every explicit Applied batch. After assurance settles or is explicitly skipped, `effort-workflow` owns effort-backed terminal closure; for effort-free execution, the parent owns the deferred status-only flip to `Implemented`, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-resync -->

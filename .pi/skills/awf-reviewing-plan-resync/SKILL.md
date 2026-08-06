@@ -14,7 +14,7 @@ description: >
 
 ## When this skill fires
 
-Only when at least one ADR and a plan exist. Invoked after review settles: by `awf-reviewing-adr` as its terminal follow-on once the ADR review converges, or by `awf-reviewing-plan` when at least one linked ADR exists (the ADR remains `Proposed`; the status flip is owned by the terminal-review flow). Do NOT invoke when no plan was written.
+Only when at least one ADR and a plan exist. Invoked after review settles: by `awf-reviewing-adr` as its terminal follow-on once the ADR review converges, or by `awf-reviewing-plan` when at least one linked ADR exists (the ADR remains `Proposed`; terminal closure belongs later to effort-workflow or the effort-free parent after assurance settles or is explicitly skipped). Do NOT invoke when no plan was written.
 
 This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness + doc-currency lenses). The post-write full plan review is owned by the separate `awf-reviewing-plan` skill.
 

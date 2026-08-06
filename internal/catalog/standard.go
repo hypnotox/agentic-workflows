@@ -21,7 +21,7 @@ var Standard = &Catalog{
 			"procedure-write-plan", "doc-currency-check", "self-review", "plan-commit-step",
 			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
 		}},
-		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a small approved change directly.", Trigger: "Use when the change is understood and does not need a plan.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-impl"}}, Core: true},
+		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a clear narrow change directly.", Trigger: "Use when outcome, boundary, and verification are clear and no independent design or plan need fires.", CommonFollowUps: []string{"reviewing-impl", "effort-workflow"}}, Core: true},
 		"executing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "subagent-driven-development"}}, Core: true, RequiresAgent: "implementer", Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
@@ -52,7 +52,7 @@ var Standard = &Catalog{
 		"exploring": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Explore repository facts without polluting the main context.", Trigger: "Use for fresh-context repository exploration when inline search would pollute the parent context.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}}, Core: true, RequiresAgent: "explorer", Sections: []string{
 			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
-		"orienting": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Ground the session in a topic before starting, resuming, or widening work.", Trigger: "Use when taking up a topic: before brainstorming fresh non-trivial work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "writing-plans", "executing-plans"}}, Core: true, Sections: []string{
+		"orienting": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Ground the session in repository truth before starting, resuming, or widening work.", Trigger: "Use when repository truth is needed while taking up a topic: before brainstorming fresh work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "writing-plans", "executing-plans"}}, Core: true, Sections: []string{
 			"when-to-invoke", "guide-ladder", "context-command", "resume-revalidation", "hand-off",
 		}},
 		"proposing-adr": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Author a decision record for a material design choice.", Trigger: "Use when a durable architectural or workflow decision is needed.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-adr", "writing-plans"}},
@@ -102,11 +102,11 @@ var Standard = &Catalog{
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-resync", "notes",
 		}},
-		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently assure an implementation.", Trigger: "Use when independent review has assurance value for the implementation.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"effort-workflow", "retrospective"}}, Core: true, RequiresAgent: "code-reviewer", Sections: []string{
+		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently assure an implementation.", Trigger: "Use when independent review has assurance value for the implementation.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"effort-workflow"}}, Core: true, RequiresAgent: "code-reviewer", Sections: []string{
 			"when-fires", "sha-range-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
-		"retrospective": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Capture durable lessons, verify managed topology is absent, and finish the effort last.", Trigger: "Use after settled terminal review and any required managed-worktree removal.", UsuallyFollows: []string{"reviewing-impl"}}, Core: true, Sections: []string{
+		"retrospective": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Capture durable lessons, verify managed topology is absent, and finish the effort last.", Trigger: "Use from effort-workflow after assurance settles or is explicitly skipped and managed topology is removed.", UsuallyFollows: []string{"effort-workflow"}}, Core: true, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
 		"refactor-coupling-audit": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Scope dependency and test coupling before a refactor.", Trigger: "Use when scoping a refactor that moves files between packages or inverts dependencies.", CommonFollowUps: []string{"brainstorming", "proposing-adr", "writing-plans"}}, Sections: []string{

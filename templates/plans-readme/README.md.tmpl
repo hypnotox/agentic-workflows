@@ -31,5 +31,5 @@ where the date is the day the plan is written (ISO-8601). Example:
 
 Inline owners immediately correct stale instructions and record reasoned deviations in Notes. Delegated owners may report rather than edit; the parent supplies that report to phase review and reconciles it with findings in one focused post-review settlement commit before checkpointing or later execution.
 
-A plan stays mutable as `status: Proposed` through review and implementation and freezes at `status: Implemented` only after terminal review establishes completion. Plans remain as the historical execution record.
+A plan stays mutable as `status: Proposed` through review and implementation and freezes at `status: Implemented` only in the deferred terminal transaction after assurance settles or is explicitly skipped. `effort-workflow` owns effort-backed closure; the effort-free execution parent owns it otherwise. Plans remain as the historical execution record.
 <!-- awf:end -->
