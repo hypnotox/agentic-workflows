@@ -264,6 +264,13 @@ feat(rendering): warn on oversized agent guides (applies ADR batch)
 
 ## Notes
 
+- Phase 1 review strengthened the native-routing proof to reject heterogeneous standard and local
+  names, purposes, triggers, kind formatting, and relationships, and restored a cross-target scan
+  proving workflow relationships remain advisory while selected skills retain operative controls.
+- Phase 1 review's changelog finding is deferred to Task 3.2, which already owns the single
+  adopter-facing Unreleased entry for the complete native-discovery, canonical-home, bounds, and
+  advisory change; Phase 1 does not add a partial duplicate.
+
 Record deviations, rendered-size measurements, prose-disposition findings, review findings, and any
 implementation fact that invalidates an approved bound or canonical-home assumption. Do not relax a
 budget to make a phase pass; return an infeasible bound or guide-unique requirement to the user as an

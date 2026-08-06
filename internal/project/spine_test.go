@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -2715,18 +2716,12 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestGuideOmitsLocalAndStandardSkillNames)
-func TestGuideOmitsLocalAndStandardSkillNames(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - brainstorming\n  - bugfix\nagents: []\n", map[string]string{
-		"skills/brainstorming.yaml": "local: true\n",
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestGuideOmitsLocalAndStandardSkillMetadata)
+func TestGuideOmitsLocalAndStandardSkillMetadata(t *testing.T) {
+	const localDescription = "Route ultraviolet nebula work through its native procedure."
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills: [brainstorming, bugfix, nebula-router]\nagents: [grounding-checker]\n", map[string]string{
+		"skills/nebula-router.yaml": "data:\n  description: " + localDescription + "\n",
 	})
-	localSkill := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
-	if err := os.MkdirAll(filepath.Dir(localSkill), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(localSkill, []byte("---\nname: example-brainstorming\ndescription: local skill\n---\nbody\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -2738,9 +2733,22 @@ func TestGuideOmitsLocalAndStandardSkillNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, banned := range []string{"example-brainstorming", "example-bugfix", "Enabled skills:", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback"} {
-		if strings.Contains(string(body), banned) {
-			t.Errorf("guide retains skill catalog residue %q:\n%s", banned, body)
+
+	banned := []string{
+		"Enabled skills:", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback",
+		"example-brainstorming", "example-bugfix", "example-nebula-router", localDescription,
+		"(chain):", "(task):", "(support):",
+	}
+	for _, name := range []string{"brainstorming", "bugfix"} {
+		profile := catalog.Standard.Skills[name].Profile
+		banned = append(banned, profile.Purpose, profile.Trigger)
+		for _, neighbor := range append(slices.Clone(profile.UsuallyFollows), profile.CommonFollowUps...) {
+			banned = append(banned, "example-"+neighbor)
+		}
+	}
+	for _, residue := range banned {
+		if strings.Contains(string(body), residue) {
+			t.Errorf("guide retains skill catalog residue %q:\n%s", residue, body)
 		}
 	}
 }
