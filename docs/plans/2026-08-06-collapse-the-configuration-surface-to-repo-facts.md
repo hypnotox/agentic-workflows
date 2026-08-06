@@ -41,6 +41,16 @@ Schema generations: the gates record takes 38, the house-standard record takes 3
 needs none, because every key its retired commands wrote is retired by another record and
 `bootstrap.enabled` survives.
 
+All three records are pending slug records. Claim provenance is written in slug form throughout
+implementation (`Origin: ADR-unconditional-gates-and-audit-rules`), and `awf adr number` substitutes
+the assigned numbers at integration under the digest-paired rename rules. No task assigns a number.
+
+Retiring a config field is never only a schema edit. `internal/migrate` reads the retired shape from
+the typed struct in steps that must stay frozen, and `loadForMigration` strict-parses the live tree
+for every analysis migration, so each retirement carries three obligations: a historical view for
+the frozen readers, a `loadForMigration` strip so an old tree still upgrades, and a
+`retiredKeyRemovals` entry so historical bytes still parse. Tasks 1.4, 3.0 and 3.4 carry them.
+
 ## Phase 1: Unconditional gates and audit rules
 
 **Execution mode: inline.**
@@ -97,6 +107,19 @@ binding at sync and check. Do not move it to init.
 In `internal/project/scaffold.go`, remove the `Hooks` and `Runner` blocks from `ScaffoldConfig` and
 leave `Bootstrap: &config.BootstrapConfig{Enabled: true}` exactly as it is.
 
+Update every production reader of the four enablement fields in the same commit; a missed one is a
+compile error, not a latent bug. The closed set is
+`grep -rn 'Cfg\.Runner\|Cfg\.Hooks\|\.ProseGate\|\.MemoryCite\|MaxTopicsPerPath' --include='*.go' . | grep -v _test`,
+which at plan time resolves to `cmd/awf/prosegate.go`, `cmd/awf/memorygate.go`, `cmd/awf/commitgate.go`,
+`cmd/awf/list_add.go`, `internal/project/list_presentation.go`, `internal/project/render.go` (the
+`runnerEnabled` template datum), `internal/project/sweep.go`, `internal/project/configreference.go`
+(its live-state accessor rows, which are a separate table from the configspec), and
+`internal/project/currentstate.go`.
+
+Remove the `hooks` and `runner` listing categories here rather than in Phase 3. A key's removal and
+its listing category must land in the same commit, because the category reads the field. Phase 3
+keeps only the enablement-state vocabulary change.
+
 ### Task 1.3: Remove the gate and audit config surface
 Latitude: exact
 Applying: ["unconditional-gates-and-audit-rules:toggle-key-migration", "unconditional-gates-and-audit-rules:fan-out-budget-fixed"]
@@ -112,10 +135,12 @@ In `internal/configspec/spec.go`, delete the descriptor entries for every key re
 including the `currentState.maxTopicsPerPath` entry. The config-reference regeneration in Task 1.6
 proves the table matches.
 
-Delete the now-callerless editors in `internal/config/edit.go`: `SetMappingScalar` lost the
-`*.enabled` booleans and `SetMappingInteger` lost `subjectMaxLength`, `diffThreshold` and
-`maxTopicsPerPath`. Verify with `grep -rn "SetMappingScalar\|SetMappingInteger" --include="*.go" .`
-before deleting; if either retains a caller, keep it and record the caller in Notes.
+Delete `SetMappingScalar` and `SetMappingInteger` from `internal/config/edit.go`. Both lose every
+production caller here: `SetMappingScalar` served only the `*.enabled` booleans and
+`SetMappingInteger` only `subjectMaxLength`, `diffThreshold` and `maxTopicsPerPath`. Confirm with
+`grep -rn 'config\.SetMapping' --include='*.go' internal cmd | grep -v _test`, which must return no
+output after the edit; delete their tests with them. `config-serialization-owned` enumerates both
+editors and is updated by the house-standard record in Phase 3, so leave its claim prose alone here.
 
 ### Task 1.4: Add schema generation 38 and its forward-port entries
 Latitude: exact
@@ -143,22 +168,56 @@ sees historical bytes. The top-level pairs use an empty parent.
 Kind: batch
 Latitude: exact
 Applying: ["unconditional-gates-and-audit-rules:gates-always-run", "unconditional-gates-and-audit-rules:audit-advisories-always-run", "unconditional-gates-and-audit-rules:audit-thresholds-fixed"]
-Paths: [".awf/topics/parts/tooling/quality-gates/current-state.md", ".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", ".awf/topics/parts/invariants/topics-and-markers/current-state.md", ".awf/topics/parts/rendering/companion-scripts/current-state.md", ".awf/topics/parts/rendering/singletons-and-payloads/current-state.md", ".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/config/validation/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", ".awf/topics/parts/adr-system/plan-artifacts/current-state.md"]
-Representative: For the update to `tooling/quality-gates:memory-citation-gate`, delete the opening condition so the claim reads as an unconditional scan and keep every other clause byte-identical, then append `, ADR-<this record's assigned number>` to its existing `Revised-by:` line, creating that line if absent.
-Edge: For the add of `rendering/companion-scripts:runner-wrapper-rendered`, author a new claim asserting that a full render emits exactly one wrapper file at the repo-root path `awf`, mirroring the shape of `rendering/singletons-and-payloads:hook-payloads-rendered`, with `Origin: ADR-<this record's assigned number>` and `Backing: test`. It carries the render-existence half of the removed `runner-singleton-toggle`; the toggle half is not carried forward.
-Post-check: `./x render && ./x check` reports zero errors, and `grep -rn "proseGate.enabled\|memoryCite.enabled\|maxTopicsPerPath\|domainDocStaleness\|domainCodeStaleness\|undocumentedDomain\|plainPunctuation\|uncommittedChanges\|allowedTypes\|subjectMaxLength\|diffThreshold\|dependencyManifests" .awf/topics/parts/` returns no output.
+Paths: [".awf/topics/parts/tooling/quality-gates/current-state.md", ".awf/topics/parts/tooling/audit-and-snapshots/current-state.md", ".awf/topics/parts/tooling/init-and-enablement/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", ".awf/topics/parts/invariants/topics-and-markers/current-state.md", ".awf/topics/parts/rendering/companion-scripts/current-state.md", ".awf/topics/parts/rendering/singletons-and-payloads/current-state.md", ".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/config/validation/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", ".awf/topics/parts/adr-system/plan-artifacts/current-state.md", "internal/migrate/enablerunner_test.go", "internal/project/runner_test.go", "internal/project/scaffold_test.go", "cmd/awf/checkgroup_test.go"]
+Representative: For the update to `tooling/quality-gates:memory-citation-gate`, delete the opening condition so the claim reads as an unconditional scan and keep every other clause byte-identical, then append `, ADR-unconditional-gates-and-audit-rules` to its existing `Revised-by:` line, creating that line if absent.
+Edge: For the add of `rendering/companion-scripts:runner-wrapper-rendered`, author a new claim asserting that a full render emits exactly one wrapper file at the repo-root path `awf`, mirroring the shape of `rendering/singletons-and-payloads:hook-payloads-rendered`, with `Origin: ADR-unconditional-gates-and-audit-rules` and `Backing: test`, and land its proof marker in `internal/project/runner_test.go` in this same commit. It carries the render-existence half of the removed `runner-singleton-toggle`; the toggle half is not carried forward.
+Post-check: `./x render && ./x check` reports zero errors, and `grep -rn "proseGate.enabled\|memoryCite.enabled\|domainDocStaleness\|domainCodeStaleness\|undocumentedDomain\|plainPunctuation\|uncommittedChanges\|allowedTypes\|subjectMaxLength" .awf/topics/parts/` returns no output.
 
-Apply exactly the record's declared operations: seven adds, four removes and sixteen updates. Author
-each added claim's prose with `Origin:` naming this record and, for an invariant, `Backing: test`
-plus its proof marker. Preserve `Origin:` and the existing `Revised-by:` prefix on every update.
+Apply every operation in the gates record's State changes section, and assert the Applied event's
+operation list equals that section with nothing Remaining. Do not reconcile against a count; the
+section is the authority. Author each added claim's prose with `Origin: ADR-unconditional-gates-and-audit-rules`
+and, for an invariant, `Backing: test` plus its proof marker in the same commit. Preserve `Origin:`
+and the existing `Revised-by:` prefix on every update.
+
 Three audit claims take no operation and must be left byte-identical: `audit-domain-doc-staleness`,
 `audit-undocumented-domain` and `audit-dependency-warn`.
+
+Two key names survive in claim prose by design and are the sanctioned residual the post-check
+excludes: `maxTopicsPerPath` in `config/migrations-and-locks:severity-keys-dropped` and
+`dependencyManifests` in `config/validation:glob-migration-anchored`. Both describe what a frozen
+generation did to its own tree shape, both stay true verbatim under the record's freeze item, and
+neither is operated on.
+
+Every removed claim's proof marker must go with it, or the marker check fails on an unknown claim
+ID. The markers for this batch's removals live in `internal/migrate/enablerunner_test.go`,
+`internal/project/runner_test.go`, `internal/project/scaffold_test.go` and
+`cmd/awf/checkgroup_test.go`; confirm the closed set with `grep -rn --include='*.go' '<claim-id>' .`
+per removed claim before editing.
 
 When rewriting `tooling/audit-and-snapshots:audit-plain-punctuation`, also replace its two `docsDir`
 references with the documentation root, which the house-standard record fixes; the key is gone by
 the end of Phase 3 and this claim is not operated on again.
 
-### Task 1.6: Set the gates record to Implementing and regenerate
+### Task 1.6: Test the values this record fixes
+Latitude: exact
+Applying: ["unconditional-gates-and-audit-rules:audit-thresholds-fixed", "unconditional-gates-and-audit-rules:fan-out-budget-fixed", "unconditional-gates-and-audit-rules:gates-always-run", "unconditional-gates-and-audit-rules:audit-advisories-always-run"]
+
+Every claim this phase adds needs a test that would fail if the pinned value changed silently, and
+the proof marker lands with the test. Without them the phase lands the claim and not the proof, and
+the record's stated reason for pinning is unmet.
+
+In `internal/audit/settings_test.go`, assert the four fixed values: subject limit `72`, diff
+threshold `400`, the eleven-member type set, and the nineteen-member manifest glob set, each as an
+exact expected value rather than a length. In `internal/topic/coverage_test.go`, assert the
+path-scoped fan-out budget is `8`. In `internal/project/runner_test.go`, assert a full render emits
+exactly one wrapper at the repo-root path `awf`. In `internal/migrate`, assert generation 38 removes
+each key it declares and leaves surviving keys, comments and key order byte-intact, and assert a
+config carrying every retired key still parses through `ConfigForCurrentSchema`.
+
+Also assert both gates scan with no configuration present and that the repository aggregate emits no
+disabled-child note, which is what makes `gates-always-run` falsifiable.
+
+### Task 1.7: Set the gates record to Implementing and regenerate
 Latitude: exact
 Applying: ["unconditional-gates-and-audit-rules:toggle-key-migration"]
 
@@ -206,15 +265,34 @@ membership. The flag keeps its two surviving roles: a singleton is a catalog doc
 its own output `Path`, and the sidecar location stays `.awf/<name>.yaml` for a singleton and
 `.awf/docs/<name>.yaml` otherwise. Do not collapse those two.
 
-Render both targets unconditionally and derive every documentation path from a fixed `docs/` root
-rather than from `cfg.DocsDir`. Leave `cfg.Targets` and `cfg.DocsDir` parsed and validated; this
-task stops reading them, and Phase 3 deletes them.
+Render both targets unconditionally. Leave `cfg.Targets` and `cfg.DocsDir` parsed and validated;
+this task stops reading `cfg.Targets`, Task 2.2 stops reading `cfg.DocsDir`, and Phase 3 deletes
+both.
 
 Local artifacts still synthesize in this phase. `internal/project/local.go` keeps working, and a
 `local: true` sidecar still suppresses its catalog entry, so the intermediate stays coherent for a
 tree that uses the flag. This repository uses it nowhere.
 
-### Task 2.2: Update the render-set tests to the full catalog
+### Task 2.2: Fix the documentation root
+Latitude: exact
+Applying: ["house-standard-configuration-expresses-repo-facts-only:fixed-targets-and-docs-root"]
+
+Introduce one exported constant naming the fixed documentation root, `docs`, and place it in
+`internal/config` beside the other structural path constants so a single home owns it; every package
+below reads that constant rather than restating the literal.
+
+Rebind every production reader of `cfg.DocsDir` to it. The closed set is
+`grep -rn 'DocsDir' --include='*.go' internal cmd | grep -v _test`, which at plan time resolves to
+`internal/project/layout.go`, `internal/project/check.go`, `internal/project/render.go`,
+`internal/project/topics.go`, `internal/project/plan_read.go`, `internal/project/contextstate.go`,
+`internal/project/staged_drift.go`, `internal/currentstate/load.go`, `internal/audit/history.go` and
+`internal/upgrade/digest.go`. `internal/migrate` is excluded and handled in Phase 3 Task 3.1: its
+readers are frozen steps that must keep seeing the historical shape.
+
+`internal/project/layout.go` also carries the docs map that `layout-docs-full-catalog` replaces, so
+its change lands here with the render-set change rather than in a later phase.
+
+### Task 2.3: Update the render-set tests to the full catalog
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:full-catalog-render"]
 
@@ -227,22 +305,21 @@ Add a test proving `roadmap-graduation` renders with no doc gate, and one provin
 doc renders. Each lacks a convention-parts directory, so each raises a non-failing stub advisory;
 assert the advisory is non-failing rather than absent.
 
-### Task 2.3: Apply the house-standard record's render-set operations
+### Task 2.4: Apply the house-standard record's render-set operations
 Kind: batch
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:full-catalog-render", "house-standard-configuration-expresses-repo-facts-only:fixed-targets-and-docs-root"]
-Paths: [".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/rendering/catalog-and-targets/current-state.md", ".awf/topics/parts/rendering/doc-outputs/current-state.md", ".awf/topics/parts/rendering/singletons-and-payloads/current-state.md", ".awf/topics/parts/rendering/adapter-outputs/current-state.md", ".awf/topics/parts/rendering/sync-and-drift/current-state.md", ".awf/topics/parts/rendering/guide-and-doc-templates/current-state.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", ".awf/topics/parts/rendering/pi-runtime/current-state.md", ".awf/topics/parts/rendering/pi-workflows/current-state.md", ".awf/topics/parts/tooling/evaluations/current-state.md"]
+Paths: [".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/rendering/catalog-and-targets/current-state.md", ".awf/topics/parts/rendering/doc-outputs/current-state.md", ".awf/topics/parts/rendering/singletons-and-payloads/current-state.md", ".awf/topics/parts/rendering/adapter-outputs/current-state.md", ".awf/topics/parts/rendering/sync-and-drift/current-state.md", ".awf/topics/parts/rendering/guide-and-doc-templates/current-state.md", ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md", ".awf/topics/parts/rendering/pi-runtime/current-state.md", ".awf/topics/parts/rendering/pi-workflows/current-state.md", ".awf/topics/parts/tooling/evaluations/current-state.md", ".awf/topics/parts/tooling/init-and-enablement/current-state.md", "internal/project/scaffold.go", "internal/project/layout.go"]
 Representative: For the update to `rendering/catalog-and-targets:target-dialect-render`, replace "Each enabled target renders every selected catalog skill and agent exactly once" with the unconditional form naming every target and every catalog skill and agent, keep the rest byte-identical, and append this record to `Revised-by:`.
 Edge: For the add of `rendering/project-output-plan:full-catalog-render`, author the claim in `project-output-plan` rather than `catalog-and-targets`, because that topic's selectors (`internal/project/**`) cover where its proof marker lives while `catalog-and-targets` selectors do not. It replaces `catalog-trim-applied`, `scaffold-core-only`, `skills-context-effective-set`, `enabled-set-closed` and `mandatory-doc-pool-exclusion`, all removed in this batch.
 Post-check: `./x render && ./x check` reports zero errors, and `grep -rn "enabled set\|doc gate\|requiresDoc\|toggleable doc pool" .awf/topics/parts/rendering/` returns no output.
 
 Apply only the operations this batch owns: the render-set adds, removes and updates from the
 house-standard record's State changes, plus `rendering/doc-outputs:docs-root-fixed` and the
-`layout-docs-enabled-only` remove with its `layout-docs-full-catalog` add. Leave for Phase 3 every
-operation about the config keys themselves, the local-artifact topic, the migrations topic, the
+`layout-docs-enabled-only` remove with its `layout-docs-full-catalog` add. REPLACED_PARTITION, the local-artifact topic, the migrations topic, the
 configspec topic and `config/configuration`.
 
-### Task 2.4: Set the house-standard record to Implementing
+### Task 2.5: Set the house-standard record to Implementing
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:full-catalog-render"]
 
@@ -271,10 +348,35 @@ feat(rendering): render the full catalog for every target
 
 **Execution mode: inline.**
 
-Advances: ["records-applied"]
-Completes: ["selection-retired", "cli-grammar"]
+Completes: ["selection-retired", "cli-grammar", "records-applied"]
 
-### Task 3.1: Remove the selection fields from the config schema
+### Task 3.1: Give the frozen migrations a historical view
+Latitude: exact
+Applying: ["house-standard-configuration-expresses-repo-facts-only:selection-key-migration"]
+
+This task must land before Task 3.2, because without it Task 3.2 does not compile. Seven registered
+migration steps read the retired shape from the typed `config.Config` and from the typed sidecar:
+`internal/migrate/closeenabledset.go` (`cfg.Skills`, `cfg.Agents`, `cfg.Docs`, `sc.Local`, and
+`cat.Skills[s].RequiresDoc`), `internal/migrate/orientingbackfill.go` and
+`internal/migrate/groundingskillbackfill.go` (`cfg.Skills`, `.Local`),
+`internal/migrate/retirementtokens.go`, `internal/migrate/supersessionkeys.go` and
+`internal/migrate/adrnumberprovenance.go` (`cfg.DocsDir`), and
+`internal/migrate/dropreplacewith.go` and `internal/migrate/treelayout.go` (`sc.Local`).
+
+Record A item 6 commits those steps to keep operating on their own generation's tree shape, so they
+may not become no-ops. Give `internal/migrate` its own historical view instead: a migration-local
+struct carrying `Skills`, `Agents`, `Docs`, `Targets`, `DocsDir` and the sidecar `Local` flag,
+decoded from raw YAML, mirroring how `readLegacy` already serves `treelayout.go`. Rebind each of the
+listed steps to it. The live `config.Config` keeps no field the current schema does not declare.
+
+Extend `loadForMigration` in `internal/migrate/configedit.go` to strip every key generations 38 and
+39 retire, using `config.RemoveKey` and `config.RemoveMappingKey` exactly as it already strips
+`invariants` and `currentState.maxClaimsPerTopic`. Its existing comment states the reason: an
+intervening migration parses the live tree at its historical shape and hard-fails strict decode on a
+key the current schema no longer declares. Add a test upgrading a tree from a pre-38 generation
+through to current, which is the only thing that proves this path.
+
+### Task 3.2: Remove the selection fields from the config schema
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:repo-facts-only", "house-standard-configuration-expresses-repo-facts-only:retire-selection-keys", "house-standard-configuration-expresses-repo-facts-only:fixed-targets-and-docs-root"]
 
@@ -291,21 +393,30 @@ dropping `local` from the rejected set.
 In `internal/configspec/spec.go`, delete the descriptors for all five keys and for the sidecar
 `local` field.
 
-### Task 3.2: Delete the selection machinery
+### Task 3.3: Delete the selection machinery
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:full-catalog-render", "house-standard-configuration-expresses-repo-facts-only:retire-local-artifacts"]
 
-Delete `internal/catalog/graph.go` and the `RequiresSkills`, `RequiresAgents`, `RequiresDoc` and
-`Mandatory`-as-pool-partition machinery it serves, keeping the `Mandatory` flag itself for the two
-roles Task 2.1 preserved. Delete `internal/project/local.go` and `internal/project/resolve.go`
+Delete the requirement *closure*: `internal/catalog/graph.go`'s `RequiresOf`, `Closure` and `Node`,
+and the `requiresDoc` suppression consumer Phase 2 already stopped calling. Do **not** delete the
+`RequiresSkills`, `RequiresAgents` or `RequiresDoc` catalog declarations themselves. The
+house-standard record declares `update rendering/catalog-and-targets:requires-skills-exact`, not
+`remove`, and that claim is a statement about those declarations; deleting the fields would make the
+surviving updated claim unstatable and its marker unbackable. `internal/migrate/closeenabledset.go`
+also reads `RequiresDoc`, and Task 3.1 freezes it. Keep the `Mandatory` flag for the two roles Task
+2.1 preserved. Delete `internal/project/local.go` and `internal/project/resolve.go`
 together with the exported `ResolveEnable`, `ResolveDisable` and `PlanOp` surface and the
 `PlanDocument` presentation in `internal/project/list_presentation.go` that only they feed. Delete
 `internal/initspec`'s curated `core` selection.
 
-The dead-code gate is the check that this is complete: run `./x gate` and treat any
-`deadcodecheck` finding as an unremoved consumer rather than a false positive.
+Two different checks cover two different failures, and neither proves the whole deletion. The
+compiler catches an unremoved *consumer* of deleted code. The dead-code gate catches a function the
+deletion newly *orphans*, each of which is a further deletion to make. Neither sees the non-code
+residue: configspec descriptors, claim prose, proof markers, test-only helpers and the sidecar
+`Local` readers Task 3.1 rebinds. The completeness check for those is a closed grep for each deleted
+symbol across `internal/` and `cmd/`, returning no output before the phase closes.
 
-### Task 3.3: Retire the selection commands and rehome domains
+### Task 3.4: Retire the selection commands and rehome domains
 Latitude: exact
 Applying: ["cli-grammar-expresses-creation-and-inventory:retire-selection-commands", "cli-grammar-expresses-creation-and-inventory:domain-lifecycle-under-new", "cli-grammar-expresses-creation-and-inventory:new-scaffolds-authored-artifacts", "cli-grammar-expresses-creation-and-inventory:list-is-inventory", "cli-grammar-expresses-creation-and-inventory:no-deprecation-window-for-a-retired-key"]
 
@@ -332,7 +443,7 @@ bootstrap, hooks and runner categories.
 
 `bootstrap.enabled` keeps no CLI setter. `awf init` continues to scaffold it enabled.
 
-### Task 3.4: Add schema generation 39 and its forward-port entries
+### Task 3.5: Add schema generation 39 and its forward-port entries
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:selection-key-migration", "house-standard-configuration-expresses-repo-facts-only:historical-config-forward-ported"]
 
@@ -353,11 +464,11 @@ generation's tree shape, and their `SetArrayMember` calls are what keep that edi
 
 Add the five removed top-level keys to `retiredKeyRemovals`.
 
-### Task 3.5: Apply the remaining claim operations for both records
+### Task 3.6: Apply the remaining claim operations for both records
 Kind: batch
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:retire-selection-keys", "house-standard-configuration-expresses-repo-facts-only:retire-local-artifacts", "cli-grammar-expresses-creation-and-inventory:cli-creation-and-inventory"]
-Paths: [".awf/topics/parts/config/configuration/current-state.md", ".awf/topics/parts/config/validation/current-state.md", ".awf/topics/parts/config/configspec-and-reference/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", ".awf/topics/parts/rendering/local-artifacts/current-state.md", ".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/rendering/doc-outputs/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", ".awf/topics/parts/tooling/init-and-enablement/current-state.md", ".awf/topics/metadata/rendering/local-artifacts.yaml"]
+Paths: [".awf/topics/parts/config/configuration/current-state.md", ".awf/topics/parts/config/validation/current-state.md", ".awf/topics/parts/config/configspec-and-reference/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", ".awf/topics/parts/rendering/local-artifacts/current-state.md", ".awf/topics/parts/rendering/project-output-plan/current-state.md", ".awf/topics/parts/rendering/doc-outputs/current-state.md", ".awf/topics/parts/tooling/cli/current-state.md", ".awf/topics/parts/tooling/init-and-enablement/current-state.md", ".awf/topics/metadata/rendering/local-artifacts.yaml", "internal/project/confighash.go", "internal/project/scaffold.go", "internal/config/config.go", "internal/configspec/spec.go"]
 Representative: For the remove of `config/configuration:enable-arrays`, delete its entire claim block including `Origin:` and `Backing:` lines and the blank line separating it from the next claim, leaving no residual heading.
 Edge: The `rendering/local-artifacts` topic loses all ten of its claims, so retire the topic itself: delete `.awf/topics/metadata/rendering/local-artifacts.yaml` and the `.awf/topics/parts/rendering/local-artifacts/` directory. Confirm the paths it selected remain covered by a surviving rendering topic before deleting, and record the covering topic in Notes.
 Post-check: `./x render && ./x check` reports zero errors, `grep -rn "local: true\|enable array\|docsDir\|targets array" .awf/topics/parts/` returns no output, and `ls docs/topics/rendering/local-artifacts.md` reports no such file.
@@ -367,7 +478,26 @@ everything outside Task 2.3's batch; for the CLI record it is its whole set, inc
 `tooling/init-and-enablement:init-bootstrap-default-on` add that pins init's scaffolded default now
 that no command writes the key.
 
-### Task 3.6: Apply the final batches and update this repository's config
+### Task 3.7: Test the retirement and the migration
+Latitude: exact
+Applying: ["house-standard-configuration-expresses-repo-facts-only:retire-selection-keys", "house-standard-configuration-expresses-repo-facts-only:selection-key-migration", "house-standard-configuration-expresses-repo-facts-only:historical-config-forward-ported", "cli-grammar-expresses-creation-and-inventory:domain-lifecycle-under-new"]
+
+Land the proof for every claim this phase adds, alongside its marker.
+
+Assert that a tree carrying `skills`, `agents`, `docs`, `targets`, `docsDir` or a sidecar `local` is
+refused by strict parsing rather than honoured, and that a root-level `data` or `sections` key is
+still refused while `local` is no longer part of that rejected set. Assert generation 39 removes
+each key it declares, that the sidecar step refuses with an actionable repair when a `local: true`
+sidecar would otherwise be overwritten, and that a config carrying every retired key still parses
+through `ConfigForCurrentSchema`. Assert the pre-38-to-current upgrade path from Task 3.1 still
+passes with the selection keys present.
+
+For the CLI, assert `awf new domain` refuses a name the loader would reject before writing anything,
+that it does not clobber an existing convention part, that `awf remove domain` prunes the rendered
+output and reports a surviving part as orphaned rather than deleting it, and that `awf init`
+scaffolds `bootstrap.enabled` true, which is what backs `init-bootstrap-default-on`.
+
+### Task 3.8: Apply the final batches and update this repository's config
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:selection-key-migration", "cli-grammar-expresses-creation-and-inventory:cli-creation-and-inventory"]
 
@@ -376,8 +506,9 @@ operations Task 3.5 applied for it. Append to the CLI record an `Implementing` s
 its content digest followed by one `Applied` event naming its full operation set. Neither record
 gets `Implemented` here.
 
-Remove `skills`, `agents`, `docs`, `targets` and `docsDir` from this repository's `.awf/config.yaml`,
-leaving `prefix`, `integrationBranch`, `bootstrap`, `vars`, `domains`, `tags`, `audit.allowedScopes`,
+Remove `skills`, `agents`, `docs` and `targets` from this repository's `.awf/config.yaml`. `docsDir`
+is already absent here, running at its `docs` default, so there is nothing to remove; the generation
+39 step still removes it from an adopter tree that sets it. Leave `prefix`, `integrationBranch`, `bootstrap`, `vars`, `domains`, `tags`, `audit.allowedScopes`,
 `contextIgnore`, `currentState.sources`, `currentState.testGlobs`, `commitPolicy` and both exemption
 lists.
 
@@ -399,7 +530,7 @@ feat(config): retire artifact selection and its command surface
 
 **Execution mode: inline.**
 
-Completes: ["docs-current", "records-applied"]
+Completes: ["docs-current"]
 
 ### Task 4.1: Rewrite the topic narratives the retirements invalidate
 Latitude: exact
@@ -419,23 +550,31 @@ prose that describes retired subjects.
 Kind: batch
 Latitude: exact
 Applying: ["house-standard-configuration-expresses-repo-facts-only:full-catalog-render"]
-Paths: ["glob:.awf/topics/parts/**/current-state.md", "glob:.awf/skills/parts/**/*.md", "glob:.awf/docs/parts/**/*.md", "glob:.awf/parts/**/*.md"]
-Representative: In `rendering/render-engine:sidecar-optional`, replace "an enabled target" with "a target", leaving the rest of the claim byte-identical. The claim stays true either way; this removes a condition that no longer exists.
-Edge: In `rendering/workflow-skill-templates:effort-workflow`, "the selectable cross-target lifecycle owner" loses its selectability, not just a qualifier: rewrite as "the cross-target lifecycle owner" rather than substituting a synonym for "selectable".
-Post-check: `grep -rn "enabled target\|enabled skill\|selectable\|enabled set" .awf/topics/parts/ .awf/skills/parts/ .awf/docs/parts/ .awf/parts/` returns no output, and `./x render && ./x check` reports zero errors.
+Paths: ["glob:.awf/skills/parts/**/*.md", "glob:.awf/docs/parts/**/*.md", "glob:.awf/parts/**/*.md", "glob:templates/**/*.tmpl"]
+Representative: In a convention part that says "any enabled skill may be used when its purpose fits", replace "any enabled skill" with "any skill", leaving the rest of the sentence byte-identical. The statement stays true either way; this removes a condition that no longer exists.
+Edge: Where a template says "the selectable cross-target lifecycle owner", selectability is gone rather than merely unqualified: rewrite as "the cross-target lifecycle owner" rather than substituting a synonym for "selectable".
+Post-check: `grep -rn "enabled target\|enabled skill\|enabled set\|selectable" .awf/skills/parts/ .awf/docs/parts/ .awf/parts/ templates/` returns no output, and `./x render && ./x check` reports zero errors.
 
-These claims stay substantively true because every target and every skill is now always present, so
-this is wording, not a claim operation. Do not add State-changes operations for them; the
-house-standard record records this sweep as deliberately deferred.
+This task sweeps authored prose only: convention parts, skill and doc parts, and shipped templates.
+It must not touch a claim body under `.awf/topics/parts/**/current-state.md`. The current-state
+transition check refuses a claim edit that no ADR operation declares, comparing whitespace-trimmed
+prose, so a wording-only claim edit is a hard failure by design rather than an oversight. Residual
+"enabled target" phrasing inside claim bodies stays as it is; those claims remain substantively true
+because every target and skill is now always present, and correcting their wording is owed to a
+successor record carrying `update` operations for them. Record that debt in Notes.
 
 ### Task 4.3: Update the guide and adopter documentation
 Latitude: exact
 Applying: ["cli-grammar-expresses-creation-and-inventory:cli-creation-and-inventory"]
 
-Update the working-with-awf doc's command reference and override guidance to drop `awf enable`,
-`awf disable` and the target commands, and to document `awf new domain` and `awf remove domain`.
-Update the agent guide's Commands section through `.awf/agents-doc.yaml` if it names a retired
-command. Update the glossary for any term that names a retired mechanism, and add or amend a
+Update the authored sources behind the generated adopter docs, not the rendered outputs. The
+command reference and override guidance live in `.awf/parts/working-with-awf/commands.md`,
+`.awf/parts/working-with-awf/config-and-overrides.md` and
+`.awf/parts/working-with-awf/overview.md`; the shipped templates carrying retired-command or
+enablement wording are `templates/docs/working-with-awf.md.tmpl`, `templates/docs/workflow.md.tmpl`
+and `templates/skills/orienting/SKILL.md.tmpl`. Drop `awf enable`, `awf disable` and the target
+commands, and document `awf new domain` and `awf remove domain`. Update the agent guide's Commands
+section through `.awf/agents-doc.yaml` if it names a retired command. Update the glossary for any term that names a retired mechanism, and add or amend a
 pitfalls entry only if the retirements create a trap worth recording.
 
 Perform a focused reading of every regenerated adopter-facing doc for contradictory fragments: a
@@ -479,6 +618,11 @@ Record deviations, spike answers, follow-ups, and findings surfaced during imple
 - The bootstrap record is Abandoned, not implemented. `bootstrap.enabled`, `.awf/bootstrap.sh`,
   `.awf/upgrade.sh` and every bootstrap claim are untouched by this plan. A task that appears to
   require removing one is a misreading.
+- Owed to a successor record: the residual "enabled target" and "selectable" wording inside claim
+  bodies under `.awf/topics/parts/**/current-state.md`. Those claims stay substantively true, but
+  the transition check refuses a claim edit no ADR operation declares, so correcting the wording
+  needs a record carrying `update` operations for them. Task 4.2 deliberately stops at authored
+  prose.
 - Phase 2 leaves an intentionally odd intermediate: the enable arrays are parsed and editable but no
   longer affect the render set. That is the price of a green checkpoint before Phase 3's demolition,
   and it lasts one phase.
