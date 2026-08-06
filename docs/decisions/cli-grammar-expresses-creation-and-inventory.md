@@ -18,11 +18,12 @@ a requirement closure and pairs a reviewing skill with its agent (ADR-0050, gene
 ADR-0081), and disabling refuses while dependents remain (ADR-0081). `awf new skill`,
 `awf new agent` and `awf new doc` scaffold project-local artifacts (ADR-0068, ADR-0091).
 
-The three companion records retire everything those commands select over. The house-standard record
-retires the `skills`, `agents`, `docs` and `targets` arrays and the sidecar `local` field; the
-bootstrap record retires the `bootstrap` block; the gates record retires `hooks` and `runner`.
-That leaves `awf enable` and `awf disable` with one of their eight kinds, the target commands with
-no array, and the three local `new` kinds with no channel to scaffold into. Config parsing is
+The two companion records retire almost everything those commands select over. The house-standard
+record retires the `skills`, `agents`, `docs` and `targets` arrays and the sidecar `local` field;
+the gates record retires `hooks` and `runner`. Only `bootstrap.enabled` survives as a key, because
+it varies durably across served repositories. That leaves `awf enable` and `awf disable` with two
+of their eight kinds, the target commands with no array, and the three local `new` kinds with no
+channel to scaffold into. Config parsing is
 strict, so these are not merely obsolete: each writes a key or a field that the next load rejects.
 
 The surviving kind exposes a naming error the selection framing concealed. Domains are not selected
@@ -46,12 +47,14 @@ reading what exists.
    command that edits configuration edits a repository fact.
 
 2. `decision: retire-selection-commands` `awf enable` and `awf disable` are retired in full rather
-   than narrowed to their one surviving kind. That covers all eight kinds: the three catalog-backed
+   than narrowed to their surviving kinds. That covers all eight kinds: the three catalog-backed
    arms, the target arm, the three nameless singleton arms for bootstrap, hooks and runner, and the
    domain arm, whose creation and removal item 3 relocates to `awf new` and `awf remove`. It takes
    with them the enablement requirement closure and its provenance plan, the reviewing-skill agent
    pairing, and the dependent-refusal guard. This record retires the command surface; the companion
-   records retire the keys those arms wrote.
+   records retire the keys most of those arms wrote. `bootstrap.enabled` outlives its arm and
+   becomes a hand-edited setup fact, joining `prefix` and `integrationBranch`, neither of which has
+   a CLI setter either; `awf init` continues to scaffold it.
 
 3. `decision: domain-lifecycle-under-new` A domain is created with `awf new domain <name>` and
    removed with `awf remove domain <name>`, which introduces `awf remove` as a new top-level verb
@@ -73,7 +76,10 @@ reading what exists.
    is present unconditionally and none is locally owned; a catalog entry is distinguished only by
    whether a sidecar tunes it, and a domain continues to list as configured. The target listing
    survives as a fixed inventory of `claude` and `pi` carrying no state token, and the bare listing
-   drops the bootstrap, hooks and runner categories along with the keys behind them.
+   drops the hooks and runner categories along with the keys behind them. It drops the bootstrap
+   category too, even though that key survives: a boolean setup fact is read from configuration,
+   not listed as inventory, which is how `prefix`, `integrationBranch` and the documentation root
+   are already treated.
 
 6. `decision: no-deprecation-window-for-a-retired-key` awf ships no deprecation window for a
    retired configuration key. Because parsing is strict, a command that writes a key the loader no

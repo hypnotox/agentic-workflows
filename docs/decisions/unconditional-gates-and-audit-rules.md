@@ -91,11 +91,12 @@ construction, and ADR-0051 already established it as the single home for that vo
    its own, because today it is pinned only through the configspec table, which the key's removal
    takes with it.
 
-6. `decision: no-conditional-render-units` The conditional config-tree render unit is retired as a
-   concept. With artifact selection retired by the house-standard record, bootstrap retired by the
-   companion record, and hooks and the runner unconditional here, no render unit derives an
-   enablement, so the descriptor has no members. The claim that governed it is removed rather than
-   rewritten, and the output plan's conditional-unit clause goes with it.
+6. `decision: conditional-units-narrow-to-bootstrap` The conditional config-tree render unit
+   survives, narrowed to one subject. Hooks and the runner leave the descriptor when items 1 and 2
+   make them unconditional, and artifact selection leaves it with the house-standard record; the
+   bootstrap pair remains, because `bootstrap.enabled` is a live repository fact rather than a
+   behaviour preference. The descriptor therefore keeps exactly one conditional subject, and the
+   claim governing it is rewritten rather than retired.
 
 7. `decision: toggle-key-migration` A schema generation removes `hooks`, `runner`, the
    `proseGate.enabled` and `memoryCite.enabled` keys, the five advisory booleans, the commit-type
@@ -126,7 +127,7 @@ construction, and ADR-0051 already established it as the single home for that vo
 - add `invariants/topics-and-markers:fan-out-budget-fixed`
 - add `rendering/companion-scripts:runner-wrapper-rendered`
 - remove `rendering/companion-scripts:runner-singleton-toggle`
-- remove `rendering/project-output-plan:conditional-unit-single-source`
+- update `rendering/project-output-plan:conditional-unit-single-source`
 - remove `tooling/cli:check-disabled-child-disclosure`
 - remove `tooling/init-and-enablement:init-hooks-default-on`
 - update `rendering/singletons-and-payloads:hook-payloads-rendered`
@@ -213,7 +214,7 @@ flags the drift; the implementing plan rewrites both alongside the claim operati
 | Keep `audit.allowedTypes` as a repository fact alongside `allowedScopes` | Scopes are a repository's own vocabulary; the Conventional Commits type set is the specification's, and this repository runs it unmodified. |
 | Keep `audit.dependencyManifests` configurable for non-Go repositories | The default glob set is already language-agnostic and broad; a repository whose manifests it misses is better served by widening the built-in set for everyone. |
 | Keep `currentState.maxTopicsPerPath` as a repository fact | A fan-out budget is a tuning number, not a description of the repository; it has never been varied and its finding is a warning. |
-| Rewrite the conditional-render descriptor rather than retiring it | It would have zero members after this record and its companions, and a descriptor with no members is machinery that only looks load-bearing. |
+| Retire the conditional-render descriptor rather than narrowing it | It would be correct only if bootstrap retired too; with `bootstrap.enabled` surviving as a repository fact the descriptor keeps a real member, and removing it would force the bootstrap pair into a bespoke conditional path outside the single source. |
 | Have the migration refuse when the tree would fail the newly unconditional scanners | The migration edits configuration and cannot run a repository-wide content scan safely; the gate reports the violations precisely, which is the right tool. |
 | Retire the exemption lists along with the enablement knobs | An exemption records a place where prose is genuinely about the character it contains; it is a repository fact, and removing it would make a true statement unwritable. |
 

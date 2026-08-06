@@ -21,9 +21,12 @@ declined or empty value is itself a statement about the repository.
 The remaining twenty or so express a preference about awf's own behaviour. This record takes the
 artifact-selection subset: which catalog skills, agents and docs render, which adapter runtimes are
 targeted, where documentation lives, and whether an artifact is hand-maintained instead of
-rendered. The rest of the category, the bootstrap installer and the gate and audit toggles, is
-retired by the companion records, which closes the census. Measured against this checkout, the
-selection surface expresses almost nothing. Of twenty-one catalog skills, twenty are enabled; of six agents, six; of eight toggleable
+rendered. Most of the remainder, the gate and audit toggles, is retired by a companion record. One
+member survives the test rather than failing it: `bootstrap.enabled` varies durably across the
+repositories served, because awf builds itself from source and never wants a pinned installer while
+every other repository always does and pins its own version. That is a fact about how a repository
+obtains awf, not a preference about awf's behaviour, so it stays. Measured against this checkout,
+the selection surface expresses almost nothing. Of twenty-one catalog skills, twenty are enabled; of six agents, six; of eight toggleable
 docs, seven. The enable arrays distinguish two artifacts in total.
 
 The machinery bought with those two bits is substantial and interlocking: requirement closure over
@@ -50,8 +53,8 @@ exists only for a functional value and that a knob whose only effect is prose wo
 one, on the finding that "the knob has never expressed anything". ADR-0183 reached it for finding
 severity, on the finding that a configurable rank "preserves a config surface with no demonstrated
 use". Neither generalized. This record generalizes the rule to the whole tree and applies it to
-artifact selection; three companion records apply it to the bootstrap installer, to the gate and
-audit toggles, and to the CLI grammar.
+artifact selection; two companion records apply it to the gate and audit toggles and to the CLI
+grammar.
 
 The shaping surface is deliberately untouched. Convention parts (272 of them here), `sidecar.data`,
 `sidecar.dataDefaults` and `sidecar.sections.<name>.drop` carry per-repository content, and content
