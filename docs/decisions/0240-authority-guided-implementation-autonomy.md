@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: authority-guided-implementation-autonomy
-status: Implementing
+status: Implemented
 date: 2026-08-06
 ---
 # ADR-0240: Authority-Guided Implementation Autonomy
@@ -129,3 +129,4 @@ non-negotiable. The decision changes when user input is needed, not what correct
 - 2026-08-06: Proposed
 - 2026-08-06: Implementing; content-sha256: 40b70f22f3320042b14376008b610c204290f3cc4aabd499ad3faeda57b5b610
 - 2026-08-06: Applied; operations: add `rendering/workflow-skill-templates:authority-guided-implementation-autonomy`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:maintainable-code-subagent-contract`, update `rendering/workflow-skill-templates:implementer-role-contract`
+- 2026-08-06: Implemented; content-sha256: 40b70f22f3320042b14376008b610c204290f3cc4aabd499ad3faeda57b5b610
