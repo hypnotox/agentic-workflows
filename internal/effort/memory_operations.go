@@ -639,7 +639,9 @@ func boundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
 		}
 	}
 	text, ok := renderSelectedDisplayRows(normalized, selected, width)
-	if !ok || text == "" { // coverage-ignore: one elided changed-row prefix and omission rows fit far below the fixed 50-KiB bound
+	// Every selection above is reverted unless it already rendered within the bound, so the final
+	// set is one that fit when it was last extended.
+	if !ok || text == "" { // coverage-ignore: the selection is validated as it grows, and one elided changed-row prefix plus omission rows fit far below the fixed 50-KiB bound
 		return omissionDisplayRow(width) + "\n", true
 	}
 	return text, true
