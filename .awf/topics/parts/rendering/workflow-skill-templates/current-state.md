@@ -127,7 +127,7 @@ Backing: test
 
 Every final governed subagent dispatch retains its operative smallest-reliable-tier and escalation rule: Pi omits the model field for configured role routing and overrides deliberately with an exact tier reference; other targets select a target-native model where supported and otherwise visibly use the harness default. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables. The full semantic small, standard, and large tier definition occurs exactly once in docs/working-with-awf.md, while AGENTS.md does not duplicate it.
 Origin: ADR-0173
-Revised-by: ADR-0190, ADR-bound-agent-guides-as-native-skill-routers
+Revised-by: ADR-0190, ADR-0241
 Backing: test
 
 ### `invariant: implementer-role-contract`

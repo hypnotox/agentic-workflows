@@ -4,7 +4,7 @@ slug: bound-agent-guides-as-native-skill-routers
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-bound-agent-guides-as-native-skill-routers: Bound agent guides as native-skill routers
+# ADR-0241: Bound agent guides as native-skill routers
 
 
 ## Context

@@ -74,20 +74,20 @@ Backing: test
 
 The rendered guide routes agents to enabled native skills whose exposed descriptions fit the work, without duplicating enabled standard or local skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167, ADR-bound-agent-guides-as-native-skill-routers
+Revised-by: ADR-0167, ADR-0241
 Backing: test
 
 ### `invariant: working-memory-single-home`
 
 Working-memory protocol has one canonical workflow-document home. Native skills own operative effort creation and checkpoint behavior. The guide carries only minimum pre-selection routing for a minimal simple fix and non-minimal effort creation or resumption, plus the one-user-managed-writer boundary; it does not duplicate protocol, lifecycle, or memory-path procedure. Resume verification is procedurally homed in the orienting skill.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-bound-agent-guides-as-native-skill-routers
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241
 Backing: test
 
 ### `invariant: agent-guide-size-budgets`
 
 The direct default `AGENTS.md` render is at most 8 KiB and this repository's self-hosted `AGENTS.md` is at most 10 KiB. These fixed regression bounds diagnose failures with observed and allowed bytes plus test-only largest-section contributions; production rendering has no section attribution.
-Origin: ADR-bound-agent-guides-as-native-skill-routers
+Origin: ADR-0241
 Backing: test
 
 ### `invariant: maintainable-code-design-guide`
