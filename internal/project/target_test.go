@@ -1,6 +1,7 @@
 package project
 
 import (
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // TestClaudeTargetPaths unit-checks the claude adapter's path formulas. ADR-0016's
@@ -233,21 +235,90 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 			t.Errorf("rendered using-effort guidance missing %q", want)
 		}
 	}
+	// The preview and retained-diff surface must be identical in the embedded
+	// template and in what the Pi target actually writes, so a drifting or
+	// partially rendered extension cannot claim the invariant (ADR-0239 as
+	// revised by ADR-render-effort-memory-edits-like-pi).
+	for _, want := range []string{
+		`import { renderDiff } from "@earendil-works/pi-coding-agent";`,
+		`import { Box, Container, Spacer, Text } from "@earendil-works/pi-tui";`,
+		`renderShell: "self"`,
+		"const registerMutation = (spec: MutationSpec)",
+		"const previewCall = (toolCallId: string, key: string, invoke: (snapshot: Snapshot) => Promise<MemoryReply>)",
+		`if (preview.condition !== "previewed") throw new Error(renderMemoryOutcome(preview.outcome!));`,
+		`await previewCall(toolCallId, spec.key(args) ?? "", (snapshot) => spec.invoke(snapshot, ctx.cwd, args, true, signal)); return await memoryCall(ctx, signal, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, false, signal), true);`,
+		"if (row.key === key) { showMutationDiff(row, preview.diff!, \"previewed\")",
+		"if (row.key === key) { showMutationFailure(row, error.message, theme)",
+		`if (reply && reply.diff) showMutationDiff(row, reply.diff, "succeeded"); else showMutationFailure(row, mutationResultText(result), theme);`,
+		`const MUTATION_TRUNCATION_NOTICE = "Diff truncated for display.";`,
+		`theme.fg("warning", MUTATION_TRUNCATION_NOTICE)`,
+		"row.body = diff.text === \"\" ? undefined : renderDiff(diff.text)",
+		"`Replaced ${reply.replacementCount} block(s) in effort memory.`",
+		`reply.condition === "updated" ? "Memory metadata updated."`,
+		"memoryEdit(memoryExecutor, cwd, snapshot.slug, snapshot.owner, args.edits, signal, { preview })",
+		"memoryUpdate(memoryExecutor, cwd, snapshot.slug, snapshot.owner, args, signal, { preview })",
+	} {
+		for source, label := range map[string]string{index: "rendered effort index", templateSource(t, "pi/awf-effort/index.ts.tmpl"): "effort index template"} {
+			if !strings.Contains(source, want) {
+				t.Errorf("%s missing mutation-rendering contract %q", label, want)
+			}
+		}
+	}
+	for _, want := range []string{
+		`"previewed"`,
+		`const previewing = operation === "edit-preview" || operation === "update-preview";`,
+		`if (condition === "previewed") { if (!previewing) return; const editPreview = operation === "edit-preview";`,
+		`exact(reply, ["schemaVersion", "condition", ...(editPreview ? ["replacementCount"] : []), "diff"])`,
+		`(editPreview && !integer(reply.replacementCount, 1, 128))`,
+		`if (previewing && (condition === "read" || condition === "edited" || condition === "updated")) return;`,
+		"function previewing(options: MemoryPreviewOption): boolean",
+		`invokeMemory(exec, preview ? "edit-preview" : "edit", ["effort", "memory", "edit", slugValue, ...(preview ? ["--preview"] : []), "--owner", owner, "--json"]`,
+		`...(args.next === undefined ? [] : ["--next", args.next]), ...(preview ? ["--preview"] : []), "--owner", owner, "--json"`,
+		`invokeMemory(exec, preview ? "update-preview" : "update"`,
+	} {
+		for source, label := range map[string]string{client: "rendered effort client", templateSource(t, "pi/awf-effort/client.ts.tmpl"): "effort client template"} {
+			if !strings.Contains(source, want) {
+				t.Errorf("%s missing preview-protocol contract %q", label, want)
+			}
+		}
+	}
 	for _, config := range []string{
 		"prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n",
 		"prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n",
 	} {
+		claudeOnly := strings.Contains(config, "targets: [claude]")
 		for path, content := range explorationRenderedByPath(t, config) {
 			if strings.Contains(path, "awf-effort") || strings.Contains(path, "using-effort") || strings.Contains(content, "effort_memory_") {
 				t.Errorf("unselected or non-Pi rendering leaked memory tools into %s", path)
+			}
+			for _, leak := range []string{`"previewed"`, "--preview", "renderDiff"} {
+				if strings.Contains(content, leak) {
+					t.Errorf("unselected or non-Pi rendering leaked preview protocol %q into %s", leak, path)
+				}
+			}
+			if claudeOnly && strings.Contains(content, "@earendil-works/pi-tui") {
+				t.Errorf("non-Pi rendering leaked Pi TUI rendering into %s", path)
 			}
 		}
 	}
 	fallback := renderSkillGolden(t, "using-effort", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
 	assertNoLeaks(t, fallback)
+	for _, tid := range []string{"pi/awf-effort/index.ts.tmpl", "pi/awf-effort/client.ts.tmpl"} {
+		empty := renderGolden(t, tid, map[string]any{"prefix": "", "vars": map[string]any{}, "data": map[string]any{}})
+		assertNoLeaks(t, empty)
+	}
 	if os.Getenv("AWF_PI_RUNTIME_SMOKE") == "1" {
 		assertPiRuntimeSmoke(t)
 	}
+}
+
+func templateSource(t *testing.T, tid string) string {
+	t.Helper()
+	src, err := fs.ReadFile(templates.FS, tid)
+	if err != nil {
+		t.Fatalf("read template %s: %v", tid, err)
+	}
+	return string(src)
 }
 
 func TestPiMinimumRuntime(t *testing.T) {
