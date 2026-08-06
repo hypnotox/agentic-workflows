@@ -1369,6 +1369,52 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 	if liveCalls != 1 {
 		t.Fatalf("live calls = %d, want 1", liveCalls)
 	}
+
+	cachedBoom := errors.New("cached load failure")
+	errorLoads := 0
+	errorCommit := replayCommit{Hash: "cached-error", Revision: "cached-error", Subject: "feat(awf): cached error"}
+	newErrorOperation := func() *historyOperation {
+		return newHistoryOperationFromCompact([]replayCommit{errorCommit}, nil, 1, func(context.Context, string) (*revisionState, error) {
+			errorLoads++
+			return nil, cachedBoom
+		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	}
+	errorOp := newErrorOperation()
+	graph, err := newReplayGraph(errorOp.commits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := errorOp.planRevisionOwnership(ctx, graph.schedule); err != nil {
+		t.Fatal(err)
+	}
+	errorOp.reserveConsumers(graph.schedule)
+	for attempt := range 2 {
+		if _, err := errorOp.state(ctx, errorCommit.Revision); !errors.Is(err, cachedBoom) {
+			t.Fatalf("cached error attempt %d identity = %v, want exact %v", attempt+1, err, cachedBoom)
+		}
+	}
+	errorFindings, err := errorOp.replayTransition(ctx, errorCommit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantErrorFindings := []Finding{{
+		Severity: severity.Warn,
+		Rule:     currentStateTransitionRule,
+		Commit:   errorCommit.Hash,
+		Subject:  errorCommit.Subject,
+		Detail:   "could not load the current-state universes for this commit: " + cachedBoom.Error(),
+	}}
+	if !slices.Equal(errorFindings, wantErrorFindings) || errorLoads != 1 || len(errorOp.store.keys) != 0 || len(errorOp.store.entries) != 0 {
+		t.Fatalf("cached error outcome findings=%#v loads=%d keys=%d entries=%d", errorFindings, errorLoads, len(errorOp.store.keys), len(errorOp.store.entries))
+	}
+	freshOp := newErrorOperation()
+	freshFindings, err := freshOp.run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(freshFindings, wantErrorFindings) || errorLoads != 2 || len(freshOp.store.keys) != 0 || len(freshOp.store.entries) != 0 || &freshOp.store == &errorOp.store {
+		t.Fatalf("separate invocation reused cached operation state: findings=%#v loads=%d", freshFindings, errorLoads)
+	}
 }
 
 func TestHistoryOperationErrorPaths(t *testing.T) {
