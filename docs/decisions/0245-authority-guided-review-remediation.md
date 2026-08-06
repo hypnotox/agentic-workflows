@@ -4,7 +4,7 @@ slug: authority-guided-review-remediation
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-authority-guided-review-remediation: Authority-Guided Review Remediation
+# ADR-0245: Authority-Guided Review Remediation
 
 
 ## Context
