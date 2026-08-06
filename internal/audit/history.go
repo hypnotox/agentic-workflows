@@ -134,8 +134,6 @@ type historyOperation struct {
 	firstParentPaths firstParentPaths
 	live             liveEvaluator
 	store            revisionStore
-	universeUses     map[string]int
-	sourceUses       map[string]int
 }
 
 type revisionResult struct {
@@ -143,36 +141,110 @@ type revisionResult struct {
 	err   error
 }
 
-// revisionStore separates revision keys from the canonical immutable state they
-// resolve to. Its counters are logical ownership instrumentation, not heap
-// measurements: they make the heavy frontier deterministic in tests.
+type revisionEntry struct {
+	result       revisionResult
+	keys         int
+	lightUses    int
+	sourceUses   int
+	universeUses int
+	heavyLive    bool
+}
+
+type revisionKey struct {
+	entry        *revisionEntry
+	lightUses    int
+	sourceUses   int
+	universeUses int
+}
+
+// revisionStore separates revision keys from canonical entries resolved before
+// replay. Counters model logical ownership rather than garbage-collector timing.
 type revisionStore struct {
-	keys           map[string]revisionResult
+	keys           map[string]*revisionKey
+	entries        map[*revisionEntry]bool
 	currentHeavy   int
 	highWaterHeavy int
 }
 
-func newRevisionStore() revisionStore { return revisionStore{keys: map[string]revisionResult{}} }
+func newRevisionStore() revisionStore {
+	return revisionStore{
+		keys:    map[string]*revisionKey{},
+		entries: map[*revisionEntry]bool{},
+	}
+}
 
-func (s *revisionStore) retainHeavy(state *revisionState) {
-	if state.heavyLive {
+func (s *revisionStore) addDistinct(revision string, result revisionResult) *revisionEntry {
+	entry := &revisionEntry{result: result}
+	s.entries[entry] = true
+	s.addKey(revision, entry)
+	return entry
+}
+
+func (s *revisionStore) addKey(revision string, entry *revisionEntry) {
+	s.keys[revision] = &revisionKey{entry: entry}
+	entry.keys++
+}
+
+func (s *revisionStore) retainHeavy(entry *revisionEntry) {
+	if entry.heavyLive {
 		return
 	}
-	state.heavyLive = true
+	entry.heavyLive = true
 	s.currentHeavy++
 	if s.currentHeavy > s.highWaterHeavy {
 		s.highWaterHeavy = s.currentHeavy
 	}
 }
 
-func (s *revisionStore) releaseHeavy(state *revisionState) {
-	if !state.heavyLive {
+func (s *revisionStore) releaseHeavy(entry *revisionEntry) {
+	if !entry.heavyLive {
 		return
 	}
-	state.heavyLive = false
+	entry.heavyLive = false
 	s.currentHeavy--
-	state.universe = currentstate.Universe{}
-	state.universeErr = nil
+	if state := entry.result.state; state != nil {
+		state.heavyLive = false
+		state.heavyMaterialized = false
+		state.universeReady = false
+		state.universe = currentstate.Universe{}
+		state.universeErr = nil
+		state.loadUniverse = nil
+	}
+}
+
+func (s *revisionStore) releaseEntry(entry *revisionEntry) {
+	s.releaseHeavy(entry)
+	state := entry.result.state
+	if state != nil {
+		state.loadLock = nil
+		state.loadConfig = nil
+		state.loadUniverse = nil
+		state.lockReady = false
+		state.lock = nil
+		state.lockFound = false
+		state.lockErr = nil
+		state.configReady = false
+		state.config = nil
+		state.configErr = nil
+		state.universeReady = false
+		state.universe = currentstate.Universe{}
+		state.universeErr = nil
+	}
+	entry.result = revisionResult{}
+	delete(s.entries, entry)
+}
+
+func (s *revisionStore) releaseAll() {
+	for revision := range s.keys {
+		delete(s.keys, revision)
+	}
+	for entry := range s.entries {
+		entry.keys = 0
+		entry.lightUses = 0
+		entry.sourceUses = 0
+		entry.universeUses = 0
+		s.releaseEntry(entry)
+	}
 }
 
 // revisionState is one lazily parsed committed revision. The committed snapshot
@@ -222,8 +294,6 @@ func newHistoryOperationFromCompact(commits []replayCommit, ordinary []Finding, 
 		firstParentPaths: paths,
 		live:             live,
 		store:            newRevisionStore(),
-		universeUses:     map[string]int{},
-		sourceUses:       map[string]int{},
 	}
 }
 
@@ -252,6 +322,10 @@ func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
 	graph, err := newReplayGraph(h.commits)
 	if err != nil {
 		return nil, fmt.Errorf("build historical replay graph: %w", err)
+	}
+	defer h.store.releaseAll()
+	if err := h.planRevisionOwnership(ctx, graph.schedule); err != nil {
+		return nil, err
 	}
 	h.reserveConsumers(graph.schedule)
 	var stale, transitions []scheduledFindings
@@ -291,39 +365,87 @@ func (h *historyOperation) run(ctx context.Context) ([]Finding, error) {
 }
 
 func (h *historyOperation) state(ctx context.Context, revision string) (*revisionState, error) {
-	if cached, ok := h.store.keys[revision]; ok {
-		return cached.state, cached.err
+	if key, ok := h.store.keys[revision]; ok {
+		return key.entry.result.state, key.entry.result.err
 	}
+	entry := h.loadDistinctRevision(ctx, revision)
+	return entry.result.state, entry.result.err
+}
+
+func (h *historyOperation) loadDistinctRevision(ctx context.Context, revision string) *revisionEntry {
 	state, err := h.loadRevision(ctx, revision)
 	if err == nil && state == nil {
 		err = errors.New("revision loader returned no state")
 	}
-	h.store.keys[revision] = revisionResult{state: state, err: err}
-	return state, err
+	return h.store.addDistinct(revision, revisionResult{state: state, err: err})
 }
 
-// stateForCommit reuses the first-parent state only after committed path
-// evidence proves this revision cannot affect the reduced policy authority.
-func (h *historyOperation) stateForCommit(ctx context.Context, commit replayCommit) (*revisionState, error) {
-	if cached, ok := h.store.keys[commit.Revision]; ok {
-		return cached.state, cached.err
+func (h *historyOperation) planRevisionOwnership(ctx context.Context, schedule []replayCommit) error {
+	byRevision := make(map[string]replayCommit, len(schedule))
+	for _, commit := range schedule {
+		byRevision[commit.Revision] = commit
 	}
+	resolving := map[string]bool{}
+	for _, commit := range schedule {
+		entry, err := h.resolveRevision(ctx, commit.Revision, byRevision, resolving)
+		if err != nil {
+			return err
+		}
+		if contextTermination(entry.result.err) {
+			return fmt.Errorf("resolve revision %s: %w", commit.Hash, entry.result.err)
+		}
+		for _, parent := range commit.Parents {
+			entry, err := h.resolveRevision(ctx, parent, byRevision, resolving)
+			if err != nil { // coverage-ignore: validated replay graphs cannot cycle during parent resolution
+				return err
+			}
+			if contextTermination(entry.result.err) {
+				return fmt.Errorf("resolve parent of %s: %w", commit.Hash, entry.result.err)
+			}
+		}
+	}
+	return nil
+}
+
+func (h *historyOperation) resolveRevision(ctx context.Context, revision string, byRevision map[string]replayCommit, resolving map[string]bool) (*revisionEntry, error) {
+	if key, ok := h.store.keys[revision]; ok {
+		return key.entry, nil
+	}
+	commit, selected := byRevision[revision]
+	if !selected {
+		return h.loadDistinctRevision(ctx, revision), nil
+	}
+	if resolving[revision] { // coverage-ignore: newReplayGraph rejects selected cycles before ownership planning
+		return nil, fmt.Errorf("cycle while resolving replay revision %s", revision)
+	}
+	resolving[revision] = true
+	defer delete(resolving, revision)
+	return h.resolveCommit(ctx, commit, byRevision, resolving)
+}
+
+// resolveCommit reuses the recursively resolved first-parent entry only after
+// committed light controls and changed paths prove irrelevance.
+func (h *historyOperation) resolveCommit(ctx context.Context, commit replayCommit, byRevision map[string]replayCommit, resolving map[string]bool) (*revisionEntry, error) {
 	if len(commit.Parents) == 0 || h.firstParentPaths == nil {
-		return h.state(ctx, commit.Revision)
+		return h.loadDistinctRevision(ctx, commit.Revision), nil
 	}
-	parent, parentErr := h.state(ctx, commit.Parents[0])
-	if parentErr != nil {
+	parentEntry, err := h.resolveRevision(ctx, commit.Parents[0], byRevision, resolving)
+	if err != nil { // coverage-ignore: validated replay graphs cannot cycle during first-parent resolution
+		return nil, err
+	}
+	parent, parentErr := parentEntry.result.state, parentEntry.result.err
+	if parentErr != nil || parent == nil {
 		if contextTermination(parentErr) {
 			return nil, fmt.Errorf("derive first-parent state for %s: %w", commit.Hash, parentErr)
 		}
-		return h.state(ctx, commit.Revision)
+		return h.loadDistinctRevision(ctx, commit.Revision), nil
 	}
 	docsDir, err := parent.committedDocsDir()
 	if err != nil {
 		if contextTermination(err) {
 			return nil, fmt.Errorf("derive first-parent configuration for %s: %w", commit.Hash, err)
 		}
-		return h.state(ctx, commit.Revision)
+		return h.loadDistinctRevision(ctx, commit.Revision), nil
 	}
 	var paths []string
 	if commit.IsMerge {
@@ -335,15 +457,28 @@ func (h *historyOperation) stateForCommit(ctx context.Context, commit replayComm
 		if contextTermination(err) {
 			return nil, fmt.Errorf("derive first-parent changed paths for %s: %w", commit.Hash, err)
 		}
-		return h.state(ctx, commit.Revision)
+		return h.loadDistinctRevision(ctx, commit.Revision), nil
 	}
 	if policyRelevant(paths, docsDir) {
-		return h.state(ctx, commit.Revision)
+		return h.loadDistinctRevision(ctx, commit.Revision), nil
 	}
-	// Alias the immutable parent result, including a previously cached error;
-	// neither the value nor its slices/maps are mutated by this operation.
-	h.store.keys[commit.Revision] = h.store.keys[commit.Parents[0]]
-	return parent, nil
+	h.store.addKey(commit.Revision, parentEntry)
+	return parentEntry, nil
+}
+
+// stateForCommit retains the focused test seam while production run resolves
+// the complete alias graph before reserving or executing replay consumers.
+func (h *historyOperation) stateForCommit(ctx context.Context, commit replayCommit) (*revisionState, error) {
+	byRevision := make(map[string]replayCommit, len(h.commits)+1)
+	for _, candidate := range h.commits {
+		byRevision[candidate.Revision] = candidate
+	}
+	byRevision[commit.Revision] = commit
+	entry, err := h.resolveRevision(ctx, commit.Revision, byRevision, map[string]bool{})
+	if err != nil { // coverage-ignore: production validates the graph before this focused compatibility seam runs
+		return nil, err
+	}
+	return entry.result.state, entry.result.err
 }
 
 func policyRelevant(paths []string, docsDir string) bool {
@@ -367,7 +502,9 @@ func policyRelevant(paths []string, docsDir string) bool {
 
 func (s *revisionState) lockEvidence() (*manifest.Lock, bool, error) {
 	if !s.lockReady {
-		s.lock, s.lockFound, s.lockErr = s.loadLock()
+		if s.loadLock != nil {
+			s.lock, s.lockFound, s.lockErr = s.loadLock()
+		}
 		s.lockReady = true
 	}
 	return s.lock, s.lockFound, s.lockErr
@@ -386,58 +523,72 @@ func (s *revisionState) currentState() (currentstate.Universe, error) {
 	return s.universe, s.universeErr
 }
 
-func (h *historyOperation) currentState(state *revisionState) (currentstate.Universe, error) {
+func (h *historyOperation) currentState(revision string, state *revisionState) (currentstate.Universe, error) {
 	universe, err := state.currentState()
 	if state.heavyMaterialized {
-		h.store.retainHeavy(state)
+		if key := h.store.keys[revision]; key != nil {
+			h.store.retainHeavy(key.entry)
+			state.heavyLive = key.entry.heavyLive
+		}
 	}
 	return universe, err
 }
 
-// reserveConsumers counts fixed replay roles without reading heavy authority.
-// They attach to revision keys until relevance has resolved aliases.
+// reserveConsumers attaches every fixed replay role to its already-resolved
+// canonical entry before heavy authority is materialized.
 func (h *historyOperation) reserveConsumers(schedule []replayCommit) {
 	for _, commit := range schedule {
-		h.universeUses[commit.Revision]++ // transition result
+		h.reserveUse(commit.Revision, false) // transition result
 		if len(commit.Parents) > 0 {
-			h.universeUses[commit.Parents[0]]++ // transition first parent
+			h.reserveUse(commit.Parents[0], false) // transition first parent
 		}
 		if commit.IsMerge {
-			for _, revision := range append([]string{commit.Revision}, commit.Parents...) {
-				h.universeUses[revision]++
-				h.sourceUses[revision]++
+			h.reserveUse(commit.Revision, true) // stale result
+			for _, revision := range commit.Parents {
+				h.reserveUse(revision, true) // ordered stale parent
 			}
 		}
 	}
 }
 
-func (h *historyOperation) remaining(uses map[string]int, state *revisionState) int {
-	remaining := 0
-	for revision, result := range h.store.keys {
-		if result.state == state {
-			remaining += uses[revision]
+func (h *historyOperation) reserveUse(revision string, source bool) {
+	key := h.store.keys[revision]
+	key.lightUses++
+	key.universeUses++
+	key.entry.lightUses++
+	key.entry.universeUses++
+	if source {
+		key.sourceUses++
+		key.entry.sourceUses++
+	}
+}
+
+func (h *historyOperation) consumeUse(revision string, source bool) {
+	key := h.store.keys[revision]
+	if key == nil || key.lightUses == 0 || key.universeUses == 0 {
+		return
+	}
+	entry := key.entry
+	key.lightUses--
+	key.universeUses--
+	entry.lightUses--
+	entry.universeUses--
+	if source && key.sourceUses > 0 {
+		key.sourceUses--
+		entry.sourceUses--
+		if entry.sourceUses == 0 && entry.result.state != nil {
+			entry.result.state.universe.Sources = nil
 		}
 	}
-	return remaining
-}
-
-func (h *historyOperation) consumeUniverse(revision string, state *revisionState) {
-	if state == nil || h.universeUses[revision] == 0 {
-		return
+	if entry.universeUses == 0 {
+		h.store.releaseHeavy(entry)
 	}
-	h.universeUses[revision]--
-	if h.remaining(h.universeUses, state) == 0 {
-		h.store.releaseHeavy(state)
+	if key.lightUses == 0 {
+		delete(h.store.keys, revision)
+		entry.keys--
 	}
-}
-
-func (h *historyOperation) consumeSources(revision string, state *revisionState) {
-	if state == nil || h.sourceUses[revision] == 0 {
-		return
-	}
-	h.sourceUses[revision]--
-	if h.remaining(h.sourceUses, state) == 0 {
-		state.universe.Sources = nil
+	if entry.lightUses == 0 && entry.sourceUses == 0 && entry.universeUses == 0 && entry.keys == 0 {
+		h.store.releaseEntry(entry)
 	}
 }
 
@@ -467,6 +618,9 @@ func loadSelectedRevision(ctx context.Context, root, revision string, entryRead 
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	byPath := make(map[string]awfgit.TreeEntry, len(entries))
 	for _, entry := range entries {
 		byPath[entry.Path] = entry
@@ -491,17 +645,18 @@ func loadSelectedRevision(ctx context.Context, root, revision string, entryRead 
 	if err != nil {
 		return nil, err
 	}
+	lock, lockFound, lockErr := auditLockFromSelection(controlSelection)
 	configFile, ok := controlSelection.Lookup(configPath)
 	if !ok || !configFile.Scannable() || configEntry.Mode == awfgit.BlobSymlink {
-		return revisionStateWithConfigError(fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)), nil
+		configErr := fmt.Errorf("%s/config.yaml is not a scannable file", config.DirName)
+		return revisionStateFromControlOutcome(lock, lockFound, lockErr, configErr), nil
 	}
-	lock, lockFound, lockErr := auditLockFromSelection(controlSelection)
 	if lockErr != nil {
-		return revisionStateFromControls(root, controlSelection), nil //nolint:nilerr // preserve malformed committed controls as lazy policy warnings, not fatal audit failure
+		return revisionStateFromControlOutcome(lock, lockFound, lockErr, lockErr), nil
 	}
 	cfg, configErr := auditConfig(root, controlSelection, lock)
 	if configErr != nil {
-		return revisionStateFromControls(root, controlSelection), nil //nolint:nilerr // preserve malformed committed controls as lazy policy warnings, not fatal audit failure
+		return revisionStateFromControlOutcome(lock, lockFound, nil, configErr), nil
 	}
 	authorityPaths := selectedAuthorityPaths(entries, cfg.DocsDir)
 	// Authority bytes are deliberately not read with controls. Keep only the
@@ -554,30 +709,18 @@ func emptyRevisionState() *revisionState {
 	return &revisionState{lockReady: true, universeReady: true}
 }
 
-func revisionStateWithConfigError(err error) *revisionState {
-	state := &revisionState{configReady: true, configErr: err}
-	state.loadUniverse = func() (currentstate.Universe, error) {
-		_, err := state.committedConfig()
-		return currentstate.Universe{}, err
+func revisionStateFromControlOutcome(lock *manifest.Lock, lockFound bool, lockErr, configErr error) *revisionState {
+	return &revisionState{
+		lockReady:     true,
+		lock:          lock,
+		lockFound:     lockFound,
+		lockErr:       lockErr,
+		configReady:   true,
+		config:        nil,
+		configErr:     configErr,
+		universeReady: true,
+		universeErr:   configErr,
 	}
-	return state
-}
-
-func revisionStateFromControls(root string, selection *snapshot.Selection) *revisionState {
-	state := &revisionState{}
-	state.loadLock = func() (*manifest.Lock, bool, error) { return auditLockFromSelection(selection) }
-	state.loadConfig = func() (*config.Config, error) {
-		lock, _, err := state.lockEvidence()
-		if err != nil {
-			return nil, err
-		}
-		return auditConfig(root, selection, lock)
-	}
-	state.loadUniverse = func() (currentstate.Universe, error) {
-		_, err := state.committedConfig()
-		return currentstate.Universe{}, err
-	}
-	return state
 }
 
 func revisionStateFromAuthority(cfg *config.Config, lock *manifest.Lock, lockFound bool, load func() (currentstate.Universe, error)) *revisionState {
@@ -585,17 +728,20 @@ func revisionStateFromAuthority(cfg *config.Config, lock *manifest.Lock, lockFou
 }
 
 func (h *historyOperation) replayTransition(ctx context.Context, commit replayCommit) ([]Finding, error) {
+	defer h.consumeUse(commit.Revision, false)
+	if len(commit.Parents) > 0 {
+		defer h.consumeUse(commit.Parents[0], false)
+	}
 	var out []Finding
 	afterState, err := h.stateForCommit(ctx, commit)
 	if err != nil {
-		if contextTermination(err) {
+		if contextTermination(err) { // coverage-ignore: planning rejects cached context errors before replay
 			return nil, fmt.Errorf("derive transition result %s: %w", commit.Hash, err)
 		}
 		out = append(out, transitionLoadWarning(commit, err))
 		return out, nil
 	}
-	defer h.consumeUniverse(commit.Revision, afterState)
-	after, err := h.currentState(afterState)
+	after, err := h.currentState(commit.Revision, afterState)
 	if err != nil {
 		if contextTermination(err) {
 			return nil, fmt.Errorf("derive transition result current state %s: %w", commit.Hash, err)
@@ -607,14 +753,13 @@ func (h *historyOperation) replayTransition(ctx context.Context, commit replayCo
 	if len(commit.Parents) > 0 {
 		beforeState, loadErr := h.state(ctx, commit.Parents[0])
 		if loadErr != nil {
-			if contextTermination(loadErr) {
+			if contextTermination(loadErr) { // coverage-ignore: planning rejects cached context errors before replay
 				return nil, fmt.Errorf("derive transition first parent %s: %w", commit.Hash, loadErr)
 			}
 			out = append(out, transitionLoadWarning(commit, loadErr))
 			return out, nil
 		}
-		defer h.consumeUniverse(commit.Parents[0], beforeState)
-		before, err = h.currentState(beforeState)
+		before, err = h.currentState(commit.Parents[0], beforeState)
 		if err != nil {
 			if contextTermination(err) {
 				return nil, fmt.Errorf("derive transition first-parent current state %s: %w", commit.Hash, err)
@@ -649,17 +794,9 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 		return nil, nil
 	}
 	// Every merge role was reserved during light planning. Discharge it even
-	// when schema controls make stale qualification inapplicable.
-	consume := func(revision string, state *revisionState) {
-		h.consumeSources(revision, state)
-		h.consumeUniverse(revision, state)
-	}
+	// when schema controls make stale qualification inapplicable or fails.
 	for _, revision := range append([]string{commit.Revision}, commit.Parents...) {
-		defer func(revision string) {
-			if result, ok := h.store.keys[revision]; ok {
-				consume(revision, result.state)
-			}
-		}(revision)
+		defer h.consumeUse(revision, true)
 	}
 	var findings []Finding
 	resultState, err := h.stateForCommit(ctx, commit)
@@ -677,7 +814,7 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 	if len(commit.Parents) < 2 {
 		return nil, fmt.Errorf("merge %s has fewer than two parents", commit.Hash)
 	}
-	result, err := h.currentState(resultState)
+	result, err := h.currentState(commit.Revision, resultState)
 	if err != nil {
 		return nil, fmt.Errorf("load merge result current state %s: %w", commit.Hash, err)
 	}
@@ -685,7 +822,7 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 	if err != nil {
 		return nil, fmt.Errorf("load merge first parent %s: %w", commit.Hash, err)
 	}
-	first, err := h.currentState(firstState)
+	first, err := h.currentState(commit.Parents[0], firstState)
 	if err != nil {
 		return nil, fmt.Errorf("load merge first parent current state %s: %w", commit.Hash, err)
 	}
@@ -695,7 +832,7 @@ func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit)
 		if loadErr != nil {
 			return nil, fmt.Errorf("load merge incoming parent %s: %w", commit.Hash, loadErr)
 		}
-		incoming[i], err = h.currentState(incomingState)
+		incoming[i], err = h.currentState(revision, incomingState)
 		if err != nil {
 			return nil, fmt.Errorf("load merge incoming parent current state %s: %w", commit.Hash, err)
 		}

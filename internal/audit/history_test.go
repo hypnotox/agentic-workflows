@@ -58,8 +58,8 @@ func (h *historyOperation) staleMergeFindings(ctx context.Context) ([]Finding, e
 
 func TestRevisionStoreTracksLogicalHeavyHighWater(t *testing.T) {
 	store := newRevisionStore()
-	first := fixedRevisionState(nil, false, currentstate.Universe{})
-	second := fixedRevisionState(nil, false, currentstate.Universe{})
+	first := &revisionEntry{result: revisionResult{state: fixedRevisionState(nil, false, currentstate.Universe{})}}
+	second := &revisionEntry{result: revisionResult{state: fixedRevisionState(nil, false, currentstate.Universe{})}}
 	store.retainHeavy(first)
 	store.retainHeavy(second)
 	store.releaseHeavy(first)
@@ -96,6 +96,127 @@ func TestHistoryOperationReleasesAliasedHeavyStateAtFinalUse(t *testing.T) {
 	}
 }
 
+func TestHistoryOperationPreResolvesRecursiveAliasesAndFrontier(t *testing.T) {
+	commits := []replayCommit{
+		{Hash: "leaf", Revision: "zz-leaf", Parents: []string{"yy-middle"}, Paths: []string{"internal/leaf.go"}},
+		{Hash: "middle", Revision: "yy-middle", Parents: []string{"aa-parent"}, Paths: []string{"internal/middle.go"}},
+		{Hash: "sibling", Revision: "xx-sibling", Parents: []string{"aa-parent"}, Paths: []string{"internal/sibling.go"}},
+		{Hash: "relevant", Revision: "ww-relevant", Parents: []string{"aa-parent"}, Paths: []string{".awf/config.yaml"}},
+		{Hash: "parent", Revision: "aa-parent"},
+	}
+	lightLoads := map[string]int{}
+	heavyLoads := map[string]int{}
+	states := map[string]*revisionState{}
+	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+		lightLoads[revision]++
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			heavyLoads[revision]++
+			return currentstate.Universe{}, nil
+		}
+		states[revision] = state
+		return state, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if findings, err := op.run(testContext(t)); err != nil || len(findings) != 0 {
+		t.Fatalf("recursive alias replay findings = %#v, error = %v", findings, err)
+	}
+	if lightLoads["aa-parent"] != 1 || lightLoads["ww-relevant"] != 1 || lightLoads["yy-middle"] != 0 || lightLoads["zz-leaf"] != 0 || lightLoads["xx-sibling"] != 0 {
+		t.Fatalf("recursive alias light loads = %#v", lightLoads)
+	}
+	if heavyLoads["aa-parent"] != 1 || heavyLoads["ww-relevant"] != 1 || len(heavyLoads) != 2 {
+		t.Fatalf("canonical heavy loads = %#v, want parent and relevant once", heavyLoads)
+	}
+	if op.store.currentHeavy != 0 || op.store.highWaterHeavy != 2 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("terminal ownership current=%d high-water=%d keys=%d entries=%d", op.store.currentHeavy, op.store.highWaterHeavy, len(op.store.keys), len(op.store.entries))
+	}
+	for revision, state := range states {
+		if state.loadUniverse != nil || state.config != nil || state.universeErr != nil {
+			t.Fatalf("revision %s retained controls or heavy outcome: %#v", revision, state)
+		}
+	}
+}
+
+func TestHistoryOperationKeepsBoundaryRevisionsDistinct(t *testing.T) {
+	commits := []replayCommit{
+		{Hash: "left", Revision: "left", Parents: []string{"boundary-left"}, Paths: []string{"internal/left.go"}},
+		{Hash: "right", Revision: "right", Parents: []string{"boundary-right"}, Paths: []string{"internal/right.go"}},
+	}
+	loads := map[string]int{}
+	op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+		loads[revision]++
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
+		return state, nil
+	}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+	if _, err := op.run(testContext(t)); err != nil {
+		t.Fatal(err)
+	}
+	if loads["boundary-left"] != 1 || loads["boundary-right"] != 1 || loads["left"] != 0 || loads["right"] != 0 {
+		t.Fatalf("boundary resolution loads = %#v", loads)
+	}
+	if op.store.highWaterHeavy != 1 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("boundary frontier high-water=%d keys=%d entries=%d", op.store.highWaterHeavy, len(op.store.keys), len(op.store.entries))
+	}
+}
+
+func TestHistoryOperationDischargesSkippedAndFailedConsumers(t *testing.T) {
+	t.Run("pre-schema merge", func(t *testing.T) {
+		commits := []replayCommit{{Hash: "merge", Revision: "result", IsMerge: true, Parents: []string{"first", "incoming"}}}
+		heavyLoads := map[string]int{}
+		op := newHistoryOperationFromCompact(commits, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
+			state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 30}, lockFound: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+			state.loadUniverse = func() (currentstate.Universe, error) { heavyLoads[revision]++; return currentstate.Universe{}, nil }
+			return state, nil
+		}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+		if err := op.planRevisionOwnership(testContext(t), commits); err != nil {
+			t.Fatal(err)
+		}
+		op.reserveConsumers(commits)
+		if _, err := op.replayStale(testContext(t), commits[0]); err != nil {
+			t.Fatal(err)
+		}
+		if op.store.keys["incoming"] != nil || op.store.keys["result"] == nil || op.store.keys["first"] == nil {
+			t.Fatalf("pre-schema stale discharge keys = %#v", op.store.keys)
+		}
+		for _, revision := range []string{"result", "first"} {
+			entry := op.store.keys[revision].entry
+			if entry.sourceUses != 0 || entry.universeUses != 1 || entry.lightUses != 1 {
+				t.Fatalf("pre-schema %s remaining uses = light %d source %d universe %d", revision, entry.lightUses, entry.sourceUses, entry.universeUses)
+			}
+		}
+		if _, err := op.replayTransition(testContext(t), commits[0]); err != nil {
+			t.Fatal(err)
+		}
+		if heavyLoads["result"] != 1 || heavyLoads["first"] != 1 || heavyLoads["incoming"] != 0 {
+			t.Fatalf("pre-schema heavy loads = %#v", heavyLoads)
+		}
+		if op.store.currentHeavy != 0 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+			t.Fatalf("pre-schema replay retained ownership: current=%d keys=%d entries=%d", op.store.currentHeavy, len(op.store.keys), len(op.store.entries))
+		}
+	})
+
+	t.Run("cached heavy error", func(t *testing.T) {
+		boom := errors.New("heavy failure")
+		heavyLoads := 0
+		state := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) { heavyLoads++; return currentstate.Universe{}, boom }
+		op := newHistoryOperationFromCompact([]replayCommit{{Hash: "ordinary", Revision: "ordinary"}}, nil, 1,
+			func(context.Context, string) (*revisionState, error) { return state, nil }, nil,
+			func(context.Context) ([]Finding, error) { return nil, nil })
+		if err := op.planRevisionOwnership(testContext(t), op.commits); err != nil {
+			t.Fatal(err)
+		}
+		op.reserveConsumers(op.commits)
+		findings, err := op.replayTransition(testContext(t), op.commits[0])
+		if err != nil || countRule(findings, currentStateTransitionRule, severity.Warn) != 1 {
+			t.Fatalf("heavy failure findings = %#v, error = %v", findings, err)
+		}
+		if heavyLoads != 1 || state.universeErr != nil || state.loadUniverse != nil || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+			t.Fatalf("heavy failure retained outcome: loads=%d state=%#v keys=%d entries=%d", heavyLoads, state, len(op.store.keys), len(op.store.entries))
+		}
+	})
+}
+
 func TestHistoryOperationReleasesSourcesBeforeUniverse(t *testing.T) {
 	source := []byte("historical ADR")
 	state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true}
@@ -104,8 +225,12 @@ func TestHistoryOperationReleasesSourcesBeforeUniverse(t *testing.T) {
 	}
 	commit := replayCommit{Hash: "merge", Revision: "result", IsMerge: true, Message: "Merge", Parents: []string{"first", "incoming"}}
 	op := newHistoryOperationFromCompact([]replayCommit{commit}, nil, 1, func(context.Context, string) (*revisionState, error) {
-		return state, nil
+		return nil, errors.New("planned canonical keys must avoid revision reloads")
 	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	entry := op.store.addDistinct(commit.Revision, revisionResult{state: state})
+	for _, parent := range commit.Parents {
+		op.store.addKey(parent, entry)
+	}
 	op.reserveConsumers([]replayCommit{commit})
 	if _, err := op.replayStale(testContext(t), commit); err != nil {
 		t.Fatal(err)
@@ -118,6 +243,47 @@ func TestHistoryOperationReleasesSourcesBeforeUniverse(t *testing.T) {
 	}
 	if state.heavyLive || op.store.currentHeavy != 0 || len(state.universe.Sources) != 0 {
 		t.Fatalf("transition final use did not release universe: state=%#v current=%d", state.universe, op.store.currentHeavy)
+	}
+}
+
+func TestHistoryOperationTracksHeterogeneousOctopusFrontier(t *testing.T) {
+	commit := replayCommit{Hash: "octopus", Revision: "result", IsMerge: true, Message: "Merge", Parents: []string{"first", "incoming-one", "incoming-two", "incoming-three"}}
+	states := map[string]*revisionState{}
+	op := newHistoryOperationFromCompact([]replayCommit{commit}, nil, 1, func(_ context.Context, revision string) (*revisionState, error) {
+		state := &revisionState{lockReady: true, lock: &manifest.Lock{SchemaVersion: 31}, lockFound: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			return currentstate.Universe{Sources: map[string][]byte{revision: []byte(revision)}}, nil
+		}
+		states[revision] = state
+		return state, nil
+	}, nil, func(context.Context) ([]Finding, error) { return nil, nil })
+	if err := op.planRevisionOwnership(testContext(t), []replayCommit{commit}); err != nil {
+		t.Fatal(err)
+	}
+	op.reserveConsumers([]replayCommit{commit})
+	if _, err := op.replayStale(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if op.store.currentHeavy != 2 || op.store.highWaterHeavy != 5 {
+		t.Fatalf("octopus stale frontier current=%d high-water=%d, want 2 and 5", op.store.currentHeavy, op.store.highWaterHeavy)
+	}
+	for _, revision := range []string{"result", "first"} {
+		state := states[revision]
+		if state.universe.Sources != nil || op.store.keys[revision] == nil {
+			t.Fatalf("octopus retained stale evidence for %s: state=%#v key=%v", revision, state, op.store.keys[revision] != nil)
+		}
+	}
+	for _, revision := range commit.Parents[1:] {
+		state := states[revision]
+		if op.store.keys[revision] != nil || state.loadUniverse != nil || state.universeErr != nil || state.config != nil {
+			t.Fatalf("octopus incoming %s retained ownership: state=%#v key=%v", revision, state, op.store.keys[revision] != nil)
+		}
+	}
+	if _, err := op.replayTransition(testContext(t), commit); err != nil {
+		t.Fatal(err)
+	}
+	if op.store.currentHeavy != 0 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("octopus terminal ownership current=%d keys=%d entries=%d", op.store.currentHeavy, len(op.store.keys), len(op.store.entries))
 	}
 }
 
@@ -231,13 +397,12 @@ func TestHistoryOperationPreservesStreamFindingOrderAcrossGraphReplay(t *testing
 	ordinary := Finding{Severity: severity.Warn, Rule: "ordinary"}
 	liveFinding := Finding{Severity: severity.Error, Rule: "live"}
 	t.Run("stale merge findings", func(t *testing.T) {
-		state := fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{})
 		commits := []replayCommit{
 			{Ordinal: 0, Hash: "stream-first", Revision: "z-result", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"z-first", "z-incoming"}},
 			{Ordinal: 1, Hash: "stream-second", Revision: "a-result", IsMerge: true, Message: "Merge\n\nAWF-Allow-Version: bad", Parents: []string{"a-first", "a-incoming"}},
 		}
 		op := newHistoryOperationFromCompact(commits, []Finding{ordinary}, len(commits), func(context.Context, string) (*revisionState, error) {
-			return state, nil
+			return fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, currentstate.Universe{}), nil
 		}, nil, func(context.Context) ([]Finding, error) { return []Finding{liveFinding}, nil })
 		findings, err := op.run(testContext(t))
 		if err != nil {
@@ -312,8 +477,8 @@ func TestHistoryOperationUsesGraphOrderForCoexistingFatalFailures(t *testing.T) 
 	if _, err := op.run(testContext(t)); !errors.Is(err, graphFirst) || errors.Is(err, streamFirst) {
 		t.Fatalf("coexisting fatal error = %v, want graph-first identity", err)
 	}
-	if !slices.Equal(loads, []string{"a-result"}) {
-		t.Fatalf("fatal replay loads = %v, want only graph-first revision", loads)
+	if !slices.Equal(loads, []string{"a-result", "z-result"}) {
+		t.Fatalf("light planning loads = %v, want deterministic graph order", loads)
 	}
 }
 
@@ -358,26 +523,28 @@ func TestHistoryOperationChecksCancellationBetweenCachedConsumers(t *testing.T) 
 	t.Run("between scheduled commits", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(testContext(t))
 		loads := map[string]int{}
+		heavyLoads := map[string]int{}
 		op := newHistoryOperationFromCompact([]replayCommit{
 			{Hash: "first", Revision: "a", Ordinal: 1},
 			{Hash: "later", Revision: "b", Ordinal: 0},
 		}, nil, 2, func(_ context.Context, revision string) (*revisionState, error) {
 			loads[revision]++
 			state := fixedRevisionState(nil, false, currentstate.Universe{})
-			if revision == "a" {
-				state.loadUniverse = func() (currentstate.Universe, error) {
+			state.loadUniverse = func() (currentstate.Universe, error) {
+				heavyLoads[revision]++
+				if revision == "a" {
 					cancel()
-					return currentstate.Universe{}, nil
 				}
-				state.universeReady = false
+				return currentstate.Universe{}, nil
 			}
+			state.universeReady = false
 			return state, nil
 		}, nil, func(context.Context) ([]Finding, error) {
 			t.Fatal("canceled replay ran live evaluation")
 			return nil, nil
 		})
-		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) || loads["b"] != 0 {
-			t.Fatalf("scheduled cancellation = %v, loads=%#v", err, loads)
+		if _, err := op.run(ctx); !errors.Is(err, context.Canceled) || loads["b"] != 1 || heavyLoads["b"] != 0 {
+			t.Fatalf("scheduled cancellation = %v, light=%#v heavy=%#v", err, loads, heavyLoads)
 		}
 	})
 }
@@ -771,8 +938,8 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 					return nil, nil
 				})
 			findings, err := op.run(testContext(t))
-			if _, cachedErr := op.state(testContext(t), "shared"); !errors.Is(cachedErr, termination) {
-				t.Fatalf("cached termination = %v", cachedErr)
+			if len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+				t.Fatalf("terminated operation retained revision ownership: keys=%d entries=%d", len(op.store.keys), len(op.store.entries))
 			}
 			return findings, events, err
 		},
@@ -958,6 +1125,21 @@ func TestAuditPropagatesHistoricalCancellation(t *testing.T) {
 			t.Fatalf("ordinary transition findings = %#v", findings)
 		}
 	})
+}
+
+func TestLoadSelectedRevisionStopsAfterCanceledEnumeration(t *testing.T) {
+	ctx, cancel := context.WithCancel(testContext(t))
+	blobReads := 0
+	_, err := loadSelectedRevision(ctx, t.TempDir(), "revision", func(context.Context, string) ([]awfgit.TreeEntry, error) {
+		cancel()
+		return []awfgit.TreeEntry{{Path: ".awf/config.yaml", Mode: awfgit.BlobRegular}}, nil
+	}, func(context.Context, string, []string) ([]awfgit.IndexBlob, error) {
+		blobReads++
+		return nil, nil
+	})
+	if !errors.Is(err, context.Canceled) || blobReads != 0 {
+		t.Fatalf("canceled enumeration error=%v blob reads=%d", err, blobReads)
+	}
 }
 
 func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
@@ -1408,6 +1590,10 @@ func TestHistoricalStateSelectsOnlyAuthorityBlobs(t *testing.T) {
 				if stateErr == nil {
 					t.Fatal("symlink authority was accepted")
 				}
+				lock, found, lockErr := state.lockEvidence()
+				if lockErr != nil || !found || lock == nil || lock.SchemaVersion != 31 {
+					t.Fatalf("symlink config lost safe lock evidence: lock=%#v found=%v err=%v", lock, found, lockErr)
+				}
 				if !slices.EqualFunc(reads, tc.wantReads, slices.Equal[[]string]) {
 					t.Fatalf("selected reads before symlink error = %#v, want %#v", reads, tc.wantReads)
 				}
@@ -1522,7 +1708,8 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 		})
 	}
 
-	state := revisionStateWithConfigError(errors.New("config is a symlink"))
+	configErr := errors.New("config is a symlink")
+	state := &revisionState{configReady: true, configErr: configErr, universeReady: true, universeErr: configErr}
 	if _, err := state.currentState(); err == nil {
 		t.Fatal("configuration error did not prevent current-state loading")
 	}
@@ -1533,7 +1720,11 @@ func TestLoadSelectedRevisionRejectsIncompleteOrUnscannableEvidence(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := revisionStateFromControls(t.TempDir(), controls).currentState(); err == nil {
+	lock, found, lockErr := auditLockFromSelection(controls)
+	if lockErr == nil {
+		t.Fatal("malformed lock was accepted")
+	}
+	if _, err := revisionStateFromControlOutcome(lock, found, lockErr, lockErr).currentState(); err == nil {
 		t.Fatal("malformed lock did not prevent current-state loading")
 	}
 }
