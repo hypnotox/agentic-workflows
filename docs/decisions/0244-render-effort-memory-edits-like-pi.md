@@ -4,7 +4,7 @@ slug: render-effort-memory-edits-like-pi
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-render-effort-memory-edits-like-pi: Render Effort Memory Mutations Like Pi
+# ADR-0244: Render Effort Memory Mutations Like Pi
 
 
 ## Context

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -47,10 +48,20 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	if err := validateLiveStateAuthority(wrongStatic, resolvers); err == nil || !strings.Contains(err.Error(), "static live-state key") {
 		t.Fatalf("wrong static classification error = %v", err)
 	}
-	wrongLive := configspec.LiveStateClassifications()
-	wrongLive["tags"] = configspec.LiveStateProjection
-	if err := validateLiveStateAuthority(wrongLive, resolvers); err == nil || !strings.Contains(err.Error(), "has no resolver") {
-		t.Fatalf("wrong live classification error = %v", err)
+	omittedResolver := p.currentValueResolvers()
+	delete(omittedResolver, "tags")
+	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), omittedResolver); err == nil || !strings.Contains(err.Error(), `live-state key "tags" has no resolver`) {
+		t.Fatalf("omitted resolver error = %v", err)
+	}
+	staticResolver := p.currentValueResolvers()
+	staticResolver["commitPolicy.allowedIdentities[].name"] = func() string { return "wrong" }
+	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), staticResolver); err == nil || !strings.Contains(err.Error(), `static live-state key "commitPolicy.allowedIdentities[].name" has a resolver`) {
+		t.Fatalf("structural static resolver error = %v", err)
+	}
+	extra := p.currentValueResolvers()
+	extra["not.a.key"] = func() string { return "wrong" }
+	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), extra); err == nil || !strings.Contains(err.Error(), `live-state resolver "not.a.key" has no classification`) {
+		t.Fatalf("extra resolver error = %v", err)
 	}
 	unknown := configspec.LiveStateClassifications()
 	unknown["tags"] = configspec.LiveStateClass(99)
@@ -117,6 +128,122 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 	if !strings.Contains(got, "`gateCmd`") || !strings.Contains(got, "absent, declined") {
 		t.Errorf("empty-state reference lost the var catalog:\n%s", got)
 	}
+}
+
+// TestConfigReferenceDerivedLiveValues pins each structurally live project
+// value to its non-secret current summary while item-schema and sidecar fields
+// remain static.
+// invariant: config/configspec-and-reference:live-state-projection-explicit (TestConfigReferenceDerivedLiveValues)
+func TestConfigReferenceDerivedLiveValues(t *testing.T) {
+	assertValues := func(t *testing.T, configYAML string, want map[string]string) {
+		t.Helper()
+		root, p := syncedProject(t, configYAML, nil)
+		model, err := p.ConfigReferenceModel(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows := map[string]string{}
+		for _, row := range model.ConfigKeys {
+			rows[row.Path] = row.Current
+		}
+		for path, value := range want {
+			if got := rows[path]; got != value {
+				t.Errorf("%s current = %q, want %q", path, got, value)
+			}
+		}
+		for path, class := range configspec.LiveStateClassifications() {
+			if strings.HasPrefix(path, "sidecar.") {
+				continue
+			}
+			if class == configspec.LiveStateProjection && rows[path] == "n/a" {
+				t.Errorf("live project row %q rendered n/a", path)
+			}
+		}
+		if got := rows["commitPolicy.allowedIdentities[].name"]; got != "n/a" {
+			t.Errorf("item-schema row current = %q, want n/a", got)
+		}
+		for _, row := range model.SidecarFields {
+			if row.Current != "" {
+				t.Errorf("sidecar row %q current = %q, want no project value", row.Path, row.Current)
+			}
+		}
+		b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(string(b), "\n")
+		for path, value := range want {
+			prefix := "| `" + path + "` | "
+			var row string
+			for _, line := range lines {
+				if strings.HasPrefix(line, prefix) {
+					row = line
+					break
+				}
+			}
+			if row == "" {
+				t.Errorf("generated reference missing %q row", path)
+				continue
+			}
+			columns := strings.Split(row, " | ")
+			if len(columns) < 5 {
+				t.Errorf("generated reference row %q has %d columns", path, len(columns))
+				continue
+			}
+			if got := columns[3]; got != value {
+				t.Errorf("generated reference %s current = %q, want %q", path, got, value)
+			}
+		}
+	}
+
+	absent := "prefix: example\nintegrationBranch: main\n"
+	assertValues(t, absent, map[string]string{
+		"tags": "(none)", "contextIgnore": "(none)",
+		"commitPolicy.grandfatheredThrough": "(none)",
+		"commitPolicy.allowedIdentities":    "(none)",
+		"commitPolicy.requireSignedCommits": "false (default)",
+		"commitPolicy.allowedSigners":       "(none)",
+	})
+
+	presentFalsePolicy := absent + `commitPolicy:
+  grandfatheredThrough: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  requireSignedCommits: false
+`
+	assertValues(t, presentFalsePolicy, map[string]string{
+		"commitPolicy.grandfatheredThrough": "`aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
+		"commitPolicy.allowedIdentities":    "(none)",
+		"commitPolicy.requireSignedCommits": "false",
+		"commitPolicy.allowedSigners":       "(none)",
+	})
+
+	t.Run("non-nil empty grandfathered boundary", func(t *testing.T) {
+		p := &Project{Cfg: &config.Config{CommitPolicy: &config.CommitPolicyConfig{}}}
+		if got := p.currentValueResolvers()["commitPolicy.grandfatheredThrough"](); got != "(none)" {
+			t.Errorf("empty grandfatheredThrough current = %q, want (none)", got)
+		}
+	})
+
+	configured := absent + `tags:
+  release: Release work.
+  security: Security work.
+contextIgnore: [docs/**, README.md]
+commitPolicy:
+  grandfatheredThrough: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  allowedIdentities:
+    - name: Ada
+      email: ada@example.test
+  requireSignedCommits: true
+  allowedSigners:
+    - principal: ada@example.test
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSyHgjX4Y74rFN//IDMW2HBGkTMn5JF1Ls6VJr4pojt
+`
+	assertValues(t, configured, map[string]string{
+		"tags": "2 tags", "contextIgnore": "2 patterns",
+		"commitPolicy.grandfatheredThrough": "`aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
+		"commitPolicy.allowedIdentities":    "1 identities",
+		"commitPolicy.requireSignedCommits": "true",
+		"commitPolicy.allowedSigners":       "1 signers",
+	})
 }
 
 func TestConfigReferenceListLayerStates(t *testing.T) {

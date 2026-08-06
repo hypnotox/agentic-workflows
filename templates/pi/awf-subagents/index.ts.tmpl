@@ -666,7 +666,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     label: "Grounding Subagent",
     description: "Run one fresh-context, no-mutation grounding check. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
     promptSnippet: "Ground an agreed design against source and project constraints",
-    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
+    promptGuidelines: ["Use subagent_grounding whenever the rendered grounding support contract calls for repository-premise checks; include the complete grounding brief in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
     parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);

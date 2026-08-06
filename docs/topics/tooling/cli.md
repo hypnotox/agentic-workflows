@@ -17,9 +17,9 @@ Backing: test
 
 ### `invariant: cli-command-spec-single-source`
 
-The top-level usage line, awf help overview and order, structured command help model data (usage forms, descriptions, details, positionals, options, examples, and related commands), and generated gated-command list all derive from the clispec command table, with no parallel command-order or gated-command list.
+The top-level usage line, awf help overview and order, structured command help model data (usage forms, descriptions, details, positionals, options, examples, and related commands), generated gated-command list, and bounded root README command block in top-level clispec order all derive from the clispec command table, with no parallel independent command-order membership decision and no parallel gated-command list.
 Origin: ADR-0094
-Revised-by: ADR-0144, ADR-0156, ADR-0234
+Revised-by: ADR-0144, ADR-0156, ADR-0234, ADR-0242
 Backing: test
 
 ### `invariant: help-lists-group-children`
@@ -162,5 +162,5 @@ Backing: test
 `awf effort` exposes schema-2 readable-text `new --slug <slug> <outcome-title> [--no-worktree] [--base <ref>]`, `list`, `show <slug>`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, `integrate <slug>`, owner-free `memory read <slug> [--offset <positive-line>] [--limit <positive-lines>]`, `memory edit <slug>`, `memory update <slug> [--phase <text>] [--next <text>]`, protocol-v2 JSON-only `activity attach|heartbeat|detach`, and the corresponding owner-scoped protocol-1 memory forms with mutually required nonrepeatable `--owner <uuid> --json`. New requires the nonrepeatable explicit slug value flag around the one independent title positional through interspersed ordering and validates grammar before composition; other flags and subcommands retain their combinations. Memory edit alone reads one closed 1-through-128-edit JSON object from stdin under 16 MiB, with closed edit objects and one-MiB-bounded UTF-8 strings; malformed grammar, including command-table parsing before dispatch, stdin, bounds, or pre-observation failures use nonzero exit, empty stdout, and one complete UTF-8-safe actionable stderr diagnostic bounded to 50 KiB. Owner-free memory successes and handled refusals use effort-owned semantic mappings through ordinary presentation; owner-scoped handled results exit zero through exactly one newline-terminated protocol-1 envelope bounded to one MiB, with only publication uncertainty carrying a cause and `changedMemory` true only after atomic replacement. Activity handled replies retain exact condition-specific newline-terminated envelopes and the sole `changedActivity` mutation axis. Readable new/show/list presentations preserve schema-2 resident facts, worktree behavior, primary-root-qualified memory paths, and unrelated command availability; there is no resolve, checkout, destination, CWD, role, receiving-checkout activity action, rename, standalone memory, lifecycle ledger, manual integration, authoritative assignment, or force command.
 Owner-scoped `memory edit` and `memory update` additionally accept nonrepeatable `--preview` only with `--owner` and `--json`; edit preview emits `previewed` with replacementCount and diff, update preview emits `previewed` with diff only, and neither carries memory. Normal update success retains memory and requires its authoritative diff; owner-free and non-preview mutation contracts are unchanged.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218, ADR-0225, ADR-0226, ADR-0234, ADR-0239, ADR-render-effort-memory-edits-like-pi
+Revised-by: ADR-0167, ADR-0175, ADR-0189, ADR-0218, ADR-0225, ADR-0226, ADR-0234, ADR-0239, ADR-0244
 Backing: test

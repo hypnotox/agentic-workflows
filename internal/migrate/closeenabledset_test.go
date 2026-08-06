@@ -35,11 +35,9 @@ func closeFixture(t *testing.T, cfg string, files map[string]string) string {
 }
 
 func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
-	// The advisory exploring edge closes for none of the three consumers. What
-	// does close is brainstorming's paired agent, which is a structural
-	// requirement, so each consumer pins its exact expected output.
+	// Advisory workflow references do not close over agents or skills.
 	for _, tc := range []struct{ consumer, wantOutput string }{
-		{"brainstorming", "close-enabled-set: enabled agent \"grounding-checker\" (required by \"brainstorming\")\n"},
+		{"brainstorming", ""},
 		{"debugging", ""},
 		{"refactor-coupling-audit", ""},
 	} {
@@ -97,8 +95,7 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if err := applyCloseEnabledSet(root, &out); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	const want = "close-enabled-set: dropped dormant skill \"roadmap-graduation\" (its \"roadmap\" doc is disabled)\n" +
-		"close-enabled-set: enabled agent \"grounding-checker\" (required by \"brainstorming\")\n"
+	const want = "close-enabled-set: dropped dormant skill \"roadmap-graduation\" (its \"roadmap\" doc is disabled)\n"
 	if got := out.String(); got != want {
 		t.Errorf("changes = %q, want %q", got, want)
 	}
@@ -106,12 +103,8 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The fixture deliberately starts at `agents: []`: pre-seeding the agent would
-	// make the closure a no-op and suppress the behaviour this test proves.
-	for _, want := range []string{"- grounding-checker"} {
-		if !strings.Contains(string(cfg), want) {
-			t.Errorf("closed config missing %q:\n%s", want, cfg)
-		}
+	if strings.Contains(string(cfg), "grounding-checker") {
+		t.Errorf("advisory brainstorming must not close grounding checker:\n%s", cfg)
 	}
 	if strings.Contains(string(cfg), "- roadmap-graduation") {
 		t.Errorf("dormant skill not dropped:\n%s", cfg)

@@ -153,6 +153,69 @@ func TestConfigspecKeyParity(t *testing.T) {
 	}
 }
 
+// TestLiveStateClassificationsDeriveProjectValues pins the structural boundary:
+// project values are live, while item-schema leaves and sidecar fields have no
+// singular project value.
+// invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateClassificationsDeriveProjectValues)
+func TestLiveStateClassificationsDeriveProjectValues(t *testing.T) {
+	classes := LiveStateClassifications()
+	className := func(class LiveStateClass) string {
+		switch class {
+		case StaticNotApplicable:
+			return "StaticNotApplicable"
+		case LiveStateProjection:
+			return "LiveStateProjection"
+		default:
+			return fmt.Sprintf("LiveStateClass(%d)", class)
+		}
+	}
+	for path, want := range map[string]LiveStateClass{
+		"project.value":         LiveStateProjection,
+		"sidecar.value":         StaticNotApplicable,
+		"collection[].value":    StaticNotApplicable,
+		"settings.<name>.value": StaticNotApplicable,
+	} {
+		if got := liveStateClass(path); got != want {
+			t.Errorf("synthetic %s class = %s, want %s", path, className(got), className(want))
+		}
+	}
+	for _, path := range []string{
+		"tags",
+		"contextIgnore",
+		"commitPolicy.grandfatheredThrough",
+		"commitPolicy.allowedIdentities",
+		"commitPolicy.requireSignedCommits",
+		"commitPolicy.allowedSigners",
+	} {
+		if got := classes[path]; got != LiveStateProjection {
+			t.Errorf("%s class = %s, want LiveStateProjection", path, className(got))
+		}
+	}
+	for _, path := range []string{
+		"commitPolicy.allowedIdentities[].name",
+		"sidecar.sections.<name>.drop",
+		"sidecar.data",
+	} {
+		if got := classes[path]; got != StaticNotApplicable {
+			t.Errorf("%s class = %s, want StaticNotApplicable", path, className(got))
+		}
+	}
+	for _, entry := range Keys() {
+		want := LiveStateProjection
+		if strings.HasPrefix(entry.Path, "sidecar.") || strings.Contains(entry.Path, "[]") || strings.Contains(entry.Path, "<name>") {
+			want = StaticNotApplicable
+		}
+		got, ok := classes[entry.Path]
+		if !ok {
+			t.Errorf("%s has no classification", entry.Path)
+			continue
+		}
+		if got != want {
+			t.Errorf("%s class = %s, want %s", entry.Path, className(got), className(want))
+		}
+	}
+}
+
 func TestCurrentStateKeysPublished(t *testing.T) {
 	got := map[string]Entry{}
 	for _, entry := range Keys() {

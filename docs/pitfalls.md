@@ -6,6 +6,40 @@
 This guide contains only current hazards that require human judgment or action beyond what a deterministic guard and its diagnostic reliably provide. Remove an entry once the system prevents the failure or explains its complete recovery; preserve historical rationale in the owning test, implementation, current-state documentation, ADR, or Git history instead.
 
 
+## Reconcile the exact mutable artifact, not a similarly named predecessor
+
+_Domains: rendering, tooling_
+
+An implementation-review settlement was told to reconcile one mutable plan but edited an
+older, similarly themed Implemented plan instead. The change both misplaced the new Notes
+entry and regressed the historical plan to Proposed; render and the full gate stayed green
+because each file remained structurally valid. Earlier in the same effort, ADR and plan
+scaffolds had also landed in the wrong checkout before immediate cleanup. Repeated path
+plausibility is not identity proof.
+
+Before mutating or accepting a report about an ADR, plan, memory, or managed-worktree file,
+resolve the exact path from the active effort and review evidence, verify its current identity
+and lifecycle state, and inspect the actual changed-path list. For terminal settlements,
+confirm that the intended mutable plan received the Notes update and that unrelated terminal
+artifacts retained their status. A green render or gate does not prove that a valid edit
+reached the intended artifact.
+
+## A managed-worktree implementer can outpace the dispatch checkout monitor
+
+_Domains: rendering, tooling_
+
+A commit-capable implementation child can be directed to an existing managed worktree while
+the subagent extension itself remains in the primary dispatch checkout. The child may commit
+successfully and return the correct managed-worktree branch, hash, and clean status, yet the
+extension's postcondition compares only the dispatch checkout HEAD and appends a false
+"created no commit" stopped-report demand. This recurred for every delegated phase of the
+publication-completeness rollout.
+
+Treat that appended demand as a monitor finding, not repository truth: verify the explicitly
+intended worktree's branch, tip, commit parent, and clean status before routing the report.
+A durable runtime fix needs the implementation tool to carry an explicit checkout identity
+into its postcondition rather than infer commit success from the dispatch checkout.
+
 ## A global topic cannot cover its own domain-owned package
 
 _Domains: code-design, invariants_
@@ -130,23 +164,6 @@ skills") is invisible to deterministic checks and can go stale when the catalog 
 commits never touched. In free-form narratives, prefer count-free phrasing ("the
 `core`-flagged skills", "the chain-progression skills"); when a count is essential, sweep the
 whole narrative whenever its source population changes.
-
-## README.md is outside the drift oracle
-
-_Domains: tooling_
-
-`README.md` is hand-owned, not rendered, so `awf check` never flags it. Its command table and
-feature claims drift silently when the CLI grows (`awf new` and `awf check staged commit` shipped without
-README rows). Adding or changing a CLI command means updating the README table in the same
-change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
-
-## Add every new template directory to the embed allowlist
-
-_Domains: rendering_
-
-The existing base-template tests cover known embedded files but cannot infer a new top-level
-template directory. Add every new rendered template directory to `templates/embed.go`, using
-`all:` when underscore- or dot-prefixed paths must be included.
 
 ## Adding a template var changes adopter behavior and consumer projections
 
@@ -496,20 +513,6 @@ three roots on one line and exactly two seventeen lines later, and the contradic
 went unread until terminal review. Two cheap catches: put `templates/` in the sweep grep,
 and read the rendered guide end to end after a shape change instead of only diffing the
 parts you edited.
-
-## A new config field needs a config-reference live-state projection case
-
-_Domains: config_
-
-`docs/config-reference.md`'s live-state column is projected per key by a switch in
-`internal/project/configreference.go` (`liveState`); a key with no `case` falls through to
-a `default` case that returns the `n/a` placeholder. `currentState.testGlobs` shipped its configspec entry and schema without a
-projection case, so the reference rendered the `n/a` placeholder (which reads as "unset") even once awf configured
-it, and `awf check` cannot catch this, because regeneration is idempotent, so the
-wrong-but-stable cell never drifts. The impl review caught it only by eye (2026-07-13). When
-adding a config field that carries a meaningful live value, add its `liveState` case (mirror the
-sibling, `currentState.testGlobs` mirrors `currentState.sources`) and assert the rendered value in a
-`configreference_test.go` case; an `n/a` placeholder for a set top-level field is the smell.
 
 ## A future code-fence marker must account for Linguist aliases
 

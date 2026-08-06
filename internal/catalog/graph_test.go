@@ -46,12 +46,17 @@ func TestClosureIsCycleSafe(t *testing.T) {
 }
 
 // Advisory profile neighbors are deliberately absent from structural closure.
-// brainstorming's dispatched agent is a structural edge and does close, which is
-// what separates the two: its six advisory RequiresSkills must still not appear.
+// Grounding owns the checker edge; brainstorming's optional prose reference is
+// not structural.
 func TestWorkflowProfileNeighborsDoNotCloseRequirements(t *testing.T) {
 	got := Closure(Standard, []Node{{Kind: "skill", Name: "brainstorming"}})
-	want := []Node{{Kind: "skill", Name: "brainstorming"}, {Kind: "agent", Name: "grounding-checker"}}
+	want := []Node{{Kind: "skill", Name: "brainstorming"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("brainstorming closure = %v, want %v", got, want)
+	}
+	got = Closure(Standard, []Node{{Kind: "skill", Name: "grounding"}})
+	want = []Node{{Kind: "skill", Name: "grounding"}, {Kind: "agent", Name: "grounding-checker"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("grounding closure = %v, want %v", got, want)
 	}
 }

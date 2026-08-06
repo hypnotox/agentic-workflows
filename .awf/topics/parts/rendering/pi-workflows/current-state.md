@@ -11,8 +11,9 @@ Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
 
-In the generated Pi extension and skills, brainstorming's grounding check dispatches through the dedicated grounding tool while general exploration and coupling audits use the exploration tool, and no non-Pi target's rendered output contains either Pi subagent tool name.
+In the generated Pi extension and skills, the reusable grounding support skill dispatches through the existing dedicated grounding tool whenever its independent repository-premise trigger fires, while general exploration and coupling audits use the exploration tool, and no non-Pi target's rendered output contains either Pi subagent tool name.
 Origin: ADR-0148
+Revised-by: ADR-0243
 Backing: test
 
 ### `invariant: pi-extension-editor-quiet-strip`
@@ -67,7 +68,7 @@ Backing: test
 The Pi target alone derives three closed-schema pathless associated-memory tools from selected `effort-workflow`: paginated complete-document read, exact Markdown-body edit, and mutable `phase` or `next` update. They are registered but inactive while detached, activate only with a successful association, preserve unrelated active tools, carry active-only preference guidance, and clear on detached lifecycle boundaries or advisory ownership loss. The generated client uses bounded invocation and strict protocol decoding, while the index serializes complete operations and puts mutations on Pi's shared real-path file queue; these conveniences neither prohibit direct file access nor make activity an authority or lock.
 Both mutation tools additionally run one owner-scoped binary preview before execution. The client selects and strictly decodes the operation-specific closed `previewed` envelope, requiring `replacementCount` for edit preview, forbidding it for update preview, forbidding any memory fact in either, and refusing a preview envelope for a normal invocation or a normal success envelope for a preview one. Preview inserts only `--preview` into otherwise unchanged owner-scoped argv and leaves normal mutation validation, publication, and durability semantics untouched. Any preview refusal or preview transport failure becomes the thrown tool error and no mutation runs. One shared self-rendered mutation surface built from Pi's public `renderDiff` and TUI exports serves both tools: it keys one preview per tool call, immutable association, and exact arguments, redraws only the still-current key, and always replaces preview state with the authoritative result, refusal, or error, so no refusal reads as success and a bounded diff shows its truncation warning. Model-visible mutation content stays compact while structured details keep the protocol reply. Preview joins association serialization only; the file mutation queue stays reserved for the mutations themselves.
 Origin: ADR-0239
-Revised-by: ADR-render-effort-memory-edits-like-pi
+Revised-by: ADR-0244
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`

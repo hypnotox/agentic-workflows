@@ -11,9 +11,9 @@ The closing step of the implementation phase, run by the **main thread** (not a 
 <!-- awf:edit when-fires: default; create .awf/skills/parts/retrospective/when-fires.md to override -->
 ## When this skill fires
 
-Terminal step of the implementation phase, after `awf-reviewing-impl` has concluded. It runs in the main thread and sees the whole session, so it catches what a fresh-context review cannot.
+Invoked by `awf-effort-workflow` after implementation assurance is settled or explicitly skipped, deferred artifact closure is complete, and managed topology is removed. It runs in the main thread and sees the whole effort.
 
-**Skip a trivial session**: a one-line or mechanical change with nothing worth recording and no recurring issue to promote. **Run even on a docs-only session**: a doc or process pitfall is still worth capturing, and the review step skips those.
+Record only warranted durable lessons; a mechanical change may have none. Artifact-only work uses the same retrospective judgment as code.
 
 <!-- awf:edit procedure: from .awf/skills/parts/retrospective/procedure.md -->
 ## Procedure
@@ -34,7 +34,7 @@ Terminal step of the implementation phase, after `awf-reviewing-impl` has conclu
 <!-- awf:edit recurrence-signal: default; create .awf/skills/parts/retrospective/recurrence-signal.md to override -->
 ## Recurrence signal
 
-An observation is a **promotion candidate** when the main thread saw it recur within this session, when the effort's observation log shows it recurring across sessions, or when it matches something already recorded (`docs/pitfalls.md` or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
+An observation is a **promotion candidate** when the main thread saw it recur within this session, when the effort's observation log shows it recurring across the effort's sessions, or when it matches something already recorded (`docs/pitfalls.md` or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
 
 <!-- awf:edit promotion-ladder: default; create .awf/skills/parts/retrospective/promotion-ladder.md to override -->
 ## The promotion ladder

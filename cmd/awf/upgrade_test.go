@@ -729,3 +729,51 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 		t.Fatal("journal residue after rollback")
 	}
 }
+
+func TestUpgradeFailurePresentsGroundingCollision(t *testing.T) {
+	err := newUpgradeFailure(nil, nil, &migrate.GroundingSkillCollisionError{Path: "skills/grounding.yaml"})
+	var failure upgradeFailure
+	if !errors.As(err, &failure) {
+		t.Fatalf("failure type = %T", err)
+	}
+	diagnostic, diagnosticErr := failure.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	if diagnostic.State != "operation" || diagnostic.Cause != "" || len(diagnostic.Steps) != 2 {
+		t.Fatalf("diagnostic = %#v", diagnostic)
+	}
+	for _, tc := range []struct {
+		name    string
+		changes []migrate.Change
+		want    string
+	}{
+		{
+			name: "no prior change",
+			want: "condition: project-local grounding at skills/grounding.yaml occupies the standard name\nstate: operation\n\ndiagnostic:\n  steps:\n    step 1: rename the local grounding artifact at skills/grounding.yaml and update its selected name, or remove the local override to adopt standard grounding\n    step 2: rerun awf upgrade\n",
+		},
+		{
+			name:    "prior change",
+			changes: []migrate.Change{{Text: "earlier migration changed config"}},
+			want:    "condition: project-local grounding at skills/grounding.yaml occupies the standard name\nstate: operation\n\ndiagnostic:\n  changed:\n    migration: change: earlier migration changed config\n  steps:\n    step 1: inspect the listed changed axes\n    step 2: rename the local grounding artifact at skills/grounding.yaml and update its selected name, or remove the local override to adopt standard grounding\n    step 3: rerun awf upgrade\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diagnostic, err := (&migrate.GroundingSkillCollisionError{Path: "skills/grounding.yaml"}).Diagnostic(tc.changes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			document, err := diagnostic.Document()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out bytes.Buffer
+			if err := presentation.Render(&out, document); err != nil {
+				t.Fatal(err)
+			}
+			if got := out.String(); got != tc.want {
+				t.Fatalf("diagnostic = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

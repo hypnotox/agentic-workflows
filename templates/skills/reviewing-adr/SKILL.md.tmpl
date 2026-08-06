@@ -17,7 +17,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 
 ## Procedure
 
-This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the ADR corpus, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
+This skill may run without an effort. If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md`, preserve one user-managed writer, and give the report-only reviewer that context read-only; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before further mutation. Repository sources, the ADR corpus, and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 <!-- awf:section procedure -->
 1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified decision record under `{{ .layout.adrDir }}/`: `NNNN-*.md` when numbered, or `<slug>.md` while pending, ignoring `README.md`, `INDEX.md`, and `template.md`.
@@ -54,7 +54,7 @@ This skill operates only inside an existing confirmed effort and never creates a
 <!-- awf:end -->
 
 <!-- awf:section status-flip -->
-7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition and every explicit Applied batch, while the status-only flip to `Implemented` is owned by the terminal-review flow after the applicable review settles, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
+7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition and every explicit Applied batch. After assurance settles or is explicitly skipped, `effort-workflow` owns effort-backed terminal closure; for effort-free execution, the parent owns the deferred status-only flip to `Implemented`, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-resync -->

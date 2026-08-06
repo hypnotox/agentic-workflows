@@ -73,6 +73,7 @@ var minVersionBySchema = map[int]string{
 	34: "0.30.0",
 	35: "0.30.0",
 	36: "0.31.0",
+	37: "0.31.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a

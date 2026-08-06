@@ -935,7 +935,7 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: []\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: [grounding-checker]\n")
 	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)

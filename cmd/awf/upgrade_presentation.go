@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -112,6 +113,10 @@ func (e upgradeFailure) Error() string { return e.cause.Error() }
 func (e upgradeFailure) Unwrap() error { return e.cause }
 
 func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
+	var collision *migrate.GroundingSkillCollisionError
+	if errors.As(e.cause, &collision) {
+		return collision.Diagnostic(e.changes)
+	}
 	changed := make([]presentation.Field, 0, len(e.changes))
 	for _, change := range e.changes {
 		if _, err := presentation.Prose(change.Text); err != nil {

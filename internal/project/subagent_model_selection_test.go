@@ -13,7 +13,7 @@ type governedDispatches struct {
 }
 
 var deliberateSelectionDispatches = []governedDispatches{
-	{skill: "brainstorming", sections: []string{"grounding-check-output-format"}},
+	{skill: "grounding", sections: []string{"brief-construction-and-dispatch"}},
 	{skill: "exploring", sections: []string{"dispatch"}},
 	{skill: "executing-plans", sections: []string{"procedure-per-task"}},
 	{skill: "subagent-driven-development", sections: []string{"dispatch-conventions", "procedure-status-handling"}},

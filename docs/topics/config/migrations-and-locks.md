@@ -9,6 +9,13 @@ These packages migrate the config tree across schema generations and read and wr
 
 ## Claims
 
+### `invariant: grounding-skill-backfill`
+
+Schema generation 37 enables standard grounding only when selected standard brainstorming is enabled. It leaves project-local brainstorming untouched, refuses a project-local grounding collision before mutation with actionable recovery, and is atomic and idempotent.
+Origin: ADR-0243
+Backing: test
+
+
 ### `invariant: audit-migration-announces-removal`
 
 The schema-11 config migration prints the removed audit.baseBranch key when it strips one from an adopter's config, rather than removing it silently.

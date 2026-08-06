@@ -7,10 +7,12 @@ package catalog
 // produced - so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Clarify an outcome and settle a grounded design.", Trigger: "Use for non-trivial work before deciding its design.", CommonFollowUps: []string{"proposing-adr", "writing-plans", "executing-direct"}}, Core: true, RequiresAgent: "grounding-checker", Sections: []string{
+		"brainstorming": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Clarify an outcome and settle an approved design.", Trigger: "Use when work needs a material choice or clarification.", CommonFollowUps: []string{"proposing-adr", "writing-plans", "executing-direct"}}, Core: true, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
-			"design-sections", "no-spec-rule", "grounding-check-output-format",
-			"grounding-check-dispatch-template", "terminal-step", "definitions", "anti-patterns",
+			"design-sections", "no-spec-rule", "terminal-step", "definitions", "anti-patterns",
+		}},
+		"grounding": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Check broad or uncertain repository premises from any workflow.", Trigger: "Use when correctness depends on broad or uncertain repository facts.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}}, Core: true, RequiresAgent: "grounding-checker", Sections: []string{
+			"invocation", "brief-construction-and-dispatch", "finding-classification", "boundaries", "notes",
 		}},
 		"writing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Turn an approved design into an executable plan.", Trigger: "Use when implementation needs a durable, reviewable plan.", UsuallyFollows: []string{"brainstorming", "proposing-adr"}, CommonFollowUps: []string{"reviewing-plan"}}, Core: true, Sections: []string{
 			"positioning", "when-to-invoke", "conventions-path", "conventions-header",
@@ -19,7 +21,7 @@ var Standard = &Catalog{
 			"procedure-write-plan", "doc-currency-check", "self-review", "plan-commit-step",
 			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
 		}},
-		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a small approved change directly.", Trigger: "Use when the change is understood and does not need a plan.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-impl"}}, Core: true},
+		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a clear narrow change directly.", Trigger: "Use when outcome, boundary, and verification are clear and no independent design or plan need fires.", CommonFollowUps: []string{"reviewing-impl", "effort-workflow"}}, Core: true},
 		"executing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "subagent-driven-development"}}, Core: true, RequiresAgent: "implementer", Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
@@ -32,7 +34,7 @@ var Standard = &Catalog{
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
 			"notes", "red-flags",
 		}},
-		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Use one awf effort through its existing managed worktree and lifecycle.", Trigger: "Use when starting, resuming, switching checkout context for, integrating, or finishing a non-minimal effort."}, Core: true},
+		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Own one awf effort from continuity evaluation through finish.", Trigger: "Use whenever durable continuity materially helps, or to resume or finish an effort."}, Core: true},
 		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct", "executing-plans"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
@@ -50,7 +52,7 @@ var Standard = &Catalog{
 		"exploring": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Explore repository facts without polluting the main context.", Trigger: "Use for fresh-context repository exploration when inline search would pollute the parent context.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}}, Core: true, RequiresAgent: "explorer", Sections: []string{
 			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
-		"orienting": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Ground the session in a topic before starting, resuming, or widening work.", Trigger: "Use when taking up a topic: before brainstorming fresh non-trivial work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "writing-plans", "executing-plans"}}, Core: true, Sections: []string{
+		"orienting": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Ground the session in repository truth before starting, resuming, or widening work.", Trigger: "Use when repository truth is needed while taking up a topic: before brainstorming fresh work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "writing-plans", "executing-plans"}}, Core: true, Sections: []string{
 			"when-to-invoke", "guide-ladder", "context-command", "resume-revalidation", "hand-off",
 		}},
 		"proposing-adr": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Author a decision record for a material design choice.", Trigger: "Use when a durable architectural or workflow decision is needed.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-adr", "writing-plans"}},
@@ -100,11 +102,11 @@ var Standard = &Catalog{
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-resync", "notes",
 		}},
-		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an implementation and route any managed-worktree integration, renewed review, and removal before retrospective.", Trigger: "Use when an implementation commit or series needs terminal review.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"retrospective"}}, Core: true, RequiresAgent: "code-reviewer", Sections: []string{
-			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
+		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently assure an implementation.", Trigger: "Use when independent review has assurance value for the implementation.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"effort-workflow"}}, Core: true, RequiresAgent: "code-reviewer", Sections: []string{
+			"when-fires", "sha-range-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
-		"retrospective": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Capture durable lessons, verify managed topology is absent, and finish the effort last.", Trigger: "Use after settled terminal review and any required managed-worktree removal.", UsuallyFollows: []string{"reviewing-impl"}}, Core: true, Sections: []string{
+		"retrospective": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Capture durable lessons, verify managed topology is absent, and finish the effort last.", Trigger: "Use from effort-workflow after assurance settles or is explicitly skipped and managed topology is removed.", UsuallyFollows: []string{"effort-workflow"}}, Core: true, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
 		"refactor-coupling-audit": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Scope dependency and test coupling before a refactor.", Trigger: "Use when scoping a refactor that moves files between packages or inverts dependencies.", CommonFollowUps: []string{"brainstorming", "proposing-adr", "writing-plans"}}, Sections: []string{
@@ -223,7 +225,7 @@ var Standard = &Catalog{
 		// A project term of the same case-insensitive name overrides one.
 		"glossary": {Title: "Glossary", Desc: "project jargon and the awf vocabulary it ships", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl", Data: map[string]any{
 			"standardTerms": []any{
-				map[string]any{"term": "effort", "meaning": "One active slugged unit of coordination, owning a working-memory file for the duration of a concrete non-minimal outcome. A minimal fix uses none."},
+				map[string]any{"term": "effort", "meaning": "One active slugged unit of continuity, owning a working-memory file when multi-step work, likely continuation, coordination, delegation, or durable observations make continuity materially useful. Work without that need uses none."},
 				map[string]any{"term": "managed effort worktree", "meaning": "The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes."},
 				map[string]any{"term": "working memory", "meaning": "The file an effort owns for in-flight context: its brief, settled decisions, observations, and handoff log. One writer, and deleted at finish, so nothing others must honour lives there alone."},
 				map[string]any{"term": "current-state topic", "meaning": "A domain-owned document of prose plus a closing claims section. Its claims, not the decision-record corpus, are what tooling reads for the rules in force now."},

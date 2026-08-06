@@ -10,29 +10,29 @@ The closing step of the implementation phase, run by the **main thread** (not a 
 <!-- awf:section when-fires -->
 ## When this skill fires
 
-Terminal step of the implementation phase, after {{ if index .skills "reviewing-impl" }}`{{ .prefix }}-reviewing-impl`{{ else }}the project's review step{{ end }} has concluded. It runs in the main thread and sees the whole session, so it catches what a fresh-context review cannot.
+Invoked by `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` after implementation assurance is settled or explicitly skipped, deferred artifact closure is complete, and managed topology is removed. It runs in the main thread and sees the whole effort.
 
-**Skip a trivial session**: a one-line or mechanical change with nothing worth recording and no recurring issue to promote. **Run even on a docs-only session**: a doc or process pitfall is still worth capturing, and the review step skips those.
+Record only warranted durable lessons; a mechanical change may have none. Artifact-only work uses the same retrospective judgment as code.
 <!-- awf:end -->
 
 <!-- awf:section procedure -->
 ## Procedure
 
-1. **Validate closure context.** This skill operates only inside an existing already-confirmed effort and never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Carry the fixed identity, exact effort slug, and `.awf/efforts/<slug>/memory.md`, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, and remain the one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden.
+1. **Validate closure context.** `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` invokes this skill only for an existing effort after managed topology is absent. Validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, confirm canonical `effort: <slug>` or deprecated legacy `Effort: <slug>`, and remain the one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden.
 
-2. **Reflect and record worthy observations.** Read the effort memory's `## Observations` and `## Decision log` as primary input alongside this session's implementation and terminal-review findings and friction, and confirm every user-provenance decision either landed in a durable artifact or was explicitly re-decided. Record a first occurrence at the appropriate durable rung; recording observations in memory during the effort is the expected path, and a lesson must land at a durable rung before finish deletes the file.
+2. **Reflect and record worthy observations.** Read the effort memory's `## Observations` and `## Decision log` as primary input alongside implementation and assurance findings and friction, and confirm every user-provenance decision either landed in a durable artifact or was explicitly re-decided. Record a first occurrence at the appropriate durable rung; a lesson must land durably before effort-workflow finishes the effort.
 
-3. **Promote recurring, codifiable observations** to the strongest justified rung. Verify recurrence before promoting (within this session or across the effort's sessions as recorded in the observation log) and land any warranted durable lesson or changelog correction before finish.
+3. **Promote recurring, codifiable observations** to the strongest justified rung. Verify recurrence before promoting and land any warranted durable lesson or changelog correction before returning.
 
 4. **Verify managed topology is absent.** Require no `.awf/worktrees/<slug>` path, native Git registration, or `awf/<slug>` branch. Retrospective never integrates or discards Git resources.
 
-5. **Finish last.** Update the final checkpoint, run `awf effort finish <slug>`, and report its active-rename and cleanup status. Never delete memory directly; finish is the last effort mutation.
+5. **Return the retrospective result.** Report recorded lessons, promotions, and verified topology to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`. Do not finish or delete memory; the lifecycle owner finishes last.
 <!-- awf:end -->
 
 <!-- awf:section recurrence-signal -->
 ## Recurrence signal
 
-An observation is a **promotion candidate** when the main thread saw it recur within this session, when the effort's observation log shows it recurring across sessions, or when it matches something already recorded ({{ if .layout.docs.pitfalls }}`{{ .layout.docs.pitfalls }}`{{ else }}the project's pitfalls notes{{ end }} or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
+An observation is a **promotion candidate** when the main thread saw it recur within this session, when the effort's observation log shows it recurring across the effort's sessions, or when it matches something already recorded ({{ if .layout.docs.pitfalls }}`{{ .layout.docs.pitfalls }}`{{ else }}the project's pitfalls notes{{ end }} or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
 <!-- awf:end -->
 
 <!-- awf:section promotion-ladder -->

@@ -86,9 +86,10 @@ Backing: test
 
 ### `invariant: working-memory-single-home`
 
-Working-memory protocol has one canonical workflow-document home. Native skills own operative effort creation and checkpoint behavior. The guide carries only minimum pre-selection routing for a minimal simple fix and non-minimal effort creation or resumption, plus the one-user-managed-writer boundary; it does not duplicate protocol, lifecycle, or memory-path procedure. Resume verification is procedurally homed in the orienting skill.
+Working-memory protocol has one canonical workflow-document home. The root guide carries only slim native-skill routing and states that effort creation depends on durable continuity, while `effort-workflow` alone owns creation through finish. It preserves the one-user-managed-writer boundary without duplicating protocol, topology, or memory-path procedure. Resume verification remains procedurally homed in orienting.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243
 Backing: test
 
 ### `invariant: agent-guide-size-budgets`
