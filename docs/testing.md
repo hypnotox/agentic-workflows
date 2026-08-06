@@ -63,7 +63,9 @@ The strict container lane includes the standalone context-usage output and cover
 <!-- awf:edit tiers: from .awf/docs/parts/testing/tiers.md -->
 ## Tiers
 
-awf has a single tier: `./x gate` runs everything, including protocol parity, the pinned in-memory Pi 0.81.1 three-factory runtime seam that proves real-request context-line refresh after active-branch compaction, the pinned repository-runtime cache and launcher tests, and strict full-coverage tests for the selection-gated effort association extension. The latter prove capability degradation: companion capability presence is final authority, with no foreign package publication, installation topology, or version floor. There is no slower tier to reach for; the whole gate is fast enough to run before every commit. `./x gate timings` runs that identical sequential transaction while reporting each stage's elapsed wall time. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.
+awf has a single tier: `./x gate` runs everything, including protocol parity, the pinned in-memory Pi 0.81.1 three-factory runtime seam that proves real-request context-line refresh after active-branch compaction, the pinned repository-runtime cache and launcher tests, and strict full-coverage tests for the selection-gated effort association extension. The latter prove capability degradation above the retained 0.81.1 floor: companion capability presence is final authority, with no foreign package publication or installation-topology inference. There is no slower tier to reach for; the whole gate is fast enough to run before every commit. `./x gate timings` runs that identical sequential transaction while reporting each stage's elapsed wall time. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.
+
+The Pi tier also proves the guarded dynamic active-tool, prompt-guidance, and file-mutation-queue floor against the retained 0.81.1 fork.
 
 
 <!-- awf:edit layout: from .awf/docs/parts/testing/layout.md -->
@@ -79,4 +81,6 @@ Test shape is judgment guided by three defaults (`code-design/test-design` carri
 The isolated-TMPDIR real-hook regression proves the hand-written stub removes its staged slice before rendered-payload handoff.
 
 The Pi extension suite covers transient context usage independently from handoff and subagents, including fresh copied messages, tool-follow-up refresh, active-branch-only compactions, and the shared runtime guard. Its pinned in-memory runtime smoke captures actual provider request contexts across two explicit prompts and proves the hidden context line refreshes after an active-branch compaction without persisting to session messages or entries.
+
+The Pi extension suite covers the generated memory protocol client and associated-tool index together with the pinned runtime declaration smoke.
 

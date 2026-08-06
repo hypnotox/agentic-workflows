@@ -216,6 +216,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	inv, err := parseArgs(cmd, rest)
 	if err != nil {
+		if top.Name == "effort" && (sub == "memory" || strings.HasPrefix(sub, "memory ")) {
+			err = &usageErr{boundedMemoryCommandError(err).Error()}
+		}
 		return dispatchFailure(stdout, stderr, err) // parseArgs only returns usageErr → exit 2
 	}
 	// A committed current-state journal or attestation makes ordinary project

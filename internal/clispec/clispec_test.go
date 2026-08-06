@@ -455,8 +455,13 @@ func TestLookup(t *testing.T) {
 		}
 	}
 	memory, found := effort.Child("memory")
-	if !found || len(memory.Children) != 1 || memory.Children[0].Name != "update" || strings.Join(memory.Children[0].ValueFlags, ",") != "--phase,--next" {
+	if !found || len(memory.Children) != 3 || memory.Children[0].Name != "read" || memory.Children[1].Name != "edit" || memory.Children[2].Name != "update" || strings.Join(memory.Children[0].ValueFlags, ",") != "--offset,--limit,--owner" || strings.Join(memory.Children[2].ValueFlags, ",") != "--phase,--next,--owner" {
 		t.Fatalf("effort memory spec = %#v, found %v", memory, found)
+	}
+	for _, command := range memory.Children {
+		if strings.Join(command.BoolFlags, ",") != "--json" || !strings.Contains(helpText(command), "--owner") {
+			t.Errorf("memory %s does not declare owner-scoped grammar: %#v", command.Name, command)
+		}
 	}
 	activity, found := effort.Child("activity")
 	activityNames := make([]string, len(activity.Children))

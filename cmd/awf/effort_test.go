@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -47,7 +49,7 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 		t.Fatalf("list omitted resident slug: %q", listed)
 	}
 	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "update", slug, "--phase", "Still operable")
-	if code != 0 || stdout != "" || stderr != "" {
+	if code != 0 || !strings.Contains(stdout, "status: updated") || stderr != "" {
 		t.Fatalf("memory update code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	owner := "128f47a0-7b3d-4c52-8f1a-123456789abc"
@@ -341,6 +343,254 @@ func TestEffortActivityGrammarHelpers(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority (TestMemoryCommandHumanProtocolAndStdinBoundaries)
+// invariant: tooling/cli:effort-command-contract (TestMemoryCommandHumanProtocolAndStdinBoundaries)
+func TestMemoryCommandHumanProtocolAndStdinBoundaries(t *testing.T) {
+	root := commandRepo(t)
+	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "memory-cli", "Memory CLI", "--no-worktree")
+	if code != 0 || stderr != "" {
+		t.Fatalf("new code=%d stderr=%q", code, stderr)
+	}
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "read", "memory-cli", "--offset", "1", "--limit", "2")
+	if code != 0 || stderr != "" || !strings.Contains(stdout, "status: read") || !strings.Contains(stdout, "next offset: 3") {
+		t.Fatalf("human read code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+
+	oldStdin := stdin
+	stdin = strings.NewReader(`{"edits":[{"oldText":"## Brief","newText":"## Updated brief"}]}`)
+	t.Cleanup(func() { stdin = oldStdin })
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "memory-cli")
+	if code != 0 || stderr != "" || !strings.Contains(stdout, "status: edited") || !strings.Contains(stdout, "replacements: 1") {
+		t.Fatalf("human edit code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+
+	const owner = "00000000-0000-4000-8000-000000000001"
+	code, _, stderr = runEffortCLI(t, root, "effort", "activity", "attach", "memory-cli", "--owner", owner, "--json")
+	if code != 0 || stderr != "" {
+		t.Fatalf("attach code=%d stderr=%q", code, stderr)
+	}
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "update", "memory-cli", "--phase", "protocol phase", "--owner", owner, "--json")
+	if code != 0 || stderr != "" || !strings.HasSuffix(stdout, "\n") {
+		t.Fatalf("protocol update code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(envelope) != 3 || string(envelope["schemaVersion"]) != "1" || string(envelope["condition"]) != `"updated"` {
+		t.Fatalf("protocol envelope=%v", envelope)
+	}
+}
+
+type memoryInputErrorReader struct{}
+
+func (memoryInputErrorReader) Read([]byte) (int, error) { return 0, errors.New("stdin failed") }
+
+// invariant: tooling/cli:effort-command-contract (TestMemoryEditDecoderAndGrammarRefuseBeforeComposition)
+func TestMemoryEditDecoderAndGrammarRefuseBeforeComposition(t *testing.T) {
+	validEdits := make([]string, 128)
+	for i := range validEdits {
+		validEdits[i] = `{"oldText":"x","newText":"y"}`
+	}
+	request, err := decodeMemoryEditRequest(strings.NewReader(`{"edits":[` + strings.Join(validEdits, ",") + `]}`))
+	if err != nil || len(request.Edits) != 128 {
+		t.Fatalf("128 edits=%d err=%v", len(request.Edits), err)
+	}
+	excessEdits := make([]string, 129)
+	copy(excessEdits, validEdits)
+	excessEdits[128] = `{"oldText":"x","newText":"y"}`
+	if _, err := decodeMemoryEditRequest(strings.NewReader(`{"edits":[` + strings.Join(excessEdits, ",") + `]}`)); err == nil {
+		t.Fatal("129 edits were accepted")
+	}
+	exactMiB := strings.Repeat("x", 1048576)
+	if _, err := decodeMemoryEditRequest(strings.NewReader(`{"edits":[{"oldText":"x","newText":"` + exactMiB + `"}]}`)); err != nil {
+		t.Fatalf("one-MiB string was refused: %v", err)
+	}
+	if _, err := decodeMemoryEditRequest(strings.NewReader(`{"edits":[{"oldText":"x","newText":"` + exactMiB + `x"}]}`)); err == nil {
+		t.Fatal("one-MiB-plus-one string was accepted")
+	}
+	if _, err := decodeMemoryEditRequest(memoryInputErrorReader{}); err == nil || !strings.Contains(err.Error(), "stdin failed") {
+		t.Fatalf("stdin read error = %v", err)
+	}
+	for _, payload := range []string{
+		``,
+		`{"unterminated`,
+		`{"edits":[]}`,
+		`{"edits":[{"oldText":"","newText":"x"}]}`,
+		`{"edits":[{"oldText":"x","newText":"y","extra":true}]}`,
+		`{"edits":[{"oldText":"x","newText":"y"}],"extra":true}`,
+		`{"edits":[{"oldText":"x","newText":"y"}],"edits":[{"oldText":"a","newText":"b"}]}`,
+		`{"edits":[{"oldText":"x","oldText":"a","newText":"y"}]}`,
+		`{"edits":[{"oldText":"x","newText":"y","newText":"b"}]}`,
+		`{"edits":[{"oldText":"x","newText":"y"}]} {}`,
+		`{"edits":[{"oldText":"x","newText":"y"}]} trailing`,
+	} {
+		if _, err := decodeMemoryEditRequest(strings.NewReader(payload)); err == nil {
+			t.Fatalf("invalid edit request accepted: %s", payload)
+		}
+	}
+	if _, err := decodeMemoryEditRequest(strings.NewReader(strings.Repeat(" ", 16777217))); err == nil {
+		t.Fatal("16 MiB request bound was not enforced")
+	}
+	composed := false
+	err = runEffort(&cmdCtx{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{}}, stdin: strings.NewReader(`{"edits":[]}`)}, func(context.Context, string) (effortComposition, error) {
+		composed = true
+		return effortComposition{}, nil
+	})
+	if err == nil || composed {
+		t.Fatalf("malformed stdin err=%v composed=%t", err, composed)
+	}
+
+	root := commandRepo(t)
+	composition, err := openEffortComposition(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = runEffortMemory(&cmdCtx{sub: "memory read", inv: invocation{positionals: []string{"bad_slug"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, composition.service, nil)
+	if err == nil {
+		t.Fatal("service input failure was not propagated")
+	}
+
+	for _, ctx := range []*cmdCtx{
+		{sub: "memory read", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{"--offset": "0"}}},
+		{sub: "memory read", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{"--limit": "not-int"}}},
+		{sub: "memory read", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--json": true}, values: map[string]string{}}},
+		{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{"--owner": "bad"}}},
+		{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--json": true}, values: map[string]string{"--owner": "bad"}}},
+		{sub: "memory update", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{}}},
+	} {
+		if err := validateEffortGrammar(ctx); err == nil {
+			t.Fatalf("invalid grammar accepted: %#v", ctx)
+		}
+	}
+}
+
+// invariant: tooling/cli:explicit-output-bypasses (TestMemoryProtocolExactSuccessAndRefusalEnvelopes)
+func TestMemoryProtocolExactSuccessAndRefusalEnvelopes(t *testing.T) {
+	metadata := &effort.MemoryMetadata{Effort: "demo", Phase: "phase", Next: "next", Updated: "2026-08-05T12:00:00Z"}
+	next := 3
+	line := 7
+	cases := []struct {
+		name   string
+		result effort.MemoryOperationResult
+		want   string
+	}{
+		{"read", effort.MemoryOperationResult{Condition: effort.MemoryRead, Memory: metadata, Content: "one\n", Range: &effort.MemoryRange{StartLine: 2, EndLine: 2, TotalLines: 3, NextOffset: &next, TruncatedBy: "limit"}}, `{"schemaVersion":1,"condition":"read","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"},"content":"one\n","range":{"startLine":2,"endLine":2,"totalLines":3,"nextOffset":3,"truncatedBy":"limit"}}` + "\n"},
+		{"edited", effort.MemoryOperationResult{Condition: effort.MemoryEdited, Memory: metadata, ReplacementCount: 2, Diff: &effort.MemoryDiff{Text: "diff", FirstChangedLine: &line, Truncated: true}}, `{"schemaVersion":1,"condition":"edited","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"},"replacementCount":2,"diff":{"text":"diff","firstChangedLine":7,"truncated":true}}` + "\n"},
+		{"updated", effort.MemoryOperationResult{Condition: effort.MemoryUpdated, Memory: metadata}, `{"schemaVersion":1,"condition":"updated","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"}}` + "\n"},
+		{"offset", effort.MemoryOperationResult{Condition: effort.MemoryOffsetOutOfRange, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "outside", NextActions: []effort.RecoveryAction{{Text: "use range"}}, Cause: "must be omitted"}, Offset: &effort.MemoryOffsetFact{Offset: 4, TotalLines: 3}}, `{"schemaVersion":1,"condition":"offset-out-of-range","outcome":{"category":"operation","condition":"outside","changedMemory":false,"nextActions":["use range"]},"range":{"offset":4,"totalLines":3}}` + "\n"},
+		{"no-match", effort.MemoryOperationResult{Condition: effort.MemoryNoMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "absent", NextActions: []effort.RecoveryAction{{Text: "read again"}}, Cause: "must be omitted"}, Edit: &effort.MemoryEditFact{Index: 0}}, `{"schemaVersion":1,"condition":"no-match","outcome":{"category":"operation","condition":"absent","changedMemory":false,"nextActions":["read again"]},"edit":{"index":0}}` + "\n"},
+		{"ambiguous", effort.MemoryOperationResult{Condition: effort.MemoryAmbiguousMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "repeated", NextActions: []effort.RecoveryAction{{Text: "add context"}}, Cause: "must be omitted"}, Edit: &effort.MemoryEditFact{Index: 1, Occurrences: 2}}, `{"schemaVersion":1,"condition":"ambiguous-match","outcome":{"category":"operation","condition":"repeated","changedMemory":false,"nextActions":["add context"]},"edit":{"index":1,"occurrences":2}}` + "\n"},
+		{"overlap", effort.MemoryOperationResult{Condition: effort.MemoryOverlappingEdits, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "overlap", NextActions: []effort.RecoveryAction{{Text: "separate"}}, Cause: "must be omitted"}, Overlap: &effort.MemoryOverlapFact{FirstIndex: 0, SecondIndex: 2}}, `{"schemaVersion":1,"condition":"overlapping-edits","outcome":{"category":"operation","condition":"overlap","changedMemory":false,"nextActions":["separate"]},"edits":{"firstIndex":0,"secondIndex":2}}` + "\n"},
+		{"size", effort.MemoryOperationResult{Condition: effort.MemoryResultTooLarge, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "large", NextActions: []effort.RecoveryAction{{Text: "shrink"}}, Cause: "must be omitted"}, Size: &effort.MemorySizeFact{Bytes: 51201, MaxBytes: 51200}}, `{"schemaVersion":1,"condition":"result-too-large","outcome":{"category":"operation","condition":"large","changedMemory":false,"nextActions":["shrink"]},"size":{"bytes":51201,"maxBytes":51200}}` + "\n"},
+		{"failure", effort.MemoryOperationResult{Condition: effort.MemoryFailure, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "uncertain", ChangedMemory: true, NextActions: []effort.RecoveryAction{{Text: "read first"}}, Cause: "disk"}}, `{"schemaVersion":1,"condition":"memory-failure","outcome":{"category":"operation","condition":"uncertain","changedMemory":true,"nextActions":["read first"],"cause":"disk"}}` + "\n"},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := writeEffortMemoryProtocol(&out, test.result); err != nil {
+				t.Fatal(err)
+			}
+			if out.String() != test.want {
+				t.Fatalf("protocol=%q want=%q", out.String(), test.want)
+			}
+		})
+	}
+	if err := writeEffortMemoryProtocol(effortErrorWriter{}, cases[0].result); err == nil {
+		t.Fatal("protocol writer error ignored")
+	}
+	if err := writeEffortMemoryProtocol(effortShortWriter{}, cases[0].result); !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("protocol short write error = %v", err)
+	}
+	// This complete, newline-terminated envelope is exactly 1,048,576 bytes.
+	exactLimit := cases[0].result
+	exactLimit.Content = strings.Repeat("x", 1048346)
+	var exactOut bytes.Buffer
+	if err := writeEffortMemoryProtocol(&exactOut, exactLimit); err != nil || exactOut.Len() != 1048576 || !strings.HasSuffix(exactOut.String(), "\n") {
+		t.Fatalf("exact protocol bound bytes=%d newline=%t err=%v", exactOut.Len(), strings.HasSuffix(exactOut.String(), "\n"), err)
+	}
+	overLimit := exactLimit
+	overLimit.Content += "x"
+	if err := writeEffortMemoryProtocol(&bytes.Buffer{}, overLimit); err == nil || !strings.Contains(err.Error(), "exceeds 1 MiB") {
+		t.Fatalf("protocol output bound error = %v", err)
+	}
+}
+
+// invariant: tooling/cli:effort-command-contract (TestMemoryMalformedDiagnosticIsEntirelyBoundedAndUTF8Safe)
+func TestMemoryMalformedDiagnosticIsEntirelyBoundedAndUTF8Safe(t *testing.T) {
+	limit := maxMemoryCommandDiagnosticBytes - len("condition: awf: ") - len("\n")
+	bounded := boundedMemoryCommandError(errors.New(strings.Repeat("x", limit-1) + "€tail"))
+	if len(bounded.Error()) != limit-1 || !utf8.ValidString(bounded.Error()) {
+		t.Fatalf("split-rune bound bytes=%d valid=%t", len(bounded.Error()), utf8.ValidString(bounded.Error()))
+	}
+
+	root := commandRepo(t)
+	unknownFlag := "--" + strings.Repeat("é", 30000)
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "memory", "read", "missing", unknownFlag)
+	if code != 2 || stdout != "" || len(stderr) > 51200 || !strings.HasPrefix(stderr, "condition: awf: awf read: unknown flag ") || !strings.HasSuffix(stderr, "\n") || !utf8.ValidString(stderr) {
+		t.Fatalf("oversized unknown flag code=%d stdout=%q stderr bytes=%d valid=%t", code, stdout, len(stderr), utf8.ValidString(stderr))
+	}
+
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "read", "bad_slug")
+	if code != 2 || stdout != "" || stderr != "condition: awf: usage: awf effort memory read requires a canonical 1-63-byte slug\n" {
+		t.Fatalf("memory grammar code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+
+	unknownKey := strings.Repeat("é", 30000)
+	oldStdin := stdin
+	stdin = strings.NewReader(`{"edits":[{"oldText":"x","newText":"y"}],"` + unknownKey + `":true}`)
+	t.Cleanup(func() { stdin = oldStdin })
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "missing")
+	if code == 0 || stdout != "" {
+		t.Fatalf("oversized malformed request code=%d stdout=%q", code, stdout)
+	}
+	if len(stderr) > 51200 || !strings.HasPrefix(stderr, "condition: awf: decode memory edit request:") || !strings.HasSuffix(stderr, "\n") || !utf8.ValidString(stderr) {
+		t.Fatalf("bounded stderr bytes=%d valid=%t prefix=%t suffix=%t", len(stderr), utf8.ValidString(stderr), strings.HasPrefix(stderr, "condition: awf: decode memory edit request:"), strings.HasSuffix(stderr, "\n"))
+	}
+}
+
+// invariant: tooling/cli:explicit-output-bypasses (TestMemoryProtocolBaseRefusalAndNullableMatrices)
+func TestMemoryProtocolBaseRefusalAndNullableMatrices(t *testing.T) {
+	metadata := &effort.MemoryMetadata{Effort: "demo", Phase: "phase", Next: "next", Updated: "Not yet updated."}
+	baseConditions := []effort.MemoryCondition{
+		effort.MemoryNotOwner,
+		effort.MemoryMissing,
+		effort.MemoryUnsafeActivity,
+		effort.MemoryInvalid,
+		effort.MemoryUnsafe,
+	}
+	for _, condition := range baseConditions {
+		result := effort.MemoryOperationResult{Condition: condition, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "observed", NextActions: []effort.RecoveryAction{{Text: "recover"}}, Cause: "must be omitted"}}
+		var out bytes.Buffer
+		if err := writeEffortMemoryProtocol(&out, result); err != nil {
+			t.Fatal(err)
+		}
+		want := fmt.Sprintf("{\"schemaVersion\":1,\"condition\":%q,\"outcome\":{\"category\":\"operation\",\"condition\":\"observed\",\"changedMemory\":false,\"nextActions\":[\"recover\"]}}\n", condition)
+		if out.String() != want {
+			t.Fatalf("%s envelope=%q want=%q", condition, out.String(), want)
+		}
+	}
+	read := effort.MemoryOperationResult{Condition: effort.MemoryRead, Memory: metadata, Content: "x", Range: &effort.MemoryRange{StartLine: 1, EndLine: 1, TotalLines: 1, TruncatedBy: "none"}}
+	var out bytes.Buffer
+	if err := writeEffortMemoryProtocol(&out, read); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"nextOffset":null`) {
+		t.Fatalf("read null omitted: %q", out.String())
+	}
+	out.Reset()
+	edit := effort.MemoryOperationResult{Condition: effort.MemoryEdited, Memory: metadata, ReplacementCount: 1, Diff: &effort.MemoryDiff{}}
+	if err := writeEffortMemoryProtocol(&out, edit); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"firstChangedLine":null`) || strings.Contains(out.String(), `"cause"`) {
+		t.Fatalf("edit nullable/omitted fields=%q", out.String())
+	}
+	if err := writeEffortMemoryProtocol(&bytes.Buffer{}, effort.MemoryOperationResult{Condition: "unknown", Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "x", NextActions: []effort.RecoveryAction{{Text: "y"}}}}); err == nil {
+		t.Fatal("unknown closed condition was encoded")
+	}
+}
+
 func runEffortCLI(t *testing.T, root string, args ...string) (int, string, string) {
 	t.Helper()
 	t.Chdir(root)
@@ -399,6 +649,10 @@ type effortErrorWriter struct{}
 
 func (effortErrorWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
 
+type effortShortWriter struct{}
+
+func (effortShortWriter) Write(value []byte) (int, error) { return len(value) - 1, nil }
+
 func TestEffortOutputAndGrammarBranches(t *testing.T) {
 	root := commandRepo(t)
 	if err := runEffort(&cmdCtx{ctx: testContext(t), root: filepath.Join(root, "missing"), sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err == nil {
@@ -416,7 +670,7 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 			t.Fatalf("invalid grammar accepted: %s", c.sub)
 		}
 	}
-	if err := validateEffortGrammar(&cmdCtx{sub: "memory update", inv: invocation{bools: map[string]bool{}, values: map[string]string{"--phase": "p"}}}); err != nil {
+	if err := validateEffortGrammar(&cmdCtx{sub: "memory update", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{"--phase": "p"}}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := validateEffortActivityGrammar(&cmdCtx{sub: "activity attach", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{"--owner": "00000000-0000-4000-8000-000000000001"}}}); err == nil {

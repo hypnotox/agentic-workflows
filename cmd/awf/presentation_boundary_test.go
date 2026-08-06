@@ -147,7 +147,7 @@ func TestWriteOutcomeRendererFailureIsSingleDiagnostic(t *testing.T) {
 
 // TestOrdinaryCommandOutputUsesPresentation scans the command boundary and its
 // result-model owners. Ordinary output must lower through presentation; only
-// the five named successful payload/protocol functions may write bytes directly.
+// the named successful payload/protocol functions may write bytes directly.
 // invariant: tooling/cli:readable-text-output (TestOrdinaryCommandOutputUsesPresentation)
 func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 	if findings := ordinaryOutputFindings(t, nil); len(findings) != 0 {
@@ -168,7 +168,7 @@ func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 			t.Errorf("%s findings = %v, want exactly one %q finding", fixture, findings, want)
 		}
 	}
-	for _, fixture := range []string{"positive-read-plan.go", "positive-changelog.go", "positive-activity.go", "positive-init.go", "positive-context-delivery.go", "positive-shadow.go"} {
+	for _, fixture := range []string{"positive-read-plan.go", "positive-changelog.go", "positive-activity.go", "positive-memory.go", "positive-init.go", "positive-context-delivery.go", "positive-shadow.go"} {
 		if findings := fixtureFindings(t, fixture); len(findings) != 0 {
 			t.Errorf("%s findings: %v", fixture, findings)
 		}
@@ -211,6 +211,7 @@ var successfulBypasses = map[string]bool{
 	modulePath + "/cmd/awf.runReadPlan":                 true,
 	modulePath + "/cmd/awf.writeChangelogPayload":       true,
 	modulePath + "/cmd/awf.writeEffortActivityProtocol": true,
+	modulePath + "/cmd/awf.writeEffortMemoryProtocol":   true,
 	modulePath + "/cmd/awf.writeInitDescriptorProtocol": true,
 	modulePath + "/internal/contextdelivery.Deliver":    true,
 }

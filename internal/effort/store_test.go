@@ -166,8 +166,8 @@ func TestMemoryUpdatePostRenameFaultReportsChangedBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	phase := "Published before directory sync"
-	if err := service.UpdateMemory("durable-update", MemoryUpdate{Phase: &phase}); err == nil || !strings.Contains(err.Error(), "durability interrupted") {
-		t.Fatalf("post-rename fault = %v", err)
+	if result, err := updateMemoryForTest(service, "durable-update", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryFailure || result.Outcome == nil || !result.Outcome.ChangedMemory || !strings.Contains(result.Outcome.Cause, "durability interrupted") {
+		t.Fatalf("post-rename result=%#v err=%v", result, err)
 	}
 	raw, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", "durable-update", "memory.md"))
 	if err != nil {
