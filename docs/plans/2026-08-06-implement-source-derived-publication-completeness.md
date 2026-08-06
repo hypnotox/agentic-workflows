@@ -248,6 +248,7 @@ exact final state check from the repository root; `./x check` is the structural 
 after both complete:
 
 ```sh
+set -e
 ./x check
 set +e
 rg -nF \
