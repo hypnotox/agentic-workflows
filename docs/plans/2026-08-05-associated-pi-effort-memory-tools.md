@@ -414,5 +414,8 @@ feat(rendering): back memory tools (applies memory tools batch)
   a Reapplied correction for the two CLI operations. Phase 2 required settlement commits `96fab200`,
   `4f220489`, and `ac937033` for strict decoding, process lifecycle, runtime activation, guidance,
   rendering, documentation, and proof gaps. Phase 3 required settlement commit `78547685` for stale
-  protocol prose and stronger behavioral contract proof. Each settlement remained a focused follow-up
-  to its reviewed phase commit rather than rewriting an integrated transaction.
+  protocol prose and stronger behavioral contract proof. Terminal review settlement `ae01f445`
+  hardened duplicate-key decoding, operation-specific bounds, first-cause preservation, behavioral
+  proof execution, and this deviation ledger; its verify-directed follow-up consolidated the complete
+  `using-effort-skill` claim under one proving unit. Each settlement remained a focused follow-up to
+  its reviewed phase commit rather than rewriting an integrated transaction.
