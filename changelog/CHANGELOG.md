@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-08-06
+
 ### Features
 
 - Native harness discovery now replaces the generated skill roster in managed agent guides, while canonical documentation carries the full procedure. Fixed default and self-hosted guide proofs prevent base-guide regrowth, and aggregate `awf check` warns when a managed guide exceeds its advisory size bound.
