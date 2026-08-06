@@ -136,6 +136,39 @@ func TestHistoryOperationPreResolvesRecursiveAliasesAndFrontier(t *testing.T) {
 	}
 }
 
+func TestHistoryOwnershipPlanningPropagatesNestedMergeCancellation(t *testing.T) {
+	boom := context.Canceled
+	for _, tc := range []struct {
+		name  string
+		outer replayCommit
+	}{
+		{"selected first parent", replayCommit{Hash: "outer", Revision: "outer", Parents: []string{"nested"}, Paths: []string{"internal/outer.go"}}},
+		{"selected incoming parent", replayCommit{Hash: "outer", Revision: "outer", IsMerge: true, Parents: []string{"outer-first", "nested"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			commits := []replayCommit{
+				tc.outer,
+				{Hash: "nested", Revision: "nested", IsMerge: true, Parents: []string{"nested-first", "nested-incoming"}},
+			}
+			op := newHistoryOperationFromCompact(commits, nil, len(commits), func(context.Context, string) (*revisionState, error) {
+				return &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}, universeReady: true}, nil
+			}, func(_ context.Context, revision string) ([]string, error) {
+				if revision == "nested" {
+					return nil, boom
+				}
+				return nil, nil
+			}, func(context.Context) ([]Finding, error) { return nil, nil })
+			graph, err := newReplayGraph(commits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := op.planRevisionOwnership(testContext(t), graph.schedule); !errors.Is(err, boom) {
+				t.Fatalf("nested merge planning error = %v, want %v", err, boom)
+			}
+		})
+	}
+}
+
 func TestHistoryOperationKeepsBoundaryRevisionsDistinct(t *testing.T) {
 	commits := []replayCommit{
 		{Hash: "left", Revision: "left", Parents: []string{"boundary-left"}, Paths: []string{"internal/left.go"}},

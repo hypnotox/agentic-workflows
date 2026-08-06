@@ -396,7 +396,7 @@ func (h *historyOperation) planRevisionOwnership(ctx context.Context, schedule [
 		}
 		for _, parent := range commit.Parents {
 			entry, err := h.resolveRevision(ctx, parent, byRevision, resolving)
-			if err != nil { // coverage-ignore: validated replay graphs cannot cycle during parent resolution
+			if err != nil {
 				return err
 			}
 			if contextTermination(entry.result.err) {
@@ -430,7 +430,7 @@ func (h *historyOperation) resolveCommit(ctx context.Context, commit replayCommi
 		return h.loadDistinctRevision(ctx, commit.Revision), nil
 	}
 	parentEntry, err := h.resolveRevision(ctx, commit.Parents[0], byRevision, resolving)
-	if err != nil { // coverage-ignore: validated replay graphs cannot cycle during first-parent resolution
+	if err != nil {
 		return nil, err
 	}
 	parent, parentErr := parentEntry.result.state, parentEntry.result.err
