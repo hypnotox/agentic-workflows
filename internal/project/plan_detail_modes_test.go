@@ -278,18 +278,30 @@ func readPlanPolicyFile(t *testing.T, root, name string) string {
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestPlanDeviationReconciliationGuidanceStayAligned)
 func TestPlanDeviationReconciliationGuidanceStayAligned(t *testing.T) {
 	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}}
-	for _, surface := range []string{"writing-plans", "subagent-driven-development"} {
-		out := renderSkillGolden(t, surface, data)
-		wants := []string{"focused", "before checkpointing or later execution"}
-		if surface == "writing-plans" {
-			wants = append(wants, "Inline owners immediately", "Delegated owners")
-		} else {
-			wants = append(wants, "deviations")
-		}
-		for _, want := range wants {
-			if !strings.Contains(out, want) {
-				t.Errorf("%s missing %q", surface, want)
-			}
+	root := testsupport.RepoRoot(t)
+	surfaces := map[string]string{
+		"default writing skill": renderSkillGolden(t, "writing-plans", data),
+		"default plans README":  renderGolden(t, "plans-readme/README.md.tmpl", data),
+		"default plan scaffold": renderGolden(t, "plans-template/template.md.tmpl", data),
+		"Pi writing skill":      readPlanPolicyFile(t, root, ".pi/skills/awf-writing-plans/SKILL.md"),
+		"Claude writing skill":  readPlanPolicyFile(t, root, ".claude/skills/awf-writing-plans/SKILL.md"),
+		"root plans README":     readPlanPolicyFile(t, root, "docs/plans/README.md"),
+		"root plan scaffold":    readPlanPolicyFile(t, root, "docs/plans/template.md"),
+	}
+	for name, body := range surfaces {
+		normalized := strings.Join(strings.Fields(body), " ")
+		assertOrderedPhrases(t, normalized,
+			"Inline owners immediately",
+			"reasoned deviations",
+			"Delegated owners",
+			"report rather than edit",
+			"phase review",
+			"focused",
+			"settlement commit",
+			"before checkpointing or later execution",
+		)
+		if strings.Contains(normalized, "<no value>") {
+			t.Errorf("%s leaks missing template data", name)
 		}
 	}
 }

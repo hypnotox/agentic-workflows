@@ -574,7 +574,30 @@ func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestAuthorityGuidedImplementationAutonomy)
 func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 	consumers := []string{"agents/implementer.md.tmpl", "skills/executing-direct/SKILL.md.tmpl", "skills/bugfix/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl", "skills/executing-plans/SKILL.md.tmpl", "skills/subagent-driven-development/SKILL.md.tmpl", "skills/reviewing-impl/SKILL.md.tmpl"}
-	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}}
+	variants := map[string]map[string]any{
+		"configured": {
+			"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(),
+			"data": catalog.Standard.Agents["plan-reviewer"].Data, "skills": map[string]bool{"reviewing-impl": true}, "targetSubagentTools": true,
+		},
+		"empty": {"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}},
+	}
+	wants := []string{
+		"Resolve implementation findings autonomously",
+		"applicable ADRs, current-state claims, and repository authority",
+		"approved outcome, material scope, settled durable boundaries, and required verification",
+		"Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check",
+		"reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification",
+		"Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup",
+		"authorities conflict or must change",
+		"approved outcome or material scope must change",
+		"genuine unresolved design fork remains",
+		"safe or correct completion inside the boundary is impossible",
+		"required verification remains unreachable after reasonable diagnosis and remediation",
+	}
+	obsolete := []string{
+		"If a newly discovered need affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy",
+		"complete approval-requiring invalidating-source report",
+	}
 	for _, consumer := range consumers {
 		raw, err := fs.ReadFile(templates.FS, consumer)
 		if err != nil {
@@ -583,16 +606,23 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 		if got := strings.Count(string(raw), "<!-- awf:include implementation-autonomy -->"); got != 1 {
 			t.Errorf("%s has %d autonomy includes, want 1", consumer, got)
 		}
-		var out string
-		if strings.HasPrefix(consumer, "agents/") {
-			out = renderAgentGolden(t, "implementer", data)
-		} else {
-			out = renderSkillGolden(t, strings.Split(consumer, "/")[1], data)
-		}
-		assertNoLeaks(t, out)
-		for _, want := range []string{"Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check", "Stop and report through the active workflow only"} {
-			if !strings.Contains(out, want) {
-				t.Errorf("%s missing %q", consumer, want)
+		for variant, data := range variants {
+			var out string
+			if strings.HasPrefix(consumer, "agents/") {
+				out = renderAgentGolden(t, "implementer", data)
+			} else {
+				out = renderSkillGolden(t, strings.Split(consumer, "/")[1], data)
+			}
+			assertNoLeaks(t, out)
+			for _, want := range wants {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing %q", variant, consumer, want)
+				}
+			}
+			for _, reject := range obsolete {
+				if strings.Contains(out, reject) {
+					t.Errorf("%s/%s retains obsolete broad-stop rule %q", variant, consumer, reject)
+				}
 			}
 		}
 	}
@@ -921,6 +951,22 @@ func TestConditionalVerifyPass(t *testing.T) {
 			)
 		})
 	}
+
+	implementationData := map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "targetSubagentTools": true,
+	}
+	implementationReview := renderSkillGolden(t, "reviewing-impl", implementationData)
+	assertOrderedPhrases(t, implementationReview,
+		"After the single verify pass",
+		"authority-determined residual fix",
+		"run the gate and audit again",
+		"report the final disposition",
+		"stop and present any finding that remains classified `user-decision`",
+		"Do not add another review loop",
+	)
+	if got := strings.Count(implementationReview, "call `subagent_review` exactly once"); got != 1 {
+		t.Errorf("implementation review renders %d exact verify-pass dispatches, want one", got)
+	}
 }
 
 // TestCheckpointDigestShape pins the compression ADR-0197 item 2 delivers: the
@@ -969,6 +1015,19 @@ func TestCheckpointDigestShape(t *testing.T) {
 			if strings.Contains(body, direct) {
 				t.Errorf("%s directly edits checkpoint metadata with %q", partial, direct)
 			}
+		}
+	}
+
+	routine, err := fs.ReadFile(templates.FS, "partials/checkpoint-routine.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"correctness or safety concern, blocker, or failed required verification",
+		"remains unresolved after the active workflow's required diagnosis and authority-guided remediation",
+	} {
+		if !strings.Contains(string(routine), want) {
+			t.Errorf("routine checkpoint missing unresolved-only attention boundary %q", want)
 		}
 	}
 

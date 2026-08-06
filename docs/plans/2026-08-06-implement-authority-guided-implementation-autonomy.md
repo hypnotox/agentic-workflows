@@ -117,3 +117,5 @@ feat(rendering): add authority-guided implementation autonomy
 ## Notes
 
 Record inline deviations immediately. For a delegated phase, preserve the child report as phase-review input and reconcile reported deviations plus review findings in one focused parent settlement commit before checkpointing or later execution. The settled design prohibits a policy schema, classifier, deviation ledger, command, linter, new workflow stage, weakened oracle, unrelated cleanup, or child-owned working memory.
+
+Phase-review settlement: the child reported no implementation deviations. Report-only phase review found five incomplete invariant proofs and one classification-order defect in implementation review. The parent expanded configured and empty-data policy coverage, delegated ordering, plan-surface alignment, checkpoint remediation, and residual-review assertions, then corrected implementation review to diagnose before final classification and stop on findings that remain `user-decision`.
