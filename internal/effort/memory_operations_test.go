@@ -83,6 +83,145 @@ func TestMemoryDisplayDiffBoundsCompleteRows(t *testing.T) {
 	}
 }
 
+// referenceBoundedDisplayRows is the per-candidate selection the incremental
+// byte accounting replaced: it re-rendered every row for every candidate. It
+// stays here as the oracle for byte-identical output.
+func referenceBoundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
+	const marker = "[content elided]"
+	normalized := append([]displayDiffRow(nil), rows...)
+	available := make([]bool, len(rows))
+	truncated := false
+	for i, row := range normalized {
+		available[i] = true
+		if len(row.text)+1 <= maxMemoryDiffBytes {
+			continue
+		}
+		truncated = true
+		if row.changed {
+			normalized[i].text = row.text[:width+2] + marker
+		} else {
+			available[i] = false
+		}
+	}
+	if text, ok := renderSelectedDisplayRows(normalized, available, width); ok {
+		return text, truncated
+	}
+	selected := make([]bool, len(rows))
+	var changed []int
+	for i, row := range normalized {
+		if row.changed {
+			changed = append(changed, i)
+		}
+	}
+	for left, right := 0, len(changed)-1; left <= right; left, right = left+1, right-1 {
+		indexes := []int{changed[left]}
+		if left != right {
+			indexes = append(indexes, changed[right])
+		}
+		for _, index := range indexes {
+			selected[index] = true
+			if _, ok := renderSelectedDisplayRows(normalized, selected, width); ok {
+				continue
+			}
+			selected[index] = false
+		}
+	}
+	for distance := 1; distance <= 4; distance++ {
+		for _, index := range changed {
+			for _, contextIndex := range []int{index - distance, index + distance} {
+				if contextIndex < 0 || contextIndex >= len(rows) || selected[contextIndex] || normalized[contextIndex].changed || normalized[contextIndex].text == omissionDisplayRow(width) {
+					continue
+				}
+				selected[contextIndex] = true
+				if _, ok := renderSelectedDisplayRows(normalized, selected, width); !ok {
+					selected[contextIndex] = false
+				}
+			}
+		}
+	}
+	text, ok := renderSelectedDisplayRows(normalized, selected, width)
+	if !ok || text == "" {
+		return omissionDisplayRow(width) + "\n", true
+	}
+	return text, true
+}
+
+func TestBoundedDisplayRowsSelectExactlyThePerCandidateRows(t *testing.T) {
+	build := func(count, size int, changedAt func(int) bool, omissionAt func(int) bool, width int) []displayDiffRow {
+		rows := make([]displayDiffRow, count)
+		for i := range rows {
+			switch {
+			case omissionAt(i):
+				rows[i] = displayDiffRow{text: omissionDisplayRow(width)}
+			case changedAt(i):
+				rows[i] = displayDiffRow{text: displayRow('+', i+1, width, strings.Repeat("y", size)), changed: true}
+			default:
+				rows[i] = displayDiffRow{text: displayRow(' ', i+1, width, strings.Repeat("x", size)), changed: false}
+			}
+		}
+		return rows
+	}
+	never := func(int) bool { return false }
+	all := func(int) bool { return true }
+	every := func(n int) func(int) bool { return func(i int) bool { return i%n == 0 } }
+	for _, shape := range []struct {
+		name  string
+		rows  []displayDiffRow
+		width int
+	}{
+		{name: "whole-body replacement", rows: build(12001, 16, all, never, 5), width: 5},
+		{name: "alternating context", rows: build(12001, 16, every(2), never, 5), width: 5},
+		{name: "sparse changes with wide context", rows: build(9000, 24, every(37), never, 4), width: 4},
+		{name: "group separators between changes", rows: build(6000, 40, every(11), every(53), 4), width: 4},
+		{name: "few wide rows", rows: build(40, 2000, every(3), never, 2), width: 2},
+		{name: "everything fits", rows: build(60, 12, every(5), never, 2), width: 2},
+		{name: "single change", rows: build(9, 12, func(i int) bool { return i == 4 }, never, 1), width: 1},
+		{name: "oversized rows", rows: append(build(30, 8, every(4), never, 2), displayDiffRow{text: strings.Repeat("z", maxMemoryDiffBytes+1), changed: true}, displayDiffRow{text: strings.Repeat("w", maxMemoryDiffBytes+1)}), width: 2},
+		{name: "context only", rows: build(20000, 12, never, never, 5), width: 5},
+	} {
+		t.Run(shape.name, func(t *testing.T) {
+			wantText, wantTruncated := referenceBoundedDisplayRows(shape.rows, shape.width)
+			gotText, gotTruncated := boundedDisplayRows(shape.rows, shape.width)
+			if gotText != wantText || gotTruncated != wantTruncated {
+				t.Fatalf("bounded rows truncated=%t/%t bytes=%d/%d first difference at %d", gotTruncated, wantTruncated, len(gotText), len(wantText), commonPrefixLen(gotText, wantText))
+			}
+		})
+	}
+}
+
+func commonPrefixLen(a, b string) int {
+	i := 0
+	for i < len(a) && i < len(b) && a[i] == b[i] {
+		i++
+	}
+	return i
+}
+
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryEditDiffOfALargeResidentStaysWellInsideTheClientTimeout)
+func TestMemoryEditDiffOfALargeResidentStaysWellInsideTheClientTimeout(t *testing.T) {
+	root := initEffortRepo(t)
+	service := openTestService(t, root, nil)
+	if _, err := service.New(testContext(t), NewInput{Slug: "wide-edit", Title: "Wide edit"}); err != nil {
+		t.Fatal(err)
+	}
+	path := service.paths.memoryFile("wide-edit")
+	// Short lines maximise the display-row count a near-1-MiB resident yields,
+	// and the diff is computed before publication, so a per-candidate re-render
+	// makes this in-bounds edit impossible rather than merely slow.
+	body := strings.Repeat("a\n", 500000)
+	writeMemoryFixture(t, path, "wide-edit", []byte(body))
+	start := time.Now()
+	got, err := service.Memory(MemoryEditInput{Slug: "wide-edit", Edits: []MemoryReplacement{{OldText: body, NewText: strings.Repeat("b\n", 500000)}}})
+	elapsed := time.Since(start)
+	if err != nil || got.Condition != MemoryEdited || !got.Diff.Truncated || len(got.Diff.Text) > maxMemoryDiffBytes {
+		t.Fatalf("wide edit=%#v err=%v", got, err)
+	}
+	// The generated Pi client abandons a memory invocation after 15 seconds.
+	if elapsed > 5*time.Second {
+		t.Fatalf("bounded display rows took %s for %d lines", elapsed, 500000)
+	}
+}
+
 // invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryPreviewDoesNotPublishOrClock)
 func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	root := initEffortRepo(t)

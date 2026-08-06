@@ -605,7 +605,7 @@ func boundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
 		return text, truncated
 	}
 
-	selected := make([]bool, len(rows))
+	selection := newDisplayRowSelection(normalized, width)
 	var changed []int
 	for i, row := range normalized {
 		if row.changed {
@@ -613,38 +613,72 @@ func boundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
 		}
 	}
 	for left, right := 0, len(changed)-1; left <= right; left, right = left+1, right-1 {
-		indexes := []int{changed[left]}
+		selection.accept(changed[left])
 		if left != right {
-			indexes = append(indexes, changed[right])
-		}
-		for _, index := range indexes {
-			selected[index] = true
-			if _, ok := renderSelectedDisplayRows(normalized, selected, width); ok {
-				continue
-			}
-			selected[index] = false
+			selection.accept(changed[right])
 		}
 	}
+	omission := omissionDisplayRow(width)
 	for distance := 1; distance <= 4; distance++ {
 		for _, index := range changed {
 			for _, contextIndex := range []int{index - distance, index + distance} {
-				if contextIndex < 0 || contextIndex >= len(rows) || selected[contextIndex] || normalized[contextIndex].changed || normalized[contextIndex].text == omissionDisplayRow(width) {
+				if contextIndex < 0 || contextIndex >= len(rows) || selection.selected[contextIndex] || normalized[contextIndex].changed || normalized[contextIndex].text == omission {
 					continue
 				}
-				selected[contextIndex] = true
-				if _, ok := renderSelectedDisplayRows(normalized, selected, width); !ok {
-					selected[contextIndex] = false
-				}
+				selection.accept(contextIndex)
 			}
 		}
 	}
-	text, ok := renderSelectedDisplayRows(normalized, selected, width)
+	text, ok := renderSelectedDisplayRows(normalized, selection.selected, width)
 	// Every selection above is reverted unless it already rendered within the bound, so the final
 	// set is one that fit when it was last extended.
 	if !ok || text == "" { // coverage-ignore: the selection is validated as it grows, and one elided changed-row prefix plus omission rows fit far below the fixed 50-KiB bound
 		return omissionDisplayRow(width) + "\n", true
 	}
 	return text, true
+}
+
+// displayRowSelection grows a bounded row selection while tracking the exact
+// byte length renderSelectedDisplayRows would produce for it, so testing one
+// more candidate costs constant time rather than another walk of every row.
+type displayRowSelection struct {
+	rows     []displayDiffRow
+	selected []bool
+	omission int
+	total    int
+}
+
+// The empty selection already renders one omission row, because the fallback is
+// only reached with rows present and every unselected run contributes exactly
+// one omission row - leading, interior, and trailing alike.
+func newDisplayRowSelection(rows []displayDiffRow, width int) *displayRowSelection {
+	omission := len(omissionDisplayRow(width)) + 1
+	return &displayRowSelection{rows: rows, selected: make([]bool, len(rows)), omission: omission, total: omission}
+}
+
+// accept selects an unselected index when the rendered result still fits the
+// diff bound, and otherwise leaves the selection untouched.
+func (s *displayRowSelection) accept(index int) {
+	total := s.total + len(s.rows[index].text) + 1 + s.omissionDelta(index)*s.omission
+	if total > maxMemoryDiffBytes {
+		return
+	}
+	s.selected[index] = true
+	s.total = total
+}
+
+// omissionDelta reports how the count of omission rows changes when index joins
+// the selection: its unselected run either splits in two, shortens on one side,
+// or disappears entirely.
+func (s *displayRowSelection) omissionDelta(index int) int {
+	remaining := 0
+	if index > 0 && !s.selected[index-1] {
+		remaining++
+	}
+	if index+1 < len(s.rows) && !s.selected[index+1] {
+		remaining++
+	}
+	return remaining - 1
 }
 
 func renderSelectedDisplayRows(rows []displayDiffRow, selected []bool, width int) (string, bool) {
