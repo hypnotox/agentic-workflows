@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -1232,6 +1233,31 @@ func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
 	}
 }
 
+func retainedType(candidate, target reflect.Type, seen map[reflect.Type]bool) bool {
+	if candidate == target {
+		return true
+	}
+	if seen[candidate] {
+		return false
+	}
+	seen[candidate] = true
+	switch candidate.Kind() {
+	case reflect.Pointer, reflect.Slice, reflect.Array:
+		return retainedType(candidate.Elem(), target, seen)
+	case reflect.Map:
+		return retainedType(candidate.Key(), target, seen) || retainedType(candidate.Elem(), target, seen)
+	case reflect.Struct:
+		for i := range candidate.NumField() {
+			if retainedType(candidate.Field(i).Type, target, seen) {
+				return true
+			}
+		}
+	default:
+		return false
+	}
+	return false
+}
+
 // invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationStreamsAndReleasesFinalConsumers)
 func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 	ctx := testContext(t)
@@ -1251,11 +1277,15 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 	}
 	states["first"].configReady = true
 	states["first"].config = &config.Config{DocsDir: "docs"}
-	for _, state := range states {
-		universe := state.universe
+	heavyLoads := map[string]int{}
+	for revision, state := range states {
+		revision, universe := revision, state.universe
 		state.universe = currentstate.Universe{}
 		state.universeReady = false
-		state.loadUniverse = func() (currentstate.Universe, error) { return universe, nil }
+		state.loadUniverse = func() (currentstate.Universe, error) {
+			heavyLoads[revision]++
+			return universe, nil
+		}
 	}
 	commits := []awfgit.Commit{
 		{Hash: "pure", Revision: "ordinary", Subject: "not conventional"},
@@ -1271,7 +1301,7 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 		}
 		return state, nil
 	}
-	liveCalls, walks, richLive, maxRich := 0, 0, 0, 0
+	liveCalls, walks := 0, 0
 	op, err := newStreamingHistoryOperation(ctx, "base", "head", Inputs{},
 		func(_ context.Context, base, head string, visit func(awfgit.Commit) error) (int, error) {
 			walks++
@@ -1279,12 +1309,9 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 				t.Fatalf("stream range = %q..%q", base, head)
 			}
 			for _, commit := range commits {
-				richLive++
-				maxRich = max(maxRich, richLive)
 				if err := visit(commit); err != nil {
 					return 0, err
 				}
-				richLive--
 			}
 			return len(commits), nil
 		},
@@ -1303,30 +1330,40 @@ func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if retainedType(reflect.TypeOf(*op), reflect.TypeOf(awfgit.Commit{}), map[reflect.Type]bool{}) {
+		t.Fatal("streaming history operation retains the rich Git commit representation")
+	}
+	for i, record := range op.commits {
+		if unsafe.StringData(record.Subject) == unsafe.StringData(commits[i].Subject) {
+			t.Fatalf("compact record %d retains rich subject backing storage", i)
+		}
+	}
 	findings, err := op.run(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gotRules := make([]string, len(findings))
-	for i, finding := range findings {
-		gotRules[i] = finding.Rule
+	wantFindings := []Finding{
+		{Severity: severity.Error, Rule: "conventional-commits", Commit: "pure", Subject: "not conventional", Detail: "subject is not Conventional Commits (type(scope)?: subject)"},
+		{Severity: severity.Error, Rule: "stale-merge-authorization", Commit: "merge", Subject: "Merge feature", Detail: "missing authorization version current-state-v1 for ADR-0001"},
+		{Severity: severity.Error, Rule: "live-cleanliness"},
+		{Severity: severity.Error, Rule: currentStateTransitionRule, Commit: "alias", Subject: "feat(awf): irrelevant", Detail: "claim alpha/one:owned cites pending ADR-legacy which is not in the corpus"},
+		{Severity: severity.Error, Rule: currentStateTransitionRule, Commit: "merge", Subject: "Merge feature", Detail: "claim alpha/one:owned was removed with no ADR remove operation in this transition"},
 	}
-	want := "conventional-commits,stale-merge-authorization,live-cleanliness,current-state-transition,current-state-transition"
-	if got := strings.Join(gotRules, ","); got != want {
-		t.Fatalf("finding order = %s, want %s; findings=%#v", got, want, findings)
+	if !slices.Equal(findings, wantFindings) {
+		t.Fatalf("grouped findings = %#v, want %#v", findings, wantFindings)
 	}
 	for revision := range states {
-		if loads[revision] != 1 {
-			t.Fatalf("loads[%s] = %d, want 1", revision, loads[revision])
+		if loads[revision] != 1 || heavyLoads[revision] != 1 {
+			t.Fatalf("revision %s derivations = light %d heavy %d, want 1 and 1", revision, loads[revision], heavyLoads[revision])
 		}
 	}
 	if loads["irrelevant"] != 0 {
 		t.Fatalf("irrelevant alias loaded a distinct state: %#v", loads)
 	}
-	if walks != 1 || maxRich != 1 || richLive != 0 || op.visited != len(commits) {
-		t.Fatalf("stream ownership walks=%d max-rich=%d current-rich=%d visited=%d", walks, maxRich, richLive, op.visited)
+	if walks != 1 || op.visited != len(commits) {
+		t.Fatalf("stream ownership walks=%d visited=%d, want 1 and %d", walks, op.visited, len(commits))
 	}
-	if op.store.currentHeavy != 0 || op.store.highWaterHeavy == 0 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+	if op.store.currentHeavy != 0 || op.store.highWaterHeavy != 3 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
 		t.Fatalf("terminal heavy ownership current=%d high-water=%d keys=%d entries=%d", op.store.currentHeavy, op.store.highWaterHeavy, len(op.store.keys), len(op.store.entries))
 	}
 	if liveCalls != 1 {
