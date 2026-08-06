@@ -369,15 +369,53 @@ func TestMemoryCommandHumanProtocolAndStdinBoundaries(t *testing.T) {
 	if code != 0 || stderr != "" {
 		t.Fatalf("attach code=%d stderr=%q", code, stderr)
 	}
-	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "update", "memory-cli", "--phase", "protocol phase", "--owner", owner, "--json")
-	if code != 0 || stderr != "" || !strings.HasSuffix(stdout, "\n") {
-		t.Fatalf("protocol update code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	memoryPath := filepath.Join(root, ".awf", "efforts", "memory-cli", "memory.md")
+	beforePreview, err := os.ReadFile(memoryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdin = strings.NewReader(`{"edits":[{"oldText":"## Updated brief","newText":"## Previewed brief"}]}`)
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "--json", "memory-cli", "--preview", "--owner", owner)
+	if code != 0 || stderr != "" {
+		t.Fatalf("edit preview code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	var envelope map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if len(envelope) != 3 || string(envelope["schemaVersion"]) != "1" || string(envelope["condition"]) != `"updated"` {
+	if len(envelope) != 4 || string(envelope["condition"]) != `"previewed"` || string(envelope["replacementCount"]) != "1" || envelope["diff"] == nil || envelope["memory"] != nil {
+		t.Fatalf("edit preview envelope=%v", envelope)
+	}
+	stdin = strings.NewReader(`{"edits":[{"oldText":"absent text","newText":"unused"}]}`)
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "memory-cli", "--preview", "--owner", owner, "--json")
+	if code != 0 || stderr != "" || !strings.Contains(stdout, `"condition":"no-match"`) {
+		t.Fatalf("failed preview code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "update", "memory-cli", "--phase", "preview phase", "--preview", "--owner", owner, "--json")
+	if code != 0 || stderr != "" {
+		t.Fatalf("update preview code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	envelope = nil
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(envelope) != 3 || string(envelope["condition"]) != `"previewed"` || envelope["diff"] == nil || envelope["replacementCount"] != nil || envelope["memory"] != nil {
+		t.Fatalf("update preview envelope=%v", envelope)
+	}
+	afterPreview, err := os.ReadFile(memoryPath)
+	if err != nil || !bytes.Equal(beforePreview, afterPreview) {
+		t.Fatalf("preview changed resident err=%v", err)
+	}
+
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "update", "memory-cli", "--phase", "protocol phase", "--owner", owner, "--json")
+	if code != 0 || stderr != "" || !strings.HasSuffix(stdout, "\n") {
+		t.Fatalf("protocol update code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	envelope = nil
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(envelope) != 4 || string(envelope["schemaVersion"]) != "1" || string(envelope["condition"]) != `"updated"` || envelope["diff"] == nil {
 		t.Fatalf("protocol envelope=%v", envelope)
 	}
 }
@@ -457,7 +495,11 @@ func TestMemoryEditDecoderAndGrammarRefuseBeforeComposition(t *testing.T) {
 		{sub: "memory read", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--json": true}, values: map[string]string{}}},
 		{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{"--owner": "bad"}}},
 		{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--json": true}, values: map[string]string{"--owner": "bad"}}},
+		{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--preview": true}, values: map[string]string{}}},
+		{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--preview": true, "--json": true}, values: map[string]string{}}},
+		{sub: "memory edit", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--preview": true}, values: map[string]string{"--owner": "00000000-0000-4000-8000-000000000001"}}},
 		{sub: "memory update", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{}, values: map[string]string{}}},
+		{sub: "memory update", inv: invocation{positionals: []string{"demo"}, bools: map[string]bool{"--preview": true, "--json": true}, values: map[string]string{"--owner": "00000000-0000-4000-8000-000000000001"}}},
 	} {
 		if err := validateEffortGrammar(ctx); err == nil {
 			t.Fatalf("invalid grammar accepted: %#v", ctx)
@@ -477,7 +519,9 @@ func TestMemoryProtocolExactSuccessAndRefusalEnvelopes(t *testing.T) {
 	}{
 		{"read", effort.MemoryOperationResult{Condition: effort.MemoryRead, Memory: metadata, Content: "one\n", Range: &effort.MemoryRange{StartLine: 2, EndLine: 2, TotalLines: 3, NextOffset: &next, TruncatedBy: "limit"}}, `{"schemaVersion":1,"condition":"read","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"},"content":"one\n","range":{"startLine":2,"endLine":2,"totalLines":3,"nextOffset":3,"truncatedBy":"limit"}}` + "\n"},
 		{"edited", effort.MemoryOperationResult{Condition: effort.MemoryEdited, Memory: metadata, ReplacementCount: 2, Diff: &effort.MemoryDiff{Text: "diff", FirstChangedLine: &line, Truncated: true}}, `{"schemaVersion":1,"condition":"edited","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"},"replacementCount":2,"diff":{"text":"diff","firstChangedLine":7,"truncated":true}}` + "\n"},
-		{"updated", effort.MemoryOperationResult{Condition: effort.MemoryUpdated, Memory: metadata}, `{"schemaVersion":1,"condition":"updated","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"}}` + "\n"},
+		{"updated", effort.MemoryOperationResult{Condition: effort.MemoryUpdated, Memory: metadata, Diff: &effort.MemoryDiff{Text: "diff", FirstChangedLine: &line, Truncated: false}}, `{"schemaVersion":1,"condition":"updated","memory":{"effort":"demo","phase":"phase","next":"next","updated":"2026-08-05T12:00:00Z"},"diff":{"text":"diff","firstChangedLine":7,"truncated":false}}` + "\n"},
+		{"edit preview", effort.MemoryOperationResult{Condition: effort.MemoryPreviewed, ReplacementCount: 2, Diff: &effort.MemoryDiff{Text: "diff", FirstChangedLine: &line}}, `{"schemaVersion":1,"condition":"previewed","replacementCount":2,"diff":{"text":"diff","firstChangedLine":7,"truncated":false}}` + "\n"},
+		{"update preview", effort.MemoryOperationResult{Condition: effort.MemoryPreviewed, Diff: &effort.MemoryDiff{}}, `{"schemaVersion":1,"condition":"previewed","diff":{"text":"","firstChangedLine":null,"truncated":false}}` + "\n"},
 		{"offset", effort.MemoryOperationResult{Condition: effort.MemoryOffsetOutOfRange, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "outside", NextActions: []effort.RecoveryAction{{Text: "use range"}}, Cause: "must be omitted"}, Offset: &effort.MemoryOffsetFact{Offset: 4, TotalLines: 3}}, `{"schemaVersion":1,"condition":"offset-out-of-range","outcome":{"category":"operation","condition":"outside","changedMemory":false,"nextActions":["use range"]},"range":{"offset":4,"totalLines":3}}` + "\n"},
 		{"no-match", effort.MemoryOperationResult{Condition: effort.MemoryNoMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "absent", NextActions: []effort.RecoveryAction{{Text: "read again"}}, Cause: "must be omitted"}, Edit: &effort.MemoryEditFact{Index: 0}}, `{"schemaVersion":1,"condition":"no-match","outcome":{"category":"operation","condition":"absent","changedMemory":false,"nextActions":["read again"]},"edit":{"index":0}}` + "\n"},
 		{"ambiguous", effort.MemoryOperationResult{Condition: effort.MemoryAmbiguousMatch, Outcome: &effort.MemoryOutcome{Category: "operation", Condition: "repeated", NextActions: []effort.RecoveryAction{{Text: "add context"}}, Cause: "must be omitted"}, Edit: &effort.MemoryEditFact{Index: 1, Occurrences: 2}}, `{"schemaVersion":1,"condition":"ambiguous-match","outcome":{"category":"operation","condition":"repeated","changedMemory":false,"nextActions":["add context"]},"edit":{"index":1,"occurrences":2}}` + "\n"},

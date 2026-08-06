@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/pmezard/go-difflib/difflib"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
@@ -26,6 +29,7 @@ const (
 	MemoryRead             MemoryCondition = "read"
 	MemoryEdited           MemoryCondition = "edited"
 	MemoryUpdated          MemoryCondition = "updated"
+	MemoryPreviewed        MemoryCondition = "previewed"
 	MemoryNotOwner         MemoryCondition = "not-owner"
 	MemoryMissing          MemoryCondition = "missing"
 	MemoryUnsafeActivity   MemoryCondition = "unsafe-activity"
@@ -58,16 +62,18 @@ type MemoryReplacement struct {
 
 // MemoryEditInput carries one atomic exact-replacement batch.
 type MemoryEditInput struct {
-	Slug  string
-	Owner string
-	Edits []MemoryReplacement
+	Slug    string
+	Owner   string
+	Edits   []MemoryReplacement
+	Preview bool
 }
 
 // MemoryUpdateInput carries a structured metadata update and optional advisory owner.
 type MemoryUpdateInput struct {
-	Slug   string
-	Owner  string
-	Update MemoryUpdate
+	Slug    string
+	Owner   string
+	Update  MemoryUpdate
+	Preview bool
 }
 
 func (MemoryReadInput) memoryOperation()   {}
@@ -242,7 +248,7 @@ func (s *Service) editMemory(input MemoryEditInput) (MemoryOperationResult, erro
 			return MemoryOperationResult{}, fmt.Errorf("memory edit %d strings must be valid UTF-8, oldText must be nonempty, and each string must be at most 1 MiB", i)
 		}
 	}
-	_, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
+	raw, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
 	if err != nil || refused != nil {
 		if refused != nil {
 			return *refused, nil
@@ -293,6 +299,11 @@ func (s *Service) editMemory(input MemoryEditInput) (MemoryOperationResult, erro
 		cursor = found.end
 	}
 	newBody = append(newBody, doc.body[cursor:]...)
+	if input.Preview {
+		bodyOffset := bytes.Count(raw[:len(raw)-len(doc.body)], []byte("\n"))
+		diff := memoryDiff(doc.body, newBody, bodyOffset)
+		return MemoryOperationResult{Condition: MemoryPreviewed, ReplacementCount: len(input.Edits), Diff: &diff}, nil
+	}
 	metadata := doc.metadata
 	metadata.Effort = input.Slug
 	metadata.Updated = formatMemoryTime(s.now())
@@ -305,7 +316,7 @@ func (s *Service) editMemory(input MemoryEditInput) (MemoryOperationResult, erro
 		result.Size = &MemorySizeFact{Bytes: len(encoded), MaxBytes: maxMemoryBytes}
 		return result, nil
 	}
-	diff := memoryDiff(doc.body, newBody)
+	diff := memoryDiff(doc.body, newBody, 6)
 	if err := s.store.replaceMemory(s.paths.memoryFile(input.Slug), encoded); err != nil {
 		return memoryFailure(err), nil
 	}
@@ -317,12 +328,20 @@ func (s *Service) UpdateMemory(input MemoryUpdateInput) (MemoryOperationResult, 
 	if err := validateMemoryUpdate(input.Update); err != nil {
 		return MemoryOperationResult{}, err
 	}
-	_, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
+	raw, doc, refused, err := s.inspectMemoryOperation(input.Slug, input.Owner)
 	if err != nil || refused != nil {
 		if refused != nil {
 			return *refused, nil
 		}
 		return MemoryOperationResult{}, err
+	}
+	if input.Preview {
+		if invalid := invalidMemoryUpdateFor(input.Slug, doc, input.Update); invalid != nil {
+			result := memoryRefusal(MemoryInvalid, "the effort memory metadata cannot be safely repaired by this update", "inspect the effort memory metadata", invalid.NextAction)
+			return result, nil
+		}
+		diff := updatePreviewDiff(raw, input.Update, doc.metadata, doc.legacy)
+		return MemoryOperationResult{Condition: MemoryPreviewed, Diff: &diff}, nil
 	}
 	metadata, encoded, invalid := s.prepareMemoryUpdate(input.Slug, doc, input.Update)
 	if invalid != nil {
@@ -337,7 +356,8 @@ func (s *Service) UpdateMemory(input MemoryUpdateInput) (MemoryOperationResult, 
 	if err := s.store.replaceMemory(s.paths.memoryFile(input.Slug), encoded); err != nil {
 		return memoryFailure(err), nil
 	}
-	return MemoryOperationResult{Condition: MemoryUpdated, Memory: &metadata}, nil
+	diff := memoryDiff(raw, encoded, 0)
+	return MemoryOperationResult{Condition: MemoryUpdated, Memory: &metadata, Diff: &diff}, nil
 }
 
 func validateMemoryUpdate(update MemoryUpdate) error {
@@ -407,14 +427,19 @@ func (s *Service) inspectMemoryOperation(slug, owner string) ([]byte, memoryDocu
 	return raw, inspectMemory(raw, slug), nil, nil
 }
 
-func (s *Service) prepareMemoryUpdate(slug string, doc memoryDocument, update MemoryUpdate) (MemoryMetadata, []byte, *invalidMemoryUpdate) {
+func invalidMemoryUpdateFor(slug string, doc memoryDocument, update MemoryUpdate) *invalidMemoryUpdate {
 	if !doc.boundary || doc.identity != slug {
-		return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
+		return &invalidMemoryUpdate{NextAction: "repair memory.md manually with a matching bounded canonical or legacy identity"}
 	}
-	if doc.err != nil {
-		if doc.invalid["phase"] && update.Phase == nil || doc.invalid["next"] && update.Next == nil || len(doc.invalid) == 0 {
-			return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
-		}
+	if doc.err != nil && (doc.invalid["phase"] && update.Phase == nil || doc.invalid["next"] && update.Next == nil || len(doc.invalid) == 0) {
+		return &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
+	}
+	return nil
+}
+
+func (s *Service) prepareMemoryUpdate(slug string, doc memoryDocument, update MemoryUpdate) (MemoryMetadata, []byte, *invalidMemoryUpdate) {
+	if invalid := invalidMemoryUpdateFor(slug, doc, update); invalid != nil {
+		return MemoryMetadata{}, nil, invalid
 	}
 	metadata := doc.metadata
 	metadata.Effort = slug
@@ -473,22 +498,209 @@ func overlappingIndexes(body, old []byte) []int {
 	return indexes
 }
 
-func memoryDiff(before, after []byte) MemoryDiff {
+type displayDiffRow struct {
+	text    string
+	changed bool
+}
+
+func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 	if bytes.Equal(before, after) {
 		return MemoryDiff{}
 	}
-	prefix := 0
-	for prefix < len(before) && prefix < len(after) && before[prefix] == after[prefix] {
-		prefix++
+	oldLines, newLines := diffLines(before), diffLines(after)
+	groups := difflib.NewMatcher(oldLines, newLines).GetGroupedOpCodes(4)
+	width := len(strconv.Itoa(max(len(oldLines), len(newLines)) + lineOffset))
+	var rows []displayDiffRow
+	first := 0
+	contextOmitted := false
+	for groupIndex, group := range groups {
+		if groupIndex > 0 {
+			rows = append(rows, displayDiffRow{text: omissionDisplayRow(width)})
+			contextOmitted = true
+		}
+		for _, code := range group {
+			switch code.Tag {
+			case 'e':
+				for i := code.I1; i < code.I2; i++ {
+					rows = append(rows, displayDiffRow{text: displayRow(' ', i+lineOffset+1, width, displayLine(oldLines[i]))})
+				}
+			case 'd':
+				for i := code.I1; i < code.I2; i++ {
+					n := i + lineOffset + 1
+					if first == 0 {
+						first = n
+					}
+					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, displayLine(oldLines[i])), changed: true})
+				}
+			case 'i':
+				for i := code.J1; i < code.J2; i++ {
+					n := i + lineOffset + 1
+					if first == 0 {
+						first = n
+					}
+					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, displayLine(newLines[i])), changed: true})
+				}
+			case 'r':
+				for i := code.I1; i < code.I2; i++ {
+					n := i + lineOffset + 1
+					if first == 0 {
+						first = n
+					}
+					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, displayLine(oldLines[i])), changed: true})
+				}
+				for i := code.J1; i < code.J2; i++ {
+					n := i + lineOffset + 1
+					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, displayLine(newLines[i])), changed: true})
+				}
+			}
+		}
 	}
-	// Canonical memory has six header lines, so the first body line is line 7.
-	line := 7 + bytes.Count(before[:prefix], []byte("\n"))
-	text := append([]byte("before:\n"), before...)
-	text = append(text, []byte("\nafter:\n")...)
-	text = append(text, after...)
-	truncated := len(text) > maxMemoryDiffBytes
-	if truncated {
-		text = validUTF8Prefix(text, maxMemoryDiffBytes)
+	text, truncated := boundedDisplayRows(rows, width)
+	return MemoryDiff{Text: text, FirstChangedLine: &first, Truncated: truncated || contextOmitted}
+}
+
+func diffLines(raw []byte) []string {
+	lines := completeLines(raw)
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		out[i] = string(line)
 	}
-	return MemoryDiff{Text: string(text), FirstChangedLine: &line, Truncated: truncated}
+	return out
+}
+
+func displayLine(line string) string {
+	text := strings.TrimSuffix(line, "\n")
+	if len(line) > 0 && line[len(line)-1] == '\n' {
+		text = strings.TrimSuffix(text, "\r")
+	}
+	return text
+}
+
+func displayRow(kind byte, line, width int, content string) string {
+	return fmt.Sprintf("%c%*d %s", kind, width, line, content)
+}
+
+func omissionDisplayRow(width int) string {
+	return " " + strings.Repeat(" ", width) + " ..."
+}
+
+func boundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
+	const marker = "[content elided]"
+	normalized := append([]displayDiffRow(nil), rows...)
+	available := make([]bool, len(rows))
+	truncated := false
+	for i, row := range normalized {
+		available[i] = true
+		if len(row.text)+1 <= maxMemoryDiffBytes {
+			continue
+		}
+		truncated = true
+		if row.changed {
+			normalized[i].text = row.text[:width+2] + marker
+		} else {
+			available[i] = false
+		}
+	}
+	if text, ok := renderSelectedDisplayRows(normalized, available, width); ok {
+		return text, truncated
+	}
+
+	selected := make([]bool, len(rows))
+	var changed []int
+	for i, row := range normalized {
+		if row.changed {
+			changed = append(changed, i)
+		}
+	}
+	for left, right := 0, len(changed)-1; left <= right; left, right = left+1, right-1 {
+		indexes := []int{changed[left]}
+		if left != right {
+			indexes = append(indexes, changed[right])
+		}
+		for _, index := range indexes {
+			selected[index] = true
+			if _, ok := renderSelectedDisplayRows(normalized, selected, width); ok {
+				continue
+			}
+			selected[index] = false
+		}
+	}
+	for distance := 1; distance <= 4; distance++ {
+		for _, index := range changed {
+			for _, contextIndex := range []int{index - distance, index + distance} {
+				if contextIndex < 0 || contextIndex >= len(rows) || selected[contextIndex] || normalized[contextIndex].changed || normalized[contextIndex].text == omissionDisplayRow(width) {
+					continue
+				}
+				selected[contextIndex] = true
+				if _, ok := renderSelectedDisplayRows(normalized, selected, width); !ok {
+					selected[contextIndex] = false
+				}
+			}
+		}
+	}
+	text, ok := renderSelectedDisplayRows(normalized, selected, width)
+	// Every selection above is reverted unless it already rendered within the bound, so the final
+	// set is one that fit when it was last extended.
+	if !ok || text == "" { // coverage-ignore: the selection is validated as it grows, and one elided changed-row prefix plus omission rows fit far below the fixed 50-KiB bound
+		return omissionDisplayRow(width) + "\n", true
+	}
+	return text, true
+}
+
+func renderSelectedDisplayRows(rows []displayDiffRow, selected []bool, width int) (string, bool) {
+	out := make([]byte, 0, min(maxMemoryDiffBytes, len(rows)*32))
+	omitted := false
+	for index, row := range rows {
+		if !selected[index] {
+			omitted = true
+			continue
+		}
+		if omitted {
+			omission := omissionDisplayRow(width) + "\n"
+			if len(out)+len(omission) > maxMemoryDiffBytes {
+				return "", false
+			}
+			out = append(out, omission...)
+			omitted = false
+		}
+		if len(out)+len(row.text)+1 > maxMemoryDiffBytes {
+			return "", false
+		}
+		out = append(out, row.text...)
+		out = append(out, '\n')
+	}
+	if omitted {
+		omission := omissionDisplayRow(width) + "\n"
+		if len(out)+len(omission) > maxMemoryDiffBytes {
+			return "", false
+		}
+		out = append(out, omission...)
+	}
+	return string(out), true
+}
+
+func updatePreviewDiff(raw []byte, update MemoryUpdate, metadata MemoryMetadata, legacy bool) MemoryDiff {
+	phaseKey, nextKey := "phase:", "next:"
+	if legacy {
+		phaseKey, nextKey = "Phase:", "Next:"
+	}
+	phaseLine, nextLine := 2, 3
+	if legacy {
+		phaseLine, nextLine = 1, 2
+	}
+	lines := completeLines(raw)
+	after := make([]byte, 0, len(raw))
+	for index, line := range lines {
+		text := strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r")
+		ending := string(line[len(text):])
+		switch {
+		case index == phaseLine && update.Phase != nil && strings.HasPrefix(text, phaseKey) && *update.Phase != metadata.Phase:
+			text = phaseKey + " " + *update.Phase
+		case index == nextLine && update.Next != nil && strings.HasPrefix(text, nextKey) && *update.Next != metadata.Next:
+			text = nextKey + " " + *update.Next
+		}
+		after = append(after, text...)
+		after = append(after, ending...)
+	}
+	return memoryDiff(raw, after, 0)
 }

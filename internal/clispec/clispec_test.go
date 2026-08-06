@@ -459,7 +459,7 @@ func TestLookup(t *testing.T) {
 		t.Fatalf("effort memory spec = %#v, found %v", memory, found)
 	}
 	for _, command := range memory.Children {
-		if strings.Join(command.BoolFlags, ",") != "--json" || !strings.Contains(helpText(command), "--owner") {
+		if !strings.Contains(strings.Join(command.BoolFlags, ","), "--json") || !strings.Contains(helpText(command), "--owner") {
 			t.Errorf("memory %s does not declare owner-scoped grammar: %#v", command.Name, command)
 		}
 	}

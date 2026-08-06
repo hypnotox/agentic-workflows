@@ -4,7 +4,11 @@ import { mkdir } from "node:fs/promises";
 import { Value } from "typebox/value";
 import { EventEmitter } from "node:events";
 import { activity, createChildMemoryExecutor, EffortProtocolError, MEMORY_CLOSE_DELAY_MS, MEMORY_KILL_DELAY_MS, MEMORY_STDERR_MAX, MEMORY_STDOUT_MAX, memoryEdit, memoryRead, memoryUpdate, productionChildMemoryDependencies } from "../../../.pi/extensions/awf-effort/client.ts";
+import { initTheme } from "@earendil-works/pi-coding-agent";
 import effortExtension, { registerDefaultEffort, registerEffort } from "../../../.pi/extensions/awf-effort/index.ts";
+
+// renderDiff reads the module-global theme, so this file initializes it rather than depending on another file running first.
+initTheme("dark", false);
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const OTHER = "00000000-0000-4000-8000-000000000002";
@@ -243,18 +247,20 @@ test("remote Pi display suffix capability, replay, lifecycle clears, and failure
 const memoryFact = (slug = "demo") => ({ effort: slug, phase: "Build", next: "Test", updated: TIME });
 const memoryReadReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "read", memory: memoryFact(), content: "line\n", range: { startLine: 1, endLine: 1, totalLines: 1, nextOffset: null, truncatedBy: "none" }, ...extra });
 const memoryEditReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "edited", memory: memoryFact(), replacementCount: 1, diff: { text: "diff", firstChangedLine: 1, truncated: false }, ...extra });
-const memoryUpdateReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "updated", memory: memoryFact(), ...extra });
+const memoryUpdateReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "updated", memory: memoryFact(), diff: { text: "diff", firstChangedLine: 1, truncated: false }, ...extra });
 const memoryOutcome = (condition: string, changedMemory = condition === "memory-failure", extra: any = {}) => ({ schemaVersion: 1, condition, outcome: { category: "operation", condition: "memory state requires attention", changedMemory, nextActions: ["read memory"], ...(condition === "memory-failure" ? { cause: "publication uncertain" } : {}) }, ...extra });
-async function decodeMemoryReply(value: unknown, operation: "read" | "edit" | "update" = "read") {
+const memoryEditPreviewReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "previewed", replacementCount: 1, diff: { text: "diff", firstChangedLine: 1, truncated: false }, ...extra });
+const memoryUpdatePreviewReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "previewed", diff: { text: "diff", firstChangedLine: 1, truncated: false }, ...extra });
+async function decodeMemoryReply(value: unknown, operation: "read" | "edit" | "update" | "edit-preview" | "update-preview" = "read") {
   const exec = async () => ({ code: 0, stdout: line(value), stderr: "" });
-  if (operation === "edit") return memoryEdit(exec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }]);
-  if (operation === "update") return memoryUpdate(exec, "/repo", "demo", OWNER, { phase: "Done" });
+  if (operation === "edit" || operation === "edit-preview") return memoryEdit(exec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }], undefined, { preview: operation === "edit-preview" });
+  if (operation === "update" || operation === "update-preview") return memoryUpdate(exec, "/repo", "demo", OWNER, { phase: "Done" }, undefined, { preview: operation === "update-preview" });
   const offset = (value as any)?.condition === "offset-out-of-range" ? (value as any).range?.offset : undefined;
   return memoryRead(exec, "/repo", "demo", OWNER, offset === undefined ? {} : { offset });
 }
 
 test("memory client accepts and recursively freezes every success and refusal shape", async () => {
-  for (const [value, operation] of [[memoryReadReply(), "read"], [memoryEditReply(), "edit"], [memoryUpdateReply(), "update"]] as const) {
+  for (const [value, operation] of [[memoryReadReply(), "read"], [memoryEditReply(), "edit"], [memoryUpdateReply(), "update"], [memoryUpdateReply({ diff: { text: "", firstChangedLine: null, truncated: false } }), "update"]] as const) {
     const reply = await decodeMemoryReply(value, operation);
     assert.equal(Object.isFrozen(reply), true); assert.equal(Object.isFrozen(reply.memory), true);
     if (reply.range) assert.equal(Object.isFrozen(reply.range), true);
@@ -289,7 +295,7 @@ test("memory client rejects every closed success and refusal boundary", async ()
     { ...memoryReadReply(), range: { startLine: 1, endLine: 1, totalLines: 2, nextOffset: null, truncatedBy: "bytes" } }, { ...memoryReadReply(), range: { startLine: 1, endLine: 1, totalLines: 2, nextOffset: 2, truncatedBy: "none" } },
     { ...memoryEditReply(), replacementCount: 0 }, { ...memoryEditReply(), replacementCount: 129 }, { ...memoryEditReply(), memory: { ...memoryFact(), effort: "other" } },
     { ...memoryEditReply(), diff: null }, { ...memoryEditReply(), diff: { text: "x".repeat(MEMORY_STDERR_MAX + 1), firstChangedLine: 1, truncated: false } }, { ...memoryEditReply(), diff: { text: "", firstChangedLine: 0, truncated: false } }, { ...memoryEditReply(), diff: { text: "", firstChangedLine: null, truncated: "no" } },
-    { ...memoryUpdateReply(), extra: true }, { ...memoryUpdateReply(), memory: { ...memoryFact(), effort: "other" } },
+    { ...memoryUpdateReply(), extra: true }, { ...memoryUpdateReply(), memory: { ...memoryFact(), effort: "other" } }, { schemaVersion: 1, condition: "updated", memory: memoryFact() }, { ...memoryUpdateReply(), diff: { text: "", firstChangedLine: 0, truncated: false } },
     memoryOutcome("not-owner", true), { ...memoryOutcome("missing"), outcome: { ...memoryOutcome("missing").outcome, cause: "forbidden" } }, { ...memoryOutcome("memory-failure"), outcome: { ...memoryOutcome("memory-failure").outcome, cause: undefined } },
     { ...memoryOutcome("missing"), extra: true }, memoryOutcome("offset-out-of-range"), memoryOutcome("offset-out-of-range", false, { range: { offset: 1, totalLines: 1 } }), memoryOutcome("offset-out-of-range", false, { range: { offset: 2, totalLines: 0 } }),
     memoryOutcome("no-match", false, { edit: { index: -1 } }), memoryOutcome("ambiguous-match", false, { edit: { index: 0, occurrences: 1 } }), memoryOutcome("overlapping-edits", false, { edits: { firstIndex: 0, secondIndex: 0 } }),
@@ -322,8 +328,52 @@ test("memory invocation validates arguments, exact argv, stdin, and bounded tran
   for (const [transport, pattern] of transports) await assert.rejects(memoryRead(transport, "/repo", "demo", OWNER), pattern);
 });
 
+test("preview invocation inserts the exact flag, keeps stdin, and strictly separates preview from publication", async () => {
+  const calls: any[] = []; const exec = async (command: string, argv: readonly string[], options: any) => { calls.push([argv, options]); return { code: 0, stdout: line(argv[2] === "edit" ? memoryEditPreviewReply() : memoryUpdatePreviewReply()), stderr: "" }; };
+  const signal = new AbortController().signal;
+  const edited = await memoryEdit(exec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }], signal, { preview: true });
+  const updated = await memoryUpdate(exec, "/repo", "demo", OWNER, { phase: "Done", next: "Review" }, signal, { preview: true });
+  assert.deepEqual(calls[0][0], ["effort", "memory", "edit", "demo", "--preview", "--owner", OWNER, "--json"]);
+  assert.equal(calls[0][1].stdin, JSON.stringify({ edits: [{ oldText: "old", newText: "new" }] })); assert.equal(calls[0][1].signal, signal);
+  assert.deepEqual(calls[1][0], ["effort", "memory", "update", "demo", "--phase", "Done", "--next", "Review", "--preview", "--owner", OWNER, "--json"]);
+  assert.equal(calls[1][1].stdin, undefined);
+  assert.equal(edited.condition, "previewed"); assert.equal(edited.replacementCount, 1); assert.equal(edited.memory, undefined); assert.equal(Object.isFrozen(edited), true); assert.equal(Object.isFrozen(edited.diff), true);
+  assert.equal(updated.condition, "previewed"); assert.equal(updated.replacementCount, undefined); assert.equal(updated.memory, undefined);
+  assert.equal((await decodeMemoryReply(memoryEditPreviewReply({ replacementCount: 128, diff: { text: "", firstChangedLine: null, truncated: true } }), "edit-preview")).diff?.truncated, true);
+  assert.equal((await decodeMemoryReply(memoryUpdatePreviewReply({ diff: { text: "", firstChangedLine: null, truncated: false } }), "update-preview")).diff?.text, "");
+
+  const explicitNormal: any[] = []; const normalExec = async (_command: string, argv: readonly string[]) => { explicitNormal.push(argv); return { code: 0, stdout: line(argv[2] === "edit" ? memoryEditReply() : memoryUpdateReply()), stderr: "" }; };
+  await memoryEdit(normalExec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }], undefined, { preview: false });
+  await memoryUpdate(normalExec, "/repo", "demo", OWNER, { next: "Review" }, undefined, {});
+  assert.deepEqual(explicitNormal[0], ["effort", "memory", "edit", "demo", "--owner", OWNER, "--json"]);
+  assert.deepEqual(explicitNormal[1], ["effort", "memory", "update", "demo", "--next", "Review", "--owner", OWNER, "--json"]);
+  for (const invoke of [
+    () => memoryEdit(normalExec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }], undefined, null as any),
+    () => memoryEdit(normalExec, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }], undefined, { extra: true } as any),
+    () => memoryUpdate(normalExec, "/repo", "demo", OWNER, { phase: "Done" }, undefined, { preview: "yes" } as any),
+  ]) assert.throws(invoke, /preview option is invalid/);
+
+  const crossed: Array<[unknown, "read" | "edit" | "update" | "edit-preview" | "update-preview"]> = [
+    [memoryEditPreviewReply(), "edit"], [memoryEditPreviewReply(), "update"], [memoryEditPreviewReply(), "read"],
+    [memoryUpdatePreviewReply(), "update"], [memoryUpdatePreviewReply(), "edit-preview"], [memoryEditPreviewReply(), "update-preview"],
+    [memoryEditPreviewReply({ replacementCount: 0 }), "edit-preview"], [memoryEditPreviewReply({ replacementCount: 129 }), "edit-preview"],
+    [memoryEditPreviewReply({ memory: memoryFact() }), "edit-preview"], [memoryUpdatePreviewReply({ memory: memoryFact() }), "update-preview"],
+    [memoryEditPreviewReply({ extra: true }), "edit-preview"], [memoryUpdatePreviewReply({ extra: true }), "update-preview"],
+    [memoryEditPreviewReply({ diff: { text: "diff", firstChangedLine: null, truncated: false } }), "edit-preview"],
+    [memoryUpdatePreviewReply({ diff: { text: "", firstChangedLine: 1, truncated: false } }), "update-preview"],
+    [memoryUpdatePreviewReply({ diff: { text: "x".repeat(MEMORY_STDERR_MAX + 1), firstChangedLine: 1, truncated: true } }), "update-preview"],
+    [memoryEditReply(), "edit-preview"], [memoryUpdateReply(), "update-preview"], [memoryReadReply(), "edit-preview"],
+  ];
+  for (const [value, operation] of crossed) await assert.rejects(decodeMemoryReply(value, operation), /invalid envelope/);
+  for (const operation of ["edit-preview", "update-preview"] as const) {
+    assert.equal((await decodeMemoryReply(memoryOutcome("not-owner"), operation)).condition, "not-owner");
+    assert.equal((await decodeMemoryReply(memoryOutcome("result-too-large", false, { size: { bytes: MEMORY_STDOUT_MAX + 1, maxBytes: MEMORY_STDOUT_MAX } }), operation)).condition, "result-too-large");
+    await assert.rejects(memoryEdit(async () => { throw new Error("spawn"); }, "/repo", "demo", OWNER, [{ oldText: "old", newText: "new" }], undefined, { preview: true }), /execution failed/);
+  }
+});
+
 test("memory tools stay inactive while detached, preserve unrelated tools, carry native guidance, and use the shared queue", async () => {
-  const replies = [memoryReadReply(), memoryEditReply(), memoryUpdateReply()];
+  const replies = [memoryReadReply(), memoryEditPreviewReply(), memoryEditReply(), memoryUpdatePreviewReply(), memoryUpdateReply()];
   const memoryExec = async (_command: string, argv: readonly string[], options: any) => ({ code: 0, stdout: line(replies.shift()), stderr: "" });
   const h = harness([success(), { schemaVersion: 2, condition: "detached" }], { active: ["read", "effort_memory_read"], memoryExec });
   h.hooks.get("session_start")({}); assert.deepEqual(h.active(), ["read"]); assert.equal(h.tools.size, 4);
@@ -337,11 +387,12 @@ test("memory tools stay inactive while detached, preserve unrelated tools, carry
   await request(h, { effort: "demo" }); assert.deepEqual(h.active(), ["read", "effort_memory_read", "effort_memory_edit", "effort_memory_update"]);
   const signal = new AbortController().signal;
   assert.equal(lastText(await h.tools.get("effort_memory_read").execute("id", {}, signal, () => {}, h.ctx)), "line\n");
-  assert.equal(lastText(await h.tools.get("effort_memory_edit").execute("id", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, h.ctx)), "diff");
-  assert.equal(lastText(await h.tools.get("effort_memory_update").execute("id", { phase: "Done" }, signal, () => {}, h.ctx)), "Memory metadata updated.");
-  assert.deepEqual(h.queueCalls, ["/repo/.awf/efforts/demo/memory.md", "/repo/.awf/efforts/demo/memory.md"]);
+  assert.equal(lastText(await h.tools.get("effort_memory_edit").execute("edit-1", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, h.ctx)), "Replaced 1 block(s) in effort memory.");
+  assert.equal(lastText(await h.tools.get("effort_memory_update").execute("update-1", { phase: "Done" }, signal, () => {}, h.ctx)), "Memory metadata updated.");
+  assert.deepEqual(h.queueCalls, ["/repo/.awf/efforts/demo/memory.md", "/repo/.awf/efforts/demo/memory.md"], "preview entered the real-path file mutation queue");
   await request(h, { detach: true }); assert.deepEqual(h.active(), ["read"]);
   await assert.rejects(h.tools.get("effort_memory_read").execute("id", {}, signal, () => {}, h.ctx), /Attach an effort/);
+  await assert.rejects(h.tools.get("effort_memory_edit").execute("edit-2", { edits: [{ oldText: "old", newText: "new" }] }, signal, () => {}, h.ctx), /Attach an effort/);
   await assert.rejects(h.tools.get("effort_memory_update").execute("id", {}, signal, () => {}, h.ctx), /phase or next/);
 });
 
@@ -494,4 +545,178 @@ test("read decoder ties range facts to the request, selected content, and remain
 test("SIGKILL keeps the executor pending for close and uses only a final bounded fallback", async () => {
   const observed = childHarness(); let settled = false; const promise = observed.exec("./awf", [], { cwd: "/repo", timeout: 5 }).catch((error) => { settled = true; throw error; }); observed.timers[0].callback(); observed.timers[1].callback(); observed.child.emit("error", new Error("after kill")); await Promise.resolve(); assert.equal(settled, false); assert.deepEqual(observed.kills, ["SIGTERM", "SIGKILL"]); assert.equal(observed.timers[2].delay, MEMORY_CLOSE_DELAY_MS); observed.child.emit("close", null); await assert.rejects(promise, /timed out/);
   const fallback = childHarness(); const fallbackPromise = fallback.exec("./awf", [], { cwd: "/repo", timeout: 5 }); fallback.timers[0].callback(); fallback.timers[1].callback(); fallback.timers[2].callback(); await assert.rejects(fallbackPromise, /timed out/); assert.equal(fallback.timers.every((timer) => timer.cleared), true);
+});
+
+const fakeTheme = { fg: (color: string, value: string) => `[${color}]${value}`, bg: (color: string, value: string) => `{${color}}${value}`, bold: (value: string) => `*${value}*` };
+function rowContext(overrides: any = {}) { const context: any = { args: {}, toolCallId: "call-1", invalidations: 0, lastComponent: undefined, state: {}, cwd: "/repo", executionStarted: false, argsComplete: true, isPartial: false, expanded: false, showImages: false, isError: false, ...overrides }; context.invalidate = () => { context.invalidations++; }; return context; }
+function rowText(component: any) { return component.render(80).join("\n"); }
+async function settle() { for (let step = 0; step < 8; step++) await Promise.resolve(); }
+async function settleUntil(predicate: () => boolean) { for (let step = 0; step < 5000 && !predicate(); step++) await Promise.resolve(); }
+const editArgs = { edits: [{ oldText: "old", newText: "new" }] };
+// The binary terminates every display row, so these fixtures carry the trailing terminator its real replies carry.
+const previewDiff = (extra: any = {}) => memoryEditPreviewReply({ diff: { text: "-6 old\n+6 new\n", firstChangedLine: 6, truncated: false, ...extra } });
+
+test("mutation call rendering previews once per key, serializes, invalidates asynchronously, and discards stale completion", async () => {
+  const gates: Array<(reply: any) => void> = []; const calls: string[][] = [];
+  const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return new Promise<any>((resolve) => gates.push((reply) => resolve({ code: 0, stdout: line(reply), stderr: "" }))); };
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit"); assert.equal(tool.renderShell, "self");
+  const context = rowContext({ args: editArgs });
+  const row = tool.renderCall(editArgs, fakeTheme, context);
+  assert.match(rowText(row), /toolPendingBg/); assert.match(rowText(row), /\[toolTitle\]\*edit memory\*/);
+  await settle();
+  assert.deepEqual(calls, [["effort", "memory", "edit", "demo", "--preview", "--owner", OWNER, "--json"]]);
+  context.lastComponent = row; tool.renderCall(editArgs, fakeTheme, context); tool.renderCall(editArgs, fakeTheme, context);
+  assert.equal(calls.length, 1, "one preview per association-and-argument key");
+  const streaming = rowContext({ args: {}, argsComplete: false });
+  assert.match(rowText(tool.renderCall({}, fakeTheme, streaming)), /toolPendingBg/);
+  for (const incomplete of [{ edits: [] }, undefined]) tool.renderCall(incomplete, fakeTheme, rowContext({ args: incomplete }));
+  assert.equal(calls.length, 1, "incomplete arguments started a preview");
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, executionStarted: true, toolCallId: "call-started" }));
+  assert.equal(calls.length, 1, "a started execution restarted a call-time preview");
+  const second = { edits: [{ oldText: "old", newText: "other" }] };
+  context.args = second; tool.renderCall(second, fakeTheme, context); await settle();
+  assert.equal(calls.length, 1, "the second preview bypassed association serialization");
+  gates[0](previewDiff()); await settle();
+  assert.equal(context.invalidations, 0, "stale preview completion redrew the row");
+  assert.equal(rowText(row).includes("+6 new"), false);
+  assert.equal(calls.length, 2);
+  gates[1](memoryEditPreviewReply({ diff: { text: "-6 old\n+6 other\n", firstChangedLine: 6, truncated: true } })); await settle();
+  assert.equal(context.invalidations, 1);
+  const previewed = rowText(row);
+  assert.match(previewed, /toolSuccessBg/); assert.match(previewed, /other/); assert.match(previewed, /Diff truncated for display\./);
+  assert.equal((row as any).body.split("\n").length, 2, "the rendered diff kept the binary's trailing row terminator as a stray line");
+});
+
+test("mutation execution awaits the rendered preview, queues only the mutation, and drops settled preview state", async () => {
+  // The preview numbers a retained legacy body from line 6; the authoritative
+  // published result numbers the canonical document from line 7. The row must
+  // end up showing the canonical numbering alone (ADR Context, legacy offsets).
+  const calls: string[][] = []; const replies: any[] = [previewDiff(), memoryEditReply({ diff: { text: "-7 old\n+7 new", firstChangedLine: 7, truncated: false } })];
+  const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(replies.shift()), stderr: "" }; };
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-7" });
+  const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
+  assert.match(rowText(row), /\+6 new/, "the legacy-offset preview was not rendered verbatim");
+  const result = await tool.execute("call-7", editArgs, new AbortController().signal, () => {}, h.ctx);
+  assert.equal(lastText(result), "Replaced 1 block(s) in effort memory."); assert.equal(result.details.condition, "edited");
+  assert.deepEqual(calls.map((argv) => argv.includes("--preview")), [true, false], "execution re-previewed instead of awaiting the rendered preview");
+  assert.deepEqual(h.queueCalls, ["/repo/.awf/efforts/demo/memory.md"], "preview entered the real-path mutation queue");
+  const resultContext = rowContext({ args: editArgs, state: context.state });
+  const empty = tool.renderResult(result, { expanded: false, isPartial: false }, fakeTheme, resultContext);
+  assert.deepEqual(empty.render(80), []);
+  resultContext.lastComponent = empty; tool.renderResult(result, { expanded: false, isPartial: false }, fakeTheme, resultContext);
+  const settled = rowText(row); assert.match(settled, /toolSuccessBg/); assert.match(settled, /\+7 new/);
+  assert.equal(settled.includes("+6 new"), false, "the authoritative result did not replace the legacy-offset preview");
+  replies.push(previewDiff(), memoryEditReply());
+  await tool.execute("call-7", editArgs, new AbortController().signal, () => {}, h.ctx);
+  assert.equal(calls.length, 4, "a settled preview entry survived its tool call");
+});
+
+test("preview refusal and transport failure fail before mutation and clear only lost associations", async () => {
+  for (const [condition, retained] of [["no-match", true], ["not-owner", false], ["missing", false], ["unsafe-activity", false]] as const) {
+    const calls: string[][] = []; const reply = condition === "no-match" ? memoryOutcome("no-match", false, { edit: { index: 0 } }) : memoryOutcome(condition);
+    const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(reply), stderr: "" }; };
+    const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+    await assert.rejects(h.tools.get("effort_memory_edit").execute("id", editArgs, new AbortController().signal, () => {}, h.ctx), /changedMemory=false/);
+    assert.deepEqual(calls.map((argv) => argv.includes("--preview")), [true], "mutation ran after a refused preview");
+    assert.deepEqual(h.queueCalls, []);
+    assert.equal(Boolean(h.hooks.get("context")({ messages: [] }, h.ctx)), retained);
+  }
+  const broken = harness([success()], { memoryExec: async () => { throw new Error("spawn"); } }); await request(broken, { effort: "demo" });
+  await assert.rejects(broken.tools.get("effort_memory_update").execute("id", { next: "Review" }, new AbortController().signal, () => {}, broken.ctx), /execution failed/);
+  assert.deepEqual(broken.queueCalls, [], "mutation ran after a failed preview transport");
+});
+
+test("update preview omits the timestamp row while its authoritative result carries one, in and out of the TUI", async () => {
+  const calls: string[][] = []; const replies: any[] = [memoryUpdatePreviewReply({ diff: { text: "-2 phase: Build\n+2 phase: Done", firstChangedLine: 2, truncated: false } }), memoryUpdateReply({ diff: { text: "-2 phase: Build\n+2 phase: Done\n-5 updated: old\n+5 updated: new", firstChangedLine: 2, truncated: false } }), memoryUpdatePreviewReply()];
+  const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(replies.shift()), stderr: "" }; };
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_update");
+  const context = rowContext({ args: { phase: "Done" }, toolCallId: "update-9" });
+  tool.renderCall({ phase: "Done" }, fakeTheme, context); await settle();
+  const previewed = rowText(context.state.callComponent);
+  assert.match(previewed, /phase: Done/); assert.equal(previewed.includes("updated:"), false, "update preview displayed a prospective timestamp");
+  const result = await tool.execute("update-9", { phase: "Done" }, new AbortController().signal, () => {}, h.ctx);
+  assert.deepEqual(calls[0], ["effort", "memory", "update", "demo", "--phase", "Done", "--preview", "--owner", OWNER, "--json"]);
+  assert.deepEqual(calls[1], ["effort", "memory", "update", "demo", "--phase", "Done", "--owner", OWNER, "--json"]);
+  assert.equal(lastText(result), "Memory metadata updated.");
+  context.executionStarted = true; tool.renderCall({ phase: "Done" }, fakeTheme, context);
+  tool.renderResult(result, { expanded: false, isPartial: false }, fakeTheme, context);
+  const rendered = rowText(context.state.callComponent);
+  assert.match(rendered, /updated: new/); assert.match(rendered, /toolSuccessBg/);
+  for (const incomplete of [{}, undefined]) tool.renderCall(incomplete, fakeTheme, rowContext({ args: incomplete }));
+  const nextOnly = rowContext({ args: { next: "Review" }, toolCallId: "update-10" }); tool.renderCall({ next: "Review" }, fakeTheme, nextOnly);
+  await settle();
+  assert.deepEqual(calls.at(-1), ["effort", "memory", "update", "demo", "--next", "Review", "--preview", "--owner", OWNER, "--json"]);
+  assert.equal(calls.length, 3, "an incomplete update argument set started a preview");
+});
+
+test("mutation result rendering replaces preview state with refusals, errors, empty diffs, and rebuilt rows", async () => {
+  const h = harness([success()], { memoryExec: async () => ({ code: 0, stdout: line(memoryEditPreviewReply({ diff: { text: "", firstChangedLine: null, truncated: true } })), stderr: "" }) });
+  await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs });
+  const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
+  const noop = rowText(row); assert.match(noop, /edit memory/); assert.match(noop, /Diff truncated for display\./);
+  assert.equal((row as any).body, undefined, "an empty diff rendered a blank raw body under the stable header");
+  const refusal = { content: [{ type: "text", text: "operation; memory state requires attention; changedMemory=false; read memory" }], details: memoryOutcome("no-match", false, { edit: { index: 0 } }) };
+  tool.renderResult(refusal, { expanded: false, isPartial: false }, fakeTheme, context);
+  const refused = rowText(row); assert.match(refused, /toolErrorBg/); assert.match(refused, /\[error\]operation; memory state/); assert.equal(refused.includes("Diff truncated"), false);
+  const failure = { content: [{ type: "text", text: "awf memory execution failed" }] };
+  tool.renderResult(failure, { expanded: false, isPartial: false }, fakeTheme, rowContext({ args: editArgs, state: context.state, isError: true }));
+  assert.match(rowText(row), /\[error\]awf memory execution failed/);
+  const detached = tool.renderResult(failure, { expanded: false, isPartial: false }, fakeTheme, rowContext({ args: editArgs, isError: true }));
+  assert.deepEqual(detached.render(80), []);
+  const adopted = rowContext({ args: editArgs, lastComponent: row });
+  assert.equal(tool.renderCall(editArgs, fakeTheme, adopted), row, "an existing row component was not adopted");
+  assert.equal(adopted.state.callComponent, row);
+});
+
+test("a call-time preview failure marks the row without ever reaching the mutation", async () => {
+  const calls: string[][] = [];
+  const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(memoryOutcome("no-match", false, { edit: { index: 0 } })), stderr: "" }; };
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-fail" });
+  const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
+  assert.equal(context.invalidations, 1);
+  const failed = rowText(row);
+  assert.match(failed, /toolErrorBg/); assert.match(failed, /\[error\]operation; memory state requires attention; changedMemory=false/);
+  await assert.rejects(tool.execute("call-fail", editArgs, new AbortController().signal, () => {}, h.ctx), /changedMemory=false/);
+  assert.deepEqual(calls.map((argv) => argv.includes("--preview")), [true], "a failed call-time preview still reached the mutation");
+  assert.deepEqual(h.queueCalls, []);
+});
+
+test("retained preview state stays bounded and is keyed by the working directory it was computed in", async () => {
+  const calls: string[][] = [];
+  const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(previewDiff()), stderr: "" }; };
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit");
+  // A call rendered in an abandoned turn never executes and so never settles; only the insertion bound reclaims it.
+  const rendered = 33;
+  for (let index = 0; index < rendered; index++) tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: `bounded-${index}` }));
+  await settleUntil(() => calls.length === rendered);
+  assert.equal(calls.length, rendered);
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: "bounded-0" }));
+  await settleUntil(() => calls.length === rendered + 1);
+  assert.equal(calls.length, rendered + 1, "the oldest rendered preview survived the entry bound");
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: `bounded-${rendered - 1}` }));
+  await settle();
+  assert.equal(calls.length, rendered + 1, "a retained preview was recomputed");
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: `bounded-${rendered - 1}`, cwd: "/elsewhere" }));
+  await settleUntil(() => calls.length === rendered + 2);
+  assert.equal(calls.length, rendered + 2, "a preview computed in another working directory was reused");
+});
+
+test("an asynchronous preview redraw failure leaves the row rather than rejecting", async () => {
+  const h = harness([success()], { memoryExec: async () => ({ code: 0, stdout: line(previewDiff()), stderr: "" }) });
+  await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit");
+  // The call-time render succeeds; only the asynchronous redraw that follows the preview fails.
+  let foregrounds = 0;
+  const flakyTheme = { ...fakeTheme, fg: (color: string, value: string) => { foregrounds++; if (foregrounds > 1) throw new Error("theme unavailable"); return `[${color}]${value}`; } };
+  const context = rowContext({ args: editArgs, toolCallId: "call-theme" });
+  tool.renderCall(editArgs, flakyTheme, context);
+  await settle();
+  assert.equal(foregrounds, 2, "the asynchronous redraw never ran");
+  assert.equal(context.invalidations, 0, "a failed asynchronous redraw still invalidated the row");
 });

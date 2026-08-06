@@ -16,6 +16,10 @@ query a single version or a range.
 
 - README commands, embedded templates, and config-reference live state now derive completeness from their source authorities, replacing three manual pitfall reminders.
 
+- Owner-scoped Pi effort-memory edits and metadata updates now expose binary-authored read-only previews and authoritative bounded contextual diffs. Preview failures stop mutation, while normal validation and publication semantics remain unchanged.
+
+- The Pi `effort_memory_edit` and `effort_memory_update` tools now render like Pi's own edit tool: one stable row shows the previewed diff while arguments settle and then retains the authoritative colored diff, a truncated diff carries a visible warning, and model-visible output stays a compact summary with the protocol reply kept in structured details.
+
 ## [0.31.0] - 2026-08-06
 
 ### Features
