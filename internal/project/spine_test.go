@@ -380,18 +380,30 @@ func TestImplementerAgent(t *testing.T) {
 		"either the failing required check, named, with its actual output",
 		"`deviations: none`",
 		"changed detail, rationale, governing authority, and verification",
-		"narrow authority conflict",
-		"required authority change",
-		"material outcome or scope change",
-		"unresolved design fork",
-		"unsafe completion",
-		"persistently unreachable verification boundary",
 		"what you already tried, so the next attempt does not repeat it",
 		"There is no third outcome",
 		"The invariants, conventions, and commands in the repository's agent guide bind you",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
+		}
+	}
+
+	returnStart := strings.Index(out, "## What to return")
+	if returnStart < 0 {
+		t.Fatalf("implementer output lacks the return-schema section:\n%s", out)
+	}
+	returnSchema := out[returnStart:]
+	for _, want := range []string{
+		"narrow authority conflict",
+		"required authority change",
+		"material outcome or scope change",
+		"unresolved design fork",
+		"unsafe completion",
+		"persistently unreachable verification boundary",
+	} {
+		if !strings.Contains(returnSchema, want) {
+			t.Errorf("stopped return schema missing boundary %q:\n%s", want, returnSchema)
 		}
 	}
 
