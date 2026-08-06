@@ -434,6 +434,20 @@ type CheckReport struct {
 	PlanNotes []string
 }
 
+const agentGuideAdvisoryBytes = 12 * 1024
+
+// agentGuideSizeAdvisory reports the fixed aggregate-check guide-size advisory
+// from the deterministic managed output, never a resident file.
+func agentGuideSizeAdvisory(op *OutputPlan) []string {
+	for _, file := range op.writeFiles() {
+		if file.Path != "AGENTS.md" || len(file.Content) <= agentGuideAdvisoryBytes {
+			continue
+		}
+		return []string{fmt.Sprintf("AGENTS.md is %d bytes, allowed %d bytes; see docs/agents-md-standard.md", len(file.Content), agentGuideAdvisoryBytes)}
+	}
+	return nil
+}
+
 // CheckReport performs one ordinary project check. Plans are parsed once and
 // the typed set is threaded to both blocking and advisory consumers.
 func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
@@ -472,6 +486,7 @@ func (p *Project) CheckReport(ctx context.Context) (CheckReport, error) {
 	if err != nil {
 		return CheckReport{}, err
 	}
+	notes = append(notes, agentGuideSizeAdvisory(op)...)
 	return CheckReport{Drift: append(drift, planDrift...), Notes: notes, PlanNotes: contextNotes}, nil
 }
 

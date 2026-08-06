@@ -54,6 +54,36 @@ func syncAndReadAgents(t *testing.T, root string) string {
 	return string(b)
 }
 
+// invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestCheckReportAgentGuideSizeAdvisoryManagedOnly)
+func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", map[string]string{"agents-doc.yaml": "local: true\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range op.writeFiles() {
+		if file.Path == "AGENTS.md" {
+			t.Fatal("local agents document produced an expected guide")
+		}
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	report, err := p.CheckReport(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, note := range report.Notes {
+		if strings.Contains(note, "AGENTS.md") && strings.Contains(note, "12288") {
+			t.Fatalf("local agents document size note = %q", note)
+		}
+	}
+}
+
 // invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocPartsOverride)
 func TestAgentsDocPartsOverride(t *testing.T) {
 	cfg := "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n"

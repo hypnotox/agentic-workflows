@@ -9,6 +9,12 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 ## Claims
 
+### `invariant: agent-guide-size-advisory`
+
+Only the deterministic expected bytes of a managed `AGENTS.md` feed aggregate `CheckReport.Notes`: at a fixed 12 KiB threshold, an overage is a warning-only zero-exit advisory. Locally owned guides and non-aggregate consumers are excluded.
+Origin: ADR-bound-agent-guides-as-native-skill-routers
+Backing: test
+
 ### `invariant: awf-bak-flagged`
 
 A collision-backup file under .awf whose name ends in .awf-bak or .awf-bak.<N>, outside an owned resident root, is reported by awf check as drift with a distinct stale-backup detail rather than passing silently.

@@ -763,8 +763,8 @@
     "docs/topics/rendering/sync-and-drift.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:8ddb4af61522d61b0f252c50bc3c6753236e4f229a7f0741e95b20880a730348",
-      "outputHash": "sha256:45da69e20c65ae2301c0c5ddae96bd91c8a408f42d84d2f6a9170a00d358e96d"
+      "configHash": "sha256:2574892783f4ec3fe74482113257fb799ebd895150eca914874026ece8591aa6",
+      "outputHash": "sha256:b2873689430d87dbf3d31ca810aee7501e1a121205b8d03abb1226dfb539a991"
     },
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",

@@ -1416,3 +1416,93 @@ func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 		t.Fatal("initialization rewrote the existing ADR")
 	}
 }
+
+// invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAgentGuideSizeAdvisoryBoundary)
+func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		bytes int
+		want  bool
+	}{
+		{name: "below", bytes: 12*1024 - 1},
+		{name: "boundary", bytes: 12 * 1024},
+		{name: "over", bytes: 12*1024 + 1, want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n", map[string]string{"parts/agents-doc/identity.md": "x"})
+			p, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			op, err := p.OutputPlan(testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var actual int
+			for _, file := range op.writeFiles() {
+				if file.Path == "AGENTS.md" {
+					actual = len(file.Content)
+				}
+			}
+			testsupport.WriteFile(t, filepath.Join(root, ".awf/parts/agents-doc/identity.md"), strings.Repeat("x", tc.bytes-actual+1))
+			p, err = Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			op, err = p.OutputPlan(testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, file := range op.writeFiles() {
+				if file.Path == "AGENTS.md" && len(file.Content) != tc.bytes {
+					t.Fatalf("expected guide bytes = %d, want %d", len(file.Content), tc.bytes)
+				}
+			}
+			if err := p.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			report, err := p.CheckReport(testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var notes []string
+			for _, note := range report.Notes {
+				if strings.Contains(note, "AGENTS.md") && strings.Contains(note, "12288") {
+					notes = append(notes, note)
+				}
+			}
+			if tc.want {
+				if len(notes) != 1 || !strings.Contains(notes[0], "12289") || !strings.Contains(notes[0], "docs/agents-md-standard.md") {
+					t.Fatalf("overage note = %#v", notes)
+				}
+				direct, err := p.AdvisoryNotes(testContext(t))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if strings.Contains(strings.Join(direct, "\n"), "12288") {
+					t.Fatalf("AdvisoryNotes included aggregate-only size note: %#v", direct)
+				}
+				for _, resident := range []string{"missing", "stale"} {
+					if resident == "missing" {
+						if err := os.Remove(filepath.Join(root, "AGENTS.md")); err != nil {
+							t.Fatal(err)
+						}
+					} else {
+						testsupport.WriteFile(t, filepath.Join(root, "AGENTS.md"), "stale")
+					}
+					residentReport, err := p.CheckReport(testContext(t))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if got := strings.Count(strings.Join(residentReport.Notes, "\n"), "12289"); got != 1 {
+						t.Fatalf("%s resident size notes = %d, want 1: %#v", resident, got, residentReport.Notes)
+					}
+				}
+				return
+			}
+			if len(notes) != 0 {
+				t.Fatalf("notes = %#v, want none", notes)
+			}
+		})
+	}
+}

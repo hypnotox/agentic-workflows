@@ -354,6 +354,33 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAggregateCheckAgentGuideSizeWarning)
+func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
+	cfg := &config.Config{}
+	p := &project.Project{Root: "oversized-guide-project", Cfg: cfg}
+	counts := &repoCheckCounters{}
+	advisory := "AGENTS.md is 12289 bytes, allowed 12288 bytes; see docs/agents-md-standard.md"
+	deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"ordinary-advisory", advisory}}, project.CurrentStateReport{}, nil, counts)
+
+	var aggregate bytes.Buffer
+	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
+		t.Fatalf("warning-only aggregate error: %v", err)
+	}
+	if got := aggregate.String(); !strings.Contains(got, "status: warnings") || !strings.Contains(got, "advisory | "+advisory) || strings.Index(got, "ordinary-advisory") > strings.Index(got, advisory) {
+		t.Fatalf("aggregate output = %q", got)
+	}
+
+	counts = &repoCheckCounters{}
+	deps = repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"ordinary-advisory", advisory}}, project.CurrentStateReport{}, nil, counts)
+	var direct bytes.Buffer
+	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &direct, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps); err != nil {
+		t.Fatalf("direct drift error: %v", err)
+	}
+	if got := direct.String(); got != completedCheckReport {
+		t.Fatalf("direct drift output = %q, want no advisory", got)
+	}
+}
+
 func formattedFunctionBody(t *testing.T, path, name string) string {
 	t.Helper()
 	fset := token.NewFileSet()

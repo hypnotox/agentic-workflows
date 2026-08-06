@@ -283,6 +283,12 @@ feat(rendering): warn on oversized agent guides (applies ADR batch)
 - Phase 2 review preserved the plain-punctuation invariant across all tracked text, added exact
   over-budget diagnostic and boundary proofs, and made both the direct-default and self-hosted guide
   tests enforce every minimum working-memory routing clause with mutation checks.
+- Phase 3 red test result: `go test ./internal/project ./cmd/awf -run
+  'Test(AgentGuideSizeAdvisoryBoundary|CheckReportAgentGuideSizeAdvisoryManagedOnly|AggregateCheckAgentGuideSizeWarning)$'`
+  failed only at `TestAgentGuideSizeAdvisoryBoundary/over`: the expected overage note was absent;
+  the boundary and local exclusions passed. After implementation, the same focused command passed.
+  The deterministic expected guide is measured at 12 KiB plus one byte in the fixture; missing and
+  stale resident files retain its one aggregate note. Deviations: none.
 
 Record deviations, rendered-size measurements, prose-disposition findings, review findings, and any
 implementation fact that invalidates an approved bound or canonical-home assumption. Do not relax a
