@@ -49,18 +49,7 @@ Hard rules every change must respect:
 <!-- awf:section workflow -->
 ## Workflow
 
-{{ if .skills.brainstorming }}For non-trivial work, brainstorming is often useful; select any enabled skill whose purpose fits, and treat catalog relationships as advice.
-
-{{ with .skillRows }}Enabled skills:
-
-{{ . }}
-
-{{ end }}{{if .targetSessionHandoff}}In Pi, use any enabled native skill when its purpose fits the current work.
-
-{{end}}{{ end -}}
-<!-- awf:include model-selection -->
-
-Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
+Use any enabled native skill whose exposed description fits the current work.
 
 Preserve the user-approved material design boundary; see `{{ .layout.maintainableCodeDesign }}` for the full proportional-simplicity rule.
 

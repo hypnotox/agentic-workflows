@@ -14,7 +14,7 @@ commit-disabled, receive path-disjoint subsets, and never own shared files or th
 dirty stop is inventoried before the parent completes inline, restores and restarts the complete
 phase, or transfers the complete revised phase with completed and remaining work plus recovery
 verification. Heading-identified tasks, executable projections, and helper returns are not transaction or checkpoint boundaries, and a
-blind task-level successor is forbidden. Every governed subagent dispatch chooses the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; the full tier definitions live in the agent guide's workflow section. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
+blind task-level successor is forbidden. See the full model-tier definitions in this document's Pi workflow subagents section. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
 
 Core `effort-workflow` is selected only by new untrimmed scaffolds. Existing adopter selections remain byte-for-byte stable until their owner explicitly runs `awf enable skill effort-workflow`. The selected core guide renders for every enabled target and directs native persistent checkout or context tooling to the exact existing `.awf/worktrees/<slug>` checkout. Pi additionally derives, rather than selects, `using-effort` and the `awf-effort` extension; non-Pi targets never receive or invoke them, claim activity, or create a parallel harness-owned worktree.
 

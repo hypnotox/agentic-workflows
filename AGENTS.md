@@ -54,35 +54,7 @@ Hard rules every change must respect:
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
 
-For non-trivial work, brainstorming is often useful; select any enabled skill whose purpose fits, and treat catalog relationships as advice.
-
-Enabled skills:
-
-- `awf-effort-workflow` (support): Use one awf effort through its existing managed worktree and lifecycle. Trigger: Use when starting, resuming, switching checkout context for, integrating, or finishing a non-minimal effort.
-- `awf-adr-lifecycle` (support): Apply an ADR lifecycle transition correctly. Trigger: Use when transitioning an ADR between lifecycle states. Usually follows: proposing-adr, reviewing-adr. Common follow-ups: executing-plans, writing-plans.
-- `awf-brainstorming` (chain): Clarify an outcome and settle a grounded design. Trigger: Use for non-trivial work before deciding its design. Common follow-ups: proposing-adr, writing-plans, executing-direct.
-- `awf-bugfix` (task): Apply a fix with a known root cause. Trigger: Use when applying a fix whose root cause is already known. Usually follows: debugging. Common follow-ups: reviewing-impl.
-- `awf-debugging` (task): Investigate a defect before changing it. Trigger: Use when investigating a bug or unexpected behaviour before any fix. Common follow-ups: bugfix.
-- `awf-executing-direct` (chain): Implement a small approved change directly. Trigger: Use when the change is understood and does not need a plan. Usually follows: brainstorming. Common follow-ups: reviewing-impl.
-- `awf-executing-plans` (chain): Implement an accepted plan. Trigger: Use when a plan is ready for implementation. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, subagent-driven-development.
-- `awf-proposing-adr` (chain): Author a decision record for a material design choice. Trigger: Use when a durable architectural or workflow decision is needed. Usually follows: brainstorming. Common follow-ups: reviewing-adr, writing-plans.
-- `awf-refactor-coupling-audit` (support): Scope dependency and test coupling before a refactor. Trigger: Use when scoping a refactor that moves files between packages or inverts dependencies. Common follow-ups: brainstorming, proposing-adr, writing-plans.
-- `awf-retrospective` (chain): Capture durable lessons, verify managed topology is absent, and finish the effort last. Trigger: Use after settled terminal review and any required managed-worktree removal. Usually follows: reviewing-impl.
-- `awf-reviewing-adr` (chain): Independently review an ADR. Trigger: Use when a proposed ADR needs decision-quality review. Usually follows: proposing-adr. Common follow-ups: reviewing-plan-resync, writing-plans.
-- `awf-reviewing-impl` (chain): Independently review an implementation and route any managed-worktree integration, renewed review, and removal before retrospective. Trigger: Use when an implementation commit or series needs terminal review. Usually follows: executing-direct, executing-plans, subagent-driven-development. Common follow-ups: retrospective.
-- `awf-reviewing-plan` (chain): Independently review an implementation plan. Trigger: Use when a written plan needs review before execution. Usually follows: writing-plans. Common follow-ups: reviewing-plan-resync, executing-plans.
-- `awf-reviewing-plan-resync` (chain): Reconcile a plan after review findings. Trigger: Use when review findings require a plan revision and re-review. Usually follows: reviewing-plan, reviewing-adr. Common follow-ups: executing-plans, subagent-driven-development.
-- `awf-subagent-driven-development` (chain): Implement a plan through reviewed phase owners. Trigger: Use when a plan phase benefits from delegated implementation ownership. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, executing-plans.
-- `awf-tdd` (support): Drive a change from a failing test. Trigger: Use when writing the failing test before the implementation change. Usually follows: bugfix, debugging. Common follow-ups: executing-direct, executing-plans.
-- `awf-writing-plans` (chain): Turn an approved design into an executable plan. Trigger: Use when implementation needs a durable, reviewable plan. Usually follows: brainstorming, proposing-adr. Common follow-ups: reviewing-plan.
-- `awf-exploring` (support): Explore repository facts without polluting the main context. Trigger: Use for fresh-context repository exploration when inline search would pollute the parent context. Common follow-ups: brainstorming, debugging, refactor-coupling-audit.
-- `awf-orienting` (support): Ground the session in a topic before starting, resuming, or widening work. Trigger: Use when taking up a topic: before brainstorming fresh non-trivial work, when resuming an effort, or when taking over a handoff. Common follow-ups: brainstorming, debugging, writing-plans, executing-plans.
-
-In Pi, use any enabled native skill when its purpose fits the current work.
-
-Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
-
-Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
+Use any enabled native skill whose exposed description fits the current work.
 
 Preserve the user-approved material design boundary; see `docs/maintainable-code-design.md` for the full proportional-simplicity rule.
 

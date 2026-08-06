@@ -486,21 +486,25 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	}
 }
 
-// Editing the skills enable array reflags an artifact whose assembled template
-// reads .skills: the config-hash folds the effective skills set, so the always-on
-// agent guide (which branches on .skills.brainstorming) goes stale when the enable
-// array changes (ADR-0046), mirroring the scopes fold above.
-func TestSkillsEditReflagsReferencingArtifact(t *testing.T) {
+// Editing the skills enable array leaves the neutral guide fresh because native
+// target frontmatter owns the catalog, while a skill template that reads .skills
+// still receives the effective set in its config hash.
+// invariant: rendering/sync-and-drift:skills-set-in-confighash (TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill)
+func TestSkillsEditLeavesNeutralGuideFreshAndReflagsSkill(t *testing.T) {
 	cfg := func(skills string) string {
 		return "prefix: example\nintegrationBranch: main\nskills:" + skills + "\nagents: []\n"
 	}
-	root := scaffold(t, cfg("\n  - tdd\n  - bugfix"))
-	h0 := configHashOf(t, root, "AGENTS.md")
-	testsupport.WriteAwfConfig(t, root, cfg("\n  - tdd"))
-	h1 := configHashOf(t, root, "AGENTS.md")
-	// invariant: rendering/sync-and-drift:skills-set-in-confighash (TestSkillsEditReflagsReferencingArtifact)
-	if h1 == h0 {
-		t.Errorf("editing the skills enable array must change a .skills-referencing artifact's ConfigHash (got %s unchanged)", h0)
+	root := scaffold(t, cfg("\n  - debugging\n  - bugfix"))
+	guide0 := configHashOf(t, root, "AGENTS.md")
+	skill0 := configHashOf(t, root, ".claude/skills/example-debugging/SKILL.md")
+	testsupport.WriteAwfConfig(t, root, cfg("\n  - debugging"))
+	guide1 := configHashOf(t, root, "AGENTS.md")
+	skill1 := configHashOf(t, root, ".claude/skills/example-debugging/SKILL.md")
+	if guide1 != guide0 {
+		t.Errorf("editing enabled skills must not stale neutral AGENTS.md solely to mirror native frontmatter: %s != %s", guide1, guide0)
+	}
+	if skill1 == skill0 {
+		t.Errorf("editing enabled skills must change a .skills-consuming artifact's ConfigHash (got %s unchanged)", skill0)
 	}
 }
 

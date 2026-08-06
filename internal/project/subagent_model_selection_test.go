@@ -27,14 +27,14 @@ var deliberateSelectionCommon = []string{
 	"standard` (substantive but bounded)",
 	"large` (broad, intricate, cross-cutting, or high-consequence)",
 	"escalating after uncertainty, failed reasoning, or widened scope",
-	"Full tier definitions: the agent guide's workflow section.",
+	"Full tier definitions: docs/working-with-awf.md.",
 }
 
 const (
 	deliberateSelectionPiRule    = "omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value."
 	deliberateSelectionNonPiRule = "select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable."
-	// The full tier definitions render once per target, in the agent guide's
-	// workflow section, sourced from the shared model-selection partial.
+	// The full tier definitions render once in working-with-awf, sourced from
+	// the shared model-selection partial.
 	deliberateSelectionGuideDefinitions = "Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable."
 )
 
@@ -115,11 +115,18 @@ func TestDeliberateSubagentModelSelectionAcrossGovernedDispatches(t *testing.T) 
 				t.Fatal("missing AGENTS.md")
 			}
 			assertNoDeliberateSelectionLeakage(t, agents)
-			if !strings.Contains(agents, deliberateSelectionGuideDefinitions) {
-				t.Errorf("%s AGENTS.md missing the full tier definitions from the model-selection partial", target)
+			if strings.Contains(agents, deliberateSelectionGuideDefinitions) || strings.Contains(agents, "smallest model expected to complete reliably") {
+				t.Errorf("%s AGENTS.md must not duplicate full tier definitions", target)
 			}
-			if strings.Count(agents, "smallest model expected to complete reliably") != 1 {
-				t.Errorf("%s AGENTS.md must carry the full definitional form exactly once", target)
+			doc := files["docs/working-with-awf.md"]
+			if doc == "" {
+				t.Fatal("missing docs/working-with-awf.md")
+			}
+			if !strings.Contains(doc, deliberateSelectionGuideDefinitions) {
+				t.Errorf("%s working-with-awf missing the full tier definitions", target)
+			}
+			if strings.Count(doc, "smallest model expected to complete reliably") != 1 {
+				t.Errorf("%s working-with-awf must carry the full definitional form exactly once", target)
 			}
 		})
 	}
@@ -135,5 +142,9 @@ func TestDeliberateSubagentModelSelectionAcrossGovernedDispatches(t *testing.T) 
 		}
 		assertNoDeliberateSelectionLeakage(t, body)
 	}
-	assertNoDeliberateSelectionLeakage(t, renderGolden(t, "agents-doc/AGENTS.md.tmpl", empty))
+	emptyGuide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", empty)
+	assertNoDeliberateSelectionLeakage(t, emptyGuide)
+	if strings.Contains(emptyGuide, deliberateSelectionGuideDefinitions) || strings.Contains(emptyGuide, "smallest model expected to complete reliably") {
+		t.Error("empty AGENTS.md render leaks full model-tier definitions")
+	}
 }

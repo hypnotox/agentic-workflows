@@ -72,9 +72,9 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide lists every enabled standard and local skill in declaration order with kind, purpose, a distinct trigger sentence, and optional advisory neighbors. Missing values render coherent generic prose, and the guide says that any enabled skill may be used when its purpose fits rather than routing or requiring transitions.
+The rendered guide routes agents to enabled native skills whose exposed descriptions fit the work, without duplicating enabled standard or local skill names, purposes, triggers, kinds, relationships, or a fallback catalog. Empty and missing render data remains coherent, and skill selection stays advisory.
 Origin: ADR-0157
-Revised-by: ADR-0167
+Revised-by: ADR-0167, ADR-bound-agent-guides-as-native-skill-routers
 Backing: test
 
 ### `invariant: working-memory-single-home`

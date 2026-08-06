@@ -28,7 +28,7 @@ Report detail is ordered paths < summary < analysis and is independent of breadt
 <!-- awf:edit dispatch: default; create .awf/skills/parts/exploring/dispatch.md to override -->
 ## Dispatch
 
-Construct one self-contained task. Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section.
+Construct one self-contained task. Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: docs/working-with-awf.md.
 
 <!-- awf:edit results: default; create .awf/skills/parts/exploring/results.md to override -->
 ## Results

@@ -1760,9 +1760,9 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocGuide)
-// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestAgentsDocGuide)
-func TestAgentsDocGuide(t *testing.T) {
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocNativeSkillRouter)
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestAgentsDocNativeSkillRouter)
+func TestAgentsDocNativeSkillRouter(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
@@ -1785,21 +1785,15 @@ func TestAgentsDocGuide(t *testing.T) {
 		"Preserve the user-approved material design boundary",
 		"docs/maintainable-code-design.md",
 		"make gate",
+		"Use any enabled native skill whose exposed description fits the current work.",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
-	for _, banned := range []string{
-		"brainstorming → ADR",
-		"warranted by",
-		"A plan may use exact content/diffs",
-		"V2 ADR",
-		"pollute parent context",
-		"Chain skills",
-	} {
+	for _, banned := range []string{"Enabled skills:", "example-brainstorming", "purpose", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback", "brainstorming → ADR", "warranted by", "A plan may use exact content/diffs", "V2 ADR", "pollute parent context", "Chain skills"} {
 		if strings.Contains(out, banned) {
-			t.Errorf("evicted workflow prose %q must not render in the guide:\n%s", banned, out)
+			t.Errorf("guide retains evicted prose or catalog residue %q:\n%s", banned, out)
 		}
 	}
 	// Exactly the invariants-section copy: the workflow section must not
@@ -2721,23 +2715,16 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	}
 }
 
-// The AGENTS.md skill trigger table derives from the catalog's enabled
-// skills - every catalog skill's trigger row appears iff enabled
-// (a hand enumeration could never mention a newer one like
-// refactor-coupling-audit), and disabled ones stay absent (ADR-0046 follow-up
-// sweep; table shape per ADR-0157).
-// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocTaskSkillsGating)
-func TestAgentsDocTaskSkillsGating(t *testing.T) {
-	// brainstorming carries a local sidecar: the guide's chain sentence needs a
-	// chain skill in the effective set, but a non-local one would demand its
-	// ADR-0081 closure (including adr-lifecycle, banned below) at open.
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - brainstorming\n  - bugfix\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n",
-		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestGuideOmitsLocalAndStandardSkillNames)
+func TestGuideOmitsLocalAndStandardSkillNames(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nskills:\n  - brainstorming\n  - bugfix\nagents: []\n", map[string]string{
+		"skills/brainstorming.yaml": "local: true\n",
+	})
 	localSkill := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(localSkill), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(localSkill, []byte("---\nname: example-brainstorming\ndescription: local chain skill\n---\nbody\n"), 0o644); err != nil {
+	if err := os.WriteFile(localSkill, []byte("---\nname: example-brainstorming\ndescription: local skill\n---\nbody\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	p, err := Open(testContext(t), root)
@@ -2747,19 +2734,13 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	guide, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	body, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := string(guide)
-	for _, row := range []string{"example-bugfix", "example-exploring", "example-refactor-coupling-audit"} {
-		if !strings.Contains(out, row) {
-			t.Errorf("expected catalog-derived trigger row %q:\n%s", row, out)
-		}
-	}
-	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle", "example-roadmap-graduation"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("disabled skill %q must not render:\n%s", banned, out)
+	for _, banned := range []string{"example-brainstorming", "example-bugfix", "Enabled skills:", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback"} {
+		if strings.Contains(string(body), banned) {
+			t.Errorf("guide retains skill catalog residue %q:\n%s", banned, body)
 		}
 	}
 }

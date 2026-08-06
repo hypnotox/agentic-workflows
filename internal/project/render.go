@@ -10,7 +10,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
@@ -88,7 +87,6 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 		"version":      Version,
 		"adrFormat":    adr.CurrentFormatMarker(),
 		"skills":       eff,
-		"skillRows":    p.skillRows(),
 		"commitScopes": p.commitScopesDisplay(),
 		// commitPolicy is a typed projection, not reparsed YAML. A nil value is
 		// safe for publication templates: `with` and `if` treat it as absent.
@@ -103,41 +101,6 @@ func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 		// (ADR-0157 Decision 6).
 		"targetSessionHandoff": anyTargetHasCapability(p.Targets, CapabilitySessionHandoff),
 	}
-}
-
-// skillRows returns one complete advisory row for every enabled skill.
-func (p *Project) skillRows() string {
-	var rows []string
-	for _, name := range p.Cfg.Skills {
-		sp, ok := p.Cat.Skills[name]
-		if !ok {
-			continue
-		}
-		profile := sp.Profile
-		prefix, purpose, trigger := p.Cfg.Prefix, profile.Purpose, profile.Trigger
-		if prefix == "" {
-			prefix = "project"
-		}
-		if purpose == "" {
-			purpose = "A project-local skill."
-		}
-		if trigger == "" {
-			trigger = "Use when this skill fits the current work."
-		}
-		kind := string(profile.Kind)
-		if kind == "" {
-			kind = string(catalog.WorkflowTask)
-		}
-		row := "- `" + prefix + "-" + name + "` (" + kind + "): " + purpose + " Trigger: " + strings.TrimRight(trigger, ".") + "."
-		if len(profile.UsuallyFollows) > 0 {
-			row += " Usually follows: " + strings.Join(profile.UsuallyFollows, ", ") + "."
-		}
-		if len(profile.CommonFollowUps) > 0 {
-			row += " Common follow-ups: " + strings.Join(profile.CommonFollowUps, ", ") + "."
-		}
-		rows = append(rows, row)
-	}
-	return strings.Join(rows, "\n")
 }
 
 // commitScopesDisplay returns the display-formatted allowed commit-scope list
