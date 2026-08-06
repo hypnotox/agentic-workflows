@@ -6,7 +6,11 @@
 // literals (the residue rules, test-enforced).
 package configspec
 
-import "github.com/hypnotox/agentic-workflows/internal/catalog"
+import (
+	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+)
 
 // Entry describes one adopter-writable configuration key.
 type Entry struct {
@@ -28,67 +32,22 @@ const (
 	LiveStateProjection
 )
 
-// LiveStateClassifications is an explicit exhaustive classification beside the
-// config-spec authority. No generated static default is allowed: adding a key
-// requires choosing its live or not-applicable representation here.
+// LiveStateClassifications derives the exhaustive classification from the
+// config-spec authority. Sidecar fields and item-schema leaves have no
+// singular project value; every other project config path does.
 func LiveStateClassifications() map[string]LiveStateClass {
-	return map[string]LiveStateClass{
-		"prefix":                                 LiveStateProjection,
-		"integrationBranch":                      LiveStateProjection,
-		"docsDir":                                LiveStateProjection,
-		"vars":                                   LiveStateProjection,
-		"skills":                                 LiveStateProjection,
-		"agents":                                 LiveStateProjection,
-		"docs":                                   LiveStateProjection,
-		"domains":                                LiveStateProjection,
-		"targets":                                LiveStateProjection,
-		"tags":                                   StaticNotApplicable,
-		"contextIgnore":                          StaticNotApplicable,
-		"commitPolicy.grandfatheredThrough":      StaticNotApplicable,
-		"commitPolicy.allowedIdentities":         StaticNotApplicable,
-		"commitPolicy.allowedIdentities[].name":  StaticNotApplicable,
-		"commitPolicy.allowedIdentities[].email": StaticNotApplicable,
-		"commitPolicy.requireSignedCommits":      StaticNotApplicable,
-		"commitPolicy.allowedSigners":            StaticNotApplicable,
-		"commitPolicy.allowedSigners[].principal": StaticNotApplicable,
-		"commitPolicy.allowedSigners[].key":       StaticNotApplicable,
-		"currentState.sources":                    LiveStateProjection,
-		"currentState.sources[].globs":            StaticNotApplicable,
-		"currentState.sources[].marker":           StaticNotApplicable,
-		"currentState.sources[].close":            StaticNotApplicable,
-		"currentState.testGlobs":                  LiveStateProjection,
-		"currentState.maxTopicsPerPath":           LiveStateProjection,
-		"audit.allowedTypes":                      LiveStateProjection,
-		"audit.allowedScopes":                     LiveStateProjection,
-		"audit.allowedScopes[].name":              StaticNotApplicable,
-		"audit.allowedScopes[].meaning":           StaticNotApplicable,
-		"audit.subjectMaxLength":                  LiveStateProjection,
-		"audit.dependencyManifests":               LiveStateProjection,
-		"audit.diffThreshold":                     LiveStateProjection,
-		"audit.domainDocStaleness":                LiveStateProjection,
-		"audit.domainCodeStaleness":               LiveStateProjection,
-		"audit.undocumentedDomain":                LiveStateProjection,
-		"audit.plainPunctuation":                  LiveStateProjection,
-		"audit.uncommittedChanges":                LiveStateProjection,
-		"bootstrap.enabled":                       LiveStateProjection,
-		"hooks.enabled":                           LiveStateProjection,
-		"runner.enabled":                          LiveStateProjection,
-		"proseGate.enabled":                       LiveStateProjection,
-		"proseGate.exemptions":                    LiveStateProjection,
-		"proseGate.exemptions[].path":             StaticNotApplicable,
-		"proseGate.exemptions[].codepoint":        StaticNotApplicable,
-		"proseGate.exemptions[].count":            StaticNotApplicable,
-		"memoryCite.enabled":                      LiveStateProjection,
-		"memoryCite.exemptions":                   LiveStateProjection,
-		"memoryCite.exemptions[].path":            StaticNotApplicable,
-		"memoryCite.exemptions[].count":           StaticNotApplicable,
-		"sidecar.data":                            StaticNotApplicable,
-		"sidecar.dataDefaults":                    StaticNotApplicable,
-		"sidecar.sections":                        StaticNotApplicable,
-		"sidecar.sections.<name>.drop":            StaticNotApplicable,
-		"sidecar.local":                           StaticNotApplicable,
-		"sidecar.paths":                           StaticNotApplicable,
+	classes := make(map[string]LiveStateClass, len(Keys()))
+	for _, entry := range Keys() {
+		classes[entry.Path] = liveStateClass(entry.Path)
 	}
+	return classes
+}
+
+func liveStateClass(path string) LiveStateClass {
+	if strings.HasPrefix(path, "sidecar.") || strings.Contains(path, "[]") || strings.Contains(path, "<name>") {
+		return StaticNotApplicable
+	}
+	return LiveStateProjection
 }
 
 // VarEntry describes one config var. Description text is carried verbatim

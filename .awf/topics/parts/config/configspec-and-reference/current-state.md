@@ -10,11 +10,13 @@ Backing: test
 
 ### `invariant: live-state-projection-explicit`
 
-Every config-reference key has an exhaustive typed classification: a live-state projection or an
-explicitly static not-applicable row. The generated reference and CLI consume that classification,
-so omitted or wrongly classified fields fail parity while absent, default, and current presentation
-remain unchanged.
+Live-state classification derives from configspec path structure: every project config value
+requires a resolver, while sidecar fields and item-schema leaves (`[]` or `<name>`) are statically
+not applicable because no singular project value exists. The generated reference and CLI consume
+that classification through bidirectional resolver validation, so an omitted, extra, or structural
+static resolver fails while current project summaries remain complete and non-secret.
 Origin: ADR-0235
+Revised-by: ADR-0242
 Backing: test
 
 ### `invariant: config-reference-no-bare-vars`

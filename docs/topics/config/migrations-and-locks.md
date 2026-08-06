@@ -12,7 +12,7 @@ These packages migrate the config tree across schema generations and read and wr
 ### `invariant: grounding-skill-backfill`
 
 Schema generation 37 enables standard grounding only when selected standard brainstorming is enabled. It leaves project-local brainstorming untouched, refuses a project-local grounding collision before mutation with actionable recovery, and is atomic and idempotent.
-Origin: ADR-independent-judgment-based-workflow-escalation
+Origin: ADR-0243
 Backing: test
 
 

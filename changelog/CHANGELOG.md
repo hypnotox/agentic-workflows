@@ -12,6 +12,8 @@ query a single version or a range.
 
 - Added independent judgment-based workflow escalation, reusable grounding support, risk-based effort-independent implementation review, a single-home effort lifecycle, and guarded grounding backfill for compatible adopters.
 
+- README commands, embedded templates, and config-reference live state now derive completeness from their source authorities, replacing three manual pitfall reminders.
+
 ## [0.31.0] - 2026-08-06
 
 ### Features

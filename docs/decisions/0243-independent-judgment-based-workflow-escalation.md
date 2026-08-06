@@ -4,7 +4,7 @@ slug: independent-judgment-based-workflow-escalation
 status: Implementing
 date: 2026-08-06
 ---
-# ADR-independent-judgment-based-workflow-escalation: Independent Judgment-Based Workflow Escalation
+# ADR-0243: Independent Judgment-Based Workflow Escalation
 
 
 ## Context

@@ -89,7 +89,7 @@ Backing: test
 Working-memory protocol has one canonical workflow-document home. The root guide carries only slim native-skill routing and states that effort creation depends on durable continuity, while `effort-workflow` alone owns creation through finish. It preserves the one-user-managed-writer boundary without duplicating protocol, topology, or memory-path procedure. Resume verification remains procedurally homed in orienting.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-independent-judgment-based-workflow-escalation
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175, ADR-0187, ADR-0189, ADR-0222, ADR-0226, ADR-0241, ADR-0243
 Backing: test
 
 ### `invariant: agent-guide-size-budgets`

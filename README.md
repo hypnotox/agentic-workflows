@@ -255,34 +255,28 @@ the toggleable catalog and always render. Everything else is opt-in via
 
 ## Commands
 
+<!-- awf:clispec-commands:start -->
 | Command | Purpose |
 |---|---|
-| `awf init` | Scaffold `.awf/`, seal first-adoption version, and render. ADR format is authored by each record rather than selected by lock cutoffs. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
-| `awf render` | Re-render after a config or template change. |
-| `awf check` | Run both verification universes. `check repo` aggregates working-tree `drift` and `state` with tracked-corpus `prose` and `memory`; `check staged` runs the HEAD-to-index state transition and rendered-output drift, while `check staged commit` is direct-only. |
-| `awf check commit-policy <revision-or-range>...` | Preview exact author, committer, and optional SSH-signature provenance for explicit targets after the configured baseline. An absent policy succeeds with a disabled note; violations and typed refusals explain reconciliation. It never installs hooks or changes repository state. |
-| `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
-| `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
-| `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
-| `awf new plan "<title>"` | Scaffold a dated `plan-v2` plan under `docs/plans/`. |
-| `awf read plan <plan> <P[.T]>` | Resolve an exact plan filename/stem and print one phase or task executable closure with selected Decisions and phase outcomes; marker-absent historical plans remain legacy and are not projected. |
-| `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
-| `awf effort new --slug <slug> "<outcome>" [--no-worktree] [--base <ref>]` | Require a caller-supplied canonical new slug through 32 bytes and publish unchanged schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; existing residents through 63 bytes remain usable, and `list` and `show` provide readable text. Activity remains the JSON-only protocol. |
-| `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. Pi's derived `using_effort` support remains capability-gated and advisory. |
-| `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
-| `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. It also replays stale-ADR authorization for schema-31-and-later merge commits. Not part of any gate, but exits non-zero on error-severity findings. |
-| `awf config` | Describe every config key and var, with this project's live state when run inside one. |
-| `awf context <paths>` | Report tier-0 directory orientation and tier-1 exact/staged/range file relationships (`State`, `Touches`, `Proofs`), with per-topic counts and eight named `--show` facets. Only `artifacts` refines groups; `--full` is the facet union. Human output is capped at 8 KiB with secure caller-owned spill delivery above it; `--uncovered` shares the cap. |
-| `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim as deterministic labeled text; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`. |
-| `awf check repo prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
-| `awf check repo memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
-| `awf check staged state` | Validate current-state authority over the HEAD-to-index transition. |
-| `awf check staged drift` | Render from the staged config and report only stale or hand-edited staged rendered output; other repository drift kinds are out of scope. |
-| `awf check staged commit [FILE]` | Validate Conventional Commits and definitively qualify and authorize older-format ADRs imported by a real merge; built for a `commit-msg` hook. |
-| `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
-| `awf uninstall` | Remove awf's generated files while keeping authored configuration and optional local residents. |
-| `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
-| `awf version` | Print the awf version. |
+| `awf init [flags]` | Scaffold .awf/ and render the workflow-core set |
+| `awf render` | Re-render after a template or config change |
+| `awf check` | Verify the repository and staged universes |
+| `awf read <subcommand>` | Read an executable projection from a parsed artifact |
+| `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over a commit range (advisory) |
+| `awf effort <subcommand>` | Manage slugged repository-local efforts |
+| `awf adr <subcommand>` | ADR lifecycle operations |
+| `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one) |
+| `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
+| `awf context [<path>...] [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]` | Orient by request with compact current-state impact reports |
+| `awf topic <domain>/<topic>[:<claim>] [flags]` | Query current claims, history, references, and applicability |
+| `awf new <kind> <args>` | Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc} |
+| `awf enable <kind> <name> [--dry-run]` | Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner} |
+| `awf disable <kind> <name> [--with-dependents] [--dry-run]` | Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner} |
+| `awf upgrade [--recover]` | Migrate the .awf/ config tree or consume a current-state attestation |
+| `awf uninstall` | Remove awf's generated files (keeps .awf/) |
+| `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it |
+| `awf version` | Print the awf version |
+<!-- awf:clispec-commands:end -->
 
 Run `awf help` for the full synopsis.
 

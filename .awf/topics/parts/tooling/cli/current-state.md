@@ -10,9 +10,9 @@ Backing: test
 
 ### `invariant: cli-command-spec-single-source`
 
-The top-level usage line, awf help overview and order, structured command help model data (usage forms, descriptions, details, positionals, options, examples, and related commands), and generated gated-command list all derive from the clispec command table, with no parallel command-order or gated-command list.
+The top-level usage line, awf help overview and order, structured command help model data (usage forms, descriptions, details, positionals, options, examples, and related commands), generated gated-command list, and bounded root README command block in top-level clispec order all derive from the clispec command table, with no parallel independent command-order membership decision and no parallel gated-command list.
 Origin: ADR-0094
-Revised-by: ADR-0144, ADR-0156, ADR-0234
+Revised-by: ADR-0144, ADR-0156, ADR-0234, ADR-0242
 Backing: test
 
 ### `invariant: help-lists-group-children`
