@@ -131,15 +131,6 @@ commits never touched. In free-form narratives, prefer count-free phrasing ("the
 `core`-flagged skills", "the chain-progression skills"); when a count is essential, sweep the
 whole narrative whenever its source population changes.
 
-## README.md is outside the drift oracle
-
-_Domains: tooling_
-
-`README.md` is hand-owned, not rendered, so `awf check` never flags it. Its command table and
-feature claims drift silently when the CLI grows (`awf new` and `awf check staged commit` shipped without
-README rows). Adding or changing a CLI command means updating the README table in the same
-change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
-
 ## Add every new template directory to the embed allowlist
 
 _Domains: rendering_
