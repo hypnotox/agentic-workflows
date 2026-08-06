@@ -267,6 +267,9 @@ func validateEffortMemoryGrammar(c *cmdCtx) error {
 	if hasOwner != hasJSON {
 		return &usageErr{usage + " requires --owner and --json together"}
 	}
+	if c.inv.bools["--preview"] && (!hasOwner || !hasJSON) {
+		return &usageErr{usage + " preview requires --owner and --json"}
+	}
 	if hasOwner && !activityOwnerPattern.MatchString(owner) {
 		return &usageErr{usage + " requires a lowercase UUIDv4 owner"}
 	}
@@ -421,9 +424,9 @@ func runEffortMemory(c *cmdCtx, service *effort.Service, request *memoryEditRequ
 		for i, edit := range request.Edits {
 			edits[i] = effort.MemoryReplacement{OldText: edit.OldText, NewText: edit.NewText}
 		}
-		input = effort.MemoryEditInput{Slug: slug, Owner: owner, Edits: edits}
+		input = effort.MemoryEditInput{Slug: slug, Owner: owner, Edits: edits, Preview: c.inv.bools["--preview"]}
 	case "memory update":
-		input = effort.MemoryUpdateInput{Slug: slug, Owner: owner, Update: effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")}}
+		input = effort.MemoryUpdateInput{Slug: slug, Owner: owner, Update: effort.MemoryUpdate{Phase: effortValue(c.inv, "--phase"), Next: effortValue(c.inv, "--next")}, Preview: c.inv.bools["--preview"]}
 	default: // coverage-ignore: validateEffortGrammar and closed command dispatch admit only the three memory leaves
 		return errors.New("unsupported memory command")
 	}
@@ -577,7 +580,23 @@ func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResul
 			SchemaVersion int                    `json:"schemaVersion"`
 			Condition     effort.MemoryCondition `json:"condition"`
 			Memory        memoryProtocolMetadata `json:"memory"`
-		}{1, result.Condition, metadata(result.Memory)}
+			Diff          memoryProtocolDiff     `json:"diff"`
+		}{1, result.Condition, metadata(result.Memory), memoryProtocolDiff{result.Diff.Text, result.Diff.FirstChangedLine, result.Diff.Truncated}}
+	case effort.MemoryPreviewed:
+		if result.ReplacementCount > 0 {
+			envelope = struct {
+				SchemaVersion    int                    `json:"schemaVersion"`
+				Condition        effort.MemoryCondition `json:"condition"`
+				ReplacementCount int                    `json:"replacementCount"`
+				Diff             memoryProtocolDiff     `json:"diff"`
+			}{1, result.Condition, result.ReplacementCount, memoryProtocolDiff{result.Diff.Text, result.Diff.FirstChangedLine, result.Diff.Truncated}}
+		} else {
+			envelope = struct {
+				SchemaVersion int                    `json:"schemaVersion"`
+				Condition     effort.MemoryCondition `json:"condition"`
+				Diff          memoryProtocolDiff     `json:"diff"`
+			}{1, result.Condition, memoryProtocolDiff{result.Diff.Text, result.Diff.FirstChangedLine, result.Diff.Truncated}}
+		}
 	default:
 		actions := make([]string, len(result.Outcome.NextActions))
 		for i, action := range result.Outcome.NextActions {

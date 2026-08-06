@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: render-effort-memory-edits-like-pi
-status: Proposed
+status: Implementing
 date: 2026-08-06
 ---
 # ADR-render-effort-memory-edits-like-pi: Render Effort Memory Mutations Like Pi
@@ -164,3 +164,5 @@ reports the document represented at that moment. No memory format migration is i
 ## Status history
 
 - 2026-08-06: Proposed
+- 2026-08-06: Implementing; content-sha256: 6d37b23a0cd9a4c9d27c7c39a6fa13e712f0c8fbbbcb4993efcc46601b137824
+- 2026-08-06: Applied; operations: update `tooling/cli:effort-command-contract`, update `tooling/effort-management:memory-skeleton-purpose-partition`

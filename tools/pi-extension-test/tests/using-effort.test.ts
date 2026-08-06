@@ -243,7 +243,7 @@ test("remote Pi display suffix capability, replay, lifecycle clears, and failure
 const memoryFact = (slug = "demo") => ({ effort: slug, phase: "Build", next: "Test", updated: TIME });
 const memoryReadReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "read", memory: memoryFact(), content: "line\n", range: { startLine: 1, endLine: 1, totalLines: 1, nextOffset: null, truncatedBy: "none" }, ...extra });
 const memoryEditReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "edited", memory: memoryFact(), replacementCount: 1, diff: { text: "diff", firstChangedLine: 1, truncated: false }, ...extra });
-const memoryUpdateReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "updated", memory: memoryFact(), ...extra });
+const memoryUpdateReply = (extra: any = {}) => ({ schemaVersion: 1, condition: "updated", memory: memoryFact(), diff: { text: "diff", firstChangedLine: 1, truncated: false }, ...extra });
 const memoryOutcome = (condition: string, changedMemory = condition === "memory-failure", extra: any = {}) => ({ schemaVersion: 1, condition, outcome: { category: "operation", condition: "memory state requires attention", changedMemory, nextActions: ["read memory"], ...(condition === "memory-failure" ? { cause: "publication uncertain" } : {}) }, ...extra });
 async function decodeMemoryReply(value: unknown, operation: "read" | "edit" | "update" = "read") {
   const exec = async () => ({ code: 0, stdout: line(value), stderr: "" });
@@ -254,7 +254,7 @@ async function decodeMemoryReply(value: unknown, operation: "read" | "edit" | "u
 }
 
 test("memory client accepts and recursively freezes every success and refusal shape", async () => {
-  for (const [value, operation] of [[memoryReadReply(), "read"], [memoryEditReply(), "edit"], [memoryUpdateReply(), "update"]] as const) {
+  for (const [value, operation] of [[memoryReadReply(), "read"], [memoryEditReply(), "edit"], [memoryUpdateReply(), "update"], [memoryUpdateReply({ diff: { text: "", firstChangedLine: null, truncated: false } }), "update"]] as const) {
     const reply = await decodeMemoryReply(value, operation);
     assert.equal(Object.isFrozen(reply), true); assert.equal(Object.isFrozen(reply.memory), true);
     if (reply.range) assert.equal(Object.isFrozen(reply.range), true);
@@ -289,7 +289,7 @@ test("memory client rejects every closed success and refusal boundary", async ()
     { ...memoryReadReply(), range: { startLine: 1, endLine: 1, totalLines: 2, nextOffset: null, truncatedBy: "bytes" } }, { ...memoryReadReply(), range: { startLine: 1, endLine: 1, totalLines: 2, nextOffset: 2, truncatedBy: "none" } },
     { ...memoryEditReply(), replacementCount: 0 }, { ...memoryEditReply(), replacementCount: 129 }, { ...memoryEditReply(), memory: { ...memoryFact(), effort: "other" } },
     { ...memoryEditReply(), diff: null }, { ...memoryEditReply(), diff: { text: "x".repeat(MEMORY_STDERR_MAX + 1), firstChangedLine: 1, truncated: false } }, { ...memoryEditReply(), diff: { text: "", firstChangedLine: 0, truncated: false } }, { ...memoryEditReply(), diff: { text: "", firstChangedLine: null, truncated: "no" } },
-    { ...memoryUpdateReply(), extra: true }, { ...memoryUpdateReply(), memory: { ...memoryFact(), effort: "other" } },
+    { ...memoryUpdateReply(), extra: true }, { ...memoryUpdateReply(), memory: { ...memoryFact(), effort: "other" } }, { schemaVersion: 1, condition: "updated", memory: memoryFact() }, { ...memoryUpdateReply(), diff: { text: "", firstChangedLine: 0, truncated: false } },
     memoryOutcome("not-owner", true), { ...memoryOutcome("missing"), outcome: { ...memoryOutcome("missing").outcome, cause: "forbidden" } }, { ...memoryOutcome("memory-failure"), outcome: { ...memoryOutcome("memory-failure").outcome, cause: undefined } },
     { ...memoryOutcome("missing"), extra: true }, memoryOutcome("offset-out-of-range"), memoryOutcome("offset-out-of-range", false, { range: { offset: 1, totalLines: 1 } }), memoryOutcome("offset-out-of-range", false, { range: { offset: 2, totalLines: 0 } }),
     memoryOutcome("no-match", false, { edit: { index: -1 } }), memoryOutcome("ambiguous-match", false, { edit: { index: 0, occurrences: 1 } }), memoryOutcome("overlapping-edits", false, { edits: { firstIndex: 0, secondIndex: 0 } }),
