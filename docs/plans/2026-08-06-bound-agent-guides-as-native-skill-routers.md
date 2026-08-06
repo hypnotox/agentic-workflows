@@ -62,9 +62,10 @@ Representative: "The brainstorming and review skill templates retain their opera
 Edge: "Generic empty-data renders remain provider-neutral and leak-free; AGENTS.md contains no full tier definition, while working-with-awf contains the shared full definition exactly once even when project-specific configuration prose is overridden."
 Post-check: "Render the guide, working-with-awf document, and all eight affected skills for Claude and Pi; targeted tests prove every governed dispatch keeps its operative rule, both target branches remain coherent, the full definition occurs exactly once in working-with-awf, and no stale guide pointer remains."
 
-Move the existing shared model-selection include from the guide to the governed-dispatch section of
-`templates/docs/working-with-awf.md.tmpl`. Reconcile the self-hosted working-with-awf part so it does
-not duplicate the include and points to its own rendered document section. Change every affected
+Remove the shared model-selection include from the guide and retain the include already present at
+the governed-dispatch section of `templates/docs/working-with-awf.md.tmpl`; do not add a second
+include. Reconcile the self-hosted working-with-awf part so it does not duplicate the include and
+points to its own rendered document section. Change every affected
 skill pointer from the agent guide's Workflow section to `docs/working-with-awf.md` without changing
 model selection semantics, tool-neutrality, or target-specific branches. Rewrite the existing
 model-selection proof around this ownership; do not fork or copy the shared definitions.
@@ -112,6 +113,9 @@ Latitude: exact
 Applying: ["bound-agent-guides-as-native-skill-routers:guide-is-dispatch-layer", "bound-agent-guides-as-native-skill-routers:guide-authoring-cost-test", "bound-agent-guides-as-native-skill-routers:guide-definition-ownership", "bound-agent-guides-as-native-skill-routers:fixed-guide-budgets"]
 Paths: ["templates/agents-doc/AGENTS.md.tmpl", "templates/docs/agents-md-standard.md.tmpl", "internal/project/spine_test.go", "internal/project/docs_sections_test.go", "internal/project/render_tree_test.go", "internal/project/agents_doc_budget_test.go"]
 
+Establish the subagent-driven phase baseline before editing: `git status --short` produces no output,
+`./x check` reports clean and exits zero, and `./x gate` exits zero.
+
 Add focused tests before the prose change that render the direct default guide and require no more
 than `8*1024` bytes, and that read this repository's committed `AGENTS.md` and require no more than
 `10*1024` bytes. Use a direct default render for the shipped bound, not the authored adopter fixture;
@@ -140,19 +144,24 @@ Representative: "The append-only ADR, staged gate, backed-invariant, plain-punct
 Edge: "Merge authorization, checkpoint/handoff ordering, hook resolution, command detail, and generated-runtime descriptions appear in their canonical docs but not as copied procedure in AGENTS.md; genuinely cross-cutting obligations and the exact commands an agent runs remain discoverable before mutation."
 Post-check: "Build a section byte census from the rendered AGENTS.md before and after the edits, require the final file to satisfy the 10 KiB test without weakening the bound, and inspect each removed paragraph against docs/decisions/README.md, docs/doc-standard.md, docs/workflow.md, docs/working-with-awf.md, or its owning current-state/ADR source. `./x render` followed by a focused semantic reading must show no contradictory fragments, lost cross-cutting rule, accidental placeholder interpretation, or duplicated procedure."
 
-Trim the self-hosted parts and invariant data rather than hand-editing `AGENTS.md`. Delete duplicated
-mechanism where an existing canonical copy is current; move only a genuinely guide-unique operational
-fact into its established owning document before deletion. Keep Identity and ownership stance dense
-and present-tense. Keep the command list to commands routinely executed and one-line outcomes; put
-flags, lifecycle rules, merge recovery, and context-spill detail in working-with-awf. Preserve the
-cross-cutting nature of every retained invariant, its owning ADR reference where available, the
-publication-safe unset behavior, and this repository's generated-source workflow.
+Trim the self-hosted parts and invariant data rather than hand-editing `AGENTS.md`. The completed
+census has no guide-unique operational fact to relocate: merge authorization, hook resolution,
+command flags, context-spill behavior, and version-gate detail are already canonical in the authored
+working-with-awf parts; effort creation, working-memory ownership, checkpoint/handoff ordering,
+integration, and retrospective are already canonical in the workflow template and native skills;
+ADR lifecycle detail is already canonical in the decision guide and lifecycle skill; and invariant
+enforcement grammar is already canonical in current-state topics and owning ADRs. Delete those guide
+copies without changing the workflow document or adding another prose home. Keep Identity and
+ownership stance dense and present-tense. Keep the command list to commands routinely executed and
+one-line outcomes. Preserve the cross-cutting nature of every retained invariant, its owning ADR
+reference where available, the publication-safe unset behavior, and this repository's
+generated-source workflow.
 
 ### Task 2.3: Apply progressive-disclosure claims and regenerate the bounded guides
 Kind: batch
 Latitude: exact
 Applying: ["bound-agent-guides-as-native-skill-routers:guide-is-dispatch-layer", "bound-agent-guides-as-native-skill-routers:guide-authoring-cost-test", "bound-agent-guides-as-native-skill-routers:guide-definition-ownership", "bound-agent-guides-as-native-skill-routers:fixed-guide-budgets"]
-Paths: ["docs/decisions/bound-agent-guides-as-native-skill-routers.md", ".awf/topics/parts/rendering/guide-and-doc-templates/current-state.md", "docs/agents-md-standard.md", "AGENTS.md", "docs/working-with-awf.md", "docs/workflow.md", "docs/topics/rendering/guide-and-doc-templates.md", "docs/domains/rendering.md", ".awf/awf.lock"]
+Paths: ["docs/decisions/bound-agent-guides-as-native-skill-routers.md", ".awf/topics/parts/rendering/guide-and-doc-templates/current-state.md", "docs/agents-md-standard.md", "AGENTS.md", "docs/working-with-awf.md", "docs/topics/rendering/guide-and-doc-templates.md", "docs/domains/rendering.md", ".awf/awf.lock"]
 Representative: "The guide carries only pre-skill routing and canonical pointers, while the workflow document remains the complete working-memory authority and the authoring standard rejects catalog and procedure duplication."
 Edge: "The direct default render remains coherent below 8 KiB with empty values, and the self-hosted render remains below 10 KiB while retaining every cross-cutting invariant and necessary command entry point."
 Post-check: "After `./x render`, run the direct-default and self-hosted byte-bound tests, `./x check`, and focused semantic review of the default golden, AGENTS.md, docs/agents-md-standard.md, docs/workflow.md, and docs/working-with-awf.md. Success requires both fixed bounds, no unresolved-value token, no working-memory procedure copied into the guide, and no missing canonical destination for removed prose."
@@ -188,19 +197,23 @@ Completes: ["adopter-guide-advisory", "authority-applied"]
 ### Task 3.1: Prove the aggregate-only advisory before implementing it
 Latitude: exact
 Applying: ["bound-agent-guides-as-native-skill-routers:fixed-guide-budgets", "bound-agent-guides-as-native-skill-routers:simple-budget-observation"]
-Paths: ["internal/project/check.go", "internal/project/check_test.go", "internal/project/render_tree_test.go", "cmd/awf/checkrepo.go", "cmd/awf/checkrepo_test.go", "cmd/awf/check_presentation.go", "cmd/awf/check_presentation_test.go"]
+Paths: ["internal/project/check.go", "internal/project/check_test.go", "internal/project/render_tree_test.go", "cmd/awf/checkrepo.go", "cmd/awf/checkrepo_test.go", "cmd/awf/check_presentation_test.go"]
 
 Establish the subagent-driven phase baseline before editing: `git status --short` produces no output,
 `./x check` reports clean and exits zero, and `./x gate` exits zero.
 
-Add failing regression cases for an expected managed `AGENTS.md` below, exactly at, and one byte above
-`12*1024`; only the overage produces one note containing observed bytes, allowed bytes, and the
-`docs/agents-md-standard.md` pointer. Add an integration case with `agents-doc.local: true` proving
-that no expected guide node and no size note exist. Add command cases proving aggregate `awf check`
-renders a structured warning and returns nil when it is the only finding, while direct drift-only
-checking, initialization-compatible `AdvisoryNotes`, and other non-aggregate paths do not receive it.
-Run the new cases and record their expected failures before production changes, then proceed without
-committing the red state.
+Add `TestAgentGuideSizeAdvisoryBoundary` for an expected managed `AGENTS.md` below, exactly at, and
+one byte above `12*1024`; only the overage produces one note containing observed bytes, allowed bytes,
+and the `docs/agents-md-standard.md` pointer. Add
+`TestCheckReportAgentGuideSizeAdvisoryManagedOnly` with `agents-doc.local: true`, proving that no
+expected guide node and no size note exist. Add `TestAggregateCheckAgentGuideSizeWarning`, proving
+aggregate `awf check` renders a structured warning and returns nil when it is the only finding, while
+`./awf check repo drift`, initialization-compatible `AdvisoryNotes`, and other non-aggregate paths do
+not receive it. Before production changes run
+`go test ./internal/project ./cmd/awf -run 'Test(AgentGuideSizeAdvisoryBoundary|CheckReportAgentGuideSizeAdvisoryManagedOnly|AggregateCheckAgentGuideSizeWarning)$'`;
+expect a nonzero result in which the overage note is absent and aggregate output remains completed
+rather than warnings, while the below/equal/local exclusions do not produce false positives. Record
+that red result, then proceed without committing the red state.
 
 Implement one narrowly named helper over `OutputPlan.writeFiles()` or its expected `RenderedFile`
 projection, matching only path `AGENTS.md` and using `len(Content)` bytes. Invoke it only inside
@@ -216,7 +229,7 @@ Latitude: exact
 Applying: ["bound-agent-guides-as-native-skill-routers:fixed-guide-budgets", "bound-agent-guides-as-native-skill-routers:simple-budget-observation"]
 Paths: ["docs/decisions/bound-agent-guides-as-native-skill-routers.md", ".awf/topics/parts/rendering/sync-and-drift/current-state.md", "changelog/CHANGELOG.md", "docs/decisions/INDEX.md", "docs/topics/rendering/sync-and-drift.md", "docs/domains/rendering.md", ".awf/awf.lock"]
 Representative: "A managed expected AGENTS.md of 12 KiB plus one byte yields one aggregate warning naming observed and allowed bytes and the authoring guide, while all ordinary drift and current-state findings retain their existing categories and order."
-Edge: "Exactly 12 KiB, local ownership, direct `awf check drift`, initialization advisories, missing resident output, and an otherwise clean project yield no size warning outside aggregate CheckReport.Notes."
+Edge: "Exactly 12 KiB, local ownership, direct `./awf check repo drift`, initialization advisories, missing resident output, and an otherwise clean project yield no size warning outside aggregate CheckReport.Notes."
 Post-check: "Run the boundary/local project tests and aggregate/direct command tests, then `./x render` and inspect every reported topic, domain, index, lock, and changelog change. `./x check` on this repository is clean because its self-hosted guide is below 10 KiB; a temporary oversized managed fixture reports one structured warning and exits zero."
 
 Append the final Applied event naming exactly:
