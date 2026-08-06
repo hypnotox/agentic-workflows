@@ -1,4 +1,3 @@
-## Dependencies
 
 Runtime dependencies are deliberately few (see `go.mod`):
 

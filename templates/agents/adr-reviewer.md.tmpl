@@ -4,9 +4,9 @@ Independent, lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`.
 
 <!-- awf:include review-spine-head -->
 
+<!-- awf:section universal-lenses -->
 ## Universal lenses
 
-<!-- awf:section universal-lenses -->
 Apply all lenses to every ADR:
 
 1. **decision-clarity**: each Decision item must be a discrete durable commitment that remains meaningful after implementation; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items). Apply the post-implementation test (does it still constrain the project after delivery?) and the counterfactual test (could it change without violating the intended architecture, policy, behaviour, ownership, compatibility, safety, or reproducibility boundary?). A mechanism is valid only when the ADR explains why the mechanism itself is load-bearing. Treat paths, commands, task order, rollout batches, ordinary test transactions, and comparable executor instructions as plan content; report a misplaced directive as a reasoned finding, not a mechanical format failure.
@@ -22,9 +22,9 @@ Apply all lenses to every ADR:
 1. **structural-design**: consult `{{ .layout.maintainableCodeDesign }}` only when a Decision changes a semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract. When active, check cohesion, representation isolation, dependency direction, enabling-refactor disposition, testable seams, and justification for indirection. When no trigger is present, skip this lens rather than manufacturing structural requirements.
 <!-- awf:end -->
 
+<!-- awf:section project-focus -->
 ## Project-specific focus items
 
-<!-- awf:section project-focus -->
 {{ with .data.focusItems }}{{ range . }}
 **{{ .name }}**: {{ .description }}
 

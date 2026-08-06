@@ -11,9 +11,9 @@ description: >
 
 A support skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
+<!-- awf:edit states: default; create .awf/skills/parts/adr-lifecycle/states.md to override -->
 ## The states
 
-<!-- awf:edit states: default; create .awf/skills/parts/adr-lifecycle/states.md to override -->
 | State | Meaning | Mutability |
 |---|---|---|
 | `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable; body and status may both change |
@@ -23,9 +23,9 @@ A support skill for mechanical ADR lifecycle transitions: status transitions, th
 | `Abandoned` | Execution stopped; applied operations remain historical and unapplied operations are canceled | Terminal; status and append-only Status history only; the final entry carries a rationale; the body is frozen |
 
 
+<!-- awf:edit transitions: default; create .awf/skills/parts/adr-lifecycle/transitions.md to override -->
 ## Transitions
 
-<!-- awf:edit transitions: default; create .awf/skills/parts/adr-lifecycle/transitions.md to override -->
 - `Proposed → Accepted` establishes the first content stamp without applying operations; the body stays amendable via Amended events.
 - `Proposed|Accepted → Implementing` appends the status event then a first Applied batch, together with its claim mutations.
 - `Implementing → Implementing` appends one or more Applied or Reapplied batches with their matching claim mutations.
@@ -37,9 +37,9 @@ One authored transaction may append several Applied or Reapplied batches only ac
 
 `Implemented` and `Abandoned` are terminal. There is no `Superseded` status: an ADR is never active authority, so a later decision changes the affected current-state claims through its own State changes rather than superseding this ADR.
 
+<!-- awf:edit state-changes: default; create .awf/skills/parts/adr-lifecycle/state-changes.md to override -->
 ## State changes and the claim handshake
 
-<!-- awf:edit state-changes: default; create .awf/skills/parts/adr-lifecycle/state-changes.md to override -->
 An ADR's `## State changes` section is the authoritative link to the topics it governs: either `None.` or a list of `- add`, `- update`, and `- remove` entries, each naming one claim by its qualified `<domain>/<topic>:<slug>` id.
 
 - **At `Accepted`** the operations are settled instruction, amendable under the amendment-until-terminal rules until an Applied event references them. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; inspect lifecycle detail where needed with `awf context --show pending <affected paths>`.
@@ -104,8 +104,8 @@ schema retrofit may migrate its machine-readable encoding.
 
 V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker. Use that stable slug with the ADR number or retained pending ADR slug in plan references. Pre-V4 Decision items have no stable marker: use canonical `#N` only after their authored-format lifecycle freezes the record; never treat a legacy ordinal as a current-authority or supersession anchor.
 
+<!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
 ## Notes
 
-<!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
 - **Append-only rule:** the `## Status history` is append-only in every state. A V2 body stays amendable until a terminal status, each amendment recorded as an Amended event, then freezes as the historical record; append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
 - Does not commit on your behalf; surfaces the right edits for you to land.

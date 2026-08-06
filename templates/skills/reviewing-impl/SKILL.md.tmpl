@@ -7,17 +7,17 @@ description: Independent review step after implementation commits. Dispatches th
 
 Invoked as the independent review step of the implementation phase. This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. It validates the fixed identity, existing effort slug, and exact `.awf/efforts/<slug>/memory.md` path, keeps the parent as the one user-managed memory writer, and dispatches the `code-reviewer` subagent against the session's SHA range as report-only. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
 
+<!-- awf:section when-fires -->
 ## When this skill fires
 
-<!-- awf:section when-fires -->
 Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-development, after all code-touching commits have landed.
 
 A docs-only session diff may skip the independent review; step 2 defines the check and its ADR-directory exception.
 <!-- awf:end -->
 
+<!-- awf:section sha-range-detection -->
 ## Procedure
 
-<!-- awf:section sha-range-detection -->
 1. **Determine the session SHA range.**
    - `headSha` = `git rev-parse HEAD`.
    - `baseSha` = commit before the first implementation commit of this session.
@@ -82,9 +82,9 @@ A docs-only session diff may skip the independent review; step 2 defines the che
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
+<!-- awf:section notes -->
 ## Notes
 
-<!-- awf:section notes -->
 - ADR status and explicit Applied events are written by the execution skill. Review every first, later, final, or abandonment pair for unordered operation membership, ADR-number and intra-ADR history order, exact claim mutations, and truthful Applied/Remaining/Canceled progress. After review settles, this skill owns the status-only Implemented event for an explicit history or the atomic implicit batch, matching claim mutations, and Implemented event for a direct transition.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
 <!-- awf:end -->

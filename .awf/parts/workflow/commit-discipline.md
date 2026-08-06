@@ -1,4 +1,3 @@
-## Commit discipline
 
 Use Conventional Commits, one concern per commit. Stage files explicitly rather than `git add -A`, so each commit is a deliberate, reviewable unit.
 

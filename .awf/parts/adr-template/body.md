@@ -1,4 +1,3 @@
-## Context
 
 What situation prompted this decision? What constraints, forces, or prior art shaped the
 problem space? Include any measurements or observations that are verifiable.

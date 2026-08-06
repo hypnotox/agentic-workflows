@@ -3,9 +3,9 @@ name: {{ .prefix }}-writing-plans
 description: Use to write an implementation plan for a complex {{ .prefix }} task under {{ .layout.plansDir }}. Enforces project plan conventions (reviewable tasks, exact paths and commands, implementation-ready detail). Terminal step invokes {{ .prefix }}-reviewing-plan or routes to an execution skill.
 ---
 
+<!-- awf:section positioning -->
 # {{ .prefix }}-writing-plans
 
-<!-- awf:section positioning -->
 Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .prefix }} plan convention. The plan is the execution record and owns implementation directives: paths, commands, task order, rollout batches, and ordinary test transactions. The durable design lives in linked ADRs when any exist; link through `adrs:` rather than duplicating rationale. If planning discovers a new choice that remains meaningful after implementation, return to ADR authoring instead of hiding it in a task.
 <!-- awf:end -->
 
@@ -15,9 +15,9 @@ Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .pref
 Per `{{ .layout.workflowRef }}`: use a plan when sequencing, coordination, or resumability materially helps, including multi-commit or interdependent work, refactors applying an already-decided pattern across many sites, or work destined for subagent dispatch when they meet that criterion. A plan records and operationalizes approved choices rather than inventing speculative structure, checks, or work. Skip one-line bugfixes and changes that follow established patterns.
 <!-- awf:end -->
 
+<!-- awf:section conventions-path -->
 ## Conventions enforced
 
-<!-- awf:section conventions-path -->
 - **Path:** `{{ .layout.plansDir }}/YYYY-MM-DD-<kebab-topic>.md`. The date is today (ISO-8601).
 <!-- awf:end -->
 
@@ -31,6 +31,7 @@ Per `{{ .layout.workflowRef }}`: use a plan when sequencing, coordination, or re
 - **Phase outcomes and close:** use stable `dod: <slug>` bullets; a phase may Advances an outcome more than once across phases, but exactly one final phase Completes it, and no phase both advances and completes the same item. Outcomes and the final `### Phase close` belong to the phase owner, never a task or helper. Each Phase close declares one closing subject in a fenced `commit` block. The phase owner stages the complete transaction and creates that one closing commit, which requires `awf check staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} to pass; a wired pre-commit hook enforces both, and a manual run first is needed only in a clone without wired hooks (checkable with `git config core.hooksPath`; when in doubt, run both manually).
 - **Batch tasks:** retain exact `Representative:` and `Edge:` transformations, exhaustive `Paths:`, and a deterministic `Post-check:`. Any helper partition exhaustively assigns every affected site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and mutating commands confined to the assigned subset. Helpers are sequential and commit-disabled.
 - **Material verification:** each material `Post-check:` names its input population, exclusions, lifecycle snapshot, and expected terminal set or lifecycle-authorized residual findings. Empty output proves absence only after a probe success sentinel or checked exit status establishes that the probe ran. After a compound mutating command, read back every mutation target before trusting the result.
+- **Semantic rendering review:** when a task changes generated prose, schedule a focused human check at each affected output boundary for contradictory fragments, concept-preserving paraphrase, and whether literal placeholder syntax such as `<literal-placeholder>` is intentional. Name concrete examples and the expected reading; this is a meaning review, not a general output validator.
 - **Check taxonomy:** classify each material check as an authority, state, or choreography check. Preserve authority checks. Use the least restrictive state validation that proves the durable property. Omit a choreography-only constraint unless a named authority or state property requires it.
 - **Self-contained phases:** every phase closes green. A definition lands with its first production consumer by merging or reordering phases; no dead-code escape hatch is allowed.
 <!-- awf:end -->
@@ -81,9 +82,9 @@ Start from the canonical skeleton rather than a blank file: run `{{ if .runnerEn
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
+<!-- awf:section plan-lifecycle -->
 ## Notes
 
-<!-- awf:section plan-lifecycle -->
 - For a V2 ADR, assign each operation to an explicit direct, first, middle, or final application transaction; name exact sequences, claim mutations, and the Abandoned cancellation result where relevant. Do not defer all operations to one final commit unless the direct path is intentional.
 - A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** (through review and through implementation, where findings are noted as they surface) and **freezes at `status: Implemented`**, flipped in the deferred flip transaction after the applicable terminal review settles (the same flip for ADR-driven and non-ADR plans). In {{ .prefix }}'s usual flow a plan and its ADR(s) co-flip in that transaction, but the plan's freeze keys off its own status, not the ADR's.
 <!-- awf:end -->

@@ -4,7 +4,7 @@ slug: add-associated-pi-effort-memory-tools
 status: Implementing
 date: 2026-08-04
 ---
-# ADR-add-associated-pi-effort-memory-tools: Add associated Pi effort memory tools
+# ADR-0239: Add associated Pi effort memory tools
 
 
 ## Context

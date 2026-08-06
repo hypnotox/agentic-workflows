@@ -8,16 +8,16 @@ description: Independent review step after implementation commits. Dispatches th
 
 Invoked as the independent review step of the implementation phase. This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. It validates the fixed identity, existing effort slug, and exact `.awf/efforts/<slug>/memory.md` path, keeps the parent as the one user-managed memory writer, and dispatches the `code-reviewer` subagent against the session's SHA range as report-only. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
 
+<!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 ## When this skill fires
 
-<!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of awf-executing-plans or awf-subagent-driven-development, after all code-touching commits have landed.
 
 A docs-only session diff may skip the independent review; step 2 defines the check and its ADR-directory exception.
 
+<!-- awf:edit sha-range-detection: default; create .awf/skills/parts/reviewing-impl/sha-range-detection.md to override -->
 ## Procedure
 
-<!-- awf:edit sha-range-detection: default; create .awf/skills/parts/reviewing-impl/sha-range-detection.md to override -->
 1. **Determine the session SHA range.**
    - `headSha` = `git rev-parse HEAD`.
    - `baseSha` = commit before the first implementation commit of this session.
@@ -86,8 +86,8 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
 4. Otherwise state a one-line continuity notice with the completed phase and immediate next action, including the exact slug and owned memory path for an effort-backed outcome; the notice is informational, never a stop. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. After this persisted formal phase checkpoint, or at another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence. No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in. Either continue immediately, or invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work. Any kickoff that tells the successor to work only in the managed worktree must scope that restriction to pre-integration execution and explicitly preserve the governed switch to the intended target checkout for integration, deferred lifecycle closure, worktree removal, and retrospective. Cancellation or failure that leaves the old session active appends no handoff log. Mechanical corrections and authority-determined implementation details stay autonomous. Authority precedence, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc's working-memory section.
 
+<!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 ## Notes
 
-<!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 - ADR status and explicit Applied events are written by the execution skill. Review every first, later, final, or abandonment pair for unordered operation membership, ADR-number and intra-ADR history order, exact claim mutations, and truthful Applied/Remaining/Canceled progress. After review settles, this skill owns the status-only Implemented event for an explicit history or the atomic implicit batch, matching claim mutations, and Implemented event for a direct transition.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

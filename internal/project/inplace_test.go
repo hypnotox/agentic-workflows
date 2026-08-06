@@ -13,6 +13,48 @@ import (
 // readBackInPlaceBody extracts the interior between an in-place section's pointer
 // and awf's next registered section pointer, verbatim (internal blank lines kept),
 // trimming only the awf-owned leading/trailing framing.
+func TestReadBackInPlaceBodyExcludesStructuralHeading(t *testing.T) {
+	for _, heading := range []string{"## Owned heading", "## "} {
+		out := "<!-- awf:edit-in-place body: pointer -->\n" + heading + "\nuser body\n"
+		got, ok := readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, heading)
+		if !ok || got != "user body" {
+			t.Fatalf("heading %q read-back = %q, found %v; want body without structural heading", heading, got, ok)
+		}
+		// Reassembly with the rendered structural line is a fixpoint rather than
+		// duplicating a whitespace-bearing empty-value fallback into the body.
+		segs := render.ParseSections("<!-- awf:section body inplace -->\n" + heading + "\ndefault\n<!-- awf:end -->\n")
+		assembled, _ := render.Assemble(segs, map[string]render.SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: got}}, render.HTMLComment)
+		if strings.Count(assembled, heading+"\n") != 1 {
+			t.Fatalf("heading %q duplicated after read-back and reassembly: %q", heading, assembled)
+		}
+	}
+}
+
+func TestReadBackInPlaceBodyChangedStructuralHeading(t *testing.T) {
+	out := "<!-- awf:edit-in-place body: pointer -->\n## Tampered heading\nbody\n"
+	got, ok := readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+	if !ok || got != "body" {
+		t.Fatalf("changed heading = %q, found %v", got, ok)
+	}
+	for _, changed := range []string{"### Changed heading", "# Changed heading"} {
+		out = "<!-- awf:edit-in-place body: pointer -->\n" + changed + "\nbody\n"
+		got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+		if got != "body" {
+			t.Fatalf("changed structural heading %q = %q", changed, got)
+		}
+	}
+	out = "<!-- awf:edit-in-place body: pointer -->\nbody heading is absent\n### Body heading\n"
+	got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+	if got != "body heading is absent\n### Body heading" {
+		t.Fatalf("missing structural slot must preserve subordinate body heading = %q", got)
+	}
+	out = "<!-- awf:edit-in-place body: pointer -->\n#not a heading\nbody\n"
+	got, _ = readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment, "## Expected heading")
+	if got != "#not a heading\nbody" {
+		t.Fatalf("non-heading body line = %q", got)
+	}
+}
+
 func TestReadBackInPlaceBody(t *testing.T) {
 	// invariant: rendering/inplace-and-placeholders:in-place-readback (exact interior, internal blank preserved)
 	t.Run("exact interior, internal blank preserved", func(t *testing.T) {
@@ -263,14 +305,8 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	}
 }
 
-// End-to-end fixpoint over the real in-place composition, with no embedded
-// template in the loop: a synthetic source with an awf:section ... inplace
-// region is planned against the on-disk output (the production read-back
-// channel through readBackInPlaceBody), assembled through render.Assemble,
-// and drift-checked through checkLockedFiles as one flow. An edit confined to
-// the in-place section's content lines (internal blank line included) survives
-// regeneration and reports clean - sync followed by check is an idempotent
-// fixpoint - while an edit to an awf-owned region reports hand-edited drift.
+// End-to-end fixpoint over the real in-place producer-consumer composition.
+// invariant: rendering/inplace-and-placeholders:in-place-readback (TestInPlaceComposedSyncCheckFixpoint)
 // invariant: rendering/inplace-and-placeholders:in-place-tamper-drift (TestInPlaceComposedSyncCheckFixpoint)
 // invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (TestInPlaceComposedSyncCheckFixpoint)
 func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
@@ -281,24 +317,20 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 	}
 	segs := render.ParseSections(
 		"banner\n" +
-			"<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n" +
+			"<!-- awf:section s inplace -->\n## Owned heading\nDEFAULT\n<!-- awf:end -->\n" +
 			"<!-- awf:section tail -->\nOWNED\n<!-- awf:end -->\n")
 	declared := []string{"s", "tail"}
 	outPath := filepath.Join(root, "out.md")
 
-	// regenerate plans the sections against the current on-disk output and
-	// assembles the regenerated content, exactly as sync and check do.
 	regenerate := func() string {
 		t.Helper()
-		plan, err := p.planSections("skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
+		plan, err := p.planSections("skills", "foo", declared, nil, segs, "out.md", render.HTMLComment, map[string]string{"s": "## Owned heading"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		asm, _ := render.Assemble(segs, plan, render.HTMLComment)
 		return asm
 	}
-	// drift runs the same locked-file compare Check applies to a
-	// regeneration-checked in-place output.
 	drift := func(regenerated string) []manifest.Drift {
 		t.Helper()
 		lock := &manifest.Lock{Files: map[string]manifest.Entry{
@@ -314,45 +346,65 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 		}
 	}
 
-	// First sync: no output on disk, the in-place region renders its default.
 	first := regenerate()
-	if !strings.Contains(first, "DEFAULT") {
-		t.Fatalf("first render must fall back to the template default:\n%s", first)
+	if !strings.Contains(first, "the heading immediately below is awf-owned") ||
+		!strings.Contains(first, "## Owned heading\nDEFAULT") {
+		t.Fatalf("first render must emit pointer, owned heading, then fallback body:\n%s", first)
 	}
 	write(first)
 
-	// (a) An edit confined to the in-place section's content lines survives
-	// regeneration and reports clean.
-	write(strings.Replace(first, "DEFAULT", "adopter one\n\nadopter two", 1))
+	write(strings.Replace(first, "DEFAULT", "adopter one\n\n### Adopter subordinate heading\nadopter two", 1))
 	resynced := regenerate()
-	if !strings.Contains(resynced, "adopter one\n\nadopter two") {
-		t.Errorf("in-place edit lost across regeneration:\n%s", resynced)
-	}
-	if !strings.Contains(resynced, "OWNED") {
-		t.Errorf("awf-owned tail lost across regeneration:\n%s", resynced)
+	if !strings.Contains(resynced, "adopter one\n\n### Adopter subordinate heading\nadopter two") ||
+		strings.Count(resynced, "## Owned heading") != 1 || !strings.Contains(resynced, "OWNED") {
+		t.Fatalf("read-back lost or duplicated owned structure or adopter body:\n%s", resynced)
 	}
 	if d := drift(resynced); len(d) != 0 {
-		t.Errorf("an edit confined to the in-place region must report clean, got %v", d)
+		t.Fatalf("an edit confined to the in-place body must report clean, got %v", d)
 	}
-	// Sync overwrites with the regenerated content; a further regeneration is
-	// byte-identical and the check reports no drift (idempotent fixpoint).
 	write(resynced)
 	if again := regenerate(); again != resynced {
-		t.Errorf("regeneration is not an idempotent fixpoint:\ngot  %q\nwant %q", again, resynced)
+		t.Fatalf("regeneration is not an idempotent fixpoint:\ngot  %q\nwant %q", again, resynced)
 	}
 	if d := drift(regenerate()); len(d) != 0 {
-		t.Errorf("sync then check must report no drift, got %v", d)
+		t.Fatalf("sync then check must report no drift, got %v", d)
 	}
 
-	// (b) An edit to an awf-owned region reports drift: regeneration restores
-	// the owned body, so the on-disk file compares hand-edited.
+	write(strings.Replace(resynced, "## Owned heading", "## Tampered heading", 1))
+	headingRegen := regenerate()
+	if strings.Contains(headingRegen, "Tampered heading") || strings.Count(headingRegen, "## Owned heading") != 1 {
+		t.Fatalf("regeneration must restore exactly one structural heading:\n%s", headingRegen)
+	}
+	if d := drift(headingRegen); len(d) != 1 || d[0].Kind != "hand-edited" {
+		t.Fatalf("a changed structural heading must report hand-edited drift, got %v", d)
+	}
+	for _, changed := range []string{"### Tampered heading", "# Tampered heading"} {
+		write(strings.Replace(resynced, "## Owned heading", changed, 1))
+		levelRegen := regenerate()
+		if strings.Contains(levelRegen, changed) || strings.Count(levelRegen, "## Owned heading") != 1 {
+			t.Fatalf("%q must be consumed as owned-slot tamper:\n%s", changed, levelRegen)
+		}
+		if d := drift(levelRegen); len(d) != 1 || d[0].Kind != "hand-edited" {
+			t.Fatalf("%q drift = %v", changed, d)
+		}
+	}
+
+	write(strings.Replace(resynced, "## Owned heading\n", "", 1))
+	missingRegen := regenerate()
+	if strings.Count(missingRegen, "## Owned heading") != 1 ||
+		!strings.Contains(missingRegen, "### Adopter subordinate heading") {
+		t.Fatalf("missing-heading recovery lost structure or body:\n%s", missingRegen)
+	}
+	if d := drift(missingRegen); len(d) != 1 || d[0].Kind != "hand-edited" {
+		t.Fatalf("a missing structural heading must report hand-edited drift, got %v", d)
+	}
+
 	write(strings.Replace(resynced, "OWNED", "TAMPERED", 1))
 	tamperRegen := regenerate()
 	if strings.Contains(tamperRegen, "TAMPERED") {
-		t.Fatalf("regeneration must restore the awf-owned region:\n%s", tamperRegen)
+		t.Fatalf("regeneration must restore another awf-owned region:\n%s", tamperRegen)
 	}
-	d := drift(tamperRegen)
-	if len(d) != 1 || d[0].Kind != "hand-edited" {
+	if d := drift(tamperRegen); len(d) != 1 || d[0].Kind != "hand-edited" {
 		t.Fatalf("an awf-owned edit must report hand-edited drift, got %v", d)
 	}
 }

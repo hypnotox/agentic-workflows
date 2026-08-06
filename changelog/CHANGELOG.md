@@ -12,6 +12,22 @@ query a single version or a range.
 
 - `awf effort memory read`, `edit`, and `update` now provide owner-free readable commands plus owner-scoped protocol forms. Reads paginate on complete lines with handled refusals, exact body-only edit batches update timestamps automatically, and advisory owner loss is reported without treating activity as authorization.
 
+- Schema generation 36 makes structural Markdown headings awf-owned while convention parts and in-place editing own only section bodies. Dropping a section removes its complete structure, and the exact frozen convention-part migration removes only copied legacy headings or refuses ambiguous content before changing files.
+
+- Catalog-backed sidecar lists now preserve standard defaults before project entries unless `dataDefaults.<key>: false` explicitly suppresses them. Null and non-list project values are rejected, glossary term layering remains specialized, and the schema-35 upgrade records suppression for existing replacements without changing their rendered meaning.
+
+- Planning and implementation review now carry focused human checks for contradictory generated prose, concept-preserving paraphrase, and intentional literal placeholder syntax at each affected output boundary. The guidance requires concrete examples and expected readings without introducing semantic inference or a universal output validator.
+
+- Render completeness now derives conditional config-tree units and live template identities from their existing catalog, kind, target, and singleton declarations. Config-reference live values use one exhaustive typed classification for generated documentation and CLI presentation, and singleton template conditionals are checked against their artifact-specific live contexts.
+
+### Bug fixes
+
+- Historical audit now streams range evidence once and releases consumed historical authority state after its final consumer, preventing long authority-heavy audits from exhausting memory.
+
+## [0.30.0] - 2026-08-05
+
+### Features
+
 - Ordinary CLI mutations, details, collections, refusals, and commit-policy reports now use the deterministic readable-text presentation contract. Convenience JSON remains removed from effort and topic commands; authored plan and changelog payloads plus effort activity, init descriptor, and context spill protocols retain their exact bytes.
 
 - Checks and audits now collect complete structured reports before rendering, grouping errors before warnings while preserving source order within each category and separating produced failures from operational diagnostics. Upgrade mutations now identify every applied migration and report proven changed axes with recovery steps if terminal sync fails.

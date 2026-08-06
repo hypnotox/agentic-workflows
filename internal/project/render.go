@@ -189,7 +189,11 @@ func (p *Project) partRel(kind, artifact, section string) string {
 // template default renders. Precedence: drop > in-place read-back > convention
 // part > default. In-place and part sourcing are mutually exclusive per section
 // (ADR-0100 section-source-exclusive).
-func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle) (map[string]render.SectionPlan, error) {
+func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle, expectedHeadings ...map[string]string) (map[string]render.SectionPlan, error) {
+	headings := map[string]string{}
+	if len(expectedHeadings) > 0 && expectedHeadings[0] != nil {
+		headings = expectedHeadings[0]
+	}
 	plan := map[string]render.SectionPlan{}
 	reg, err := p.placeholderRegistry()
 	if err != nil {
@@ -241,7 +245,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
 			// in Assemble (ADR-0100 in-place-readback).
-			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style)
+			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style, headings[s])
 			plan[s] = sp
 			continue
 		}
@@ -287,7 +291,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 // or a deleted anchor), so the caller falls back to the template default.
 // touches-state: rendering/inplace-and-placeholders:in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
 // touches-state: rendering/inplace-and-placeholders:in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
-func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle) (string, bool) {
+func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle, expectedHeading ...string) (string, bool) {
 	lines := strings.Split(output, "\n")
 	ownPrefixes := render.PointerLinePrefixes(name, style)
 	start := -1
@@ -313,7 +317,24 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 			break
 		}
 	}
-	return trimBlankFraming(lines[start+1 : end]), true
+	body := lines[start+1 : end]
+	if len(expectedHeading) > 0 && expectedHeading[0] != "" && len(body) > 0 {
+		// A structural slot is awf-owned. Any ATX heading occupying it is tamper,
+		// regardless of level; a body heading is preserved only when that slot is
+		// genuinely absent.
+		if body[0] == expectedHeading[0] || atxHeadingLine(strings.TrimSpace(body[0])) {
+			body = body[1:]
+		}
+	}
+	return trimBlankFraming(body), true
+}
+
+func atxHeadingLine(s string) bool {
+	i := 0
+	for i < len(s) && s[i] == '#' {
+		i++
+	}
+	return i > 0 && i <= 6 && i < len(s) && (s[i] == ' ' || s[i] == '\t')
 }
 
 // trimBlankFraming drops leading and trailing blank (whitespace-only) lines - the
@@ -366,6 +387,9 @@ type renderOutputOptions struct {
 	encode      func(string) (string, error)
 	bannerStyle render.CommentStyle
 	target      *Target
+	// encoder is the output node's declared representation policy. Structural
+	// heading parsing follows it rather than target identity or filename shape.
+	encoder AgentDialect
 }
 
 type renderKindSpec struct {
@@ -424,7 +448,7 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 			continue
 		}
 		if spec.defaults != nil {
-			sc = withDefaultData(sc, spec.defaults(name))
+			sc = withDefaultData(sc, spec.defaults(name), specializedListDataKeys(spec.kind, name)...)
 		}
 		if spec.transform != nil {
 			if sc, err = spec.transform(name, sc); err != nil {
@@ -438,10 +462,11 @@ func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]Render
 				data[key] = value
 			}
 			target := spec.target
-			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target}
+			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target, encoder: MarkdownAgentDialect}
 		}
 		if spec.encode != nil {
 			options.bannerStyle = spec.target.agentCommentStyle()
+			options.encoder = spec.target.AgentDialect
 			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
 		}
 		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), eff, options)
@@ -526,6 +551,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				config.Sidecar{}, data, targetOutput.Path, eff, &renderOutputOptions{
 					bannerStyle: targetOutput.Provenance,
 					target:      &target,
+					encoder:     targetOutput.Encoder,
 				})
 			if err != nil { // coverage-ignore: targetOutputDeclarations read this same embedded template before render.
 				return nil, err
@@ -603,51 +629,24 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		out = append(out, rfs...)
 	}
-	// .awf/bootstrap.sh + .awf/upgrade.sh (neutral config-tree singleton; rendered
-	// as a unit only when enabled - ADR-0040 for the pinned installer, relocated by
-	// ADR-0047; ADR-0085 for the upgrade porcelain). No catalog spec / no
-	// overridable sections, like the CLAUDE.md bridge.
-	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
-		for _, u := range []struct{ tid, path string }{
-			{bootstrapTID, config.DirName + "/bootstrap.sh"},
-			{upgradeTID, config.DirName + "/upgrade.sh"},
-		} {
-			brf, err := p.renderTarget("bootstrap", "", u.tid,
-				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), u.path, eff)
-			if err != nil { // coverage-ignore: the bootstrap-unit templates reference only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
-				return nil, err
-			}
-			out = append(out, brf)
+	// .awf/bootstrap.sh, hook payloads, and the runner share only their declarative selection facts. Rendering
+	// retains its own data construction and lifecycle behavior at this seam.
+	for _, unit := range conditionalUnits() {
+		if !unit.enabled(p.Cfg) {
+			continue
 		}
-	}
-	// .awf/hooks/*.sh git-hook payloads (neutral config-tree singleton; rendered
-	// as a unit only when enabled - ADR-0048). No catalog spec / no overridable
-	// sections, like the bootstrap; awf never activates them.
-	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
-		for _, name := range hookNames {
-			hrf, err := p.renderTarget("hooks", "", hookTID(name),
-				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/hooks/"+name+".sh", eff)
-			if err != nil { // coverage-ignore: every var reference in the hook templates is with/else- or if-wrapped (ADR-0045), and they use no parts, so renderTarget cannot produce <no value> or a read error
-				return nil, err
-			}
-			out = append(out, hrf)
-		}
-	}
-	// The pure awf wrapper `awf` at the repo root (config-tree singleton rendered
-	// only when enabled - ADR-0156; fully awf-owned, no in-place sections, not a
-	// catalog DocEntry, so it stays out of SingletonKinds()).
-	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
-		rrf, err := p.renderTarget("runner", "", runnerTID,
-			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}, eff), "awf", eff)
+		rf, err := p.renderTarget(unit.kind, "", unit.tid, unit.sections,
+			config.Sidecar{}, p.data(config.Sidecar{}, eff), unit.path, eff,
+			&renderOutputOptions{encoder: PlainAgentDialect})
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, rrf)
+		out = append(out, rf)
 	}
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
 	for _, name := range resident.RootNames() {
-		rf, err := p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff)
+		rf, err := p.renderTarget(name, "", residentGitignoreTID(name), nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff, &renderOutputOptions{encoder: PlainAgentDialect})
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}
@@ -678,9 +677,19 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	segs := render.ParseSections(stripped)
+	// Ordinary catalog and neutral Markdown producers retain the declared
+	// Markdown default. Explicit producers supply their representation directly.
+	encoder := MarkdownAgentDialect
+	if options != nil && options.encoder != "" {
+		encoder = options.encoder
+	}
+	segs := render.ParseSections(stripped, encoder == MarkdownAgentDialect)
 	style := render.CommentStyleForSource(stripped)
-	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style)
+	headings, err := captureStructuralHeadings(segs, data, tid)
+	if err != nil {
+		return RenderedFile{}, err
+	}
+	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style, headings)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
@@ -739,10 +748,28 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
 		RegenChecked: anyInPlace(plan),
 		Policy:       declaredPolicy(kind, anyInPlace(plan)),
+		Encoder:      encoder,
 		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 		ConsumedInputs: consumedInputs, ObservedTemplateID: tid,
 	}, nil
+}
+
+// captureStructuralHeadings executes a marker-free copy of the complete
+// skeleton, rather than each heading as an independent template. This retains
+// surrounding dot, variables, and control context while producing the expected
+// line needed for in-place read-back before final assembly.
+func captureStructuralHeadings(segs []render.Segment, data map[string]any, tid string) (map[string]string, error) {
+	headingSkeleton, headingTokens := render.StructuralHeadingCapture(segs)
+	headingOutput, err := render.Execute(headingSkeleton, data, nil, tid+" headings")
+	if err != nil {
+		return nil, fmt.Errorf("render %s headings: %w", tid, err)
+	}
+	headings, err := render.ExtractStructuralHeadings(headingOutput, headingTokens)
+	if err != nil {
+		return nil, fmt.Errorf("render %s headings: %w", tid, err)
+	}
+	return headings, nil
 }
 
 func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan map[string]render.SectionPlan) ([]OutputInput, error) {
@@ -836,7 +863,9 @@ func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) (
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
-			partVarRefs: rf.partVarRefs, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID})
+			partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
+			RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, Encoder: rf.Encoder,
+			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID})
 	}
 	return out, nil
 }

@@ -32,6 +32,7 @@ Choose the smallest behavior-proving, model-supporting seam; reject tests that f
 <!-- awf:edit notes: default; create .awf/skills/parts/tdd/notes.md to override -->
 ## Notes
 
+
 <!-- awf:edit red-flags: default; create .awf/skills/parts/tdd/red-flags.md to override -->
 ## Red flags
 

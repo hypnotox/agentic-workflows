@@ -33,9 +33,10 @@ type SectionOverride struct {
 // <awfDir>/<kind>/<name>.yaml (agents-doc: <awfDir>/agents-doc.yaml). An absent
 // sidecar is the zero Sidecar (publication-safe: empty data/sections).
 type Sidecar struct {
-	Data     map[string]any             `yaml:"data"`
-	Sections map[string]SectionOverride `yaml:"sections"`
-	Local    bool                       `yaml:"local"`
+	Data         map[string]any             `yaml:"data"`
+	DataDefaults map[string]bool            `yaml:"dataDefaults"`
+	Sections     map[string]SectionOverride `yaml:"sections"`
+	Local        bool                       `yaml:"local"`
 	// Paths declares a domain's file territory as anchored path globs
 	// (ADR-0077); read only from domain sidecars, inert on other kinds.
 	Paths []string `yaml:"paths"`

@@ -8,6 +8,30 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
+func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eff := mustDeriveSkills(t, p)
+	without, err := p.artifactConfigHash("plain", config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withTrue, err := p.artifactConfigHash("plain", config.Sidecar{DataDefaults: map[string]bool{"items": true}}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withFalse, err := p.artifactConfigHash("plain", config.Sidecar{DataDefaults: map[string]bool{"items": false}}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if without == withTrue || withTrue == withFalse || without == withFalse {
+		t.Fatalf("dataDefaults configuration presence/value not represented in hashes: %q %q %q", without, withTrue, withFalse)
+	}
+}
+
 func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(testContext(t), root)

@@ -1,12 +1,15 @@
 package project
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/configspec"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -21,6 +24,40 @@ skills:
 agents:
   - code-reviewer
 `
+
+// invariant: config/configspec-and-reference:live-state-projection-explicit (TestLiveStateAuthorityRejectsOmissionAndWrongClass)
+func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolvers := p.currentValueResolvers()
+	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), resolvers); err != nil {
+		t.Fatal(err)
+	}
+
+	omitted := configspec.LiveStateClassifications()
+	delete(omitted, "prefix")
+	if err := validateLiveStateAuthority(omitted, resolvers); err == nil || !strings.Contains(err.Error(), "has no classification") {
+		t.Fatalf("omitted classification error = %v", err)
+	}
+	wrongStatic := configspec.LiveStateClassifications()
+	wrongStatic["prefix"] = configspec.StaticNotApplicable
+	if err := validateLiveStateAuthority(wrongStatic, resolvers); err == nil || !strings.Contains(err.Error(), "static live-state key") {
+		t.Fatalf("wrong static classification error = %v", err)
+	}
+	wrongLive := configspec.LiveStateClassifications()
+	wrongLive["tags"] = configspec.LiveStateProjection
+	if err := validateLiveStateAuthority(wrongLive, resolvers); err == nil || !strings.Contains(err.Error(), "has no resolver") {
+		t.Fatalf("wrong live classification error = %v", err)
+	}
+	unknown := configspec.LiveStateClassifications()
+	unknown["tags"] = configspec.LiveStateClass(99)
+	if err := validateLiveStateAuthority(unknown, resolvers); err == nil || !strings.Contains(err.Error(), "unknown class") {
+		t.Fatalf("unknown classification error = %v", err)
+	}
+}
 
 func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *Project) {
 	t.Helper()
@@ -79,6 +116,80 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 	// The vars section still lists every catalog var (all absent).
 	if !strings.Contains(got, "`gateCmd`") || !strings.Contains(got, "absent, declined") {
 		t.Errorf("empty-state reference lost the var catalog:\n%s", got)
+	}
+}
+
+func TestConfigReferenceListLayerStates(t *testing.T) {
+	base := "prefix: example\nintegrationBranch: main\nskills: [tdd]\n"
+	for _, tc := range []struct {
+		name, sidecar, want string
+	}{
+		{"catalog default", "", "catalog default"},
+		{"explicit true is presence only", "dataDefaults:\n  testSurfaces: true\n", "catalog default; dataDefaults explicitly true"},
+		{"layered project entries", "data:\n  testSurfaces:\n    - {name: Local, kind: unit, location: here}\n", "catalog default + project entries"},
+		{"suppressed default", "dataDefaults:\n  testSurfaces: false\ndata:\n  testSurfaces: []\n", "explicitly suppressed default; project entries only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := map[string]string(nil)
+			if tc.sidecar != "" {
+				files = map[string]string{"skills/tdd.yaml": tc.sidecar}
+			}
+			_, p := syncedProject(t, base, files)
+			model, err := p.ConfigReferenceModel(testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, row := range model.DataKeys {
+				if row.Artifact == "skill tdd" && row.Key == "testSurfaces" {
+					found = true
+					if !strings.Contains(row.State, tc.want) {
+						t.Errorf("typed state = %q, want %q", row.State, tc.want)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("tdd data row missing")
+			}
+		})
+	}
+
+	_, glossaryProject := syncedProject(t, "prefix: example\nintegrationBranch: main\ndocs: [glossary]\n", map[string]string{
+		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: Project-specific term.}\n",
+	})
+	glossaryModel, err := glossaryProject.ConfigReferenceModel(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundSpecialized := false
+	for _, row := range glossaryModel.DataKeys {
+		if row.Artifact == "doc glossary" && row.Key == "terms" {
+			foundSpecialized = true
+			if !strings.Contains(row.State, "project-only/specialized") {
+				t.Errorf("specialized glossary state = %q", row.State)
+			}
+		}
+	}
+	if !foundSpecialized {
+		t.Fatal("specialized glossary data row missing")
+	}
+
+	ref, err := StaticConfigReference()
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := ConfigReferencePresentation("sidecar.data", &ref, "config reference")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := presentation.Render(&out, document); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"catalog-backed list", "null or a non-list value is invalid", "Project-only and specialized"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("shared CLI row missing %q:\n%s", want, out.String())
+		}
 	}
 }
 
@@ -179,7 +290,8 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 	for _, tc := range []struct {
 		name, sidecar, wantErr string
 	}{
-		{"data rejected", "data:\n  k: v\n", "data: has no effect"},
+		{"data rejected", "data:\n  k: v\n", "data: and dataDefaults: have no effect"},
+		{"data defaults rejected", "dataDefaults:\n  k: false\n", "data: and dataDefaults: have no effect"},
 		{"paths rejected", "paths:\n  - '**/*.go'\n", "read only from domain sidecars"},
 		{"unknown section rejected", "sections:\n  intr:\n    drop: true\n", "intr"},
 	} {
@@ -209,6 +321,7 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 // Explicit audit values render without the default marker; explicit-empty
 // lists render their accept-any/rule-off prose; a local-from-birth reference
 // (never synced, no lock entry) reports nothing.
+// invariant: config/configspec-and-reference:live-state-projection-explicit (TestConfigReferenceCurrentValues)
 func TestConfigReferenceCurrentValues(t *testing.T) {
 	auditYAML := crefYAML + `audit:
   subjectMaxLength: 80
@@ -227,13 +340,15 @@ proseGate:
     - path: docs/x.md
       codepoint: U+2014
       count: 1
+runner:
+  enabled: true
 memoryCite:
   enabled: true
   exemptions:
     - path: docs/plans/x.md
       count: 1
 `
-	root, _ := syncedProject(t, auditYAML, nil)
+	root, p := syncedProject(t, auditYAML, nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -244,6 +359,7 @@ memoryCite:
 		"| accept any |",
 		"| rule off |",
 		"| 1 entries |", // proseGate.exemptions live-state count
+		"`runner.enabled` | bool | false (key absent); awf init and awf upgrade seed it true | true |",
 		"`memoryCite.enabled` | bool | false (key absent) | true |",
 		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | 1 entries |",
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
@@ -252,6 +368,33 @@ memoryCite:
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)
+		}
+	}
+
+	model, err := p.ConfigReferenceModel(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		key       string
+		cliValues []string
+	}{
+		{"audit.subjectMaxLength", []string{"audit.subjectMaxLength | int | 72", "| 80"}},
+		{"runner.enabled", []string{"runner.enabled | bool | false (key absent); awf init and awf upgrade seed it true", "| true"}},
+		{"gateCmdFull", []string{"gateCmdFull |", "| absent, declined"}},
+	} {
+		document, err := ConfigReferencePresentation(tc.key, &model, "config reference")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cli bytes.Buffer
+		if err := presentation.Render(&cli, document); err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range tc.cliValues {
+			if !strings.Contains(cli.String(), want) {
+				t.Errorf("CLI projection for %s missing %q:\n%s", tc.key, want, cli.String())
+			}
 		}
 	}
 
@@ -312,8 +455,8 @@ func TestConfigReferenceIntroOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(b)
-	if !strings.Contains(got, "# My Config Guide") || strings.Contains(got, "# Configuration Reference") {
-		t.Errorf("intro part did not replace the default:\n%s", got)
+	if !strings.Contains(got, "# My Config Guide") || !strings.Contains(got, "# Configuration Reference") {
+		t.Errorf("intro part did not replace the body while retaining the owned heading:\n%s", got)
 	}
 	if !strings.Contains(got, "## config.yaml keys") || !strings.Contains(got, "## Vars") {
 		t.Errorf("generated tables lost under an intro override:\n%s", got)

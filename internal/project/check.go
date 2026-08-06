@@ -103,7 +103,7 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	// the shipped layer would escape the threshold entirely. The ingestion can
 	// still fail here: a local: true sidecar is skipped by the render pass, so
 	// AdvisoryNotes having rendered the doc above does not vouch for it.
-	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data))
+	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data, specializedListDataKeys("docs", "glossary")...))
 	if err != nil {
 		return nil, err
 	}
@@ -615,13 +615,17 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"})
 			continue
 		}
+		if finding, found := classifyFrozenOutputFreshness(rf, e); found {
+			drift = append(drift, finding)
+			continue
+		}
 		onDisk, err := os.ReadFile(p.roots.ResolveOutput(path))
 		if err != nil {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 			continue
 		}
-		if manifest.Hash(onDisk) != e.OutputHash {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"})
+		if finding, found := classifyFrozenObservedDrift(rf, e, onDisk, "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"); found {
+			drift = append(drift, finding)
 			continue
 		}
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate

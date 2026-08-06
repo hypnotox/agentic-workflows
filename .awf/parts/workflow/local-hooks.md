@@ -1,4 +1,3 @@
-## Local git hooks
 
 This repository enables five rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs the configured bare `./x check` aggregate and `./x gate`; `.awf/hooks/commit-msg.sh` runs `./awf check staged commit` with the message file; `.awf/hooks/pre-merge-commit.sh` runs `./x check staged`; `.awf/hooks/reference-transaction.sh` rejects branch updates that introduce commits outside the configured identity and SSH-signature policy; and `.awf/hooks/pre-push.sh` checks every pushed commit-bearing target against the same policy before running the gate. The payloads are driven by project configuration and kept current by `./x render`.
 

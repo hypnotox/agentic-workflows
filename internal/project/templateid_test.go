@@ -3,6 +3,7 @@ package project
 import (
 	"go/ast"
 	"go/token"
+	"io/fs"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -10,6 +11,9 @@ import (
 	"testing"
 
 	"golang.org/x/tools/go/packages"
+
+	"github.com/hypnotox/agentic-workflows/internal/resident"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // templateIDScanPatterns are the production sources the template-ID claim
@@ -262,6 +266,112 @@ func fixtureConformingBase() string { return baseTID("agents") }
 	for _, f := range conformingFindings {
 		if strings.Contains(f, "template_id_fixture.go") {
 			t.Errorf("a conforming consumer was flagged: %q", f)
+		}
+	}
+}
+
+// TestLiveTemplateIDsResolve derives the complete live identity population from
+// its existing owners and verifies every live entry resolves in the embedded FS.
+// coOwnedRunnerTID is recognition-only and must not enter this population.
+// invariant: rendering/project-output-plan:template-id-single-derivation (TestLiveTemplateIDsResolve)
+func TestLiveTemplateIDsResolve(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := p.liveTemplateIDs()
+	for _, descriptor := range kindDescriptors {
+		if descriptor.baseTID != "" && !ids[descriptor.baseTID] {
+			t.Errorf("kind-derived base template %q is not live", descriptor.baseTID)
+		}
+		if descriptor.freeformDomain && !ids[descriptor.tid("")] {
+			t.Errorf("kind-derived domain template %q is not live", descriptor.tid(""))
+		}
+	}
+	if ids[coOwnedRunnerTID] {
+		t.Error("recognition-only runner is live")
+	}
+	for tid := range ids {
+		if _, err := fs.ReadFile(templates.FS, tid); err != nil {
+			t.Errorf("live template %q does not resolve: %v", tid, err)
+		}
+	}
+
+	originalBase := kindDescriptors[0].baseTID
+	kindDescriptors[0].baseTID = "missing/kind-base.tmpl"
+	baseIDs := p.liveTemplateIDs()
+	kindDescriptors[0].baseTID = originalBase
+	if !baseIDs["missing/kind-base.tmpl"] {
+		t.Error("a missing kind-derived base identity escaped the live population")
+	}
+	if _, err := fs.ReadFile(templates.FS, "missing/kind-base.tmpl"); err == nil {
+		t.Error("missing kind-derived base fixture unexpectedly resolves")
+	}
+
+	domainIndex := -1
+	for i := range kindDescriptors {
+		if kindDescriptors[i].freeformDomain {
+			domainIndex = i
+			break
+		}
+	}
+	if domainIndex < 0 {
+		t.Fatal("no freeform domain descriptor")
+	}
+	originalDomainTID := kindDescriptors[domainIndex].tid
+	kindDescriptors[domainIndex].tid = func(string) string { return "missing/domain.tmpl" }
+	domainIDs := p.liveTemplateIDs()
+	kindDescriptors[domainIndex].tid = originalDomainTID
+	if !domainIDs["missing/domain.tmpl"] {
+		t.Error("a missing kind-derived domain identity escaped the live population")
+	}
+	if _, err := fs.ReadFile(templates.FS, "missing/domain.tmpl"); err == nil {
+		t.Error("missing kind-derived domain fixture unexpectedly resolves")
+	}
+
+	missing := p.Cat.Docs["architecture"]
+	missing.TID = "missing/live-template.tmpl"
+	p.Cat.Docs["missing-live-fixture"] = missing
+	if _, err := p.OutputPlan(testContext(t)); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
+		t.Fatalf("missing live template error = %v", err)
+	}
+}
+
+func TestLiveTemplateEncodersFollowDeclarations(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoders := p.liveTemplateEncoders()
+	for _, unit := range conditionalUnits() {
+		if encoders[unit.tid] != PlainAgentDialect {
+			t.Errorf("conditional template %q encoder = %q, want plain", unit.tid, encoders[unit.tid])
+		}
+	}
+	for _, rootName := range resident.RootNames() {
+		tid := residentGitignoreTID(rootName)
+		if encoders[tid] != PlainAgentDialect {
+			t.Errorf("resident template %q encoder = %q, want plain", tid, encoders[tid])
+		}
+	}
+	for _, entry := range p.Cat.Docs {
+		if encoders[entry.TID] != MarkdownAgentDialect {
+			t.Errorf("catalog doc template %q encoder = %q, want Markdown", entry.TID, encoders[entry.TID])
+		}
+	}
+	for _, target := range p.Targets {
+		for _, output := range target.Outputs {
+			if encoders[output.TemplateID] != output.Encoder {
+				t.Errorf("target output %q encoder = %q, want %q", output.TemplateID, encoders[output.TemplateID], output.Encoder)
+			}
 		}
 	}
 }

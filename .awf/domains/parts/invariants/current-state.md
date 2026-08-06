@@ -1,4 +1,3 @@
-## Current state
 
 An invariant is a current-state topic claim, not an ADR declaration. Inside a topic's `## Claims` section a claim heading is exactly `` ### `invariant: <slug>` ``, and its metadata may begin with an optional nonblank, single-line `Summary:` of at most 160 Unicode code points immediately before `Origin:`. The metadata block ends with a `Backing:` line: `Backing: test` requires a proof marker, while `Backing: unbacked` forbids one and instead carries a single nonempty `Verify:` line, a reasoned contract exempt from mechanical proof. A rule claim (`` ### `rule: <slug>` ``) is normative without any backing metadata and accepts the same optional Summary placement and limit. The full identity of every claim is `<domain>/<topic>:<slug>`, globally unique by construction, and an ADR creates, changes, or retires an invariant claim through its `## State changes` operations; the ADR corpus itself declares no invariants.
 

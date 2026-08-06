@@ -2,7 +2,11 @@
 package render
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -117,8 +121,10 @@ func PointerLinePrefixes(name string, style CommentStyle) []string {
 // tripping the residual-marker guards (ADR-0100). Only the comment delimiters
 // vary by style; the token and phrasing are constant.
 // touches-state: rendering/render-engine:section-edit-pointer - awf:edit provenance pointer emission; proof in render_test.go
-func editPointer(name string, stub bool, p SectionPlan, style CommentStyle) string {
+func editPointer(name string, stub bool, headed bool, p SectionPlan, style CommentStyle) string {
 	switch {
+	case p.InPlace && headed:
+		return style.wrap(fmt.Sprintf("awf:edit-in-place %s: the heading immediately below is awf-owned; only the body after it is preserved across syncs", name))
 	case p.InPlace:
 		return style.wrap(fmt.Sprintf("awf:edit-in-place %s: your edits below are preserved across syncs; awf owns the rest", name))
 	case p.HasPart:
@@ -163,7 +169,11 @@ func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (
 		if p.Drop {
 			continue
 		}
-		b.WriteString(editPointer(s.Name, s.Stub, p, style))
+		b.WriteString(editPointer(s.Name, s.Stub, s.Heading != "", p, style))
+		if s.Heading != "" {
+			b.WriteString(s.Heading)
+			b.WriteByte('\n')
+		}
 		switch {
 		case p.InPlace:
 			// touches-state: rendering/render-engine:in-place-pointer-distinct - distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
@@ -249,6 +259,59 @@ func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error
 		}
 	}
 	return nil
+}
+
+// StructuralHeadingCapture returns a marker-free copy of the complete template
+// skeleton with each structural heading bracketed by inert tokens. Executing this
+// source preserves the template parse tree's surrounding variables, dot, and
+// control flow while exposing the rendered heading lines to the project layer.
+func StructuralHeadingCapture(segs []Segment) (string, map[string][2]string) {
+	var b strings.Builder
+	tokens := make(map[string][2]string)
+	for _, s := range segs {
+		if !s.IsSection {
+			b.WriteString(s.Text)
+			continue
+		}
+		if s.Heading != "" {
+			// A per-section digest makes framing practically unique to this exact
+			// skeleton. Extraction still rejects every duplicate or malformed
+			// occurrence rather than trusting that uniqueness.
+			digest := sha256.Sum256([]byte(s.Name + "\x00" + s.Heading))
+			prefix := "\x00awf:heading:" + hex.EncodeToString(digest[:])
+			start := prefix + ":start\x00"
+			end := prefix + ":end\x00"
+			tokens[s.Name] = [2]string{start, end}
+			b.WriteString(start)
+			b.WriteString(s.Heading)
+			b.WriteString(end)
+		}
+		b.WriteString(s.Text)
+	}
+	return b.String(), tokens
+}
+
+// ExtractStructuralHeadings recovers each heading captured during execution.
+func ExtractStructuralHeadings(output string, tokens map[string][2]string) (map[string]string, error) {
+	headings := make(map[string]string, len(tokens))
+	for _, name := range slices.Sorted(maps.Keys(tokens)) {
+		pair := tokens[name]
+		starts := strings.Count(output, pair[0])
+		ends := strings.Count(output, pair[1])
+		if starts == 0 && ends == 0 {
+			continue
+		}
+		if starts != 1 || ends != 1 {
+			return nil, fmt.Errorf("structural heading %q capture has ambiguous framing: found %d start token(s) and %d end token(s)", name, starts, ends)
+		}
+		start := strings.Index(output, pair[0])
+		end := strings.Index(output, pair[1])
+		if end < start+len(pair[0]) {
+			return nil, fmt.Errorf("structural heading %q capture framing is out of order", name)
+		}
+		headings[name] = output[start+len(pair[0]) : end]
+	}
+	return headings, nil
 }
 
 // Execute runs text/template over the awf-owned skeleton (part bodies stood in by

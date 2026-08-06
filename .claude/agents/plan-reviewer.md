@@ -43,9 +43,9 @@ Severity is informational only; the dispatching skill routes by classification k
 
 When the brief carries pasted consensus entries (user-provenance decision-log entries, including whatever `Record:` blocks exist), check the plan against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating plan passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
 
+<!-- awf:edit universal-lenses: default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
 ## Universal lenses
 
-<!-- awf:edit universal-lenses: default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
 Apply all lenses to every plan:
 
 1. **scope-completeness**: every plan-level ADR Decision item has a substantive Applying assignment and every DoD item has a substantive final Completes owner; no scope creep beyond what the ADR authorises. Proposed-plan coverage checks are advisory, so review the assignment's substance rather than treating a clean check as proof. Flag Context used to evade Applying, false completion ownership, and historical ADR Decision prose confused with current-state authority. Every phase declares independent `inline` or `subagent-driven` ownership and a coherent concern; flag plan-wide mode inference, task-level transaction boundaries, non-green phases, definitions without their first production consumer, incomplete/overlapping partitions, helper-owned shared files, or unconfined commands. For resync mode, flag plan-vs-finalised-ADR drift specifically.
@@ -60,11 +60,13 @@ Apply all lenses to every plan:
 
 1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
 
+1. **semantic-rendering-review**: when generated prose changes, require the plan to schedule a focused human check at each affected output boundary for contradictory fragments, concept-preserving paraphrase, and intentional literal placeholder syntax such as `<literal-placeholder>`, with concrete examples and expected reading. This is a meaning review, not a general output validator.
+
 1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check that the relevant model, ownership, representations, translation boundaries, dependency direction, and test seams are explicit; necessary enabling refactors are ordered before dependent behavior, bounded to the failure they prevent, and deterministically verifiable; larger refactors have an explicit approved, deferred, or declined disposition; flag needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process. Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable.
 
+<!-- awf:edit project-focus: default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 ## Project-specific focus items
 
-<!-- awf:edit project-focus: default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 
 **step-exactness**: Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, placeholders, conditional or optional tasks, missing contract-bearing `Latitude: exact`, misplaced or unknown task fields, spikes with implementation bodies or no Notes target, ambiguous scope without `Paths:`, and batches or glob/pathspec scope without `Post-check:`.
 
@@ -133,9 +135,9 @@ Apply all lenses to every plan:
 
 
 
+<!-- awf:edit doc-currency: default; create .awf/agents/parts/plan-reviewer/doc-currency.md to override -->
 ## Doc-currency checklist
 
-<!-- awf:edit doc-currency: default; create .awf/agents/parts/plan-reviewer/doc-currency.md to override -->
 For each item below, flag a finding if the gating condition is met AND the plan does not include a same-commit task to update the listed artifact:
 
 - the plan schedules updates for every document its changes invalidate, in the same commits
@@ -143,9 +145,9 @@ For each item below, flag a finding if the gating condition is met AND the plan 
 - AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain
 
 
+<!-- awf:edit resync-note: default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
 ## Resync mode
 
-<!-- awf:edit resync-note: default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
 When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The remaining lenses already ran during the initial plan review and need not re-run unless explicitly requested.
 
 Resync mode is triggered by the `awf-reviewing-plan-resync` skill after whichever review settled - an ADR review converging, or a plan review that found at least one linked ADR. Its purpose is to catch plan-vs-finalised-ADR drift.

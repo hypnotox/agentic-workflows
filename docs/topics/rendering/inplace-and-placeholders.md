@@ -35,20 +35,23 @@ Backing: test
 
 ### `invariant: in-place-readback`
 
-On both sync and check, an in-place-editable section's body is read back from the existing output file between its awf:edit-in-place pointer and awf's next registered section pointer, matched by that pointer's exact expected string rather than any pointer-shaped adopter line, or to end-of-file when it is the last section; when the output is absent or the pointer is missing, the body falls back to the template default.
+On both sync and check, an in-place-editable section's body is read back from the existing output file between its awf:edit-in-place pointer and awf's next registered section pointer, excluding the rendered expected structural-heading slot, matched by that pointer's exact expected string rather than any pointer-shaped adopter line, or to end-of-file when it is the last section; when the output is absent or the pointer is missing, the body falls back to the template default.
 Origin: ADR-0148
+Revised-by: ADR-0237
 Backing: test
 
 ### `invariant: in-place-spacing-owned`
 
-An in-place region's interior, including its internal blank lines, is spliced back verbatim while only the leading and trailing blank framing is regenerated to a fixed form, so a sync followed by a check is an idempotent fixpoint that reports no drift on unedited whitespace.
+An in-place region's body interior, including its internal blank lines, is spliced back verbatim while its pointer, optional structural heading, and leading and trailing blank framing are regenerated to a fixed form, so a sync followed by a check is an idempotent fixpoint that reports no drift on unedited whitespace.
 Origin: ADR-0148
+Revised-by: ADR-0237
 Backing: test
 
 ### `invariant: in-place-tamper-drift`
 
-A file with an in-place-editable section is drift-checked by regenerating every awf-owned section and the file structure from the template, so an edit to an awf-owned region or the structure surfaces as drift and is overwritten, while an edit confined to an in-place section's content lines is preserved and reports clean.
+A file with an in-place-editable section is drift-checked by regenerating every awf-owned section and the file structure from the template, so an edit to an awf-owned region, including its structural heading, surfaces as drift and is overwritten, while an edit confined to an in-place section's body content lines is preserved and reports clean.
 Origin: ADR-0148
+Revised-by: ADR-0237
 Backing: test
 
 ### `invariant: part-placeholder-sandboxed`
