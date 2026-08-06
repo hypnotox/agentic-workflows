@@ -198,21 +198,33 @@ func TestBoundedDisplayRowsSelectExactlyThePerCandidateRows(t *testing.T) {
 	never := func(int) bool { return false }
 	all := func(int) bool { return true }
 	every := func(n int) func(int) bool { return func(i int) bool { return i%n == 0 } }
-	for _, shape := range []struct {
+	type rowShape struct {
 		name  string
 		rows  []displayDiffRow
 		width int
-	}{
+	}
+	shapes := []rowShape{
 		{name: "whole-body replacement", rows: build(12001, 16, all, never, 5), width: 5},
 		{name: "alternating context", rows: build(12001, 16, every(2), never, 5), width: 5},
 		{name: "sparse changes with wide context", rows: build(9000, 24, every(37), never, 4), width: 4},
 		{name: "group separators between changes", rows: build(6000, 40, every(11), every(53), 4), width: 4},
-		{name: "few wide rows", rows: build(40, 2000, every(3), never, 2), width: 2},
 		{name: "everything fits", rows: build(60, 12, every(5), never, 2), width: 2},
 		{name: "single change", rows: build(9, 12, func(i int) bool { return i == 4 }, never, 1), width: 1},
 		{name: "oversized rows", rows: append(build(30, 8, every(4), never, 2), displayDiffRow{text: strings.Repeat("z", maxMemoryDiffBytes+1), changed: true}, displayDiffRow{text: strings.Repeat("w", maxMemoryDiffBytes+1)}), width: 2},
-		{name: "context only", rows: build(20000, 12, never, never, 5), width: 5},
-	} {
+		// One change in an overflowing body of context: the fallback selects four
+		// context rows either side of it, a count no other shape can distinguish
+		// from three or five because every other selection stops on the byte bound
+		// before the distance loop runs out.
+		{name: "lone change in overflowing context", rows: build(20000, 12, func(i int) bool { return i == 10000 }, never, 5), width: 5},
+	}
+	// Accepting a row is an exact byte comparison, so these widths bracket it:
+	// with a leading omission row of 8 bytes and rows of size+5, the second
+	// accepted row puts the running total on 50 KiB exactly at delta 0, and one
+	// row either side of the bound for the rest.
+	for delta := -2; delta <= 2; delta++ {
+		shapes = append(shapes, rowShape{name: fmt.Sprintf("few wide rows %+d", delta), rows: build(40, 25591+delta, every(3), never, 2), width: 2})
+	}
+	for _, shape := range shapes {
 		t.Run(shape.name, func(t *testing.T) {
 			wantText, wantTruncated := referenceBoundedDisplayRows(shape.rows, shape.width)
 			gotText, gotTruncated := boundedDisplayRows(shape.rows, shape.width)
