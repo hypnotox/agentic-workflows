@@ -31,12 +31,22 @@ The house-standard record withdraws that premise. There is no repository awf arr
 there is a set of repositories its owner sets up, where a one-time sweep before enabling a blocking
 scanner is a setup step rather than an imposition.
 
-The measurement is decisive. This checkout sets `hooks.enabled`, `runner.enabled`,
-`proseGate.enabled` and `memoryCite.enabled` all true, and carries none of the nine audit settings
-except `allowedScopes`, nor a non-default fan-out budget: the five booleans, the type list, the
-subject limit, the diff threshold, the manifest globs and the budget all run at their built-in
-values. The entire tuning surface expresses nothing here, and the four singleton toggles express
-nothing except agreement.
+The measurement is suggestive rather than decisive, and it has to be read carefully. This checkout
+sets `hooks.enabled`, `runner.enabled`, `proseGate.enabled` and `memoryCite.enabled` all true, and
+carries none of the nine audit settings except `allowedScopes`, nor a non-default fan-out budget:
+the five booleans, the type list, the subject limit, the diff threshold, the manifest globs and the
+budget all run at their built-in values. But the served set is plural and heterogeneous, and a
+census of one member of it is weak evidence. The companion record that proposed retiring the
+bootstrap installer was withdrawn for exactly this reason: it read one repository's value as the
+whole picture and missed that the key varies across the others.
+
+What decides this record is therefore durability, not the census. Both scanners ship default-off,
+so an unswept tree differs from this one today; that difference exists only until the tree is
+swept, after which every served repository agrees. The owner has confirmed that none durably
+declines a gate. A difference that resolves as adoption completes is transitional and does not
+admit a key under the house-standard record's test. Bootstrap is the contrasting case and it is
+kept for that contrast: a repository that builds awf from source will never converge with one that
+installs a pinned binary.
 
 ADR-0117 recorded the counter-pressure that now decides the matter: "a default-off check is a check
 nobody runs". Under the withdrawn premise that was a cost worth paying for adopter autonomy. Under
@@ -91,12 +101,15 @@ construction, and ADR-0051 already established it as the single home for that vo
    its own, because today it is pinned only through the configspec table, which the key's removal
    takes with it.
 
-6. `decision: conditional-units-narrow-to-bootstrap` The conditional config-tree render unit
-   survives, narrowed to one subject. Hooks and the runner leave the descriptor when items 1 and 2
-   make them unconditional, and artifact selection leaves it with the house-standard record; the
-   bootstrap pair remains, because `bootstrap.enabled` is a live repository fact rather than a
-   behaviour preference. The descriptor therefore keeps exactly one conditional subject, and the
-   claim governing it is rewritten rather than retired.
+6. `decision: conditional-units-narrow-to-bootstrap` The config-tree render-unit descriptor
+   survives as the single declaration home for every config-tree output, and its enablement facet
+   narrows to one live subject. The hook payloads and the runner wrapper stay members with
+   unconditional enablement rather than moving to a second table, so path, template identity, render
+   kind and fixed sections continue to be declared in one place and the runner keeps supplying the
+   only non-nil section set. Bootstrap remains the descriptor's one conditional member, because
+   `bootstrap.enabled` is a live repository fact rather than a behaviour preference. The claim
+   governing the descriptor is rewritten rather than retired, and no config-tree output acquires a
+   bespoke declaration path.
 
 7. `decision: toggle-key-migration` A schema generation removes `hooks`, `runner`, the
    `proseGate.enabled` and `memoryCite.enabled` keys, the five advisory booleans, the commit-type
@@ -133,7 +146,6 @@ construction, and ADR-0051 already established it as the single home for that vo
 - update `rendering/singletons-and-payloads:hook-payloads-rendered`
 - update `rendering/companion-scripts:runner-pure-forwarder`
 - update `rendering/companion-scripts:hook-payloads-fallback-safe`
-- update `rendering/project-output-plan:output-plan-complete`
 - update `config/validation:hooks-commands-resolvable`
 - add `config/migrations-and-locks:toggle-keys-forward-ported`
 - update `tooling/quality-gates:memory-citation-gate`
@@ -150,9 +162,9 @@ construction, and ADR-0051 already established it as the single home for that vo
 ## Consequences
 
 Fourteen config keys disappear, four of them the singleton enablement toggles, and fifteen claims
-are rewritten: eleven lose an enablement clause and four lose a reference to a value the config no
-longer supplies. Reading what a repository checks becomes reading awf rather than reading awf
-intersected with a repository's answers.
+are rewritten: eleven lose an enablement clause, four lose a reference to a value the config no
+longer supplies, and one narrows its member set. Reading what a repository checks becomes reading
+awf rather than reading awf intersected with a repository's answers.
 
 Three audit claims need no operation despite the configuration behind them retiring. `audit-domain-doc-staleness`
 and `audit-undocumented-domain` never mention a knob in their prose, so they stay true verbatim
@@ -198,10 +210,12 @@ and ADR-0158 designed the default-off knobs to avoid, and it is now paid once pe
 setup step instead of avoided forever. This repository has already paid it. The sweep itself is a
 rollout instruction and belongs to the implementing plan rather than to this record.
 
-Two topic narratives assert toggleability this record removes: `rendering/singletons-and-payloads`
-opens on "always-on and toggleable singleton outputs" and `rendering/companion-scripts` opens on
-"when hooks are enabled". Narratives carry no claim id, so no operation covers them and nothing
-flags the drift; the implementing plan rewrites both alongside the claim operations.
+Two topic narratives need different treatment, and only one is stale outright.
+`rendering/singletons-and-payloads` opens on "always-on and toggleable singleton outputs", which
+stays accurate because bootstrap survives as the toggleable one; the hook payloads simply move to
+the always-on side. `rendering/companion-scripts` opens on "when hooks are enabled", which becomes
+false and needs rewriting outright. Narratives carry no claim id, so no operation covers either and
+nothing flags the drift; the implementing plan handles both.
 
 ## Alternatives Considered
 

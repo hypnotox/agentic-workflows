@@ -10,10 +10,11 @@ date: 2026-08-06
 ## Context
 
 awf's configuration tree carries roughly thirty-two documented keys. They do not form one
-category. Twelve express a fact that genuinely differs between repositories: the skill-name prefix,
-the integration branch, the command vars, the domain keys, the tag vocabulary, the commit-scope
-taxonomy, the context-ignore globs, the current-state marker sources, the proof-eligible test
-globs, the commit policy, and the two gate exemption lists. Nearly all hold a non-default value in
+category. Thirteen express a fact that genuinely differs between repositories: the skill-name
+prefix, the integration branch, whether the repository acquires awf through a pinned installer, the
+command vars, the domain keys, the tag vocabulary, the commit-scope taxonomy, the context-ignore
+globs, the current-state marker sources, the proof-eligible test globs, the commit policy, and the
+two gate exemption lists. Nearly all hold a non-default value in
 this checkout, because a repository that did not set them would be describing itself wrongly; the
 exceptions are the declined `gateCmdFull` var and the empty `memoryCite.exemptions` list, and a
 declined or empty value is itself a statement about the repository.
@@ -21,12 +22,13 @@ declined or empty value is itself a statement about the repository.
 The remaining twenty or so express a preference about awf's own behaviour. This record takes the
 artifact-selection subset: which catalog skills, agents and docs render, which adapter runtimes are
 targeted, where documentation lives, and whether an artifact is hand-maintained instead of
-rendered. Most of the remainder, the gate and audit toggles, is retired by a companion record. One
-member survives the test rather than failing it: `bootstrap.enabled` varies durably across the
-repositories served, because awf builds itself from source and never wants a pinned installer while
-every other repository always does and pins its own version. That is a fact about how a repository
-obtains awf, not a preference about awf's behaviour, so it stays. Measured against this checkout,
-the selection surface expresses almost nothing. Of twenty-one catalog skills, twenty are enabled; of six agents, six; of eight toggleable
+rendered. The remainder, the gate and audit toggles, is retired by a companion record: their
+cross-repository differences are transitional, disappearing as each tree is swept.
+`bootstrap.enabled` is not part of that category at all. It survives the test rather than failing
+it, because awf builds itself from source and never wants a pinned installer while every other
+repository always does and pins its own version. That difference never resolves, so it is a fact
+about how a repository obtains awf rather than a preference about awf's behaviour. Measured against
+this checkout, the selection surface expresses almost nothing. Of twenty-one catalog skills, twenty are enabled; of six agents, six; of eight toggleable
 docs, seven. The enable arrays distinguish two artifacts in total.
 
 The machinery bought with those two bits is substantial and interlocking: requirement closure over
@@ -68,9 +70,13 @@ would push the same pressure back into the keys this record retires.
 1. `decision: repo-facts-only` A configuration key exists only to express a fact that differs
    between the repositories awf serves. A key that expresses a preference about awf's own behaviour
    is not a key, because awf has one behaviour. The admission test for a proposed key is empirical
-   rather than counterfactual: whether the served repositories actually hold different values. A
-   key nobody varies is fixed in the binary, however plausibly a hypothetical repository might have
-   varied it. This subsumes ADR-0084's var-descriptor policy and extends it to the whole config
+   rather than counterfactual: whether the served repositories' steady-state values differ. A key
+   nobody varies is fixed in the binary, however plausibly a hypothetical repository might have
+   varied it, and a difference that disappears once every repository finishes adopting a rule is
+   transitional rather than a repository fact. Present variance alone does not admit a key: a tree
+   that has not yet been swept for a newly enforced rule differs from a swept one only until it is
+   swept, whereas a repository that builds awf from source will always differ from one that
+   installs a pinned binary. This subsumes ADR-0084's var-descriptor policy and extends it to the whole config
    tree, to sidecar fields, and to init answers. Reintroducing a behaviour preference as a key
    requires a successor record.
 

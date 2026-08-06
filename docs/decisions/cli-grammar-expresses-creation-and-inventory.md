@@ -23,10 +23,12 @@ record retires the `skills`, `agents`, `docs` and `targets` arrays and the sidec
 the gates record retires `hooks` and `runner`. Only `bootstrap.enabled` survives as a key, because
 it varies durably across served repositories. That leaves `awf enable` and `awf disable` with two
 of their eight kinds, the target commands with no array, and the three local `new` kinds with no
-channel to scaffold into. Config parsing is
-strict, so these are not merely obsolete: each writes a key or a field that the next load rejects.
+channel to scaffold into. Config parsing is strict, so most of these are not merely obsolete: each
+writes a key or a field that the next load rejects. The bootstrap arm is the exception, since the
+key it writes stays valid; it retires on item 1's grammar instead, because a boolean setup fact is
+read from configuration rather than selected.
 
-The surviving kind exposes a naming error the selection framing concealed. Domains are not selected
+The surviving domain kind exposes a naming error the selection framing concealed. Domains are not selected
 from a catalog. There is no pool of domains awf ships that a repository turns on; a repository
 invents a domain key, and the operation scaffolds the domain's convention part idempotently, which
 is creation. ADR-0093 renamed `add` to `enable` because "`add` reads as 'create,' colliding with
@@ -54,7 +56,10 @@ reading what exists.
    pairing, and the dependent-refusal guard. This record retires the command surface; the companion
    records retire the keys most of those arms wrote. `bootstrap.enabled` outlives its arm and
    becomes a hand-edited setup fact, joining `prefix` and `integrationBranch`, neither of which has
-   a CLI setter either; `awf init` continues to scaffold it.
+   a CLI setter either. `awf init` continues to scaffold it enabled, and that default gains a claim
+   of its own: with the arm gone and the listing category dropped, init's scaffolded value becomes
+   the only mechanism that hands a repository a correct value for the one key this slate says varies
+   across repositories, so a silent change of that literal must break a test.
 
 3. `decision: domain-lifecycle-under-new` A domain is created with `awf new domain <name>` and
    removed with `awf remove domain <name>`, which introduces `awf remove` as a new top-level verb
@@ -78,8 +83,7 @@ reading what exists.
    survives as a fixed inventory of `claude` and `pi` carrying no state token, and the bare listing
    drops the hooks and runner categories along with the keys behind them. It drops the bootstrap
    category too, even though that key survives: a boolean setup fact is read from configuration,
-   not listed as inventory, which is how `prefix`, `integrationBranch` and the documentation root
-   are already treated.
+   not listed as inventory, which is how `prefix` and `integrationBranch` are already treated.
 
 6. `decision: no-deprecation-window-for-a-retired-key` awf ships no deprecation window for a
    retired configuration key. Because parsing is strict, a command that writes a key the loader no
@@ -90,6 +94,7 @@ reading what exists.
 
 - add `tooling/cli:cli-creation-and-inventory`
 - add `tooling/cli:domain-lifecycle-commands`
+- add `tooling/init-and-enablement:init-bootstrap-default-on`
 - remove `tooling/cli:cli-config-kinds`
 - remove `tooling/cli:target-cli`
 - remove `tooling/init-and-enablement:add-applies-closure-plan`
