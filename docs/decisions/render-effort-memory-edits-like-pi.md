@@ -66,9 +66,11 @@ rewritten.
    the same omission convention. Preview line numbers describe the currently stored canonical or
    legacy document; successful results describe the canonical published document. Body no-ops and
    update previews whose requested fields are unchanged retain an empty diff. The 50-KiB protocol
-   bound remains. Bounding never cuts the display-row grammar or a UTF-8 sequence; when a changed
+   bound remains. Bounding never cuts the display-row grammar or a UTF-8 sequence. When one changed
    source line cannot fit, its content is deterministically elided inside a complete numbered change
-   row and `truncated` is true.
+   row. When the required changed-row prefixes themselves cannot fit, deterministic whole changed
+   rows or ranges are replaced by Pi-compatible omission rows while representative changed rows are
+   retained. Any content or row omission sets `truncated` to true.
 
 3. `decision: binary-owned-preview-protocol` Permit nonrepeatable `--preview` only on these exact
    owner-scoped protocol forms; owner-free human forms reject it:
@@ -138,8 +140,9 @@ publication fact.
 The protocol gains one success condition across two operation-specific envelopes and one command
 flag on each mutation, the extension gains asynchronous row-local presentation state, and the binary
 gains a direct diff dependency. Changed-row content elision means an extreme line is represented
-faithfully as a changed row but not reproduced in full. Dependency and Pi workflow documentation
-must travel with these changes. Every updated invariant claim remains test-backed; the
+faithfully as a changed row but not reproduced in full; extreme change cardinality may instead
+replace whole changed rows or ranges with explicit omission rows. Dependency and Pi workflow
+documentation must travel with these changes. Every updated invariant claim remains test-backed; the
 implementation plan owns the concrete layered proof transactions.
 
 Legacy preview and canonical edit results may use different line offsets by design because each
