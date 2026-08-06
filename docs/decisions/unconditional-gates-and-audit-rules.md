@@ -9,13 +9,14 @@ date: 2026-08-06
 
 ## Context
 
-Four singletons and nine audit settings let a repository choose how much of awf's checking applies
-to it. The hooks payloads render only when `hooks.enabled` is set (ADR-0048); the `./awf` wrapper
-only when `runner.enabled` is set (ADR-0101, ADR-0156); the prose gate scans only when
-`proseGate.enabled` is set (ADR-0119); the memory-citation gate only when `memoryCite.enabled` is
-set (ADR-0158). `awf audit` carries five per-rule booleans (ADR-0019, ADR-0025, ADR-0077,
-ADR-0117), plus a commit-type list, a subject-length limit, a diff threshold and a dependency
-manifest glob set (ADR-0017).
+Four singletons, nine audit settings and the topic fan-out budget let a repository choose how much
+of awf's checking applies to it. The hooks payloads render only when `hooks.enabled` is set
+(ADR-0048); the `./awf` wrapper only when `runner.enabled` is set (ADR-0101, ADR-0156); the prose
+gate scans only when `proseGate.enabled` is set (ADR-0119); the memory-citation gate only when
+`memoryCite.enabled` is set (ADR-0158). `awf audit` carries five per-rule booleans (ADR-0019,
+ADR-0025, ADR-0077, ADR-0117), plus a commit-type list, a subject-length limit, a diff threshold
+and a dependency manifest glob set (ADR-0017). `currentState.maxTopicsPerPath` tunes the
+path-scoped topic fan-out budget.
 
 Two distinct arguments produced that surface. The audit booleans came from ADR-0019's decision to
 "make each rule independently disable-able ... so an adopter can silence either nudge", carried
@@ -32,13 +33,20 @@ scanner is a setup step rather than an imposition.
 
 The measurement is decisive. This checkout sets `hooks.enabled`, `runner.enabled`,
 `proseGate.enabled` and `memoryCite.enabled` all true, and carries none of the nine audit settings
-except `allowedScopes`: the five booleans, the type list, the subject limit, the diff threshold and
-the manifest globs all run at their built-in defaults. The entire audit tuning surface expresses
-nothing here, and the four singleton toggles express nothing except agreement.
+except `allowedScopes`, nor a non-default fan-out budget: the five booleans, the type list, the
+subject limit, the diff threshold, the manifest globs and the budget all run at their built-in
+values. The entire tuning surface expresses nothing here, and the four singleton toggles express
+nothing except agreement.
 
 ADR-0117 recorded the counter-pressure that now decides the matter: "a default-off check is a check
 nobody runs". Under the withdrawn premise that was a cost worth paying for adopter autonomy. Under
 a house standard it is simply a check nobody runs.
+
+Severity is not uniform across this group, and that shapes what retiring each knob costs. Of the
+five advisory rules, four emit warnings; uncommitted-changes emits an error, and the audit exits
+non-zero on any error. Of the four tuning values, the diff threshold emits a warning, but the
+subject-length limit emits an error and is evaluated by the same shared function that backs
+`awf check staged commit`, so it blocks a commit rather than warning about one.
 
 The commit-scope taxonomy is the one member of this group that survives. `audit.allowedScopes` is a
 repository's own vocabulary of what its commits are about, which differs between repositories by
@@ -58,44 +66,69 @@ construction, and ADR-0051 already established it as the single home for that vo
    so the payloads remain inert until wired by the repository, which is a separate matter from
    whether they exist.
 
-3. `decision: audit-advisories-always-run` The five advisory audit rules (domain-doc staleness,
-   domain-code staleness, undocumented domain, plain punctuation, uncommitted changes) always
-   evaluate. A rule that is inert for structural reasons stays inert for those reasons: a domain
-   rule with no configured domains still finds nothing. The audit remains advisory and never gates,
-   which is unchanged and is what makes always-running cheap.
+3. `decision: audit-advisories-always-run` The five per-rule audit booleans are retired and all five
+   rules always evaluate. Four of them (domain-doc staleness, domain-code staleness, undocumented
+   domain, plain punctuation) emit warnings and cannot fail a run. Uncommitted-changes emits an
+   error and therefore fails the audit, so making it unconditional is a real behaviour commitment
+   rather than a free one; it is accepted because the rule defaults on today, so no repository that
+   has not deliberately silenced it changes behaviour. A rule that is inert for structural reasons
+   stays inert for those reasons: a domain rule with no configured domains still finds nothing.
 
-4. `decision: audit-thresholds-fixed` The accepted commit-type set, the subject-length limit, the
-   plan diff threshold and the dependency-manifest glob set are fixed in the binary at the values
-   that are the current defaults. `audit.allowedScopes` remains configured, because a commit-scope
-   vocabulary is a repository fact rather than a tuning preference.
+4. `decision: audit-thresholds-fixed` Four values are fixed in the binary at the values this record
+   is written against, named here rather than by reference so the record stays falsifiable as
+   defaults evolve: the subject-length limit is 72; the plan diff threshold is 400; the accepted
+   commit-type set is the eleven-member Conventional Commits set (build, chore, ci, docs, feat, fix,
+   perf, refactor, revert, style, test); and the dependency-manifest glob set is the
+   language-agnostic default set as it stands at this record. `audit.allowedScopes` remains
+   configured, because a commit-scope vocabulary is a repository fact rather than a tuning
+   preference.
 
-5. `decision: toggle-key-migration` A schema generation removes `hooks`, `runner`, the
+5. `decision: fan-out-budget-fixed` The path-scoped topic fan-out budget is fixed in the binary at
+   8. It is a tuning number rather than a repository fact, it has never been varied, and its finding
+   is a warning, so fixing it neither blocks nor removes a signal.
+
+6. `decision: no-conditional-render-units` The conditional config-tree render unit is retired as a
+   concept. With artifact selection retired by the house-standard record, bootstrap retired by the
+   companion record, and hooks and the runner unconditional here, no render unit derives an
+   enablement, so the descriptor has no members. The claim that governed it is removed rather than
+   rewritten, and the output plan's conditional-unit clause goes with it.
+
+7. `decision: toggle-key-migration` A schema generation removes `hooks`, `runner`, the
    `proseGate.enabled` and `memoryCite.enabled` keys, the five advisory booleans, the commit-type
    list, the subject-length limit, the diff threshold, the dependency-manifest globs and
    `currentState.maxTopicsPerPath` from a config tree, announcing each removal it performs. A block
    emptied by the removal is dropped, while `audit` retains `allowedScopes`, `proseGate` and
    `memoryCite` retain their exemptions, and `currentState` retains its sources and test globs.
+   Migration steps predating this generation stay frozen, continuing to operate on the tree shape
+   of their own generation, including seeding a fan-out budget and anchoring manifest globs as
+   those existed then; this generation removes the keys afterward.
 
-6. `decision: sweep-before-landing` Because both scanners block, a repository must be swept clean
-   before this record lands in it, rather than discovering the violations at its next commit. For
-   this repository both gates are already enabled and the tree is clean, so the obligation falls on
-   any repository adopting the change later, as a setup step.
+8. `decision: toggle-keys-forward-ported` Every key this record retires is registered for
+   unconditional stripping from historical config bytes before the strict decoder sees them,
+   mirroring the mechanism the house-standard record establishes for its own keys. It carries its
+   own claim rather than extending that record's, because a pending record's claim does not yet
+   exist to update. This is required rather than incidental: this repository's committed
+   configuration carries `hooks.enabled`, `runner.enabled`, `proseGate.enabled`,
+   `memoryCite.enabled` and `currentState.maxTopicsPerPath`, so without the registration every
+   `awf audit` and staged check over a range predating this record would fail on configuration it
+   is only reading.
 
 ## State changes
 
 - add `tooling/quality-gates:gates-always-run`
 - add `tooling/audit-and-snapshots:audit-advisories-always-run`
+- add `tooling/audit-and-snapshots:audit-thresholds-fixed`
 - add `config/migrations-and-locks:toggle-keys-dropped`
 - remove `rendering/companion-scripts:runner-singleton-toggle`
+- remove `rendering/project-output-plan:conditional-unit-single-source`
 - remove `tooling/cli:check-disabled-child-disclosure`
 - remove `tooling/init-and-enablement:init-hooks-default-on`
 - update `rendering/singletons-and-payloads:hook-payloads-rendered`
 - update `rendering/companion-scripts:runner-pure-forwarder`
 - update `rendering/companion-scripts:hook-payloads-fallback-safe`
-- update `rendering/project-output-plan:conditional-unit-single-source`
+- update `rendering/project-output-plan:output-plan-complete`
 - update `config/validation:hooks-commands-resolvable`
-- update `config/validation:glob-migration-anchored`
-- update `config/migrations-and-locks:severity-keys-dropped`
+- add `config/migrations-and-locks:toggle-keys-forward-ported`
 - update `tooling/quality-gates:memory-citation-gate`
 - update `tooling/quality-gates:prose-gate-refuses-without-git`
 - update `tooling/audit-and-snapshots:audit-conventional-commits`
@@ -109,34 +142,51 @@ construction, and ADR-0051 already established it as the single home for that vo
 
 ## Consequences
 
-Nine config keys and four singleton toggles disappear, and thirteen claims lose a conditional
+Fourteen config keys and four singleton toggles disappear, and thirteen claims lose a conditional
 clause. Reading what a repository checks becomes reading awf rather than reading awf intersected
 with a repository's answers.
 
-Two audit claims need no operation despite their toggles retiring: `audit-domain-doc-staleness` and
-`audit-undocumented-domain` never mention a knob in their prose, so they stay true verbatim once
-the knob is gone. `audit-dependency-warn` likewise survives untouched, because it states the rule's
-behaviour without naming the glob set that feeds it, and that set is fixed rather than removed.
+Three audit claims need no operation despite their toggles retiring. `audit-domain-doc-staleness`
+and `audit-undocumented-domain` never mention a knob in their prose, so they stay true verbatim
+once the knob is gone. `audit-dependency-warn` likewise survives untouched, because it states the
+rule's behaviour without naming the glob set that feeds it, and item 4 fixes that set rather than
+removing it.
 
-The conditional-render descriptor loses its last members. With bootstrap retired by the companion
-record and hooks and the runner unconditional here, no config-tree render unit derives an
-enablement any more. Whether the descriptor still earns its place or collapses into the ordinary
-output plan is an implementation question this record leaves open rather than prejudging, because
-the answer depends on what remains after both records land.
+Two migration claims are correspondingly left alone. `severity-keys-dropped` (which seeds a fan-out
+budget at its own generation) and `glob-migration-anchored` (which anchors manifest globs at its
+own generation) both stay true verbatim under item 7's freeze, because each describes what its
+generation did to the tree shape of its time.
+
+The subject-length retirement is the sharpest cost in this record and is not advisory. The limit
+emits an error, and the same shared function backs `awf check staged commit`, so a repository that
+disagrees with 72 is blocked at commit rather than warned at audit; the plan-fence check fails for
+the same reason. The diff threshold, by contrast, only warns. Fixing the limit is defensible
+because 72 is the widely used convention and this repository runs it unmodified, but it is a real
+loss of latitude rather than a free simplification.
+
+Making uncommitted-changes unconditional makes an error-severity rule unconditional. Because it
+defaults on, no repository that has not deliberately silenced it is affected, and this one has not.
 
 `hooks-commands-resolvable` simplifies asymmetrically. Its first arm, requiring `vars.gateCmd`
-when hooks render, becomes unconditional and keeps binding. Its second arm, which required
-`checkCmd` and `commitGateCmd` when hooks rendered without the runner, becomes unreachable, since
-the runner always renders and the payloads can always use its `./awf` form. Both arms validate at
-sync and check rather than at init, so a freshly scaffolded tree with unanswered vars is unaffected.
+when hooks render, becomes unconditional and keeps binding, which is not even a new obligation
+since hooks default on today. Its second arm, which required `checkCmd` and `commitGateCmd` when
+hooks rendered without the runner, becomes unreachable, since the runner always renders and the
+payloads can always use its `./awf` form. Both arms validate at sync and check rather than at init,
+so a freshly scaffolded tree with unanswered vars is unaffected.
+
+The four fixed values gain a claim of their own. Once they leave the config tree they also leave
+the configspec table, so nothing would otherwise pin them and a later silent change to 72 or to the
+type set would break no test. Given the subject limit's severity, that gap is not cosmetic.
 
 Landing this in a repository with an unswept tree fails its next commit. That is the cost ADR-0119
 and ADR-0158 designed the default-off knobs to avoid, and it is now paid once per repository as a
-setup step instead of avoided forever. This repository has already paid it.
+setup step instead of avoided forever. This repository has already paid it. The sweep itself is a
+rollout instruction and belongs to the implementing plan rather than to this record.
 
-Retiring the audit thresholds means a repository cannot loosen a commit-subject limit or a diff
-threshold when it disagrees. Both are advisory; the audit warns and never gates, so disagreement
-costs a warning rather than a blocked commit.
+Two topic narratives assert toggleability this record removes: `rendering/singletons-and-payloads`
+opens on "always-on and toggleable singleton outputs" and `rendering/companion-scripts` opens on
+"when hooks are enabled". Narratives carry no claim id, so no operation covers them and nothing
+flags the drift; the implementing plan rewrites both alongside the claim operations.
 
 ## Alternatives Considered
 
@@ -144,8 +194,12 @@ costs a warning rather than a blocked commit.
 |---|---|
 | Keep the two scanner knobs, retire only the audit booleans | The scanner knobs carry the strongest form of the withdrawn argument (a blocking check on an unswept tree), so they are the clearest case, not the exception. |
 | Keep the knobs but default them true | Turns an opt-in into an opt-out while keeping the whole conditional surface, the disabled-child note and the migration seeding; the reasoning that a default-off check is a check nobody runs applies equally to a knob nobody sets. |
+| Keep `audit.subjectMaxLength` configurable | It is the one retirement here that blocks rather than warns, so the case for keeping it is real; rejected because 72 is the widely used convention, this repository runs it unmodified, and a repository that wants a different limit is disagreeing with the standard rather than describing itself. |
+| Keep `audit.diffThreshold` configurable | Advisory only, and a repository that wants a different threshold is tuning a nudge; 400 has never been varied here. |
 | Keep `audit.allowedTypes` as a repository fact alongside `allowedScopes` | Scopes are a repository's own vocabulary; the Conventional Commits type set is the specification's, and this repository runs it unmodified. |
 | Keep `audit.dependencyManifests` configurable for non-Go repositories | The default glob set is already language-agnostic and broad; a repository whose manifests it misses is better served by widening the built-in set for everyone. |
+| Keep `currentState.maxTopicsPerPath` as a repository fact | A fan-out budget is a tuning number, not a description of the repository; it has never been varied and its finding is a warning. |
+| Rewrite the conditional-render descriptor rather than retiring it | It would have zero members after this record and its companions, and a descriptor with no members is machinery that only looks load-bearing. |
 | Have the migration refuse when the tree would fail the newly unconditional scanners | The migration edits configuration and cannot run a repository-wide content scan safely; the gate reports the violations precisely, which is the right tool. |
 | Retire the exemption lists along with the enablement knobs | An exemption records a place where prose is genuinely about the character it contains; it is a repository fact, and removing it would make a true statement unwritable. |
 
