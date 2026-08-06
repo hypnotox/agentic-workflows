@@ -30,9 +30,8 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 <!-- awf:end -->
 
 <!-- awf:section test-isolation -->
-4. **Confirm ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search, and a minimal simple known-root fix stays effort-free. An existing effort resumes under its fixed identity without title reconfirmation only while the fix remains within its confirmed outcome. When evidence identifies a concrete non-minimal fix without existing ownership, complete the mandatory first-creation confirmation below before writing a failing test or mutating files; exploring children remain non-creating and receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible.
+4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before writing a failing test or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
 
-<!-- awf:include outcome-confirmation -->
 
 5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.{{ else }}Write it test-first.{{ end }} Before writing the test, run `awf context <the suspect paths>`.
 <!-- awf:include context-orientation -->

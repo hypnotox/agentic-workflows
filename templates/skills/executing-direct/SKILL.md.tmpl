@@ -1,6 +1,6 @@
 ---
 name: {{ .prefix }}-executing-direct
-description: Use after brainstorming when the work warrants neither an ADR nor a plan. Implements the agreed narrow change directly, verifies it, and routes to {{ .prefix }}-reviewing-impl.
+description: Implement an understood narrow change directly, verify it, and route to review only when assurance has value.
 ---
 
 # {{ .prefix }}-executing-direct
@@ -13,7 +13,7 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 
 ## Procedure
 
-1. Before mutation, classify and validate continuity. A minimal simple direct change uses no effort. Non-minimal work requires one already-confirmed effort with owned memory before this skill starts. This skill never creates a missing effort; if ownership is absent, stop and return to mandatory first-creation three-field confirmation before writing a test or mutating files. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Validate the fixed identity, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, carry the exact `.awf/efforts/<slug>/memory.md` path, and preserve one user-managed writer. Repository sources and current-state documentation outrank the checkpoint, helpers never edit shared memory, and standalone memory is forbidden. Re-read the settled design brief and the applicable current-state authority. Per `{{ .layout.maintainableCodeDesign }}`, assess bounded enabling refactoring before editing and preserve settled boundaries. Do not introduce design choices that brainstorming did not settle.
+1. Before mutation, evaluate continuity independently. This skill may run without an effort. If continuity materially helps, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`; if an effort already exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and use its managed worktree when present. Otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative. Re-read any settled design brief and, per `{{ .layout.maintainableCodeDesign }}`, assess bounded enabling refactoring before editing and preserve settled boundaries.
 2. Implement only the agreed change. Add or update focused tests, and keep documentation current in the same change.
 3. Run the project's required formatting and verification commands. Fix the cause of every failure; do not weaken expected behavior.
 4. Follow the project's commit discipline unless the caller explicitly requires a larger approved change set in one commit or forbids commits.
@@ -21,7 +21,7 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 
 <!-- awf:include checkpoint-routine -->
 
-6. Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.
+6. Evaluate review independently. Invoke `{{ .prefix }}-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, substantive verification judgment, or uncertainty. Skip only locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-free skipped work concludes after verification; effort-backed skipped work returns to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`; reviewed effort-backed work returns there after assurance.
 
 ## Boundaries
 

@@ -225,7 +225,7 @@ var Standard = &Catalog{
 		// A project term of the same case-insensitive name overrides one.
 		"glossary": {Title: "Glossary", Desc: "project jargon and the awf vocabulary it ships", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl", Data: map[string]any{
 			"standardTerms": []any{
-				map[string]any{"term": "effort", "meaning": "One active slugged unit of coordination, owning a working-memory file for the duration of a concrete non-minimal outcome. A minimal fix uses none."},
+				map[string]any{"term": "effort", "meaning": "One active slugged unit of continuity, owning a working-memory file when multi-step work, likely continuation, coordination, delegation, or durable observations make continuity materially useful. Work without that need uses none."},
 				map[string]any{"term": "managed effort worktree", "meaning": "The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes."},
 				map[string]any{"term": "working memory", "meaning": "The file an effort owns for in-flight context: its brief, settled decisions, observations, and handoff log. One writer, and deleted at finish, so nothing others must honour lives there alone."},
 				map[string]any{"term": "current-state topic", "meaning": "A domain-owned document of prose plus a closing claims section. Its claims, not the decision-record corpus, are what tooling reads for the rules in force now."},

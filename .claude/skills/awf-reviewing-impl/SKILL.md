@@ -6,7 +6,7 @@ description: Independently assure an implementation when assurance has value.
 
 # awf-reviewing-impl
 
-This skill owns independent assurance only, never effort creation, checkpoints, integration, pending artifact transitions, topology removal, retrospective, or finish.
+This skill owns independent assurance only. It never creates an effort or owns checkpoints, integration, pending artifact transitions, topology removal, retrospective, or finish.
 
 **Authority-guided implementation autonomy.**
 
@@ -24,20 +24,21 @@ Skip review only for a locally obvious, low-risk, directly verified change where
 <!-- awf:edit sha-range-detection: default; create .awf/skills/parts/reviewing-impl/sha-range-detection.md to override -->
 ## Procedure
 
-1. Determine `baseSha..headSha` for the implementation and any plan path. Direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})` itself.
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+1. Determine `headSha` with `git rev-parse HEAD` and `baseSha` as the commit before the first implementation commit. If `${baseSha}..${headSha}` exceeds 20 commits, ask for the actual session boundary. Detect an applicable plan path from the range or use `null`.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
-2. Dispatch the `code-reviewer` subagent. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/working-with-awf.md. Give it a self-contained brief with requested outcome, user constraints, implementation summary, commit range, and verification results. When an effort exists, additionally provide its fixed slug and owned memory evidence read-only, with decision-log entries pasted verbatim including whatever `Record:` blocks exist. Effort-free review creates no effort, memory, checkpoint, retrospective, or topology work.
+2. Build one self-contained evidence brief with the requested outcome, user constraints, implementation summary, exact `baseSha..headSha`, and verification results. When an effort exists, additionally provide its fixed slug and owned memory path read-only and paste every user-provenance decision-log entry pasted verbatim, including whatever `Record:` blocks exist; absence of an effort omits those fields. Effort-free review creates no effort, memory, checkpoint, retrospective, or topology work. Include the plan or requirements and direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})` with concrete SHAs.
+On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
+Dispatch the `code-reviewer` once as an independent target-native fresh-context reviewer. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/working-with-awf.md. Require report-only findings shaped as `[{focus, severity, location, issue, suggested_fix, classification}]`; never ask the reviewer to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
-3. Classify findings as mechanical, reasoned, or user-decision and resolve them under repository authority.
+3. Surface the digest. Diagnose each finding against repository and current-state authority, then route by classification rather than severity: apply `mechanical` corrections directly; apply `reasoned` corrections with a one-line rationale; present a genuine unresolved `user-decision` fork or consensus deviation and stop.
 
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
-4. Apply authority-determined fixes in new commits and run the required gate.
+4. Apply mechanical and authority-determined reasoned fixes in new commits, never amend the implementation commit, and run `./x gate` before each commit.
 
 <!-- awf:edit run-audit: from .awf/skills/parts/reviewing-impl/run-audit.md -->
-5. Run `awf audit ${baseSha}..${headSha}` after findings settle.
+5. Run `awf audit ${baseSha}..${headSha}` after findings settle. Diagnose and resolve Error findings before assurance concludes; surface advisory Warnings. Audit never replaces the gate or drift check.
 
    Then also run the repo-local audit: `./x audit-local ${baseSha}..${headSha}` (the repo's
    own `cmd/repoaudit`, ADR-0073) over the same session range. It mirrors this same finding
@@ -49,12 +50,12 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
-6. Run one verify pass only when a reasoned or user-decision ruling required a fix. Dispatch the `code-reviewer` with the same smallest-reliable-tier rule: Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence), escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/working-with-awf.md.
+6. A round with no fixes, or only mechanical fixes, receives no verify pass; record why it was skipped. When at least one reasoned fix or user-approved ruling was applied, run the gate and then dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/working-with-awf.md. Classify any residual finding, apply authority-determined residual fixes, rerun the gate and audit, and stop on any unresolved user decision. Do not add another review loop.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
-7. Return settled assurance. Effort-backed work returns to `awf-effort-workflow`; effort-free work concludes after assurance.
+7. Return the settled assurance result. Effort-backed work returns to `awf-effort-workflow` for all lifecycle finalization. Effort-free work concludes after assurance.
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 ## Notes
 
-The reviewer remains report-only and does not edit or commit.
+The reviewer remains report-only. Fixes always land as new commits. Implementation assurance never numbers or flips artifacts, integrates, removes topology, invokes retrospective, or finishes an effort.

@@ -35,9 +35,8 @@ If the entry cites inline numbers, re-measure on the current code before graduat
 <!-- awf:section graduate-single-commit -->
 ### 3. Confirm first effort creation
 
-For a concrete non-minimal graduation outcome without existing ownership, complete the mandatory first-creation confirmation below after identifying and re-verifying the item, and before ADR or implementation mutation.
+Evaluate continuity independently after identifying and re-verifying the item. Invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before ADR or implementation mutation only when durable continuity materially helps; otherwise graduation remains effort-free.
 
-<!-- awf:include outcome-confirmation -->
 
 ### 4. Graduate in a single commit
 - **Architectural → ADR:** {{ if index .skills "proposing-adr" }}Invoke `{{ .prefix }}-proposing-adr`.{{ else }}Write the ADR per the project's decision process.{{ end }} Remove the roadmap entry in the same commit as the ADR introduction (or, if the ADR ships across multiple commits, in the final implementation commit).

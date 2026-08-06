@@ -1,4 +1,3 @@
-//lint:file-ignore U1000 Historical bundled-workflow assertions are retained as non-executing scaffolding during this transition.
 package project
 
 import (
@@ -15,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -1007,7 +1005,7 @@ func TestConditionalVerifyPass(t *testing.T) {
 	}
 
 	implementationReview := renderSkillGolden(t, "reviewing-impl", map[string]any{
-		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "targetSubagentTools": true,
+		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{"effort-workflow": true}, "targetSubagentTools": true,
 	})
 	for _, want := range []string{"locally obvious, low-risk, directly verified", "Uncertainty resolves toward review", "Effort-free review creates no effort", "returns to `example-effort-workflow`"} {
 		if !strings.Contains(implementationReview, want) {
@@ -1663,50 +1661,6 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 	}
 }
 
-func legacyBrainstormingTemplate(t *testing.T) {
-	data := map[string]any{
-		"prefix": "example",
-		"vars":   map[string]any{},
-		"layout": map[string]any{"adrReadme": "docs/decisions/README.md"},
-		"data": map[string]any{
-			"errorBoundaries": []map[string]any{
-				{"name": "HTTP input"},
-				{"name": "session credentials"},
-				{"name": "subprocess arguments"},
-				{"name": "database"},
-			},
-			"loadBearingExamples": []map[string]any{
-				{"item": "package boundary change"},
-				{"item": "auth model change"},
-				{"item": "non-trivial new dependency"},
-				{"item": "workflow rule change"},
-			},
-		},
-	}
-
-	out := renderSkillGolden(t, "brainstorming", data)
-
-	// Assert frontmatter name line
-	if !strings.Contains(out, "name: example-brainstorming") {
-		t.Errorf("expected 'name: example-brainstorming' in output:\n%s", out)
-	}
-
-	// Assert load-bearing phrases unique to brainstorming
-	loadBearing := []string{
-		"grounding-check subagent",
-		"2-3 approaches",
-		"Load-bearing",
-		"Anti-patterns",
-		"remains meaningful after implementation",
-		"implementation directives",
-	}
-	for _, phrase := range loadBearing {
-		if !strings.Contains(out, phrase) {
-			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
-		}
-	}
-}
-
 func TestReviewingPlanTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix":       "example",
@@ -1798,42 +1752,6 @@ func TestReviewingAdrTemplate(t *testing.T) {
 		"user-decision",
 		"example-reviewing-plan-resync",
 		"Proposed",
-	}
-	for _, phrase := range loadBearing {
-		if !strings.Contains(out, phrase) {
-			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
-		}
-	}
-}
-
-func legacyReviewingImplTemplate(t *testing.T) {
-	data := map[string]any{
-		"prefix": "example",
-		"vars": map[string]any{
-			"gateCmd": "./x gate",
-		},
-		"commitScopes": "`feat`",
-		"layout":       map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},
-		"data":         map[string]any{},
-	}
-
-	out := renderSkillGolden(t, "reviewing-impl", data)
-
-	// Assert frontmatter name line
-	if !strings.Contains(out, "name: example-reviewing-impl") {
-		t.Errorf("expected 'name: example-reviewing-impl' in output:\n%s", out)
-	}
-
-	// Assert thin-dispatcher load-bearing phrases
-	loadBearing := []string{
-		"code-reviewer",
-		"user-decision",
-		"SHA range",
-		"docs/decisions/",
-		"explicit history has already applied every batch",
-		"direct `Proposed`-to-`Implemented` or `Accepted`-to-`Implemented` transition",
-		"atomic implicit batch, matching claim mutations, and Implemented event",
-		"example-retrospective",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -2170,153 +2088,6 @@ func TestActiveEffortCreationSignaturesStaySynchronized(t *testing.T) {
 // TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
 // detailed protocol home while guides and skills carry executable routing.
 // invariant: rendering/guide-and-doc-templates:working-memory-single-home (TestIndependentWorkflowEscalation)
-func legacyWorkingMemorySingleHomeSurfaces(t *testing.T) {
-	data := map[string]any{
-		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
-		"layout": testLayout(), "data": map[string]any{},
-		"skills":               map[string]bool{"brainstorming": true, "reviewing-impl": true, "retrospective": true},
-		"targetSessionHandoff": true,
-	}
-	workflow := renderGolden(t, "docs/workflow.md.tmpl", data)
-	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
-	routine := renderSkillGolden(t, "executing-plans", data)
-	approval := renderSkillGolden(t, "brainstorming", data)
-	guideClauseGroups := [][]string{
-		{"A minimal simple fix uses no effort"},
-		{"create or resume an effort only through the applicable native workflow skill", "select the applicable workflow skill before creating or resuming an effort"},
-		{"one user-managed memory writer"},
-		{"working-memory protocol", "[docs/workflow.md](docs/workflow.md) owns the protocol"},
-	}
-	hasGuideRouting := func(body string) bool {
-		for _, alternatives := range guideClauseGroups {
-			if !containsAny(body, alternatives) {
-				return false
-			}
-		}
-		return true
-	}
-	assertGuideRouting := func(label, body string) {
-		t.Helper()
-		if !hasGuideRouting(body) {
-			t.Errorf("%s guide is missing a working-memory routing clause", label)
-		}
-	}
-	assertGuideRouting("direct-default", guide)
-	t.Run("working-memory guide clause mutations are rejected", func(t *testing.T) {
-		for _, alternatives := range guideClauseGroups {
-			mutated := guide
-			for _, clause := range alternatives {
-				mutated = strings.ReplaceAll(mutated, clause, "")
-			}
-			if hasGuideRouting(mutated) {
-				t.Errorf("removing clause alternatives %q did not invalidate working-memory routing", alternatives)
-			}
-		}
-	})
-	genericWorkingMemory := strings.Index(workflow, "## Working memory")
-	if genericWorkingMemory < 0 {
-		t.Fatal("generic workflow lost the Working memory boundary")
-	}
-	genericChain := workflow[:genericWorkingMemory]
-	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
-		if !strings.Contains(genericChain, want) {
-			t.Errorf("generic workflow chain confirmation route missing %q", want)
-		}
-	}
-	for label, body := range map[string]string{"workflow": workflow, "routine": routine, "approval": approval} {
-		if !strings.Contains(body, ".awf/efforts/<slug>/memory.md") {
-			t.Errorf("%s missing unified owned-memory path", label)
-		}
-		if strings.Contains(body, ".awf/memory/") {
-			t.Errorf("%s retains standalone memory path", label)
-		}
-	}
-	if strings.Contains(guide, ".awf/efforts/<slug>/memory.md") || strings.Contains(guide, ".awf/memory/") {
-		t.Error("guide must route rather than duplicate working-memory protocol")
-	}
-	for _, detailed := range []string{"`phase`", "`next`", "`updated`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
-		if !strings.Contains(workflow, detailed) {
-			t.Errorf("workflow protocol missing %q", detailed)
-		}
-	}
-	for _, worktreeDefault := range []string{"managed worktree at `.awf/worktrees/<slug>/` by default", "`--no-worktree` as the explicit exception", "primary-root-relative"} {
-		if !strings.Contains(workflow, worktreeDefault) {
-			t.Errorf("workflow missing worktree-default execution phrase %q", worktreeDefault)
-		}
-	}
-	if !strings.Contains(guide, "applicable native workflow skill") || !strings.Contains(guide, "working-memory protocol") {
-		t.Error("guide must retain only pre-selection working-memory routing")
-	}
-	for _, want := range []string{"Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery", "`Outcome:`", "`Effort title:`", "`Effort slug:`", "clear response in a later turn", "newly discovered outcome cannot silently reuse", "report the concrete failure and recovery action", "retry without another confirmation", "context loss or session replacement makes that evidence unavailable", "present and confirm all three fields again before retrying creation"} {
-		if !strings.Contains(workflow, want) {
-			t.Errorf("workflow confirmation contract missing %q", want)
-		}
-	}
-	for _, banned := range []string{"Discovery creates no effort", "proposed effort title", "`awf effort new --slug", "only for work inside its confirmed outcome"} {
-		if strings.Contains(guide, banned) {
-			t.Errorf("guide duplicates working-memory procedure %q", banned)
-		}
-	}
-	readProjectSurface := func(path string) string {
-		t.Helper()
-		raw, err := os.ReadFile(filepath.Join(repoRootDir(t), path))
-		if err != nil {
-			t.Fatalf("read committed project surface %s: %v", path, err)
-		}
-		return string(raw)
-	}
-	projectGuide := readProjectSurface("AGENTS.md")
-	assertGuideRouting("self-hosted", projectGuide)
-	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
-		if strings.Contains(projectGuide, want) {
-			t.Errorf("committed project guide duplicates working-memory procedure %q", want)
-		}
-	}
-	projectWorkflow := readProjectSurface("docs/workflow.md")
-	workingMemory := strings.Index(projectWorkflow, "## Working memory")
-	if workingMemory < 0 {
-		t.Fatal("committed project workflow lost the Working memory boundary")
-	}
-	projectChain := projectWorkflow[:workingMemory]
-	for _, want := range []string{"Discovery creates no effort", "labeled outcome, effort title, and short effort slug", "clear later user response", "fixed identity without title reconfirmation", "newly discovered outcome cannot silently reuse"} {
-		if !strings.Contains(projectChain, want) {
-			t.Errorf("committed project workflow chain confirmation route missing %q", want)
-		}
-	}
-	for label, body := range map[string]string{"routine": routine, "approval": approval} {
-		boundary := "**Routine checkpoint.**"
-		if label == "approval" {
-			boundary = "**Mandatory approval check-in.**"
-		}
-		start := strings.Index(body, boundary)
-		if start < 0 {
-			t.Errorf("%s checkpoint missing boundary %q", label, boundary)
-			continue
-		}
-		if strings.Contains(body[start:], "awf effort new") {
-			t.Errorf("%s checkpoint creates missing ownership", label)
-		}
-	}
-	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
-		t.Error("guide or routine skill duplicated the workflow document's detailed skeleton")
-	}
-	// The workflow doc keeps the memory contract but routes resume verification
-	// to the orienting skill, which owns the procedure it routes to.
-	if !strings.Contains(workflow, "the rendered orienting skill's resume-revalidation section is the procedural home of that check") {
-		t.Error("workflow doc does not route resume revalidation to the orienting skill")
-	}
-	orienting := renderSkillGolden(t, "orienting", data)
-	for _, want := range []string{
-		"landed since the checkpoint", "git worktree list", "against the decision index",
-		"its decision log including every `Record:` block present", "not yours to re-decide",
-		"A discrepancy resolves in favor of the repository",
-	} {
-		if !strings.Contains(orienting, want) {
-			t.Errorf("orienting resume-revalidation missing %q", want)
-		}
-	}
-}
-
 // invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage (TestMemoryLogConsumerCoverage)
 func TestMemoryLogConsumerCoverage(t *testing.T) {
 	data := map[string]any{
@@ -2420,8 +2191,8 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/executing-direct/SKILL.md.tmpl",
-		want: []string{"Invoke `example-reviewing-impl` as the terminal step."},
-		ban:  []string{"awf_workflow"},
+		want: []string{"Evaluate review independently", "locally obvious, low-risk, directly verified", "the effort lifecycle owner"},
+		ban:  []string{"awf_workflow", "example-effort-workflow"},
 	},
 	{
 		tmpl: "skills/tdd/SKILL.md.tmpl",
@@ -2439,7 +2210,9 @@ var unsetFallbackCases = []fallbackCase{
 			"Write the failing test first",
 			"The project's gate is the default",
 			"the project's docs",
-			"Run the project's review step as the terminal step.",
+			"Evaluate implementation review independently",
+			"the project's review step",
+			"the effort lifecycle owner",
 		},
 		ban: []string{"example-tdd", "example-debugging", "example-reviewing-impl", "``"},
 	},
@@ -2474,7 +2247,7 @@ var unsetFallbackCases = []fallbackCase{
 		// (ADR-0045/ADR-0020 publication-safety; ADR-0067 rung-4 pitfalls obligation).
 		tmpl: "skills/retrospective/SKILL.md.tmpl",
 		want: []string{
-			"the project's review step",
+			"the effort lifecycle owner",
 			"the project's pitfalls notes",
 			"the project's decision process",
 			"Record it in the project's pitfalls notes.",
@@ -2535,6 +2308,10 @@ var unsetFallbackCases = []fallbackCase{
 	{
 		tmpl: "skills/grounding/SKILL.md.tmpl",
 		want: []string{"broad or uncertain repository premises", "Dispatch the `grounding-checker` agent exactly once"},
+	},
+	{
+		tmpl: "skills/effort-workflow/SKILL.md.tmpl",
+		want: []string{"sole owner of the effort lifecycle", "Continue through the target-native successor"},
 	},
 	{
 		tmpl: "skills/executing-plans/SKILL.md.tmpl",
@@ -2690,199 +2467,7 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 	}
 }
 
-func legacyExecutionBoundaryGuidanceSurfaces(t *testing.T) {
-	root := testsupport.RepoRoot(t)
-	data := map[string]any{
-		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
-		"layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{},
-	}
-	genericRoot := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\nskills: []\nagents: []\n")
-	genericProject, err := Open(testContext(t), genericRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	genericFiles, err := genericProject.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	genericWorkingWithAwf := renderedByPath(t, genericFiles, "docs/working-with-awf.md")
-	for _, unresolved := range []string{"<no value>", "{{ if ", "{{ with ", "{{ range ", "{{ ."} {
-		if strings.Contains(genericWorkingWithAwf, unresolved) {
-			t.Errorf("generic working-with-awf render retains unresolved action %q", unresolved)
-		}
-	}
-
-	type contract struct {
-		generic    string
-		paths      []string
-		start, end string
-		clauses    []string
-		ordered    []string
-	}
-	contracts := []contract{
-		{
-			generic: renderSkillGolden(t, "subagent-driven-development", data),
-			paths:   []string{".claude/skills/awf-subagent-driven-development/SKILL.md", ".pi/skills/awf-subagent-driven-development/SKILL.md"},
-			start:   "5. Before review", end: "If an owner stops dirty",
-			clauses: []string{"explicitly intended worktree", "confirm its branch", "reported commit", "branch tip", "`git status --short`", "Before review"},
-		},
-		{
-			generic: renderSkillGolden(t, "reviewing-impl", data),
-			paths:   []string{".claude/skills/awf-reviewing-impl/SKILL.md", ".pi/skills/awf-reviewing-impl/SKILL.md"},
-			start:   "8. **Route settled terminal review", end: "## Notes",
-			clauses: []string{"implemented public shapes", "execution deviations", "mutable plan Notes", "Before the deferred terminal transaction", "After a divergent integration", "re-read enumerative workflow prose", "contracts changed on the other side", "renewed review can settle"},
-			ordered: []string{"After a divergent integration", "Before the deferred terminal transaction", "Only after the applicable terminal review"},
-		},
-		{
-			generic: renderSkillGolden(t, "effort-workflow", data),
-			paths:   []string{".claude/skills/awf-effort-workflow/SKILL.md", ".pi/skills/awf-effort-workflow/SKILL.md"},
-			start:   "Use ordinary `awf effort` commands", end: "Update checkpoints",
-			clauses: []string{"Treat one checkout as one writer boundary", "parallel work uses separate worktrees", "Before the first mutation", "exact managed-worktree prefix", "suspected path slip", "inspect the primary checkout", "residual shared-checkout commit", "fresh status", "staged and worktree copies", "shared generated files"},
-		},
-		{
-			generic: renderGolden(t, "docs/workflow.md.tmpl", data),
-			paths:   []string{"docs/workflow.md"},
-			start:   "## Composing the gate", end: "## Local git hooks",
-			clauses: []string{"To preserve long gate output", "direct log redirect", "capture the command status separately", "gate_status=$?", "before inspecting the log", "exit \"$gate_status\"", "status-losing pipeline"},
-		},
-		{
-			generic: genericWorkingWithAwf,
-			paths:   []string{"docs/working-with-awf.md"},
-			start:   "## Keeping in sync", end: "## Upgrading awf",
-			clauses: []string{"stage `.awf/awf.lock` with every regenerated output", "atomic manifest", "one render transaction", "independent commits"},
-		},
-	}
-	for _, contract := range contracts {
-		surfaces := map[string]string{"generic render": contract.generic}
-		for _, path := range contract.paths {
-			body, err := os.ReadFile(filepath.Join(root, path))
-			if err != nil {
-				t.Fatalf("read %s: %v", path, err)
-			}
-			surfaces[path] = string(body)
-		}
-		for surface, body := range surfaces {
-			start := strings.Index(body, contract.start)
-			if start < 0 {
-				t.Errorf("%s missing owning-section start %q", surface, contract.start)
-				continue
-			}
-			endOffset := strings.Index(body[start+len(contract.start):], contract.end)
-			if endOffset < 0 {
-				t.Errorf("%s missing owning-section end %q", surface, contract.end)
-				continue
-			}
-			section := strings.Join(strings.Fields(body[start:start+len(contract.start)+endOffset]), " ")
-			for _, clause := range contract.clauses {
-				if !strings.Contains(section, clause) {
-					t.Errorf("%s owning section missing execution-boundary clause %q", surface, clause)
-				}
-			}
-			position := -1
-			for _, anchor := range contract.ordered {
-				next := strings.Index(section, anchor)
-				if next < 0 || next <= position {
-					t.Errorf("%s owning section does not order %q after its predecessor", surface, anchor)
-				}
-				position = next
-			}
-			if strings.Contains(section, "<no value>") {
-				t.Errorf("%s leaked unresolved render data", surface)
-			}
-		}
-	}
-}
-
-func legacyEffortWorkflowTemplate(t *testing.T) { legacyEffortWorkflowSkillContract(t) }
-
 // invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
-func legacyEffortWorkflowSkillContract(t *testing.T) {
-	out := renderSkillGolden(t, "effort-workflow", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	for _, phrase := range []string{"existing `.awf/worktrees/<slug>`", "runtime that supplies explicit effort paths may remain at the repository root", "target the exact existing `.awf/worktrees/<slug>` worktree by path", "runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree", "parallel harness-owned worktree", "`awf effort` commands", "`awf effort memory update", "integration, managed-worktree removal, retrospective, then finish"} {
-		if !strings.Contains(out, phrase) {
-			t.Errorf("effort-workflow missing %q", phrase)
-		}
-	}
-	for _, forbidden := range []string{"using_effort", "Pi", "`example effort"} {
-		if strings.Contains(out, forbidden) {
-			t.Errorf("target-neutral effort workflow leaks %q", forbidden)
-		}
-	}
-	full, _, err := ScaffoldConfig("example", nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(full), "  - effort-workflow\n") {
-		t.Error("new untrimmed scaffold does not select effort-workflow")
-	}
-	trimmed := []string{"tdd"}
-	trim, _, err := ScaffoldConfig("example", nil, &config.CatalogTrim{Skills: &trimmed}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(trim), "effort-workflow") {
-		t.Error("explicit skill trim does not replace the core selection")
-	}
-
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n")
-	before, err := os.ReadFile(configPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	after, err := os.ReadFile(configPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(after) != string(before) {
-		t.Errorf("existing config selection changed during sync:\n%s", after)
-	}
-	companion := []string{".pi/skills/example-using-effort/SKILL.md", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"}
-	for _, rel := range companion {
-		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
-			t.Errorf("existing config without explicit enablement rendered %s: %v", rel, err)
-		}
-	}
-	selected := scaffold(t, "prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [pi]\n")
-	selectedProject, err := Open(testContext(t), selected)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := selectedProject.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	for _, rel := range companion {
-		if _, err := os.Stat(filepath.Join(selected, rel)); err != nil {
-			t.Errorf("selected Pi effort workflow omitted %s: %v", rel, err)
-		}
-	}
-	if err := os.WriteFile(configPath(selected), []byte("prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	selectedProject, err = Open(testContext(t), selected)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := selectedProject.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	for _, rel := range companion {
-		if _, err := os.Stat(filepath.Join(selected, rel)); !os.IsNotExist(err) {
-			t.Errorf("non-Pi/pruned effort workflow retained %s: %v", rel, err)
-		}
-	}
-	plan := p.ResolveEnable("skill", "effort-workflow")
-	if len(plan) != 1 || plan[0].Node.Name != "effort-workflow" {
-		t.Fatalf("explicit effort-workflow enablement plan = %#v", plan)
-	}
-}
-
 func TestRoadmapGraduationTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

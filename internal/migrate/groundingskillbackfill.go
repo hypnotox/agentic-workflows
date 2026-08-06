@@ -24,15 +24,21 @@ func (e *GroundingSkillCollisionError) Error() string {
 func (e *GroundingSkillCollisionError) Diagnostic(priorChanges []Change) (presentation.Diagnostic, error) {
 	changed := make([]presentation.Field, 0, len(priorChanges))
 	for _, change := range priorChanges {
-		// A migration Change has already been accepted as presentation prose by
-		// the command boundary; the fixed prefix preserves that validity.
-		value, _ := presentation.Prose("change: " + change.Text)
-		// The fixed grammar-valid label and validated value cannot fail field construction.
-		field, _ := presentation.NewField("migration", value)
+		if _, err := presentation.Prose(change.Text); err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		value, err := presentation.Prose("change: " + change.Text)
+		if err != nil { // coverage-ignore: the same change text was validated above and adding an ASCII prefix cannot invalidate it
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField("migration", value)
+		if err != nil { // coverage-ignore: the fixed label is grammar-valid and value was validated immediately above
+			return presentation.Diagnostic{}, err
+		}
 		changed = append(changed, field)
 	}
 	steps := []string{
-		"rename the local grounding artifact and update its selected name, or remove the local override to adopt standard grounding",
+		"rename the local grounding artifact at " + e.Path + " and update its selected name, or remove the local override to adopt standard grounding",
 		"rerun awf upgrade",
 	}
 	if len(changed) > 0 {
@@ -40,12 +46,14 @@ func (e *GroundingSkillCollisionError) Diagnostic(priorChanges []Change) (presen
 	}
 	values := make([]presentation.Value, 0, len(steps))
 	for _, step := range steps {
-		// These closed, nonempty recovery instructions are presentation-valid.
-		value, _ := presentation.Prose(step)
+		value, err := presentation.Prose(step)
+		if err != nil { // coverage-ignore: recovery steps are closed nonempty ASCII strings assembled only from the recorded path
+			return presentation.Diagnostic{}, err
+		}
 		values = append(values, value)
 	}
 	return presentation.Diagnostic{
-		Condition: "project-local grounding occupies the standard name",
+		Condition: "project-local grounding at " + e.Path + " occupies the standard name",
 		State:     "operation",
 		Changed:   changed,
 		Steps:     values,
@@ -55,24 +63,28 @@ func (e *GroundingSkillCollisionError) Diagnostic(priorChanges []Change) (presen
 // applyGroundingSkillBackfill ports schema 36 -> 37. It adds standard grounding
 // only for standard brainstorming, preserving project-local workflow semantics.
 func applyGroundingSkillBackfill(root string, out *Changes) error {
+	return applyGroundingSkillBackfillWith(root, out, productionConfigEditor())
+}
+
+func applyGroundingSkillBackfillWith(root string, out *Changes, editor configEditor) error {
 	if _, err := os.Stat(config.ConfigPath(root)); errors.Is(err, os.ErrNotExist) {
 		return nil
-	} else if err != nil { // coverage-ignore: filesystem failure propagation follows the shared migration seam
+	} else if err != nil {
 		return err
 	}
 	cfg, err := loadForMigration(root)
-	if err != nil { // coverage-ignore: malformed-config propagation follows the shared migration seam
+	if err != nil {
 		return err
 	}
 	brainstorming, err := cfg.Sidecar("skills", "brainstorming")
-	if err != nil { // coverage-ignore: sidecar-load propagation follows the shared migration seam
+	if err != nil {
 		return err
 	}
 	if brainstorming.Local || !slices.Contains(cfg.Skills, "brainstorming") {
 		return nil
 	}
 	grounding, err := cfg.Sidecar("skills", "grounding")
-	if err != nil { // coverage-ignore: sidecar-load propagation follows the shared migration seam
+	if err != nil {
 		return err
 	}
 	if grounding.Local {
@@ -81,9 +93,9 @@ func applyGroundingSkillBackfill(root string, out *Changes) error {
 	if slices.Contains(cfg.Skills, "grounding") {
 		return nil
 	}
-	return editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
+	return editor.editConfig(root, out, func(src []byte, planned *Changes) ([]byte, error) {
 		updated, err := config.SetArrayMember(src, "skills", "grounding", true)
-		if err != nil { // coverage-ignore: a strict-parsed skills array cannot fail its deterministic member edit
+		if err != nil { // coverage-ignore: loadForMigration parsed these unchanged bytes and proved a top-level skills array
 			return nil, err
 		}
 		if string(updated) != string(src) {

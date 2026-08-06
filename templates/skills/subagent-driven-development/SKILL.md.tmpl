@@ -19,7 +19,7 @@ Invoke when a plan phase benefits from delegated implementation ownership. A pla
 
 <!-- awf:section procedure-resolve-plan -->
 ## Procedure
-1. This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. Resolve the mutable plan and read every declared phase mode. Before dispatch, validate the fixed identity, one immutable effort slug and exact `.awf/efforts/<slug>/memory.md` path, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity, and preserve one user-managed writer. Repository authority outranks checkpoint prose, and standalone memory is forbidden.
+1. Resolve the mutable plan and read every declared phase mode. This skill may run without an effort. If continuity independently fired, validate its immutable slug and exact `.awf/efforts/<slug>/memory.md`, confirm canonical `effort: <slug>` or deprecated legacy `Effort: <slug>`, preserve one user-managed writer, and use the managed worktree when present; otherwise omit effort and memory fields from dispatches and checkpoints. If changed facts newly make continuity useful, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before further mutation. Repository authority remains primary, and standalone memory is forbidden.
 <!-- awf:end -->
 <!-- awf:section procedure-raise-concerns -->
 2. You, the dispatching parent, resolve missing phase context, paths, boundaries, checks, or a closing subject when repository authority determines a compliant detail; use the shared authority boundary for a genuine unresolved design fork. Never hand a child an incomplete phase and let it discover the gap.
@@ -48,7 +48,7 @@ If an owner stops dirty, inventory `git status --short`, diff, completed and rem
 7. Apply every explicit V2 batch, including the final batch, atomically with matching claims and lifecycle events in the owning phase. Terminal review owns only the status-only Implemented flip after the applicable review settles.
 <!-- awf:end -->
 <!-- awf:section terminal-step -->
-8. After all settled phases, invoke `{{ .prefix }}-reviewing-impl`.
+8. After all settled phases, evaluate implementation-review need independently. Invoke `{{ .prefix }}-reviewing-impl` for meaningful breadth, non-obvious logic, contract or compatibility effects, migrations, security, concurrency, data-loss risk, verification requiring substantive judgment, or uncertainty. Skip it only for locally obvious, low-risk, directly verified work where independent review is unlikely to find meaningful hidden consequences. Effort-free skipped work verifies and concludes; effort-backed skipped work returns to `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`. Reviewed effort-free work concludes after assurance; reviewed effort-backed work returns there after assurance.
 <!-- awf:end -->
 
 <!-- awf:section notes -->

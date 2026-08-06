@@ -6,8 +6,63 @@ description: Own an awf effort from continuity evaluation through finish.
 
 # awf effort workflow
 
-This support skill is the sole owner of the effort lifecycle. Evaluate continuity independently: create an effort only when durable continuity materially helps through multi-step work, likely continuation, coordination or delegation, or preserving settled decisions and observations. Other workflows invoke this skill only when that trigger fires and may remain effort-free.
+This support skill is the sole owner of the effort lifecycle. Other workflows invoke it only when continuity materially helps or when an existing effort must resume or finish; they may remain effort-free.
 
-For first creation, obtain later user confirmation of the labeled outcome, title, and canonical short slug, then create the effort. For an existing effort, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md` path, retain one user-managed memory writer, and use its managed worktree when present. An existing `.awf/worktrees/<slug>` remains the exact managed worktree: a runtime that supplies explicit effort paths may remain at the repository root and target the exact existing `.awf/worktrees/<slug>` worktree by path; a runtime without supplied paths must use its native persistent checkout or context tooling to enter that exact worktree. Do not create a parallel harness-owned worktree. Use ordinary `awf effort` commands and `awf effort memory update <slug> --phase ... --next ...` only for the owned effort. Repository and current-state authority outrank checkpoint prose.
+## Continuity and creation
 
-This owner performs checkpoints, pending artifact transition preparation, integration, divergence handling, topology removal, retrospective routing, and finish. After implementation review settles or is explicitly skipped, effort-backed work always returns here. A divergent integration activates implementation review before topology removal. Switch to the intended primary checkout for integration and deferred lifecycle closure; ordering is integration, managed-worktree removal, retrospective, then finish. Do not create standalone memory.
+Evaluate continuity independently. Create an effort only when durable continuity materially helps through multi-step work, likely session continuation, coordination or delegation, or preserving settled decisions and observations. Reaching a workflow stage, creating an ADR or plan, receiving review, or changing code does not itself require an effort.
+
+When no existing effort owns an outcome whose continuity trigger fired, propose the labeled outcome, title, and canonical short slug, then complete this confirmation boundary before any creation mutation:
+
+**Mandatory first-creation confirmation.** Discovery creates no effort. Analysis, exploration,
+prioritization, option comparison, and selection remain discovery until continuity materially helps.
+A direct request follows the same boundary. Work may remain effort-free when continuity is not needed. An existing effort resumes under its fixed identity and existing
+validation rules without title reconfirmation only while work remains within its confirmed outcome;
+a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
+effort.
+
+When no existing effort owns the outcome, propose a canonical short slug and present all three
+fields:
+
+`Outcome: <confirmed outcome>`
+`Effort title: <proposed title>`
+`Effort slug: <proposed-short-slug>`
+
+Ask the user to confirm creation, then end the turn without creating an effort, memory, branch, or
+managed worktree. Only a clear response in a later turn confirms all three fields and permits
+`awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Agreement before the three fields were
+presented does not confirm them. A requested change to any field stays in discovery and receives a
+revised three-field proposal; an ambiguous response receives a focused clarification about the
+outcome, title, and slug.
+
+If creation fails while the three-field proposal and its later confirming response remain available
+in conversational context, report the concrete failure and recovery action and retry without another
+confirmation. If context loss or session replacement makes that evidence unavailable, present and
+confirm all three fields again before retrying creation.
+
+Only after the required later response, run `awf effort new --slug <confirmed-slug> "<confirmed-title>"`. Creation normally makes `.awf/worktrees/<slug>` on `awf/<slug>`; use `--no-worktree` only when explicitly intended. If creation fails while the proposal and confirmation remain available, report the concrete failure and recovery action and retry without reconfirming; after context loss, reconfirm all three fields.
+
+## Resume and execution context
+
+For an existing effort, validate its fixed identity and exact primary-root-relative `.awf/efforts/<slug>/memory.md`, accept canonical YAML `effort: <slug>` or deprecated legacy `Effort: <slug>`, retain one user-managed memory writer, and revalidate checkpoint prose against repository and current-state authority. An existing `.awf/worktrees/<slug>` is the exact managed worktree: a runtime supplied explicit effort paths may remain at the repository root and target it by path; a runtime without supplied paths uses native persistent checkout or context tooling to enter it. Never create a parallel harness-owned worktree or standalone memory, infer topology, or treat activity as authority.
+
+Use ordinary `awf effort` commands for the owned effort. This skill owns all effort checkpoints and the full sequence of integration, divergence handling, topology removal, retrospective routing, and finish; other workflows return their completed boundary here when continuity exists.
+
+**Routine checkpoint.** At this boundary:
+1. A checkpoint never creates an effort. When continuity independently warranted one, validate its immutable slug and owned `.awf/efforts/<slug>/memory.md`; otherwise omit effort and memory fields. `effort-workflow` alone confirms and creates continuity ownership.
+2. For an effort-backed checkpoint, validate the exact primary-root-relative path, confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), continue in the managed worktree when present, and in one writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Separately append unrecorded settled decisions and observations. For effort-free work, skip persistence rather than fabricating a checkpoint.
+3. Decide whether user attention is required: material authority drift, a materially different choice, significant scope expansion, or a correctness or safety concern, blocker, or failed required verification that remains unresolved after the active workflow's required diagnosis and authority-guided remediation. If so, name the issue, options, recommendation, and blocked next action, then stop.
+4. Otherwise state a one-line continuity notice and continue. For effort-backed work include the exact slug and owned path. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. After an effort-backed persisted formal phase checkpoint, or another safe resumable effort point, judge retained-context relevance and successor work from current context and compaction evidence. Continue autonomously or invoke `handoff_session` alone with kickoff prose directing the replacement to read the effort checkpoint and append the actual boundary to `## Handoff log` before substantive work. Scope any managed-worktree restriction to pre-integration execution and preserve the governed primary-checkout switch for integration, deferred lifecycle closure, worktree removal, and retrospective. Cancellation or failure that leaves the old session active appends no boundary. Repository authority, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc.
+
+## Finalization
+
+Effort-backed implementation returns here after implementation review is settled or explicitly skipped under the approved risk trigger. Preserve this order:
+
+1. In the managed worktree, reconcile implementation deviations into mutable plan Notes. If a pending ADR exists, merge the integration branch into the worktree, resolve schema-generation collisions before numbering, run `awf adr number` (naming every pending slug when several exist), and pass the project gate. Carry the printed assignments into the integration commit message. If another integration lands first, unmake the numbering commit, merge the new integration state, and number again; never rewrite an assigned number.
+2. Switch explicitly to the intended clean primary checkout for integration and deferred lifecycle closure. Run `awf effort integrate <slug>`. Integration never implies review, removal, retrospective, or finish.
+3. For an already-integrated or fast-forward result, confirm settled assurance still covers the effort tip. For a divergent result, resolve conflicts without hiding them, run `awf check staged`, the project gate, and the merge commit, then activate `awf-reviewing-impl` over the combined target history before any topology removal. Re-read enumerative workflow prose against contracts changed on the other side. Return here only after renewed assurance settles.
+4. Prepare and land the deferred terminal artifact transaction. For an explicit ADR history this is the status-only `Implemented` flip after every declared operation is applied; a direct transition applies its implicit operations with matching claim mutations. Flip each applicable plan to `Implemented` in the same governed transaction. Use `awf-adr-lifecycle` for ADR transitions.
+5. Run `awf effort worktree remove <slug>` without force and verify the managed path, registration, and `awf/<slug>` branch are absent.
+6. Invoke `awf-retrospective` in the main thread. After it records any warranted durable lesson or changelog correction and verifies topology remains absent, run `awf effort finish <slug>` last.
+
+A divergence automatically activates review because it introduces breadth and uncertainty; it never permits removal first. Repository and current-state authority outrank memory throughout.

@@ -6,7 +6,7 @@ description: Use when work needs a material choice or clarification before imple
 <!-- awf:section preamble -->
 # {{ .prefix }}-brainstorming
 
-Brainstorming owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and final design approval. It does not create an effort.
+Brainstorming owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and final grounded-design approval. It does not create an effort or require one.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -20,24 +20,30 @@ Use only when behavior, scope, structure, dependencies, patterns, checks, or tes
 
 1. **Orient in the topic.** Invoke `{{ .prefix }}-orienting` when its repository-truth moments apply, then run `awf context <relevant paths>`.
 <!-- awf:include context-spill -->
-2. Clarify the outcome and present proportionate alternatives and a recommendation.
-3. If correctness depends on broad or uncertain repository premises, invoke `{{ .prefix }}-grounding`; it is advisory and does not create an effort.
+2. **Clarify one question at a time.** Narrow the outcome without inventing requirements.
+3. **Present proportionate approaches.** Offer alternatives with trade-offs and a recommendation when a material choice exists; a straightforward choice may need only a concise comparison.
+4. **Evaluate continuity independently.** Invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` only when durable continuity materially helps. Brainstorming itself never creates an effort, and design may remain effort-free.
+5. **Evaluate repository-premise risk independently.** If correctness depends on broad or uncertain repository facts, hidden coupling, cross-domain effects, unfamiliar architecture, or high-consequence assumptions, invoke `{{ .prefix }}-grounding`. A localized design choice may skip grounding, while a clear broad-repository design may ground without further brainstorming. Resolve its mechanical, reasoned, or user-decision findings in this workflow; do not dispatch the grounding checker directly or loop grounding.
 <!-- awf:end -->
 
 <!-- awf:section example-clarifying-questions -->
-Ask focused questions one at a time and avoid inventing requirements.
+Ask focused questions one at a time and avoid inventing requirements. Prefer questions that expose the actual behavior, boundary, trade-off, or verification choice.
 <!-- awf:end -->
 
 <!-- awf:section design-sections -->
-Per `docs/maintainable-code-design.md`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision in a proportionate simplicity contract: scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. A straightforward change may settle these in a few sentences rather than a fixed checklist. The final approved design becomes the implementation boundary.
+Per `docs/maintainable-code-design.md`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision in a proportionate simplicity contract: scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. Scale the presentation to the choice; a straightforward change may settle these in a few sentences rather than a fixed checklist. The final approved design becomes the implementation boundary.
 <!-- awf:end -->
 
 <!-- awf:section no-spec-rule -->
-Do not create a separate specification. Put durable decisions in an ADR and useful sequencing in a plan when their independent triggers apply.
+Do not create a separate specification. Put a choice in an ADR only when it remains load-bearing after implementation or changes an active current-state claim. Write a plan only when sequencing, coordination, or resumability materially helps. Neither artifact follows automatically from brainstorming or from the other artifact.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-Stop for final design approval. Once approved, independently evaluate whether an ADR, plan, effort, or implementation review is warranted; no later mechanism is automatic.
+## Final approval
+
+Present the complete design after any grounding findings are resolved, explicitly request approval, and stop. If the user requests changes, revise and re-present without recursively grounding unless changed facts newly warrant it. Once approved, independently evaluate the ADR, plan, continuity, and implementation-review triggers; no later mechanism is automatic.
+
+<!-- awf:include checkpoint-approval -->
 <!-- awf:end -->
 
 <!-- awf:section definitions -->
@@ -45,5 +51,5 @@ A load-bearing decision remains meaningful after implementation.{{ with .data.lo
 <!-- awf:end -->
 
 <!-- awf:section anti-patterns -->
-Do not use line count, artifact type, or another mechanism firing as a trigger.
+Do not use line count, artifact type, another mechanism firing, or a bundled "non-trivial" label as a trigger. Do not skip explicit final approval when brainstorming fires.
 <!-- awf:end -->

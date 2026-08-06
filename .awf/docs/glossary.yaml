@@ -180,7 +180,7 @@ data:
       meaning: "A routine checkpoint's informational one-line summary of the completed phase and immediate next action. It is never an intervention point and does not stop autonomous continuation."
       domains: [rendering]
     - term: memory-backed effort
-      meaning: "Retired term for split effort ownership. Every current effort owns its memory file; a minimal simple fix has no effort, and standalone memory does not exist."
+      meaning: "Retired term for split effort ownership. Every current effort owns its memory file; work whose continuity trigger does not fire has no effort, and standalone memory does not exist."
       domains: [tooling]
     - term: pending ADR
       meaning: "A full decision record identified by a retained slug before integration assigns its number. It is reviewable and implementable while pending; the integration branch refuses it until numbering runs."
