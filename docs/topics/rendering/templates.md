@@ -72,6 +72,12 @@ Origin: ADR-0224
 Backing: unbacked
 Verify: For each new or amended ADR and its linked plan, apply the post-implementation and counterfactual tests to every Decision item; confirm execution directives live in the plan, any retained mechanism has an explicit durable rationale, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
 
+### `invariant: source-embed-parity`
+
+The repository source population walks `os.DirFS(".")`, includes every file below root template directories while excluding only root Go source and test files, and compares its exact regular-file set bidirectionally with the regular-file set walked from the embedded filesystem root. Failures diagnose sorted paths as missing from embed or unexpected in embed; this proves file-set parity only, not semantic validation.
+Origin: ADR-derive-publication-completeness-from-source-authorities
+Backing: test
+
 ### `invariant: templates-valid-frontmatter`
 
 Every catalog skill and agent template, rendered with representative data, produces leading frontmatter that parses as YAML with a non-empty name and a non-empty description.

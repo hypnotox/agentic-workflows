@@ -113,13 +113,6 @@ data:
         commits never touched. In free-form narratives, prefer count-free phrasing ("the
         `core`-flagged skills", "the chain-progression skills"); when a count is essential, sweep the
         whole narrative whenever its source population changes.
-    - title: "Add every new template directory to the embed allowlist"
-      domains: [rendering]
-      tags: [template-embed]
-      body: |
-        The existing base-template tests cover known embedded files but cannot infer a new top-level
-        template directory. Add every new rendered template directory to `templates/embed.go`, using
-        `all:` when underscore- or dot-prefixed paths must be included.
     - title: "Adding a template var changes adopter behavior and consumer projections"
       domains: [rendering]
       tags: [placeholder-degradation, publication-safety]

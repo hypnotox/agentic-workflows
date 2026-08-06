@@ -517,8 +517,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:5a10f3d109c05986dd327429540783d7c05e79300675be71292d4beba1966172",
-      "outputHash": "sha256:25cee87255bdf8bd269cd5b61374630db9cdff1441530a6c8ae908edec133356"
+      "configHash": "sha256:b4be6a4bcc3fa372ba0155a3f3ad2061d85f0524768698f8a42c3b21208d5556",
+      "outputHash": "sha256:ddb8e47f4be9108ef5a7e20a14563bc6363b6aa6dfe69442d16256fe1ce3ae11"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
@@ -769,8 +769,8 @@
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:a3d31ddcd402db430a5de466cc466efd562a72e0de7bfbc490aea1824a9f187c",
-      "outputHash": "sha256:11b8e395c11975790021a1f6402995cdf30416c33921bcbfb53e619fc9df1bfa"
+      "configHash": "sha256:62a177e303e4d66645b2cbf45e704dd10062480a2287b671320f94c648122170",
+      "outputHash": "sha256:14a41f7605e7d70afb8973b8f811c350a1afe9a24ddb19e7b955973e80fa72e8"
     },
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
