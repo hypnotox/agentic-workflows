@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: authority-guided-review-remediation
-status: Proposed
+status: Implementing
 date: 2026-08-06
 ---
 # ADR-authority-guided-review-remediation: Authority-Guided Review Remediation
@@ -115,3 +115,5 @@ make the boundary inspectable without introducing a policy schema or automated c
 ## Status history
 
 - 2026-08-06: Proposed
+- 2026-08-06: Implementing; content-sha256: eb887604b5932abda1cbdee2858805464965927344ef1fcc9b97cfcd7d520e77
+- 2026-08-06: Applied; operations: add `rendering/workflow-skill-templates:authority-guided-review-remediation`

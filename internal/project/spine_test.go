@@ -980,6 +980,7 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 }
 
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestConditionalVerifyPass)
+// invariant: rendering/workflow-skill-templates:authority-guided-review-remediation (TestConditionalVerifyPass)
 // TestConditionalVerifyPass pins ADR-0197 item 3: the four reviewing skills
 // dispatch the verify pass only for reasoned or user-decision fixes, a
 // solely-mechanical round records the skip, and a fix-free round dispatches
@@ -2577,5 +2578,210 @@ func TestGlossaryTemplate(t *testing.T) {
 	}
 	if strings.Contains(out, "No terms recorded yet") {
 		t.Errorf("placeholder must not render alongside a populated table:\n%s", out)
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:authority-guided-review-remediation (TestAuthorityGuidedReviewRemediation)
+// TestAuthorityGuidedReviewRemediation pins the authority-guided review
+// remediation boundary: the shared review spine stays the single semantic home
+// of finding classification, one variable-free partial carries the
+// dispatcher-side routing obligation into all four reviewing skills, plan
+// resync's ADR return edge covers residual findings, and the retired automatic
+// residual escalation is gone from every source and projection.
+func TestAuthorityGuidedReviewRemediation(t *testing.T) {
+	const (
+		stopCriterion   = "every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim"
+		nonTriggers     = "competing clean options, severity, structural character, and the fact that a finding survived a prior correction"
+		noLoopException = "sole exception to the same-artifact no-loop rule"
+		residualOpening = "Diagnose every residual finding under the authority-guided remediation boundary above"
+	)
+
+	partial, err := fs.ReadFile(templates.FS, "partials/review-remediation-autonomy.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(partial), "{{") {
+		t.Errorf("shared review-remediation partial must remain variable-free:\n%s", partial)
+	}
+	for _, line := range strings.Split(string(partial), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			t.Errorf("shared review-remediation partial must not interrupt consumer structure with heading %q", line)
+		}
+	}
+	// Exactly the three tokens ExpandIncludes rejects inside a partial.
+	for _, token := range []string{"awf:section", "awf:end", "awf:include"} {
+		if strings.Contains(string(partial), token) {
+			t.Errorf("shared review-remediation partial carries the rejected token %q", token)
+		}
+	}
+
+	retired := []string{
+		"Escalate any residual structural findings as `user-decision` items",
+		"the step-2 return edge applies to initial-dispatch findings only",
+		// Pinned from the second character: lowercase in the plan and ADR
+		// skills, capitalized in resync.
+		"o not loop further without explicit user direction",
+		"a genuine design fork or unresolved ambiguity that should not be decided unilaterally",
+		"present a genuine unresolved `user-decision` fork or consensus deviation and stop",
+		"(return edge, step 2)",
+	}
+
+	dispatcherWants := []string{
+		"Apply mechanical corrections directly and reasoned corrections with a concise rationale, autonomously",
+		"single semantic home",
+		"routes it rather than redefining it",
+		"route it through the existing grounded-design or ADR workflow",
+		"pauses only at that workflow's mandatory approval boundary",
+		"Exactly one fresh verify-pass dispatch is retained",
+		"without dispatching another same-artifact review loop",
+		"A consensus deviation remains a user decision.",
+		"A review finding stops the workflow only when",
+		stopCriterion,
+		nonTriggers,
+		noLoopException,
+	}
+
+	skillVariants := map[string]map[string]any{
+		"configured": {
+			"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(),
+			"commitScopes":        "`docs(plans)`",
+			"skills":              map[string]bool{"effort-workflow": true, "adr-lifecycle": true, "reviewing-impl": true},
+			"targetSubagentTools": true,
+		},
+		"empty": {
+			"prefix": "example", "vars": map[string]any{}, "layout": testLayout(),
+			"data": map[string]any{}, "skills": map[string]bool{},
+		},
+	}
+
+	for _, skill := range []string{"reviewing-plan", "reviewing-adr", "reviewing-plan-resync", "reviewing-impl"} {
+		raw, err := fs.ReadFile(templates.FS, "skills/"+skill+"/SKILL.md.tmpl")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Count(string(raw), "<!-- awf:include review-remediation-autonomy -->"); got != 1 {
+			t.Errorf("skills/%s has %d review-remediation includes, want 1", skill, got)
+		}
+		for _, reject := range retired {
+			if strings.Contains(string(raw), reject) {
+				t.Errorf("skills/%s source retains retired escalation phrase %q", skill, reject)
+			}
+		}
+		for variant, data := range skillVariants {
+			out := renderSkillGolden(t, skill, data)
+			assertNoLeaks(t, out)
+			for _, want := range dispatcherWants {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing dispatcher clause %q", variant, skill, want)
+				}
+			}
+			for _, reject := range retired {
+				if strings.Contains(out, reject) {
+					t.Errorf("%s/%s retains retired escalation phrase %q", variant, skill, reject)
+				}
+			}
+			if skill != "reviewing-plan-resync" {
+				if !strings.Contains(out, residualOpening) {
+					t.Errorf("%s/%s missing residual re-review replacement %q", variant, skill, residualOpening)
+				}
+			}
+			if skill == "reviewing-plan-resync" {
+				for _, want := range []string{
+					"a finding, initial or residual, implicates the ADR itself",
+					"the amendable decision text is wrong",
+					"while the implicated ADR remains amendable",
+					"a new resync invocation follows under its own one-verify-pass bound",
+					"whether it surfaces on initial dispatch or in the verify pass",
+				} {
+					if !strings.Contains(out, want) {
+						t.Errorf("%s/%s missing widened resync return edge %q", variant, skill, want)
+					}
+				}
+			}
+		}
+	}
+
+	reviewerData := map[string]map[string]any{
+		"adr-reviewer": {
+			"prefix": "example",
+			"vars": map[string]any{
+				"invariantTestPath": "internal/adrtools/invariants_test.go",
+				"activeMdRegenCmd":  "go test ./internal/adrtools/",
+			},
+			"layout": map[string]any{"adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md"},
+			"data": map[string]any{
+				"focusItems": []map[string]any{
+					{
+						"name":        "context-grounding",
+						"description": "Verify factual claims in the Context section against named files, ADRs, and state docs; flag stale claims and drift since brainstorm.",
+					},
+				},
+			},
+		},
+		"plan-reviewer": {
+			"prefix": "example",
+			"vars":   map[string]any{},
+			"layout": map[string]any{"plansDir": "docs/plans"},
+			"data": map[string]any{
+				"focusItems": []map[string]any{
+					{
+						"name":        "convention-alignment-extra",
+						"description": "Verify commit subjects follow Conventional Commits; flag subjects over 72 chars or missing scope.",
+					},
+				},
+				"docCurrencyItems": []map[string]any{
+					{"check": ".awf/topics/parts/<domain>/<topic>/current-state.md - update when plan shifts current authority"},
+					{"check": "docs/workflow.md - update when plan changes a workflow rule"},
+					{"check": "AGENTS.md - update when plan changes chain, principles, or invariants"},
+					{"check": "docs/decisions/INDEX.md - regenerate when plan flips an ADR status"},
+				},
+			},
+		},
+		"code-reviewer": {
+			"prefix": "example",
+			"vars":   map[string]any{},
+			"data": map[string]any{
+				"correctnessTraps": []map[string]any{
+					{"description": "Check that error return paths use %w wrapping so callers can inspect the error chain."},
+					{"description": "Flag nil pointer dereferences in struct methods where the receiver may be nil."},
+				},
+				"docCurrencyItems": []map[string]any{
+					{"check": ".awf/topics/parts/<domain>/<topic>/current-state.md - update when the implementation shifts current authority"},
+					{"check": "docs/decisions/INDEX.md - regenerate when ADR status flips to Implemented"},
+				},
+			},
+		},
+	}
+	reviewerWants := []string{
+		stopCriterion,
+		nonTriggers,
+		"cite the affected authority and name the deviation it would require",
+		"is not an unauthorized deviation merely because its proposed future state differs from current state",
+		"would make a new load-bearing choice material outside approved durable boundaries",
+		"mechanical",
+		"reasoned",
+		"user-decision",
+		"suggested_fix",
+	}
+	for _, name := range []string{"adr-reviewer", "plan-reviewer", "code-reviewer"} {
+		outs := map[string]string{
+			"populated": renderAgentGolden(t, name, reviewerData[name]),
+			"empty": renderAgentGolden(t, name, map[string]any{
+				"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{},
+			}),
+		}
+		for variant, out := range outs {
+			assertNoLeaks(t, out)
+			for _, want := range reviewerWants {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s/%s missing spine clause %q", variant, name, want)
+				}
+			}
+			for _, reject := range retired {
+				if strings.Contains(out, reject) {
+					t.Errorf("%s/%s retains retired escalation phrase %q", variant, name, reject)
+				}
+			}
+		}
 	}
 }

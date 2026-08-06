@@ -45,6 +45,12 @@ One variable-free shared prose partial is directly included once by every named 
 Origin: ADR-0240
 Backing: test
 
+### `invariant: authority-guided-review-remediation`
+
+The shared review spine is the single semantic home of finding classification and reserves `user-decision` for a finding where every viable correct remediation would contradict or change a settled user-approved design or decision or require an unauthorized change to an active current-state claim, with the affected authority cited; ambiguity, competing clean options, severity, structural character, and survival of a prior correction do not transfer the choice, and an ADR intentionally declaring an active-claim change is not an unauthorized deviation. One variable-free shared prose partial is directly included exactly once by plan review, ADR review, plan resync, and implementation review; it applies mechanical and reasoned corrections autonomously, scopes its stop rule to review findings, and routes a newly material load-bearing choice through the existing grounded-design or ADR workflow, pausing at that workflow's mandatory approval boundary. Exactly one fresh verify pass is retained, and every residual finding is diagnosed under the same boundary without another same-artifact review loop apart from one governed exception: plan resync's ADR amendment and review return edge, available to an initial or residual finding while the implicated ADR remains amendable, which ends the resync and is followed by a new invocation under its own one-verify-pass bound. Every affected skill and reviewer template renders coherently under empty variables.
+Origin: ADR-authority-guided-review-remediation
+Backing: test
+
 ### `invariant: memory-checkpoint-chain-coverage`
 
 Checkpoint guidance never creates an effort. Effort-backed checkpoints validate one immutable slug and primary-root-relative `.awf/efforts/<slug>/memory.md`, accept canonical YAML or deprecated legacy identity, continue in the managed worktree when present, and run exactly one structured memory update as the sole writer while separately appending decisions and observations. Effort-free work omits persistence. Handoff logging follows only an actual fresh-session boundary; task headings and projections never create checkpoint authority. Every checkpoint points to the workflow document for repository precedence, the one-writer contract, and the full protocol.

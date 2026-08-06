@@ -18,6 +18,16 @@ Terminal step of `awf-writing-plans`. Invoked once the plan file is written and 
 
 This skill owns the post-write **full** plan review only. The plan↔ADR resync pass after a linked ADR review converges is owned by the separate `awf-reviewing-plan-resync` skill.
 
+**Authority-guided review remediation.**
+
+Apply mechanical corrections directly and reasoned corrections with a concise rationale, autonomously. The review spine is the single semantic home of that classification; this workflow routes it rather than redefining it. This workflow treats ambiguity, competing clean options, severity, structural character, and the fact that a finding survived a prior correction as descriptions of a finding; none of them ever transfers the choice to the user.
+
+A review finding stops the workflow only when every viable correct remediation would contradict or change a settled user-approved design or decision, or would require an unauthorized change to an active current-state claim; cite the affected authority. A finding that would make a new load-bearing choice material outside approved durable boundaries is not that stop: route it through the existing grounded-design or ADR workflow, which pauses only at that workflow's mandatory approval boundary before the new authority is adopted. A review finding offering competing clean options inside approved durable boundaries is likewise not the unresolved design fork of an adjacent implementation stop list: it is delegated detail this workflow resolves, while a genuinely load-bearing choice takes the grounded-design or ADR route above, which supplies the pause.
+
+Exactly one fresh verify-pass dispatch is retained after reasoned fixes or a user-approved ruling. Diagnose every residual finding under the same boundary, apply the authority-preserving mechanical and reasoned residual corrections, run the applicable verification, and report its disposition without dispatching another same-artifact review loop. A consensus deviation remains a user decision.
+
+Plan resync's governed ADR amendment and review return edge is the sole exception to the same-artifact no-loop rule: that resync ends, the ADR is amended and independently reviewed, and a new resync invocation follows under its own one-verify-pass bound.
+
 ## Procedure
 
 This skill may run without an effort. If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md`, preserve one user-managed writer, and give the report-only reviewer that context read-only; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `awf-effort-workflow` before further mutation. Repository sources, the plan, and current-state documentation remain authoritative, and standalone memory is forbidden.
@@ -44,13 +54,13 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 4. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
-   - **user-decision**: present to the user and wait.
+   - **user-decision**: present to the user with the cited affected authority and wait.
 
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-plan/apply-fixes-commit.md to override -->
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes and commits them as new commits (never `--amend`) using the project's commit scope conventions. Only the plan file is edited; no other repository files are touched.
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-plan/re-review-loop.md to override -->
-6. **Verify pass.** A round that applied no fixes dispatches no verify pass, and a fix round whose applied fixes are all classified `mechanical` skips it, recording the skip and its ground in the summary presented at the check-in. When at least one applied fix is classified `reasoned` or was applied under a `user-decision` ruling, dispatch exactly one fresh `plan-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/working-with-awf.md. This pass confirms the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+6. **Verify pass.** A round that applied no fixes dispatches no verify pass, and a fix round whose applied fixes are all classified `mechanical` skips it, recording the skip and its ground in the summary presented at the check-in. When at least one applied fix is classified `reasoned` or was applied under a `user-decision` ruling, dispatch exactly one fresh `plan-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/working-with-awf.md. This pass confirms the fixes resolved the findings without new issues. Diagnose every residual finding under the authority-guided remediation boundary above, apply the authority-preserving mechanical and reasoned residual corrections, and report their disposition. Stop only for a residual finding that remains a true user decision, and dispatch no further same-artifact review pass.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-plan/hand-off.md to override -->
 7. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):
