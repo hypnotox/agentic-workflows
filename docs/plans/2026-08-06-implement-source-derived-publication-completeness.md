@@ -303,3 +303,8 @@ so the walk is bounded to the settled template source tree rather than the repos
 Phase 3 review found three mechanical proof gaps. Settlement independently exercises every structural
 classifier predicate, covers present-false commit policy and the non-nil empty scalar boundary, and
 asserts each generated current value against the exact table row that owns its path.
+
+Terminal implementation review found that the CLI claim's old "no parallel command-order list"
+wording contradicted the newly stored checked README projection. Settlement narrows it to no parallel
+independent membership decision, records the operation's Reapplied correction, and regenerates the
+claim projection.

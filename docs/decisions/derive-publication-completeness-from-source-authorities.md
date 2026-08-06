@@ -82,3 +82,4 @@ taxonomy, and arbitrary prose meaning remain outside this decision.
 - 2026-08-06: Applied; operations: update `tooling/cli:cli-command-spec-single-source`
 - 2026-08-06: Applied; operations: add `rendering/templates:source-embed-parity`
 - 2026-08-06: Applied; operations: update `config/configspec-and-reference:live-state-projection-explicit`
+- 2026-08-06: Reapplied; operations: update `tooling/cli:cli-command-spec-single-source`
