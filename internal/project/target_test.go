@@ -189,6 +189,16 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}
 	}
+	for _, config := range []string{
+		"prefix: example\nintegrationBranch: main\nskills: [effort-workflow]\nagents: []\ntargets: [claude]\n",
+		"prefix: example\nintegrationBranch: main\nskills: []\nagents: []\ntargets: [pi]\n",
+	} {
+		for path, content := range explorationRenderedByPath(t, config) {
+			if strings.Contains(path, "awf-effort") || strings.Contains(path, "using-effort") || strings.Contains(content, "effort_memory_") {
+				t.Errorf("unselected or non-Pi rendering leaked using-effort contract into %s", path)
+			}
+		}
+	}
 }
 
 // invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
