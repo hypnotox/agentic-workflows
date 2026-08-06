@@ -41,7 +41,12 @@ type memoryDocument struct {
 	identity string
 	boundary bool
 	invalid  map[string]bool
-	err      error
+	// updated is the resident's own updated value as parsed, which metadata
+	// cannot carry: inspection leaves metadata.Updated empty whenever the key is
+	// absent or holds something other than a string. It is nil exactly when the
+	// resident has no updated key at all.
+	updated *yaml.Node
+	err     error
 }
 
 // readMemoryIdentity deliberately checks only the immutable binding used by
@@ -112,6 +117,9 @@ func inspectCanonical(block, body []byte, slug string) memoryDocument {
 		if !known[key.Value] {
 			return memoryDocument{err: errors.New("canonical memory metadata contains an unknown key")}
 		}
+		if key.Value == "updated" {
+			doc.updated = value
+		}
 		if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
 			if key.Value == "effort" {
 				return memoryDocument{err: errors.New("memory effort identity must be a string")}
@@ -173,7 +181,7 @@ func inspectLegacy(raw []byte, slug string) memoryDocument {
 		}
 		values[i] = strings.TrimPrefix(lines[i], prefix)
 	}
-	doc := memoryDocument{metadata: MemoryMetadata{Effort: values[0], Phase: values[1], Next: values[2], Updated: values[3]}, body: raw[prefixEnd+2:], legacy: true, identity: values[0], boundary: true, invalid: map[string]bool{}}
+	doc := memoryDocument{metadata: MemoryMetadata{Effort: values[0], Phase: values[1], Next: values[2], Updated: values[3]}, body: raw[prefixEnd+2:], legacy: true, identity: values[0], boundary: true, invalid: map[string]bool{}, updated: memoryScalar(values[3])}
 	if doc.identity != slug {
 		doc.err = errors.New("memory effort identity does not match directory")
 		return doc
@@ -264,17 +272,32 @@ func validateUpdated(value string, legacy bool) error {
 
 func formatMemoryTime(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
+// encodeMemory writes the canonical resident publication produces: the four
+// closed keys in a fixed order, every value a string.
 func encodeMemory(metadata MemoryMetadata, body []byte) ([]byte, error) {
+	return encodeMemoryDocument(metadata, memoryScalar(metadata.Updated), body)
+}
+
+// encodeMemoryDocument writes the canonical resident with an explicitly supplied
+// updated value node, and omits the key entirely when that node is nil. Only a
+// preview needs either: it holds the resident's own node so the line it displays
+// is the one already on disk, which the inspected value cannot reproduce for an
+// absent or non-string updated.
+func encodeMemoryDocument(metadata MemoryMetadata, updated *yaml.Node, body []byte) ([]byte, error) {
 	mapping := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	for _, pair := range [][2]string{{"effort", metadata.Effort}, {"phase", metadata.Phase}, {"next", metadata.Next}, {"updated", metadata.Updated}} {
-		mapping.Content = append(mapping.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: pair[0]},
-			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: pair[1]},
-		)
+	for _, pair := range [][2]string{{"effort", metadata.Effort}, {"phase", metadata.Phase}, {"next", metadata.Next}} {
+		mapping.Content = append(mapping.Content, memoryScalar(pair[0]), memoryScalar(pair[1]))
+	}
+	if updated != nil {
+		mapping.Content = append(mapping.Content, memoryScalar("updated"), updated)
 	}
 	encoded, err := yaml.Marshal(mapping)
-	if err != nil { // coverage-ignore: yaml.Marshal of the fixed scalar-only mapping node cannot fail
+	if err != nil { // coverage-ignore: yaml.Marshal of a mapping node of parsed and scalar-only values cannot fail
 		return nil, fmt.Errorf("encode memory YAML: %w", err)
 	}
 	return append(append([]byte("---\n"), encoded...), append([]byte("---\n"), body...)...), nil
+}
+
+func memoryScalar(value string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
 }

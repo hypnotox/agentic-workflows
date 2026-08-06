@@ -329,6 +329,20 @@ func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	if !strings.Contains(shape.Text, "+3 phase: next phase") || strings.Contains(changedDiffRows(shape.Text), "updated:") {
 		t.Fatalf("absent-phase repair preview=%#v", shape)
 	}
+	// Inspection carries no value for an updated key it cannot read, so a preview
+	// encoded from the inspected value writes the empty string over whatever the
+	// resident holds. Safe repair still previews these residents, and none of
+	// them may show an updated row: the key is the preview's one omission.
+	for _, resident := range []string{
+		"---\neffort: preview\nphase: old phase\nnext: old next\n---\nbody\n",
+		"---\neffort: preview\nphase: old phase\nnext: old next\nupdated: 2026-08-06T12:00:00Z\n---\nbody\n",
+		"---\neffort: preview\nphase: old phase\nnext: old next\nupdated: 12345\n---\nbody\n",
+	} {
+		shape = previewUpdateOf([]byte(resident), MemoryUpdate{Phase: &phase})
+		if !strings.Contains(shape.Text, "+3 phase: next phase") || strings.Contains(changedDiffRows(shape.Text), "updated:") {
+			t.Fatalf("unreadable-updated preview of %q = %#v", resident, shape)
+		}
+	}
 
 	// A previewed metadata line must carry the quoting publication applies, or
 	// the reader is shown a line the resident will never contain.
