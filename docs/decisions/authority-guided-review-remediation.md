@@ -41,14 +41,18 @@ authority-preserving correction.
 
 1. `decision: authority-deviation-boundary` Reserve `user-decision` review findings for cases where
    every viable correct remediation would contradict or change a settled user-approved design or
-   decision, or would require an unauthorized change to an active current-state claim. A reviewer
-   classifying a finding this way must cite the affected authority and explain the required
-   deviation. When no such authority is affected, the finding is not a user decision.
+   decision, or would require an unauthorized change to an active current-state claim. A newly
+   material load-bearing choice outside approved durable boundaries requires the existing design or
+   ADR approval workflow because proceeding would establish new settled authority. A reviewer
+   classifying a finding as `user-decision` must cite the affected or missing authority and explain
+   the required deviation. When no such authority is affected, the finding is not a user decision.
 
-2. `decision: autonomous-review-judgment` Classify an unambiguous authority-preserving correction as
-   mechanical and a correction requiring judgment as reasoned. The dispatching workflow applies
-   both autonomously, with a concise rationale for reasoned work. Ambiguity, competing clean options,
-   severity, structural character, or the fact that a finding survived a prior correction does not
+2. `decision: autonomous-review-judgment` Keep the shared review spine as the single semantic home
+   for finding classification. It classifies an unambiguous authority-preserving correction as
+   mechanical and a correction requiring judgment as reasoned; dispatching workflows route those
+   classifications rather than redefining them. The dispatching workflow applies both autonomously,
+   with a concise rationale for reasoned work. Ambiguity, competing clean options, severity,
+   structural character, or the fact that a finding survived a prior correction does not
    independently transfer the choice to the user. An inability to complete correctly without
    changing settled authority reaches the authority-deviation boundary.
 
@@ -56,20 +60,24 @@ authority-preserving correction.
    applies reasoned fixes or a user-approved ruling. Diagnose every residual finding under the same
    authority-deviation boundary rather than promoting structural findings automatically. Apply an
    authority-preserving mechanical or reasoned residual correction, run the applicable verification,
-   and report its disposition without dispatching another review loop. Stop only for a residual
-   finding that remains a true user decision.
+   and report its disposition without dispatching another same-artifact review loop. Stop only for a
+   residual finding that remains a true user decision.
 
 4. `decision: resync-return-edge` Keep plan-resync's ADR amendment and review return edge available
-   for both initial and residual findings while the implicated ADR remains amendable. An
-   authority-preserving correction follows that governed edge; discovery during verification does
-   not create a separate approval boundary.
+   for both initial and residual findings while the implicated ADR remains amendable. This governed
+   edge is an exception to the same-artifact no-loop rule: residual resync ends, the ADR is amended
+   and independently reviewed, and a new resync invocation follows under its own one-verify-pass
+   bound. Discovery during verification does not create a separate approval boundary.
 
 5. `decision: preserve-review-controls` Keep reviewers report-only, classification rather than
    severity as the routing axis, consensus deviations as user decisions, required gates and
    verification, and the existing mandatory approvals for grounded design and settled ADR review.
    An ADR that intentionally declares an active-claim change is not an unauthorized deviation merely
    because its proposed future state differs from current state; review instead checks it against
-   the settled design and its declared State changes.
+   the settled design and its declared State changes. Back the cross-template invariant with an
+   annotated `internal/project` test that proves the shared classifier and all four reviewing-skill
+   projections retain authority-guided initial and residual routing. Every affected template retains
+   missingkey=zero behavior and renders coherently with empty variables without a `<no value>` token.
 
 ## State changes
 
@@ -83,10 +91,11 @@ choice, including after the single verification pass. Users are asked only when 
 would change settled authority, rather than because a finding is difficult, structural, ambiguous,
 or late.
 
-The fresh verify pass and report-only reviewer boundary remain intact. A residual correction receives
-no second independent reviewer dispatch, so the main thread carries responsibility for diagnosing,
-applying, verifying, and reporting it. Required gates and checks mitigate that risk, while the
-single-pass limit continues to prevent an unbounded review loop.
+The fresh verify pass and report-only reviewer boundary remain intact. Outside the governed ADR
+amendment and review return edge, a residual correction receives no second independent reviewer
+dispatch, so the main thread carries responsibility for diagnosing, applying, verifying, and
+reporting it. Required gates and checks mitigate that risk, while the single-pass limit continues to
+prevent an unbounded review loop.
 
 The rule remains judgment-based. An agent can mistake a material authority change for an ordinary
 reasoned correction. Requiring a cited authority for `user-decision`, retaining consensus-adherence
@@ -99,7 +108,7 @@ make the boundary inspectable without introducing a policy schema or automated c
 |---|---|
 | Change only plan review | The classification lives in a deliberately shared spine, and the same authority distinction applies to ADR and implementation findings. Per-reviewer semantics would recreate drift. |
 | Keep automatic residual escalation | Verification timing and structural character do not establish user ownership; this is the direct source of unnecessary approval questions. |
-| Escalate every genuine design fork even without settled authority | It asks the user to decide previously delegated implementation detail. The reviewer and dispatching workflow can choose a clean option and record a rationale. |
+| Escalate every apparent design fork | Options inside approved durable boundaries remain delegated detail that the workflow can resolve with rationale; a newly material load-bearing choice outside those boundaries still returns through the existing approval workflow. |
 | Add another verify pass after residual correction | It restores a review loop and additional fresh-context cost. The existing single pass plus required verification is the chosen bounded assurance model. |
 
 ## Status history
