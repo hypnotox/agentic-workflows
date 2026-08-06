@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-06
 adrs: [authority-guided-review-remediation]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Authority-Guided Review Remediation
 
