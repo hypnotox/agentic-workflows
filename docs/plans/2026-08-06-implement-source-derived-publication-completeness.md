@@ -3,7 +3,7 @@ format: plan-v2
 date: 2026-08-06
 adrs:
   - derive-publication-completeness-from-source-authorities
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Source-Derived Publication Completeness
 

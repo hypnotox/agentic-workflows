@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: derive-publication-completeness-from-source-authorities
-status: Implementing
+status: Implemented
 date: 2026-08-06
 ---
 # ADR-0242: Derive Publication Completeness from Source Authorities
@@ -83,3 +83,4 @@ taxonomy, and arbitrary prose meaning remain outside this decision.
 - 2026-08-06: Applied; operations: add `rendering/templates:source-embed-parity`
 - 2026-08-06: Applied; operations: update `config/configspec-and-reference:live-state-projection-explicit`
 - 2026-08-06: Reapplied; operations: update `tooling/cli:cli-command-spec-single-source`
+- 2026-08-06: Implemented; content-sha256: 1e20c11bb050ef4fa028f959ff8293b4e49fa17a36809d935a3436513466709d
