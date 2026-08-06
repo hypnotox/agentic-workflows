@@ -7,10 +7,12 @@ package catalog
 // produced - so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Clarify an outcome and settle a grounded design.", Trigger: "Use for non-trivial work before deciding its design.", CommonFollowUps: []string{"proposing-adr", "writing-plans", "executing-direct"}}, Core: true, RequiresAgent: "grounding-checker", Sections: []string{
+		"brainstorming": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Clarify an outcome and settle an approved design.", Trigger: "Use when work needs a material choice or clarification.", CommonFollowUps: []string{"proposing-adr", "writing-plans", "executing-direct"}}, Core: true, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
-			"design-sections", "no-spec-rule", "grounding-check-output-format",
-			"grounding-check-dispatch-template", "terminal-step", "definitions", "anti-patterns",
+			"design-sections", "no-spec-rule", "terminal-step", "definitions", "anti-patterns",
+		}},
+		"grounding": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Check broad or uncertain repository premises from any workflow.", Trigger: "Use when correctness depends on broad or uncertain repository facts.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}}, Core: true, RequiresAgent: "grounding-checker", Sections: []string{
+			"invocation", "brief-construction-and-dispatch", "finding-classification", "boundaries", "notes",
 		}},
 		"writing-plans": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Turn an approved design into an executable plan.", Trigger: "Use when implementation needs a durable, reviewable plan.", UsuallyFollows: []string{"brainstorming", "proposing-adr"}, CommonFollowUps: []string{"reviewing-plan"}}, Core: true, Sections: []string{
 			"positioning", "when-to-invoke", "conventions-path", "conventions-header",
@@ -32,7 +34,7 @@ var Standard = &Catalog{
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
 			"notes", "red-flags",
 		}},
-		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Use one awf effort through its existing managed worktree and lifecycle.", Trigger: "Use when starting, resuming, switching checkout context for, integrating, or finishing a non-minimal effort."}, Core: true},
+		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Own one awf effort from continuity evaluation through finish.", Trigger: "Use whenever durable continuity materially helps, or to resume or finish an effort."}, Core: true},
 		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct", "executing-plans"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
@@ -100,8 +102,8 @@ var Standard = &Catalog{
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-resync", "notes",
 		}},
-		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an implementation and route any managed-worktree integration, renewed review, and removal before retrospective.", Trigger: "Use when an implementation commit or series needs terminal review.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"retrospective"}}, Core: true, RequiresAgent: "code-reviewer", Sections: []string{
-			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
+		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently assure an implementation.", Trigger: "Use when independent review has assurance value for the implementation.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"effort-workflow", "retrospective"}}, Core: true, RequiresAgent: "code-reviewer", Sections: []string{
+			"when-fires", "sha-range-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
 		"retrospective": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Capture durable lessons, verify managed topology is absent, and finish the effort last.", Trigger: "Use after settled terminal review and any required managed-worktree removal.", UsuallyFollows: []string{"reviewing-impl"}}, Core: true, Sections: []string{

@@ -11,8 +11,9 @@ Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
 
-In the generated Pi extension and skills, brainstorming's grounding check dispatches through the dedicated grounding tool while general exploration and coupling audits use the exploration tool, and no non-Pi target's rendered output contains either Pi subagent tool name.
+In the generated Pi extension and skills, the reusable grounding support skill dispatches through the existing dedicated grounding tool whenever its independent repository-premise trigger fires, while general exploration and coupling audits use the exploration tool, and no non-Pi target's rendered output contains either Pi subagent tool name.
 Origin: ADR-0148
+Revised-by: ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: pi-extension-editor-quiet-strip`

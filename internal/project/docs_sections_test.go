@@ -138,12 +138,12 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 		"data":   map[string]any{},
 	})
 	// invariant: rendering/workflow-skill-templates:workflow-chain-adr-before-plan (TestWorkflowDocChainOrder)
-	if !strings.Contains(out, "ADR (if warranted) → plan (if warranted)") {
-		t.Errorf("workflow chain must present ADR before plan:\n%s", out)
+	if strings.Index(out, "**ADR**") > strings.Index(out, "**Planning**") {
+		t.Errorf("workflow guidance must present ADR before plan:\n%s", out)
 	}
 	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync (TestWorkflowDocChainOrder)
-	if !strings.Contains(out, "resync (when both)") {
-		t.Errorf("workflow chain must surface the resync step:\n%s", out)
+	if !strings.Contains(out, "plan↔ADR **resync**") {
+		t.Errorf("workflow guidance must surface the resync step:\n%s", out)
 	}
 	planSelection := []string{"sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work"}
 	for _, want := range planSelection {

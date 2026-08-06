@@ -1,7 +1,6 @@
 **Mandatory first-creation confirmation.** Discovery creates no effort. Analysis, exploration,
-prioritization, option comparison, and selection remain discovery until one concrete non-minimal
-outcome can be named. A direct concrete non-minimal request follows the same boundary. A minimal
-simple fix remains effort-free. An existing effort resumes under its fixed identity and existing
+prioritization, option comparison, and selection remain discovery until continuity materially helps.
+A direct request follows the same boundary. Work may remain effort-free when continuity is not needed. An existing effort resumes under its fixed identity and existing
 validation rules without title reconfirmation only while work remains within its confirmed outcome;
 a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
 effort.
@@ -9,7 +8,7 @@ effort.
 When no existing effort owns the outcome, propose a canonical short slug and present all three
 fields:
 
-`Outcome: <concrete non-minimal outcome>`
+`Outcome: <confirmed outcome>`
 `Effort title: <proposed title>`
 `Effort slug: <proposed-short-slug>`
 

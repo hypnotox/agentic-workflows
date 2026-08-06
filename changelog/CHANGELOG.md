@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Added independent judgment-based workflow escalation, reusable grounding support, risk-based effort-independent implementation review, a single-home effort lifecycle, and guarded grounding backfill for compatible adopters.
+
 ## [0.31.0] - 2026-08-06
 
 ### Features

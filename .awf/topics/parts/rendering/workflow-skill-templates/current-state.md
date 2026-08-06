@@ -2,6 +2,13 @@ Workflow-chain and task-skill template contracts: chain ordering, exploration an
 
 ## Claims
 
+### `invariant: independent-workflow-escalation`
+
+Workflow intake evaluates brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently, re-evaluating only affected triggers after material facts change. Grounding is advisory support, effort-workflow is the lifecycle owner, review is risk-based assurance, and no classifier, checklist, router, or new runtime mechanism is introduced.
+Origin: ADR-independent-judgment-based-workflow-escalation
+Backing: test
+
+
 ### `invariant: bounded-exploration-reporting`
 
 The rendered exploration guidance and the rendered explorer agent define adaptive breadth and grounded reporting, keep refinement sequential, and permit independent information needs to run concurrently, while Pi's per-call suffix supplies the selected breadth and report detail and makes Pi queue above ten active children in FIFO and abort-aware order.
@@ -19,15 +26,17 @@ Backing: test
 ### `invariant: implementer-context-grounding`
 
 Every managed context-calling skill and the grounding-checker agent body carry the one-sentence spill pointer naming the exact `AWF_CONTEXT_SPILL_V1` notice and the working-with-awf doc's Context spill notices subsection, the contract's single rendered home for byte-length verification and best-effort packet deletion. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill pointer.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197
+Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
 The rendered brainstorming skill carries mandatory first-creation confirmation before detailed design: it presents labeled `Outcome:`, `Effort title:`, and `Effort slug:` fields, asks the user to confirm all three, ends the turn without mutation, and permits the required explicit-slug creation command only after a clear response in a later turn. Brainstorming also closes with final grounded-design approval, and ADR review closes with settled-ADR approval; each final approval persists memory, presents the completed summary, explicitly requests approval, and stops. Continuation and handoff begin only after the applicable later response is persisted when an effort exists. Brainstorming also settles a proportionate simplicity contract covering scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. No other chain skill renders a final approval stop, and no checkpoint creates missing ownership.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
@@ -39,42 +48,49 @@ Backing: test
 ### `invariant: memory-checkpoint-chain-coverage`
 
 Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix, merely because a boundary was reached, or because work was classified non-minimal. For non-minimal work it validates exactly one already-confirmed immutable slug and `.awf/efforts/<slug>/memory.md`; missing ownership routes back to mandatory first-creation confirmation. It confirms canonical YAML `effort: <slug>` or deprecated legacy `Effort: <slug>` identity (legacy remains only until active efforts finish), carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, and runs exactly one structured `awf effort memory update` as the sole writer of phase, next action, and time while separately appending unrecorded settled decisions and observations. It appends a handoff-log entry only after a fresh-session boundary actually exists. Routine implementation checkpoints remain after the phase-closing commit and settled report-only review, never after heading-identified tasks or helper returns; an executable `awf read plan` projection does not create a checkpoint or handoff boundary; an additional checkpoint is permitted at any safe point whose next action is independently resumable, and every checkpoint points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
 Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, orientation, roadmap, and effort-workflow skill into closed semantic roles and render every enabled target. Brainstorming, debugging, and roadmap graduation own first-creation discovery: each presents labeled `Outcome:`, `Effort title:`, and `Effort slug:` fields through the shared confirmation and permits `awf effort new --slug <confirmed-slug> "<confirmed-title>"` only after a clear later response and before mutation. Every downstream or support role contains no creation command; downstream work requires already-confirmed ownership and routes absence back to first-creation confirmation, report support remains read-only toward memory, and exploration and orientation never create an effort. Existing efforts resume under fixed identity without title reconfirmation only inside the confirmed outcome. Each path carries the minimal-fix exception where applicable, always-owned memory and exact slug/path continuity, repository-authority precedence, the standalone-memory ban, and the one-writer/report-only-child contract through its operative pre-mutation contract and the workflow doc's working-memory section. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last. The core `effort-workflow` entry guide composes the workflow document and shared checkpoint partials as the single lifecycle-policy home, requires an existing confirmed effort, directs runtimes without supplied effort paths into the exact awf-managed worktree, permits explicit-path runtimes to remain at repository root and target that worktree by path, names no runtime-specific tool, and adds no second policy copy.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0175
-Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226
+Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: effort-workflow`
 
 Core `effort-workflow` is the single selectable cross-target entry guide for a non-minimal awf effort: new scaffolds select it by default, existing adopter selections change only through explicit enablement, and every enabled target renders it. It composes the workflow document and shared checkpoint policy, uses ordinary awf effort commands, directs runtimes without supplied effort paths to enter the exact existing `.awf/worktrees/<slug>` managed worktree through native persistent checkout or context tooling, permits explicit-path runtimes to remain at the repository root and target that worktree by path, and preserves structured checkpoint, review, integration, removal, retrospective, and finish ordering. It never creates standalone memory or a parallel harness-owned worktree, infers topology, treats activity as authority, names a runtime, or exposes a runtime-specific effort tool.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0218
-Revised-by: ADR-0225
+Revised-by: ADR-0225, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
 
 The shared review spine carries the consensus-adherence check: with pasted user-provenance consensus entries in the brief, a deviation from a user entry is a `user-decision` finding citing the deviating passage and carrying the "we decided X; during <phase> we found Z; recommend Y, approve?" escalation, and an entry-free brief leaves the check idle. The reviewing-adr, reviewing-plan, and reviewing-impl dispatch briefs paste user entries verbatim including whatever `Record:` blocks exist while resync stays narrowed, and the retrospective reads the observation and decision logs as primary input with recurrence extended across the effort's sessions.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0186
-Revised-by: ADR-0197
+Revised-by: ADR-0197, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`
 
 Rendered workflow skills describe catalog relationships only as recommendations. Any enabled skill may be used when its purpose fits, while controls within a selected skill remain mandatory.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0167
+Revised-by: ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: phase-transaction-ownership`
 
 A rendered plan phase is one independently green coherent implementation transaction with an explicit per-phase inline or subagent-driven owner; heading-identified tasks are ordered steps rather than completion state or default dispatch, review, checkpoint, or commit boundaries. A fresh phase or task owner may consume bounded plan-v2 closure, but its generated scope notice, Phase close, Advances, and Completes remain phase-owner context and never transfer commit, review, checkpoint, handoff, helper, or outcome authority. One commit-capable implementer owns a complete subagent-driven phase from a known green baseline through staged check, gate, and Phase close commit, while the parent owns inline integration, sequential commit-disabled batch helpers, report-only review settlement, phase checkpointing, and explicit dirty-state recovery without blind task-level succession.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0166
-Revised-by: ADR-0213, ADR-0217
+Revised-by: ADR-0213, ADR-0217, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: plan-task-detail-modes`
@@ -147,8 +163,9 @@ Backing: test
 ### `invariant: explorer-and-grounding-role-contracts`
 
 The rendered explorer body defines its report-only identity, one information need with no bundling or recursive delegation, concurrent independent needs with sequential refinement, breadth ordered targeted < bounded < broad as an adaptive maximum with its project search universe, report detail ordered paths < summary < analysis independent of breadth, file:line grounding, the distinction between not-found, inconclusive, and unverified outcomes with the exact not-found opening, final-report-only output, and statelessness across calls. The rendered grounding-checker body defines its report-only identity, that it works only from its brief and never edits the working memory that brief may name, its verification obligations across factual premises, unstated assumptions, altitude, and convention fit, and a closed finding schema whose confidence field distinguishes verified, interpreted, and unverified. The exploring and brainstorming skills each name their dispatched agent in the branch that dispatches a target-native subagent, and neither rendered body carries per-call or runtime-specific text. The grounding-checker body grounds guide-first through the shared orientation ladder partial.
+This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0179
-Revised-by: ADR-0187
+Revised-by: ADR-0187, ADR-independent-judgment-based-workflow-escalation
 Backing: test
 
 ### `invariant: orienting-single-home`

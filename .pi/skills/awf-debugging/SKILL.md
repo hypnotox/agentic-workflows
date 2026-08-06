@@ -46,9 +46,8 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 4. **Confirm ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search, and a minimal simple known-root fix stays effort-free. An existing effort resumes under its fixed identity without title reconfirmation only while the fix remains within its confirmed outcome. When evidence identifies a concrete non-minimal fix without existing ownership, complete the mandatory first-creation confirmation below before writing a failing test or mutating files; exploring children remain non-creating and receive any parent slug and exact `.awf/efforts/<slug>/memory.md` path read-only. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible.
 
 **Mandatory first-creation confirmation.** Discovery creates no effort. Analysis, exploration,
-prioritization, option comparison, and selection remain discovery until one concrete non-minimal
-outcome can be named. A direct concrete non-minimal request follows the same boundary. A minimal
-simple fix remains effort-free. An existing effort resumes under its fixed identity and existing
+prioritization, option comparison, and selection remain discovery until continuity materially helps.
+A direct request follows the same boundary. Work may remain effort-free when continuity is not needed. An existing effort resumes under its fixed identity and existing
 validation rules without title reconfirmation only while work remains within its confirmed outcome;
 a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active
 effort.
@@ -56,7 +55,7 @@ effort.
 When no existing effort owns the outcome, propose a canonical short slug and present all three
 fields:
 
-`Outcome: <concrete non-minimal outcome>`
+`Outcome: <confirmed outcome>`
 `Effort title: <proposed title>`
 `Effort slug: <proposed-short-slug>`
 
@@ -111,7 +110,7 @@ These thoughts mean stop. You're rationalizing:
 
 <!-- awf:edit memory-checkpoint: default; create .awf/skills/parts/debugging/memory-checkpoint.md to override -->
 **Routine checkpoint.** At this boundary:
-1. Classify ownership, not the boundary: a minimal simple fix uses no effort, and reaching a checkpoint never creates one. Non-minimal work requires exactly one already-confirmed immutable slugged effort; if ownership is missing, stop and return to mandatory first-creation three-field confirmation. The effort always owns `.awf/efforts/<slug>/memory.md`.
+1. Checkpoints never create an effort. When continuity independently warranted an effort, validate its one immutable slug and owned `.awf/efforts/<slug>/memory.md`; otherwise omit effort and memory fields. `effort-workflow` alone confirms and creates continuity ownership.
 2. Validate the exact `<slug>` and owned path (a primary-root-relative spelling; the file lives under the primary checkout), confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), and continue in the effort's managed worktree when one exists. In its own writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Separately append any unrecorded settled decision and observation.
 3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, or a correctness or safety concern, blocker, or failed required verification that remains unresolved after the active workflow's required diagnosis and authority-guided remediation. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
 4. Otherwise state a one-line continuity notice with the completed phase and immediate next action, including the exact slug and owned memory path for an effort-backed outcome; the notice is informational, never a stop. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. After this persisted formal phase checkpoint, or at another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work from the current `[session context]` model-window and active-branch-compaction evidence. No fixed threshold controls this choice; continuing immediately in the current session is autonomous, not a check-in. Either continue immediately, or invoke `handoff_session` alone with kickoff prose directing the fresh session to read the effort checkpoint and append the actual boundary to `## Handoff log` as its first memory update before substantive work. Any kickoff that tells the successor to work only in the managed worktree must scope that restriction to pre-integration execution and explicitly preserve the governed switch to the intended target checkout for integration, deferred lifecycle closure, worktree removal, and retrospective. Cancellation or failure that leaves the old session active appends no handoff log. Mechanical corrections and authority-determined implementation details stay autonomous. Authority precedence, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc's working-memory section.

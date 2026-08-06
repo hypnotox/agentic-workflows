@@ -729,3 +729,18 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 		t.Fatal("journal residue after rollback")
 	}
 }
+
+func TestUpgradeFailurePresentsGroundingCollision(t *testing.T) {
+	err := newUpgradeFailure(nil, nil, &migrate.GroundingSkillCollisionError{Path: "skills/grounding.yaml"})
+	var failure upgradeFailure
+	if !errors.As(err, &failure) {
+		t.Fatalf("failure type = %T", err)
+	}
+	diagnostic, diagnosticErr := failure.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	if diagnostic.State != "operation" || diagnostic.Cause != "" || len(diagnostic.Steps) != 2 {
+		t.Fatalf("diagnostic = %#v", diagnostic)
+	}
+}

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: independent-judgment-based-workflow-escalation
-status: Proposed
+status: Implementing
 date: 2026-08-06
 ---
 # ADR-independent-judgment-based-workflow-escalation: Independent Judgment-Based Workflow Escalation
@@ -158,3 +158,5 @@ instead of adding another exception list.
 ## Status history
 
 - 2026-08-06: Proposed
+- 2026-08-06: Implementing; content-sha256: c826fe36816f2ddcec1d269326183e2bbc70d7d0a4d7ee7f4aaa9ab661139848
+- 2026-08-06: Applied; operations: add `rendering/workflow-skill-templates:independent-workflow-escalation`, update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/workflow-skill-templates:effort-workflow`, update `rendering/workflow-skill-templates:memory-log-consumer-coverage`, update `rendering/workflow-skill-templates:workflow-transitions-advisory`, update `rendering/workflow-skill-templates:phase-transaction-ownership`, update `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/pi-workflows:pi-dedicated-grounding-dispatch`, add `config/migrations-and-locks:grounding-skill-backfill`

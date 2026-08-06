@@ -341,8 +341,8 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 			t.Errorf("Claude target %s leaked Pi dispatch tools", path)
 		}
 	}
-	brainstorming := claude[".claude/skills/example-brainstorming/SKILL.md"]
-	if !strings.Contains(brainstorming, "`grounding-checker` agent") {
+	grounding := claude[".claude/skills/example-grounding/SKILL.md"]
+	if !strings.Contains(grounding, "`grounding-checker` agent") {
 		t.Fatal("Claude grounding dispatch lost its target-native agent")
 	}
 }
@@ -409,7 +409,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nintegrationBranch: main\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, orienting, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
+	return "prefix: example\nintegrationBranch: main\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, grounding, orienting, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -484,8 +484,8 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 					}
 				}
 				// The target-native grounding branch names its agent the same way.
-				if brainstorming := skillBody("brainstorming"); !strings.Contains(brainstorming, "`grounding-checker` agent") {
-					t.Errorf("%s brainstorming skill does not name the grounding-checker agent", target)
+				if grounding := skillBody("grounding"); !strings.Contains(grounding, "`grounding-checker` agent") {
+					t.Errorf("%s grounding skill does not name the grounding-checker agent", target)
 				}
 			}
 			// Orienting owns the dispatch conditions brainstorming used to carry
