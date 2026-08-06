@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-06
 adrs: [independent-judgment-based-workflow-escalation]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Independent Judgment-Based Workflow Escalation
 
