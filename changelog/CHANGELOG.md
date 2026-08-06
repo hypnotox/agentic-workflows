@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- README commands, embedded templates, and config-reference live state now derive completeness from their source authorities, replacing three manual pitfall reminders.
+
 ## [0.31.0] - 2026-08-06
 
 ### Features

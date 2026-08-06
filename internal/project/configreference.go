@@ -125,6 +125,42 @@ func (p *Project) currentValueResolvers() map[string]func() string {
 		"docs":    func() string { return strconv.Itoa(len(p.Cfg.Docs)) + " enabled" },
 		"domains": func() string { return strconv.Itoa(len(p.Cfg.Domains)) + " configured" },
 		"targets": func() string { return "`" + strings.Join(p.Cfg.Targets, "`, `") + "`" },
+		"tags": func() string {
+			if len(p.Cfg.Tags) == 0 {
+				return "(none)"
+			}
+			return strconv.Itoa(len(p.Cfg.Tags)) + " tags"
+		},
+		"contextIgnore": func() string {
+			if len(p.Cfg.ContextIgnore) == 0 {
+				return "(none)"
+			}
+			return strconv.Itoa(len(p.Cfg.ContextIgnore)) + " patterns"
+		},
+		"commitPolicy.grandfatheredThrough": func() string {
+			if p.Cfg.CommitPolicy == nil || p.Cfg.CommitPolicy.GrandfatheredThrough == "" {
+				return "(none)"
+			}
+			return "`" + p.Cfg.CommitPolicy.GrandfatheredThrough + "`"
+		},
+		"commitPolicy.allowedIdentities": func() string {
+			if p.Cfg.CommitPolicy == nil || len(p.Cfg.CommitPolicy.AllowedIdentities) == 0 {
+				return "(none)"
+			}
+			return strconv.Itoa(len(p.Cfg.CommitPolicy.AllowedIdentities)) + " identities"
+		},
+		"commitPolicy.requireSignedCommits": func() string {
+			if p.Cfg.CommitPolicy == nil {
+				return "false (default)"
+			}
+			return strconv.FormatBool(p.Cfg.CommitPolicy.RequireSignedCommits)
+		},
+		"commitPolicy.allowedSigners": func() string {
+			if p.Cfg.CommitPolicy == nil || len(p.Cfg.CommitPolicy.AllowedSigners) == 0 {
+				return "(none)"
+			}
+			return strconv.Itoa(len(p.Cfg.CommitPolicy.AllowedSigners)) + " signers"
+		},
 		"currentState.sources": func() string {
 			if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.Sources) == 0 {
 				return "(none)"
