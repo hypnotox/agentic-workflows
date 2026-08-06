@@ -53,12 +53,12 @@ resolution story a repository whose owner installs awf deliberately needs.
    path is either file, no bootstrap or upgrade template remains in the embedded template set, and
    the residue-scan exemption list no longer names either template. A tree still carrying
    `bootstrap` is rejected by strict parsing rather than honoured, on the same footing as the
-   house-standard record's retired keys, with the schema generation in item 4 as the repair path.
+   house-standard record's retired keys, with the schema generation in item 4 as the repair path;
+   that rejection carries its own claim rather than resting on the removal of a struct field.
 
 3. `decision: wrapper-resolution-narrows` The rendered `./awf` wrapper resolves the configured
    `awfInvokeCmd` and otherwise a PATH `awf`. The pinned-binary-first arm, which existed only to
-   prefer whatever the installer had fetched, is retired with the installer, so the claim naming
-   that resolution order is replaced rather than rewritten.
+   prefer whatever the installer had fetched, is retired with the installer.
 
 4. `decision: bootstrap-key-migration` A schema generation removes the `bootstrap` block from a
    config tree, announcing the removal, leaving every surviving key, value, comment and key order
@@ -71,8 +71,7 @@ resolution story a repository whose owner installs awf deliberately needs.
 
 5. `decision: bootstrap-key-forward-ported` The `bootstrap` key is registered for unconditional
    stripping from historical config bytes before the strict decoder sees them, mirroring the
-   mechanism the house-standard record establishes for its own keys and carrying its own claim
-   because a pending record's claim does not yet exist to update. This checkout's committed
+   mechanism the house-standard record establishes for its own keys. This checkout's committed
    configuration carries `bootstrap`, so without the registration every audit or staged check over
    a range predating this record would fail on configuration it is only reading.
 
@@ -84,6 +83,7 @@ resolution story a repository whose owner installs awf deliberately needs.
 - add `rendering/sync-and-drift:residue-exemptions-pinned-one`
 - add `config/migrations-and-locks:bootstrap-key-dropped`
 - add `config/migrations-and-locks:bootstrap-key-forward-ported`
+- add `config/configuration:bootstrap-key-rejected`
 - remove `rendering/singletons-and-payloads:bootstrap-config-tree-path`
 - remove `rendering/singletons-and-payloads:bootstrap-two-files`
 - remove `rendering/companion-scripts:bootstrap-checksum`
@@ -117,13 +117,17 @@ than a tolerated leftover. The file is git-tracked in the repositories served, s
 recoverable. What this record rules out is the migration deleting it, which would put a shell-script
 removal in a config editor.
 
-Six shipped documents carry installer prose that becomes false, all of it template- or
-descriptor-sourced: the glossary's upgrade-porcelain vocabulary entry, the working-with-awf upgrade
-procedure, the workflow doc's CI acquisition recipe, the releasing doc's tamper posture (whose
-integrity story is half the bootstrap's checksum verification, ADR-0079, and which reduces to the
-published checksums file alone), and the `awfInvokeCmd` catalog var descriptor, whose description
-still says the empty value resolves the bootstrap-pinned binary and which the configspec derivation
-requires to match verbatim. The file-by-file edits belong to the plan.
+Shipped prose carrying installer claims becomes false across three different authoring channels,
+and the distinction matters because each is a different transaction shape. Two surfaces are
+template-sourced: the working-with-awf upgrade procedure and the workflow doc's CI acquisition
+recipe. Three are project-content-sourced, in exactly the channel the house-standard record
+preserves: the glossary's upgrade-porcelain vocabulary entry and the pitfalls entry, both sidecar
+data, and the releasing doc's tamper posture, a convention part, whose integrity story is half the
+bootstrap's checksum verification (ADR-0079) and which reduces to the published checksums file
+alone. One is descriptor-sourced: the `awfInvokeCmd` catalog var description still says the empty
+value resolves the bootstrap-pinned binary, and the configspec derivation requires it to match
+verbatim, which also carries the config reference's own rows for `bootstrap.enabled` and for the
+runner's bootstrap-resolved fallback. The file-by-file edits belong to the plan.
 
 The `enable`, `disable` and `list` arms for the nameless `bootstrap` singleton kind read the config
 field this record removes, so they must change in the same compilation unit. The CLI-grammar record
