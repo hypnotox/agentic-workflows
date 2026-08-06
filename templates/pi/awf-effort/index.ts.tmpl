@@ -13,7 +13,8 @@ import { activity, memoryRead, memoryEdit, memoryUpdate, childMemoryExecutor, ty
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MEMORY_TOOL_NAMES = ["effort_memory_read", "effort_memory_edit", "effort_memory_update"] as const;
 const MUTATION_TRUNCATION_NOTICE = "Diff truncated for display.";
-type MutationStatus = "pending" | "previewed" | "succeeded" | "failed";
+const PREVIEW_ENTRY_LIMIT = 32;
+type MutationStatus = "pending" | "settled" | "failed";
 type MutationRow = Box & { key: string | undefined; request: string | undefined; body: string | undefined; truncated: boolean; status: MutationStatus };
 type MutationSpec = Readonly<{ name: string; label: string; description: string; parameters: unknown; promptSnippet: string; promptGuidelines: readonly string[]; title: string; key: (args: any) => string | undefined; check: (args: any) => void; invoke: (snapshot: Snapshot, cwd: string, args: any, preview: boolean, signal?: AbortSignal) => Promise<MemoryReply> }>;
 type Snapshot = Readonly<{ slug: string; owner: string; title: string; memory: Readonly<{ phase: string; next: string; updated: string }> | null; heartbeatAt: string; managedWorktree: boolean }>;
@@ -34,7 +35,8 @@ function memoryResult(reply: MemoryReply): { content: { type: "text"; text: stri
 function mutationRow(state: any, lastComponent: unknown): MutationRow { if (lastComponent instanceof Box) { state.callComponent = lastComponent; return lastComponent as MutationRow; } if (state.callComponent) return state.callComponent as MutationRow; const row = Object.assign(new Box(1, 1), { key: undefined as string | undefined, request: undefined as string | undefined, body: undefined as string | undefined, truncated: false, status: "pending" as MutationStatus }); state.callComponent = row; return row; }
 function mutationBackground(status: MutationStatus, theme: any): (value: string) => string { if (status === "failed") return (value: string) => theme.bg("toolErrorBg", value); if (status === "pending") return (value: string) => theme.bg("toolPendingBg", value); return (value: string) => theme.bg("toolSuccessBg", value); }
 function buildMutationRow(row: MutationRow, title: string, theme: any): MutationRow { row.setBgFn(mutationBackground(row.status, theme)); row.clear(); row.addChild(new Text(theme.fg("toolTitle", theme.bold(title)), 0, 0)); if (row.body !== undefined) { row.addChild(new Spacer(1)); row.addChild(new Text(row.body, 0, 0)); } if (row.truncated) { row.addChild(new Spacer(1)); row.addChild(new Text(theme.fg("warning", MUTATION_TRUNCATION_NOTICE), 0, 0)); } return row; }
-function showMutationDiff(row: MutationRow, diff: MemoryDiff, status: MutationStatus): void { row.status = status; row.body = diff.text === "" ? undefined : renderDiff(diff.text); row.truncated = diff.truncated; }
+// The binary terminates every display row, while renderDiff splits an unterminated block; the sole trailing terminator would otherwise render as a stray context line.
+function showMutationDiff(row: MutationRow, diff: MemoryDiff): void { const text = diff.text.endsWith("\n") ? diff.text.slice(0, -1) : diff.text; const body = text === "" ? undefined : renderDiff(text); row.status = "settled"; row.body = body; row.truncated = diff.truncated; }
 function showMutationFailure(row: MutationRow, message: string, theme: any): void { row.status = "failed"; row.body = theme.fg("error", message); row.truncated = false; }
 function mutationResultText(result: any): string { return result.content.map((block: any) => block.text).join("\n"); }
 function guardEffortFileQueue(pi: PiLike, packageVersion: string, queue: FileMutationQueue | undefined): boolean { if (typeof queue === "function") return true; if (typeof pi.on !== "function") return false; pi.on("session_start", async (_event, ctx: any) => { if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return; (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true; ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with their factory event, persistence, tool, command, process, and thinking APIs; found ${packageVersion}. Missing runtime APIs: withFileMutationQueue. Upgrade Pi and reload.`, "error"); }); return false; }
@@ -57,28 +59,31 @@ export function registerEffort(pi: PiLike, deps: EffortExtensionDependencies = {
   const detach = async (ctx: Context, signal?: AbortSignal): Promise<string> => { if (!current) { clear(); return "Detached."; } const before = current; const reply = await invoke(ctx, "detach", before.slug, before.owner, signal); clear(); return reply.condition === "detached" || reply.condition === "missing" || reply.condition === "not-owner" ? "Detached." : renderActivity(reply); };
   const memoryExecutor: MemoryExecutor = deps.memoryExec ?? ((command, argv, options) => options.stdin === undefined ? pi.exec(command, argv, options) : childMemoryExecutor(command, argv, options));
   const memoryCall = async (ctx: Context, signal: AbortSignal, operation: (snapshot: Snapshot) => Promise<MemoryReply>, mutate = false) => serial(async () => { const snapshot = current; if (!snapshot) throw new Error("Attach an effort before using its memory tools"); const run = async () => { const reply = await operation(snapshot); if (reply.condition === "not-owner" || reply.condition === "missing" || reply.condition === "unsafe-activity") clear(); return memoryResult(reply); }; return mutate ? fileMutationQueue(join(ctx.cwd, ".awf", "efforts", snapshot.slug, "memory.md"), run) : run(); });
-  const previews = new Map<string, { key: string; reply: Promise<MemoryReply> }>();
+  const previews = new Map<string, { key: string; cwd: string; reply: Promise<MemoryReply> }>();
   const associationKey = (value: unknown): string | undefined => { const snapshot = current; return snapshot ? JSON.stringify({ slug: snapshot.slug, owner: snapshot.owner, value }) : undefined; };
-  const previewCall = (toolCallId: string, key: string, invoke: (snapshot: Snapshot) => Promise<MemoryReply>): Promise<MemoryReply> => { const existing = previews.get(toolCallId); if (existing && existing.key === key) return existing.reply; const reply = serial(async () => { const snapshot = current; if (!snapshot) throw new Error("Attach an effort before using its memory tools"); const preview = await invoke(snapshot); if (preview.condition === "not-owner" || preview.condition === "missing" || preview.condition === "unsafe-activity") clear(); if (preview.condition !== "previewed") throw new Error(renderMemoryOutcome(preview.outcome!)); return preview; }); previews.set(toolCallId, { key, reply }); return reply; };
+  // A call rendered but never executed never settles, so bound the map by insertion order; a dropped entry only costs the recomputation execute already performs when no renderer ran.
+  const previewCall = (toolCallId: string, key: string, cwd: string, invoke: (snapshot: Snapshot) => Promise<MemoryReply>): Promise<MemoryReply> => { const existing = previews.get(toolCallId); if (existing && existing.key === key && existing.cwd === cwd) return existing.reply; const reply = serial(async () => { const snapshot = current; if (!snapshot) throw new Error("Attach an effort before using its memory tools"); const preview = await invoke(snapshot); if (preview.condition === "not-owner" || preview.condition === "missing" || preview.condition === "unsafe-activity") clear(); if (preview.condition !== "previewed") throw new Error(renderMemoryOutcome(preview.outcome!)); return preview; }); previews.set(toolCallId, { key, cwd, reply }); if (previews.size > PREVIEW_ENTRY_LIMIT) previews.delete(previews.keys().next().value as string); return reply; };
+  // Pi wraps its synchronous renderers, but an asynchronous preview callback owns its own failures; an escaping throw here would be an unhandled rejection rather than a redrawn row.
+  const settlePreview = (row: MutationRow, key: string, title: string, theme: any, context: any, apply: () => void): void => { if (row.key !== key) return; try { apply(); buildMutationRow(row, title, theme); context.invalidate(); } catch { /* leave the row as drawn; the next redraw rebuilds it */ } };
   const registerMutation = (spec: MutationSpec) => pi.registerTool({
     name: spec.name, label: spec.label, description: spec.description, parameters: spec.parameters, promptSnippet: spec.promptSnippet, promptGuidelines: spec.promptGuidelines, renderShell: "self",
-    execute: async (toolCallId: string, args: any, signal: AbortSignal, _update: unknown, ctx: Context) => { spec.check(args); try { await previewCall(toolCallId, spec.key(args) ?? "", (snapshot) => spec.invoke(snapshot, ctx.cwd, args, true, signal)); return await memoryCall(ctx, signal, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, false, signal), true); } finally { previews.delete(toolCallId); } },
+    execute: async (toolCallId: string, args: any, signal: AbortSignal, _update: unknown, ctx: Context) => { spec.check(args); try { await previewCall(toolCallId, spec.key(args) ?? "", ctx.cwd, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, true, signal)); return await memoryCall(ctx, signal, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, false, signal), true); } finally { previews.delete(toolCallId); } },
     renderCall: (args: any, theme: any, context: any) => {
       const row = mutationRow(context.state, context.lastComponent);
       const key = context.argsComplete ? spec.key(args) : undefined;
       if (row.key !== key) { row.key = key; row.request = undefined; row.body = undefined; row.truncated = false; row.status = "pending"; }
       if (key !== undefined && row.request === undefined && !context.executionStarted) {
         row.request = key;
-        void previewCall(context.toolCallId, key, (snapshot) => spec.invoke(snapshot, context.cwd, args, true)).then(
-          (preview) => { if (row.key === key) { showMutationDiff(row, preview.diff!, "previewed"); buildMutationRow(row, spec.title, theme); context.invalidate(); } },
-          (error: Error) => { if (row.key === key) { showMutationFailure(row, error.message, theme); buildMutationRow(row, spec.title, theme); context.invalidate(); } },
+        void previewCall(context.toolCallId, key, context.cwd, (snapshot) => spec.invoke(snapshot, context.cwd, args, true)).then(
+          (preview) => settlePreview(row, key, spec.title, theme, context, () => showMutationDiff(row, preview.diff!)),
+          (error: Error) => settlePreview(row, key, spec.title, theme, context, () => showMutationFailure(row, error.message, theme)),
         );
       }
       return buildMutationRow(row, spec.title, theme);
     },
     renderResult: (result: any, _options: any, theme: any, context: any) => {
       const row = context.state.callComponent as MutationRow | undefined;
-      if (row) { const reply = context.isError ? undefined : result.details as MemoryReply | undefined; if (reply && reply.diff) showMutationDiff(row, reply.diff, "succeeded"); else showMutationFailure(row, mutationResultText(result), theme); buildMutationRow(row, spec.title, theme); }
+      if (row) { const reply = context.isError ? undefined : result.details as MemoryReply | undefined; if (reply && reply.diff) showMutationDiff(row, reply.diff); else showMutationFailure(row, mutationResultText(result), theme); buildMutationRow(row, spec.title, theme); }
       const component = context.lastComponent ?? new Container(); component.clear(); return component;
     },
   });

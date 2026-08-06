@@ -4,7 +4,11 @@ import { mkdir } from "node:fs/promises";
 import { Value } from "typebox/value";
 import { EventEmitter } from "node:events";
 import { activity, createChildMemoryExecutor, EffortProtocolError, MEMORY_CLOSE_DELAY_MS, MEMORY_KILL_DELAY_MS, MEMORY_STDERR_MAX, MEMORY_STDOUT_MAX, memoryEdit, memoryRead, memoryUpdate, productionChildMemoryDependencies } from "../../../.pi/extensions/awf-effort/client.ts";
+import { initTheme } from "@earendil-works/pi-coding-agent";
 import effortExtension, { registerDefaultEffort, registerEffort } from "../../../.pi/extensions/awf-effort/index.ts";
+
+// renderDiff reads the module-global theme, so this file initializes it rather than depending on another file running first.
+initTheme("dark", false);
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const OTHER = "00000000-0000-4000-8000-000000000002";
@@ -547,8 +551,10 @@ const fakeTheme = { fg: (color: string, value: string) => `[${color}]${value}`, 
 function rowContext(overrides: any = {}) { const context: any = { args: {}, toolCallId: "call-1", invalidations: 0, lastComponent: undefined, state: {}, cwd: "/repo", executionStarted: false, argsComplete: true, isPartial: false, expanded: false, showImages: false, isError: false, ...overrides }; context.invalidate = () => { context.invalidations++; }; return context; }
 function rowText(component: any) { return component.render(80).join("\n"); }
 async function settle() { for (let step = 0; step < 8; step++) await Promise.resolve(); }
+async function settleUntil(predicate: () => boolean) { for (let step = 0; step < 5000 && !predicate(); step++) await Promise.resolve(); }
 const editArgs = { edits: [{ oldText: "old", newText: "new" }] };
-const previewDiff = (extra: any = {}) => memoryEditPreviewReply({ diff: { text: "-6 old\n+6 new", firstChangedLine: 6, truncated: false, ...extra } });
+// The binary terminates every display row, so these fixtures carry the trailing terminator its real replies carry.
+const previewDiff = (extra: any = {}) => memoryEditPreviewReply({ diff: { text: "-6 old\n+6 new\n", firstChangedLine: 6, truncated: false, ...extra } });
 
 test("mutation call rendering previews once per key, serializes, invalidates asynchronously, and discards stale completion", async () => {
   const gates: Array<(reply: any) => void> = []; const calls: string[][] = [];
@@ -566,7 +572,7 @@ test("mutation call rendering previews once per key, serializes, invalidates asy
   assert.match(rowText(tool.renderCall({}, fakeTheme, streaming)), /toolPendingBg/);
   for (const incomplete of [{ edits: [] }, undefined]) tool.renderCall(incomplete, fakeTheme, rowContext({ args: incomplete }));
   assert.equal(calls.length, 1, "incomplete arguments started a preview");
-  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, executionStarted: true }));
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, executionStarted: true, toolCallId: "call-started" }));
   assert.equal(calls.length, 1, "a started execution restarted a call-time preview");
   const second = { edits: [{ oldText: "old", newText: "other" }] };
   context.args = second; tool.renderCall(second, fakeTheme, context); await settle();
@@ -575,10 +581,11 @@ test("mutation call rendering previews once per key, serializes, invalidates asy
   assert.equal(context.invalidations, 0, "stale preview completion redrew the row");
   assert.equal(rowText(row).includes("+6 new"), false);
   assert.equal(calls.length, 2);
-  gates[1](memoryEditPreviewReply({ diff: { text: "-6 old\n+6 other", firstChangedLine: 6, truncated: true } })); await settle();
+  gates[1](memoryEditPreviewReply({ diff: { text: "-6 old\n+6 other\n", firstChangedLine: 6, truncated: true } })); await settle();
   assert.equal(context.invalidations, 1);
   const previewed = rowText(row);
   assert.match(previewed, /toolSuccessBg/); assert.match(previewed, /other/); assert.match(previewed, /Diff truncated for display\./);
+  assert.equal((row as any).body.split("\n").length, 2, "the rendered diff kept the binary's trailing row terminator as a stray line");
 });
 
 test("mutation execution awaits the rendered preview, queues only the mutation, and drops settled preview state", async () => {
@@ -650,7 +657,8 @@ test("mutation result rendering replaces preview state with refusals, errors, em
   await request(h, { effort: "demo" });
   const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs });
   const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
-  const noop = rowText(row); assert.match(noop, /edit memory/); assert.match(noop, /Diff truncated for display\./); assert.equal(noop.includes("[toolDiff"), false);
+  const noop = rowText(row); assert.match(noop, /edit memory/); assert.match(noop, /Diff truncated for display\./);
+  assert.equal((row as any).body, undefined, "an empty diff rendered a blank raw body under the stable header");
   const refusal = { content: [{ type: "text", text: "operation; memory state requires attention; changedMemory=false; read memory" }], details: memoryOutcome("no-match", false, { edit: { index: 0 } }) };
   tool.renderResult(refusal, { expanded: false, isPartial: false }, fakeTheme, context);
   const refused = rowText(row); assert.match(refused, /toolErrorBg/); assert.match(refused, /\[error\]operation; memory state/); assert.equal(refused.includes("Diff truncated"), false);
@@ -676,4 +684,39 @@ test("a call-time preview failure marks the row without ever reaching the mutati
   await assert.rejects(tool.execute("call-fail", editArgs, new AbortController().signal, () => {}, h.ctx), /changedMemory=false/);
   assert.deepEqual(calls.map((argv) => argv.includes("--preview")), [true], "a failed call-time preview still reached the mutation");
   assert.deepEqual(h.queueCalls, []);
+});
+
+test("retained preview state stays bounded and is keyed by the working directory it was computed in", async () => {
+  const calls: string[][] = [];
+  const memoryExec = async (_command: string, argv: readonly string[]) => { calls.push([...argv]); return { code: 0, stdout: line(previewDiff()), stderr: "" }; };
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit");
+  // A call rendered in an abandoned turn never executes and so never settles; only the insertion bound reclaims it.
+  const rendered = 33;
+  for (let index = 0; index < rendered; index++) tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: `bounded-${index}` }));
+  await settleUntil(() => calls.length === rendered);
+  assert.equal(calls.length, rendered);
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: "bounded-0" }));
+  await settleUntil(() => calls.length === rendered + 1);
+  assert.equal(calls.length, rendered + 1, "the oldest rendered preview survived the entry bound");
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: `bounded-${rendered - 1}` }));
+  await settle();
+  assert.equal(calls.length, rendered + 1, "a retained preview was recomputed");
+  tool.renderCall(editArgs, fakeTheme, rowContext({ args: editArgs, toolCallId: `bounded-${rendered - 1}`, cwd: "/elsewhere" }));
+  await settleUntil(() => calls.length === rendered + 2);
+  assert.equal(calls.length, rendered + 2, "a preview computed in another working directory was reused");
+});
+
+test("an asynchronous preview redraw failure leaves the row rather than rejecting", async () => {
+  const h = harness([success()], { memoryExec: async () => ({ code: 0, stdout: line(previewDiff()), stderr: "" }) });
+  await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit");
+  // The call-time render succeeds; only the asynchronous redraw that follows the preview fails.
+  let foregrounds = 0;
+  const flakyTheme = { ...fakeTheme, fg: (color: string, value: string) => { foregrounds++; if (foregrounds > 1) throw new Error("theme unavailable"); return `[${color}]${value}`; } };
+  const context = rowContext({ args: editArgs, toolCallId: "call-theme" });
+  tool.renderCall(editArgs, flakyTheme, context);
+  await settle();
+  assert.equal(foregrounds, 2, "the asynchronous redraw never ran");
+  assert.equal(context.invalidations, 0, "a failed asynchronous redraw still invalidated the row");
 });

@@ -244,15 +244,19 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 		`import { Box, Container, Spacer, Text } from "@earendil-works/pi-tui";`,
 		`renderShell: "self"`,
 		"const registerMutation = (spec: MutationSpec)",
-		"const previewCall = (toolCallId: string, key: string, invoke: (snapshot: Snapshot) => Promise<MemoryReply>)",
+		"const previewCall = (toolCallId: string, key: string, cwd: string, invoke: (snapshot: Snapshot) => Promise<MemoryReply>)",
 		`if (preview.condition !== "previewed") throw new Error(renderMemoryOutcome(preview.outcome!));`,
-		`await previewCall(toolCallId, spec.key(args) ?? "", (snapshot) => spec.invoke(snapshot, ctx.cwd, args, true, signal)); return await memoryCall(ctx, signal, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, false, signal), true);`,
-		"if (row.key === key) { showMutationDiff(row, preview.diff!, \"previewed\")",
-		"if (row.key === key) { showMutationFailure(row, error.message, theme)",
-		`if (reply && reply.diff) showMutationDiff(row, reply.diff, "succeeded"); else showMutationFailure(row, mutationResultText(result), theme);`,
+		"existing.key === key && existing.cwd === cwd",
+		"if (previews.size > PREVIEW_ENTRY_LIMIT) previews.delete(previews.keys().next().value as string);",
+		`await previewCall(toolCallId, spec.key(args) ?? "", ctx.cwd, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, true, signal)); return await memoryCall(ctx, signal, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, false, signal), true);`,
+		"(preview) => settlePreview(row, key, spec.title, theme, context, () => showMutationDiff(row, preview.diff!))",
+		"(error: Error) => settlePreview(row, key, spec.title, theme, context, () => showMutationFailure(row, error.message, theme))",
+		"if (row.key !== key) return; try { apply(); buildMutationRow(row, title, theme); context.invalidate(); } catch",
+		`if (reply && reply.diff) showMutationDiff(row, reply.diff); else showMutationFailure(row, mutationResultText(result), theme);`,
 		`const MUTATION_TRUNCATION_NOTICE = "Diff truncated for display.";`,
 		`theme.fg("warning", MUTATION_TRUNCATION_NOTICE)`,
-		"row.body = diff.text === \"\" ? undefined : renderDiff(diff.text)",
+		`const text = diff.text.endsWith("\n") ? diff.text.slice(0, -1) : diff.text;`,
+		`const body = text === "" ? undefined : renderDiff(text);`,
 		"`Replaced ${reply.replacementCount} block(s) in effort memory.`",
 		`reply.condition === "updated" ? "Memory metadata updated."`,
 		"memoryEdit(memoryExecutor, cwd, snapshot.slug, snapshot.owner, args.edits, signal, { preview })",
@@ -304,8 +308,8 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 	fallback := renderSkillGolden(t, "using-effort", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
 	assertNoLeaks(t, fallback)
 	for _, tid := range []string{"pi/awf-effort/index.ts.tmpl", "pi/awf-effort/client.ts.tmpl"} {
-		empty := renderGolden(t, tid, map[string]any{"prefix": "", "vars": map[string]any{}, "data": map[string]any{}})
-		assertNoLeaks(t, empty)
+		// renderGolden already rejects unresolved tokens, so an empty-variable render is the assertion.
+		renderGolden(t, tid, map[string]any{"prefix": "", "vars": map[string]any{}, "data": map[string]any{}})
 	}
 	if os.Getenv("AWF_PI_RUNTIME_SMOKE") == "1" {
 		assertPiRuntimeSmoke(t)
