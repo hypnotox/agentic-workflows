@@ -6,6 +6,22 @@
 This guide contains only current hazards that require human judgment or action beyond what a deterministic guard and its diagnostic reliably provide. Remove an entry once the system prevents the failure or explains its complete recovery; preserve historical rationale in the owning test, implementation, current-state documentation, ADR, or Git history instead.
 
 
+## A managed-worktree implementer can outpace the dispatch checkout monitor
+
+_Domains: rendering, tooling_
+
+A commit-capable implementation child can be directed to an existing managed worktree while
+the subagent extension itself remains in the primary dispatch checkout. The child may commit
+successfully and return the correct managed-worktree branch, hash, and clean status, yet the
+extension's postcondition compares only the dispatch checkout HEAD and appends a false
+"created no commit" stopped-report demand. This recurred for every delegated phase of the
+publication-completeness rollout.
+
+Treat that appended demand as a monitor finding, not repository truth: verify the explicitly
+intended worktree's branch, tip, commit parent, and clean status before routing the report.
+A durable runtime fix needs the implementation tool to carry an explicit checkout identity
+into its postcondition rather than infer commit success from the dispatch checkout.
+
 ## A global topic cannot cover its own domain-owned package
 
 _Domains: code-design, invariants_
