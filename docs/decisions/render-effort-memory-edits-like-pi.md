@@ -56,8 +56,9 @@ rewritten.
    resident, applies the published-result size check, publishes, or reports a prospective memory
    fact. The normal edit and update paths retain their existing validation and publication semantics
    unchanged. In each generated Pi tool, preview success permits normal execution, while any preview
-   refusal or execution failure is surfaced as the tool error and prevents mutation. Normal
-   validation remains authoritative after preview and may still refuse changed state.
+   refusal or preview execution failure is surfaced as the tool error and prevents normal execution.
+   Once normal execution begins, its existing publication and `changedMemory` durability-uncertainty
+   semantics remain authoritative, and normal validation may still refuse changed state.
 
 2. `decision: pi-compatible-memory-display-diff` Use one deterministic Pi-compatible display diff
    for mutation previews and authoritative results: removed and added rows use Pi's numbered `-` and
@@ -73,7 +74,7 @@ rewritten.
    owner-scoped protocol forms; owner-free human forms reject it:
 
    - `awf effort memory edit <slug> --preview --owner <uuid> --json`
-   - `awf effort memory update <slug> [--phase <text>] [--next <text>] --preview --owner <uuid> --json`
+   - `awf effort memory update <slug> (--phase <text> | --next <text> | --phase <text> --next <text>) --preview --owner <uuid> --json`
 
    Edit retains its closed stdin request. A successful edit preview has exactly this protocol-1
    envelope, where `replacementCount` is 1 through 128:
@@ -138,9 +139,8 @@ The protocol gains one success condition across two operation-specific envelopes
 flag on each mutation, the extension gains asynchronous row-local presentation state, and the binary
 gains a direct diff dependency. Changed-row content elision means an extreme line is represented
 faithfully as a changed row but not reproduced in full. Dependency and Pi workflow documentation
-must travel with these changes. The implementation plan must carry layered service, command,
-protocol-client, renderer, and generated-contract regression coverage that backs every updated
-invariant claim.
+must travel with these changes. Every updated invariant claim remains test-backed; the
+implementation plan owns the concrete layered proof transactions.
 
 Legacy preview and canonical edit results may use different line offsets by design because each
 reports the document represented at that moment. No memory format migration is introduced.
