@@ -144,7 +144,9 @@ mutation contracts. Preserve its Origin and Backing and append
 `ADR-render-effort-memory-edits-like-pi` exactly once to `Revised-by`. Update
 `tooling/effort-management:memory-skeleton-purpose-partition` with presentation-only preview,
 normal-validation independence, fail-before-execution behavior, Pi-compatible contextual diff,
-legacy/canonical offsets, complete-row elision, and authoritative update timestamp diff. Preserve its
+legacy/canonical offsets, changed-line content elision, deterministic representative changed-row
+retention, whole changed-row or range replacement with Pi's exact omission row when prefixes exceed
+the bound, `truncated:true` for every omission, and authoritative update timestamp diff. Preserve its
 Origin, prior `Revised-by` order, and Backing, then append this ADR exactly once. Add the direct
 `go-difflib` role to the authored architecture dependency part.
 
@@ -160,8 +162,10 @@ Do not apply the rendering operation and do not append `Implemented`. Obtain the
 mechanically: place a 64-zero lowercase placeholder, run `./x check`, copy only the computed digest
 reported for this ADR, replace the placeholder, and rerun. Run `./x render`, then read back every
 listed authored and generated document. Confirm the rendered CLI, effort-management, and
-architecture prose says preview cannot alter normal validation, update preview omits `updated`, and
-normal update final diff includes the actual timestamp. Confirm the generated client requires the
+architecture prose says preview cannot alter normal validation, update preview omits `updated`,
+normal update final diff includes the actual timestamp, and every bounded diff omission retains
+deterministic representative changed rows, uses Pi's exact omission row for whole changed rows or
+ranges, and sets `truncated:true`. Confirm the generated client requires the
 new normal-update diff without yet exposing preview or custom rendering, and no literal `<no value>`
 appears. Run `./x pi-test run`; it must exit zero against the Phase 1 binary envelope and rendered
 forward-compatible client.
