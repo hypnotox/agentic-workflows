@@ -445,3 +445,14 @@ fix(tooling): bound audit memory (applies audit replay batch)
 Record diagnostic benchmark output, review-driven plan adjustments, implementation deviations, and
 follow-up measurements here. Do not record the unsafe full-range command as required verification;
 run it only later inside operator-provided hard memory isolation.
+
+Phase 5 bounded diagnostic, run once with `GOMEMLIMIT=512MiB` on 2026-08-06 (diagnostic only, not a gate):
+
+```text
+BenchmarkAuditHistoryCodeOnly50-12                 1  12816078 ns/op       50.00 commits  1.000 heavy-frontier    7489616 B/op    88470 allocs/op
+BenchmarkAuditHistoryCodeOnly200-12                1  71178141 ns/op      200.0 commits  1.000 heavy-frontier   69034544 B/op   799483 allocs/op
+BenchmarkAuditHistoryAuthorityHeavy50-12           1  63819883 ns/op       50.00 commits  2.000 heavy-frontier   50914832 B/op   470880 allocs/op
+BenchmarkAuditHistoryAuthorityHeavy200-12          1 565322210 ns/op      200.0 commits  2.000 heavy-frontier  603623984 B/op  5125217 allocs/op
+BenchmarkAuditHistoryMergeHeavy50-12               1  14851954 ns/op       51.00 commits  3.000 heavy-frontier    7102672 B/op    82178 allocs/op
+PASS
+```

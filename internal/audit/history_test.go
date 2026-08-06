@@ -136,6 +136,37 @@ func TestHistoryOperationPreResolvesRecursiveAliasesAndFrontier(t *testing.T) {
 	}
 }
 
+func TestHistoryOperationAliasHistoryLengthKeepsTheSameHeavyFrontier(t *testing.T) {
+	for _, length := range []int{1, 32} {
+		t.Run(strconv.Itoa(length), func(t *testing.T) {
+			root := &revisionState{lockReady: true, configReady: true, config: &config.Config{DocsDir: "docs"}}
+			root.loadUniverse = func() (currentstate.Universe, error) { return currentstate.Universe{}, nil }
+			commits := make([]replayCommit, 0, length+1)
+			commits = append(commits, replayCommit{Hash: "root", Revision: "00-root"})
+			parent := "00-root"
+			for i := range length {
+				revision := fmt.Sprintf("%02d-alias", i+1)
+				commits = append(commits, replayCommit{Hash: revision, Revision: revision, Parents: []string{parent}, Paths: []string{"internal/code.go"}})
+				parent = revision
+			}
+			loads := 0
+			op := newHistoryOperationFromCompact(commits, nil, len(commits), func(_ context.Context, revision string) (*revisionState, error) {
+				loads++
+				if revision != "00-root" {
+					return nil, fmt.Errorf("unexpected distinct alias load %s", revision)
+				}
+				return root, nil
+			}, func(context.Context, string) ([]string, error) { return nil, nil }, func(context.Context) ([]Finding, error) { return nil, nil })
+			if _, err := op.run(testContext(t)); err != nil {
+				t.Fatal(err)
+			}
+			if loads != 1 || op.store.highWaterHeavy != 1 || op.store.currentHeavy != 0 {
+				t.Fatalf("alias length %d loads=%d high-water=%d current=%d, want 1, 1, 0", length, loads, op.store.highWaterHeavy, op.store.currentHeavy)
+			}
+		})
+	}
+}
+
 func TestHistoryOwnershipPlanningPropagatesNestedMergeCancellation(t *testing.T) {
 	boom := context.Canceled
 	for _, tc := range []struct {
@@ -652,7 +683,6 @@ func newHistoryOperationWithRelevance(commits []awfgit.Commit, _ Inputs, load re
 	return newHistoryOperationFromCompact(compact, evaluator.findings(), len(compact), load, paths, live)
 }
 
-// invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationCollectsRangeOnceAndCachesStates)
 func TestHistoryOperationCollectsRangeOnceAndCachesStates(t *testing.T) {
 	ctx := testContext(t)
 	commits := []awfgit.Commit{{Hash: "child", Revision: "child-revision", Subject: "feat(awf): child", Parents: []string{"outside-revision"}}}
@@ -1202,8 +1232,8 @@ func TestLoadCompleteRevisionPropagatesCommittedTreeFailure(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay)
-func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T) {
+// invariant: tooling/audit-and-snapshots:audit-history-operation-owned (TestHistoryOperationStreamsAndReleasesFinalConsumers)
+func TestHistoryOperationStreamsAndReleasesFinalConsumers(t *testing.T) {
 	ctx := testContext(t)
 	source := []byte(staleADR(adr.CurrentStateV1, "0001"))
 	record, err := adr.ParseRecord("0001-old.md", source)
@@ -1219,8 +1249,17 @@ func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T
 		"first":    fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, first),
 		"incoming": fixedRevisionState(&manifest.Lock{SchemaVersion: 31}, true, withRecord),
 	}
+	states["first"].configReady = true
+	states["first"].config = &config.Config{DocsDir: "docs"}
+	for _, state := range states {
+		universe := state.universe
+		state.universe = currentstate.Universe{}
+		state.universeReady = false
+		state.loadUniverse = func() (currentstate.Universe, error) { return universe, nil }
+	}
 	commits := []awfgit.Commit{
 		{Hash: "pure", Revision: "ordinary", Subject: "not conventional"},
+		{Hash: "alias", Revision: "irrelevant", Subject: "feat(awf): irrelevant", Parents: []string{"first"}, Changes: []awfgit.FileChange{{Path: "internal/code.go"}}},
 		{Hash: "merge", Revision: "result", Subject: "Merge feature", Message: "Merge feature", Parents: []string{"first", "incoming"}, IsMerge: true},
 	}
 	loads := map[string]int{}
@@ -1232,13 +1271,33 @@ func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T
 		}
 		return state, nil
 	}
-	liveCalls := 0
-	op, err := newHistoryOperation(ctx, "base", "head", Inputs{},
-		func(context.Context, string, string) ([]awfgit.Commit, error) { return commits, nil },
+	liveCalls, walks, richLive, maxRich := 0, 0, 0, 0
+	op, err := newStreamingHistoryOperation(ctx, "base", "head", Inputs{},
+		func(_ context.Context, base, head string, visit func(awfgit.Commit) error) (int, error) {
+			walks++
+			if base != "base" || head != "head" {
+				t.Fatalf("stream range = %q..%q", base, head)
+			}
+			for _, commit := range commits {
+				richLive++
+				maxRich = max(maxRich, richLive)
+				if err := visit(commit); err != nil {
+					return 0, err
+				}
+				richLive--
+			}
+			return len(commits), nil
+		},
 		load,
-		nil,
+		func(context.Context, string) ([]string, error) { return []string{".awf/config.yaml"}, nil },
 		func(context.Context) ([]Finding, error) {
 			liveCalls++
+			if states["result"].universe.Sources != nil {
+				t.Fatal("merge result source evidence survived its final stale consumer")
+			}
+			if states["result"].universe.ADRs != nil || states["result"].universe.Topics != nil {
+				t.Fatal("merge result universe survived its final heavy consumer")
+			}
 			return []Finding{{Severity: severity.Error, Rule: "live-cleanliness"}}, nil
 		})
 	if err != nil {
@@ -1252,7 +1311,7 @@ func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T
 	for i, finding := range findings {
 		gotRules[i] = finding.Rule
 	}
-	want := "conventional-commits,stale-merge-authorization,live-cleanliness,current-state-transition"
+	want := "conventional-commits,stale-merge-authorization,live-cleanliness,current-state-transition,current-state-transition"
 	if got := strings.Join(gotRules, ","); got != want {
 		t.Fatalf("finding order = %s, want %s; findings=%#v", got, want, findings)
 	}
@@ -1260,6 +1319,15 @@ func TestHistoryOperationSharesStatesAcrossTransitionAndStaleReplay(t *testing.T
 		if loads[revision] != 1 {
 			t.Fatalf("loads[%s] = %d, want 1", revision, loads[revision])
 		}
+	}
+	if loads["irrelevant"] != 0 {
+		t.Fatalf("irrelevant alias loaded a distinct state: %#v", loads)
+	}
+	if walks != 1 || maxRich != 1 || richLive != 0 || op.visited != len(commits) {
+		t.Fatalf("stream ownership walks=%d max-rich=%d current-rich=%d visited=%d", walks, maxRich, richLive, op.visited)
+	}
+	if op.store.currentHeavy != 0 || op.store.highWaterHeavy == 0 || len(op.store.keys) != 0 || len(op.store.entries) != 0 {
+		t.Fatalf("terminal heavy ownership current=%d high-water=%d keys=%d entries=%d", op.store.currentHeavy, op.store.highWaterHeavy, len(op.store.keys), len(op.store.entries))
 	}
 	if liveCalls != 1 {
 		t.Fatalf("live calls = %d, want 1", liveCalls)

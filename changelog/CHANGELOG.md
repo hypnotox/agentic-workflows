@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Bug fixes
+
+- Historical audit now streams range evidence once and releases consumed historical authority state after its final consumer, preventing long authority-heavy audits from exhausting memory.
+
 ## [0.30.0] - 2026-08-05
 
 ### Features
