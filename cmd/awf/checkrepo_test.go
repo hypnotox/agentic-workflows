@@ -358,20 +358,34 @@ func assertRepoCheckProductionWiring(t *testing.T) {
 func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	cfg := &config.Config{}
 	p := &project.Project{Root: "oversized-guide-project", Cfg: cfg}
-	counts := &repoCheckCounters{}
 	advisory := "AGENTS.md is 12289 bytes, allowed 12288 bytes; see docs/agents-md-standard.md"
+	runAggregate := func(t *testing.T, notes []string) string {
+		t.Helper()
+		counts := &repoCheckCounters{}
+		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: notes}, project.CurrentStateReport{}, nil, counts)
+		var out bytes.Buffer
+		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
+			t.Fatalf("warning-only aggregate error: %v", err)
+		}
+		return out.String()
+	}
+
+	t.Run("size advisory is the only finding", func(t *testing.T) {
+		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 1 warnings\n\nfindings:\n  warnings:\n    advisory | " + advisory + "\n"
+		if got := runAggregate(t, []string{advisory}); got != want {
+			t.Fatalf("aggregate output = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("production note order is preserved", func(t *testing.T) {
+		want := "status: warnings\n\nsummary:\n  findings: 0 errors, 2 warnings\n\nfindings:\n  warnings:\n    advisory | ordinary-advisory\n    advisory | " + advisory + "\n"
+		if got := runAggregate(t, []string{"ordinary-advisory", advisory}); got != want {
+			t.Fatalf("aggregate output = %q, want %q", got, want)
+		}
+	})
+
+	counts := &repoCheckCounters{}
 	deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"ordinary-advisory", advisory}}, project.CurrentStateReport{}, nil, counts)
-
-	var aggregate bytes.Buffer
-	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &aggregate, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
-		t.Fatalf("warning-only aggregate error: %v", err)
-	}
-	if got := aggregate.String(); !strings.Contains(got, "status: warnings") || !strings.Contains(got, "advisory | "+advisory) || strings.Index(got, "ordinary-advisory") > strings.Index(got, advisory) {
-		t.Fatalf("aggregate output = %q", got)
-	}
-
-	counts = &repoCheckCounters{}
-	deps = repoCheckTestDependencies(t, cfg, p, project.CheckReport{Notes: []string{"ordinary-advisory", advisory}}, project.CurrentStateReport{}, nil, counts)
 	var direct bytes.Buffer
 	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &direct, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps); err != nil {
 		t.Fatalf("direct drift error: %v", err)

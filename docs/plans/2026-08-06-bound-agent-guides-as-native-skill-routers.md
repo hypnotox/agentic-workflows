@@ -289,6 +289,9 @@ feat(rendering): warn on oversized agent guides (applies ADR batch)
   the boundary and local exclusions passed. After implementation, the same focused command passed.
   The deterministic expected guide is measured at 12 KiB plus one byte in the fixture; missing and
   stale resident files retain its one aggregate note. Deviations: none.
+- Phase 3 review added an advisory-only aggregate presentation case, exact multi-note presentation
+  ordering, and a `Project.CheckReport` assertion that ordinary advisories precede the generated
+  guide-size advisory.
 
 Record deviations, rendered-size measurements, prose-disposition findings, review findings, and any
 implementation fact that invalidates an approved bound or canonical-home assumption. Do not relax a
