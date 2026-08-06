@@ -51,47 +51,83 @@ resolution story a repository whose owner installs awf deliberately needs.
 2. `decision: retire-bootstrap-outputs` The `bootstrap` config block, both rendered outputs
    (`.awf/bootstrap.sh` and `.awf/upgrade.sh`), and their templates are retired. No rendered output
    path is either file, no bootstrap or upgrade template remains in the embedded template set, and
-   the residue-scan exemption list no longer names either template. The negative is stated as a
-   claim rather than left provable only by absence, because three surviving claims currently
-   reference those files by name.
+   the residue-scan exemption list no longer names either template. A tree still carrying
+   `bootstrap` is rejected by strict parsing rather than honoured, on the same footing as the
+   house-standard record's retired keys, with the schema generation in item 4 as the repair path.
 
 3. `decision: wrapper-resolution-narrows` The rendered `./awf` wrapper resolves the configured
    `awfInvokeCmd` and otherwise a PATH `awf`. The pinned-binary-first arm, which existed only to
-   prefer whatever the installer had fetched, is retired with the installer.
+   prefer whatever the installer had fetched, is retired with the installer, so the claim naming
+   that resolution order is replaced rather than rewritten.
 
 4. `decision: bootstrap-key-migration` A schema generation removes the `bootstrap` block from a
    config tree, announcing the removal, leaving every surviving key, value, comment and key order
-   byte-intact. Because the block is a leaf whose removal empties it, the block is dropped rather
-   than left as an empty mapping. A repository that carried a rendered installer keeps the file on
-   disk as an untracked leftover rather than having it deleted underneath it; the lock stops
-   claiming the path, so the next sync reports it as an unmanaged file rather than as drift.
+   byte-intact, and dropping the emptied block. The generation-5 step that writes
+   `bootstrap.enabled` stays frozen, continuing to operate on the tree shape of its own generation
+   under the house-standard record's freeze rule; a single upgrade run may therefore announce
+   adding the key and then removing it. A previously rendered installer is deleted by the ordinary
+   lock prune on the next sync, like any other retired rendered output, rather than by the
+   migration.
+
+5. `decision: bootstrap-key-forward-ported` The `bootstrap` key is registered for unconditional
+   stripping from historical config bytes before the strict decoder sees them, mirroring the
+   mechanism the house-standard record establishes for its own keys and carrying its own claim
+   because a pending record's claim does not yet exist to update. This checkout's committed
+   configuration carries `bootstrap`, so without the registration every audit or staged check over
+   a range predating this record would fail on configuration it is only reading.
 
 ## State changes
 
-- add `rendering/companion-scripts:no-bootstrap-outputs`
+- add `rendering/singletons-and-payloads:no-bootstrap-outputs`
+- add `rendering/templates:no-bootstrap-templates`
+- add `rendering/companion-scripts:runner-resolution-invoke-then-path`
 - add `rendering/sync-and-drift:residue-exemptions-pinned-one`
 - add `config/migrations-and-locks:bootstrap-key-dropped`
+- add `config/migrations-and-locks:bootstrap-key-forward-ported`
 - remove `rendering/singletons-and-payloads:bootstrap-config-tree-path`
 - remove `rendering/singletons-and-payloads:bootstrap-two-files`
 - remove `rendering/companion-scripts:bootstrap-checksum`
 - remove `rendering/companion-scripts:bootstrap-env-override`
 - remove `rendering/companion-scripts:bootstrap-local-first`
 - remove `rendering/companion-scripts:bootstrap-stdout-path-only`
+- remove `rendering/companion-scripts:runner-resolution-pinned-first`
 - remove `rendering/companion-scripts:upgrade-delegates-fetch`
 - remove `rendering/companion-scripts:upgrade-exec-final`
 - remove `rendering/sync-and-drift:residue-exemptions-pinned-three`
-- update `rendering/companion-scripts:runner-resolution-pinned-first`
 
 ## Consequences
 
-Eight claims retire and the `rendering/companion-scripts` topic loses two thirds of its content,
-leaving the runner wrapper and the hook payloads. The topic's description and intro, which name
-bootstrap, need rewriting; whether the remaining claims justify a topic of their own or belong with
-the payloads is a shape question this record does not settle.
+Ten claims retire and `rendering/companion-scripts` loses half its content, leaving the runner
+wrapper and the hook payloads. Both that topic and `rendering/singletons-and-payloads` name
+bootstrap in their summary and intro, so both narratives need rewriting; whether the remaining
+companion-scripts claims justify a topic of their own or belong with the payloads is a shape
+question this record does not settle.
 
-The residue-exemption set drops from three templates to one. Its claim id names the count, so the
-rename goes through a remove plus an add rather than an update, and the surviving exemption is the
-agents-doc template alone.
+Two claim ids name what this record retires, so both go through a remove plus an add rather than an
+update: `residue-exemptions-pinned-three` names a count that becomes one, and
+`runner-resolution-pinned-first` names a resolution arm that ceases to exist. Minting the negative
+output claims is deliberate rather than redundant, because an absence that nothing asserts is
+invisible to the closed-tree and residue checks; after this record no surviving claim mentions
+either file by name.
+
+A previously rendered installer is deleted on the next sync. That is the ordinary prune path for
+any output that leaves the plan, and it is the right outcome: a retained file would fail
+`awf check` as orphaned drift, since an unclaimed path under `.awf/` is a failing finding rather
+than a tolerated leftover. The file is git-tracked in the repositories served, so the deletion is
+recoverable. What this record rules out is the migration deleting it, which would put a shell-script
+removal in a config editor.
+
+Six shipped documents carry installer prose that becomes false, all of it template- or
+descriptor-sourced: the glossary's upgrade-porcelain vocabulary entry, the working-with-awf upgrade
+procedure, the workflow doc's CI acquisition recipe, the releasing doc's tamper posture (whose
+integrity story is half the bootstrap's checksum verification, ADR-0079, and which reduces to the
+published checksums file alone), and the `awfInvokeCmd` catalog var descriptor, whose description
+still says the empty value resolves the bootstrap-pinned binary and which the configspec derivation
+requires to match verbatim. The file-by-file edits belong to the plan.
+
+The `enable`, `disable` and `list` arms for the nameless `bootstrap` singleton kind read the config
+field this record removes, so they must change in the same compilation unit. The CLI-grammar record
+owns that grammar and retires those arms; the two records must land in the same release.
 
 Nothing changes for this repository operationally, because it already declines bootstrap and
 invokes awf from source. The change is felt only by a repository that had the installer rendered:
@@ -115,8 +151,9 @@ for gated commands, so nothing that enforced correctness rested on the pin.
 | Hardwire `bootstrap` always-on, as the house-standard record does for other preferences | Renders a self-pinning downloader for a released awf inside the repository that produces awf, re-pinned on every version bump. |
 | Keep `bootstrap.enabled` as the one surviving behaviour toggle | It is a preference about awf's own behaviour, exactly what the house-standard record's admission test excludes; keeping it re-opens the category for one case. |
 | Keep the installer but drop the `upgrade.sh` porcelain | Leaves the whole download-and-verify surface for the sake of a script whose only caller is the porcelain being removed. |
+| Retire the rendered artifacts but keep the capability elsewhere, as a documented install snippet or an `awf bootstrap` subcommand | Under the house-standard premise the acquisition audience is the owner, for whom building from source and a PATH binary already answer it; a second documented mechanism buys nothing. |
 | Retire the outputs but keep the templates embedded for later | An embedded template no output plan references is residue the closed-tree checks exist to catch. |
-| Have the migration delete a previously rendered `.awf/bootstrap.sh` | awf deleting a shell script from a repository it does not own the history of is a worse failure mode than leaving an untracked file the owner can remove. |
+| Exempt a previously rendered installer from prune, or back it up like the co-owned runner | The runner exemption exists because an adopter hand-authored content inside it; nobody edits a generated installer, and an exempted file would then fail the orphaned-drift check instead. |
 
 ## Status history
 
