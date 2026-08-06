@@ -111,7 +111,7 @@ Completes: ["template-source-embed-parity"]
 ### Task 2.1: Add source-to-embed file-set parity
 Latitude: exact
 Applying: ["derive-publication-completeness-from-source-authorities:source-derived-publication-completeness"]
-Paths: ["templates/embed_test.go", "templates/embed.go"]
+Paths: ["templates/embed_test.go"]
 
 Establish the phase baseline before editing: `git status --short` produces no output, `./x check`
 reports zero findings, and `./x gate` exits zero.
@@ -129,8 +129,12 @@ not supplied. The source-only new-directory case is the durable negative proof: 
 test to report the exact `missing from embed` path from test-owned filesystems, with no repository
 mutation. Add the real repository parity test and mark it as the proof for the new
 `rendering/templates:source-embed-parity` claim. Run
-`go test ./templates -run 'Test(SourceEmbed|TemplateFile)'` and require success. Do not change
-`templates/embed.go` unless the proof reveals a real current mismatch.
+`go test ./templates -run 'Test(SourceEmbed|TemplateFile)'` and require success. Keep the explicit
+compile-time patterns in `templates/embed.go` unchanged: they remain the Go embedding mechanism, not
+a second unchecked authority, because the exact source-to-embedded file-set test fails whenever a
+pattern omits a new directory, ordinary file, dot-prefixed file, or underscore-prefixed file. Do not
+replace them with a package-wide wildcard that would embed root Go source and test files, and do not
+move the template tree under a new common root.
 
 ### Task 2.2: Apply template parity authority and retire its pitfall
 Latitude: exact
