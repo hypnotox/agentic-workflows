@@ -416,6 +416,7 @@ feat(rendering): back memory tools (applies memory tools batch)
   rendering, documentation, and proof gaps. Phase 3 required settlement commit `78547685` for stale
   protocol prose and stronger behavioral contract proof. Terminal review settlement `ae01f445`
   hardened duplicate-key decoding, operation-specific bounds, first-cause preservation, behavioral
-  proof execution, and this deviation ledger; its verify-directed follow-up consolidated the complete
-  `using-effort-skill` claim under one proving unit. Each settlement remained a focused follow-up to
-  its reviewed phase commit rather than rewriting an integrated transaction.
+  proof execution, and this deviation ledger. Verify-directed follow-ups `ae22d70c`, `4d74a99c`, and
+  `f6035a07` consolidated the complete `using-effort-skill` claim under one proving unit, then added
+  its negative-render, non-selectability, and exact guidance proofs. Each settlement remained a
+  focused follow-up to its reviewed phase commit rather than rewriting an integrated transaction.

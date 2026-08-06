@@ -187,7 +187,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			usingEffort = file.Content
 		}
 	}
-	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "`.awf/efforts/<slug>/memory.md`", "when present", "`.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read`", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
+	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
 		if !strings.Contains(usingEffort, want) {
 			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
 		}
