@@ -3,6 +3,7 @@
 
 - [ADR-house-standard-configuration-expresses-repo-facts-only: House Standard: Configuration Expresses Repo Facts Only](house-standard-configuration-expresses-repo-facts-only.md) (Proposed)
 - [ADR-retire-the-bootstrap-installer: Retire The Bootstrap Installer](retire-the-bootstrap-installer.md) (Proposed)
+- [ADR-unconditional-gates-and-audit-rules: Unconditional Gates And Audit Rules](unconditional-gates-and-audit-rules.md) (Proposed)
 
 ## History
 
