@@ -331,3 +331,6 @@ Inline owners immediately correct stale instructions and record reasoned deviati
 owners may report rather than edit; the parent supplies the report to phase review and reconciles it
 with findings in one focused post-review settlement commit before checkpointing or later execution.
 Record deviations, spike answers, follow-ups, and findings surfaced during implementation.
+
+- Phase 1 implementation ownership returned dirty after the delegated owner reached the coverage gate without a closing commit. The parent retained the staged transaction, corrected incomplete bounded-row behavior and preview proof coverage, restored the 100% gate, and created the declared phase commit under the dirty-owner recovery rule.
+- Phase 1 review found metadata-like body rows, final-newline identity, omission truncation, proof markers, safe-repair preview coverage, and the adopter changelog missing or incomplete. The settlement targets metadata positions only, preserves terminator identity in matching, marks every omission truncated, strengthens invariant proofs, and adds the required Unreleased feature entry.

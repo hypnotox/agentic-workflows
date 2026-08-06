@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 )
 
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryDisplayDiffUsesPiRows)
 func TestMemoryDisplayDiffUsesPiRows(t *testing.T) {
 	diff := memoryDiff([]byte("one\ntwo\nthree\n"), []byte("one\nTWO\nthree\n"), 6)
 	if diff.Text != " 7 one\n-8 two\n+8 TWO\n 9 three\n" || diff.FirstChangedLine == nil || *diff.FirstChangedLine != 8 || diff.Truncated {
@@ -23,9 +24,11 @@ func TestMemoryDisplayDiffUsesPiRows(t *testing.T) {
 		{"one\ntwo\n", "one\n"},
 		{"a\nold\nz\n", "a\nnew\nz\n"},
 		{"a\r\nold\r\nz", "a\r\nnew\r\nz"},
+		{"final", "final\n"},
+		{"final\n", "final"},
 	} {
 		got := memoryDiff([]byte(change.before), []byte(change.after), 0)
-		if got.Text == "" || got.FirstChangedLine == nil || strings.Contains(got.Text, "\r") {
+		if got.Text == "" || got.FirstChangedLine == nil || *got.FirstChangedLine < 1 || strings.Contains(got.Text, "\r") {
 			t.Fatalf("display diff=%#v", got)
 		}
 	}
@@ -33,7 +36,7 @@ func TestMemoryDisplayDiffUsesPiRows(t *testing.T) {
 	before := "old\n" + strings.Repeat("context\n", 12) + "tail old\n"
 	after := "new\n" + strings.Repeat("context\n", 12) + "tail new\n"
 	separated := memoryDiff([]byte(before), []byte(after), 0)
-	if strings.Count(separated.Text, omissionDisplayRow(2)+"\n") != 1 || separated.Truncated {
+	if strings.Count(separated.Text, omissionDisplayRow(2)+"\n") != 1 || !separated.Truncated {
 		t.Fatalf("separated diff=%#v", separated)
 	}
 }
@@ -80,6 +83,7 @@ func TestMemoryDisplayDiffBoundsCompleteRows(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition (TestMemoryPreviewDoesNotPublishOrClock)
 func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	root := initEffortRepo(t)
 	calls := 0
@@ -114,6 +118,12 @@ func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	if noChange.Text != "" || noChange.FirstChangedLine != nil {
 		t.Fatalf("no change diff=%#v", noChange)
 	}
+	canonicalWithMetadataLikeBody := []byte("---\neffort: preview\nphase: old phase\nnext: old next\nupdated: \"2026-08-06T12:00:00Z\"\n---\nphase: body phase\nnext: body next\n")
+	bodySafe := updatePreviewDiff(canonicalWithMetadataLikeBody, MemoryUpdate{Phase: &phase, Next: &next}, MemoryMetadata{Phase: "old phase", Next: "old next"}, false)
+	if strings.Contains(bodySafe.Text, "+7 phase: next phase") || strings.Contains(bodySafe.Text, "+8 next: next action") {
+		t.Fatalf("preview rewrote body metadata lookalikes: %#v", bodySafe)
+	}
+
 	legacyRaw := []byte("Effort: preview\nPhase: old phase\nNext: old next\nUpdated: Not yet updated.\n\nold body")
 	legacy := updatePreviewDiff(legacyRaw, MemoryUpdate{Next: &next}, MemoryMetadata{Phase: "old phase", Next: "old next"}, true)
 	if legacy.FirstChangedLine == nil || *legacy.FirstChangedLine != 3 || !strings.Contains(legacy.Text, "-3 Next: old next") || !strings.Contains(legacy.Text, "+3 Next: next action") || strings.Contains(legacy.Text, "+4 Updated:") || strings.Contains(legacy.Text, "-4 Updated:") {
@@ -143,7 +153,7 @@ func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 		t.Fatalf("oversized normal result=%#v err=%v", largeResult, err)
 	}
 
-	invalidRaw := []byte("---\neffort: preview\nphase: \"\"\nnext: \"\"\nupdated: bad\n---\nbody")
+	invalidRaw := []byte("---\neffort: preview\nphase: \"\"\nnext: \"\"\nupdated: \"2026-08-06T12:00:00Z\"\n---\nbody")
 	if err := os.WriteFile(path, invalidRaw, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -151,10 +161,25 @@ func TestMemoryPreviewDoesNotPublishOrClock(t *testing.T) {
 	if err != nil || got.Condition != MemoryInvalid {
 		t.Fatalf("unsafe repair preview=%#v err=%v", got, err)
 	}
+	beforeRepair, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clockBeforeRepair := calls
+	repairPreview, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &phase, Next: &next}, Preview: true})
+	afterRepairPreview, readErr := os.ReadFile(path)
+	if err != nil || readErr != nil || repairPreview.Condition != MemoryPreviewed || !bytes.Equal(beforeRepair, afterRepairPreview) || calls != clockBeforeRepair || !strings.Contains(repairPreview.Diff.Text, "+3 phase: next phase") || !strings.Contains(repairPreview.Diff.Text, "+4 next: next action") {
+		t.Fatalf("safe repair preview=%#v err=%v readErr=%v published=%t clocks=%d", repairPreview, err, readErr, !bytes.Equal(beforeRepair, afterRepairPreview), calls-clockBeforeRepair)
+	}
+	repaired, err := service.Memory(MemoryUpdateInput{Slug: "preview", Update: MemoryUpdate{Phase: &phase, Next: &next}})
+	if err != nil || repaired.Condition != MemoryUpdated || !strings.Contains(repaired.Diff.Text, "+3 phase: next phase") || !strings.Contains(repaired.Diff.Text, "+4 next: next action") || !strings.Contains(repaired.Diff.Text, "updated:") {
+		t.Fatalf("safe repair result=%#v diff=%q err=%v", repaired, repaired.Diff.Text, err)
+	}
 }
 
 func beforePhase(raw []byte) string {
-	for _, line := range displayLines(raw) {
+	for _, rawLine := range diffLines(raw) {
+		line := displayLine(rawLine)
 		if strings.HasPrefix(line, "phase: ") {
 			return strings.TrimPrefix(line, "phase: ")
 		}
@@ -168,7 +193,10 @@ func TestMemoryOperationsReadEditAndUpdateCanonicalResident(t *testing.T) {
 	now := time.Date(2026, 8, 5, 14, 15, 16, 123456789, time.UTC)
 	clockCalls := 0
 	service := openTestService(t, root, func(deps *Dependencies) {
-		deps.Clock = func() time.Time { clockCalls++; return now }
+		deps.Clock = func() time.Time {
+			clockCalls++
+			return now.Add(time.Duration(clockCalls-1) * time.Second)
+		}
 	})
 	if _, err := service.New(testContext(t), NewInput{Slug: "memory-ops", Title: "Memory operations"}); err != nil {
 		t.Fatal(err)
@@ -215,9 +243,10 @@ func TestMemoryOperationsReadEditAndUpdateCanonicalResident(t *testing.T) {
 	}
 
 	phase, next := "repaired phase", "repaired next"
+	updateTime := now.Add(time.Second)
 	updated, err := service.Memory(MemoryUpdateInput{Slug: "memory-ops", Update: MemoryUpdate{Phase: &phase, Next: &next}})
-	if err != nil || updated.Condition != MemoryUpdated || updated.Memory.Phase != phase || updated.Memory.Next != next || updated.Memory.Updated != now.Format(time.RFC3339Nano) {
-		t.Fatalf("updated=%#v err=%v", updated, err)
+	if err != nil || updated.Condition != MemoryUpdated || updated.Memory.Phase != phase || updated.Memory.Next != next || updated.Memory.Updated != updateTime.Format(time.RFC3339Nano) || updated.Diff == nil || !strings.Contains(updated.Diff.Text, "-5 updated:") || !strings.Contains(updated.Diff.Text, "+5 updated:") || !strings.Contains(updated.Diff.Text, updateTime.Format(time.RFC3339Nano)) {
+		t.Fatalf("updated=%#v diff=%q err=%v", updated, updated.Diff.Text, err)
 	}
 	if clockCalls != 2 {
 		t.Fatalf("total clock calls = %d", clockCalls)

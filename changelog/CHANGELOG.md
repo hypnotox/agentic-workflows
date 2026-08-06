@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Owner-scoped Pi effort-memory edits and metadata updates now expose binary-authored read-only previews and authoritative bounded contextual diffs. Preview failures stop mutation, while normal validation and publication semantics remain unchanged.
+
 ## [0.31.0] - 2026-08-06
 
 ### Features

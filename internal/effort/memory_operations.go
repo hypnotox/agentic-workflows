@@ -356,7 +356,7 @@ func (s *Service) UpdateMemory(input MemoryUpdateInput) (MemoryOperationResult, 
 	if err := s.store.replaceMemory(s.paths.memoryFile(input.Slug), encoded); err != nil {
 		return memoryFailure(err), nil
 	}
-	diff := memoryDiff(raw, encoded, 1)
+	diff := memoryDiff(raw, encoded, 0)
 	return MemoryOperationResult{Condition: MemoryUpdated, Memory: &metadata, Diff: &diff}, nil
 }
 
@@ -507,20 +507,22 @@ func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 	if bytes.Equal(before, after) {
 		return MemoryDiff{}
 	}
-	oldLines, newLines := displayLines(before), displayLines(after)
+	oldLines, newLines := diffLines(before), diffLines(after)
 	groups := difflib.NewMatcher(oldLines, newLines).GetGroupedOpCodes(4)
 	width := len(strconv.Itoa(max(len(oldLines), len(newLines)) + lineOffset))
 	var rows []displayDiffRow
 	first := 0
+	contextOmitted := false
 	for groupIndex, group := range groups {
 		if groupIndex > 0 {
 			rows = append(rows, displayDiffRow{text: omissionDisplayRow(width)})
+			contextOmitted = true
 		}
 		for _, code := range group {
 			switch code.Tag {
 			case 'e':
 				for i := code.I1; i < code.I2; i++ {
-					rows = append(rows, displayDiffRow{text: displayRow(' ', i+lineOffset+1, width, oldLines[i])})
+					rows = append(rows, displayDiffRow{text: displayRow(' ', i+lineOffset+1, width, displayLine(oldLines[i]))})
 				}
 			case 'd':
 				for i := code.I1; i < code.I2; i++ {
@@ -528,7 +530,7 @@ func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 					if first == 0 {
 						first = n
 					}
-					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, oldLines[i]), changed: true})
+					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, displayLine(oldLines[i])), changed: true})
 				}
 			case 'i':
 				for i := code.J1; i < code.J2; i++ {
@@ -536,7 +538,7 @@ func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 					if first == 0 {
 						first = n
 					}
-					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, newLines[i]), changed: true})
+					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, displayLine(newLines[i])), changed: true})
 				}
 			case 'r':
 				for i := code.I1; i < code.I2; i++ {
@@ -544,30 +546,34 @@ func memoryDiff(before, after []byte, lineOffset int) MemoryDiff {
 					if first == 0 {
 						first = n
 					}
-					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, oldLines[i]), changed: true})
+					rows = append(rows, displayDiffRow{text: displayRow('-', n, width, displayLine(oldLines[i])), changed: true})
 				}
 				for i := code.J1; i < code.J2; i++ {
 					n := i + lineOffset + 1
-					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, newLines[i]), changed: true})
+					rows = append(rows, displayDiffRow{text: displayRow('+', n, width, displayLine(newLines[i])), changed: true})
 				}
 			}
 		}
 	}
 	text, truncated := boundedDisplayRows(rows, width)
-	return MemoryDiff{Text: text, FirstChangedLine: &first, Truncated: truncated}
+	return MemoryDiff{Text: text, FirstChangedLine: &first, Truncated: truncated || contextOmitted}
 }
 
-func displayLines(raw []byte) []string {
+func diffLines(raw []byte) []string {
 	lines := completeLines(raw)
 	out := make([]string, len(lines))
 	for i, line := range lines {
-		text := strings.TrimSuffix(string(line), "\n")
-		if len(line) > 0 && line[len(line)-1] == '\n' {
-			text = strings.TrimSuffix(text, "\r")
-		}
-		out[i] = text
+		out[i] = string(line)
 	}
 	return out
+}
+
+func displayLine(line string) string {
+	text := strings.TrimSuffix(line, "\n")
+	if len(line) > 0 && line[len(line)-1] == '\n' {
+		text = strings.TrimSuffix(text, "\r")
+	}
+	return text
 }
 
 func displayRow(kind byte, line, width int, content string) string {
@@ -676,15 +682,19 @@ func updatePreviewDiff(raw []byte, update MemoryUpdate, metadata MemoryMetadata,
 	if legacy {
 		phaseKey, nextKey = "Phase:", "Next:"
 	}
+	phaseLine, nextLine := 2, 3
+	if legacy {
+		phaseLine, nextLine = 1, 2
+	}
 	lines := completeLines(raw)
 	after := make([]byte, 0, len(raw))
-	for _, line := range lines {
+	for index, line := range lines {
 		text := strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r")
 		ending := string(line[len(text):])
 		switch {
-		case update.Phase != nil && strings.HasPrefix(text, phaseKey) && *update.Phase != metadata.Phase:
+		case index == phaseLine && update.Phase != nil && strings.HasPrefix(text, phaseKey) && *update.Phase != metadata.Phase:
 			text = phaseKey + " " + *update.Phase
-		case update.Next != nil && strings.HasPrefix(text, nextKey) && *update.Next != metadata.Next:
+		case index == nextLine && update.Next != nil && strings.HasPrefix(text, nextKey) && *update.Next != metadata.Next:
 			text = nextKey + " " + *update.Next
 		}
 		after = append(after, text...)
