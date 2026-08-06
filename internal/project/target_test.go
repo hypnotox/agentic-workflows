@@ -238,7 +238,7 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 	// The preview and retained-diff surface must be identical in the embedded
 	// template and in what the Pi target actually writes, so a drifting or
 	// partially rendered extension cannot claim the invariant (ADR-0239 as
-	// revised by ADR-render-effort-memory-edits-like-pi).
+	// revised by ADR-0244).
 	for _, want := range []string{
 		`import { renderDiff } from "@earendil-works/pi-coding-agent";`,
 		`import { Box, Container, Spacer, Text } from "@earendil-works/pi-tui";`,
@@ -251,8 +251,8 @@ func TestPiEffortMemoryToolContract(t *testing.T) {
 		`await previewCall(toolCallId, spec.key(args) ?? "", ctx.cwd, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, true, signal)); return await memoryCall(ctx, signal, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, false, signal), true);`,
 		"(preview) => settlePreview(row, key, spec.title, theme, context, () => showMutationDiff(row, preview.diff!))",
 		"(error: Error) => settlePreview(row, key, spec.title, theme, context, () => showMutationFailure(row, error.message, theme))",
-		"if (row.key !== key) return; try { apply(); buildMutationRow(row, title, theme); context.invalidate(); } catch",
-		`if (reply && reply.diff) showMutationDiff(row, reply.diff); else showMutationFailure(row, mutationResultText(result), theme);`,
+		"if (row.key !== key || row.authoritative) return; try { apply(); buildMutationRow(row, title, theme); context.invalidate(); } catch",
+		`if (row) { row.authoritative = true; const reply = context.isError ? undefined : result.details as MemoryReply | undefined; if (reply && reply.diff) showMutationDiff(row, reply.diff); else showMutationFailure(row, mutationResultText(result), theme);`,
 		`const MUTATION_TRUNCATION_NOTICE = "Diff truncated for display.";`,
 		`theme.fg("warning", MUTATION_TRUNCATION_NOTICE)`,
 		`const text = diff.text.endsWith("\n") ? diff.text.slice(0, -1) : diff.text;`,

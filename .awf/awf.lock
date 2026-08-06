@@ -250,9 +250,9 @@
     },
     ".pi/extensions/awf-effort/index.ts": {
       "templateId": "pi/awf-effort/index.ts.tmpl",
-      "templateHash": "sha256:01b005627c991156f503a2f6dc8844675cacb4e0652f7e1623b36e020df58755",
+      "templateHash": "sha256:d195a42956f691a63340cce0fcde6cdba03948de70a34b33a02b7815487b7644",
       "configHash": "sha256:f45d26f43286854e4878c1c2a3ca3a4d66ed801588ac585e04beb4e96b71a792",
-      "outputHash": "sha256:2ce60e3fa1d72ef4c1d6a974c931a2917bdc1c837c71742777a7d245e773edf1"
+      "outputHash": "sha256:7afd082acaa5e4ad443c7d834d2e6edf0c482f4ca70212ae84faa7dff4dcee68"
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",

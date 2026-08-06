@@ -613,6 +613,25 @@ test("mutation execution awaits the rendered preview, queues only the mutation, 
   assert.equal(calls.length, 4, "a settled preview entry survived its tool call");
 });
 
+test("an authoritative result latches the row against a preview that settles afterwards", async () => {
+  const gates: Array<(reply: any) => void> = [];
+  const memoryExec = async (_command: string, argv: readonly string[]) => argv.includes("--preview")
+    ? new Promise<any>((resolve) => gates.push((reply) => resolve({ code: 0, stdout: line(reply), stderr: "" })))
+    : { code: 0, stdout: line(memoryEditReply({ diff: { text: "-7 old\n+7 new\n", firstChangedLine: 7, truncated: false } })), stderr: "" };
+  const h = harness([success()], { memoryExec }); await request(h, { effort: "demo" });
+  const tool = h.tools.get("effort_memory_edit"); const context = rowContext({ args: editArgs, toolCallId: "call-latch" });
+  const row = tool.renderCall(editArgs, fakeTheme, context); await settle();
+  assert.equal(gates.length, 1, "the call-time preview never started");
+  const result = { content: [{ type: "text", text: "Replaced 1 block(s) in effort memory." }], details: memoryEditReply({ diff: { text: "-7 old\n+7 new\n", firstChangedLine: 7, truncated: false } }) };
+  tool.renderResult(result, { expanded: false, isPartial: false }, fakeTheme, context);
+  assert.match(rowText(row), /\+7 new/);
+  gates[0](memoryEditPreviewReply({ diff: { text: "-6 stale\n+6 preview\n", firstChangedLine: 6, truncated: true } })); await settle();
+  const latched = rowText(row);
+  assert.match(latched, /\+7 new/, "a late preview replaced the authoritative diff");
+  assert.equal(latched.includes("+6 preview"), false, "a late preview replaced the authoritative diff");
+  assert.equal(latched.includes("Diff truncated for display."), false, "a late preview replaced the authoritative truncation state");
+});
+
 test("preview refusal and transport failure fail before mutation and clear only lost associations", async () => {
   for (const [condition, retained] of [["no-match", true], ["not-owner", false], ["missing", false], ["unsafe-activity", false]] as const) {
     const calls: string[][] = []; const reply = condition === "no-match" ? memoryOutcome("no-match", false, { edit: { index: 0 } }) : memoryOutcome(condition);
