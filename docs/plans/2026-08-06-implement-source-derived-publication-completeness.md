@@ -34,13 +34,16 @@ Completes: ["readme-command-projection"]
 ### Task 1.1: Add the repository-only README projection proof
 Latitude: exact
 Applying: ["derive-publication-completeness-from-source-authorities:source-derived-publication-completeness"]
-Paths: ["internal/clispec/readme_test.go", "internal/clispec/clispec.go", "internal/clispec/clispec_test.go"]
+Paths: ["internal/clispec/readme_test.go", "internal/clispec/clispec.go"]
 
 Establish the phase baseline before editing: `git status --short` produces no output, `./x check`
 reports zero findings, and `./x gate` exits zero.
 
 Create `internal/clispec/readme_test.go`; do not add production Markdown rendering or a new package.
-Derive the expected bounded block from `Commands` in source order. For each top-level command, use
+Update the `Commands` ownership comment and its `touches-state` explanation in `clispec.go` to name
+the bounded README command projection and both proof locations. Preserve the existing proof marker
+in `clispec_test.go` without editing that file. Derive the expected bounded block from `Commands` in
+source order. For each top-level command, use
 its first `Help.Usage` value as the `Command` cell and its `Summary` as the `Purpose` cell, wrap the
 usage in a Markdown code span, and escape table-cell pipe characters without changing the command
 text. Include the table header and the exact unique boundary comments
@@ -122,11 +125,11 @@ sorted `missing from embed` and `unexpected in embed` paths.
 
 Use `fstest.MapFS` cases to prove exact parity, a source-only file, an embed-only file, a source-only
 new top-level directory, and a dot- or underscore-prefixed file missing because `all:` semantics were
-not supplied. Add the real repository parity test and mark it as the proof for the new
-`rendering/templates:source-embed-parity` claim. Demonstrate the negative path without leaving a
-fixture in the tree: temporarily add a source file under a new template directory, run the focused
-test and observe `missing from embed`, remove the temporary directory, rerun
-`go test ./templates -run 'Test(SourceEmbed|TemplateFile)'`, and require success. Do not change
+not supplied. The source-only new-directory case is the durable negative proof: require its focused
+test to report the exact `missing from embed` path from test-owned filesystems, with no repository
+mutation. Add the real repository parity test and mark it as the proof for the new
+`rendering/templates:source-embed-parity` claim. Run
+`go test ./templates -run 'Test(SourceEmbed|TemplateFile)'` and require success. Do not change
 `templates/embed.go` unless the proof reveals a real current mismatch.
 
 ### Task 2.2: Apply template parity authority and retire its pitfall
@@ -182,17 +185,34 @@ live without editing a second membership list.
 
 Add current-value resolvers for `tags`, `contextIgnore`, `commitPolicy.grandfatheredThrough`,
 `commitPolicy.allowedIdentities`, `commitPolicy.requireSignedCommits`, and
-`commitPolicy.allowedSigners`. Render absent collections as `(none)`, present collections as a
-compact entry or pattern summary, the optional grandfather boundary as `(none)` or its code-form
-value, and signature policy as its effective boolean with default status when the policy is absent.
-Do not expose identity emails, signer keys, or other record contents in the reference.
+`commitPolicy.allowedSigners`. Use these exact representations: empty tags `(none)`, otherwise
+`<n> tags`; empty contextIgnore `(none)`, otherwise `<n> patterns`; absent or empty
+`grandfatheredThrough` `(none)`, otherwise the value inside one Markdown code span; empty allowed
+identities `(none)`, otherwise `<n> identities`; empty allowed signers `(none)`, otherwise
+`<n> signers`; and requireSignedCommits `false (default)` only when the entire commitPolicy mapping
+is absent, otherwise its effective `true` or `false`. Collection and boundary summaries carry no
+`(default)` suffix. Counts disclose no identity emails, signer principals, signer keys, tag values,
+or ignored paths. Follow the existing config-reference conventions of `(none)` for empty
+collections, code spans for concrete scalar identifiers, plural count summaries, and `(default)`
+only when the displayed effective scalar comes from an absent owning config block.
+
+Before replacing the explicit map, add
+`TestLiveStateClassificationsDeriveProjectValues` in `internal/configspec/spec_test.go`; it requires
+`tags`, `contextIgnore`, and every commitPolicy collection/scalar root to be
+`LiveStateProjection`, and requires representative `[]`, `<name>`, and `sidecar.` paths to remain
+`StaticNotApplicable`. Run
+`go test ./internal/configspec -run '^TestLiveStateClassificationsDeriveProjectValues$'` against the
+old map and require failure containing `tags class = StaticNotApplicable, want LiveStateProjection`;
+a pass or another failure blocks implementation. After deriving the classifications, rerun the
+same command and require success.
 
 Update resolver-authority mutation tests: an omitted derived-live resolver must name the exact key;
 a resolver attached to a structural static leaf must be rejected; an extra resolver and unknown
 class must remain rejected. Extend live model and generated-reference cases with configured and
-absent tags, context ignores, and commit-policy values, asserting those project rows never render
-`n/a` while item leaves and sidecar rows still do. Run the focused configspec/project tests and
-require the old explicit-map behavior to fail before completing the implementation.
+absent tags, context ignores, and commit-policy values, asserting the exact strings above and that
+those project rows never render `n/a` while item leaves and sidecar rows still do. Run
+`go test ./internal/configspec ./internal/project -run 'Test(LiveState|ConfigReference)'` and require
+success.
 
 ### Task 3.2: Apply config authority, retire the final pitfall, and publish the change
 Latitude: exact
@@ -218,12 +238,27 @@ configured tags, context ignores, and commit-policy rows show non-secret current
 contradicting their defaults or nested `n/a` rows; and none of the three retired hazards survives by
 title or equivalent instruction in the active pitfalls catalog. Authority checks:
 `go test ./internal/configspec ./internal/project ./internal/clispec ./templates`, `./x check`, and
-`./awf topic config/configspec-and-reference:live-state-projection-explicit` all exit zero. Final
-state check: parse `.awf/docs/pitfalls.yaml`, assert none of the three exact titles is present, scan
-`docs/pitfalls.md` for the same titles, fail on any match or probe error, and print
-`selected pitfalls absent` only after both populations are clean. Confirm the ADR remains
-`Implementing` with all three declared operations Applied and the plan remains `Proposed` for
-terminal review.
+`./awf topic config/configspec-and-reference:live-state-projection-explicit` all exit zero. Run this
+exact final state check from the repository root; `./x check` is the structural YAML/render parse,
+`rg` checks the closed title set, status 1 is the only clean absence, and the sentinel is printed only
+after both complete:
+
+```sh
+./x check
+set +e
+rg -nF \
+  -e 'README.md is outside the drift oracle' \
+  -e 'Add every new template directory to the embed allowlist' \
+  -e 'A new config field needs a config-reference live-state projection case' \
+  .awf/docs/pitfalls.yaml docs/pitfalls.md
+pitfall_status=$?
+set -e
+test "$pitfall_status" -eq 1
+printf '%s\n' 'selected pitfalls absent'
+```
+
+Confirm the ADR remains `Implementing` with all three declared operations Applied and the plan
+remains `Proposed` for terminal review.
 
 ### Phase close
 
