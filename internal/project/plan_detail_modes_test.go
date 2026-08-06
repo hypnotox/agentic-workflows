@@ -274,3 +274,22 @@ func readPlanPolicyFile(t *testing.T, root, name string) string {
 	}
 	return string(body)
 }
+
+// invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestPlanDeviationReconciliationGuidanceStayAligned)
+func TestPlanDeviationReconciliationGuidanceStayAligned(t *testing.T) {
+	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}}
+	for _, surface := range []string{"writing-plans", "subagent-driven-development"} {
+		out := renderSkillGolden(t, surface, data)
+		wants := []string{"focused", "before checkpointing or later execution"}
+		if surface == "writing-plans" {
+			wants = append(wants, "Inline owners immediately", "Delegated owners")
+		} else {
+			wants = append(wants, "deviations")
+		}
+		for _, want := range wants {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing %q", surface, want)
+			}
+		}
+	}
+}

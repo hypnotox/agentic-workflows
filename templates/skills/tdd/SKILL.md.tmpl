@@ -22,7 +22,9 @@ A minimal simple test-first change uses no effort. Non-minimal work requires one
 <!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 2. Run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}.
-3. Before implementing, per `{{ .layout.maintainableCodeDesign }}`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround. If a newly discovered need affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy, stop before further mutation and return to the user with the changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options. Equivalent mechanical choices remain autonomous. Escalate materially larger work by asking the user whether to
+3. Before implementing, per `{{ .layout.maintainableCodeDesign }}`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround.
+<!-- awf:include implementation-autonomy -->
+Escalate materially larger work by asking the user whether to
 <!-- awf:include escalation-menu -->
 Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
 4. Implement the minimal change to pass.

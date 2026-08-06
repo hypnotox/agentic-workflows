@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Implementation paths now resolve authority-preserving reasoned deviations and review findings autonomously; inline owners amend mutable plans, delegated owners report deviations for post-review parent reconciliation, and material authority, outcome, scope, or persistent safety and verification boundaries still escalate.
+
 - Schema generation 36 makes structural Markdown headings awf-owned while convention parts and in-place editing own only section bodies. Dropping a section removes its complete structure, and the exact frozen convention-part migration removes only copied legacy headings or refuses ambiguous content before changing files.
 
 - Catalog-backed sidecar lists now preserve standard defaults before project entries unless `dataDefaults.<key>: false` explicitly suppresses them. Null and non-list project values are rejected, glossary term layering remains specialized, and the schema-35 upgrade records suppression for existing replacements without changing their rendered meaning.

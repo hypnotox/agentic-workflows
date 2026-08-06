@@ -8,6 +8,7 @@ import (
 )
 
 // invariant: rendering/workflow-skill-templates:phase-transaction-ownership (TestPhaseTransactionOwnershipAcrossWorkflowSurfaces)
+// invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestPhaseTransactionOwnershipAcrossWorkflowSurfaces)
 func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 	renderSurfaces := func(data map[string]any) map[string]string {
 		t.Helper()

@@ -7,6 +7,8 @@ description: Independent review step after implementation commits. Dispatches th
 
 Invoked as the independent review step of the implementation phase. This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. It validates the fixed identity, existing effort slug, and exact `.awf/efforts/<slug>/memory.md` path, keeps the parent as the one user-managed memory writer, and dispatches the `code-reviewer` subagent against the session's SHA range as report-only. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
 
+<!-- awf:include implementation-autonomy -->
+
 <!-- awf:section when-fires -->
 ## When this skill fires
 
@@ -47,7 +49,7 @@ A docs-only session diff may skip the independent review; step 2 defines the che
 4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
-   - **user-decision**: present to the user and wait.
+   - **user-decision**: diagnose and resolve autonomously when authority determines a mechanical or reasoned remedy; stop only at the shared narrow boundary.
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
@@ -59,13 +61,13 @@ A docs-only session diff may skip the independent review; step 2 defines the che
    `awf audit ${baseSha}..${headSha}` (or this project's runner alias for it) over the session
    range. The audit evaluates each parent-to-commit snapshot pair, so it also reports any ADR
    whose claim `State changes` did not transition legally across the range. `Error` findings block
-   this review from concluding: resolve them or escalate them as user-decision items before
+   this review from concluding: diagnose and resolve them autonomously when authority determines a compliant remedy; stop only at the shared narrow boundary before
    closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
    gates commits; it does not replace the gate or the drift check.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-7. **Verify pass.** A round that applied no fixes dispatches no verify pass, and a fix round whose applied fixes are all classified `mechanical` skips it, recording the skip and its ground in the summary presented at the check-in. When at least one applied fix is classified `reasoned` or was applied under a `user-decision` ruling, with the gate passing first, {{ if .targetSubagentTools }}call `subagent_review` exactly once with `kind: "code"` and a verify brief in `task`. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section.{{ else }}dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section.{{ end }} This pass confirms the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+7. **Verify pass.** A round that applied no fixes dispatches no verify pass, and a fix round whose applied fixes are all classified `mechanical` skips it, recording the skip and its ground in the summary presented at the check-in. When at least one applied fix is classified `reasoned` or was applied under a `user-decision` ruling, with the gate passing first, {{ if .targetSubagentTools }}call `subagent_review` exactly once with `kind: "code"` and a verify brief in `task`. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section.{{ else }}dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section.{{ end }} This pass confirms the fixes resolved the findings without new regressions. After the single verify pass, apply any authority-determined residual fix, run the gate and audit again, and report the final disposition; stop only for a true shared-boundary `user-decision` finding. Do not add another review loop.
 <!-- awf:end -->
 
 <!-- awf:section hand-off -->

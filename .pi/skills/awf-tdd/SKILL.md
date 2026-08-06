@@ -23,7 +23,15 @@ A minimal simple test-first change uses no effort. Non-minimal work requires one
 Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `awf topic` where the work touches a claimed surface.
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the working-with-awf doc's Context spill notices contract; treat any other output as the context packet itself.
 2. Run it and confirm it fails for the right reason: `go test ./...`.
-3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround. If a newly discovered need affects behavior, scope, structure, dependencies, patterns, checks, or testing strategy, stop before further mutation and return to the user with the changed fact, why the approved approach no longer fits, affected approved categories, and the simplest viable options. Equivalent mechanical choices remain autonomous. Escalate materially larger work by asking the user whether to
+3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround.
+## Authority-guided implementation autonomy
+
+Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
+
+A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
+
+Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
+Escalate materially larger work by asking the user whether to
 perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
 Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
 4. Implement the minimal change to pass.

@@ -8,6 +8,14 @@ description: Independent review step after implementation commits. Dispatches th
 
 Invoked as the independent review step of the implementation phase. This skill operates only inside an existing confirmed effort and never creates a missing effort. If ownership is absent, stop and return to mandatory first-creation three-field confirmation. Existing efforts resume under their fixed identity without title reconfirmation only while work remains within their confirmed outcome. It validates the fixed identity, existing effort slug, and exact `.awf/efforts/<slug>/memory.md` path, keeps the parent as the one user-managed memory writer, and dispatches the `code-reviewer` subagent against the session's SHA range as report-only. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
 
+## Authority-guided implementation autonomy
+
+Resolve implementation findings autonomously when applicable ADRs, current-state claims, and repository authority determine a compliant correction that preserves the approved outcome, material scope, settled durable boundaries, and required verification. Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check before treating it as an escalation.
+
+A reasoned non-mechanical deviation records its changed detail, rationale, governing authority, and verification. Do not replan the approved outcome, broaden material scope, overturn settled structural choices, weaken an oracle, or perform unrelated cleanup.
+
+Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
+
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 ## When this skill fires
 
@@ -43,7 +51,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
-   - **user-decision**: present to the user and wait.
+   - **user-decision**: diagnose and resolve autonomously when authority determines a mechanical or reasoned remedy; stop only at the shared narrow boundary.
 
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes, landing them as new commits (never `--amend`) using the project's commit scope conventions; `./x gate` passes before each commit.
@@ -53,7 +61,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
    `awf audit ${baseSha}..${headSha}` (or this project's runner alias for it) over the session
    range. The audit evaluates each parent-to-commit snapshot pair, so it also reports any ADR
    whose claim `State changes` did not transition legally across the range. `Error` findings block
-   this review from concluding: resolve them or escalate them as user-decision items before
+   this review from concluding: diagnose and resolve them autonomously when authority determines a compliant remedy; stop only at the shared narrow boundary before
    closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
    gates commits; it does not replace the gate or the drift check.
 
@@ -67,7 +75,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
-7. **Verify pass.** A round that applied no fixes dispatches no verify pass, and a fix round whose applied fixes are all classified `mechanical` skips it, recording the skip and its ground in the summary presented at the check-in. When at least one applied fix is classified `reasoned` or was applied under a `user-decision` ruling, with the gate passing first, dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section. This pass confirms the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+7. **Verify pass.** A round that applied no fixes dispatches no verify pass, and a fix round whose applied fixes are all classified `mechanical` skips it, recording the skip and its ground in the summary presented at the check-in. When at least one applied fix is classified `reasoned` or was applied under a `user-decision` ruling, with the gate passing first, dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section. This pass confirms the fixes resolved the findings without new regressions. After the single verify pass, apply any authority-determined residual fix, run the gate and audit again, and report the final disposition; stop only for a true shared-boundary `user-decision` finding. Do not add another review loop.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Route settled terminal review through optional worktree integration.** Repository sources and current-state documentation remain authoritative over checkpoint prose; standalone memory is forbidden.
@@ -83,7 +91,7 @@ On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per the w
 **Routine checkpoint.** At this boundary:
 1. Classify ownership, not the boundary: a minimal simple fix uses no effort, and reaching a checkpoint never creates one. Non-minimal work requires exactly one already-confirmed immutable slugged effort; if ownership is missing, stop and return to mandatory first-creation three-field confirmation. The effort always owns `.awf/efforts/<slug>/memory.md`.
 2. Validate the exact `<slug>` and owned path (a primary-root-relative spelling; the file lives under the primary checkout), confirm either legacy `Effort: <slug>` or canonical `effort: <slug>` identity (the canonical form is YAML; the legacy form is deprecated and remains only until active efforts finish), and continue in the effort's managed worktree when one exists. In its own writer-owned tool batch run exactly one `./awf effort memory update <slug> --phase "<completed phase>" --next "<immediate next action>"`; it is the sole writer of phase, next action, and time. Separately append any unrecorded settled decision and observation.
-3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
+3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, or a correctness or safety concern, blocker, or failed required verification that remains unresolved after the active workflow's required diagnosis and authority-guided remediation. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
 4. Otherwise state a one-line continuity notice with the completed phase and immediate next action, including the exact slug and owned memory path for an effort-backed outcome; the notice is informational, never a stop. An executable `awf read plan` projection never creates a checkpoint or handoff boundary. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. Authority precedence, the one-writer contract, the file skeleton, and the full protocol live in the workflow doc's working-memory section.
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
