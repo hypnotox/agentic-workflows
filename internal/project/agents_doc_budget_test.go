@@ -51,12 +51,17 @@ func largestAgentsDocSections(body string) string {
 	return strings.Join(parts, ", ")
 }
 
+func agentsDocBudgetDiagnostic(surface, body string, allowed int) (string, bool) {
+	observed := len(body)
+	return fmt.Sprintf("%s is %d bytes, allowed %d bytes; largest sections: %s", surface, observed, allowed, largestAgentsDocSections(body)), observed > allowed
+}
+
 func requireAgentsDocBudget(t *testing.T, surface, body string, allowed int) {
 	t.Helper()
-	observed := len(body)
-	t.Logf("%s: %d bytes (allowed %d); largest sections: %s", surface, observed, allowed, largestAgentsDocSections(body))
-	if observed > allowed {
-		t.Errorf("%s is %d bytes, allowed %d bytes; largest sections: %s", surface, observed, allowed, largestAgentsDocSections(body))
+	diagnostic, over := agentsDocBudgetDiagnostic(surface, body, allowed)
+	t.Log(diagnostic)
+	if over {
+		t.Error(diagnostic)
 	}
 }
 
@@ -75,4 +80,17 @@ func TestSelfHostedAgentsDocBudget(t *testing.T) {
 		t.Fatalf("read committed AGENTS.md: %v", err)
 	}
 	requireAgentsDocBudget(t, "self-hosted AGENTS.md", string(body), selfHostedAgentsDocBudget)
+}
+
+// invariant: rendering/guide-and-doc-templates:agent-guide-size-budgets (TestAgentsDocBudgetDiagnostics)
+func TestAgentsDocBudgetDiagnostics(t *testing.T) {
+	body := "# Guide\n\n## Small\nx\n## Largest\n1234567890\n## Middle\n12345\n"
+	diagnostic, over := agentsDocBudgetDiagnostic("fixture AGENTS.md", body, len(body)-1)
+	want := "fixture AGENTS.md is 58 bytes, allowed 57 bytes; largest sections: Largest=22, Middle=16, Small=11"
+	if !over || diagnostic != want {
+		t.Fatalf("over-budget diagnostic = %q, over = %v; want %q, true", diagnostic, over, want)
+	}
+	if _, over := agentsDocBudgetDiagnostic("fixture AGENTS.md", body, len(body)); over {
+		t.Fatal("exact budget boundary reported an overage")
+	}
 }

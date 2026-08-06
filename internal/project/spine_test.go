@@ -2036,6 +2036,38 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	routine := renderSkillGolden(t, "executing-plans", data)
 	approval := renderSkillGolden(t, "brainstorming", data)
+	guideClauseGroups := [][]string{
+		{"A minimal simple fix uses no effort"},
+		{"create or resume an effort only through the applicable native workflow skill", "select the applicable workflow skill before creating or resuming an effort"},
+		{"one user-managed memory writer"},
+		{"working-memory protocol", "[docs/workflow.md](docs/workflow.md) owns the protocol"},
+	}
+	hasGuideRouting := func(body string) bool {
+		for _, alternatives := range guideClauseGroups {
+			if !containsAny(body, alternatives) {
+				return false
+			}
+		}
+		return true
+	}
+	assertGuideRouting := func(label, body string) {
+		t.Helper()
+		if !hasGuideRouting(body) {
+			t.Errorf("%s guide is missing a working-memory routing clause", label)
+		}
+	}
+	assertGuideRouting("direct-default", guide)
+	t.Run("working-memory guide clause mutations are rejected", func(t *testing.T) {
+		for _, alternatives := range guideClauseGroups {
+			mutated := guide
+			for _, clause := range alternatives {
+				mutated = strings.ReplaceAll(mutated, clause, "")
+			}
+			if hasGuideRouting(mutated) {
+				t.Errorf("removing clause alternatives %q did not invalidate working-memory routing", alternatives)
+			}
+		}
+	})
 	genericWorkingMemory := strings.Index(workflow, "## Working memory")
 	if genericWorkingMemory < 0 {
 		t.Fatal("generic workflow lost the Working memory boundary")
@@ -2089,6 +2121,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		return string(raw)
 	}
 	projectGuide := readProjectSurface("AGENTS.md")
+	assertGuideRouting("self-hosted", projectGuide)
 	for _, want := range []string{"Discovery creates no effort", "proposed effort title", "proposed short effort slug", "clear response in a later turn confirming all three fields", "`awf effort new --slug <confirmed-slug> \"<confirmed-title>\"`", "only for work inside its confirmed outcome"} {
 		if strings.Contains(projectGuide, want) {
 			t.Errorf("committed project guide duplicates working-memory procedure %q", want)

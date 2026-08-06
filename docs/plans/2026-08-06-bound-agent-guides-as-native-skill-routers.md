@@ -280,6 +280,9 @@ feat(rendering): warn on oversized agent guides (applies ADR batch)
   mechanisms were deleted rather than relocated; their canonical homes already remain in the
   workflow, working-with-awf, current-state, ADR, and native-skill sources. No guide-unique fact
   required relocation; deviations: none.
+- Phase 2 review preserved the plain-punctuation invariant across all tracked text, added exact
+  over-budget diagnostic and boundary proofs, and made both the direct-default and self-hosted guide
+  tests enforce every minimum working-memory routing clause with mutation checks.
 
 Record deviations, rendered-size measurements, prose-disposition findings, review findings, and any
 implementation fact that invalidates an approved bound or canonical-home assumption. Do not relax a

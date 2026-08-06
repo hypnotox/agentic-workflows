@@ -31,7 +31,7 @@ Hard rules every change must respect:
 - **`awf check` is the drift oracle.** After `.awf/` edits run `./x render && ./x check`; commit generated outputs with their sources.
 - **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `plans`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
 - **Backed invariants.** Declare and prove current-state invariants; see the current-state contract. (ADR-0134)
-- **Plain punctuation.** Use ASCII punctuation in tracked prose; see the prose gate contract. (ADR-0115, ADR-0119)
+- **Plain punctuation.** Use ASCII punctuation throughout tracked text; see the prose gate contract. (ADR-0115, ADR-0119)
 - **No memory citation.** Never cite concrete effort memory paths in durable records. (ADR-0158, ADR-0175)
 - **100% coverage gate.** Keep `./x gate` at 100% statement coverage. (ADR-0012)
 - **Dead-code gate.** Keep production code reachable from a `main`. (ADR-0063)
